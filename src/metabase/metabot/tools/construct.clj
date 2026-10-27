@@ -1,33 +1,48 @@
 (ns metabase.metabot.tools.construct
   "Notebook query construction tool wrappers."
   (:require
+   [clojure.string :as str]
    [malli.error :as me]
+   [malli.util :as mut]
    [metabase.agent-lib.representations :as repr]
    [metabase.agent-lib.representations.repair :as repr.repair]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.util :as lib.util]
+   [metabase.lib.walk :as lib.walk]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
+   [metabase.metabot.tools.core :as tools]
+   [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.util :as tools.u]
+   [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
+   [metabase.query-processor.core :as qp]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [toucan2.core :as t2]))
+   [metabase.util.match :as match]
+   [metabase.util.quoting :as quoting])
+  (:import
+   (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -35,7 +50,7 @@
 
 (def ^:private construct-visualization-schema
   [:map {:closed true}
-   [:chart_type :string]])
+   [:chart_type (into [:enum] shared/chart-types)]])
 
 (def ^:private construct-notebook-query-json-schema
   "Hand-authored JSON Schema for the `:query` argument, attached to the deliberately open,
@@ -53,9 +68,9 @@
                      "(possibly empty) options map at position 1, and every field reference is `[\"field\", {}, "
                      "[\"<db>\", \"<schema>\", \"<table>\", \"<field>\"]]`. Minimal example — count of orders by "
                      "month: `{\"lib/type\": \"mbql/query\", \"stages\": [{\"lib/type\": \"mbql.stage/mbql\", "
-                     "\"source-table\": [\"Sample Database\", \"PUBLIC\", \"ORDERS\"], \"aggregation\": "
+                     "\"source-table\": [\"Sample Database\", null, \"ORDERS\"], \"aggregation\": "
                      "[[\"count\", {}]], \"breakout\": [[\"field\", {\"temporal-unit\": \"month\"}, "
-                     "[\"Sample Database\", \"PUBLIC\", \"ORDERS\", \"CREATED_AT\"]]]}]}`. Load the "
+                     "[\"Sample Database\", null, \"ORDERS\", \"CREATED_AT\"]]]}]}`. Load the "
                      "`construct-notebook-query-*` skills for the full operator catalog, joins, expressions, "
                      "and multi-stage rules.")
    :required    ["lib/type" "stages"]
@@ -73,7 +88,7 @@
                                            "source-table" {:type        "array"
                                                            :minItems    3
                                                            :maxItems    3
-                                                           :items       {:type "string"}
+                                                           :items       {}
                                                            :description "Portable FK `[<db-name>, <schema-or-null>, <table-name>]`."}
                                            "source-card"  {:type        "string"
                                                            :description "entity_id of a saved question/model used as the source."}
@@ -87,6 +102,20 @@
                                            "order-by"     {:type "array" :items {:type "array" :items {}}}
                                            "joins"        {:type "array" :items {:type "object"}}
                                            "expressions"  {:type "object"}}}}}})
+
+(def LLMExternalQuery
+  "An MBQL 5 external query as the LLM wrote it, before [[execute-representations-query]] repairs and validates it: its
+  keys are the LLM's until then."
+  [:map {:closed                false
+         ::mr/deliberately-open true
+         :description           "An LLM-authored MBQL 5 query, structurally unvalidated here; real validation happens at the entry-point boundaries."}])
+
+(def LLMQueryArgument
+  "Schema for the `:query` argument of `construct_notebook_query` and the tools that reuse it.
+
+  Validation stays a fully open, property-less `:map` (the repair layer fixes LLM shortcuts); the `:json-schema`
+  override only changes what the LLM sees. See [[construct-notebook-query-json-schema]]."
+  (mu/with LLMExternalQuery {:json-schema construct-notebook-query-json-schema}))
 
 (def ^:private construct-notebook-query-args-schema
   "Args schema for `construct_notebook_query`.
@@ -104,12 +133,21 @@
   omits `:source_entity` and `:referenced_entities` — the query body is self-describing."
   [:map {:closed true}
    [:reasoning {:optional true} :string]
-   ;; Validation stays a fully open, property-less `:map` (the repair layer fixes LLM shortcuts); the
-   ;; `:json-schema` override only changes what the LLM sees. See [[construct-notebook-query-json-schema]].
-   [:query [:map {:json-schema construct-notebook-query-json-schema}]]
+   [:query LLMQueryArgument]
    [:visualization {:optional true} construct-visualization-schema]
+   [:show_chart {:optional true
+                 :description (str "Pass false for a query you build only to read its values with run_query: "
+                                   "the user is then shown no chart. Defaults to true.")}
+    [:maybe :boolean]]
    [:title :string]
    [:description :string]])
+
+(defn without-show-chart
+  "Returns the construct_notebook_query tool definition `tool` with `show_chart` left out of its `:schema`, so the
+   model is not told about the argument."
+  [tool]
+  (update tool :schema (fn [[arrow [cat args-schema] output]]
+                         [arrow [cat (mut/dissoc args-schema :show_chart)] output])))
 
 ;;; ---------------------------------------- Source resolution ----------------------------------------
 
@@ -123,6 +161,18 @@
   if not present / wrong shape."
   [parsed-query]
   (portable-table-fk (get-in parsed-query ["stages" 0 "source-table"])))
+
+(defn- first-stage-numeric-source-table
+  "Pull the numeric table id out of `stages[0].source-table`, or `nil` if not numeric."
+  [parsed-query]
+  (let [st (get-in parsed-query ["stages" 0 "source-table"])]
+    (when (pos-int? st) st)))
+
+(defn- first-stage-numeric-source-card
+  "Pull the numeric card id out of `stages[0].source-card`, or `nil` if not numeric."
+  [parsed-query]
+  (let [sc (get-in parsed-query ["stages" 0 "source-card"])]
+    (when (pos-int? sc) sc)))
 
 (def ^:private metabase-uri-source-table-pattern
   "Matches values the LLM sometimes writes into `source-table:` by confusing the Metabase
@@ -144,32 +194,13 @@
   (let [raw (get-in parsed-query ["stages" 0 "source-table"])]
     (when (string? raw)
       (when-let [[_ entity-type entity-id] (re-find metabase-uri-source-table-pattern raw)]
-        (let [hint (case entity-type
-                     "metric"
-                     (str "Metrics are aggregations, not sources. To use metric " entity-id
-                          ", put its base table into `source-table:` — combine the `database_name` "
-                          "and `base_table_fully_qualified_name` attributes from its search result "
-                          "or `read_resource metabase://metric/" entity-id "` — and reference the "
-                          "metric as `aggregation: [[metric, {}, \"<portable_entity_id>\"]]`.")
-                     ("question" "model" "card")
-                     (str "To reference saved " entity-type " " entity-id
-                          " as a query source, put its `portable_entity_id` (the 21-char "
-                          "string from its search result or `read_resource`) into "
-                          "`source-card:` — not a URI.")
-                     "table"
-                     (str "Use the portable FK `[<db-name>, <schema>, <table-name>]` in "
-                          "`source-table:` — not a URI. `read_resource metabase://table/" entity-id
-                          "` reports the exact names.")
-                     (str "`source-table:` accepts a portable FK `[<db-name>, <schema>, <table-name>]` "
-                          "or, via `source-card:`, a saved-card `portable_entity_id`."))]
-          (throw (ex-info (tru "`source-table:` does not accept URIs like `{0}`. {1}"
-                               raw hint)
-                          {:agent-error? true
-                           :status-code  400
-                           :error        :uri-in-source-table
-                           :source-table raw
-                           :entity-type  entity-type
-                           :entity-id    entity-id})))))))
+        (throw (ex-info (format "`source-table:` does not accept URIs like `%s`." raw)
+                        {:agent-error? true
+                         :status-code  400
+                         :error        :uri-in-source-table
+                         :source-table raw
+                         :entity-type  entity-type
+                         :entity-id    entity-id}))))))
 
 (defn- first-stage-source-card-eid
   "Pull the `source-card:` entity_id string from `stages[0]`, or `nil` if not present."
@@ -179,9 +210,9 @@
 
 (def ^:private permission-aware-content-store
   "ContentStore for agent query construction. Alias for
-  [[shared.content-store/default-store]] — the chokepoint wrapper applies `api/read-check` to
-  every lookup whenever `api/*current-user-id*` is bound, symmetrically across all six
-  ContentStore methods. The unchecked underlying store rejects non-NanoID entity-id values."
+  [[shared.content-store/default-store]], which permission-checks every lookup whenever
+  `api/*current-user-id*` is bound; see that namespace for the audited/unaudited split between the
+  two lookup directions. The unchecked underlying store rejects non-NanoID entity-id values."
   shared.content-store/default-store)
 
 (defn- portable-field-fk-table
@@ -193,20 +224,81 @@
              (string? (nth x 2)))
     (subvec x 0 3)))
 
+(defn- numeric-table-id
+  "A bare numeric `source-table`, which only the numeric-id surface may author. Off that surface it
+  is not a table reference at all, so it must not be collected — and on it, it still has to be
+  permission-checked like any portable FK."
+  [x]
+  (when (and serdes.resolve/*numeric-ids-allowed?* (pos-int? x))
+    x))
+
+(defn- numeric-field-id-ref
+  "A bare numeric field id — the numeric-id surface's form of `[db schema table field]`. Its own
+  table is not the source table (the field may live on an FK-related table reached by an implicit
+  join), so it must be permission-checked like a portable field FK. A portable field FK contributes
+  its `[db schema table]` prefix via [[portable-field-fk-table]]; the numeric form carries no name,
+  so we tag the raw id and resolve it to a table id in [[resolve-table-fk]]. Off the numeric-id
+  surface a bare number is not a field reference at all, so it must not be collected."
+  [x]
+  (when (and serdes.resolve/*numeric-ids-allowed?* (pos-int? x))
+    [::field-id x]))
+
+(defn- numeric-scoped-content-ref
+  "A bare numeric measure / segment id, tagged with the model it names so
+  [[resolve-table-fk]] can resolve it to the table it is scoped to.
+
+  Measures and segments live on a table, and that table is the thing a query permission is
+  about — but a `[\"measure\" {} 44]` clause names neither a table nor a field, so without this
+  the sweep never sees it and `api/query-check` never runs for it. They do get `api/read-check`
+  through the content store, but `mi/can-read?` on both models delegates to the Table's
+  `can-read?`, which is strictly weaker than `can-query?` (only `can-read?` has the
+  `manage-table-metadata` disjunct). Metric refs are Cards and are deliberately not covered:
+  a card pulls in whatever tables its own query names, which this pre-flight sweep cannot see,
+  and the QP re-checks them at execution."
+  [model x]
+  (when (and serdes.resolve/*numeric-ids-allowed?* (pos-int? x))
+    [::scoped-content model x]))
+
+(defn- node-scoped-content-ref
+  "The tagged ref for a `[\"measure\" {} 44]` / `[\"segment\" {} 43]` clause, or nil."
+  [node]
+  (when (and (vector? node) (not (map-entry? node)))
+    (let [op (nth node 0 nil)]
+      (when-let [model (case op
+                         ("measure" :measure) :model/Measure
+                         ("segment" :segment) :model/Segment
+                         nil)]
+        ;; the id sits in slot 2 (`[op {} id]`) or slot 1 (`[op id]`, pre-repair)
+        (or (numeric-scoped-content-ref model (nth node 2 nil))
+            (numeric-scoped-content-ref model (nth node 1 nil)))))))
+
 (defn- node-table-fks
   [node]
   (cond
     (map? node)
     (keep identity [(portable-table-fk (get node "source-table"))
-                    (portable-field-fk-table (get node "source-field"))])
+                    (numeric-table-id (get node "source-table"))
+                    (portable-field-fk-table (get node "source-field"))
+                    (numeric-field-id-ref (get node "source-field"))])
+
+    (node-scoped-content-ref node)
+    [(node-scoped-content-ref node)]
 
     (and (vector? node)
          (not (map-entry? node))
          (= "field" (nth node 0 nil)))
+    ;; Both slots, for both forms. Repair inserts the options map later, so an LLM-authored
+    ;; `["field", 42]` still carries its target in slot 1 when this pass runs — checking the
+    ;; numeric form in slot 2 only (as this did) let that shape through uncollected, and so
+    ;; unchecked. The portable form already looked at both slots; the numeric one has to match.
     (keep identity [(or (portable-field-fk-table (nth node 2 nil))
-                        (portable-field-fk-table (nth node 1 nil)))])))
+                        (portable-field-fk-table (nth node 1 nil))
+                        (numeric-field-id-ref (nth node 2 nil))
+                        (numeric-field-id-ref (nth node 1 nil)))])))
 
 (defn- referenced-table-fks
+  "Every table reference in the query: portable `[db schema table]` FKs, plus bare table ids on the
+  numeric-id surface."
   [parsed-query]
   (into []
         (comp (mapcat node-table-fks) (distinct))
@@ -215,14 +307,221 @@
 (def ^:private unresolved-table-fk-errors
   #{:unknown-table :ambiguous-table})
 
-(defn- resolve-table-fk
-  [resolver table-fk]
+;;; ----- the numeric-id boundary contract -------------------------------------------------
+;;;
+;;; A portable reference names a table or column, and resolution answers "is there something
+;;; with this name, in this database, that the caller may use?" — so being in the query's
+;;; database, and being a column the warehouse actually exposes, both fall out of resolving the
+;;; name. A bare numeric id skips all of that: it is an LLM-authored integer pointing at a row.
+;;;
+;;; These two helpers put that contract back. Everything the numeric dialect accepts goes
+;;; through the query's own metadata provider, which is scoped to the query's database — so a
+;;; table in another database simply is not there. On top of that we re-apply the visibility
+;;; rules, because `metadata-spec->honey-sql` deliberately drops its active/visibility filter
+;;; for by-id lookups (`active-only?` is `(not (or id-set name-set))`): asking for a specific
+;;; id is normally a deliberate act by trusted code, which is exactly the assumption an
+;;; agent-authored id breaks.
+
+(defn- visible-table
+  "The table `table-id` names, as seen from `metadata-provider`, or nil when it is not a table
+  this query may reference: a table in another database (the provider is database-scoped, so it
+  is simply absent), an inactive one, or one the warehouse hides."
+  [metadata-provider table-id]
+  ;; Any lookup failure — not just a miss — is treated as "not referenceable". This pass decides
+  ;; only what a numeric id is allowed to name; it is deliberately not the place a provider
+  ;; outage is diagnosed, and failing closed here is the safe direction.
+  (when-let [table (try
+                     (lib.metadata.protocols/table metadata-provider table-id)
+                     (catch Exception _ nil))]
+    (when (and (not (false? (:active table)))
+               (not (contains? #{:hidden :technical :cruft} (:visibility-type table))))
+      table)))
+
+(def ^:private hidden-field-visibility-types
+  "Field visibility types the warehouse marks as not for querying."
+  #{:sensitive :retired})
+
+(defn- field-itself-visible?
+  "The per-field half of [[visible-field]]: active, and not marked unqueryable. Says nothing
+  about the field's table or its ancestors."
+  [field]
+  (and (some? field)
+       (not (false? (:active field)))
+       (not (contains? hidden-field-visibility-types (:visibility-type field)))))
+
+(defn- fetch-field
+  "`field-id` from `metadata-provider`, or nil. Catch-all for the same reason as
+  [[visible-table]]: fail closed, diagnose elsewhere."
+  [metadata-provider field-id]
   (try
-    (serdes.resolve/import-table-fk resolver table-fk)
-    (catch clojure.lang.ExceptionInfo e
-      (when-not (contains? unresolved-table-fk-errors (:error (ex-data e)))
-        (throw e))
-      nil)))
+    (lib.metadata.protocols/field metadata-provider field-id)
+    (catch Exception _ nil)))
+
+(def ^:private max-parent-chain-depth
+  "Depth bound for the `:parent-id` walk. JSON-unfolded columns nest a handful deep at most; the
+  bound is here so a cyclic or corrupt chain cannot spin, not because real data approaches it."
+  50)
+
+(defn- visible-field
+  "The field `field-id` names, as seen from `metadata-provider`, or nil when it is not a field
+  this query may reference — same rules as [[visible-table]], plus the field-level visibility
+  types. `:sensitive` and `:retired` columns are excluded: the warehouse marks them as not for
+  querying, and the portable dialect cannot name them because they are absent from the by-name
+  fetch.
+
+  Walks the whole `:parent-id` chain, not just the named field. A JSON column unfolds into child
+  fields that carry their own visibility, so a perfectly ordinary-looking child of a `:sensitive`
+  parent would otherwise be referenceable by id — reaching inside a column the warehouse marked
+  unqueryable. Hiding a parent has to hide everything under it.
+
+  The walk checks each ancestor's own visibility, not its `:table-id`. Sync is the only writer
+  of `parent_id` and always threads a field's table and parent together; there is no API that
+  sets it, so a cross-table chain would take direct app-DB manipulation. The leaf's table is
+  checked, which is the reference the query actually names."
+  [metadata-provider field-id]
+  (when-let [field (fetch-field metadata-provider field-id)]
+    (when (and (field-itself-visible? field)
+               ;; the field's own table has to be referenceable too
+               (visible-table metadata-provider (:table-id field))
+               ;; …as does every ancestor, for its own sake
+               (loop [parent-id (:parent-id field)
+                      depth     0]
+                 (cond
+                   (nil? parent-id)                 true
+                   (>= depth max-parent-chain-depth) false
+                   :else (when-let [parent (fetch-field metadata-provider parent-id)]
+                           (when (field-itself-visible? parent)
+                             (recur (:parent-id parent) (inc depth)))))))
+      field)))
+
+(defn- resolve-field-id->table-id
+  "The table a numeric field id lives on, via the metadata provider, or nil when the field is not
+  one this query may reference (see [[visible-field]]).
+
+  Returning nil leaves the table out of the permission sweep, which is safe precisely because
+  the same predicate gates the id downstream: a field that fails here never resolves either, so
+  there is no table to check. `assert-numeric-ids-are-referenceable!` raises the agent-facing
+  error; this pass only decides what to permission-check."
+  [metadata-provider field-id]
+  (:table-id (visible-field metadata-provider field-id)))
+
+(defn- resolve-table-fk
+  [metadata-provider resolver table-fk]
+  (cond
+    (pos-int? table-fk)
+    ;; Already a table id, but not necessarily one this query may reference. Resolve it through
+    ;; the (database-scoped) provider rather than trusting the integer: a table in another
+    ;; database is absent there, and `api/query-check` would not catch that on its own — it asks
+    ;; whether the caller can query *that* table, never whether it belongs to this query's
+    ;; database. nil here leaves it unchecked, which is safe because
+    ;; `assert-numeric-ids-are-referenceable!` has already rejected the query.
+    (:id (visible-table metadata-provider table-fk))
+
+    ;; A numeric field id: check the table the field lives on, not the id itself.
+    (and (vector? table-fk) (= ::field-id (nth table-fk 0 nil)))
+    (resolve-field-id->table-id metadata-provider (nth table-fk 1))
+
+    ;; A numeric measure / segment id: same idea, via the table it is scoped to. The lookup goes
+    ;; through the read-checked store, so an unreadable one resolves to nil and is skipped —
+    ;; `assert-numeric-ids-are-referenceable!` is what turns that into the caller-facing error.
+    (and (vector? table-fk) (= ::scoped-content (nth table-fk 0 nil)))
+    (let [[_ model id] table-fk
+          row (try
+                (case model
+                  :model/Measure (resolve.mp/measure-by-id permission-aware-content-store id)
+                  :model/Segment (resolve.mp/segment-by-id permission-aware-content-store id)
+                  nil)
+                (catch Exception _ nil))]
+      (when-let [table-id (or (:table-id row) (:table_id row))]
+        (:id (visible-table metadata-provider table-id))))
+
+    :else
+    (try
+      (serdes.resolve/import-table-fk resolver table-fk)
+      (catch clojure.lang.ExceptionInfo e
+        (when-not (contains? unresolved-table-fk-errors (:error (ex-data e)))
+          (throw e))
+        nil))))
+
+(defn- assert-numeric-ids-are-referenceable!
+  "Reject every numeric table / field id in `parsed-query` that this query may not reference,
+  before anything looks the ids up for real.
+
+  This is the numeric dialect's equivalent of name resolution failing on the portable path. It
+  runs ahead of the permission sweep on purpose: `api/query-check` asks whether the caller may
+  query a given table, not whether that table belongs to *this* query's database, so an id from
+  another database would otherwise pass the check and travel on into repair. Errors are phrased
+  as plain not-found — an id being absent, hidden, or in the wrong database are all the same
+  answer to the agent, and distinguishing them would report on rows it cannot otherwise see."
+  [metadata-provider parsed-query]
+  (when serdes.resolve/*numeric-ids-allowed?*
+    (doseq [ref (referenced-table-fks parsed-query)]
+      (cond
+        (pos-int? ref)
+        (when-not (visible-table metadata-provider ref)
+          (throw (ex-info (format "No table found with id %s." (str ref))
+                          {:agent-error? true
+                           :status-code  400
+                           :error        :unknown-table-id
+                           :table-id     ref})))
+
+        (and (vector? ref) (= ::field-id (nth ref 0 nil)))
+        (let [field-id (nth ref 1)]
+          (when-not (visible-field metadata-provider field-id)
+            (throw (ex-info (format "No field found with id %s." (str field-id))
+                            {:agent-error? true
+                             :status-code  400
+                             :error        :unknown-field-id
+                             :field-id     field-id}))))
+
+        (and (vector? ref) (= ::scoped-content (nth ref 0 nil)))
+        (let [[_ model id] ref]
+          (when-not (resolve-table-fk metadata-provider nil ref)
+            (throw (ex-info (if (= model :model/Measure)
+                              (format "No measure found with id %s." (str id))
+                              (format "No segment found with id %s." (str id)))
+                            {:agent-error? true
+                             :status-code  400
+                             :error        (if (= model :model/Measure)
+                                             :unknown-measure-id
+                                             :unknown-segment-id)
+                             :content-id   id}))))
+
+        :else nil))))
+
+(defn- numeric-ref?
+  "Was this collected reference authored as a bare id rather than a portable one? Numeric refs
+  are the raw table id, or the `[::field-id n]` tag [[numeric-field-id-ref]] produces."
+  [table-fk]
+  (or (pos-int? table-fk)
+      (and (vector? table-fk)
+           (contains? #{::field-id ::scoped-content} (nth table-fk 0 nil)))))
+
+(defn- query-check-table!
+  "`api/query-check` the table, translating a denial on a *numeric* reference into the same
+  not-found error an absent id produces.
+
+  `mi/can-read?` (which gates [[visible-table]] and the first-stage lookup) is strictly weaker
+  than `mi/can-query?`: only `can-read?` has the `manage-table-metadata :yes` disjunct. So a
+  metadata-only user passes every earlier gate and lands here, and a bare 403 would confirm the
+  table exists, is active, and is in this database — the oracle the numeric path exists to
+  close, one step further along than the first-stage lookup that already closes it.
+
+  The portable path keeps its 403: its references are unguessable names, so there is nothing to
+  enumerate, and callers there benefit from the accurate status."
+  [table-fk table-id]
+  (if (numeric-ref? table-fk)
+    (try
+      (api/query-check :model/Table table-id)
+      (catch clojure.lang.ExceptionInfo e
+        (if (= 403 (:status-code (ex-data e)))
+          (throw (ex-info (format "No table found with id %s." (str table-id))
+                          {:agent-error? true
+                           :status-code  400
+                           :error        :unknown-table-id
+                           :table-id     table-id}))
+          (throw e))))
+    (api/query-check :model/Table table-id)))
 
 (defn- check-source-table-query-permissions!
   ([metadata-provider portable-query]
@@ -232,10 +531,10 @@
    (if-let [table-fks (not-empty (referenced-table-fks portable-query))]
      (let [resolver (resolve.mp/import-resolver metadata-provider permission-aware-content-store)]
        (reduce (fn [checked table-fk]
-                 (if-let [table-id (resolve-table-fk resolver table-fk)]
+                 (if-let [table-id (resolve-table-fk metadata-provider resolver table-fk)]
                    (if (contains? checked table-id)
                      checked
-                     (do (api/query-check :model/Table table-id)
+                     (do (query-check-table! table-fk table-id)
                          (conj checked table-id)))
                    checked))
                already-checked
@@ -250,8 +549,11 @@
     * If `stages[0].source-table` is a portable FK `[db schema table]`, look up the database
       by that `db` name. Unknown / ambiguous names surface `:unknown-database` / `:ambiguous-database-name`
       agent-errors.
+    * On a surface that accepts numeric ids, a numeric `stages[0].source-table` resolves through
+      the table row's `:db_id`. Unknown / inactive / unreadable ids surface `:unknown-table-id`.
     * Otherwise, if `stages[0].source-card` is an entity_id string, look up the card by entity_id
-      and use its `:database_id`. Unknown entity_id surfaces `:unknown-card`.
+      and use its `:database_id`. Unknown entity_id surfaces `:unknown-card`. On a numeric-id
+      surface a numeric `source-card` resolves the same way, behind a read check.
     * Otherwise, surface `:missing-source-in-first-stage`.
 
   All error paths are raised with `:agent-error? true` so the tool wrapper can relay a clean
@@ -263,48 +565,207 @@
   step 14 follow-up."
   [parsed-query]
   (detect-metabase-uri-source-table! parsed-query)
-  (if-let [table-fk (first-stage-source-table-fk parsed-query)]
-    (let [db-name (nth table-fk 0)
-          ids     (t2/select-pks-vec :model/Database :name db-name)]
-      (case (count ids)
-        0 (throw (ex-info (tru (str "Unknown database: `{0}`. Use the exact database name as "
-                                    "reported by search / `read_resource` (it appears "
-                                    "as the first element of every portable FK, e.g. "
-                                    "`source-table: [<db-name>, <schema>, <table>]`).")
-                               db-name)
+  (let [source-table-fk     (first-stage-source-table-fk parsed-query)
+        numeric-table       (when serdes.resolve/*numeric-ids-allowed?*
+                              (first-stage-numeric-source-table parsed-query))
+        source-card-eid     (first-stage-source-card-eid parsed-query)
+        numeric-card        (when serdes.resolve/*numeric-ids-allowed?*
+                              (first-stage-numeric-source-card parsed-query))]
+    (cond
+      source-table-fk
+      (let [db-name (nth source-table-fk 0)
+            ids     (metabot.db/database-ids-by-name db-name)]
+        (case (count ids)
+          0 (throw (ex-info (format "Unknown database: `%s`." db-name)
+                            {:agent-error? true
+                             :status-code  400
+                             :error        :unknown-database
+                             :database     db-name}))
+          1 (first ids)
+          (throw (ex-info (format "Multiple databases share the name `%s` (ids: %s)."
+                                  db-name (pr-str (vec (sort ids))))
                           {:agent-error? true
                            :status-code  400
-                           :error        :unknown-database
-                           :database     db-name}))
-        1 (first ids)
-        (throw (ex-info (tru (str "Multiple databases share the name `{0}` (ids: {1}). The "
-                                  "agent has no way to disambiguate; ask the user to rename "
-                                  "one of the databases or use a more specific identifier.")
-                             db-name (pr-str (vec (sort ids))))
-                        {:agent-error? true
-                         :status-code  400
-                         :error        :ambiguous-database-name
-                         :database     db-name
-                         :database-ids (vec (sort ids))}))))
-    (if-let [eid (first-stage-source-card-eid parsed-query)]
-      (if-let [card (tools.u/get-card-by-entity-id eid)]
+                           :error        :ambiguous-database-name
+                           :database     db-name
+                           :database-ids (vec (sort ids))}))))
+
+      numeric-table
+      ;; Read-checked, and reporting a table the caller may not see exactly as it reports one
+      ;; that does not exist: this lookup runs before the metadata provider exists (it is what
+      ;; decides which provider to build), so an unchecked existence answer here would let the
+      ;; id argument enumerate table ids across databases the caller cannot otherwise see.
+      (or (metabot.db/readable-active-table-database-id numeric-table)
+          ;; `:unknown-table-id`, not `:unknown-table`: a portable-FK miss (`:unknown-table`)
+          ;; recovers by naming a portable FK, which is wrong advice for a numeric-id caller.
+          (throw (ex-info (format "No table found with id %s."
+                                  (str numeric-table))
+                          {:agent-error? true
+                           :status-code  400
+                           :error        :unknown-table-id
+                           :table-id     numeric-table})))
+
+      source-card-eid
+      (if-let [card (tools.u/get-card-by-entity-id source-card-eid)]
         (:database_id card)
-        (throw (ex-info (tru (str "No saved question or model found with entity_id {0}. Do not invent "
-                                  "or guess entity_ids: call `read_resource` with "
-                                  "`metabase://question/<numeric id>` or `metabase://model/<numeric id>` "
-                                  "first, then copy the exact `portable_entity_id` from the response "
-                                  "into `source-card:`.")
-                             (pr-str eid))
+        (throw (ex-info (format "No saved question or model found with entity_id %s." (pr-str source-card-eid))
                         {:agent-error? true
                          :status-code  400
                          :error        :unknown-card
-                         :entity-id    eid})))
-      (throw (ex-info (tru (str "First stage must have either `source-table:` (as a portable FK "
-                                "`[<db-name>, <schema>, <table>]`) or `source-card:` (as an "
-                                "entity_id string). Neither was found in `stages[0]`."))
+                         :entity-id    source-card-eid})))
+
+      numeric-card
+      (let [card-id  numeric-card
+            card     (metabot.db/card card-id)
+            ;; Read-check here rather than let the 403 escape: an unreadable card and an absent
+            ;; one must be reported identically, or the status code tells a caller whether a
+            ;; hidden card exists. Same collapse the read-checked content store applies to every
+            ;; other content lookup, and the same one the numeric table branch already had.
+            readable (when card
+                       (try
+                         (api/read-check card)
+                         true
+                         (catch clojure.lang.ExceptionInfo e
+                           (if (= 403 (:status-code (ex-data e)))
+                             false
+                             (throw e)))))]
+        (when-not readable
+          (throw (ex-info (format "No saved question or model found with id %s."
+                                  (str card-id))
+                          {:agent-error? true
+                           :status-code  400
+                           ;; the numeric-specific key, matching `export-card-by-id` — a numeric
+                           ;; miss and a portable-entity_id miss want different recovery advice
+                           :error        :unknown-card-id
+                           :card-id      card-id})))
+        (:database_id card))
+
+      :else
+      (throw (ex-info "First stage must have either `source-table:` or `source-card:`; neither was found in `stages[0]`."
                       {:agent-error? true
                        :status-code  400
                        :error        :missing-source-in-first-stage})))))
+
+;;; ---------------------------------------- Implicit joins ----------------------------------------
+
+(defn- field-ref-for-error
+  "Return `field-ref` with portable field paths unless the caller accepts numeric IDs."
+  [metadata-provider field-ref]
+  (if serdes.resolve/*numeric-ids-allowed?*
+    field-ref
+    (serdes.resolve/export-mbql (resolve.mp/export-resolver metadata-provider permission-aware-content-store) field-ref)))
+
+(defn- foreign-key-target-table-id
+  [metadata-provider field]
+  (some->> (:fk-target-field-id field) (lib.metadata/field metadata-provider) :table-id))
+
+(defn- direct-source-field-hint
+  [metadata-provider columns table-id table-name]
+  (when-let [field-ids (seq (distinct (keep (fn [column]
+                                              (when (and (= table-id (:table-id column))
+                                                         (nil? (:fk-join-alias column)))
+                                                (:fk-field-id column)))
+                                            columns)))]
+    (let [fields          (lib.metadata/bulk-metadata metadata-provider :metadata/column field-ids)
+          queryable-tables (metabot.perms/queryable-table-ids (into #{} (keep :table-id) fields))
+          fields          (->> fields
+                               (filter #(contains? queryable-tables (:table-id %)))
+                               (filter #(visible-field metadata-provider (:id %)))
+                               entity-details/permission-filter-columns
+                               (filter #(= table-id (foreign-key-target-table-id metadata-provider %))))]
+      (when (seq fields)
+        (format "Use `source-field` %s to reach %s directly."
+                (str/join " or " (map #(pr-str (nth (field-ref-for-error metadata-provider [:field {} (:id %)]) 2)) fields))
+                table-name)))))
+
+(defn- intermediate-source-field
+  [metadata-provider from-table-id to-table-id]
+  (let [fields (->> (resolve.mp/outbound-fks-from-table metadata-provider from-table-id)
+                    (map :source-field)
+                    (filter #(visible-field metadata-provider (:id %)))
+                    entity-details/permission-filter-columns
+                    (filter #(= to-table-id (foreign-key-target-table-id metadata-provider %))))]
+    (when (= 1 (count fields))
+      (first fields))))
+
+(defn- wrong-source-field-error
+  "Return an agent error for a field reached through an invalid foreign key."
+  [metadata-provider [_ {:keys [source-field source-field-join-alias]} target] table-id fk-table-id columns]
+  (let [table-name    (pr-str (:name (lib.metadata.protocols/table metadata-provider table-id)))
+        ;; The metadata provider skips permission checks, so name the key's table only if the user may query it
+        fk-table-name (when (and fk-table-id (contains? (metabot.perms/queryable-table-ids #{fk-table-id}) fk-table-id))
+                        (pr-str (:name (lib.metadata.protocols/table metadata-provider fk-table-id))))]
+    (ex-info (str (if fk-table-name
+                    (format "Field %s is on table %s, but its `source-field` %s is a foreign key to table %s, so the field cannot be reached through it."
+                            (pr-str target) table-name (pr-str source-field) fk-table-name)
+                    (format "Field %s is on table %s, but its `source-field` %s is not a foreign key to that table, so the field cannot be reached through it."
+                            (pr-str target) table-name (pr-str source-field)))
+                  " "
+                  (or (direct-source-field-hint metadata-provider columns table-id table-name)
+                      (when fk-table-name
+                        (when-let [field (intermediate-source-field metadata-provider fk-table-id table-id)]
+                          (format "%s has a foreign key to %s: join %s explicitly on %s%s, then reference the field with `source-field` %s and `source-field-join-alias` set to the new join's alias."
+                                  fk-table-name table-name fk-table-name (pr-str source-field)
+                                  (if source-field-join-alias
+                                    (format " (set `join-alias` %s on this source key)" (pr-str source-field-join-alias))
+                                    "")
+                                  (pr-str (nth (field-ref-for-error metadata-provider [:field {} (:id field)]) 2)))))
+                      (format "Use a `source-field` that is a foreign key to %s, or join %s explicitly and reference the field with its `join-alias`."
+                              table-name table-name)))
+             {:agent-error? true
+              :status-code  400
+              :error        :wrong-source-field})))
+
+(defn- source-field-contexts
+  [query]
+  (let [contexts (volatile! [])]
+    (lib.walk/walk-clauses
+     (qp/drop-fields-in-summaries query)
+     (fn [query path-type path clause]
+       (when (and (lib.util/clause? clause)
+                  (= :field (first clause))
+                  (:source-field (second clause))
+                  (nil? (:join-alias (second clause))))
+         (let [stage-path (if (= path-type :lib.walk/join) (lib.walk/join-parent-stage-path path) path)]
+           (vswap! contexts conj
+                   (lib.walk/apply-f-for-stage-at-path
+                    (fn [query stage-number]
+                      {:query query :stage-number stage-number :field-ref clause})
+                    query stage-path))))
+       nil))
+    @contexts))
+
+(defn- wrong-source-field?
+  [metadata-provider [_ {:keys [source-field]} target]]
+  (when (and (pos-int? source-field) (pos-int? target))
+    (let [field       (lib.metadata/field metadata-provider target)
+          key-field   (lib.metadata/field metadata-provider source-field)
+          fk-table-id (foreign-key-target-table-id metadata-provider key-field)]
+      (and (:table-id field)
+           key-field
+           (if (:fk-target-field-id key-field)
+             (and fk-table-id (not= (:table-id field) fk-table-id))
+             true)))))
+
+(defn- assert-source-fields-reach-their-tables!
+  "Reject implicit field references whose source field is not a foreign key to the field's table."
+  [pmbql-query]
+  (doseq [{:keys [query stage-number field-ref]} (source-field-contexts pmbql-query)
+          :let [mp (lib.metadata/->metadata-provider query)]
+          :when (wrong-source-field? mp field-ref)]
+    (let [[_ {:keys [source-field]} target] field-ref
+          field-ids   (set [source-field target])
+          fields      (->> (lib.metadata/bulk-metadata mp :metadata/column field-ids)
+                           entity-details/permission-filter-columns
+                           (u/index-by :id))
+          _visible    (when-not (every? fields field-ids)
+                        (throw (ex-info "The implicit field reference cannot be resolved with the fields available to you. Use a visible foreign key or an explicit join."
+                                        {:agent-error? true :status-code 400 :error :wrong-source-field})))
+          table-id    (:table-id (get fields target))
+          fk-field    (get fields source-field)
+          fk-table-id (foreign-key-target-table-id mp fk-field)
+          field-ref   (field-ref-for-error mp field-ref)]
+      (throw (wrong-source-field-error mp field-ref table-id fk-table-id (lib/visible-columns query stage-number))))))
 
 ;;; ---------------------------------------- Result columns ----------------------------------------
 
@@ -317,29 +778,202 @@
 
 ;;; ---------------------------------------- Query execution ----------------------------------------
 
-(defn- as-agent-input-error
-  "Wrap `e` as an agent-input error.
+(defn- input-error-data?
+  [{:keys [status-code agent-error? error]}]
+  (or (and status-code (<= 400 status-code 499))
+      (and (nil? status-code) (or agent-error? (tools/pipeline-error-code error)))))
 
-  Tool callers look at `:agent-error?` to decide whether to relay the message to the LLM.
-  HTTP callers additionally need a status code; default representation/repair failures to
-  400 so individual repair passes don't all have to repeat `:status-code 400` in ex-data.
-  Existing statuses are preserved (notably permission 403s, which callers should normally
-  avoid wrapping in the first place)."
+(defn database-error?
+  "Returns true for database failures that must not be relayed as input errors.
+  With `:ignore-status?`, inspect database causes even when an exception carries an explicit client status."
+  ([e]
+   (database-error? e {}))
+  ([e {:keys [ignore-status?]}]
+   (let [{:keys [status-code] :as data} (ex-data e)
+         causes (u/full-exception-chain e)
+         client-error? (and status-code (<= 400 status-code 499))]
+     (boolean
+      (and (or ignore-status? (not client-error?))
+           (or (some #(instance? SQLException %) causes)
+               (if ignore-status?
+                 (some (fn [cause]
+                         (let [data (ex-data cause)]
+                           (and (contains? data :toucan2/context-trace)
+                                (not (input-error-data? data)))))
+                       causes)
+                 (and (not (input-error-data? data))
+                      (some #(contains? (ex-data %) :toucan2/context-trace) causes)))))))))
+
+(defn- has-valid-trailing-clause?
+  "Return whether a stage has a nonempty trailing clause with a valid portable structure."
+  [stage]
+  (boolean
+   (some (fn [k]
+           (let [clause (get stage k)]
+             (and (mr/validate repr/stage-schema (select-keys stage ["lib/type" k]))
+                  (or (integer? clause) (seq clause)))))
+         ["order-by" "limit" "fields"])))
+
+(defn- as-agent-input-error
+  "Return database failures unchanged; wrap other exceptions as agent-input errors.
+
+  A valid trailing clause preserves split advice, even if another clause is malformed.
+  Otherwise, a structural error in the unsplit query takes precedence.
+  The wrapper sets `:agent-error?` for tool callers and defaults `:status-code` to 400 for HTTP
+  callers. Existing status codes are preserved."
   [^clojure.lang.ExceptionInfo e]
-  (let [base   (assoc (or (ex-data e) {}) :agent-error? true)
-        data   (cond-> base
-                 (nil? (:status-code base)) (assoc :status-code 400))]
-    (ex-info (ex-message e) data e)))
+  (let [e (if-let [query (when (and (#{:post-agg-filter-with-trailing-clauses
+                                       :post-agg-filter-needs-multi-stage} (:error (ex-data e)))
+                                    (not (has-valid-trailing-clause? (:stage (ex-data e)))))
+                           (:query (ex-data e)))]
+            (try
+              (repr/validate-query query)
+              e
+              (catch clojure.lang.ExceptionInfo validation-error
+                validation-error))
+            e)]
+    (if (database-error? e)
+      e
+      (let [base   (assoc (or (ex-data e) {}) :agent-error? true)
+            data   (cond-> base
+                     (nil? (:status-code base)) (assoc :status-code 400))]
+        (ex-info (ex-message e) data e)))))
+
+(defn- not-runnable-problem
+  "What is wrong at a Malli schema `error`, phrased for the LLM, or nil when there is nothing to add
+  to Malli's own message. Missing keys the LLM never writes itself are translated into their usual
+  cause instead of being named."
+  [error]
+  (let [missing (when (= :malli.core/missing-key (:type error)) (peek (:in error)))]
+    (cond
+      ;; normalization stamps `:lib/uuid` on every clause; one missing means normalizing a clause
+      ;; inside it failed, often because it references something that doesn't exist
+      (= :lib/uuid missing)
+      "a reference inside it could not be resolved - often a field reference to a column, join alias, or expression that does not exist. Refer to a join's or an earlier stage's columns by their exact machine name (an aggregation is `min`, `count`, `sum`)"
+
+      (= :base-type missing)
+      "a field reference by name is missing `base-type`, usually because the name matches no real column"
+
+      missing
+      (format "missing `%s`" (name missing))
+
+      ;; the message of `::lib.schema.expression/expression.definition`'s aggregation check
+      (= "non-aggregation expression" (me/error-message error))
+      (format "%s: aggregation and window functions such as `offset` cannot be custom columns - move them to `aggregation:` or `order-by:`" (me/error-message error)))))
 
 (defn- query-not-runnable-explanation
-  "When `pmbql-query` would make the FE's `canRun` gate return false, return a humanized Malli
-  explanation of why; nil when the query is runnable."
-  [pmbql-query]
-  (binding [lib.schema.expression/*suppress-expression-type-check?* true]
-    (when-let [explanation (mr/explain :metabase.lib.schema/query pmbql-query)]
-      (me/humanize explanation))))
+  "Explain why `pmbql-query` fails the query builder's `canRun` check, or return nil.
 
-(defn execute-representations-query
+  Problems that [[not-runnable-problem]] can explain come first. Add the usual causes if it cannot
+  explain any of them. `repaired-query` supplies the original stage indexes and defaults to `pmbql-query`."
+  ([pmbql-query] (query-not-runnable-explanation pmbql-query pmbql-query))
+  ([pmbql-query repaired-query]
+   (binding [lib.schema.expression/*suppress-expression-type-check?* true]
+     (when-let [explanation (mr/explain :metabase.lib.schema/query pmbql-query)]
+       (let [errors (sort-by (comp nil? not-runnable-problem) (:errors explanation))]
+         (cond-> (or (some->> errors
+                              (map #(str (repr/query-path (repr/original-query-path repaired-query (:in %))) ": "
+                                         (or (not-runnable-problem %) (me/error-message %))))
+                              distinct
+                              (take 3)
+                              seq
+                              (str/join "; "))
+                     "the query does not match the query builder's schema")
+           (not-any? not-runnable-problem errors)
+           (str ". This usually means a field reference is missing its type or names a column that does not exist, or an aggregation or window function such as `offset` is in `expressions:` instead of `aggregation:` or `order-by:`")))))))
+
+(defn- incompatible-metrics
+  "Return the required sources of incompatible metrics in the first stage, sorted by metric ID.
+
+  Return nil when all referenced metrics are compatible. A metric with an unreadable definition has a nil
+  requirement and is reported on every source. Classification follows
+  [[metabase.metabot.tools.util/metric-required-source]].
+
+  Only source mismatches in the first stage's aggregations are checked. Metrics in later stages, joins, or other
+  clauses still reach the query processor, as do other errors such as archived metrics."
+  [mp query]
+  (let [referenced (into #{}
+                         (match/match-many (lib/aggregations query 0)
+                           [:metric _ (id :guard pos-int?)]
+                           id))]
+    (when (seq referenced)
+      (let [stage-card-id (lib.util/source-card-id query)
+            _             (lib.metadata/bulk-metadata mp :metadata/card (cond-> referenced
+                                                                          stage-card-id (conj stage-card-id)))
+            ;; Use `::unresolved` so a missing source card cannot match a metric whose table ID is nil.
+            stage-table-id (if stage-card-id
+                             (or (tools.u/card-source-table-id mp stage-card-id) ::unresolved)
+                             (lib.util/source-table-id query))]
+        (not-empty
+         (into (sorted-map)
+               (keep (fn [metric-id]
+                       (let [required    (tools.u/metric-required-source mp (lib.metadata/card mp metric-id))
+                             compatible? (and required
+                                              (tools.u/metric-compatible-with-stage?
+                                               required
+                                               {:stage-card-id  stage-card-id
+                                                :stage-table-id stage-table-id}))]
+                         (when-not compatible?
+                           [metric-id required]))))
+               referenced))))))
+
+(defn- incompatible-metric-explanation
+  "Describe each incompatible metric and the source it requires.
+
+  Return `{:message ... :usable-sources {metric-id {:source-table id} | {:source-card id}}}`.
+  `required-by-metric-id` comes from [[incompatible-metrics]]; `mp` supplies the database name for portable FKs.
+  Include names and sources only when the current user may access them. `:usable-sources` identifies those same
+  sources by numeric ID."
+  [mp required-by-metric-id]
+  (let [metric-ids   (keys required-by-metric-id)
+        required     (vals required-by-metric-id)
+        source-cards (into #{} (keep #(when (= :card (:kind %)) (:card-id %))) required)
+        source-table-ids (into #{} (keep #(when (= :table (:kind %)) (:table-id %))) required)
+        ;; The metadata provider is not permission-aware; names and entity IDs need separate read checks.
+        readable     (tools.u/readable-source-cards (into (set metric-ids) source-cards))
+        db-name      (:name (lib.metadata/database mp))
+        table-id->fk (when (seq source-table-ids)
+                       (into {}
+                             (comp (filter mi/can-query?)
+                                   (map (fn [{:keys [id schema name]}] [id [db-name schema name]])))
+                             (metabot.db/table-schema-rows (vec source-table-ids))))
+        describe     (fn [metric-id]
+                       (let [r        (get required-by-metric-id metric-id)
+                             eid      (when (= :card (:kind r))
+                                        (:entity_id (get readable (:card-id r))))
+                             table-fk (when (= :table (:kind r))
+                                        (get table-id->fk (:table-id r)))]
+                         (str (pr-str (or (:name (get readable metric-id)) metric-id))
+                              (cond
+                                ;; An unreadable definition, or a multi-stage metric over a native source card.
+                                (or (nil? r)
+                                    (and (= :table (:kind r)) (nil? (:table-id r))))
+                                " (has no usable source)"
+
+                                table-fk
+                                (str " (needs source-table: " (json/encode table-fk) ")")
+
+                                eid
+                                (str " (needs source-card: " (pr-str eid) ")")
+
+                                :else
+                                " (defined on a source you do not have access to)"))))]
+    {:message        (str "These metrics cannot be used on this stage's source: "
+                          (str/join ", " (map describe metric-ids))
+                          ". "
+                          "Either change the stage's source-table:/source-card: to the one shown for each metric, "
+                          "or drop the metric and express the aggregation directly.")
+     :usable-sources (into {}
+                           (keep (fn [[metric-id r]]
+                                   (cond
+                                     (and (= :table (:kind r)) (contains? table-id->fk (:table-id r)))
+                                     [metric-id {:source-table (:table-id r)}]
+
+                                     (and (= :card (:kind r)) (contains? readable (:card-id r)))
+                                     [metric-id {:source-card (:card-id r)}])))
+                           required-by-metric-id)}))
+
+(defn- execute-representations-query*
   "Execute a notebook query in the canonical portable MBQL 5 representations format.
 
   `external-query` is a keyword-keyed Clojure map matching [[metabase.lib.schema/external-query]]
@@ -349,11 +983,9 @@
   shape and concentrates on the LLM-friendly repair passes.
 
   Pipeline:
-    1. Boundary-validate the keyword-keyed input against `::lib.schema/external-query`
-       ([[repr/validate-external-query]]). Catches structural issues — missing `stages`,
-       typo'd stage keys (e.g. `aggreagation` vs `aggregation`), wrong top-level `lib/type`,
-       etc. — that the loose `:map` wire schema doesn't catch.
-    2. Convert to the string-keyed portable form the repair pipeline operates on.
+    1. Convert to the string-keyed portable form the repair pipeline operates on.
+    2. Reject unknown stage keys, such as `aggreagation` for `aggregation`
+       ([[repr/assert-known-stage-keys!]]).
     3. Resolve the database id from the first stage's `source-table:` / `source-card:`
        ([[resolve-database-id-from-first-stage]]) and build an application-DB-backed
        `MetadataProvider`.
@@ -364,10 +996,15 @@
     6. Resolve portable FKs to numeric IDs and normalize through `lib.schema/query` against the
        metadata-provider.
     6.5. Backstop-gate the resolved query: mirror the FE `canRun` schema validation
-       ([[query-not-runnable-explanation]]), then run the FE expression editor's own
+       ([[query-not-runnable-explanation]]), check that implicit field references use a foreign key to their table
+       ([[assert-source-fields-reach-their-tables!]]), run the FE expression editor's own
        diagnostics over every custom column / aggregation / filter
-       ([[repr.repair/assert-editor-accepts-expressions!]]). Either failure is a retryable
-       `:agent-error?` - success on a query the editor rejects is BOT-1442.
+       ([[repr.repair/assert-editor-accepts-expressions!]]), then reject a temporal bucket
+       sitting on a column that is not temporal
+       ([[repr.repair/assert-temporal-buckets-on-temporal-columns!]]), and reject a metric whose
+       definition can't run on the stage's source ([[incompatible-metrics]]). Any of these
+       failing is a retryable `:agent-error?` - success on a query the editor rejects is
+       BOT-1442.
     7. Export that final numeric MBQL 5 back to the portable form for the LLM-facing
        `:query-json` / `query-content` output.
 
@@ -395,38 +1032,58 @@
                         (throw (as-agent-input-error e))))
         database-id (resolve-database-id-from-first-stage parsed)
         mp          (lib-be/application-database-metadata-provider database-id)
+        ;; Numeric ids are LLM-authored integers rather than resolved names, so establish that
+        ;; each one actually denotes something this query may reference before the permission
+        ;; sweep runs against it. No-op on the portable-only surface.
+        _refs       (assert-numeric-ids-are-referenceable! mp parsed)
         ;; Permission checks happen before repair/resolve so the metadata-provider-backed pipeline
         ;; never inspects table/card metadata that the current user cannot use.
         checked     (check-source-table-query-permissions! mp parsed)]
-    ;; Everything after the MP is built can surface LLM-input errors (lib.schema validation
-    ;; in resolve, missing-column complaints from lib/query in `result-columns-for-query`,
-    ;; etc.). Wrap the whole rest of the pipeline in a single `:agent-error?` relay so any of
-    ;; them reach the tool wrapper with the flag set.
+    ;; Relay query-input errors while preserving database and permission failures.
     (try
-      (let [repaired      (repr.repair/repair mp parsed permission-aware-content-store)
+      (let [;; Repair's mini-resolve lookups are best-effort - a failure is logged at debug and the
+            ;; clause left alone - and `resolve-query` below resolves the query for real. A refusal
+            ;; in there reaches nobody, so it must not go into the audit trail as an access attempt.
+            repaired      (binding [resolve.mp/*audit-refusals?* false]
+                            (repr.repair/repair mp parsed permission-aware-content-store))
             _perms        (check-source-table-query-permissions! mp repaired checked)
             _validated    (repr/validate-query repaired)
             pmbql-query   (repr.resolve/resolve-query mp repaired permission-aware-content-store)
-            _runnable     (when-let [why (query-not-runnable-explanation pmbql-query)]
-                            (throw (ex-info (tru "The constructed query is not runnable - it would fail the query builder''s validation, so it cannot be visualized or saved. This usually means a field reference is missing its type or names a column that does not exist, or an aggregation/window function (e.g. `offset`) was placed in `expressions:` (custom columns) where it is not allowed - move it to `aggregation:` or `order-by:`. Schema validation details: {0}"
-                                                 (pr-str why))
+            _runnable     (when-let [why (query-not-runnable-explanation pmbql-query repaired)]
+                            (throw (ex-info (format "The constructed query is not runnable - it would fail the query builder's validation, so it cannot be visualized or saved. Failing paths: %s."
+                                                    why)
                                             {:agent-error? true
                                              :error        :query-not-runnable
                                              :status-code  400})))
+            _fks-ok       (assert-source-fields-reach-their-tables! pmbql-query)
             ;; The FE expression editor rejects some shapes the (type-check-suppressed) canRun
             ;; gate above accepts - `offset` in a filter, window functions nested in
             ;; aggregations, cyclic expression refs, type-incompatible arguments. Must run
             ;; after the `_runnable` gate: `diagnose-expression` itself validates its query
             ;; argument against the same schema.
-            _editor-ok    (repr.repair/assert-editor-accepts-expressions! pmbql-query)
+            _editor-ok    (repr.repair/assert-editor-accepts-expressions! pmbql-query repaired)
+            _buckets-ok   (repr.repair/assert-temporal-buckets-on-temporal-columns! pmbql-query)
+            ;; Check sources after schema validation so an incompatible metric produces a retryable error before execution.
+            _metrics-ok   (when-let [bad (incompatible-metrics mp pmbql-query)]
+                            (let [{:keys [message usable-sources]} (incompatible-metric-explanation mp bad)]
+                              (throw (ex-info message
+                                              {:agent-error?   true
+                                               :error          :incompatible-metric
+                                               :metric-ids     (vec (keys bad))
+                                               :usable-sources usable-sources
+                                               :status-code    400}))))
             exported-repr (repr.resolve/export-query mp pmbql-query permission-aware-content-store)
-            _validated'   (repr/validate-query exported-repr)
+            _validated'   (try
+                            (repr/validate-query exported-repr)
+                            (catch clojure.lang.ExceptionInfo e
+                              (throw (IllegalStateException.
+                                      "Exported representations query has an invalid structure." e))))
             query-id      (u/generate-nano-id)]
         {:structured-output {:query-id       query-id
                              :query          pmbql-query
                              :query-json     exported-repr
                              :result-columns (result-columns-for-query pmbql-query mp)}
-         :instructions      (instructions/query-created-instructions-for query-id)})
+         :instructions      (instructions/query-created-instructions-for query-id false)})
       (catch clojure.lang.ExceptionInfo e
         ;; Permission failures are not LLM-input repair errors. Preserve the original 403 so
         ;; HTTP callers get the standard forbidden response instead of an agent-error payload.
@@ -435,6 +1092,75 @@
           (throw (as-agent-input-error e)))))))
 
 ;;; ---------------------------------------- Chart helpers ----------------------------------------
+
+(defn- with-recovery-hint
+  "Return `e` with the caller's recovery sentence appended to its message, or unchanged when
+  `recovery-hint` is absent or has nothing to say about this error."
+  [e recovery-hint]
+  (if-let [hint (when recovery-hint (recovery-hint (ex-data e)))]
+    (ex-info (str (ex-message e) "\n" hint) (ex-data e) e)
+    e))
+
+(def ^:private preprocessing-message-limit 300)
+
+(defn- preprocessing-rejection-message
+  [cause]
+  (if (contains? #{:invalid-query :unsupported-feature} (:type (ex-data cause)))
+    (quoting/quoted (u/truncate (or (ex-message cause) "Invalid query.") preprocessing-message-limit))
+    (when (instance? clojure.lang.ExceptionInfo cause)
+      (case (ex-message cause)
+        "Incompatible metric"
+        (str "A metric is incompatible with this query stage. Use a metric that applies to the stage's "
+             "source table and columns.")
+
+        "Failed to replace metric"
+        (str "Metabase could not expand a metric reference. Check that it is in an aggregation and applies "
+             "to this stage's source.")
+
+        nil))))
+
+(defn- check-query-preprocessing!
+  [query]
+  (try
+    (qp/preprocess query)
+    (catch Throwable e
+      (let [chain   (u/full-exception-chain e)
+            message (preprocessing-rejection-message (ex-cause e))]
+        (if (and (= :qp (:type (ex-data e)))
+                 (:fn (ex-data e))
+                 message
+                 (not-any? #(or (= 403 (:status-code (ex-data %)))
+                                (instance? java.sql.SQLException %)
+                                (contains? (ex-data %) :toucan2/context-trace)) chain))
+          (throw (ex-info (str "Metabase could not prepare this query to run: "
+                               message)
+                          {:agent-error? true
+                           :error        :query-preprocessing-failed
+                           :status-code  400}
+                          e))
+          (log/warn e "Could not preprocess the constructed Metabot query"))))))
+
+(defn execute-representations-query
+  "Run `external-query` through the representations pipeline. See
+  [[execute-representations-query*]] for the pipeline itself.
+
+  `opts` may carry `:recovery-hint`, a function from an agent error's `ex-data` to a sentence
+  string (or nil) telling the caller's agent how to recover; the sentence is appended to the
+  agent error's message. Omitting it leaves agent errors with the pipeline's bare statement.
+
+  `:preprocess-check?` checks the built query before returning it. Known query errors become
+  agent errors; other preprocessing failures are logged and ignored."
+  ([external-query]
+   (execute-representations-query external-query nil))
+  ([external-query {:keys [recovery-hint preprocess-check?]}]
+   (try
+     (u/prog1 (execute-representations-query* external-query)
+       (when preprocess-check?
+         (check-query-preprocessing! (get-in <> [:structured-output :query]))))
+     (catch clojure.lang.ExceptionInfo e
+       (throw (if (:agent-error? (ex-data e))
+                (with-recovery-hint e recovery-hint)
+                e))))))
 
 (defn- chart-type->keyword
   [chart-type]
@@ -483,75 +1209,90 @@
     :queries                [(structured->query-data structured)]
     :visualization_settings {:chart_type (if chart-type (name chart-type) "table")}}))
 
+(defn- tool-output
+  "The text the model sees: `result-xml` followed by `instruction-text`."
+  [result-xml instruction-text]
+  (str "<result>\n" result-xml "\n</result>\n"
+       "<instructions>\n" instruction-text "\n</instructions>"))
+
 ;;; ---------------------------------------- Main tool ----------------------------------------
 
-(mu/defn ^{:tool-name "construct_notebook_query"
-           :scope     scope/agent-notebook-create}
-  construct-notebook-query-tool
-  "Construct and visualize a notebook query from a metric, model, or table.
+(def ^:private tool-description
+  "What the model is told `construct_notebook_query` is."
+  (str
+   "Construct and visualize a notebook query from a metric, model, or table.\n"
+   "\n"
+   "Accepts an MBQL 5 query as a JSON object matching `::lib.schema/external-query`, plus a\n"
+   "short, human-friendly `title` shown above the resulting chart. Also provide a concise\n"
+   "one- or two-sentence `description` of what the chart shows (the metric, the grouping, and\n"
+   "any notable filter); it is used as the saved question's description. See\n"
+   "`resources/metabot/prompts/tools/construct_notebook_query.md` for the prompt contract."))
 
-  Accepts an MBQL 5 query as a JSON object matching `::lib.schema/external-query`, plus a
-  short, human-friendly `title` shown above the resulting chart. Also provide a concise
-  one- or two-sentence `description` of what the chart shows (the metric, the grouping, and
-  any notable filter); it is used as the saved question's description. See
-  `resources/metabot/prompts/tools/construct_notebook_query.md` for the prompt contract."
-  [{:keys [_reasoning query visualization title description]} :- construct-notebook-query-args-schema]
-  (try
-    (let [normalized-visualization (some-> visualization (update-keys (comp keyword u/->kebab-case-en name)))
-          chart-type              (or (chart-type->keyword (:chart-type normalized-visualization))
-                                      :table)
-          query-result            (execute-representations-query query)
-          structured              (or (:structured-output query-result) (:structured_output query-result))]
-      (if (and structured (:query-id structured) (:query structured))
-        (let [chart-result (create-chart-tools/create-chart
-                            {:query-id      (:query-id structured)
-                             :chart-type    chart-type
-                             :queries-state {(:query-id structured) (:query structured)}})
-              full-structured (assoc structured
+(defn- chart-instructions
+  "What to tell the model to do with the chart it just got."
+  [chart-id query-id]
+  (let [link (te/link "Chart" "metabase://chart/" chart-id)]
+    (te/lines
+     "Your query and chart have been created successfully."
+     ""
+     "Next steps to present the chart to the user:"
+     (str "- Always provide a direct link using: `" link "` where Chart is a meaningful link text")
+     "- If creating multiple charts, present all chart links"
+     (when (shared/tool-offered? "run_query")
+       (str "- To state any of its values, call `run_query` with `query_id` `" query-id
+            "` first. Call it without telling the user you are doing so.")))))
+
+(defrecord ConstructNotebookQueryTool []
+  tools/Tool
+  (declaration [_]
+    {:name        "construct_notebook_query"
+     :description tool-description
+     :scope       scope/agent-notebook-create
+     :args        construct-notebook-query-args-schema})
+
+  (handle [_ {:keys [query visualization show_chart title description]} _ctx]
+    (let [chart-type (or (-> visualization
+                             (some-> (update-keys (comp keyword u/->kebab-case-en name)))
+                             :chart-type
+                             chart-type->keyword)
+                         :table)
+          ;; Declared pipeline errors and refusals are recoverable; anything else ends the turn.
+          structured (:structured-output (tools/with-pipeline-errors
+                                           (execute-representations-query query {:preprocess-check? true})))
+          ;; A query built only to be read needs run_query, so without it the chart is the one way
+          ;; the user sees anything and is always shown.
+          show-chart? (not (and (false? show_chart) (shared/tool-offered? "run_query")))]
+      (if-not show-chart?
+        (let [instruction-text (te/lines
+                                "Your query has been created. The user has not been shown it."
+                                ""
+                                (str "To read its values, call `run_query` with `query_id` `"
+                                     (:query-id structured) "`."))]
+          {:output            (tool-output (llm-shape/query->xml (structured->query-data structured))
+                                           instruction-text)
+           :structured-output (assoc structured :result-type :query)})
+        (let [chart            (create-chart-tools/create-chart
+                                {:query-id      (:query-id structured)
+                                 :chart-type    chart-type
+                                 :queries-state {(:query-id structured) (:query structured)}})
+              instruction-text (chart-instructions (:chart-id chart) (:query-id structured))]
+          {:output            (tool-output (structured->chart-xml structured (:chart-id chart) chart-type)
+                                           instruction-text)
+           :structured-output (assoc structured
                                      :result-type   :query
-                                     :chart-id      (:chart-id chart-result)
-                                     :chart-type    (:chart-type chart-result)
-                                     :chart-link    (:chart-link chart-result)
-                                     :chart-content (:chart-content chart-result))
-              instruction-text
-              (let [link (te/link "Chart" "metabase://chart/" (:chart-id chart-result))]
-                (te/lines
-                 "Your query and chart have been created successfully."
-                 ""
-                 "Next steps to present the chart to the user:"
-                 (str "- Always provide a direct link using: `" link "` where Chart is a meaningful link text")
-                 "- If creating multiple charts, present all chart links"))
-              chart-xml (structured->chart-xml structured (:chart-id chart-result) chart-type)]
-          {:output (str "<result>\n" chart-xml "\n</result>\n"
-                        "<instructions>\n" instruction-text "\n</instructions>")
+                                     :chart-id      (:chart-id chart)
+                                     :chart-type    (:chart-type chart)
+                                     :chart-link    (:chart-link chart)
+                                     :chart-content (:chart-content chart))
            :data-parts        [(streaming/viz-part
-                                {:entity-id   (:chart-id chart-result)
+                                {:entity-id   (:chart-id chart)
                                  :query-id    (:query-id structured)
-                                 :query       (links/->legacy-mbql (:query structured))
+                                 :query       (links/->frontend-query (:query structured))
                                  :display     chart-type
                                  :title       title
-                                 :description description})]
-           :structured-output full-structured
-           :instructions      instruction-text})
-        ;; query-result may already have :output (error) or only :structured-output
-        (if-let [s (or (:structured-output query-result) (:structured_output query-result))]
-          (let [query-xml        (llm-shape/query->xml (structured->query-data s))
-                instruction-text (instructions/query-created-instructions-for (:query-id s))]
-            (assoc query-result
-                   :output (str "<result>\n" query-xml "\n</result>\n"
-                                "<instructions>\n" instruction-text "\n</instructions>")))
-          query-result)))
-    (catch Exception e
-      ;; A 403 counts as agent-facing even without the flag: `api/read-check` throws a bare one,
-      ;; and it means the user can't have the card they named rather than that anything broke.
-      (if (or (:agent-error? (ex-data e))
-              (= 403 (:status-code (ex-data e))))
-        ;; Expected agent-facing signal (bad LLM input: unknown table, unknown schema,
-        ;; URI-in-source-table, …). Log at debug only — no stacktrace — since the message
-        ;; is the tool's result and the LLM is expected to self-correct on the next turn.
-        (do
-          (log/debugf "construct_notebook_query returned agent-error to the LLM: %s" (ex-message e))
-          {:output (ex-message e)})
-        (do
-          (log/errorf "Failed to construct notebook query: %s" (ex-message e))
-          {:output (str "Failed to construct notebook query: " (or (ex-message e) "Unknown error"))})))))
+                                 :description description})]})))))
+
+(def construct-notebook-query-tool
+  "`construct_notebook_query`: run an agent-authored MBQL 5 query through the representations
+  pipeline and attach a chart to the conversation."
+  (->ConstructNotebookQueryTool))

@@ -2,6 +2,7 @@ import type { Meta, StoryFn } from "@storybook/react";
 import { useCallback, useMemo, useState } from "react";
 
 import { getPublicStore } from "__support__/entities-store";
+import { createMockSettingsState, createMockState } from "__support__/state";
 import { BaseCell } from "metabase/data-grid";
 import { useDataGridInstance } from "metabase/data-grid/hooks/use-data-grid-instance";
 import type {
@@ -9,10 +10,6 @@ import type {
   RowIdColumnOptions,
 } from "metabase/data-grid/types";
 import { MetabaseReduxProvider } from "metabase/redux";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { Checkbox, Flex } from "metabase/ui";
 
 import { DataGrid } from "./DataGrid";
@@ -109,6 +106,43 @@ export const BasicGrid: Story = () => {
   });
 
   return <DataGrid {...tableProps} />;
+};
+
+export const StripedGrid: Story = () => {
+  const columns: ColumnOptions<SampleDataType>[] = useMemo(
+    () => [
+      {
+        id: "id",
+        name: "ID",
+        accessorFn: (row) => row.id,
+      },
+      {
+        id: "name",
+        name: "Name",
+        accessorFn: (row) => row.name,
+      },
+      {
+        id: "category",
+        name: "Category",
+        accessorFn: (row) => row.category,
+      },
+      {
+        id: "price",
+        name: "Price",
+        accessorFn: (row) => row.price,
+        formatter: (value) => `$${value}`,
+        align: "right",
+      },
+    ],
+    [],
+  );
+
+  const tableProps = useDataGridInstance({
+    data: sampleData,
+    columnsOptions: columns,
+  });
+
+  return <DataGrid {...tableProps} striped />;
 };
 
 export const CustomStylesGrid: Story = () => {

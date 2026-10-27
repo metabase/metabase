@@ -64,16 +64,22 @@ export const DatabaseFormBody = ({
     [engines, isAdvanced, onEngineChange, setValues],
   );
 
-  const px = match(location)
-    .with("setup", () => "sm")
-    .with("embedding_setup", () => "xl")
-    .with("admin", () => "xl")
-    .with("full-page", () => undefined)
-    .exhaustive();
-  const mah = location === "full-page" ? "100%" : "calc(100vh - 20rem)";
+  // In the admin modal, `Modal.Footer` brings its own space above the buttons.
+  const mb = match(location)
+    .with("admin", () => 0)
+    .otherwise(() => "lg");
+  const mah = match(location)
+    .with("admin", "embedding_setup", () => "calc(100vh - 20rem)")
+    .with("full-page", () => "100%")
+    .otherwise(() => undefined);
 
   return (
-    <Box mah={mah} mb="md" px={px} flex={1} style={{ overflowY: "auto" }}>
+    <Box
+      mah={mah}
+      mb={mb}
+      flex={1}
+      style={mah ? { overflowY: "auto" } : undefined}
+    >
       {engineFieldConfig?.fieldState !== "hidden" && (
         <>
           <DatabaseEngineField

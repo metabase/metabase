@@ -15,12 +15,12 @@ import type { ClearStateProps } from "../reference";
 import {
   type ReferenceRouteParams,
   getIsEditing,
-  getSegment,
   getSegmentId,
   getUser,
 } from "../selectors";
 
 import SegmentSidebar from "./SegmentSidebar";
+import { useSegmentPage } from "./use-segment-page";
 
 const mapDispatchToProps = {
   ...actions,
@@ -35,9 +35,9 @@ function SegmentDetailContainer(props: SegmentDetailContainerProps) {
   const params = useParams<ReferenceRouteParams>();
 
   const user = useSelector(getUser);
-  const segment = useSelector((state) => getSegment(state, { params }));
   const segmentId = useSelector((state) => getSegmentId(state, { params }));
   const isEditing = useSelector(getIsEditing);
+  const { segment, table } = useSegmentPage(segmentId);
 
   const { loading, loadingError } = useReferenceFetch(() =>
     fetchSegmentDetailData(dispatch, segmentId),
@@ -55,10 +55,18 @@ function SegmentDetailContainer(props: SegmentDetailContainerProps) {
     <SidebarLayout
       className={cx(CS.flexFull, CS.relative)}
       style={isEditing ? { paddingTop: "43px" } : {}}
-      sidebar={<SegmentSidebar segment={segment} user={user} />}
+      sidebar={
+        <SegmentSidebar
+          segmentId={segmentId}
+          segmentName={segment?.name}
+          user={user}
+        />
+      }
     >
       <SegmentDetail
         params={params}
+        segment={segment}
+        table={table}
         loading={loading}
         loadingError={loadingError}
       />

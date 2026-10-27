@@ -23,15 +23,27 @@ import {
 } from "./commands/downloads/downloadUtils";
 import * as dbTasks from "./db_tasks";
 import {
+  backendRequest,
+  requestAsAdmin,
+} from "./helpers/e2e-admin-request-tasks";
+import {
   startCustomVizDevServer,
   stopCustomVizDevServer,
 } from "./helpers/e2e-custom-viz-dev-server-tasks";
-import { buildDataApp } from "./helpers/e2e-data-app-tasks";
+import {
+  buildDataApp,
+  removeDataAppPaths,
+  writeDataAppFiles,
+} from "./helpers/e2e-data-app-tasks";
 import { signJwt } from "./helpers/e2e-jwt-tasks";
 import {
   startMockLlmServer,
   stopMockLlmServer,
 } from "./helpers/e2e-mock-llm-tasks";
+import {
+  startMockOidcServer,
+  stopMockOidcServer,
+} from "./helpers/e2e-mock-oidc-tasks";
 
 const createBundler = require("@bahmutov/cypress-esbuild-preprocessor"); // This function is called when a project is opened or re-opened (e.g. due to the project's config changing)
 const coverageTask = require("@cypress/code-coverage/task");
@@ -39,6 +51,10 @@ const {
   NodeModulesPolyfillPlugin,
 } = require("@esbuild-plugins/node-modules-polyfill");
 const cypressSplit = require("cypress-split");
+
+const {
+  sideEffectFreeModulesPlugin,
+} = require("../../frontend/build/shared/esbuild/side-effect-free-modules-plugin");
 
 const isInstrumented = process.env.INSTRUMENT_COVERAGE === "true";
 // The Cypress config process runs with cwd = this file's directory
@@ -238,7 +254,11 @@ const defaultConfig = {
         loader: {
           ".svg": "text",
         },
-        plugins: [NodeModulesPolyfillPlugin(), assetsResolverPlugin],
+        plugins: [
+          NodeModulesPolyfillPlugin(),
+          assetsResolverPlugin,
+          sideEffectFreeModulesPlugin,
+        ],
         sourcemap: "inline",
       }),
     );
@@ -283,11 +303,17 @@ const defaultConfig = {
       copyDirectory,
       removeDirectory,
       signJwt,
+      backendRequest,
+      requestAsAdmin,
       startMockLlmServer,
       stopMockLlmServer,
+      startMockOidcServer,
+      stopMockOidcServer,
       startCustomVizDevServer,
       stopCustomVizDevServer,
       buildDataApp,
+      writeDataAppFiles,
+      removeDataAppPaths,
       ...perTestCaptureTasks,
     });
 
@@ -341,7 +367,12 @@ const defaultConfig = {
       // https://docs.cypress.io/guides/guides/screenshots-and-videos#Delete-videos-for-specs-without-failing-or-retried-tests
       if (results && results.video) {
         // Do we have test failures?
-        if (results && results.video && results.stats.failures === 0) {
+        if (
+          results &&
+          results.video &&
+          results.stats.failures === 0 &&
+          process.env.CYPRESS_KEEP_VIDEOS !== "true"
+        ) {
           // delete the video if the spec passed
           fs.unlinkSync(results.video);
         }

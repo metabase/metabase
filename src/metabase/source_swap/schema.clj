@@ -23,7 +23,7 @@
    :foreign-key-mismatch])
 
 (mr/def ::column-mapping
-  [:map
+  [:map {:closed true}
    [:source {:optional true} ::lib.schema.metadata/column]
    [:target {:optional true} ::lib.schema.metadata/column]
    [:errors {:optional true} [:sequential ::column-error]]])

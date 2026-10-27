@@ -1,9 +1,9 @@
 import { useDisclosure } from "@mantine/hooks";
+import cx from "classnames";
 import { useMemo } from "react";
 import { t } from "ttag";
 
 import { isActionDashCard } from "metabase/actions/utils";
-import { FormField } from "metabase/common/components/FormField/FormField";
 import { Sidebar } from "metabase/common/components/Sidebar";
 import CS from "metabase/css/core/index.css";
 import ActionViz from "metabase/dashboard/components/ActionViz";
@@ -16,6 +16,7 @@ import {
   Divider,
   Ellipsified,
   Flex,
+  Input,
   Modal,
   Stack,
   Title,
@@ -23,8 +24,8 @@ import {
 import { checkNotNull } from "metabase/utils/types";
 import type { ActionDashboardCard } from "metabase-types/api";
 
-const settings = checkNotNull(ActionViz.settings);
-const buttonVariantOptions = settings["button.variant"].getProps().options;
+const getButtonVariantOptions = () =>
+  checkNotNull(ActionViz.settings)["button.variant"].getProps().options;
 
 export function ActionSidebar() {
   const {
@@ -57,11 +58,11 @@ export function ActionSidebar() {
 
   return (
     <Sidebar>
-      <Box px="xl" py="md">
+      <Box px="xxl" py="lg">
         <Title order={4} c="text-primary" fz="lg">{t`Button properties`}</Title>
       </Box>
       <Divider />
-      <Stack px="xl" py="md" flex={1} className={CS.overflowYAuto}>
+      <Stack px="xxl" py="lg" flex={1} className={CS.overflowYAuto}>
         <FormProvider
           initialValues={{
             button_text:
@@ -91,7 +92,7 @@ export function ActionSidebar() {
               title={t`Button variant`}
               label={t`Button variant`}
               name="button_variant"
-              data={buttonVariantOptions}
+              data={getButtonVariantOptions()}
               onChange={(value) =>
                 onUpdateDashCardVisualizationSettings(dashcard.id, {
                   "button.variant": value,
@@ -100,13 +101,7 @@ export function ActionSidebar() {
             />
           </Form>
         </FormProvider>
-        <Box>
-          <FormField.LabelContainer
-            orientation="vertical"
-            hasDescription={false}
-          >
-            <FormField.Label hasError={false}>{t`Action`}</FormField.Label>
-          </FormField.LabelContainer>
+        <Input.Wrapper label={t`Action`}>
           {!dashcard.action ? (
             <Button
               variant="filled"
@@ -114,17 +109,17 @@ export function ActionSidebar() {
               onClick={openActionModal}
             >{t`Pick an action`}</Button>
           ) : (
-            <Flex justify="space-between" py="xs">
+            <Flex justify="space-between" py="xxs">
               <Ellipsified fw="bold">{dashcard.action.name}</Ellipsified>
               <Button
-                h="auto"
+                size="compact-md"
                 variant="transparent"
                 onClick={openActionModal}
                 flex="0 0 auto"
               >{t`Change action`}</Button>
             </Flex>
           )}
-        </Box>
+        </Input.Wrapper>
 
         <Modal.Root
           opened={actionModalOpened}
@@ -132,7 +127,7 @@ export function ActionSidebar() {
           size="auto"
         >
           <Modal.Overlay />
-          <Modal.Content>
+          <Modal.Content className={cx(CS.flex, CS.flexColumn)}>
             <ActionDashcardSettings
               dashboard={dashboard}
               dashcard={dashcard}
@@ -142,7 +137,7 @@ export function ActionSidebar() {
         </Modal.Root>
       </Stack>
       <Divider />
-      <Flex px="xl" py="md" justify="flex-end">
+      <Flex px="xxl" py="lg" justify="flex-end">
         <Button onClick={onClose} variant="filled">
           {t`Close`}
         </Button>

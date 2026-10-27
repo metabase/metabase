@@ -1,7 +1,7 @@
+import { createMockMetadataFromState } from "__support__/metadata";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { getIcon, renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
 import {
   ORDERS,
   PRODUCTS,
@@ -15,7 +15,7 @@ const state = createMockState({
     databases: [createSampleDatabase()],
   }),
 });
-const metadata = getMetadata(state);
+const metadata = createMockMetadataFromState(state);
 
 function setup(semanticType: string | null | undefined) {
   return renderWithProviders(<SemanticTypeLabel semanticType={semanticType} />);

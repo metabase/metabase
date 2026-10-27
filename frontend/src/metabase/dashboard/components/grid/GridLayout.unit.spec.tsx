@@ -1,10 +1,14 @@
-import { screen } from "@testing-library/react";
+import { act, screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
 
 import { renderWithProviders } from "__support__/ui";
 import { ThemeProvider } from "metabase/ui";
 
 import { GridLayout } from "./GridLayout";
+
+jest.mock("./GridLayout.module.css", () => ({
+  withoutTransitions: "withoutTransitions",
+}));
 
 // Sample items for testing
 const testItems = [
@@ -50,6 +54,21 @@ const defaultProps = {
   rowHeight: 100,
 } as ComponentProps<typeof GridLayout>;
 
+function setup(props: Partial<ComponentProps<typeof GridLayout>> = {}) {
+  renderWithProviders(
+    <ThemeProvider>
+      <GridLayout {...defaultProps} {...props} />
+    </ThemeProvider>,
+  );
+
+  // eslint-disable-next-line testing-library/no-node-access -- react-grid-layout doesn't forward test ids to its root
+  const grid = screen.getByTestId("item-1").parentElement;
+  return { grid };
+}
+
+// Enough for the two animation frames GridLayout waits for after mounting
+const waitForPaint = () => act(() => jest.advanceTimersByTime(100));
+
 describe("GridLayout", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -79,5 +98,29 @@ describe("GridLayout", () => {
     // Check if all items are rendered
     expect(screen.getByTestId("item-1")).toBeInTheDocument();
     expect(screen.getByTestId("item-2")).toBeInTheDocument();
+  });
+
+  describe("card transitions", () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    test("are disabled outside of edit mode", () => {
+      const { grid } = setup({ isEditing: false });
+      waitForPaint();
+      expect(grid).toHaveClass("withoutTransitions");
+    });
+
+    test("are disabled in edit mode until the grid has painted after mounting", () => {
+      const { grid } = setup({ isEditing: true });
+      expect(grid).toHaveClass("withoutTransitions");
+
+      waitForPaint();
+      expect(grid).not.toHaveClass("withoutTransitions");
+    });
   });
 });

@@ -1,11 +1,15 @@
 import type { ReactNode } from "react";
 
-import { LegendActionsRoot } from "metabase/visualizations/components/legend/LegendActions.styled";
+import { Box } from "metabase/ui";
 
 interface LegendActionsProps {
   children?: ReactNode;
 }
 
 export const LegendActions = ({ children }: LegendActionsProps) => {
-  return <LegendActionsRoot>{children}</LegendActionsRoot>;
+  return (
+    <Box pos="relative" flex="0 0 auto" ml="auto">
+      {children}
+    </Box>
+  );
 };

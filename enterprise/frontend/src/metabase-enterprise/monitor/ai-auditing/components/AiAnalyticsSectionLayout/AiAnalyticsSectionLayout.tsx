@@ -11,13 +11,14 @@ import { Flex, Loader, Stack } from "metabase/ui";
 
 type AiAnalyticsSectionLayoutProps = {
   children: ReactNode;
-  emptyState: ReactNode;
+  emptyState?: ReactNode;
   error: unknown;
   filters: ReactNode;
   isInitialLoading: boolean;
   isTableRoute: boolean;
-  showEmpty: boolean;
-  tabs: PillTab[];
+  showEmpty?: boolean;
+  tabs?: PillTab[];
+  filtersAction?: ReactNode;
   title: string;
 };
 
@@ -30,12 +31,16 @@ export function AiAnalyticsSectionLayout({
   isTableRoute,
   showEmpty,
   tabs,
+  filtersAction,
   title,
 }: AiAnalyticsSectionLayoutProps) {
   const sectionContent = (
     <>
-      <PillTabNavigation tabs={tabs} />
-      {filters}
+      {tabs && <PillTabNavigation tabs={tabs} />}
+      <Flex justify="space-between" align="center" gap="md">
+        {filters}
+        {filtersAction}
+      </Flex>
       <RouteContent
         emptyState={emptyState}
         error={error}
@@ -51,10 +56,10 @@ export function AiAnalyticsSectionLayout({
     return (
       <Flex h="100%" wrap="nowrap">
         <MonitorMain>
-          <Stack gap="lg" flex={1} mih={0}>
+          <Stack gap="xl" flex={1} mih={0}>
             <MonitorHeaderTitle>{title}</MonitorHeaderTitle>
             <Stack
-              gap="md"
+              gap="lg"
               flex={1}
               mih={0}
               display="flex"
@@ -70,9 +75,9 @@ export function AiAnalyticsSectionLayout({
 
   return (
     <MonitorMain>
-      <Stack gap="lg">
+      <Stack gap="xl">
         <MonitorHeaderTitle>{title}</MonitorHeaderTitle>
-        <Stack gap="md">{sectionContent}</Stack>
+        <Stack gap="lg">{sectionContent}</Stack>
       </Stack>
     </MonitorMain>
   );
@@ -80,13 +85,13 @@ export function AiAnalyticsSectionLayout({
 
 type RouteContentProps = {
   children: ReactNode;
-  emptyState: ReactNode;
+  emptyState?: ReactNode;
   error: unknown;
   isInitialLoading: boolean;
-  showEmpty: boolean;
+  showEmpty?: boolean;
 };
 
-function RouteContent({
+export function RouteContent({
   children,
   emptyState,
   error,
@@ -109,5 +114,13 @@ function RouteContent({
     );
   }
 
-  return showEmpty ? emptyState : children;
+  if (showEmpty) {
+    return (
+      <Flex flex={1} mih="60vh" align="center" justify="center">
+        {emptyState}
+      </Flex>
+    );
+  }
+
+  return children;
 }

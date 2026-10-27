@@ -6,6 +6,7 @@
    [metabase-enterprise.audit-app.audit :as ee-audit]
    [metabase.app-db.core :as mdb]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
@@ -71,31 +72,34 @@
 
 (deftest create-analytics-dev-database-test
   (mt/test-drivers #{:postgres}
-    (mt/with-model-cleanup [:model/Database]
-      (testing "create-analytics-dev-database! creates a non-audit database"
-        (let [user-id (mt/user->id :crowberto)
-              db (analytics-dev/create-analytics-dev-database! user-id)]
-          (is (some? db))
-          (is (false? (:is_audit db)) "Database should NOT be marked as audit")
-          (is (= ee-audit/default-db-name (:name db)))
-          (is (= :postgres (:engine db)))
-          (is (= user-id (:creator_id db)))))
-      (testing "create-analytics-dev-database! returns existing database if already created"
-        (let [user-id (mt/user->id :crowberto)
-              db1 (analytics-dev/create-analytics-dev-database! user-id)
-              db2 (analytics-dev/create-analytics-dev-database! user-id)]
-          (is (= (:id db1) (:id db2))))))))
+    ;; creating (and connecting to) an analytics-dev database is only valid while analytics dev mode is on
+    (mt/with-temporary-setting-values [analytics-dev-mode true]
+      (mt/with-model-cleanup [:model/Database]
+        (testing "create-analytics-dev-database! creates a non-audit database"
+          (let [user-id (mt/user->id :crowberto)
+                db (analytics-dev/create-analytics-dev-database! user-id)]
+            (is (some? db))
+            (is (false? (:is_audit db)) "Database should NOT be marked as audit")
+            (is (= ee-audit/default-db-name (:name db)))
+            (is (= :postgres (:engine db)))
+            (is (= user-id (:creator_id db)))))
+        (testing "create-analytics-dev-database! returns existing database if already created"
+          (let [user-id (mt/user->id :crowberto)
+                db1 (analytics-dev/create-analytics-dev-database! user-id)
+                db2 (analytics-dev/create-analytics-dev-database! user-id)]
+            (is (= (:id db1) (:id db2)))))))))
 
 (deftest find-analytics-dev-database-test
   (mt/test-drivers #{:postgres}
-    (mt/with-model-cleanup [:model/Database]
-      (testing "find-analytics-dev-database finds the dev database"
-        (let [user-id (mt/user->id :crowberto)
-              _ (analytics-dev/create-analytics-dev-database! user-id)
-              found (analytics-dev/find-analytics-dev-database)]
-          (is (some? found))
-          (is (false? (:is_audit found)))
-          (is (= ee-audit/default-db-name (:name found))))))
+    (mt/with-temporary-setting-values [analytics-dev-mode true]
+      (mt/with-model-cleanup [:model/Database]
+        (testing "find-analytics-dev-database finds the dev database"
+          (let [user-id (mt/user->id :crowberto)
+                _ (analytics-dev/create-analytics-dev-database! user-id)
+                found (analytics-dev/find-analytics-dev-database)]
+            (is (some? found))
+            (is (false? (:is_audit found)))
+            (is (= ee-audit/default-db-name (:name found)))))))
     (testing "find-analytics-dev-database does not find audit databases"
       (mt/with-temp [:model/Database _ {:name ee-audit/default-db-name
                                         :engine "postgres"
@@ -144,7 +148,7 @@
                    "transform_id" "transform_qualified_id"
                    "lens_id" "lens_params" "query"
                    "embedding_client" "embedding_route" "embedding_sdk_version" "is_preview"
-                   "auth_method" "is_sandboxed" "is_impersonated" "is_db_routed" "parameters"
+                   "auth_method" "is_sandboxed" "sandbox_details" "is_impersonated" "is_db_routed" "parameters"
                    "tenant_id" "embedding_hostname" "embedding_path"
                    "user_agent" "sanitized_user_agent" "ip_address"
                    "metabase_version"}
@@ -194,7 +198,7 @@
   "Get the set of field names that actually exist in the database for a given table."
   [database table]
   (let [table-metadata (driver/describe-table (driver/the-initialized-driver (:engine database))
-                                              database
+                                              (driver.u/ensure-lib-database database)
                                               table)]
     (into #{} (map :name) (:fields table-metadata))))
 

@@ -11,7 +11,10 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sync.core :as sync]
@@ -23,6 +26,7 @@
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.models.transform-run :as transform-run]
+   [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -47,28 +51,29 @@
 (deftest temp-table-name-creates-table-test
   (testing "temp-table-name produces names that can actually create tables"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
-      (let [driver driver/*driver*
-            db-id (mt/id)
+      (mt/dataset transforms-dataset/transforms-test
+        (let [driver driver/*driver*
+              db-id (mt/id)
 
-            table-name (driver.u/temp-table-name driver :test_table)
-            schema-name (when (get-method sql.tx/session-schema driver)
-                          (sql.tx/session-schema driver))
-            qualified-table-name (if schema-name
-                                   (keyword schema-name (name table-name))
-                                   table-name)
-            column-definitions {"id" (driver/type->database-type driver :type/Integer)}]
-        (mt/as-admin
-          (try
-            (testing "Can create table with generated temp name"
-              (driver/create-table! driver db-id qualified-table-name column-definitions {})
-              (when-not (= driver :mongo) ;; mongo doesn't actually create tables
-                (is (driver/table-exists? driver (mt/db) {:schema schema-name :name (name table-name)}))))
-            (finally
-              (try
-                (driver/drop-table! driver db-id qualified-table-name)
-                (catch Exception _e
-                  ;; Ignore cleanup errors
-                  nil)))))))))
+              table-name (driver.u/temp-table-name driver :test_table)
+              schema-name (when (get-method sql.tx/session-schema driver)
+                            (sql.tx/session-schema driver))
+              qualified-table-name (if schema-name
+                                     (keyword schema-name (name table-name))
+                                     table-name)
+              column-definitions {"id" (driver/type->database-type driver :type/Integer)}]
+          (mt/as-admin
+            (try
+              (testing "Can create table with generated temp name"
+                (driver/create-table! driver db-id qualified-table-name column-definitions {})
+                (when-not (= driver :mongo) ;; mongo doesn't actually create tables
+                  (is (driver/table-exists? driver (lib.metadata/database (mt/metadata-provider)) {:schema schema-name :name (name table-name)}))))
+              (finally
+                (try
+                  (driver/drop-table! driver db-id qualified-table-name)
+                  (catch Exception _e
+                    ;; Ignore cleanup errors
+                    nil))))))))))
 
 (deftest is-temp-transform-tables-test
   (mt/with-premium-features #{:hosting :transforms-basic}
@@ -98,11 +103,11 @@
           (try
             (testing "Creating table with ordered columns"
               (transforms-base.u/create-table-from-schema! driver db-id table-schema)
-              (is (driver/table-exists? driver (mt/db) {:schema schema-name :name (name table-name)})))
+              (is (driver/table-exists? driver (lib.metadata/database (mt/metadata-provider)) {:schema schema-name :name (name table-name)})))
             (when (get-method driver/describe-table driver)
               (testing "Column order matches schema definition order (not alphabetical)"
                 (let [table-metadata {:schema schema-name :name (name table-name)}
-                      described-fields (:fields (driver/describe-table driver (mt/db) table-metadata))
+                      described-fields (:fields (driver/describe-table driver (lib.metadata/database (mt/metadata-provider)) table-metadata))
                       sorted-fields (sort-by :database-position described-fields)
                       column-names (mapv :name sorted-fields)
                       expected-names ["zebra_col" "apple_col" "mango_col"]]
@@ -311,6 +316,115 @@
                         (is (false? (transforms.u/source-tables-readable? transform))
                             "User who cannot read all source tables should have source_readable=false")))))))))))))
 
+;;; --------------------------------------- Query source reference permissions ---------------------------------------
+
+(defn- card-tag
+  [card-id]
+  (let [tag (str "#" card-id)]
+    {:id tag, :name tag, :display-name tag, :type :card, :card-id card-id}))
+
+(defn- table-tag
+  [tag-name table-id]
+  {:id tag-name, :name tag-name, :display-name tag-name, :type :table, :table-id table-id})
+
+(defn- native-source
+  "A `:query` transform source whose SQL carries `tags`, normalized the way the API and the app DB both
+  normalize it."
+  [db-id sql tags]
+  {:type  :query
+   :query (lib-be/normalize-query
+           {:database db-id
+            :type     :native
+            :native   {:query sql, :template-tags (into {} (map (juxt :name identity)) tags)}})})
+
+(defn- mbql-source
+  "A `:query` transform source whose MBQL query is `inner`, normalized the same way."
+  [db-id inner]
+  {:type  :query
+   :query (lib-be/normalize-query {:database db-id, :type :query, :query inner})})
+
+;;; `mt/with-current-user` resolves the user's permissions once for the whole body, so each phase below grants or
+;;; revokes first and enters it after, rather than mutating permissions inside it.
+
+(deftest source-tables-readable?-card-tag-test
+  (testing "a Card a query source names is authorized in its own right"
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Card {card-id :id} {:collection_id (:id collection)
+                                              :dataset_query (mt/mbql-query venues)}]
+      (mt/with-non-admin-groups-no-collection-perms collection
+        (let [transform {:source (native-source (mt/id)
+                                                (format "SELECT * FROM {{#%d}} AS c" card-id)
+                                                [(card-tag card-id)])}]
+          (mt/with-user-in-groups [group {:name "transforms"}
+                                   user  [group]]
+            (mt/with-data-analyst-role! (:id user)
+              (mt/with-no-data-perms-for-all-users!
+                (mt/with-db-perm-for-group! group (mt/id) :perms/view-data :unrestricted
+                  (mt/with-db-perm-for-group! group (mt/id) :perms/create-queries :query-builder-and-native
+                    (testing "refused while the Card's collection is unreadable"
+                      (mt/with-current-user (:id user)
+                        (is (false? (transforms.u/source-tables-readable? transform)))))
+                    (perms/grant-collection-read-permissions! group collection)
+                    (testing "allowed once the Card is readable"
+                      (mt/with-current-user (:id user)
+                        (is (true? (transforms.u/source-tables-readable? transform)))))))))))))))
+
+(deftest source-tables-readable?-table-tag-test
+  (testing "a `{{table}}` tag is authorized against that Table, so a per-table permission still applies"
+    (let [table-id  (mt/id :users)
+          transform {:source (native-source (mt/id) "SELECT * FROM {{users}}" [(table-tag "users" table-id)])}]
+      (mt/with-user-in-groups [group {:name "transforms"}
+                               user  [group]]
+        (mt/with-data-analyst-role! (:id user)
+          (mt/with-no-data-perms-for-all-users!
+            (mt/with-db-perm-for-group! group (mt/id) :perms/view-data :unrestricted
+              (mt/with-db-perm-for-group! group (mt/id) :perms/create-queries :query-builder-and-native
+                (testing "allowed while the tagged Table is queryable"
+                  (mt/with-current-user (:id user)
+                    (is (true? (transforms.u/source-tables-readable? transform)))))
+                (data-perms/set-table-permission! (:id group) table-id :perms/view-data :blocked)
+                (testing "refused once the tagged Table is blocked"
+                  (mt/with-current-user (:id user)
+                    (is (false? (transforms.u/source-tables-readable? transform)))))))))))))
+
+(deftest source-tables-readable?-mbql-source-table-test
+  (testing "the Tables an MBQL source reads are authorized, whether named by the query or reached through a join"
+    (let [users     (mt/id :users)
+          venues    (mt/id :venues)
+          cats      (mt/id :categories)
+          plain     {:source (mbql-source (mt/id) {:source-table users})}
+          joined    {:source (mbql-source (mt/id)
+                                          {:source-table venues
+                                           :joins        [{:source-table cats
+                                                           :alias        "c"
+                                                           :condition    [:= [:field (mt/id :venues :category_id) nil]
+                                                                          [:field (mt/id :categories :id)
+                                                                           {:join-alias "c"}]]}]})}]
+      (mt/with-user-in-groups [group {:name "transforms"}
+                               user  [group]]
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-db-perm-for-group! group (mt/id) :perms/view-data :unrestricted
+            (mt/with-db-perm-for-group! group (mt/id) :perms/create-queries :query-builder
+              (testing "allowed while every Table the query reads is queryable"
+                (mt/with-current-user (:id user)
+                  (is (true? (transforms.u/source-tables-readable? plain)))
+                  (is (true? (transforms.u/source-tables-readable? joined)))))
+              (data-perms/set-table-permission! (:id group) users :perms/view-data :blocked)
+              (data-perms/set-table-permission! (:id group) cats :perms/view-data :blocked)
+              (testing "refused once the Table the query names is blocked"
+                (mt/with-current-user (:id user)
+                  (is (false? (transforms.u/source-tables-readable? plain)))))
+              (testing "refused once a joined Table is blocked, though the Table it starts from is not"
+                (mt/with-current-user (:id user)
+                  (is (false? (transforms.u/source-tables-readable? joined))))))))))))
+
+(deftest source-query-permissions-check-requires-user-test
+  (testing "the source query permission check refuses to run without a bound user"
+    (let [transform {:source (native-source (mt/id) "SELECT 1" [])}]
+      (binding [api/*current-user-id* nil]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"needs to be run with a bound user"
+                              (transforms.u/check-source-query-permissions! transform)))))))
+
 (deftest activate-table-and-mark-computed-sets-is-writable-false-test
   (testing "activate-table-and-mark-computed! sets is_writable to false on computed transform tables"
     (let [target {:type "table" :schema nil :name "test_computed_writable"}
@@ -331,7 +445,7 @@
                                              created))
                       sync/sync-table!     (constantly nil)
                       driver/table-exists? (constantly false)]
-          (transforms-base.u/activate-table-and-mark-computed! db target)
+          (transforms-base.u/activate-table-and-mark-computed! (driver.u/lib-database (:id db)) target)
           (is (some? @synced-table))
           (let [table (t2/select-one :model/Table (:id @synced-table))]
             (is (= :computed (:data_authority table)))
@@ -470,7 +584,7 @@
             excluded; we just verify the Statement was created."
     (mt/test-drivers (into #{} (filter #(isa? driver/hierarchy % :sql-jdbc)) (mt/normal-drivers))
       (sql-jdbc.execute/do-with-connection-with-options
-       driver/*driver* (mt/db) {:write? false}
+       driver/*driver* (mt/id) {:write? false}
        (fn [^java.sql.Connection conn]
          (doseq [minutes [3 90]]
            (binding [driver.settings/*query-timeout-ms* (u/minutes->ms minutes)]
@@ -666,7 +780,7 @@
   (testing "activate-table-and-mark-computed! resolves nil schema when physical table exists in default schema"
     (let [target {:type "table" :schema nil :name "test_nil_schema_fix"}
           synced-table (atom nil)]
-      (mt/with-temp [:model/Database db {:engine :h2}]
+      (mt/with-temp [:model/Database db {:engine :h2, :default_schema "PUBLIC"}]
         (with-redefs [sync/create-table! (fn [database table-map]
                                            (let [created (t2/insert-returning-instance!
                                                           :model/Table
@@ -683,7 +797,7 @@
                       ;; Simulate: physical table exists in "PUBLIC" (H2's default schema)
                       driver/table-exists? (fn [_driver _db table]
                                              (= "PUBLIC" (:schema table)))]
-          (transforms-base.u/activate-table-and-mark-computed! db target)
+          (transforms-base.u/activate-table-and-mark-computed! (driver.u/lib-database (:id db)) target)
           (is (some? @synced-table))
           (let [table (t2/select-one :model/Table (:id @synced-table))]
             (is (= "PUBLIC" (:schema table))
@@ -707,7 +821,7 @@
                       sync/sync-table!   (constantly nil)
                       ;; Simulate: physical table does NOT exist under default schema
                       driver/table-exists? (constantly false)]
-          (transforms-base.u/activate-table-and-mark-computed! db target)
+          (transforms-base.u/activate-table-and-mark-computed! (driver.u/lib-database (:id db)) target)
           (is (some? @synced-table))
           (let [table (t2/select-one :model/Table (:id @synced-table))]
             (is (nil? (:schema table))

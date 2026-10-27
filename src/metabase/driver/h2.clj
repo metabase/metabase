@@ -11,7 +11,6 @@
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.h2.actions :as h2.actions]
    [metabase.driver.settings :as driver.settings]
-   [metabase.driver.sql :as sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
@@ -20,7 +19,6 @@
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -29,11 +27,12 @@
    [metabase.util.malli :as mu]
    [metabase.util.performance :as perf :refer [every? some]])
   (:import
-   (java.sql Clob ResultSet ResultSetMetaData SQLException Types)
+   (java.sql Clob ResultSet ResultSetMetaData SQLException)
    (java.time OffsetTime)
+   (org.h2.api JavaObjectSerializer)
    (org.h2.command CommandInterface Parser)
    (org.h2.engine SessionLocal)
-   (org.h2.util StringUtils)))
+   (org.h2.util JdbcUtils StringUtils)))
 
 (set! *warn-on-reflection* true)
 
@@ -41,6 +40,22 @@
 (comment h2.actions/keep-me)
 
 (driver/register! :h2, :parent #{:sql-jdbc ::like-escape-char-built-in/like-escape-char-built-in})
+
+;; H2 materializes a JAVA_OBJECT column value by deserializing its bytes with an ObjectInputStream. That
+;; can happen anywhere a JAVA_OBJECT appears in a result — a top-level column, an ARRAY element, a nested
+;; row — not just where a column's declared type is JAVA_OBJECT. Metabase never reads Java objects out of
+;; query results, so we register the JavaObjectSerializer H2 routes all such deserialization through and
+;; refuse it at that single point, covering every position uniformly. (`read-column-thunk :h2` below also
+;; rejects a top-level JAVA_OBJECT column, for a clearer error on the common case.)
+(def ^:private java-object-serializer
+  (reify JavaObjectSerializer
+    (serialize [_ _obj]
+      (throw (ex-info "Reading and writing Java objects is not supported for H2." {})))
+    (deserialize [_ _bytes]
+      (throw (ex-info "Reading Java objects is not supported for H2." {})))))
+
+(when-not *compile-files*
+  (set! (. JdbcUtils serializer) java-object-serializer))
 
 (defmethod driver/connection-hosts :h2
   [_driver {:keys [db]}]
@@ -87,7 +102,8 @@
                               :describe-is-generated     true
                               :describe-is-nullable      true
                               :describe-default-expr     true
-                              :metadata/table-existence-check true}]
+                              :metadata/table-existence-check true
+                              :transforms/testing        true}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]
     supported?))
@@ -95,6 +111,13 @@
 (defmethod sql.qp/->honeysql [:h2 :regex-match-first]
   [driver [_ _opts arg pattern]]
   [:regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
+
+;; H2 loses a CTE's prepared-statement parameters under the outer `SELECT * FROM (<UNION ALL>)` wrap
+;; the pivot compiler emits — every branch counts zero rows. Opt out so the compiler inlines the
+;; pre-pivot subquery in each branch instead.
+(defmethod sql.qp/apply-cte-hoist? :h2
+  [_driver]
+  false)
 
 (defmethod driver/connection-properties :h2
   [_]
@@ -173,8 +196,7 @@
       (let [[_ {:strs [USER]}] (connection-string->file+options db)]
         USER)))
 
-(mu/defn- check-native-query-not-using-default-user [{query-type :type, :as query} :- [:map
-                                                                                       [:type [:enum :native :query]]]]
+(mu/defn- check-native-query-not-using-default-user [{query-type :type, :as query} :- :metabase.lib.util/legacy-query]
   (u/prog1 query
     ;; For :native queries check to make sure the DB in question has a (non-default) NAME property specified in the
     ;; connection string. We don't allow SQL execution on H2 databases for the default admin account for security
@@ -189,10 +211,10 @@
            (ex-info (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")
                     {:type driver-api/qp.error-type.db})))))))
 
-(defn- make-h2-parser
-  "Returns an H2 Parser object for the given (H2) database ID"
-  ^Parser [h2-database-or-id]
-  (with-open [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! :h2 h2-database-or-id))]
+(mu/defn- make-h2-parser :- [:maybe (driver-api/instance-of-class Parser)]
+  "Returns an H2 Parser object for the Lib metadata `h2-database` of an H2 Database."
+  [h2-database :- ::lib.schema.metadata/database]
+  (with-open [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! :h2 h2-database))]
     ;; The H2 Parser class is created from the H2 JDBC session, but these fields are not public
     (let [^org.h2.jdbc.JdbcConnection inner (try
                                               ;; May be a wrapper, get the innermost object that has session field
@@ -200,7 +222,7 @@
                                                 (assert (instance? org.h2.jdbc.JdbcConnection <>)))
                                               (catch java.sql.SQLException e
                                                 (throw (ex-info "Not an H2 connection. Are we sure this is an H2 database?"
-                                                                {:database h2-database-or-id
+                                                                {:database (:id h2-database)
                                                                  :conn     conn}
                                                                 e))))
           session (get-field inner "session")]
@@ -213,7 +235,7 @@
                              [:map
                               [:command-types [:vector pos-int?]]
                               [:remaining-sql [:maybe :string]]]]
-  "Takes an h2 db id, and a query, returns the command-types from `query` and any remaining sql.
+  "Takes the Lib metadata of an h2 Database, and a query, returns the command-types from `query` and any remaining sql.
    More info on command types here:
    https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java
 
@@ -222,11 +244,9 @@
   - Each `command-type` corresponds to a value in org.h2.command.CommandInterface, and match the commands from `query` in order.
   - `remaining-sql` is a nillable sql string that is unable to be classified without running preceding queries first.
     Usually if `remaining-sql` exists we will deny the query."
-  [database-or-id :- [:or
-                      ::lib.schema.id/database
-                      ::lib.schema.metadata/database]
-   ^String query  :- :string]
-  (when-let [h2-parser (make-h2-parser database-or-id)]
+  [database      :- ::lib.schema.metadata/database
+   ^String query :- :string]
+  (when-let [^Parser h2-parser (make-h2-parser database)]
     (try
       (let [command            (.prepareCommand h2-parser query)
             first-command-type (.getCommandType command)
@@ -311,7 +331,9 @@
 (defn- check-action-commands-allowed [{:keys [database] {:keys [query]} :native}]
   (when query
     (check-no-unsupported-functions query)
-    (when-let [query-classification (classify-query database query)]
+    (when-let [query-classification (classify-query (driver-api/with-metadata-provider database
+                                                      (driver-api/database (driver-api/metadata-provider)))
+                                                    query)]
       (when-not (every-command-allowed-for-actions? query-classification)
         (throw (ex-info "DDL commands are not allowed to be used with H2."
                         {:classification query-classification}))))))
@@ -324,11 +346,7 @@
                     CommandInterface/CALL} cmd-type-nums)
           (nil? remaining-sql)))))
 
-(mu/defn- check-read-only-statements [{{sql :query} :native, :as _query} :- [:map
-                                                                             [:type [:enum :query :native]]
-                                                                             [:native
-                                                                              [:map
-                                                                               [:query string?]]]]]
+(mu/defn- check-read-only-statements [{{sql :query} :native, :as _query} :- :metabase.lib.util/legacy-query]
   (when sql
     (check-no-unsupported-functions sql)
     (let [query-classification (classify-query (driver-api/database (driver-api/metadata-provider))
@@ -345,10 +363,7 @@
 
 (mu/defmethod driver/execute-write-query! :h2
   [driver :- :keyword
-   query  :- [:map
-              [:type   [:= :native]]
-              [:native [:map
-                        [:query :string]]]]]
+   query  :- :metabase.lib.util/legacy-query]
   (check-native-query-not-using-default-user query)
   (check-action-commands-allowed query)
   ((get-method driver/execute-write-query! :sql-jdbc) driver query))
@@ -620,22 +635,17 @@
        (.setReadOnly conn (not write?)))
      (f conn))))
 
-;; de-CLOB any CLOB values that come back
+;; de-CLOB any CLOB values that come back. (A JAVA_OBJECT value is refused during reads by the
+;; JavaObjectSerializer registered above, so it needs no handling here.)
 (defmethod sql-jdbc.execute/read-column-thunk :h2
   [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
-  (let [col-type (.getColumnType rsmeta i)]
-    (when (= col-type Types/JAVA_OBJECT)
-      (throw (ex-info "Unable to parse jdbc type"
-                      {:column-index i
-                       :column-name  (.getColumnName rsmeta i)
-                       :column-type  col-type})))
-    (let [classname (some-> (.getColumnClassName rsmeta i)
-                            (Class/forName true (driver-api/the-classloader)))]
-      (if (isa? classname Clob)
-        (fn []
-          (driver-api/clob->str (.getObject rs i)))
-        (fn []
-          (.getObject rs i))))))
+  (let [classname (some-> (.getColumnClassName rsmeta i)
+                          (Class/forName true (driver-api/the-classloader)))]
+    (if (isa? classname Clob)
+      (fn []
+        (driver-api/clob->str (.getObject rs i)))
+      (fn []
+        (.getObject rs i)))))
 
 (defmethod sql-jdbc.execute/set-parameter [:h2 OffsetTime]
   [driver prepared-statement i t]
@@ -730,9 +740,16 @@
   [_ name-str]
   (u/upper-case-en name-str))
 
-(defmethod sql/default-schema :h2
-  [_]
-  "PUBLIC")
+(defmethod driver/temp-table-name :h2
+  [_driver]
+  (str "MB_TEST_" (u/upper-case-en (str/replace (str (random-uuid)) "-" ""))))
+
+(defmethod driver/compile-create-temp-table :h2
+  [driver {:keys [table query]}]
+  (let [{sql-query :query sql-params :params} query]
+    [(first (sql.qp/format-honeysql driver [:raw ["CREATE LOCAL TEMPORARY TABLE " [:inline (keyword table)]
+                                                  " TRANSACTIONAL AS " sql-query]]))
+     sql-params]))
 
 (defmethod driver/llm-sql-dialect-resource :h2 [_]
   "metabot/prompts/dialects/h2.md")

@@ -27,7 +27,7 @@ interface UseCellSelectionProps {
   /** Table instance from TanStack Table */
   table: Table<any>;
   /** Ref to the grid element */
-  gridRef: RefObject<HTMLDivElement>;
+  gridRef: RefObject<HTMLDivElement | null>;
   /** Whether cell selection is enabled */
   isEnabled?: boolean;
   /** Optional function to scroll to a specific cell */
@@ -512,7 +512,7 @@ const extractCellValue = (
  * @returns Tab-separated values with newlines between rows
  */
 const getCellValues = (
-  gridRef: RefObject<HTMLDivElement>,
+  gridRef: RefObject<HTMLDivElement | null>,
   table: Table<unknown>,
   cells: CellId[],
   useRawValues = false,

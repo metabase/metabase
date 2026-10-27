@@ -39,7 +39,7 @@ You'll also have the option to **Use a secure connection (SSL)**. Enable SSL and
 
 ### Using a connection string
 
-If you'd prefer to connect to MongoDB using a [connection string](https://docs.mongodb.com/manual/reference/connection-string/), click on **Paste a connection string**. The Metabase user interface will update with a field to paste your connection string.
+If you'd prefer to connect to MongoDB using a [connection string](https://www.mongodb.com/docs/manual/reference/connection-string/), click on **Paste a connection string**. The Metabase user interface will update with a field to paste your connection string.
 
 Metabase currently does NOT support the following connection string parameters:
 
@@ -60,7 +60,7 @@ If you need to use a certificate, connect via the [default method](#using-metaba
 
 ### Whitelist IP addresses
 
-If you are using Metabase Cloud, you'll need to whitelist [Metabase Cloud IP addresses](../../cloud/ip-addresses-to-whitelist.md) in your Atlas cluster. If you are using self-hosted Metabase, you'll need to whitelist the IP of your Metabase instance.
+If you are using Metabase Cloud, you'll need to whitelist [Metabase Cloud IP addresses](https://www.metabase.com/docs/latest/cloud/ip-addresses-to-whitelist) in your Atlas cluster. If you are using self-hosted Metabase, you'll need to whitelist the IP of your Metabase instance.
 
 1. Log into your [Atlas cluster](https://cloud.mongodb.com)
 2. Go to **Network Access**

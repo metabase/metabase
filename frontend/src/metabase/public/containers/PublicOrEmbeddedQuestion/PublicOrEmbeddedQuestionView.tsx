@@ -3,15 +3,14 @@ import { updateIn } from "icepick";
 import type { Dispatch, SetStateAction } from "react";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 import CS from "metabase/css/core/index.css";
 import type { DisplayTheme } from "metabase/embedding/types";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
-import { PublicMode } from "metabase/public/PublicMode";
+import { useQuestionFromCard } from "metabase/metadata-store";
 import { EmbedFrame } from "metabase/public/components/EmbedFrame";
-import { PublicOrEmbeddedQuestionDownloadPopover } from "metabase/query_builder/components/QuestionDownloadPopover/QuestionDownloadPopover";
+import { PublicOrEmbeddedQuestionDownloadPopover } from "metabase/query_builder";
 import Visualization from "metabase/visualizations/components/Visualization";
 import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Card,
@@ -23,10 +22,11 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
+import { publicClickActionMode } from "../../PublicMode";
+
 export interface PublicOrEmbeddedQuestionViewProps {
   initialized: boolean;
   card: Card | null;
-  metadata: Metadata;
   result: Dataset | null;
   getParameters: () => UiParameter[];
   parameterValues: ParameterValuesMap;
@@ -42,7 +42,6 @@ export interface PublicOrEmbeddedQuestionViewProps {
 
 export function PublicOrEmbeddedQuestionView({
   card,
-  metadata,
   result,
   getParameters,
   parameterValues,
@@ -55,7 +54,8 @@ export function PublicOrEmbeddedQuestionView({
   setCard,
   downloadsEnabled,
 }: PublicOrEmbeddedQuestionViewProps) {
-  const question = new Question(card, metadata);
+  // EmbedFrame lays out a question frame before the card loads.
+  const question = useQuestionFromCard(card) ?? new Question(null);
 
   const isTable = question.display() === "table";
   const downloadInFooter = !titled && isTable;
@@ -125,12 +125,12 @@ export function PublicOrEmbeddedQuestionView({
             }}
             gridUnit={12}
             showTitle={false}
-            mode={PublicMode}
+            mode={publicClickActionMode}
             // Why do we need `isDashboard` when this is a standalone question?
             // `isDashboard` is used by Visualization to change some visual behaviors
             // including the "No results" message
             isDashboard
-            metadata={metadata}
+            isStandaloneQuestion
             onChangeCardAndRun={() => {}}
             tableFooterExtraButtons={
               downloadInFooter ? questionResultDownloadButton : null

@@ -9,13 +9,14 @@
    [metabase.run-tracking.core :as rt]
    [metabase.task.core :as task]
    [metabase.tracing.core :as tracing]
+   [metabase.transforms.db :as transforms.db]
    [metabase.transforms.models.transform-run :as transform-run]
    [metabase.transforms.models.transform-run-cancelation :as wr.cancelation]
    [metabase.util :as u]
    [metabase.util.jvm :as u.jvm]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.log :as log])
   (:import
+   (com.mchange.v2.resourcepool TimeoutException)
    (java.time OffsetDateTime)
    (java.util.concurrent Executors ScheduledExecutorService TimeUnit)))
 
@@ -55,7 +56,7 @@
   owning node holds a run's `cancel-chan`."
   []
   (rt/heartbeat-and-reconcile! {:model      :model/TransformRun
-                                :active     [:= :is_active true]
+                                :active     [:is_active true]
                                 :ids        (keys @connections)
                                 :heartbeat! transform-run/heartbeat-runs!
                                 :on-gone    chan-signal-cancel!}))
@@ -150,9 +151,11 @@
       ;; is at least visible in metrics. Magnitude can be inferred from log volume if needed.
       (analytics/inc! :metabase-transforms/cancelation-completed {:outcome "error"}))))
 
-(task/defjob  ^{:doc "Cancel items that haven't been canceled in two minutes"
-                org.quartz.DisallowConcurrentExecution true}
-  CancelOldTransformRuns [ctx]
+(task/defjob CancelOldTransformRuns
+  "Cancel items that haven't been canceled in two minutes"
+  {:saved-class "metabase.transforms.canceling.CancelOldTransformRuns"
+   :concurrent? false}
+  [ctx]
   (cancel-old-transform-runs! ctx))
 
 (defn- start-job! []
@@ -183,6 +186,12 @@
                         :label   "transform run"
                         :reap-fn #(transform-run/reap-orphaned-runs! transform-heartbeat-stale-minutes)}))
 
+(defn- app-db-checkout-timeout?
+  "Is `e`, or anything in its cause chain, a c3p0 pool-checkout timeout? Then the app DB pool is exhausted, and this
+  poller is only the messenger."
+  [^Throwable e]
+  (boolean (some #(instance? TimeoutException %) (u/full-exception-chain e))))
+
 (defmethod task/init! ::CancelRuns [_]
   (log/info "Scheduling the cancelation background task.")
   ;; does not use the Quartz scheduler
@@ -193,10 +202,12 @@
                                      (try
                                        ;; Skip silently if the run was deleted between cancelation insert and now
                                        ;; — `chan-signal-cancel!` would be a no-op anyway in that case.
-                                       (when-let [run (t2/select-one :model/TransformRun :id id)]
+                                       (when-let [run (transforms.db/run id)]
                                          (cancel-run! run request-time))
                                        (catch Throwable t
                                          (log/error (str "Error canceling " id ": " (ex-message t)))))))
                                  (wr.cancelation/reducible-canceled-local-runs))
                            (catch Throwable t
-                             (log/errorf "Error while canceling a transform run: %s" (ex-message t)))) 0 20 TimeUnit/SECONDS))
+                             (if (app-db-checkout-timeout? t)
+                               (log/warnf "Could not check for transform runs to cancel: %s" (ex-message t))
+                               (log/errorf "Error while canceling a transform run: %s" (ex-message t))))) 0 20 TimeUnit/SECONDS))

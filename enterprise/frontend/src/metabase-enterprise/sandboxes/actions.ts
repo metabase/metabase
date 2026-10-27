@@ -6,8 +6,7 @@ import {
   UPDATE_DATA_PERMISSION,
   type UpdateDataPermissionPayload,
   updateDataPermission,
-} from "metabase/admin/permissions/permissions";
-import { DataPermissionType } from "metabase/admin/permissions/types";
+} from "metabase/permissions";
 import {
   combineReducers,
   createAction,
@@ -15,7 +14,11 @@ import {
   handleActions,
 } from "metabase/redux";
 import type { GroupTableAccessPolicy } from "metabase-types/api";
-import { DataPermission, DataPermissionValue } from "metabase-types/api";
+import {
+  DataPermission,
+  DataPermissionType,
+  DataPermissionValue,
+} from "metabase-types/api";
 
 import type { RawGroupTableAccessPolicyParams } from "./types";
 import { getPolicyKey, getPolicyKeyFromParams } from "./utils";
@@ -79,7 +82,7 @@ const groupTableAccessPolicies = handleActions<
           return state;
         }
 
-        const { entityId, metadata, groupId, value, permissionInfo } = payload;
+        const { entityId, database, groupId, value, permissionInfo } = payload;
 
         // if user is unsandboxing a specific table,
         // remove the specific table's sandbox data
@@ -102,12 +105,11 @@ const groupTableAccessPolicies = handleActions<
         }
 
         if (entityId.databaseId !== null) {
-          const database = metadata.databases?.[entityId.databaseId];
           const tables = database?.tables ?? [];
           // filter tables if there's a schema referenced in the entity id
           const entityTables = tables.filter(
             (table) =>
-              !entityId.schemaName || table.schema_name === entityId.schemaName,
+              !entityId.schemaName || table.schema === entityId.schemaName,
           );
 
           // delete 0 to N sandboxes present in the state

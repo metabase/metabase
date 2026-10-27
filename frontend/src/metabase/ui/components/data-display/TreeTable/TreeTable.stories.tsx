@@ -259,9 +259,9 @@ export const EmptyState = {
         <TreeTable
           instance={instance}
           emptyState={
-            <Box ta="center" py="xl">
+            <Box ta="center" py="xxl">
               <Icon name="folder" size={48} c="text-disabled" />
-              <Text c="text-secondary" mt="md">
+              <Text c="text-secondary" mt="lg">
                 This collection is empty
               </Text>
             </Box>

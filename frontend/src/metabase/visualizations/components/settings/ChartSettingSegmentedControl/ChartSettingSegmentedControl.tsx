@@ -1,37 +1,44 @@
-import cx from "classnames";
-
-import CS from "metabase/css/core/index.css";
-import { Box, Button, Center, Icon, Text } from "metabase/ui";
-
-import type { ChartSettingSegmentedControlProps } from "../../../types/widget-props";
+import { SegmentedControl, type SegmentedControlItem } from "metabase/ui";
+import {
+  type ChartSettingSegmentedControlOption,
+  type ChartSettingSegmentedControlProps,
+  encodeWidgetValue,
+} from "metabase/viz-core";
 
 export const ChartSettingSegmentedControl = ({
   options,
   onChange,
   value,
-}: ChartSettingSegmentedControlProps) => (
-  <Button.Group w="100%">
-    {options.map((elem) => (
-      <Button
-        className={cx(CS.borderBrand, CS.flexGrow1)}
-        py="sm"
-        px="xs"
-        variant={value === elem.value ? "filled" : "default"}
-        key={elem.value}
-        onClick={() => onChange(elem.value)}
-      >
-        {elem.icon ? (
-          <Center>
-            <Icon name={elem.icon} size={16}></Icon>
-          </Center>
-        ) : (
-          <Box>
-            <Text inherit c="inherit" lh="normal">
-              {elem.name}
-            </Text>
-          </Box>
-        )}
-      </Button>
-    ))}
-  </Button.Group>
-);
+}: ChartSettingSegmentedControlProps) => {
+  const handleChange = (encodedValue: string) => {
+    const option = options.find(
+      (option) => encodeWidgetValue(option.value) === encodedValue,
+    );
+    if (option) {
+      onChange(option.value);
+    }
+  };
+
+  return (
+    <SegmentedControl
+      fullWidth
+      data={options.map(getSegmentedControlItem)}
+      value={encodeWidgetValue(value)}
+      onChange={handleChange}
+    />
+  );
+};
+
+function getSegmentedControlItem({
+  name,
+  value,
+  icon,
+}: ChartSettingSegmentedControlOption): SegmentedControlItem<string> {
+  const encodedValue = encodeWidgetValue(value);
+
+  if (icon === undefined) {
+    return { value: encodedValue, label: name };
+  }
+
+  return { value: encodedValue, icon, ariaLabel: name };
+}

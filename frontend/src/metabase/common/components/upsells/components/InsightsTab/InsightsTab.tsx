@@ -11,7 +11,7 @@ const InsightsTabComponent = () => {
 
   return (
     <Tabs.Tab value="insights">
-      <Flex align="center" gap="xs">
+      <Flex align="center" gap="xxs">
         {t`Insights`}
         {shouldShowGem && <UpsellGem size={14} />}
       </Flex>

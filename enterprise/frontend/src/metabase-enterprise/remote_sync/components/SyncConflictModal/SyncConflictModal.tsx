@@ -1,15 +1,15 @@
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import { useGetSettingsQuery, useSetting } from "metabase/settings";
-import { Box, Button, Group, Icon, Modal } from "metabase/ui";
+import { Button, Icon, Modal, Stack } from "metabase/ui";
 import {
   useGetBranchesQuery,
   useUpdateRemoteSyncSettingsMutation,
 } from "metabase-enterprise/api";
-import { useGetLibraryCollection } from "metabase-enterprise/data-studio/library/utils";
+import { useGetLibraryCollection } from "metabase-enterprise/data-studio/library/hooks/use-get-library-collection";
 import {
   COLLECTIONS_KEY,
   REMOTE_SYNC_KEY,
@@ -189,21 +189,14 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
 
   return (
     <Modal
+      density="relaxed"
       onClose={onClose}
       opened
-      padding="xl"
-      styles={{ title: { lineHeight: "2rem" } }}
       title={getModalTitle(variant, canMerge)}
       withCloseButton={false}
     >
-      <Box pt="md">
-        {variant === "setup" ? (
-          <SetupConflictInfo />
-        ) : conflicts && conflicts.length > 0 ? (
-          <ConflictingChangesList conflicts={conflicts} />
-        ) : (
-          <ChangesLists />
-        )}
+      <Stack gap="xl">
+        <ConflictSummary variant={variant} conflicts={conflicts} />
 
         <OutOfSyncOptions
           currentBranch={currentBranch}
@@ -232,39 +225,52 @@ export const SyncConflictModal = (props: UnsyncedWarningModalProps) => {
 
         {/* Pushing (merge / force / new branch) needs a commit message; pull/switch/setup don't. */}
         {variant === "push" && optionValue && optionValue !== "discard" && (
-          <Box mt="lg">
-            <CommitMessageSection
-              value={commitMessage}
-              onChange={setCommitMessage}
-            />
-          </Box>
+          <CommitMessageSection
+            value={commitMessage}
+            onChange={setCommitMessage}
+          />
         )}
+      </Stack>
 
-        <Group gap="sm" justify="end" mt="lg">
-          <Button onClick={onClose} variant="subtle">
-            {t`Cancel`}
-          </Button>
-          <Button
-            color={
-              optionValue === "discard" ? "feedback-negative" : "core-brand"
-            }
-            disabled={isButtonDisabled}
-            leftSection={
-              optionValue === "force-push" ? <Icon name="warning" /> : undefined
-            }
-            loading={isProcessing}
-            onClick={handleContinueButtonClick}
-            variant="filled"
-            title={
-              optionValue === "force-push"
-                ? t`Force push will replace the remote version with your changes`
-                : undefined
-            }
-          >
-            {getContinueButtonText(optionValue)}
-          </Button>
-        </Group>
-      </Box>
+      <Modal.Footer>
+        <Button onClick={onClose} variant="subtle" color="neutral">
+          {t`Cancel`}
+        </Button>
+        <Button
+          color={optionValue === "discard" ? "negative" : "brand"}
+          disabled={isButtonDisabled}
+          leftSection={
+            optionValue === "force-push" ? <Icon name="warning" /> : undefined
+          }
+          loading={isProcessing}
+          onClick={handleContinueButtonClick}
+          variant="filled"
+          title={
+            optionValue === "force-push"
+              ? t`Force push will replace the remote version with your changes`
+              : undefined
+          }
+        >
+          {getContinueButtonText(optionValue)}
+        </Button>
+      </Modal.Footer>
     </Modal>
   );
 };
+
+interface ConflictSummaryProps {
+  variant: RemoteSyncConflictVariant;
+  conflicts?: string[];
+}
+
+function ConflictSummary({ variant, conflicts }: ConflictSummaryProps) {
+  if (variant === "setup") {
+    return <SetupConflictInfo />;
+  }
+
+  if (conflicts && conflicts.length > 0) {
+    return <ConflictingChangesList conflicts={conflicts} />;
+  }
+
+  return <ChangesLists />;
+}

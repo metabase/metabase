@@ -14,8 +14,8 @@ import type {
   ExplorationBlock,
   ExplorationSelection,
 } from "metabase/explorations/hooks";
-import { isMetricBlock } from "metabase/explorations/hooks";
 import { useMetabotAgent } from "metabase/metabot/hooks";
+import { getPromptText } from "metabase/metabot/state";
 import { useNavigate } from "metabase/router";
 import {
   Box,
@@ -23,7 +23,6 @@ import {
   Center,
   Group,
   Icon,
-  Menu,
   Stack,
   Switch,
   Title,
@@ -39,17 +38,13 @@ import type {
 
 import { EXPLORATIONS_AGENT_ID } from "../NewExplorationChat/NewExplorationChat";
 
-import { DimensionBlockItem, MetricBlockItem } from "./EntityBlock";
+import { MetricBlockItem } from "./EntityBlock";
 import S from "./NewExplorationData.module.css";
 import { SelectedTimelinePills } from "./Pills";
 import { ResearchModeIntro } from "./ResearchModeIntro";
-import {
-  AddDimensionsModal,
-  AddMetricsModal,
-  AddTimelinesModal,
-} from "./modals";
+import { AddMetricsModal, AddTimelinesModal } from "./modals";
 
-type ActiveModal = "metrics" | "dimensions" | "events" | null;
+type ActiveModal = "metrics" | "events" | null;
 
 export interface NewExplorationDataProps {
   selection: ExplorationSelection;
@@ -72,21 +67,11 @@ function dimensionToSelection(d: MetricDimension) {
 }
 
 function blockToSelection(block: ExplorationBlock) {
-  if (isMetricBlock(block)) {
-    return {
-      type: "metric" as const,
-      metrics: [metricToSelection(block.metric)],
-      dimensions: block.dimensions
-        .filter((d) => block.selectedDimensionIds.has(d.id))
-        .map(dimensionToSelection),
-    };
-  }
   return {
-    type: "dimension" as const,
-    metrics: block.metrics
-      .filter((m) => block.selectedMetricIds.has(m.id))
-      .map(metricToSelection),
-    dimensions: block.groupDimensions.map(dimensionToSelection),
+    metrics: [metricToSelection(block.metric)],
+    dimensions: block.dimensions
+      .filter((d) => block.selectedDimensionIds.has(d.id))
+      .map(dimensionToSelection),
   };
 }
 
@@ -117,7 +102,6 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
     collection,
     removeBlock,
     toggleDimensionSelected,
-    toggleMetricSelected,
     removeTimelinesById,
   } = selection;
   const navigate = useNavigate();
@@ -133,7 +117,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
 
   const { messages, isDoingScience } = useMetabotAgent(EXPLORATIONS_AGENT_ID);
   const hasUserPrompt = messages.some(
-    (message) => message.role === "user" && message.message.trim().length > 0,
+    (message) => message.role === "user" && getPromptText(message).trim(),
   );
   const canStart = blocks.some(isNonEmptyBlock);
 
@@ -156,9 +140,9 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
   }, []);
 
   const handleRemoveBlock = useCallback(
-    (blockId: string, type: "metrics" | "dimensions") => {
+    (blockId: string) => {
       removeBlock(blockId);
-      trackExplorationPlanEdited("manual", type);
+      trackExplorationPlanEdited("manual", "metrics");
       setExpandedIds((prev) => {
         if (prev.has(blockId)) {
           const next = new Set(prev);
@@ -176,7 +160,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
       hasUserPrompt && useContextualInterestingness
         ? messages
             .filter((message) => message.role === "user")
-            .map((message) => message.message)
+            .map(getPromptText)
             .join("\n---\n")
         : "";
     const request = buildCreateExplorationRequest(
@@ -193,8 +177,7 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
     } catch (error) {
       console.error(error);
       sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "warning",
+        variant: "negative",
         message: t`Failed to start research`,
       });
     }
@@ -216,40 +199,25 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
       className={S.container}
       data-testid="research-content"
       gap="sm"
-      bg="background-primary"
+      bg="background_page-primary"
       flex={1}
-      px="xl"
-      pt="lg"
-      pb="md"
+      px="xxl"
+      pt="xl"
+      pb="lg"
       h="100%"
       w="100%"
     >
       <Group justify="space-between" align="center" flex="none">
         <Title order={3} fs="1rem" lh={1.4}>{t`Research plan`}</Title>
-        <Group gap="xs">
-          <Menu position="bottom-end">
-            <Menu.Target>
-              <Button
-                variant="outline"
-                color="text-primary"
-                bd="1px solid text-tertiary"
-                size="sm"
-                disabled={isManualDataPickingDisabled}
-              >{t`+ Data`}</Button>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Item onClick={() => setActiveModal("metrics")}>
-                {t`Metrics`}
-              </Menu.Item>
-              <Menu.Item onClick={() => setActiveModal("dimensions")}>
-                {t`Dimensions`}
-              </Menu.Item>
-            </Menu.Dropdown>
-          </Menu>
-        </Group>
+        <Button
+          disabled={isManualDataPickingDisabled}
+          onClick={() => setActiveModal("metrics")}
+        >
+          {t`+ Metrics`}
+        </Button>
       </Group>
 
-      <Group gap="xs" data-testid="selected-timelines-container">
+      <Group gap="xxs" data-testid="selected-timelines-container">
         {timelines.length > 0 && (
           <SelectedTimelinePills
             timelines={timelines}
@@ -268,9 +236,8 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
         )}
         <Button
           variant="subtle"
-          c="text-secondary"
-          size="sm"
-          bd="1px dashed border"
+          color="neutral"
+          bd="1px dashed border-neutral"
           bdrs="xl"
           leftSection={
             timelines.length ? <Icon name="add" size={12} /> : undefined
@@ -288,45 +255,28 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
         data-testid="selected-data-blocks-container"
         flex={1}
         mih={0}
-        mt="md"
+        mt="lg"
       >
         {blocks.length === 0 ? (
           <Center h="100%" mt="-3rem">
             <ResearchModeIntro />
           </Center>
         ) : (
-          <Stack gap="md" mb="lg">
-            {blocks.map((block) =>
-              isMetricBlock(block) ? (
-                <MetricBlockItem
-                  key={block.id}
-                  block={block}
-                  expanded={getIsExpanded(block.id)}
-                  disabled={isManualDataPickingDisabled}
-                  onToggleExpand={() => toggleExpanded(block.id)}
-                  onRemoveBlock={() => handleRemoveBlock(block.id, "metrics")}
-                  onToggleDimension={(dimensionId) => {
-                    toggleDimensionSelected(block.id, dimensionId);
-                    trackExplorationPlanEdited("manual", "dimensions");
-                  }}
-                />
-              ) : (
-                <DimensionBlockItem
-                  key={block.id}
-                  block={block}
-                  expanded={getIsExpanded(block.id)}
-                  disabled={isManualDataPickingDisabled}
-                  onToggleExpand={() => toggleExpanded(block.id)}
-                  onRemoveBlock={() =>
-                    handleRemoveBlock(block.id, "dimensions")
-                  }
-                  onToggleMetric={(metricId) => {
-                    toggleMetricSelected(block.id, metricId);
-                    trackExplorationPlanEdited("manual", "metrics");
-                  }}
-                />
-              ),
-            )}
+          <Stack gap="lg" mb="xl">
+            {blocks.map((block) => (
+              <MetricBlockItem
+                key={block.id}
+                block={block}
+                expanded={getIsExpanded(block.id)}
+                disabled={isManualDataPickingDisabled}
+                onToggleExpand={() => toggleExpanded(block.id)}
+                onRemoveBlock={() => handleRemoveBlock(block.id)}
+                onToggleDimension={(dimensionId) => {
+                  toggleDimensionSelected(block.id, dimensionId);
+                  trackExplorationPlanEdited("manual", "dimensions");
+                }}
+              />
+            ))}
           </Stack>
         )}
       </Box>
@@ -338,12 +288,10 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
           onChange={(event) =>
             setUseContextualInterestingness(event.currentTarget.checked)
           }
-          size="sm"
           label={t`Use AI to analyze and order results`}
         />
         <Button
           className={cx(!canStart && CS.hidden)}
-          size="sm"
           flex="none"
           variant="filled"
           loading={isStarting}
@@ -357,11 +305,6 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
         onClose={() => setActiveModal(null)}
         selection={selection}
       />
-      <AddDimensionsModal
-        opened={activeModal === "dimensions"}
-        onClose={() => setActiveModal(null)}
-        selection={selection}
-      />
       <AddTimelinesModal
         opened={activeModal === "events"}
         onClose={() => setActiveModal(null)}
@@ -372,8 +315,5 @@ export function NewExplorationData({ selection }: NewExplorationDataProps) {
 }
 
 function isNonEmptyBlock(block: ExplorationBlock): boolean {
-  if (isMetricBlock(block)) {
-    return block.selectedDimensionIds.size > 0;
-  }
-  return block.selectedMetricIds.size > 0;
+  return block.selectedDimensionIds.size > 0;
 }

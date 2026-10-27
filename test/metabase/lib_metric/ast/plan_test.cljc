@@ -21,7 +21,15 @@
                 :name        "test"
                 :aggregation {:node/type :aggregation/count}
                 :base-table  {:node/type :ast/table :id 1}
-                :metadata    {:dataset-query {:database 1}}}
+                :metadata    {:lib/type      :metadata/metric
+                              :id            1
+                              :name          "test"
+                              :type          :metric
+                              :database-id   1
+                              :dataset-query {:lib/type :mbql/query
+                                              :database 1
+                                              :stages   [{:lib/type     :mbql.stage/mbql
+                                                          :source-table 1}]}}}
    :dimensions (mapv (fn [dim-id] {:node/type :ast/dimension :id dim-id}) group-by-dim-ids)
    :mappings   (mapv (fn [dim-id]
                        {:node/type    :ast/dimension-mapping

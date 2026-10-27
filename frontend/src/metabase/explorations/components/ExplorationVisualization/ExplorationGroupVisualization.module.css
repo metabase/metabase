@@ -36,22 +36,10 @@
   top: 0;
   right: 0;
   z-index: 2;
-  margin-top: var(--mantine-spacing-md);
-  margin-right: var(--mantine-spacing-md);
+  margin-top: var(--mantine-spacing-lg);
+  margin-right: var(--mantine-spacing-lg);
 }
 
 .commentsSidebar {
   border-left: 1px solid var(--mb-color-border-neutral);
-}
-
-.commentBadge {
-  background-color: var(--mb-color-background-brand);
-
-  &:hover {
-    background-color: var(--mb-color-background-hover);
-  }
-}
-
-.commentTagArrow {
-  transform: scaleY(-1);
 }

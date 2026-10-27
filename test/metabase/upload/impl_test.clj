@@ -35,9 +35,18 @@
    [metabase.upload.types :as upload-types]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2])
   (:import
    (java.io ByteArrayInputStream File FileOutputStream)))
+
+(use-fixtures :once (fn [f]
+                      (mt/dataset (mt/dataset-definition
+                                   "upload_impl" [["venues"
+                                                   [{:field-name "name"
+                                                     :base-type :type/Text}]
+                                                   [["something"]]]])
+                        (f))))
 
 (set! *warn-on-reflection* true)
 
@@ -51,13 +60,13 @@
 (def ^:private text-type      ::upload-types/text)
 
 (defn- local-infile-on? []
-  (= "ON" (-> (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+  (= "ON" (-> (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
               (jdbc/query "show global variables like 'local_infile'")
               first
               :value)))
 
 (defn- set-local-infile! [on?]
-  (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (mt/db)) (str "set global local_infile = " (if on? 1 0))))
+  (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider))) (str "set global local_infile = " (if on? 1 0))))
 
 (defn- do-with-mysql-local-infile-on
   [thunk]
@@ -115,10 +124,10 @@
   (let [table-name  (ddl.i/format-name driver/*driver* table-name)
         schema-name (or (some->> schema-name (ddl.i/format-name driver/*driver*))
                         (sql.tx/session-schema driver/*driver*))
-        table       (sync-tables/create-or-reactivate-table! database {:name table-name :schema schema-name})]
+        table       (sync-tables/create-or-reactivate-table! (driver.u/lib-database (:id database)) {:name table-name :schema schema-name})]
     (t2/update! :model/Table (:id table) {:is_upload true})
     (binding [upload/*auxiliary-sync-steps* :synchronous]
-      (#'upload/scan-and-sync-table! database table))
+      (#'upload/scan-and-sync-table! table))
     (t2/select-one :model/Table (:id table))))
 
 (defn- tmp-file [prefix extension]
@@ -322,7 +331,18 @@
          auxiliary-sync-steps     :never
          csv-file-prefix          "example csv file"}
     :as options}
-   f :- [:=> [:cat [:map [:id ::lib.schema.id/card]]] :any]]
+   :- [:map {:closed true}
+       [:table-prefix          {:optional true} [:maybe :string]]
+       [:collection-id         {:optional true} [:maybe ::lib.schema.id/collection]]
+       [:grant-permission?     {:optional true} [:maybe :boolean]]
+       [:uploads-enabled       {:optional true} [:maybe :boolean]]
+       [:user-id               {:optional true} [:maybe ::lib.schema.id/user]]
+       [:db-id                 {:optional true} [:maybe ::lib.schema.id/database]]
+       [:auxiliary-sync-steps  {:optional true} [:maybe [:enum :asynchronous :synchronous :never]]]
+       [:csv-file-prefix       {:optional true} [:maybe :string]]
+       [:file                  {:optional true} [:maybe [:fn #(instance? File %)]]]
+       [:schema-name           {:optional true} [:maybe :string]]]
+   f :- fn?]
   {:pre [(keyword? driver/*driver*)]}
   (mt/with-discard-model-updates! [:model/Database]
     (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false})
@@ -428,7 +448,7 @@
           :table-prefix      "uploaded_magic_"}
          (constantly nil)))
       (is (not (some #(re-find #"uploaded_magic_" (:name % ""))
-                     (driver/describe-database driver/*driver* (mt/db))))))))
+                     (driver/describe-database driver/*driver* (lib.metadata/database (mt/metadata-provider)))))))))
 
 (deftest create-from-csv-display-name-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -636,6 +656,7 @@
   "Because life is too short for zillions of temp files."
   [^String s]
   (let [bytes (.getBytes s "UTF-8")]
+    ;; only the input side is exercised; the writer methods would throw if hit
     #_{:clj-kondo/ignore [:missing-protocol-method]}
     (reify
       io/IOFactory
@@ -1111,7 +1132,7 @@
     (mt/test-drivers [:mysql]
       (do-with-mysql-local-infile-on
        (fn []
-         (is (= "ON" (-> (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+         (is (= "ON" (-> (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                          (jdbc/query "show global variables like 'local_infile'")
                          first
                          :value)))))))
@@ -1119,7 +1140,7 @@
     (mt/test-drivers [:mysql]
       (do-with-mysql-local-infile-off
        (fn []
-         (is (= "OFF" (-> (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+         (is (= "OFF" (-> (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                           (jdbc/query "show global variables like 'local_infile'")
                           first
                           :value))))))))
@@ -1292,14 +1313,14 @@
              java.lang.Exception
              #"^Uploads are not enabled\.$"
              (do-with-uploaded-example-csv!
-              {:uploads-enabled false :schema-name "public", :table-prefix "uploaded_magic_"}
+              {:uploads-enabled false :table-prefix "uploaded_magic_"}
               identity))))
       (testing "Database ID must be valid"
         (is (thrown-with-msg?
              java.lang.Exception
              #"^The uploads database does not exist\.$"
              (do-with-uploaded-example-csv!
-              {:db-id Integer/MAX_VALUE, :schema-name "public", :table-prefix "uploaded_magic_"}
+              {:db-id Integer/MAX_VALUE, :table-prefix "uploaded_magic_"}
               identity))))
       (testing "Uploads must be supported"
         (mt/with-dynamic-fn-redefs [driver.u/supports? (constantly false)]
@@ -1307,7 +1328,7 @@
                java.lang.Exception
                #"^Uploads are not supported on [\w-]+ databases\."
                (do-with-uploaded-example-csv!
-                {:schema-name "public", :table-prefix "uploaded_magic_"}
+                {:table-prefix "uploaded_magic_"}
                 identity)))))
       (testing "User must have write permissions on the collection"
         (mt/with-non-admin-groups-no-root-collection-perms
@@ -1315,7 +1336,7 @@
                java.lang.Exception
                #"^You don't have permissions to do that\.$"
                (do-with-uploaded-example-csv!
-                {:user-id (mt/user->id :lucky) :schema-name "public", :table-prefix "uploaded_magic_"}
+                {:user-id (mt/user->id :lucky) :table-prefix "uploaded_magic_"}
                 identity)))))
       (testing "File type must be allowed"
         (is (thrown-with-msg?
@@ -1350,6 +1371,26 @@
   (first (filter (fn [conn-prop]
                    (= :schema-filters (keyword (:type conn-prop))))
                  (driver/connection-properties driver))))
+
+(deftest create-csv-upload!-malformed-csv-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (doseq [[description options message]
+            [["a row wider than the header"
+              {:file (csv-file-with ["a,b" "1,2,3"])}
+              #"^Column count in data \(3\) exceeds the number of columns in the header \(2\)$"]
+             ["no separator that parses the first lines"
+              {:file (csv-file-with ["\"a" "1"])}
+              #"^Unable to determine separator"]
+             ["a syntax error past the lines used to pick the separator"
+              {:file (csv-file-with (concat ["a,b"] (repeat 10 "1,2") ["\"3,4"]))}
+              #"^CSV error"]
+             ["a syntax error in a TSV, which skips separator inference"
+              {:file (doto (tmp-file "test" ".tsv") (spit "a\tb\n\"1\t2")), :csv-file-prefix "data.tsv"}
+              #"^CSV error"]]]
+      (testing (str "Upload fails with a 422 and the message the user can act on, given " description)
+        (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo message
+                                      (do-with-uploaded-example-csv! options identity)))]
+          (is (= 422 (:status-code (ex-data e)))))))))
 
 (deftest create-csv-upload!-schema-does-not-sync-test
   ;; We only need to test this for a single driver, and the way this test has been written is coupled to Postgres
@@ -2519,8 +2560,9 @@
               (is (= (header-with-auto-pk ["A"])
                      (column-display-names-for-table table))))
             (testing "But we can configure it"
-              (t2/update! :model/Field {:name "a" :table_id (:id table)}
-                          {:display_name bespoke-name})
+              (field-user-settings/upsert-user-settings
+               {:id (t2/select-one-pk :model/Field :name "a" :table_id (:id table))}
+               {:display_name bespoke-name})
               (is (= (header-with-auto-pk [bespoke-name])
                      (column-display-names-for-table table))))
             (let [file (csv-file-with data (mt/random-name))]
@@ -2636,14 +2678,14 @@
                                         :write-data
                                         :default))]
           (try
-            (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
+            (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))
             (testing "write pool does not exist before upload create"
               (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
             (with-upload-table! [_table (create-from-csv-and-sync-with-defaults!)]
               (testing "write pool is created during upload create"
                 (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
             (finally
-              (sql-jdbc.conn/invalidate-pool-for-db! (mt/db)))))))))
+              (sql-jdbc.conn/invalidate-pool-for-db! (mt/id)))))))))
 
 (deftest upload-delete-creates-write-pool-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc, :+features [:uploads]})
@@ -2657,11 +2699,11 @@
                                         :default))]
           (try
             (let [table (create-upload-table!)]
-              (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
+              (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))
               (testing "write pool does not exist before upload delete"
                 (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
               (upload/delete-upload! table)
               (testing "write pool is created during upload delete"
                 (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
             (finally
-              (sql-jdbc.conn/invalidate-pool-for-db! (mt/db)))))))))
+              (sql-jdbc.conn/invalidate-pool-for-db! (mt/id)))))))))

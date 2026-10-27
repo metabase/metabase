@@ -1,9 +1,8 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { HeadBreadcrumbs } from "metabase/query_builder/components/view/ViewHeader/components/HeaderBreadcrumbs/HeaderBreadcrumbs";
-import type { DataSourcePart } from "metabase/query_builder/components/view/ViewHeader/components/QuestionDataSource/utils";
-import { ViewHeading } from "metabase/query_builder/components/view/ViewSection";
+import type { DataSourcePart } from "metabase/query_builder";
+import { HeadBreadcrumbs, ViewHeading } from "metabase/query_builder";
 import * as Urls from "metabase/urls";
 import type { Database, Table } from "metabase-types/api";
 

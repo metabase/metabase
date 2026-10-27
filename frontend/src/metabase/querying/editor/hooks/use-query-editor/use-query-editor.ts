@@ -11,7 +11,6 @@ type UseQueryEditorProps = {
   query: Lib.Query;
   uiState: QueryEditorUiState;
   uiOptions?: QueryEditorUiOptions;
-  proposedQuery?: Lib.Query;
   onChangeQuery: (newQuery: Lib.Query) => void;
   onChangeUiState: (newUiState: QueryEditorUiState) => void;
   onRunQueryStart?: (query: DatasetQuery) => boolean | void;
@@ -21,18 +20,12 @@ export function useQueryEditor({
   query,
   uiState,
   uiOptions,
-  proposedQuery,
   onChangeQuery,
   onChangeUiState,
   onRunQueryStart,
 }: UseQueryEditorProps) {
-  const {
-    question,
-    proposedQuestion,
-    setQuestion,
-    setParameterValues,
-    parameterValues,
-  } = useQueryQuestion(query, proposedQuery, uiOptions, onChangeQuery);
+  const { question, setQuestion, setParameterValues, parameterValues } =
+    useQueryQuestion(query, uiOptions, onChangeQuery);
   const { isLoading, error } = useQueryMetadata(question);
   const {
     result,
@@ -61,7 +54,6 @@ export function useQueryEditor({
 
   return {
     question,
-    proposedQuestion,
     error,
     result,
     rawSeries,

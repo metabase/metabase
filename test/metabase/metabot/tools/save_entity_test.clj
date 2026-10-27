@@ -1,13 +1,31 @@
 (ns metabase.metabot.tools.save-entity-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
+   [malli.json-schema :as mjs]
+   [metabase.api-scope.core :as api-scope]
+   [metabase.app-db.core :as mdb]
+   [metabase.documents.core :as documents]
+   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.scope :as scope]
+   [metabase.metabot.test-util :as test-util]
+   [metabase.metabot.tools :as metabot.tools]
+   [metabase.metabot.tools.core :as tools.core]
+   [metabase.metabot.tools.error :as tools.error]
+   [metabase.metabot.tools.recoverable.common :as recoverable.common]
    [metabase.metabot.tools.save-entity :as save-entity]
    [metabase.metabot.tools.shared :as shared]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.queries.core :as queries]
    [metabase.test :as mt]
    [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (defn- venues-query []
   (lib/query (mt/metadata-provider)
@@ -38,13 +56,29 @@
                                       :visualization_settings {:chart_type "bar"}}}}
            :context {}})))
 
+(def ^:private chart-args
+  {:chart_id    "c-1"
+   :name        "Venues by price"
+   :description "Count of venues grouped by price."})
+
+(def ^:private tool-names
+  "List the tools needed to show every recovery step in these tests."
+  #{"search" "read_resource" "construct_notebook_query" "create_chart"})
+
+(defn- call-save-entity [args]
+  (test-util/call-tool save-entity/save-entity-tool args))
+
 (defn- save! [destination]
   (binding [shared/*memory-atom* (chart-memory)]
-    (save-entity/save-entity-tool
-     {:chart_id    "c-1"
-      :name        "Venues by price"
-      :description "Count of venues grouped by price."
-      :destination destination})))
+    (call-save-entity (assoc chart-args :destination destination))))
+
+(defn- failure
+  "Return the error class and code, plus any recoverable error text shown to the model."
+  ([destination]
+   (failure (chart-memory) (assoc chart-args :destination destination)))
+  ([memory args]
+   (binding [shared/*memory-atom* memory]
+     (test-util/tool-failure save-entity/save-entity-tool args tool-names))))
 
 (deftest save-to-collection-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -73,7 +107,7 @@
     (mt/with-model-cleanup [:model/Card]
       (mt/with-temp [:model/Collection coll {:name "Persisted charts"}]
         (let [result (binding [shared/*memory-atom* (rehydrated-chart-memory)]
-                       (save-entity/save-entity-tool
+                       (call-save-entity
                         {:chart_id    "c-1"
                          :name        "Venues by price"
                          :description "Count of venues grouped by price."
@@ -88,7 +122,7 @@
                      :model/MetabotConversation {convo-id :id} {:user_id (mt/user->id :crowberto)}]
         (let [memory (doto (chart-memory) (swap! assoc :conversation-id convo-id))
               result (binding [shared/*memory-atom* memory]
-                       (save-entity/save-entity-tool
+                       (call-save-entity
                         {:chart_id    "c-1"
                          :name        "Venues by price"
                          :description "Count of venues grouped by price."
@@ -154,7 +188,7 @@
                                                        :chart_config {:display_type "line"}}}}
                             :context {}})
               result (binding [shared/*memory-atom* memory]
-                       (save-entity/save-entity-tool
+                       (call-save-entity
                         {:chart_id    "c-2"
                          :name        "Seeded chart"
                          :description "Seeded from the viewing context."
@@ -169,7 +203,7 @@
 
 (defn- card-embed [card-id]
   {:type "resizeNode"
-   :content [{:type "cardEmbed" :attrs {:id card-id}}]})
+   :content [{:type "cardEmbed" :attrs {"id" card-id "_id" string?}}]})
 
 (deftest save-to-document-test
   (mt/with-current-user (mt/user->id :crowberto)
@@ -185,8 +219,8 @@
             (is (= (:id coll) (:collection_id card)))
             (is (= "Venues by price" (:name card))))
           (testing "omitting position appends a card embed at the end of the document"
-            (is (= (conj (:content document-ast) (card-embed (:id card)))
-                   (get-in (t2/select-one :model/Document :id (:id doc)) [:document :content]))))
+            (is (=? (conj (:content document-ast) (card-embed (:id card)))
+                    (get-in (t2/select-one :model/Document :id (:id doc)) [:document :content]))))
           (testing "the destination points at the document"
             (is (= {:type "document" :id (:id doc)}
                    (get-in result [:data-parts 0 :data :destination])))))))))
@@ -198,26 +232,282 @@
         (let [result (save! {:target_type "document" :document_id (:id doc) :position 1})
               card-id (get-in result [:structured-output :card-id])]
           (testing "an explicit position inserts before the block at that index"
-            (is (= [(first (:content document-ast))
-                    (card-embed card-id)
-                    (second (:content document-ast))]
-                   (get-in (t2/select-one :model/Document :id (:id doc)) [:document :content])))))))))
+            (is (=? [(first (:content document-ast))
+                     (card-embed card-id)
+                     (second (:content document-ast))]
+                    (get-in (t2/select-one :model/Document :id (:id doc)) [:document :content])))))))))
 
-(deftest save-to-document-requires-id-test
-  (mt/with-current-user (mt/user->id :crowberto)
-    (testing "a missing document_id fails destination schema validation"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"document_id"
-                            (save! {:target_type "document"}))))))
+(deftest ^:parallel arguments-the-schema-refuses-test
+  (testing "a document destination needs a document_id"
+    (is (=? #"Invalid tool arguments: `destination` .*"
+            (test-util/tool-boundary-error "save_entity" #'save-entity/save-entity-tool
+                                           (assoc chart-args :destination {:target_type "document"})))))
+  (testing "a name must fit the application database column"
+    (is (=? #"Invalid tool arguments: `name` must contain 1 to 254 .*"
+            (test-util/tool-boundary-error "save_entity" #'save-entity/save-entity-tool
+                                           (assoc chart-args
+                                                  :name        (apply str (repeat 255 "x"))
+                                                  :destination {:target_type "collection"}))))))
 
-(deftest unknown-chart-test
+(deftest ^:parallel name-length-matches-app-db-test
+  (let [args-schema (:args (tools.core/declaration save-entity/save-entity-tool))
+        ^String ducks (apply str (repeat 128 "\uD83E\uDD86"))]
+    (is (= [256 128] [(.length ducks) (.codePointCount ducks 0 (.length ducks))]))
+    (doseq [db-type [:h2 :postgres :mysql]]
+      (testing (str "the name limit matches " db-type)
+        (mt/with-dynamic-fn-redefs [mdb/db-type (constantly db-type)]
+          (is (= (not= :h2 db-type)
+                 (mr/validate args-schema (assoc chart-args :name ducks :destination {:target_type "collection"})))))))
+    (testing "the tool schema gives the LLM the same name length limit"
+      (is (= {:type "string" :minLength 1 :maxLength 254}
+             (get-in (mjs/transform args-schema) [:properties :name]))))))
+
+(deftest ^:parallel unknown-chart-test
+  (let [args (assoc chart-args :chart_id "c-9" :destination {:target_type "collection" :collection_id nil})]
+    (testing "an unknown chart ID produces a recoverable error that lists the available IDs"
+      (is (=? {:class :recoverable
+               :code  ::recoverable.common/unknown-chart-id
+               :text  (str "No chart with ID \"c-9\" exists in this conversation. The available chart IDs are c-1.\n"
+                           "To make a new chart, call `construct_notebook_query` and use the chart ID that it returns.\n"
+                           "To chart a query from this conversation, call `create_chart` with its"
+                           " query ID.")}
+              (failure (chart-memory) args))))
+    (testing "charts without a query or with an ID longer than 36 characters are not offered"
+      (let [long-id (apply str (repeat 37 "a"))
+            memory  (doto (chart-memory)
+                      (swap! update-in [:state :charts] assoc
+                             "c-2"   {:chart_id "c-2" :queries [nil]}
+                             long-id {:chart_id long-id :queries [(venues-query)]}))]
+        (is (str/includes? (:text (failure memory args)) "The available chart IDs are c-1.\n"))))
+    (testing "the error says when the conversation has no charts"
+      (is (str/includes? (:text (failure (atom {}) args)) "No charts have been created in this conversation yet.")))))
+
+(deftest no-personal-collection-test
+  (mt/with-temp [:model/User {user-id :id} {:type :api-key}]
+    (mt/with-current-user user-id
+      (testing "a user without a personal collection gets instructions for choosing a collection"
+        (is (= {:class :recoverable
+                :code  ::save-entity/no-personal-collection
+                :text  (str "The user has no personal collection, so `collection_id` can't be omitted.\n"
+                            "Read `metabase://collections?tree=true` with `read_resource` and pass the ID of a"
+                            " collection with `can_write=true`.\n"
+                            "Or ask the user which collection to save it to.")}
+               (failure {:target_type "collection"})))))))
+
+(deftest unreadable-destination-test
+  (testing "a destination that is hidden from the user or does not exist is reported as not found"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-model-cleanup [:model/Card]
+        (mt/with-temp [:model/Collection hidden {}
+                       :model/Dashboard trashed-dash {:collection_id (:id hidden) :archived true}
+                       :model/Document trashed-doc {:collection_id (:id hidden)
+                                                    :archived true :document document-ast}]
+          (doseq [[user target-type id] [[:rasta     "collection" (:id hidden)]
+                                         [:rasta     "dashboard"  (:id trashed-dash)]
+                                         [:rasta     "document"   (:id trashed-doc)]
+                                         [:crowberto "dashboard"  Integer/MAX_VALUE]
+                                         [:crowberto "document"   Integer/MAX_VALUE]]
+                  :let [entity (str (str/capitalize target-type) " " id)]]
+            (testing (str (name user) " saving to " entity)
+              (mt/with-current-user (mt/user->id user)
+                (is (=? {:class :recoverable
+                         :code  ::recoverable.common/not-found
+                         :text  #(str/starts-with? % (str entity " was not found."))}
+                        (failure {:target_type target-type, (keyword (str target-type "_id")) id})))))))))))
+
+(deftest read-only-destination-test
+  (testing "a read-only destination produces a recoverable error that offers another collection"
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-model-cleanup [:model/Card]
+        (mt/with-temp [:model/Collection coll {}
+                       :model/Dashboard  dash {:collection_id (:id coll)}
+                       :model/Document   doc  {:collection_id (:id coll) :document document-ast}]
+          (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
+          (mt/with-current-user (mt/user->id :rasta)
+            (doseq [[destination noun] [[{:target_type "collection" :collection_id (:id coll)}
+                                         (str "collection " (:id coll))]
+                                        [{:target_type "collection" :collection_id nil} "the root collection"]
+                                        [{:target_type "dashboard" :dashboard_id (:id dash)}
+                                         (str "dashboard " (:id dash))]
+                                        [{:target_type "document" :document_id (:id doc)}
+                                         (str "document " (:id doc))]]]
+              (testing noun
+                (is (= {:class :recoverable
+                        :code  ::save-entity/destination-not-writable
+                        :text  (str "The user doesn't have permission to save to " noun ".\n"
+                                    "Tell the user and offer to save the chart to their personal collection."
+                                    " Omit `collection_id` from a collection destination to use it.\n"
+                                    "To offer another collection, read `metabase://collections?tree=true` with"
+                                    " `read_resource` and pick one with `can_write=true`.")}
+                       (failure destination)))))
+            (testing "no card is saved in the read-only collection"
+              (is (not (t2/exists? :model/Card :collection_id (:id coll)))))))))))
+
+(deftest unrunnable-query-test
+  (mt/with-no-data-perms-for-all-users!
+    (mt/with-current-user (mt/user->id :rasta)
+      (testing "a chart cannot be saved when the user lacks permission to run its query"
+        (is (= {:class        :unrecoverable
+                :code         ::save-entity/no-query-permission
+                :user-message "You can't save this chart because you don't have permission to run its query."}
+               (tools.error/classify
+                (is (thrown? clojure.lang.ExceptionInfo (save! {:target_type "collection"}))))))))))
+
+(defn- invoke-save-entity
+  "Call `save_entity` with `args` through the tool runtime, in a conversation whose memory is `memory`, and return the
+  outcome. The profile also offers the tools that the recovery steps name."
+  ([args]
+   (invoke-save-entity (chart-memory) args))
+  ([memory args]
+   (let [entries (binding [scope/*current-user-scope* api-scope/unrestricted]
+                   (metabot.tools/->entries [#'save-entity/save-entity-tool
+                                             #'metabot.tools/construct-notebook-query-tool
+                                             #'metabot.tools/create-chart-tool]
+                                            memory nil :internal))]
+     ((:fn (get entries "save_entity")) args))))
+
+(deftest unknown-chart-among-many-test
+  (testing "with more than 30 charts, the error lists the first 30 and counts the rest, so the recovery steps fit"
+    (let [query  (venues-query)
+          ids    (map #(format "%08d-0000-4000-8000-000000000000" %) (range 120))
+          memory (atom {:state {:charts (into {} (map (fn [id] [id {:chart_id id :queries [query]}])) ids)}})]
+      (is (= {:output (str "No chart with ID \"c-9\" exists in this conversation. The available chart IDs are "
+                           (str/join ", " (take 30 ids)) " and 90 more.\n"
+                           "To make a new chart, call `construct_notebook_query` and use the chart ID that it returns.\n"
+                           "To chart a query from this conversation, call `create_chart` with its query ID.")
+              :error  {:class :recoverable :code ::recoverable.common/unknown-chart-id}}
+             (invoke-save-entity memory (assoc chart-args
+                                               :chart_id    "c-9"
+                                               :destination {:target_type "collection" :collection_id nil})))))))
+
+(deftest card-create-event-failure-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (testing "a missing chart id returns an agent-facing error and creates nothing"
-      (let [result (binding [shared/*memory-atom* (chart-memory)]
-                     (save-entity/save-entity-tool
-                      {:chart_id    "does-not-exist"
-                       :name        "x"
-                       :description "y"
-                       :destination {:target_type "collection" :collection_id nil}}))]
-        (is (nil? (:data-parts result)))
-        (is (re-find #"No generated chart found" (:output result)))))))
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-temp [:model/Collection coll {}]
+        (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic _event]
+                                                            (when (= :event/card-create topic)
+                                                              (throw (ex-info "A subscriber failed." {}))))]
+          (testing "the save succeeds and creates one card even when a card-create subscriber fails"
+            (let [outcome (invoke-save-entity
+                           (assoc chart-args :destination {:target_type "collection" :collection_id (:id coll)}))]
+              (is (nil? (:error outcome)))
+              (is (= [(get-in outcome [:structured-output :card-id])]
+                     (t2/select-pks-vec :model/Card :collection_id (:id coll)))))))))))
+
+(deftest undeclared-failure-test
+  (testing "an unexpected failure ends the turn without reaching the model"
+    (mt/with-dynamic-fn-redefs [queries/create-card! (fn [& _] (throw (ex-info "boom" {})))]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (is (= {:class :unrecoverable :code :internal}
+               (failure {:target_type "collection" :collection_id nil})))))))
+
+(deftest transaction-api-error-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-temp [:model/Collection coll {}
+                     :model/Document doc {:document document-ast}]
+        (testing "4xx failures during card creation reach the agent with their message"
+          (doseq [status [400 403 404 409 422 499]]
+            (mt/with-dynamic-fn-redefs [queries/create-card!
+                                        (fn [& _]
+                                          (throw (ex-info "Uses content that is not remote synced."
+                                                          {:status-code status})))]
+              (is (=? {:error  {:class :recoverable :code ::save-entity/save-rejected}
+                       :output #"Uses content that is not remote synced\."}
+                      (invoke-save-entity
+                       (assoc chart-args :destination {:target_type "collection" :collection_id (:id coll)})))))))
+        (testing "a failed document insertion rolls back the card and returns its reason"
+          (mt/with-dynamic-fn-redefs [documents/add-card-to-document!
+                                      (fn [& _]
+                                        (throw (ex-info "Uses content that is not remote synced."
+                                                        {:status-code 400})))]
+            (is (=? {:error  {:class :recoverable :code ::save-entity/save-rejected}
+                     :output #"Uses content that is not remote synced\."}
+                    (invoke-save-entity
+                     (assoc chart-args :destination {:target_type "document" :document_id (:id doc)}))))
+            (is (not (t2/exists? :model/Card :document_id (:id doc))))))))))
+
+(deftest transaction-server-error-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-dynamic-fn-redefs [queries/create-card!
+                                (fn [& _] (throw (ex-info "Private save failure." {:status-code 500})))]
+      (is (= {:error {:class :unrecoverable :code :internal}
+              :output "This call failed and the user was shown the error (:internal). Don't retry it."}
+             (invoke-save-entity (assoc chart-args :destination {:target_type "collection"})))))))
+
+(deftest sensitive-query-test
+  (let [provider (mt/metadata-provider)
+        query    (-> (lib/query provider (lib.metadata/table provider (mt/id :users)))
+                     (lib/filter (lib/= (lib.metadata/field provider (mt/id :users :password)) "secret")))
+        memory   (chart-memory)]
+    (swap! memory assoc-in [:state :charts "c-1" :queries] [query])
+    (mt/with-current-user (mt/user->id :rasta)
+      (testing "a sensitive-field refusal reaches the agent as a query error it can fix"
+        (is (=? {:error  {:class :recoverable :code ::save-entity/invalid-query}
+                 :output #(str/starts-with? % "This query refers to a field that is not available for querying.")}
+                (invoke-save-entity memory (assoc chart-args :destination {:target_type "collection"}))))))))
+
+(deftest read-only-destination-without-personal-collection-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp [:model/User {user-id :id} {:type :api-key}
+                   :model/Collection coll {}
+                   :model/Dashboard dash {:collection_id (:id coll)}
+                   :model/Document doc {:collection_id (:id coll) :document document-ast}]
+      (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
+      (mt/with-current-user user-id
+        (doseq [destination [{:target_type "collection" :collection_id (:id coll)}
+                             {:target_type "collection" :collection_id nil}
+                             {:target_type "dashboard" :dashboard_id (:id dash)}
+                             {:target_type "document" :document_id (:id doc)}]]
+          (let [{:keys [class code text]} (failure destination)]
+            (is (= [:recoverable ::save-entity/destination-not-writable] [class code]))
+            (is (str/includes? text "`can_write=true`"))
+            (is (str/includes? text "ask the user"))
+            (is (not (str/includes? text "personal collection")))))))))
+
+(deftest h2-emoji-name-test
+  (when (= :h2 (mdb/db-type))
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-model-cleanup [:model/Card]
+        (mt/with-temp [:model/Collection coll {}]
+          (doseq [[question-name expected-class] [[(apply str (repeat 140 "\uD83E\uDD86")) :validation]
+                                                  [(apply str (repeat 128 "\uD83E\uDD86")) :validation]
+                                                  [(apply str (repeat 127 "\uD83E\uDD86")) nil]
+                                                  [(apply str (repeat 254 "x")) nil]]]
+            (let [outcome (invoke-save-entity
+                           (assoc chart-args
+                                  :name question-name
+                                  :destination {:target_type "collection" :collection_id (:id coll)}))]
+              (is (= expected-class (get-in outcome [:error :class])))
+              (when-not expected-class
+                (is (= question-name
+                       (t2/select-one-fn :name :model/Card :id (get-in outcome [:structured-output :card-id])))))))
+          (is (= 2 (t2/count :model/Card :collection_id (:id coll)))))))))
+
+(deftest trashed-destination-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-temp [:model/Dashboard dash {:archived true}
+                     :model/Document doc {:archived true :document document-ast}]
+        (doseq [[kind id] [["dashboard" (:id dash)] ["document" (:id doc)]]]
+          (is (= {:class :recoverable
+                  :code ::save-entity/destination-archived
+                  :text (str (str/capitalize kind) " " id " is in the trash.\n"
+                             "Ask the user to restore it or choose another destination.")}
+                 (failure {:target_type kind (keyword (str kind "_id")) id}))))
+        (is (not (t2/exists? :model/Card :dashboard_id (:id dash))))
+        (is (not (t2/exists? :model/Card :document_id (:id doc))))))))
+
+(deftest blank-name-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-temp [:model/Collection coll {}]
+        (doseq [question-name ["" "   " "\t\r\n"]]
+          (let [outcome (invoke-save-entity
+                         (assoc chart-args
+                                :name question-name
+                                :destination {:target_type "collection" :collection_id (:id coll)}))]
+            (is (= {:class :validation :code :invalid-arguments} (:error outcome)))
+            (is (= "Invalid tool arguments: `name` must be a non-blank string; received a string."
+                   (:output outcome)))))
+        (is (not (t2/exists? :model/Card :collection_id (:id coll))))))))

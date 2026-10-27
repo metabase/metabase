@@ -6,8 +6,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.settings.core :as setting]
    [metabase.sso.ldap :as ldap]
+   [metabase.sso.schema :as sso.schema]
    [metabase.sso.settings :as sso.settings]
-   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -28,7 +28,7 @@
   "Update LDAP related settings. You must be a superuser to do this."
   [_route-params
    _query-params
-   settings :- [:map
+   settings :- [:map {:closed true}
                 [:ldap-port                    {:optional true} [:maybe
                                                                  ;; treat empty string as nil
                                                                  {:decode/api (fn [x]
@@ -48,7 +48,7 @@
                 [:ldap-group-sync              {:optional true} [:maybe :boolean]]
                 [:ldap-group-base              {:optional true} [:maybe :string]]
                 [:ldap-group-membership-filter {:optional true} [:maybe :string]]
-                [:ldap-group-mappings          {:optional true} [:maybe [:map-of :keyword [:sequential ms/PositiveInt]]]]]]
+                [:ldap-group-mappings          {:optional true} [:maybe ::sso.schema/group-mappings]]]]
   (api/check-superuser)
   (let [ldap-settings (-> settings
                           (update :ldap-password update-password-if-needed)

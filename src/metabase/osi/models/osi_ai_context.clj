@@ -3,7 +3,7 @@
   (`{instructions, synonyms[], examples[]}`) for the entity identified by `entity_type`/`entity_local_id`.
 
   Identity is the logical `(entity_type, entity_local_id)` pair — that compound key is the primary key, so
-  there is one row per entity and no surrogate id or serialization NanoID.
+  there is one row per entity and no surrogate id. The `entity_id` NanoID only orders exported rows.
 
   This table is authoritative.
   An enterprise pgvector index (`library_entity_index`) is reconciled against this table plus live
@@ -14,10 +14,12 @@
   (:require
    [clojure.string :as str]
    [metabase.app-db.core :as app-db]
-   [metabase.entity-retrieval.core :as entity-retrieval]
-   [metabase.entity-retrieval.mirror :as mirror]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.osi.db :as osi.db]
+   [metabase.osi.schema]
+   [metabase.search.entity-retrieval.core :as entity-retrieval]
+   [metabase.search.entity-retrieval.mirror :as mirror]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -26,6 +28,7 @@
 
 (doto :model/OsiAiContext
   (derive :metabase/model)
+  (derive :hook/entity-id)
   (derive :hook/timestamped?))
 
 ;; The logical (entity_type, entity_local_id) pair is the primary key — no surrogate id.
@@ -76,7 +79,7 @@
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 ;;;
-;;; A row's identity is its entity ref: `entity_type` plus the entity it describes. Rather than a separate
+;;; A row's identity is its entity ref: `entity_type` plus the entity it describes. Rather than its `entity_id`
 ;;; NanoID, serdes nests the row under its entity's portable path (mirroring
 ;;; [[metabase.warehouse-schema.models.field-user-settings]], which hangs off its Field): the path is the
 ;;; entity's path plus a constant `OsiAiContext` segment. So both key columns are carried by the path —
@@ -117,10 +120,18 @@
   (let [{:keys [model id]} (last parent-path)]
     (if (= model "Table")
       {:entity_type "table"
-       :entity_local_id (serdes/*import-table-fk* (mapv :id parent-path))}
+       :entity_local_id (serdes/*import-table-fk* (serdes/table-path->table-ref parent-path))}
       (when-let [etype (parent-model->entity-type model)]
         (when-let [toucan (entity-type->toucan etype)]
           {:entity_type etype :entity_local_id (serdes/*import-fk* id toucan)})))))
+
+(defn- portable-parent-path
+  "The parent path of an ingested row from its `entity_type` and its portable `entity_local_id`."
+  [entity-type portable-id]
+  (cond
+    (= entity-type "table")           (serdes/table->path portable-id)
+    (entity-type->toucan entity-type) [{:model (name (entity-type->toucan entity-type)) :id portable-id}]
+    :else                             [{:model entity-type :id portable-id}]))
 
 (defmethod serdes/entity-id "OsiAiContext" [_ _] nil)
 
@@ -128,11 +139,14 @@
   (conj (vec (entity-parent-path entity_type entity_local_id))
         {:model "OsiAiContext" :id "ai_context"}))
 
+(defmethod serdes/ingested-path "OsiAiContext" [_ {:keys [entity_type entity_local_id]}]
+  (conj (portable-parent-path entity_type entity_local_id)
+        {:model "OsiAiContext" :id "ai_context"}))
+
 (defmethod serdes/storage-path "OsiAiContext" [entity _ctx]
   ;; Store under a flat top-level directory rather than nesting next to the entity: serdes/storage-path-prefixes
   ;; only knows how to nest under Database/Schema/Table/Field, so a Card/Measure/Segment parent would throw.
-  ;; The row's identity still lives in its nested generate-path (the on-disk :serdes/meta); this is only the
-  ;; file's location. Storage dedups by `:key`, so it must be unambiguous: use the EDN of the parent's
+  ;; The row's identity still lives in its nested generate-path; this is only the file's location. Storage dedups by `:key`, so it must be unambiguous: use the EDN of the parent's
   ;; `[model id]` pairs (ids can contain "/" and ":", so a delimiter-joined string could collide for distinct
   ;; paths). The slug is just a readable filename — the unique-name generator disambiguates it by `:key`.
   (let [parent (pop (vec (serdes/path entity)))]
@@ -141,17 +155,19 @@
       :key   (pr-str (mapv (juxt :model :id) parent))}]))
 
 ;; `ai_context` is a plain text blob (no FKs — instructions/synonyms/examples are free text), so it copies
-;; verbatim. The key columns are carried by the path, not as fields: `entity_local_id` is resolved from the
-;; parent path on import, and `entity_type` is read back from the parent segment's model.
+;; verbatim. The key columns are exported so [[serdes/ingested-path]] can rebuild the path, and imported from that path.
 (defmethod serdes/make-spec "OsiAiContext" [_model-name _opts]
-  {:copy      [:ai_context]
-   :transform {:created_at      (serdes/date)
-               :updated_at      (serdes/date)
-               :entity_type     {:export (constantly ::serdes/skip)
+  {:copy      [:ai_context :entity_id]
+   :transform {:entity_type     {:export identity
                                  :import-with-context
                                  (fn [current _ _] (:entity_type (parent-path->entity (pop (serdes/path current)))))}
                :entity_local_id {::serdes/fk true
-                                 :export     (constantly ::serdes/skip)
+                                 :export-with-context
+                                 (fn [current _ local-id]
+                                   (let [parent (entity-parent-path (:entity_type current) local-id)]
+                                     (if (= "table" (:entity_type current))
+                                       (serdes/table-path->table-ref parent)
+                                       (:id (last parent)))))
                                  :import-with-context
                                  (fn [current _ _] (:entity_local_id (parent-path->entity (pop (serdes/path current)))))}}})
 
@@ -164,16 +180,11 @@
   [path]
   ;; Resolve the parent path back to a local entity, then find this row by its (entity_type, local-id) key.
   (when-let [{:keys [entity_type entity_local_id]} (parent-path->entity (pop path))]
-    (t2/select-one :model/OsiAiContext
-                   :entity_type (entity-retrieval/normalize-entity-type entity_type)
-                   :entity_local_id entity_local_id)))
+    (osi.db/ai-context (entity-retrieval/normalize-entity-type entity_type) entity_local_id)))
 
 (defmethod serdes/load-update! "OsiAiContext"
   [_model-name ingested local]
   ;; The default keys updates on (first (primary-keys)), which for this compound key is just :entity_type —
   ;; so it would address the wrong rows. Update by the full (entity_type, entity_local_id) key.
-  (t2/update! :model/OsiAiContext
-              :entity_type (:entity_type local) :entity_local_id (:entity_local_id local)
-              ingested)
-  (t2/select-one :model/OsiAiContext
-                 :entity_type (:entity_type local) :entity_local_id (:entity_local_id local)))
+  (osi.db/update-ai-context! (:entity_type local) (:entity_local_id local) (update ingested :ai_context ->ai-context))
+  (osi.db/ai-context (:entity_type local) (:entity_local_id local)))

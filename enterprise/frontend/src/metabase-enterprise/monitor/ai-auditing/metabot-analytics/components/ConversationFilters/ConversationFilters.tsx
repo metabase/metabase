@@ -1,8 +1,10 @@
+import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { P, match } from "ts-pattern";
 import { t } from "ttag";
 
 import { dayjs } from "metabase/dayjs";
+import { FILTER_WIDTH } from "metabase/monitor/constants";
 import { getOperatorDefaultValue } from "metabase/querying/common/components/DatePicker/SpecificDatePicker/utils";
 import type {
   DatePickerOperator,
@@ -16,9 +18,6 @@ import {
 } from "metabase/querying/parameters/utils/parsing";
 import { useSetting } from "metabase/settings";
 import { Flex, Icon, Popover, Select } from "metabase/ui";
-
-// width needed to show Previous 12 months option w/ clipping
-const FILTER_WIDTH = 205;
 
 const DATE_OPERATORS: DatePickerOperator[] = ["=", ">", "<", "between"];
 const RELATIVE_DIRECTIONS: RelativeIntervalDirection[] = ["past", "current"];
@@ -74,9 +73,11 @@ function ConversationDateFilter({
       !retentionCutoff ||
       !getShortcutStartDate(item.value)?.isBefore(retentionCutoff);
 
+    // Mantine keys each group by its name, so the names must be unique. The
+    // dropdown hides them, which is why they are not translated.
     return [
       {
-        group: "",
+        group: "days",
         items: [
           { label: t`Today`, value: "thisday" },
           { label: t`Yesterday`, value: "past1days" },
@@ -85,7 +86,7 @@ function ConversationDateFilter({
         ].filter(withinRetention),
       },
       {
-        group: "",
+        group: "months",
         items: [
           { label: t`Previous month`, value: "past1months" },
           { label: t`Previous 3 months`, value: "past3months" },
@@ -93,7 +94,7 @@ function ConversationDateFilter({
         ].filter(withinRetention),
       },
       {
-        group: "",
+        group: "custom range",
         items: [
           { label: t`Fixed date range…`, value: SPECIFIC_TYPE_VALUE },
           { label: t`Relative date range…`, value: RELATIVE_TYPE_VALUE },
@@ -172,10 +173,11 @@ function ConversationDateFilter({
           onOptionSubmit={handleSelect}
           onDropdownOpen={() => setActiveDropdown("default")}
           w={FILTER_WIDTH}
-          bdrs="sm"
+          bdrs="xs"
           allowDeselect={false}
           leftSection={<Icon name="calendar" />}
           title={displayLabel}
+          styles={{ groupLabel: { display: "none" } }}
           data-testid="conversation-filters-date-select"
         />
       </Popover.Target>
@@ -197,71 +199,78 @@ function ConversationDateFilter({
   );
 }
 
+type FilterOption = { value: string; label: string };
+
+type SelectFilter = {
+  /** `null` when the filter is off. */
+  value: string | null;
+  options: FilterOption[];
+  onChange: (val: string | null) => void;
+};
+
+type GroupFilter = SelectFilter & {
+  noFilterValue: string;
+};
+
 type ConversationFiltersProps = {
   date: string | null;
   onDateChange: (val: string) => void;
-  user: string | null;
-  onUserChange: (val: string | null) => void;
-  group: string | null;
-  onGroupChange: (val: string | null) => void;
-  groupNoFilterValue: string;
-  tenant: string | null;
-  onTenantChange: (val: string | null) => void;
-  userOptions: { value: string; label: string }[];
-  groupOptions: { value: string; label: string }[];
-  tenantOptions: { value: string; label: string }[];
-  hasTenants: boolean;
+  // Each filter shows only when it's passed.
+  userFilter?: SelectFilter;
+  groupFilter?: GroupFilter;
+  tenantFilter?: SelectFilter;
+  /** Rendered right after the Group select, before User/Date — for a caller-specific filter that
+   * belongs grouped with Group rather than after the rest of this shared bar. */
+  extraFilter?: ReactNode;
 };
 
 export function ConversationFilters({
   date,
   onDateChange,
-  user,
-  onUserChange,
-  group,
-  onGroupChange,
-  groupNoFilterValue,
-  tenant,
-  onTenantChange,
-  userOptions,
-  groupOptions,
-  tenantOptions,
-  hasTenants,
+  userFilter,
+  groupFilter,
+  tenantFilter,
+  extraFilter,
 }: ConversationFiltersProps) {
   return (
     <Flex gap="sm" wrap="wrap" align="center">
-      {hasTenants && (
+      {tenantFilter && (
         <Select
-          data={[{ value: "", label: t`All tenants` }, ...tenantOptions]}
-          value={tenant ?? ""}
-          onChange={(val) => onTenantChange(val === "" ? null : val)}
+          data={[{ value: "", label: t`All tenants` }, ...tenantFilter.options]}
+          value={tenantFilter.value ?? ""}
+          onChange={(val) => tenantFilter.onChange(val === "" ? null : val)}
           searchable
           w={FILTER_WIDTH}
-          bdrs="sm"
+          bdrs="xs"
           data-testid="conversation-filters-tenant-select"
         />
       )}
-      <Select
-        placeholder={t`Group`}
-        data={groupOptions}
-        value={group ?? groupNoFilterValue}
-        onChange={(val) =>
-          onGroupChange(val === groupNoFilterValue ? null : val)
-        }
-        searchable
-        w={FILTER_WIDTH}
-        bdrs="sm"
-        data-testid="conversation-filters-group-select"
-      />
-      <Select
-        data={[{ value: "", label: t`All users` }, ...userOptions]}
-        value={user ?? ""}
-        onChange={(val) => onUserChange(val === "" ? null : val)}
-        searchable
-        w={FILTER_WIDTH}
-        bdrs="sm"
-        data-testid="conversation-filters-user-select"
-      />
+      {groupFilter && (
+        <Select
+          placeholder={t`Group`}
+          data={groupFilter.options}
+          value={groupFilter.value ?? groupFilter.noFilterValue}
+          onChange={(val) =>
+            groupFilter.onChange(val === groupFilter.noFilterValue ? null : val)
+          }
+          searchable
+          w={FILTER_WIDTH}
+          bdrs="xs"
+          data-testid="conversation-filters-group-select"
+        />
+      )}
+      {extraFilter}
+      {userFilter && (
+        <Select
+          data={[{ value: "", label: t`All users` }, ...userFilter.options]}
+          value={userFilter.value ?? ""}
+          onChange={(val) => userFilter.onChange(val === "" ? null : val)}
+          searchable
+          w={FILTER_WIDTH}
+          bdrs="xs"
+          data-testid="conversation-filters-user-select"
+        />
+      )}
       <ConversationDateFilter value={date} onChange={onDateChange} />
     </Flex>
   );

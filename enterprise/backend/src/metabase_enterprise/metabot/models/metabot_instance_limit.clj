@@ -1,5 +1,6 @@
 (ns metabase-enterprise.metabot.models.metabot-instance-limit
   (:require
+   [metabase-enterprise.metabot.db :as metabot.db]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -14,20 +15,20 @@
   "Returns the limit for a given tenant, or the instance-wide limit when `tenant-id` is nil.
    Returns nil if no limit is set."
   [tenant-id]
-  (t2/select-one :model/MetabotInstanceLimit :tenant_id tenant-id))
+  (metabot.db/instance-limit tenant-id))
 
 (defn set-instance-limit!
   "Sets or removes the limit for a given tenant (or instance-wide when `tenant-id` is nil).
    Pass nil for `max-usage` to remove the limit. Returns the updated row, or nil if removed."
   [tenant-id max-usage]
   (if (nil? max-usage)
-    (t2/delete! :model/MetabotInstanceLimit :tenant_id tenant-id)
+    (metabot.db/delete-instance-limit! tenant-id)
     (if-let [existing (instance-limit tenant-id)]
-      (t2/update! :model/MetabotInstanceLimit (:id existing) {:max_usage max-usage})
-      (t2/insert! :model/MetabotInstanceLimit {:tenant_id tenant-id :max_usage max-usage})))
+      (metabot.db/update-instance-limit! (:id existing) max-usage)
+      (metabot.db/insert-instance-limit! {:tenant_id tenant-id :max_usage max-usage})))
   (instance-limit tenant-id))
 
 (defn all-tenant-limits
   "Returns all tenant-level limits (where tenant_id is not null), ordered by tenant_id."
   []
-  (t2/select :model/MetabotInstanceLimit :tenant_id [:not= nil] {:order-by [[:tenant_id :asc]]}))
+  (metabot.db/tenant-limits))

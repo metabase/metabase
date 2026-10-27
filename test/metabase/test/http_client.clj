@@ -11,12 +11,13 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.config.core :as config]
+   [metabase.request.schema :as request.schema]
    [metabase.server.instance :as server.instance]
    [metabase.server.middleware.session :as mw.session]
    [metabase.server.streaming-response :as streaming-response]
-   [metabase.server.test-handler :as server.test-handler]
    [metabase.test-runner.assert-exprs :as test-runner.assert-exprs]
    [metabase.test.initialize :as initialize]
+   [metabase.test.server.handler :as test.server.handler]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.json :as json]
@@ -284,15 +285,29 @@
    :patch  http/patch
    :delete http/delete})
 
+(def ^:private RequestOptions
+  "The clj-http request options this test client actually uses."
+  [:map {:closed true}
+   [:headers            {:optional true} [:map-of :string [:maybe :string]]]
+   [:as                 {:optional true} :keyword]
+   [:content-type       {:optional true} [:or :string :keyword]]
+   [:cookie-store       {:optional true} (ms/InstanceOfClass org.apache.http.client.CookieStore)]
+   [:cookies            {:optional true} [:map-of :string ::request.schema/cookie-attrs]]
+   [:redirect-strategy  {:optional true} :keyword]
+   [:decompress-body    {:optional true} :boolean]
+   [:form-params        {:optional true} [:map {:closed true}
+                                          [:SAMLResponse :string]
+                                          [:RelayState   {:optional true} [:maybe :string]]]]])
+
 (def ^:private ClientParamsMap
   [:map {:closed true}
-   [:credentials      {:optional true} [:maybe [:or ms/UUIDString map?]]]
+   [:credentials      {:optional true} [:maybe [:or ms/UUIDString Credentials]]]
    [:method                            (into [:enum] (keys method->request-fn))]
    [:expected-status  {:optional true} [:maybe ms/PositiveInt]]
    [:url                               ms/NonBlankString]
-   [:http-body        {:optional true} [:maybe [:or map? vector?]]]
-   [:query-parameters {:optional true} [:maybe map?]]
-   [:request-options  {:optional true} [:maybe map?]]])
+   [:http-body        {:optional true} [:maybe ms/HttpRequestBody]]
+   [:query-parameters {:optional true} [:maybe ms/HttpQueryParams]]
+   [:request-options  {:optional true} [:maybe RequestOptions]]])
 
 (mu/defn- -client
   ;; Since the params for this function can get a little complicated make sure we validate them
@@ -336,7 +351,12 @@
                            (setContentType [_ _])
                            (setHeader [_ _ _]))]
       (binding [streaming-response/*response* mock-response]
-        (f os canceled-chan))
+        ;; hand `f` the same kind of output stream the Jetty path does, so it carries the response's
+        ;; `:error-response-fn` to `write-error!`
+        (f (#'streaming-response/delay-output-stream
+            (delay os)
+            (:error-response-fn (.options ^StreamingResponse streaming-response)))
+           canceled-chan))
       {:body   (cond-> (.toByteArray os)
                  (some #(re-find % content-type) [#"json" #"text"])
                  (String. "UTF-8"))
@@ -381,17 +401,17 @@
                            (str "/"))
         content-type     (get-in request-options [:headers "content-type"] "application/json")]
     (m/deep-merge
-     {:accept         "json"
-      :headers        {"content-type"                        content-type
-                       @#'mw.session/metabase-session-header (when credentials
-                                                               (if (map? credentials)
-                                                                 (authenticate credentials)
-                                                                 credentials))}
+     {:headers        (u/assoc-dissoc {"content-type" content-type}
+                                      @#'mw.session/metabase-session-header
+                                      (when credentials
+                                        (if (map? credentials)
+                                          (authenticate credentials)
+                                          credentials)))
       :query-string   (build-query-string query-parameters)
       :remote-addr    "127.0.0.1"
       :request-method method
       :uri            (str *url-prefix* url)}
-     request-options
+     (select-keys request-options [:headers :cookies])
      (build-body-params http-body content-type))))
 
 (mu/defn- -mock-client
@@ -404,7 +424,7 @@
         _           (log/debug method-name (pr-str url) (pr-str request))
         thunk       (fn []
                       (try
-                        ((server.test-handler/test-handler) request coerce-mock-response-body (fn raise [e] (throw e)))
+                        ((test.server.handler/test-handler) request coerce-mock-response-body (fn raise [e] (throw e)))
                         (catch clojure.lang.ExceptionInfo e
                           (log/debug e method-name url)
                           (ex-data e))
@@ -453,6 +473,7 @@
       (:url parsed)              (update :url url-escape)
       ;; un-nest {:request-options {:request-options <my-options>}} => {:request-options <my-options>}
       (:request-options parsed)  (update :request-options :request-options)
+      (map? (:http-body parsed)) (update :http-body update-keys u/qualified-name)
       ;; convert query parameters into a flat map [{:k :a, :v 1} {:k :b, :v 2} {:k :b, :v 3}] => {:a 1, :b [2 3]}
       (:query-parameters parsed) (update :query-parameters (fn [query-params]
                                                              (update-vals (->> query-params

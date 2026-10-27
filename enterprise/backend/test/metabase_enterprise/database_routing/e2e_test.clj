@@ -12,10 +12,10 @@
    [metabase-enterprise.test :as met]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
-   [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.util :as driver.u]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
@@ -90,7 +90,7 @@
                        ~(wrap-destinations (rest dests) body)))))))]
     ;; Router: a normal synced DB, exactly as `with-temp-dbs!` builds one.
     `(with-temp-dbs! [~router-binding]
-       (sync/sync-database! ~router-binding)
+       (sync/sync-database! (:id ~router-binding))
        ~(wrap-destinations destinations body))))
 
 (deftest destination-databases-get-used
@@ -211,12 +211,9 @@
               (is (thrown-with-msg?
                    clojure.lang.ExceptionInfo
                    #"(?i)cannot query a destination database directly"
-                   (common/check-allowed-access! dest-id))))
-            (testing "destination access is allowed inside a routing-on context (legit routed query)"
-              (is (nil? (database-routing/with-database-routing-on
-                          (common/check-allowed-access! dest-id)))))
+                   (common/check-allowed-access! (driver.u/lib-database dest-id)))))
             (testing "the router database itself is not treated as a forbidden destination"
-              (is (nil? (common/check-allowed-access! router-id))))))))))
+              (is (nil? (common/check-allowed-access! (driver.u/lib-database router-id)))))))))))
 
 (deftest an-error-is-thrown-if-user-attribute-is-missing-or-no-match
   (mt/with-premium-features #{:database-routing}
@@ -329,7 +326,11 @@
                            response)))
                   (let [response (mt/user-http-request :lucky :get 200 (str "field/" field-id "/values"))]
                     (is (= {:values [["destination-2"]] :field_id field-id :has_more_values false}
-                           response))))))))))))
+                           response)))
+                  (testing "a routed user gets no values while database routing is unavailable"
+                    (mt/with-premium-features #{}
+                      (is (= [] (:values (mt/user-http-request :rasta :get 200
+                                                               (str "field/" field-id "/values"))))))))))))))))
 
 (defmulti router-dataset-name
   "Name for router dataset"
@@ -339,7 +340,7 @@
 
 (defmethod router-dataset-name :default [_driver] "db-router-data")
 
-(doseq [driver [:redshift :databricks :presto-jdbc :bigquery-cloud-sdk]]
+(doseq [driver [:redshift :databricks :presto-jdbc :bigquery-cloud-sdk :oracle]]
   (defmethod router-dataset-name driver [_driver] "db-routing-data"))
 
 (defmulti routed-dataset-name
@@ -350,7 +351,7 @@
 
 (defmethod routed-dataset-name :default [_driver] "db-routed-data")
 
-(doseq [driver [:redshift :databricks :presto-jdbc :bigquery-cloud-sdk]]
+(doseq [driver [:redshift :databricks :presto-jdbc :bigquery-cloud-sdk :oracle]]
   (defmethod routed-dataset-name driver [_driver] "db-routing-data"))
 
 (defmulti router-dataset-details
@@ -364,9 +365,6 @@
 (defmethod router-dataset-details :clickhouse [_driver]
   {:dbname "db_router_data"
    :enable-multiple-db false})
-
-(defmethod router-dataset-details :bigquery-cloud-sdk [driver]
-  {:dataset-filters-patterns (str "*" (str/replace (router-dataset-name driver) "-" "_"))})
 
 (defmethod router-dataset-details :databricks [driver]
   {:multi-level-schema false
@@ -385,8 +383,7 @@
    :enable-multiple-db false})
 
 (defmethod routed-dataset-details :bigquery-cloud-sdk [driver]
-  {:service-account-json     (tx/db-test-env-var-or-throw driver :service-account-json-routing)
-   :dataset-filters-patterns (str "*" (str/replace (routed-dataset-name driver) "-" "_"))})
+  {:service-account-json (tx/db-test-env-var-or-throw driver :service-account-json-routing)})
 
 (defmethod routed-dataset-details :redshift [driver]
   {:db (tx/db-test-env-var-or-throw driver :db-routing)})
@@ -428,7 +425,7 @@
                       {:details (merge (:details router)
                                        (router-dataset-details driver/*driver*))})
           (let [router (t2/select-one :model/Database :id (u/the-id router))]
-            (sync/sync-database! router {:scan :schema})
+            (sync/sync-database! (:id router) {:scan :schema})
             ;; Load the physical routed warehouse only for its connection-details + name; discard the normal
             ;; `:model/Database` row `mt/dataset` registers. The destination is inserted prod-shaped below.
             (let [[routed-name routed-details]
@@ -486,7 +483,7 @@
           (t2/update! :model/Database (u/the-id router)
                       {:details (assoc (:details router) :dbname nil)})
           (let [router (t2/select-one :model/Database :id (u/the-id router))]
-            (sync/sync-database! router {:scan :schema})
+            (sync/sync-database! (:id router) {:scan :schema})
             ;; Load the physical routed warehouse only for its connection-details + name; discard the normal
             ;; `:model/Database` row `mt/dataset` registers. The destination is inserted prod-shaped below.
             (let [[routed-name routed-details]

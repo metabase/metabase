@@ -235,18 +235,16 @@ export const CSVUpload = ({
             </div>
             {uploadState.file ? (
               <Button
-                variant="subtle"
-                p={0}
-                h="auto"
+                variant="transparent"
+                size="compact-md"
                 onClick={() => setUploadState({ file: null, error: null })}
               >
                 {t`Remove`}
               </Button>
             ) : (
               <Button
-                variant="subtle"
-                p={0}
-                h="auto"
+                variant="transparent"
+                size="compact-md"
                 onClick={handleFileSelectClick}
               >
                 {t`Select a file`}
@@ -258,18 +256,17 @@ export const CSVUpload = ({
           <Button
             aria-label={t`Select a collection`}
             onClick={() => openCollectionPicker()}
+            leftSection={<Icon name="folder" />}
             rightSection={<Icon name="chevrondown" />}
             styles={{
               inner: {
                 justifyContent: "space-between",
               },
+              label: { flex: 1 },
               root: { flex: 1 },
             }}
           >
-            <Group gap="sm" flex={1}>
-              <Icon name="folder" />
-              <CollectionName id={uploadCollectionId} />
-            </Group>
+            <CollectionName id={uploadCollectionId} />
           </Button>
           <Button
             variant="filled"

@@ -1,6 +1,7 @@
 import * as Yup from "yup";
 
 import type {
+  AddResearchGroupsResponse,
   CardDisplayType,
   DatasetQuery,
   MetabotCodeEdit,
@@ -47,6 +48,7 @@ export const knownDataPartTypes = [
   "data-search_results",
   "data-tool_title",
   "data-conversation-title",
+  "data-research_plan_update",
 ] as const satisfies readonly KnownDataPart["type"][];
 
 export type SearchResultItem = {
@@ -57,6 +59,8 @@ export type SearchResultItem = {
   display?: CardDisplayType;
   moderated_status?: string;
   database_id?: number;
+  /** The base table of a measure or segment. */
+  table_id?: number;
   database_schema?: string;
   database_name?: string;
   collection?: { id?: number; name: string };
@@ -120,6 +124,13 @@ export type ToolTitleData = {
   title: string;
 };
 
+// The picker hydration for a Research plan edit. It rides a data part rather than the
+// `add_research_groups` tool result because that result is also the agent's LLM context, and this
+// payload grows with every metric the call references.
+export type ResearchPlanUpdateData = AddResearchGroupsResponse & {
+  tool_call_id?: string;
+};
+
 export type KnownDataPart =
   | { type: "data-navigate_to"; data: string }
   | { type: "data-state"; data: Record<string, unknown> }
@@ -132,7 +143,8 @@ export type KnownDataPart =
   | { type: "data-static_viz"; data: StaticVizValue }
   | { type: "data-search_results"; data: SearchResultsData }
   | { type: "data-tool_title"; data: ToolTitleData }
-  | { type: "data-conversation-title"; data: string };
+  | { type: "data-conversation-title"; data: string }
+  | { type: "data-research_plan_update"; data: ResearchPlanUpdateData };
 
 export const isKnownDataPart = (part: {
   type: string;

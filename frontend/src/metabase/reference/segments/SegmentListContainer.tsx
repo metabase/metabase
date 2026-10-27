@@ -3,13 +3,11 @@ import { useEffect } from "react";
 import { usePrevious } from "react-use";
 
 import CS from "metabase/css/core/index.css";
-import { connect, useDispatch, useSelector } from "metabase/redux";
+import { connect, useSelector } from "metabase/redux";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
-import { fetchSegmentListData } from "metabase/reference/fetch-data";
 import BaseSidebar from "metabase/reference/guide/BaseSidebar";
 import * as actions from "metabase/reference/reference";
 import { SegmentList } from "metabase/reference/segments/SegmentList";
-import { useReferenceFetch } from "metabase/reference/use-reference-fetch-state";
 import { useLocation } from "metabase/router";
 
 import type { ClearStateProps } from "../reference";
@@ -25,12 +23,7 @@ function SegmentListContainer(props: SegmentListContainerProps) {
   const { pathname } = useLocation();
   const previousPathname = usePrevious(pathname);
 
-  const dispatch = useDispatch();
   const isEditing = useSelector(getIsEditing);
-
-  const { loading, loadingError } = useReferenceFetch(() =>
-    fetchSegmentListData(dispatch),
-  );
 
   useEffect(() => {
     const pathnameChanged =
@@ -46,7 +39,7 @@ function SegmentListContainer(props: SegmentListContainerProps) {
       style={isEditing ? { paddingTop: "43px" } : {}}
       sidebar={<BaseSidebar />}
     >
-      <SegmentList loading={loading} loadingError={loadingError} />
+      <SegmentList />
     </SidebarLayout>
   );
 }

@@ -5,6 +5,7 @@
    [metabase.explorations.impl :as explorations.impl]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.metrics.core :as metrics]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -34,19 +35,20 @@
       (thunk))))
 
 (defn- insert-n-metrics!
-  "Insert `n` metric Cards and return the set of their ids."
+  "Insert and sync `n` metric Cards, returning the set of their IDs."
   [n]
   (let [q (count-metric-query :orders)]
     (set (for [_ (range n)]
-           (t2/insert-returning-pk! :model/Card
-                                    {:name                   (mt/random-name)
-                                     :type                   :metric
-                                     :creator_id             (mt/user->id :crowberto)
-                                     :database_id            (mt/id)
-                                     :table_id               (mt/id :orders)
-                                     :display                :scalar
-                                     :visualization_settings {}
-                                     :dataset_query          q})))))
+           (u/prog1 (t2/insert-returning-pk! :model/Card
+                                             {:name                   (mt/random-name)
+                                              :type                   :metric
+                                              :creator_id             (mt/user->id :crowberto)
+                                              :database_id            (mt/id)
+                                              :table_id               (mt/id :orders)
+                                              :display                :scalar
+                                              :visualization_settings {}
+                                              :dataset_query          q})
+             (metrics/sync-dimensions! :metadata/metric <>))))))
 
 (deftest target-resolvable?-test
   (testing "target-resolvable? reuses a prebuilt query and breakoutable columns"
@@ -77,14 +79,14 @@
     (testing "resolver computes breakoutable-columns once per (db,table) and reuses it"
       (let [calls    (atom 0)
             resolve* (make-resolver)]
-        (with-redefs [lib/breakoutable-columns (fn [_] (swap! calls inc) [])]
+        (mt/with-dynamic-fn-redefs [lib/breakoutable-columns (fn [_] (swap! calls inc) [])]
           (resolve* m q)                                  ; orders: miss
           (resolve* m q)                                  ; orders: hit
           (resolve* (assoc m :table_id (mt/id :products)) q)) ; products: miss
         (is (= 2 @calls))))))
 
 (deftest query-count-does-not-scale-with-metric-count-test
-  (testing "exploration-data issues a ~constant number of DB queries regardless of metric count"
+  (testing "exploration-data issues a ~constant number of DB queries for synced metrics"
     ;; Before batching, each extra metric added ~2 permission queries (an N+1). After batching,
     ;; adding metrics must not add per-metric queries.
     (mt/with-test-user :rasta
@@ -139,7 +141,8 @@
 
 (defmacro ^:private with-synthetic-metrics [& body]
   `(mt/with-dynamic-fn-redefs [explorations.impl/hydrated-metrics synthetic-hydrated
-                               explorations.impl/index-metrics    synthetic-hydrated]
+                               explorations.impl/index-metrics    synthetic-hydrated
+                               explorations.impl/catalog-metrics  synthetic-hydrated]
      ~@body))
 
 (deftest research-metric-index-test
@@ -333,72 +336,79 @@
       (is (true? (:truncated payload)))
       (is (> 20000 (count (json/encode payload)))))))
 
-(deftest research-groups-metric-anchored-test
+(deftest research-groups-test
   (with-synthetic-metrics
-    (testing "a valid metric-anchored group echoes its spec and restricts to that metric"
-      (let [spec {:anchor "metric" :metric_id 1 :dimension_ids ["plan-1"]}
+    (testing "a valid group echoes its spec and restricts to that metric"
+      (let [spec {:metric_id 1 :dimension_ids ["plan-1"]}
             {:keys [metrics groups]} (explorations.impl/research-groups {:groups [spec]})]
         (is (= [spec] groups))
         (is (= [1] (mapv :id metrics)))
         (is (= ["region-1" "plan-1"] (:dimension_ids (first metrics))))))
     (testing "dimension_ids is optional"
       (is (= [1] (mapv :id (:metrics (explorations.impl/research-groups
-                                      {:groups [{:anchor "metric" :metric_id 1}]}))))))))
-
-(deftest research-groups-dimension-anchored-test
-  (with-synthetic-metrics
-    (testing "a dimension-anchored group pulls every metric exposing a dimension in that group"
-      (let [{:keys [metrics groups]} (explorations.impl/research-groups
-                                      {:groups [{:anchor "dimension" :dimension_id "region-1"}]})]
-        (is (= [{:anchor "dimension" :dimension_id "region-1"}] groups))
-        ;; region-1 and region-2 share a source -> one group across metrics 1 and 2
-        (is (= [1 2] (sort (mapv :id metrics))))))))
-
-(deftest research-groups-dimension-anchored-metric-subset-test
-  (with-synthetic-metrics
-    (testing "metric_ids restricts a dimension-anchored group to the chosen metrics"
-      (let [spec {:anchor "dimension" :dimension_id "region-1" :metric_ids [1]}
-            {:keys [metrics groups]} (explorations.impl/research-groups {:groups [spec]})]
-        (is (= [spec] groups))
-        (is (= [1] (mapv :id metrics)))))
-    (testing "omitting metric_ids still pulls every metric exposing the dimension"
+                                      {:groups [{:metric_id 1}]}))))))
+    (testing "several groups pull the union of their metrics"
       (is (= [1 2] (sort (mapv :id (:metrics (explorations.impl/research-groups
-                                              {:groups [{:anchor "dimension" :dimension_id "region-1"}]})))))))))
+                                              {:groups [{:metric_id 1} {:metric_id 2}]})))))))))
 
-(deftest research-groups-hard-errors-test
+(defn- research-groups-problems
+  "Return the `ex-data` from [[explorations.impl/research-groups]] for invalid `groups`."
+  [groups]
+  (try
+    (explorations.impl/research-groups {:groups groups})
+    (catch clojure.lang.ExceptionInfo e
+      (ex-data e))))
+
+(deftest research-groups-reports-every-bad-id-test
   (with-synthetic-metrics
-    (testing "unknown metric id"
-      (is (thrown-with-msg? Exception #"Unknown or inaccessible metric id 999"
-                            (explorations.impl/research-groups
-                             {:groups [{:anchor "metric" :metric_id 999}]}))))
-    (testing "dimension that isn't a candidate of its metric"
-      (is (thrown-with-msg? Exception #"not a candidate of metric"
-                            (explorations.impl/research-groups
-                             {:groups [{:anchor "metric" :metric_id 1 :dimension_ids ["region-2"]}]}))))
-    (testing "unknown dimension id"
-      (is (thrown-with-msg? Exception #"Unknown dimension id"
-                            (explorations.impl/research-groups
-                             {:groups [{:anchor "dimension" :dimension_id "bogus"}]}))))
-    (testing "replace_default_dimensions with no dimension_ids"
-      (is (thrown-with-msg? Exception #"replace_default_dimensions requires"
-                            (explorations.impl/research-groups
-                             {:groups [{:anchor "metric" :metric_id 1 :replace_default_dimensions true}]}))))
-    (testing "metric_id not related to a dimension-anchored group's dimension"
-      (is (thrown-with-msg? Exception #"not related to dimension"
-                            (explorations.impl/research-groups
-                             {:groups [{:anchor "dimension" :dimension_id "plan-1" :metric_ids [2]}]}))))
-    (testing "unknown anchor"
-      (is (thrown-with-msg? Exception #"Unknown anchor"
-                            (explorations.impl/research-groups
-                             {:groups [{:anchor "segment" :metric_id 1}]}))))
-    (testing "metric anchor missing metric_id"
-      (is (thrown-with-msg? Exception #"requires a metric_id"
-                            (explorations.impl/research-groups
-                             {:groups [{:anchor "metric"}]}))))
-    (testing "dimension anchor missing dimension_id"
-      (is (thrown-with-msg? Exception #"requires a dimension_id"
-                            (explorations.impl/research-groups
-                             {:groups [{:anchor "dimension"}]}))))))
+    (testing "every unknown metric id, not just the first"
+      (is (= {:unknown-metric-ids [999 1000]}
+             (research-groups-problems [{:metric_id 999} {:metric_id 1}
+                                        {:metric_id 1000} {:metric_id 999}]))))
+    (testing "every group that replaces the automatic dimensions with none"
+      (is (= {:replace-without-dimensions [1 2]}
+             (research-groups-problems [{:metric_id 1 :replace_default_dimensions true}
+                                        {:metric_id 2 :replace_default_dimensions true
+                                         :dimension_ids []}]))))
+    (testing "every dimension that isn't a candidate of its metric, with that metric's candidates"
+      (is (= {:invalid-dimensions [{:metric-id     1
+                                    :metric-name   "Revenue"
+                                    :dimension-ids ["region-2" "nope"]
+                                    :candidates    [{:id "region-1" :name "Region"}
+                                                    {:id "plan-1" :name "Plan"}]}
+                                   {:metric-id     2
+                                    :metric-name   "Churn"
+                                    :dimension-ids ["plan-1"]
+                                    :candidates    [{:id "region-2" :name "Region"}]}]}
+             (research-groups-problems [{:metric_id 1 :dimension_ids ["region-1" "region-2"]}
+                                        {:metric_id 2 :dimension_ids ["plan-1"]}
+                                        {:metric_id 1 :dimension_ids ["nope"]}]))))
+    (testing "every kind of problem at once, with no further checks on a metric that isn't there"
+      (is (= {:unknown-metric-ids         [999 1000]
+              :replace-without-dimensions [2]
+              :invalid-dimensions         [{:metric-id     1
+                                            :metric-name   "Revenue"
+                                            :dimension-ids ["wrong"]
+                                            :candidates    [{:id "region-1" :name "Region"}
+                                                            {:id "plan-1" :name "Plan"}]}]}
+             (research-groups-problems [{:metric_id 999 :dimension_ids ["anything"]}
+                                        {:metric_id 1 :dimension_ids ["wrong"]}
+                                        {:metric_id 1000 :replace_default_dimensions true}
+                                        {:metric_id 2 :replace_default_dimensions true}]))))
+    (testing "a dimension that the catalog still lists is rejected if query resolution removes it"
+      ;; `plan-1` survives the cheap catalog but its target no longer resolves against the
+      ;; metric's query, so it must be rejected rather than silently dropped from the payload.
+      (mt/with-dynamic-fn-redefs [explorations.impl/resolve-metric-queries
+                                  (fn [metrics]
+                                    (mapv #(update % :dimensions
+                                                   (fn [ds] (filterv (comp #{"region-1"} :id) ds)))
+                                          metrics))]
+        (is (= [{:metric-id     1
+                 :metric-name   "Revenue"
+                 :dimension-ids ["plan-1"]
+                 :candidates    [{:id "region-1" :name "Region"}]}]
+               (:invalid-dimensions
+                (research-groups-problems [{:metric_id 1 :dimension_ids ["plan-1"]}]))))))))
 
 ;;; ------------------------------------------ exploration-data ------------------------------------------
 

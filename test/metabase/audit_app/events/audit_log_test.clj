@@ -480,6 +480,19 @@
                 :model    "User"}
                (mt/latest-audit-log-entry :password-reset-successful (mt/user->id :rasta))))))))
 
+(deftest password-changed-event-test
+  (testing :event/password-changed
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [user (mt/fetch-user :rasta)]
+        (is (= {:object user :user-id (mt/user->id :crowberto)}
+               (events/publish-event! :event/password-changed {:object user :user-id (mt/user->id :crowberto)})))
+        (is (= {:model_id (mt/user->id :rasta)
+                :user_id  (mt/user->id :crowberto)
+                :details  {}
+                :topic    :password-changed
+                :model    "User"}
+               (mt/latest-audit-log-entry :password-changed (mt/user->id :rasta))))))))
+
 (deftest create-channel-event-test
   (mt/with-current-user (mt/user->id :rasta)
     (mt/with-temp [:model/Channel channel notification.tu/default-can-connect-channel]
@@ -573,7 +586,7 @@
    (mt/with-current-user (mt/user->id :rasta)
      (mt/with-temp [:model/Document {doc-id :id}     {}
                     :model/Comment  comment {:target_id doc-id
-                                             :content "{}"}]
+                                             :content   {:type "doc", :content []}}]
        (testing :event/comment-create
          (is (= {:object comment}
                 (events/publish-event! :event/comment-create {:object comment})))

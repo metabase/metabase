@@ -1,5 +1,8 @@
 import type {
+  TestAggregationSpec,
+  TestBreakoutWithNameSpec,
   TestExpressionSpec,
+  TestNamedAggregationSpec,
   TestStageSpec,
   TestStageWithSourceSpec,
 } from "metabase-types/api";
@@ -19,14 +22,22 @@ export type TableQueryInput = Omit<TestStageWithSourceSpec, "source"> & {
   enabled?: boolean;
 };
 
-export type QuestionQueryInput = Pick<
+/**
+ * The dynamic clauses applied on top of a static query. They become a stage of
+ * their own, and a stage above the source sees only the previous stage's result
+ * columns — so it takes the same clause set as a card stage.
+ */
+export type DynamicQueryInput = Pick<
   TestStageSpec,
   "breakouts" | "orderBys" | "limit"
 > & {
-  source: QuestionSchema;
   filters?: readonly TestExpressionSpec[];
   aggregations?: readonly TestExpressionSpec[];
   enabled?: boolean;
+};
+
+export type QuestionQueryInput = DynamicQueryInput & {
+  source: QuestionSchema;
 };
 
 export type QueryInput = TableQueryInput | QuestionQueryInput;
@@ -46,11 +57,32 @@ export const isSegmentReference = (value: unknown): value is SegmentSchema =>
 export const isMeasureReference = (value: unknown): value is MeasureSchema =>
   isObject(value) && typeof value.id === "number" && value.type === "measure";
 
+export const isNamedBreakout = (
+  value: unknown,
+): value is TestBreakoutWithNameSpec =>
+  isObject(value) &&
+  value.type === "breakout" &&
+  typeof value.name === "string" &&
+  isObject(value.column);
+
+export const isNamedAggregation = (
+  value: unknown,
+): value is TestNamedAggregationSpec =>
+  isObject(value) &&
+  typeof value.name === "string" &&
+  "value" in value &&
+  !("type" in value);
+
+export const unwrapNamedAggregation = (aggregation: TestAggregationSpec) =>
+  isNamedAggregation(aggregation) ? aggregation.value : aggregation;
+
 export const isQuestionInput = (input: unknown): input is QuestionQueryInput =>
   isObject(input) && "source" in input && isQuestionReference(input.source);
 
 export const isQuestionReference = (value: unknown): value is QuestionSchema =>
-  isObject(value) && typeof value.id === "number" && value.type === "card";
+  isObject(value) &&
+  value.type === "card" &&
+  (typeof value.id === "number" || typeof value.entityId === "string");
 
 export const isQueryInput = (input: unknown): input is QueryInput =>
   isTableInput(input) || isQuestionInput(input);

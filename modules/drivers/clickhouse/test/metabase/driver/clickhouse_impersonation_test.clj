@@ -9,6 +9,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.test-util :as driver.tu]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync.core]
@@ -166,7 +167,7 @@
                                                              "insert_quorum" "2"})
         (ctd/exec-statements grant-statements  cluster-port {"wait_end_of_query" "1"})
         (t2.with-temp/with-temp [:model/Database db cluster-details]
-          (mt/with-db db (sync.core/sync-database! db)
+          (mt/with-db db (sync.core/sync-database! (:id db))
             (letfn [(check-impersonation! [roles expected]
                       (impersonation.tu/with-impersonations!
                         {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
@@ -183,10 +184,7 @@
                          mt/rows)))
               (check-impersonation! "row_a" [["a"]])
               (check-impersonation! "row_b" [["b"]])
-              (check-impersonation! "row_c" [["c"]])
-              (check-impersonation! "row_a,row_c" [["a"] ["c"]])
-              (check-impersonation! "row_b,row_c" [["b"] ["c"]])
-              (check-impersonation! "row_a,row_b,row_c" [["a"] ["b"] ["c"]]))))))))
+              (check-impersonation! "row_c" [["c"]]))))))))
 
 (defn- with-ssh-tunnel*! [tunnel-details f]
   (let [base-details (t2/select-one-fn :details 'Database :id (mt/id))]

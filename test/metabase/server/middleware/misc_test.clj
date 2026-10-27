@@ -10,15 +10,16 @@
 
 (defn- maybe-set-site-url
   [request]
+  ;; `site-url` is only ever derived from a request now made by an authenticated superuser; mark the request as such
+  ;; the way the upstream auth middleware would, so these tests exercise the derivation path.
   ((mw.misc/maybe-set-site-url (fn [request respond _] (respond request)))
-   request
+   (assoc request :is-superuser? true)
    identity
    (fn [e] (throw e))))
 
 (defmacro ^:private with-fresh-instance!
   [& body]
-  `(mt/with-temporary-setting-values [~'has-user-setup false]
-     ~@body))
+  `(do ~@body))
 
 (defn- mock-request
   [uri origin-header x-forwarded-host-header host-header]
@@ -56,6 +57,27 @@
           (let [request (mock-request "/" "https://mb2.example.com" nil nil)]
             (maybe-set-site-url request)
             (is (= "https://mb1.example.com" (system/site-url)))))))))
+
+(deftest maybe-set-site-url-requires-superuser-test
+  ;; `maybe-set-site-url` is Ring middleware: it sets `site-url` as a side effect, then calls the handler it wraps. We
+  ;; pass `req` in and wrap a throwaway handler whose own args we ignore -- the test asserts the side effect via
+  ;; `(system/site-url)`, not the response. (Unlike the shared `maybe-set-site-url` helper above, this doesn't inject
+  ;; `:is-superuser?`, so each case sets that flag itself.)
+  (letfn [(run-middleware [req]
+            ((mw.misc/maybe-set-site-url (fn [_req respond _raise] (respond nil)))
+             req identity (fn [e] (throw e))))]
+    (testing "site-url is NOT derived from a non-superuser request, even before the first user exists"
+      (mt/with-temporary-setting-values [site-url nil, has-user-setup false]
+        (run-middleware (assoc (mock-request "/api/setup" nil nil "attacker.example")
+                               :is-superuser? false))
+        (is (nil? (system/site-url))
+            "a pre-setup request does not set site-url")))
+    (testing "site-url IS derived from an authenticated superuser request"
+      (mt/with-temporary-setting-values [site-url nil]
+        (run-middleware (assoc (mock-request "/" nil nil "mb.example.com")
+                               :is-superuser? true))
+        (is (= "http://mb.example.com" (system/site-url))
+            "a superuser request still auto-derives site-url")))))
 
 (deftest maybe-set-site-url-forwarded-proto-test
   (with-fresh-instance!

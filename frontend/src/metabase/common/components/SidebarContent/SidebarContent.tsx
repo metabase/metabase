@@ -94,7 +94,7 @@ function SidebarContentInner({
 }
 
 const PaneContent = (props: BoxProps & { children: React.ReactNode }) => {
-  return <Box px="lg" {...props} />;
+  return <Box px="xl" {...props} />;
 };
 
 export const SidebarContent = Object.assign(SidebarContentInner, {

@@ -5,16 +5,21 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.redshift :as redshift]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as driver.sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.sync :as driver.s]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
    [metabase.plugins.jdbc-proxy :as jdbc-proxy]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
@@ -34,6 +39,18 @@
    (metabase.plugins.jdbc_proxy ProxyDriver)))
 
 (set! *warn-on-reflection* true)
+
+(deftest default-schema-test
+  (mt/test-driver :redshift
+    (testing "default"
+      (is (= "public"
+             (driver.sql/default-schema :redshift (lib.metadata/database (mt/metadata-provider))))))
+    (testing "schema configured in the JDBC additional options"
+      (let [schema  (redshift.tx/unique-session-schema)
+            details (assoc (:details (mt/db)) :additional-options (str "currentSchema=" schema))]
+        (mt/with-temp [:model/Database database {:engine :redshift, :details details}]
+          (is (= schema
+                 (driver.sql/default-schema :redshift (driver.u/ensure-lib-database database)))))))))
 
 (use-fixtures :once (fixtures/initialize :plugins))
 (use-fixtures :once (fixtures/initialize :db))
@@ -73,7 +90,7 @@
 (deftest remark-test
   (testing "if I run a Redshift query, does it get a remark added to it?"
     (mt/test-driver :redshift
-      (let [expected (for [line ["-- /* partner: \"metabase\", {\"dashboard_id\":5678,\"chart_id\":1234,\"optional_user_id\":1000,\"optional_account_id\":\"{{site-uuid}}\",\"filter_values\":{\"id\":[\"1\",\"2\",\"3\"]}} */ Metabase:: userID: 1000 queryType: MBQL queryHash: cb83d4f6eedc250edb0f2c16f8d9a21e5d42f322ccece1494c8ef3d634581fe2"
+      (let [expected (for [line ["-- /* partner: \"metabase\", {\"dashboard_id\":5678,\"chart_id\":1234,\"optional_user_id\":1000,\"optional_account_id\":\"{{site-uuid}}\",\"filter_values\":{\"id\":[\"1\",\"2\",\"3\"]}} */ Metabase:: userID: 1000 queryType: MBQL queryHash: cb83d4f6eedc250edb0f2c16f8d9a21e5d42f322ccece1494c8ef3d634581fe2 accountID: {{site-uuid}} dashboardID: 5678 cardID: 1234 context: ad-hoc databaseID: {{database-id}}"
                                  "SELECT"
                                  "  \"{{schema}}\".\"test_data_users\".\"id\" AS \"id\","
                                  "  \"{{schema}}\".\"test_data_users\".\"name\" AS \"name\","
@@ -94,6 +111,7 @@
                                  "  2000"]]
                        (-> line
                            (str/replace #"\Q{{site-uuid}}\E" (system/site-uuid))
+                           (str/replace #"\Q{{database-id}}\E" (str (mt/id)))
                            (str/replace #"\Q{{schema}}\E" (redshift.tx/unique-session-schema))))]
         (is (= expected
                (sql->lines
@@ -231,7 +249,7 @@
             ;; sync the schema again to pick up the new view (and table, though we aren't checking that)
             (binding [sync-util/*log-exceptions-and-continue?*                       false
                       redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
-              (sync/sync-database! database {:scan :schema}))
+              (sync/sync-database! (:id database) {:scan :schema}))
             (testing "the new view should have been synced"
               (is (contains?
                    (t2/select-fn-set :name :model/Table :db_id (u/the-id database))
@@ -262,7 +280,7 @@
              qual-view-nm)
             (binding [sync-util/*log-exceptions-and-continue?*                       false
                       redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
-              (sync/sync-database! database {:scan :schema}))
+              (sync/sync-database! (:id database) {:scan :schema}))
             (testing "the new view should have been synced without errors"
               (is (contains?
                    (t2/select-fn-set :name :model/Table :db_id (u/the-id database))
@@ -289,7 +307,7 @@
              (mt/with-temp [:model/Database db {:engine :redshift, :details details}]
                (let [table-is-in-results? (fn []
                                             (binding [redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
-                                              (->> (:tables (driver/describe-database :redshift db))
+                                              (->> (:tables (driver/describe-database :redshift (driver.u/ensure-lib-database db)))
                                                    (map :name)
                                                    (some #{table-name})
                                                    boolean)))
@@ -319,7 +337,9 @@
         (mt/with-persistence-enabled! [persist-models!]
           (let [details (assoc (:details (mt/db))
                                :schema-filters-type "inclusion"
-                               :schema-filters-patterns "metabase_cache*,20*,pg_*")] ; 20* matches test session schemas
+                               ;; temp_* matches test session schemas, which [[unique-prefix]] names
+                               ;; `temp_<utc-date>_<hour>_<site-uuid>_schema`
+                               :schema-filters-patterns "metabase_cache*,temp_*,pg_*")]
             (mt/with-temp [:model/Card _      {:name          "model"
                                                :type          :model
                                                :dataset_query (mt/mbql-query users)
@@ -327,10 +347,13 @@
                            :model/Database db {:engine :redshift, :details details}]
               (binding [redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
                 (persist-models!)
-                (let [synced-schemas (into #{} (map :schema) (:tables (driver/describe-database :redshift db)))]
+                (let [synced-schemas (into #{} (map :schema) (:tables (driver/describe-database :redshift (driver.u/ensure-lib-database db))))]
                   (testing "sense check: there are results matching some schemas in the schema-filters-patterns"
-                    (is (some #(re-matches #"20(.*)" %) synced-schemas)))
-                  (let [all-schemas (map :table_schema (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                    ;; the schema this run just loaded `avian-singles` into, rather than anything shaped like a
+                    ;; session schema: it ties the assertion to the name [[unique-prefix]] actually produces, so
+                    ;; renaming those schemas fails here instead of silently emptying the result
+                    (is (contains? synced-schemas (redshift.tx/unique-session-schema))))
+                  (let [all-schemas (map :table_schema (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                                                                    "select distinct table_schema from information_schema.tables;"))]
                     (testing "metabase_cache_ tables are excluded from results"
                       (let [match? #(re-matches #"metabase_cache(.*)" %)]
@@ -357,7 +380,7 @@
              qual-mview-nm)
             (binding [redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
               (u/auto-retry 3
-                (let [table-names (into #{} (map :name) (:tables (driver/describe-database :redshift database)))]
+                (let [table-names (into #{} (map :name) (:tables (driver/describe-database :redshift (driver.u/ensure-lib-database database))))]
                   (when-not (contains? table-names mview-nm)
                     (Thread/sleep 1000)
                     (throw (ex-info "Materialized view not yet visible in describe-database results"
@@ -420,7 +443,7 @@
                 qual-view-name               (format "\"%s\".\"%s\"" schema-name view-nm)
                 mview-name                   (tx/db-qualified-table-name db-name "mview")
                 qual-mview-name              (format "\"%s\".\"%s\"" schema-name mview-name)
-                conn-spec                    (sql-jdbc.conn/db->pooled-connection-spec database)
+                conn-spec                    (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database database))
                 get-privileges               (fn []
                                                (sql-jdbc.conn/with-connection-spec-for-testing-connection
                                                 [spec [:redshift (assoc (:details database) :user username)]
@@ -691,7 +714,7 @@
                      :base-type {:native "VARBYTE"}
                      :effective-type :type/Text}
                     {:field-name "multi_driver"
-                     :base-type {:natives {:redshift "SUPER" :postgres "JSONB"}}
+                     :base-type {:natives {"redshift" "SUPER" "postgres" "JSONB"}}
                      :effective-type :type/JSON}]}]}
           rows  (@#'test.get-or-create/dbdef->fake-sync-rows :redshift 456 dbdef)
           fields (:field-rows (first rows))]
@@ -723,3 +746,108 @@
            ;; None (special role in Postgres to revert back to login role; should not be quoted)
            "none"                         "SET SESSION AUTHORIZATION none;"
            "NONE"                         "SET SESSION AUTHORIZATION NONE;"))))))
+
+(deftest ^:parallel exactly-named-schemas-agrees-with-filter-test
+  (testing "when the inclusion filter names its schemas outright, membership decides exactly what the filter keeps"
+    (let [candidates ["spectrum"
+                      "2026_08_27_18_abc_schema"
+                      "2026_08_27_18_abc_schema_extra"
+                      "prefix_spectrum"
+                      "spectrumx"
+                      "SPECTRUM"
+                      "other"
+                      "with space"
+                      "withxspace"
+                      "hyphen-schema"
+                      "hyphenxschema"
+                      "unicodé"
+                      "unicode"
+                      "at@sign"
+                      "atxsign"]]
+      (doseq [patterns ["spectrum"
+                        "spectrum,2026_08_27_18_abc_schema"
+                        "  spectrum ,  2026_08_27_18_abc_schema  "
+                        "spectrum,spectrum"
+                        ;; legal Redshift schema names that carry no regex syntax
+                        "with space"
+                        "hyphen-schema"
+                        "unicodé"
+                        "at@sign"]]
+        (testing (pr-str patterns)
+          (let [named (#'redshift/exactly-named-schemas patterns)]
+            (is (some? named))
+            (doseq [candidate candidates]
+              (is (= (driver.s/include-schema? patterns nil candidate)
+                     (contains? (set named) candidate))
+                  (pr-str candidate))))))))
+  (testing "a filter that needs every schema to evaluate falls through to the unrestricted query"
+    (are [patterns] (nil? (#'redshift/exactly-named-schemas patterns))
+      nil
+      ""
+      "   "
+      "test*"
+      "*_schema"
+      "spectrum,test*"
+      "crazy\\*schema"
+      "a.c"
+      "a|b"
+      "a$b"
+      "a+b"
+      "a(b)"
+      "a[b]"
+      "a^b"
+      "a?b"
+      ;; an interior empty segment names nothing, so it cannot stand in for the filter
+      "spectrum,,other"))
+  (testing "a trailing comma leaves no empty segment behind, so it still qualifies"
+    (is (= ["spectrum"] (#'redshift/exactly-named-schemas "spectrum,")))))
+
+(deftest ^:parallel regex-metacharacters-is-complete-test
+  (testing "every character the guard admits really does compile to a regex matching only itself"
+    ;; Pins the metacharacter enumeration itself: a character missing from it would be admitted here and show up as
+    ;; a disagreement, rather than as a silently wrong `in (...)` against a real cluster.
+    (let [chars (concat (map char (range 32 127)) [\é \ü \空])
+          ;; the filter splits on commas, so a comma never reaches a segment
+          chars (remove #{\,} chars)]
+      (doseq [c chars
+              :let [segment (str "a" c "c")
+                    named   (#'redshift/exactly-named-schemas segment)]
+              :when named]
+        (testing (pr-str segment)
+          (doseq [candidate [segment "abc" "axc" "ac" "aXc" "a" "other"]]
+            (is (= (boolean (driver.s/include-schema? segment nil candidate))
+                   (contains? (set named) candidate))
+                (pr-str candidate))))))))
+
+(deftest ^:parallel get-tables-sql-test
+  (testing "named schemas are bound once per union branch"
+    (let [[sql & params] (#'redshift/get-tables-sql ["spectrum" "sess"])]
+      (is (= ["spectrum" "sess" "spectrum" "sess"] params))
+      (is (= 2 (count (re-seq #"in \(\?, \?\)" sql))))))
+  (testing "no named schemas leaves the query and its params untouched"
+    (let [[sql & params] (#'redshift/get-tables-sql nil)]
+      (is (empty? params))
+      (is (not (str/includes? sql "nspname in")))
+      (is (not (str/includes? sql "schemaname in")))))
+  (testing "per-relation privilege calls are select-list expressions, never predicates"
+    ;; As predicates the planner hoists them over the schema filter and they cost ~10s per sync. See the
+    ;; comment in `get-tables-sql`.
+    (let [[sql]           (#'redshift/get-tables-sql nil)
+          predicate-lines (filter #(re-find #"^\s*(where|and)\b" %) (str/split-lines sql))]
+      (is (str/includes? sql "as selectable"))
+      (is (not-any? #(re-find #"has_(table|any_column)_privilege" %) predicate-lines)))))
+
+(deftest describe-database-tables-drops-unselectable-test
+  (testing "the query no longer filters on privilege, so the caller must, and only a boolean true passes"
+    ;; The other half of the guard above: moving the privilege calls into the select list means an unreadable
+    ;; relation now reaches Clojure, and this is the one place that drops it.
+    (mt/with-temp [:model/Database db {:engine :redshift, :details {}}]
+      (mt/with-dynamic-fn-redefs [sql-jdbc.execute/reducible-query
+                                  (fn [_database _sql]
+                                    (for [[nm selectable] [["readable" true]
+                                                           ["unreadable" false]
+                                                           ["missing" nil]
+                                                           ["stringly" "false"]]]
+                                      {:name nm, :schema "s", :type "table", :description nil, :selectable selectable}))]
+        (is (= [{:name "readable", :schema "s", :description nil}]
+               (into [] (#'redshift/describe-database-tables (driver.u/lib-database (:id db))))))))))

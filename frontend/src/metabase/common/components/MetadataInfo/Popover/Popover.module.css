@@ -1,0 +1,4 @@
+/* Element-qualified to outrank the theme's hover card dropdown rule regardless of CSS load order */
+div.dropdown {
+  overflow: visible;
+}

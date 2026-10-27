@@ -65,17 +65,18 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
-   [honey.sql :as sql]
    [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.lib.util :as lib.util]
+   [metabase.lib.walk :as lib.walk]
    [metabase.parameters.chain-filter.dedupe-joins :as dedupe]
+   [metabase.parameters.db :as parameters.db]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
@@ -92,24 +93,38 @@
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.metadata-queries :as schema.metadata-queries]
    [metabase.warehouse-schema.models.field :as field]
-   [metabase.warehouse-schema.models.field-values :as field-values]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.models.field-values :as field-values]))
 
 ;; so the hydration method for name_field is loaded
 (comment params/keep-me)
 
 (mr/def ::constraint
   "Schema for a constraint on a field."
-  [:map
+  [:map {:closed true}
    [:field-id ::lib.schema.id/field]
    [:op       :keyword] ; name of an MBQL filter clause e.g. `:=` or `:starts-with`
-   [:value    :any]
-   [:options  {:optional true} [:maybe map?]]])
+   [:value    [:or ms/FieldValue [:sequential ms/FieldValue] [:set ms/FieldValue]]]
+   [:options  {:optional true} [:maybe [:merge
+                                        ::lib.schema.common/options
+                                        [:map {:closed true}
+                                         [:lib/uuid {:optional true} ::lib.schema.common/uuid]]]]]])
 
 (mr/def ::constraints
   "Schema for a list of constraints."
   [:sequential ::constraint])
 
+(mr/def ::table-field-endpoint
+  [:map {:closed true}
+   [:table ::lib.schema.id/table]
+   [:field ::lib.schema.id/field]])
+
+(mr/def ::join-info
+  "Schema for one FK relationship join between a `:lhs` and `:rhs` Table/Field pair."
+  [:map {:closed true}
+   [:lhs ::table-field-endpoint]
+   [:rhs ::table-field-endpoint]])
+
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *enable-reverse-joins*
   "Whether to chain filter via joins where we must follow relationships in reverse, e.g. child -> parent (e.g.
   Restaurant -> Category instead of the usual Category -> Restaurant*)
@@ -202,23 +217,12 @@
   (u/minutes->ms 5))
 
 (defn- database-fk-relationships* [database-id enable-reverse-joins?]
-  (let [rows (mdb/query {:select    [[:fk-field.id :f1]
-                                     [:fk-table.id :t1]
-                                     [:pk-field.id :f2]
-                                     [:pk-field.table_id :t2]]
-                         :from      [[:metabase_field :fk-field]]
-                         :left-join [[:metabase_table :fk-table]    [:and [:= :fk-field.table_id :fk-table.id]
-                                                                     :fk-table.active]
-                                     [:metabase_database :database] [:= :fk-table.db_id :database.id]
-                                     [:metabase_field :pk-field]    [:and [:= :fk-field.fk_target_field_id :pk-field.id]
-                                                                     :pk-field.active]]
-                         :where     [:and
-                                     [:= :database.id database-id]
-                                     [:not= :fk-field.fk_target_field_id nil]
-                                     :fk-field.active]
-                         :order-by [[:fk-field.id :desc]
-                                    [:pk-field.id :desc]]})
-        joins (for [{:keys [t1 f1 t2 f2]} rows]
+  (let [rows (parameters.db/fk-relationships-for-database database-id)
+        ;; The `:fk-table.active` / `:pk-field.active` LEFT JOIN clauses null out the target endpoint
+        ;; when the FK-owning table or FK target field is inactive; drop those rows so no nil-keyed
+        ;; entries leak into the join graph. Regression for #80557.
+        joins (for [{:keys [t1 f1 t2 f2]} rows
+                    :when (and t1 f1 t2 f2)]
                 {:lhs {:table t1, :field f1}
                  :rhs {:table t2, :field f2}})
         reversed (map (fn [{:keys [lhs rhs]}]
@@ -260,7 +264,7 @@
            seen  #{start}]
       (let [path (peek paths)
             node (peek path)]
-        (cond (nil? node)
+        (cond (nil? path)
               nil
               ;; found a path, bfs finds shortest first
               (= node end)
@@ -380,7 +384,7 @@
   two Tables and we generate the appropriate join against the other Table."
   [query           :- ::lib.schema/query
    source-table-id :- ::lib.schema.id/table
-   joins]
+   joins           :- [:maybe [:sequential ::join-info]]]
   (let [id->field (u/index-by :id (lib.metadata/bulk-metadata query :metadata/column
                                                               (into #{} (mapcat (juxt #(get-in % [:lhs :field])
                                                                                       #(get-in % [:rhs :field])))
@@ -411,7 +415,9 @@
   join's source table.
 
   Assumes no two joins in stage 0 target the same `:table-id` (true for chain-filter's `joined-table-alias`
-  convention). If that ever breaks, both joins get the union of fields — still correct, only over-projection."
+  convention). If that ever breaks, both joins get the union of fields — still correct, only over-projection.
+
+  Semi-joins (see [[add-semi-joins]]) are left alone: their sub-select returns only its breakout column already."
   [query :- ::lib.schema/query]
   (if (empty? (lib/joins query))
     query
@@ -420,17 +426,170 @@
     (let [field-ids   (lib/all-field-ids query)
           cols        (lib.metadata/bulk-metadata query :metadata/column field-ids)
           cols-by-tid (group-by :table-id cols)]
-      (lib.util/update-query-stage
-       query 0
-       update :joins
-       (fn [the-joins]
-         (mapv (fn [a-join]
-                 (let [thing (lib/joined-thing query a-join)
-                       tid   (when (= :metadata/table (:lib/type thing))
+      (lib.walk/walk
+       query
+       (fn [query path-type path a-join]
+         (when (and (= path-type :lib.walk/join)
+                    ;; only the joins of the first stage: the joins inside a semi-join's sub-select were tightened
+                    ;; when the sub-select was built
+                    (= (lib.walk/join-parent-stage-path path) [:stages 0]))
+           (let [thing       (lib/joined-thing query a-join)
+                 summarized? (seq (lib.walk/apply-f-for-stage-at-path
+                                   lib/breakouts query (lib.walk/join-last-stage-path path a-join)))
+                 tid         (when (and (= :metadata/table (:lib/type thing))
+                                        (not summarized?))
                                (:id thing))]
-                   (cond-> a-join
-                     tid (lib/with-join-source-fields (get cols-by-tid tid)))))
-               the-joins))))))
+             (when tid
+               (lib/with-join-source-fields a-join (get cols-by-tid tid))))))))))
+
+(defn- one-to-many-join?
+  "Whether `join-info` follows an FK backwards, from the Field it references to the referencing Field, so that one row
+  on the left-hand side can match many rows on the right-hand side."
+  [id->field {{lhs-field-id :field} :lhs, {rhs-field-id :field} :rhs}]
+  (not= rhs-field-id (:fk-target-field-id (id->field lhs-field-id))))
+
+(defn- join-path
+  "The joins that lead from `source-table-id` to `table-id`, in order, or nil if there is no path. Where several FKs
+  link two Tables, prefer one of `field-ids`."
+  [database-id source-table-id table-id field-ids]
+  (when-let [joins (not-empty (find-joins database-id source-table-id table-id))]
+    (dedupe/dedupe-joins source-table-id field-ids joins #{table-id})))
+
+(mr/def ::one-to-many-path
+  "A join path split after its first one-to-many join."
+  [:map {:closed true}
+   [:prefix [:sequential ::join-info]]
+   [:suffix [:sequential ::join-info]]])
+
+(mu/defn- one-to-many-paths :- [:map-of ::lib.schema.id/table ::one-to-many-path]
+  "The join paths from `source-table-id` to those Tables of `field-ids` that can only be reached by following an FK
+  backwards somewhere, keyed by Table ID."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   database-id           :- ::lib.schema.id/database
+   source-table-id       :- ::lib.schema.id/table
+   field-ids             :- [:set ::lib.schema.id/field]]
+  (let [table-ids (when (seq field-ids)
+                    (disj (into #{}
+                                (map :table-id)
+                                (lib.metadata/bulk-metadata metadata-providerable :metadata/column field-ids))
+                          source-table-id))
+        paths     (into {}
+                        (keep (fn [table-id]
+                                (when-let [path (join-path database-id source-table-id table-id field-ids)]
+                                  [table-id path])))
+                        table-ids)
+        id->field (when (seq paths)
+                    (u/index-by :id (lib.metadata/bulk-metadata metadata-providerable :metadata/column
+                                                                (into #{}
+                                                                      (comp cat
+                                                                            (mapcat (juxt #(get-in % [:lhs :field])
+                                                                                          #(get-in % [:rhs :field]))))
+                                                                      (vals paths)))))]
+    (into {}
+          (keep (fn [[table-id path]]
+                  (let [[to-one [one-to-many & suffix]] (split-with #(not (one-to-many-join? id->field %)) path)]
+                    (when one-to-many
+                      [table-id {:prefix (conj (vec to-one) one-to-many)
+                                 :suffix (vec suffix)}]))))
+          paths)))
+
+(mu/defn- semi-join-clause :- :metabase.lib.schema.join/join
+  "A join against a sub-select that applies the `constraints` on the Tables with `table-ids` and returns the distinct
+  values of the column the source Table joins against. `paths` lead from the source Table to these Tables and share
+  their `:prefix`."
+  [query       :- ::lib.schema/query
+   join-alias  :- ::lib.schema.common/non-blank-string
+   paths       :- [:sequential ::one-to-many-path]
+   table-ids   :- [:set ::lib.schema.id/table]
+   constraints :- [:maybe ::constraints]]
+  (let [{{lhs-field-id :field} :lhs
+         {rhs-table-id :table, rhs-field-id :field} :rhs} (first (:prefix (first paths)))
+        field-ids  (into #{} (map :field-id) constraints)
+        ;; the sub-select starts at the Table the first join leads to
+        joins      (dedupe/dedupe-joins rhs-table-id
+                                        field-ids
+                                        (into [] (comp (mapcat #(concat (rest (:prefix %)) (:suffix %)))
+                                                       (distinct))
+                                              paths)
+                                        (disj table-ids rhs-table-id))
+        sub-select (-> (lib/query query (lib.metadata/table query rhs-table-id))
+                       (add-joins rhs-table-id joins)
+                       (lib/breakout (lib.metadata/field query rhs-field-id))
+                       (add-filters rhs-table-id (set (map #(get-in % [:rhs :table]) joins)) constraints)
+                       schema.metadata-queries/add-required-filters-if-needed
+                       tighten-join-projections)
+        rhs-field  (lib/with-join-alias (lib.metadata/field query rhs-field-id) join-alias)]
+    (log/tracef "Adding semi-join %s against %s for %s"
+                join-alias
+                (name-for-logging :model/Table rhs-table-id)
+                (str/join ", " (map (partial name-for-logging :model/Table) (sort table-ids))))
+    (-> (lib/join-clause sub-select)
+        (lib/with-join-alias join-alias)
+        (lib/with-join-conditions [(lib/= (lib.metadata/field query lhs-field-id) rhs-field)])
+        (lib/with-join-strategy :inner-join))))
+
+(mu/defn- add-semi-joins :- ::lib.schema/query
+  "Constrain `query` by the `constraints` on the Tables in `paths` through semi-joins.
+
+  Joining a Table through a one-to-many join repeats each row of the source Table once per matching row, and joining
+  several such Tables multiplies these repetitions. With a locked embedding parameter that is mapped to a column of
+  every card's Table, this cross product can grow to billions of rows before `GROUP BY` reduces it to at most
+  [[max-results]] values.
+
+  So each of these Tables is joined in a sub-select instead, which applies its constraints and returns the distinct
+  values of the column the source Table joins against, e.g.
+
+    INNER JOIN (SELECT venue_id FROM checkins WHERE ... GROUP BY venue_id) semi_join_1
+            ON venues.id = semi_join_1.venue_id
+
+  Such a join matches each source row at most once. Tables whose paths share everything up to and including their
+  first one-to-many join are constrained in the same sub-select, so they still have to match through the same row, as
+  in a single query. Paths that part before that join meet only in rows the source row determines, so constraining
+  them separately returns the same values."
+  [query       :- ::lib.schema/query
+   paths       :- [:map-of ::lib.schema.id/table ::one-to-many-path]
+   constraints :- [:maybe ::constraints]]
+  (if (empty? paths)
+    query
+    (let [field-id->table-id (into {}
+                                   (map (juxt :id :table-id))
+                                   (lib.metadata/bulk-metadata query :metadata/column
+                                                               (into #{} (map :field-id) constraints)))
+          table-id-groups    (->> (group-by (comp :prefix paths) (keys paths))
+                                  vals
+                                  (map set)
+                                  (sort-by (comp vec sort)))]
+      (reduce (fn [query [i table-ids]]
+                (lib/join query (semi-join-clause query
+                                                  (format "semi_join_%d" (inc i))
+                                                  (map paths table-ids)
+                                                  table-ids
+                                                  (filter #(contains? table-ids (field-id->table-id (:field-id %)))
+                                                          constraints))))
+              query
+              (map-indexed vector table-id-groups)))))
+
+(mu/defn- constraint-joins :- [:map {:closed true}
+                               [:joins           [:maybe [:sequential ::join-info]]]
+                               [:semi-join-paths [:map-of ::lib.schema.id/table ::one-to-many-path]]]
+  "Plan how a query on `source-table-id` reaches the Fields of `constraints` and the additional `field-ids`. `:joins`
+  are ordinary joins for [[add-joins]]; `:semi-join-paths` lead to the Tables whose constraints [[add-semi-joins]]
+  applies, i.e. those reached only through a one-to-many join and not joined anyway."
+  [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   database-id           :- ::lib.schema.id/database
+   source-table-id       :- ::lib.schema.id/table
+   constraints           :- [:maybe ::constraints]
+   field-ids             :- [:set ::lib.schema.id/field]]
+  (let [constraint-field-ids (into #{} (map :field-id) constraints)
+        paths                (one-to-many-paths metadata-providerable database-id source-table-id constraint-field-ids)
+        direct-field-ids     (into field-ids
+                                   (comp (remove #(contains? paths (:table-id %)))
+                                         (map :id))
+                                   (lib.metadata/bulk-metadata metadata-providerable :metadata/column
+                                                               constraint-field-ids))
+        joins                (find-all-joins metadata-providerable database-id source-table-id direct-field-ids)]
+    {:joins           joins
+     :semi-join-paths (apply dissoc paths (map #(get-in % [:rhs :table]) joins))}))
 
 (mr/def ::options
   ;; if original-field-id is specified, we'll include this in the results. For Field->Field remapping.
@@ -459,10 +618,10 @@
         ;; engines like ClickHouse that materialize the right side in memory.
         reversed?         (and original-table-id (not= original-table-id field-table-id))
         source-table-id   (if reversed? original-table-id field-table-id)
-        joins             (find-all-joins mp database-id source-table-id
-                                          (cond-> (set (map :field-id constraints))
-                                            reversed?       (conj field-id)
-                                            (not reversed?) (cond-> original-field-id (conj original-field-id))))
+        remap-field-ids   (cond-> #{}
+                            reversed?       (conj field-id)
+                            (not reversed?) (cond-> original-field-id (conj original-field-id)))
+        {:keys [joins semi-join-paths]} (constraint-joins mp database-id source-table-id constraints remap-field-ids)
         joined-table-ids  (set (map #(get-in % [:rhs :table]) joins))
         field             (cond-> (lib.metadata/field mp field-id)
                             reversed? (lib/with-join-alias (joined-table-alias field-table-id)))
@@ -485,6 +644,7 @@
         (lib/limit ((fnil min Integer/MAX_VALUE) limit max-results))
         (assoc-in [:middleware :disable-remaps?] true)
         (add-joins source-table-id joins)
+        (add-semi-joins semi-join-paths constraints)
         (cond-> original-field (->
                                 ;; don't return rows that don't have values for the original Field. e.g. if
                                 ;; venues.category_id is remapped to categories.name and we do a search with query
@@ -547,68 +707,19 @@
               (get v->human-readable v (get v->human-readable (str v))))
             values)))
 
-(defn- format-union
-  "Workaround for https://github.com/seancorfield/honeysql/issues/451. Wrap the subselects in parens, otherwise it will
-  fail on Postgres."
-  [_clause exprs]
-  (let [[sqls args] (sql/format-expr-list exprs)
-        sql         (str/join " UNION " sqls)]
-    (into [sql] args)))
-
-(sql/register-clause! ::union format-union :union)
-
-(defn- implicit-pk->name-mapping-query
-  [field-id mapping-type]
-  ^:allow-subquery
-  {:select    [[:dest.id :id] [^:allow-raw-sql [:inline mapping-type] :mapping_type]]
-   :from      [[:metabase_field :source]]
-   :left-join [[:metabase_table :table] [:= :source.table_id :table.id]
-               [:metabase_field :dest] [:= :dest.table_id :table.id]]
-   :where     [:and
-               [:= :source.id field-id]
-               (mdb/isa :source.semantic_type :type/PK)
-               (mdb/isa :dest.semantic_type :type/Name)]
-   :limit     1})
-
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-implicit-uuid-field-remapping*
   "Should implicit remapping be allowed _for uuid fields_? Not eg. for
   `GET /dashboard/:id/params/:param-key/search/:query` to search on actual field that was picked
   for filtering (#59020). Apart from the endpoint it is bound in [[chain-filter-search]]!"
   true)
 
-(defn- remapped-field-id-query [field-id]
-  {:select [[:mapping.id :id] [:mapping.mapping_type :mapping_type]]
-   :from   [[^:allow-subquery
-             {::union (into [;; Explicit FK Field->Field remapping
-                             ^:allow-subquery
-                             {:select [[:dimension.human_readable_field_id :id] [^:allow-raw-sql [:inline "fk->field"] :mapping_type]]
-                              :from   [[:dimension :dimension]]
-                              :where  [:and
-                                       [:= :dimension.field_id field-id]
-                                       [:not= :dimension.human_readable_field_id nil]]
-                              :limit  1}]
-                            (when *allow-implicit-uuid-field-remapping*
-                              [;; Implicit FK Field -> PK Field -> [Name] Field remapping
-                               (implicit-pk->name-mapping-query
-                                ^:allow-subquery
-                                {:select    [:fk_target_field_id]
-                                 :from      [:metabase_field]
-                                 :where     [:and
-                                             [:= :id field-id]
-                                             (mdb/isa :semantic_type :type/FK)]
-                                 :limit     1}
-                                "fk->pk->name")
-                               ;; Implicit PK Field-> [Name] Field remapping
-                               (implicit-pk->name-mapping-query field-id "pk->name")]))}
-             :mapping]]
-   :limit  1})
-
 ;; TODO -- add some caching here?
 (mu/defn remapped-field-id :- [:maybe ::lib.schema.id/field]
   "Efficient query to find the ID of the Field we're remapping `field-id` to, if it has either type of Field -> Field
   remapping."
   [field-id :- [:maybe ::lib.schema.id/field]]
-  (:id (t2/query-one (remapped-field-id-query field-id))))
+  (:id (parameters.db/remapped-field field-id *allow-implicit-uuid-field-remapping*)))
 
 (mu/defn remapping :- [:maybe [:map
                                [:id ::lib.schema.id/field]
@@ -616,7 +727,7 @@
   "Efficient query to find the ID of the Field we're remapping `field-id` to, if it has either type of Field -> Field
   remapping."
   [field-id :- [:maybe ::lib.schema.id/field]]
-  (when-let [raw-mapping (t2/query-one (remapped-field-id-query field-id))]
+  (when-let [raw-mapping (parameters.db/remapped-field field-id *allow-implicit-uuid-field-remapping*)]
     (-> raw-mapping
         (dissoc :mapping_type)
         (assoc :mapping-type (-> raw-mapping :mapping_type keyword)))))
@@ -640,12 +751,12 @@
 (mu/defn- cached-field-values
   [field-id    :- ::lib.schema.id/field
    constraints :- [:maybe ::constraints]
-   {:keys [limit], :as _options}]
+   {:keys [limit], :as _options} :- [:maybe ::options]]
   ;; TODO: why don't we remap the human readable values here?
   (let [{:keys [values] has-more-values? :has_more_values}
         (if (empty? constraints)
-          (params.field-values/get-or-create-field-values-for-current-user! (t2/select-one :model/Field :id field-id))
-          (params.field-values/get-or-create-linked-filter-field-values! (t2/select-one :model/Field :id field-id) constraints))]
+          (params.field-values/get-or-create-field-values-for-current-user! (parameters.db/field field-id))
+          (params.field-values/get-or-create-linked-filter-field-values! (parameters.db/field field-id) constraints))]
     {:values          (cond->> values
                         limit (take limit))
      :has_more_values (or (when limit
@@ -677,7 +788,7 @@
   results as a sequence of `[value remapped-value]` pairs."
   [field-id    :- ::lib.schema.id/field
    constraints :- [:maybe ::constraints]
-   & options]
+   & options   :- [:* [:or :keyword :boolean ::lib.schema.id/field ms/PositiveInt]]]
   (assert (even? (count options)))
   (let [{:as options}         options
         relax-fk-requirement? (:relax-fk-requirement? options)
@@ -708,7 +819,7 @@
       (let [{the-remapped-field-id :id, :keys [mapping-type]} @remapping]
         (if-let [pk-field-id (when (and (= mapping-type :fk->pk->name)
                                         relax-fk-requirement?)
-                               (t2/select-one-fn :fk_target_field_id :model/Field field-id))]
+                               (parameters.db/field-fk-target-field-id field-id))]
           (unremapped-chain-filter the-remapped-field-id
                                    (map #(cond-> %
                                            (= (:field-id %) field-id) (assoc :field-id pk-field-id))
@@ -719,6 +830,62 @@
       :else
       (unremapped-chain-filter field-id constraints options))))
 
+(mu/defn- chain-filter-range-mbql-query :- ::lib.schema/query
+  "The query behind [[chain-filter-range]]: the same source table, joins and constraint filters
+  [[chain-filter-mbql-query]] builds, aggregated to a single row instead of broken out into values.
+
+  Two deliberate differences from the values query. There is no limit — that is the whole point, since an
+  aggregation reads the entire column and yields the column's real max rather than the last of a capped
+  page. And there is no remapping: a range describes the filtered column itself, and a display label
+  (`category_id` shown as `category.name`) has no min or max worth reporting."
+  [field-id    :- ::lib.schema.id/field
+   constraints :- [:maybe ::constraints]]
+  (let [database-id      (field/field-id->database-id field-id)
+        mp               (lib-be/application-database-metadata-provider database-id)
+        source-table-id  (:table-id (lib.metadata/field mp field-id))
+        {:keys [joins semi-join-paths]} (constraint-joins mp database-id source-table-id constraints #{})
+        joined-table-ids (set (map #(get-in % [:rhs :table]) joins))
+        field            (lib.metadata/field mp field-id)]
+    (when (seq joins)
+      (log/tracef "Generating joins and filters for source %s with joins info\n%s"
+                  (name-for-logging :model/Table source-table-id) (pr-str joins)))
+    (-> (lib/query mp (lib.metadata/table mp source-table-id))
+        (assoc-in [:middleware :disable-remaps?] true)
+        (add-joins source-table-id joins)
+        (add-semi-joins semi-join-paths constraints)
+        (lib/aggregate (lib/min field))
+        (lib/aggregate (lib/max field))
+        (lib/aggregate (lib/distinct field))
+        (add-filters source-table-id joined-table-ids constraints)
+        schema.metadata-queries/add-required-filters-if-needed
+        ;; Runs LAST for the same reason it does in the values query — see the note there.
+        tighten-join-projections)))
+
+(mu/defn chain-filter-range :- [:map
+                                [:min [:maybe :any]]
+                                [:max [:maybe :any]]
+                                [:distinct-count [:maybe :int]]]
+  "The span of Field `field-id` under the same `constraints` [[chain-filter]] applies, as
+  `{:min :max :distinct-count}`, by aggregating rather than listing.
+
+  For a column whose distinct values are a range to filter inside rather than a set to pick from — dates,
+  above all — this is the answer [[chain-filter]] cannot give: it caps at 1000 values, and since values come
+  back ascending, a capped fetch's last value is the 1000th-earliest rather than the column's max.
+
+  A column with no rows (or none the caller can see) answers with nils and a zero count, not an error."
+  [field-id    :- ::lib.schema.id/field
+   constraints :- [:maybe ::constraints]]
+  (let [mbql-query (chain-filter-range-mbql-query field-id constraints)]
+    (try
+      (let [[lo hi n] (first (:rows (:data (qp/process-query mbql-query))))]
+        {:min lo :max hi :distinct-count (or n 0)})
+      (catch Throwable e
+        (throw (ex-info (tru "Error executing chain filter range query")
+                        {:field-id    field-id
+                         :constraints constraints
+                         :mbql-query  mbql-query}
+                        e))))))
+
 ;;; ----------------- Chain filter search (powers GET /api/dashboard/:id/params/:key/search/:query) -----------------
 
 ;; TODO -- if this validation succeeds, we can probably cache that success for a bit so we can avoid unneeded DB
@@ -726,12 +893,12 @@
 (defn- check-valid-search-field
   "Before running a search query, make sure the Field actually exists and that it's a Text field."
   [field-id]
-  (let [base-type (t2/select-one-fn :base_type :model/Field :id field-id)]
+  (let [base-type (parameters.db/field-base-type field-id)]
     (when-not base-type
       (throw (ex-info (tru "Field {0} does not exist." field-id)
                       {:field field-id, :status-code 404})))
     (when-not (isa? base-type :type/Text)
-      (let [field-name (t2/select-one-fn :name :model/Field :id field-id)]
+      (let [field-name (parameters.db/field-name field-id)]
         (throw (ex-info (tru "Cannot search against non-Text Field {0} {1}" field-id (pr-str field-name))
                         {:status-code 400
                          :field-id    field-id
@@ -777,22 +944,16 @@
        :has_more_values false}))
 
 (defn- search-cached-field-values? [field-id constraints]
-  (let [field (t2/select-one :model/Field :id field-id)]
+  (let [field (parameters.db/field field-id)]
     (and (use-cached-field-values? field-id)
          (isa? (:base_type field) :type/Text)
-         (apply t2/exists? :model/FieldValues (mapcat
-                                               identity
-                                               (merge {:field_id field-id, :values [:not= nil], :human_readable_values nil}
-                                                      ;; if we are doing a search, make sure we only use field values
-                                                      ;; when we're certain the fieldvalues we stored are all the possible values.
-                                                      ;; otherwise, we should search directly from DB
-                                                      {:has_more_values false}
-                                                      (let [hash-input (params.field-values/hash-input-for-field-values field constraints)
-                                                            hash-key (str (hash hash-input))]
-                                                        (if (not= hash-input {:field-id field-id})
-                                                          {:type "advanced"
-                                                           :hash_key hash-key}
-                                                          {:type "full"}))))))))
+         ;; if we are doing a search, make sure we only use field values when we're certain the fieldvalues we stored
+         ;; are all the possible values. otherwise, we should search directly from DB
+         (let [hash-input (params.field-values/hash-input-for-field-values field constraints)
+               hash-key   (str (hash hash-input))]
+           (if (not= hash-input {:field-id field-id})
+             (parameters.db/advanced-field-values-exist? field-id hash-key)
+             (parameters.db/full-field-values-exist? field-id))))))
 
 (defn- cached-field-values-search
   [field-id query constraints {:keys [limit]}]
@@ -811,7 +972,7 @@
   [field-id     :- ::lib.schema.id/field
    constraints  :- [:maybe ::constraints]
    query-string :- [:maybe ms/NonBlankString]
-   & options]
+   & options    :- [:* [:or :keyword :boolean ::lib.schema.id/field ms/PositiveInt]]]
   (assert (even? (count options)))
   (let [{:as options}         options
         v->human-readable     (delay (schema.metadata-queries/human-readable-remapping-map field-id))
@@ -856,5 +1017,12 @@
     (let [mbql-query (chain-filter-mbql-query field-id
                                               (for [id filter-field-ids]
                                                 {:field-id id, :op :=, :value nil})
-                                              nil)]
-      (into #{} (mapcat lib/all-field-ids) (lib/filters mbql-query)))))
+                                              nil)
+          ;; constraints on Tables behind one-to-many joins are filters of the semi-joins' sub-selects, so collect the
+          ;; filters of every stage, including the stages inside joins
+          filters    (volatile! [])]
+      (lib.walk/walk-stages mbql-query
+                            (fn [query path _stage]
+                              (vswap! filters into (lib.walk/apply-f-for-stage-at-path lib/filters query path))
+                              nil))
+      (into #{} (mapcat lib/all-field-ids) @filters))))

@@ -8,6 +8,7 @@
    [environ.core :as env]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
+   [metabase.session.db :as session.db]
    [metabase.session.settings :as session.settings]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
@@ -74,8 +75,18 @@
   (derive :metabase/model)
   (derive :hook/created-at-timestamped?))
 
-(t2/define-before-update :model/Session [_model]
-  (throw (RuntimeException. "You cannot update a Session.")))
+(def ^:private ending-columns
+  "The only columns an update of a Session may touch: the ones [[metabase.session.db/end-sessions!]] writes to record
+  that the session ended. Everything else on the row is immutable."
+  #{:ended_at :end_reason :ended_by_user_id :key_hashed})
+
+(t2/define-before-update :model/Session [session]
+  (when-not (every? ending-columns (keys (t2/changes session)))
+    (throw (RuntimeException. "You cannot update a Session.")))
+  ;; a recorded ending is final
+  (when (some? (:ended_at (t2/original session)))
+    (throw (RuntimeException. "You cannot change a Session that has ended.")))
+  session)
 
 (t2/define-before-insert :model/Session
   [{session-key :session_key :as session}]
@@ -85,7 +96,7 @@
     (throw (ex-info "Session key should not be stored plaintext in the session table." {})))
   ;; Check auth identity provider if provided
   (when-let [auth-identity-id (:auth_identity_id session)]
-    (when-let [auth-identity (t2/select-one [:model/AuthIdentity :provider] :id auth-identity-id)]
+    (when-let [auth-identity (session.db/auth-identity-provider auth-identity-id)]
       (when (and (= "password" (:provider auth-identity))
                  (not (session.settings/enable-password-login)))
         (throw (ex-info (str (tru "Password login is disabled for this instance."))
@@ -101,7 +112,7 @@
 
 (t2/define-after-insert :model/Session
   [session]
-  (when-let [user (t2/select-one :model/User (:user_id session))]
+  (when-let [user (session.db/user (:user_id session))]
     (let [event {:user-id (u/the-id user)}]
       (events/publish-event! :event/user-login event)
       (when (nil? (:last_login user))

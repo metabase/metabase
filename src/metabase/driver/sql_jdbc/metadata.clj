@@ -5,6 +5,8 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
+   [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [mapv]]))
 
@@ -14,7 +16,7 @@
   "Default implementation of [[metabase.driver/query-result-metadata]] for JDBC-based drivers. Gets metadata without
   actually running a query."
   ([driver :- :keyword
-    query  :- :map]
+    query  :- ::qp.schema/any-query]
    (driver-api/with-qp-setup [query query]
      (let [database               (driver-api/database (driver-api/metadata-provider))
            {:keys [query params]} (driver-api/compile query)]
@@ -23,13 +25,14 @@
   ([driver      :- :keyword
     database    :- driver-api/schema.metadata.database
     ^String sql :- :string
-    params      :- [:maybe [:sequential :any]]]
+    params      :- [:maybe [:sequential :metabase.lib.schema.common/field-value]]]
    (sql-jdbc.execute/do-with-connection-with-options
     driver
     database
     nil
     (fn [^java.sql.Connection conn]
-      (with-open [stmt (sql-jdbc.execute/prepared-statement driver conn sql params)]
+      ;; Some JDBC drivers (e.g. Athena) get metadata by wrapping the SQL in a subselect, which breaks on a trailing `;`
+      (with-open [stmt (sql-jdbc.execute/prepared-statement driver conn (sql.qp/make-nestable-sql* sql) params)]
         (let [rsmeta (.getMetaData stmt)]
           (mapv (fn [i]
                   (let [database-type (.getColumnTypeName rsmeta i)]

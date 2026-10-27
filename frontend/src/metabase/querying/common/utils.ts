@@ -1,6 +1,5 @@
 import type { ComboboxItem } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   DatasetColumn,
   Field,
@@ -27,7 +26,7 @@ type LegacyColumn = DatasetColumn | NormalizedField | Field;
 type QueryAndColumn = { query: Lib.Query; column: Lib.ColumnMetadata };
 
 export const getQueryAndColumns = (
-  metadata: Metadata,
+  metadataProvider: Lib.MetadataProvider,
   table: Pick<Table, "id" | "db_id"> | undefined,
   fields: LegacyColumn[],
 ): Map<LegacyColumn, QueryAndColumn> => {
@@ -35,7 +34,6 @@ export const getQueryAndColumns = (
     return new Map();
   }
 
-  const metadataProvider = Lib.metadataProvider(table.db_id, metadata);
   const tableMetadata = Lib.tableOrCardMetadata(metadataProvider, table.id);
 
   if (tableMetadata === null) {

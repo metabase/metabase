@@ -1,8 +1,8 @@
 (ns metabase.permissions.core
   "`permissions` module API namespace."
-  {:clj-kondo/config '{:linters {:missing-docstring {:level :off}}}}
   (:require
    [metabase.permissions.data-access-token]
+   [metabase.permissions.db]
    [metabase.permissions.models.application-permissions-revision]
    [metabase.permissions.models.collection-permission-graph-revision]
    [metabase.permissions.models.collection.graph]
@@ -38,10 +38,15 @@
   metabase.permissions.validation/keep-me)
 
 (p/import-vars
+ [metabase.permissions.db
+  group-tenant-flags
+  groups-by-ids]
  [metabase.permissions.models.data-permissions
   at-least-as-permissive?
   batch-delete-permissions!
   batch-insert-permissions!
+  data-app-collection-ids
+  data-app-collection?
   disable-perms-cache
   download-perms-level
   full-database-permission-for-user
@@ -83,6 +88,7 @@
   visible-database-filter-select
   visible-table-filter-select
   visible-table-filter-with-cte
+  visible-table-filter-subquery-clause
   select-tables-and-groups-granting-perm]
  [metabase.permissions.models.permissions
   namespace-clause
@@ -105,9 +111,9 @@
   set-has-full-permissions-for-set?
   set-has-full-permissions?]
  [metabase.permissions.models.permissions-group
+  group-display-name
   non-magic-groups
-  all-users-magic-group-type
-  sync-data-analyst-group-for-oss!]
+  all-users-magic-group-type]
  [metabase.permissions.models.permissions-group-membership
   add-users-to-groups!
   add-user-to-groups!
@@ -115,6 +121,7 @@
   allow-changing-all-users-group-members
   allow-changing-all-external-users-group-members
   fail-to-remove-last-admin-msg
+  fail-to-add-data-analyst-msg
   remove-user-from-group!
   remove-user-from-groups!
   remove-all-users-from-group!
@@ -136,6 +143,7 @@
   impersonated-user?
   impersonation-enforced-for-db?
   log-permissions-changes
+  routed-user?
   sandboxed-or-impersonated-user?
   sandboxed-user?
   sandboxed-user-for-db?
@@ -153,8 +161,7 @@
   can-access-via-collection?
   user-published-table-permission
   user-has-any-published-table-permission?
-  user-has-published-table-permission-for-database?
-  published-table-visible-clause])
+  user-has-published-table-permission-for-database?])
 
 (p/import-vars [metabase.permissions.settings use-tenants])
 
@@ -162,7 +169,8 @@
  [metabase.permissions.data-access-token
   data-access-token
   data-access-compatible?
-  data-access-token-transform])
+  data-access-token-transform
+  routing-token-for-db])
 
 ;;; import these vars with different names to make their purpose more obvious.
 (p/import-def metabase.permissions.models.permissions-group/all-users                    all-users-group)
@@ -173,3 +181,7 @@
 (p/import-def metabase.permissions.models.permissions-revision/latest-id                 latest-permissions-revision-id)
 (p/import-def metabase.permissions.models.data-permissions/least-permissive-value        least-permissive-data-perms-value)
 (p/import-def metabase.permissions.models.permissions-group/all-external-users           all-external-users-group)
+
+(p/import-vars [metabase.permissions.models.permissions-group
+                check-tenant-groups-visible!
+                hidden-tenant-group-ids])

@@ -24,8 +24,8 @@
 (defenterprise scorers
   "Return the select-item expressions used to calculate the score for each search result."
   :feature :none
-  [search-ctx]
-  (merge (appdb.scoring/base-scorers search-ctx) (additional-scorers)))
+  [search-ctx view-count-percentiles]
+  (merge (appdb.scoring/base-scorers search-ctx view-count-percentiles) (additional-scorers)))
 
 ;; ------------ LEGACY ----------
 

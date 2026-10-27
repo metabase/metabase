@@ -52,9 +52,9 @@ Dropdown button for the Breakout component.
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                                            | Description |
-| :-------- | :---------------------------------------------------------------------------------------------- | :---------- |
-| `props`   | [`InteractiveQuestionBreakoutDropdownProps`](./api/InteractiveQuestionBreakoutDropdownProps.md) |             |
+| Parameter | Type                                                                                                                     | Description |
+| :-------- | :----------------------------------------------------------------------------------------------------------------------- | :---------- |
+| `props`   | [`InteractiveQuestionBreakoutDropdownProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionBreakoutDropdownProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -89,9 +89,9 @@ Automatically updates to show recommended visualization types for the current da
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                                              | Description |
-| :-------- | :------------------------------------------------------------------------------------------------ | :---------- |
-| `props`   | [`InteractiveQuestionChartTypeDropdownProps`](./api/InteractiveQuestionChartTypeDropdownProps.md) |             |
+| Parameter | Type                                                                                                                       | Description |
+| :-------- | :------------------------------------------------------------------------------------------------------------------------- | :---------- |
+| `props`   | [`InteractiveQuestionChartTypeDropdownProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionChartTypeDropdownProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -232,9 +232,9 @@ Displays current filters as badges with an "Add another filter" option.
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                        | Description |
-| :-------- | :-------------------------------------------------------------------------- | :---------- |
-| `props`   | [`InteractiveQuestionFilterProps`](./api/InteractiveQuestionFilterProps.md) |             |
+| Parameter | Type                                                                                                 | Description |
+| :-------- | :--------------------------------------------------------------------------------------------------- | :---------- |
+| `props`   | [`InteractiveQuestionFilterProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionFilterProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -268,9 +268,9 @@ A dropdown button for the Filter component.
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                                        | Description |
-| :-------- | :------------------------------------------------------------------------------------------ | :---------- |
-| `props`   | [`InteractiveQuestionFilterDropdownProps`](./api/InteractiveQuestionFilterDropdownProps.md) |             |
+| Parameter | Type                                                                                                                 | Description |
+| :-------- | :------------------------------------------------------------------------------------------------------------------- | :---------- |
+| `props`   | [`InteractiveQuestionFilterDropdownProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionFilterDropdownProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -343,9 +343,9 @@ Dropdown button that contains the QuestionSettings component.
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                                                            | Description |
-| :-------- | :-------------------------------------------------------------------------------------------------------------- | :---------- |
-| `props?`  | [`InteractiveQuestionQuestionSettingsDropdownProps`](./api/InteractiveQuestionQuestionSettingsDropdownProps.md) |             |
+| Parameter | Type                                                                                                                                     | Description |
+| :-------- | :--------------------------------------------------------------------------------------------------------------------------------------- | :---------- |
+| `props?`  | [`InteractiveQuestionQuestionSettingsDropdownProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionQuestionSettingsDropdownProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -401,6 +401,43 @@ The main visualization component that renders the question results as a chart, t
 
 <!-- [<endsnippet returns>] -->
 
+### RefreshButton()
+
+<!-- [<snippet refreshbutton()>] -->
+
+```ts
+RefreshButton: (props?: InteractiveQuestionRefreshButtonProps) =>
+  | Element
+  | null;
+```
+
+**`Function`**
+
+Button to run the current query. Only appears when automatic reruns are turned off for the database.
+
+<!-- [<endsnippet refreshbutton()>] -->
+
+#### Parameters
+
+<!-- [<snippet parameters>] -->
+
+| Parameter | Type                                                                                                               | Description |
+| :-------- | :----------------------------------------------------------------------------------------------------------------- | :---------- |
+| `props?`  | [`InteractiveQuestionRefreshButtonProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionRefreshButtonProps.md) |             |
+
+<!-- [<endsnippet parameters>] -->
+
+#### Returns
+
+<!-- [<snippet returns>] -->
+
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+\| `null`
+
+---
+
+<!-- [<endsnippet returns>] -->
+
 ### ResetButton()
 
 <!-- [<snippet resetbutton()>] -->
@@ -421,9 +458,9 @@ Button to reset question modifications. Only appears when there are unsaved chan
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                  | Description |
-| :-------- | :------------------------------------ | :---------- |
-| `props?`  | [`ButtonProps`](./api/ButtonProps.md) |             |
+| Parameter | Type                                                           | Description |
+| :-------- | :------------------------------------------------------------- | :---------- |
+| `props?`  | [`ButtonProps`](/docs/latest/embedding/sdk/api/ButtonProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -510,9 +547,9 @@ Dropdown button for the Summarize component.
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                                              | Description |
-| :-------- | :------------------------------------------------------------------------------------------------ | :---------- |
-| `props`   | [`InteractiveQuestionSummarizeDropdownProps`](./api/InteractiveQuestionSummarizeDropdownProps.md) |             |
+| Parameter | Type                                                                                                                       | Description |
+| :-------- | :------------------------------------------------------------------------------------------------------------------------- | :---------- |
+| `props`   | [`InteractiveQuestionSummarizeDropdownProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionSummarizeDropdownProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 

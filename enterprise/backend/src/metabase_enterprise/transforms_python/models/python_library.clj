@@ -1,7 +1,9 @@
 (ns metabase-enterprise.transforms-python.models.python-library
   (:require
+   [clojure.string :as str]
+   [metabase-enterprise.transforms-python.db :as transforms-python.db]
+   [metabase-enterprise.transforms-python.schema]
    [metabase.api.common :as api]
-   [metabase.app-db.core :as app-db]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -27,9 +29,9 @@
 
 (t2/define-before-update :model/PythonLibrary
   [library]
-  (if (:path library)
-    (update library :path normalize-path)
-    library))
+  (cond-> library
+    (seq (dissoc (t2/changes library) :updated_at :is_default)) (assoc :is_default false)
+    (:path library)                          (update :path normalize-path)))
 
 (doseq [trait [:metabase/model :hook/timestamped? :hook/entity-id]]
   (derive :model/PythonLibrary trait))
@@ -70,24 +72,23 @@
   [path]
   (let [normalized-path (normalize-path path)]
     (validate-path! normalized-path)
-    (t2/select-one :model/PythonLibrary :path normalized-path)))
+    (transforms-python.db/python-library-by-path normalized-path)))
 
 (defn update-python-library-source!
   "Update the Python library source code. Creates a new record if none exists. Returns the updated library."
   [path source]
   (let [normalized-path (normalize-path path)]
     (validate-path! normalized-path)
-    (let [id (app-db/update-or-insert! :model/PythonLibrary
-                                       {:path normalized-path}
-                                       (constantly {:path normalized-path :source source}))]
-      (t2/select-one :model/PythonLibrary id))))
+    (let [id (transforms-python.db/upsert-python-library-source!
+              normalized-path source {:entity_id builtin-entity-id :is_default (str/blank? source)})]
+      (transforms-python.db/python-library id))))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
 (defmethod serdes/make-spec "PythonLibrary"
   [_model-name _opts]
   {:copy      [:path :source :entity_id]
-   :transform {:created_at (serdes/date)}})
+   :skip [:is_default]})
 
 (defmethod serdes/storage-path "PythonLibrary" [entity _ctx]
   [{:label "python-libraries"} {:label (:path entity) :key (:entity_id entity)}])

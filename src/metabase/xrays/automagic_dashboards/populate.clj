@@ -16,7 +16,7 @@
    [metabase.xrays.automagic-dashboards.filters :as filters]
    [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
-   [toucan2.core :as t2]))
+   [metabase.xrays.db :as xrays.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -35,14 +35,9 @@
 (defn get-or-create-container-collection
   "Get or create container collection for automagic dashboards in a given location."
   [location]
-  (or (t2/select-one :model/Collection
-                     :name "Automatically Generated Dashboards"
-                     :archived false
-                     :location location)
-      (t2/insert-returning-instance!
-       :model/Collection
-       {:name "Automatically Generated Dashboards"
-        :location location})))
+  (or (xrays.db/automagic-dashboards-collection location)
+      (xrays.db/insert-collection! {:name "Automatically Generated Dashboards"
+                                    :location location})))
 
 (defn colors
   "A vector of colors used for coloring charts. Uses [[appearance/application-colors]] for user choices."
@@ -137,7 +132,7 @@
   "Add a card to dashboard `dashboard` at position [`x`, `y`]."
   [dashboard :- ::ads/dashboard
    {query :dataset_query, :keys [title description width height id] :as dashcard} :- ::ads/card-template
-   [x y]]
+   [x y] :- [:tuple nat-int? nat-int?]]
   (let [query-fields (when query
                        ;; disable ref validation because X-Rays does stuff in a wacko manner, it adds a bunch of
                        ;; filters and whatever that use columns from joins before adding the joins themselves (same
@@ -175,7 +170,7 @@
           (merge (dashcard-defaults)
                  {:creator_id             api/*current-user-id*
                   :visualization_settings (merge
-                                           (dashboard-card/virtual-card-settings "text" text)
+                                           (dashboard-card/virtual-card-settings "text" {:text text})
                                            visualization-settings)
                   :col                    y
                   :row                    x
@@ -195,9 +190,7 @@
    occupied."
   [grid                                  :- ::grid
    [x y]                                 :- [:tuple nat-int? nat-int?]
-   {:keys [width height], :as _dashcard} :- [:map
-                                             [:width nat-int?]
-                                             [:height nat-int?]]]
+   {:keys [width height], :as _dashcard} :- ::ads/card-template]
   (reduce (fn [grid xy]
             (assoc-in grid xy true))
           grid
@@ -211,9 +204,7 @@
    it suffices to check just the first (top) row."
   [grid                   :- ::grid
    [x y]                  :- [:tuple nat-int? nat-int?]
-   {:keys [width height]} :- [:map
-                              [:width nat-int?]
-                              [:height nat-int?]]]
+   {:keys [width height]} :- ::ads/card-template]
   (and (<= (+ x height) (count grid))
        (<= (+ y width) (-> grid first count))
        (every? false? (subvec (grid x) y (+ y width)))))
@@ -224,9 +215,9 @@
    we should be fine): starting at top left move along the grid from left to
    right, row by row and try to place the card at each position until we find an
    unoccupied area. Mark the area as occupied."
-  [grid :- ::grid
-   start-row
-   dashcard]
+  [grid      :- ::grid
+   start-row :- nat-int?
+   dashcard  :- ::ads/card-template]
   (reduce (fn [grid xy]
             (if (accommodates? grid xy dashcard)
               (reduced xy)
@@ -256,7 +247,11 @@
 (mu/defn- add-group :- [:tuple ::ads/dashboard ::grid]
   [dashboard :- ::ads/dashboard
    grid      :- ::grid
-   group
+   group     :- [:maybe [:map {:closed true}
+                         [:title ::ads/string-or-18n-string]
+                         [:score {:optional true} :int]
+                         [:comparison_title {:optional true} [:maybe ::ads/string-or-18n-string]]
+                         [:description {:optional true} [:maybe ::ads/string-or-18n-string]]]]
    cards     :- [:sequential ::ads/card-template]]
   (let [start-row (bottom-row grid)
         start-row (cond-> start-row
@@ -319,7 +314,7 @@
 
 (mu/defn create-dashboard :- ::ads/dashboard
   "Create dashboard and populate it with cards."
-  ([dashboard] (create-dashboard dashboard :all))
+  ([dashboard :- ::ads/dashboard-template] (create-dashboard dashboard :all))
   ([{:keys [title transient_title description groups filters cards]} :- ::ads/dashboard-template
     n :- [:or pos-int? :keyword]]
    (let [n             (cond

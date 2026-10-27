@@ -5,7 +5,8 @@
    [metabase.test.data :as data]
    [toucan2.core :as t2]))
 
-#_{:clj-kondo/ignore [:uninitialized-var]}
+;; deliberately has no root value: the reader below checks `bound?` to tell a live cache from no cache at all
+#_{:clj-kondo/ignore [:uninitialized-var :metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *sync-steps-run-to-completion-cache*)
 
 (defn sync-steps-run-to-completion
@@ -13,7 +14,7 @@
   []
   (data/with-temp-copy-of-db
     ;; `sync-database!` does both sync an analysis steps
-    (sync/sync-database! (t2/select-one :model/Database :id (data/id)))
+    (sync/sync-database! (data/id))
     (t2/count :model/TaskHistory :db_id (data/id))))
 
 (defn crash-fn

@@ -20,6 +20,7 @@
    [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -950,7 +951,7 @@
                            (mt/run-mbql-query venues
                              {:joins [{:source-table $$categories
                                        :alias        "Cat"
-                                       :condition    [:= $id $id]
+                                       :condition    [:= $category_id &Cat.categories.id]
                                        :fields       [&Cat.categories.id]}]
                               :order-by [[:asc $id] [:asc &Cat.categories.id]]
                               :limit 1}))]
@@ -969,7 +970,7 @@
                                venues
                                {:joins [{:source-table $$categories
                                          :alias        evil-join-alias
-                                         :condition    [:= $id $id]
+                                         :condition    [:= $category_id [:field %categories.id {:join-alias evil-join-alias}]]
                                          :fields       [[:field %categories.id {:join-alias evil-join-alias}]]}]
                                 :order-by [[:asc $id] [:asc [:field %categories.id {:join-alias evil-join-alias}]]]
                                 :limit 1})]
@@ -1217,6 +1218,15 @@
    [3 "The Apple Pan" nil]
    [4 "Wurstküche" nil]])
 
+(defmethod driver/database-supports? [::driver/driver ::arbitrary-join-conditions]
+  [_driver _feature _database]
+  true)
+
+;;; Clickhouse doesn't support certain join conditions so we exclude it when necessary
+(defmethod driver/database-supports? [:clickhouse ::arbitrary-join-conditions]
+  [_driver _feature _database]
+  false)
+
 (defn- check-venues+categories-on-condition
   [condition expected-rows]
   (let [query (mt/mbql-query venues
@@ -1248,7 +1258,7 @@
     (check-venues+categories-on-condition
      [:=
       [:* 1 (mt/$ids venues $category_id)]
-      [:+ 0 (mt/$ids categories &c.categories.id)]]
+      [:- (mt/$ids categories &c.categories.id) 0]]
      venues+categories-expected-rows-for-fk=pk-join-condition)))
 
 (deftest ^:parallel join-expressions-lhs-col-rhs-expr-test
@@ -1319,7 +1329,7 @@
       [2 "Stout Burgers & Beers" "Dim Sum"]])))
 
 (deftest ^:parallel join-expressions-lhs-col-rhs-literal-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions ::arbitrary-join-conditions)
     (check-venues+categories-on-condition
      [:=
       (mt/$ids venues $name)
@@ -1356,7 +1366,7 @@
       [2 "Stout Burgers & Beers" "Café Sweets"]])))
 
 (deftest ^:parallel join-expressions-lhs-expr-rhs-col-with-operator-<-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions ::arbitrary-join-conditions)
     (check-venues+categories-on-condition
      [:<
       [:+ 1 (mt/$ids venues $price)]
@@ -1365,7 +1375,7 @@
       [1 "Red Medicine" "Bakery"]])))
 
 (deftest ^:parallel join-expressions-lhs-col-rhs-col-with-operator-!=-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions ::arbitrary-join-conditions)
     (check-venues+categories-on-condition
      [:!=
       (mt/$ids venues $category_id)
@@ -1465,7 +1475,7 @@
              {:description "products + orders with lhs and rhs expressions"
               :condition   [:=
                             [:+ 0 (mt/$ids products $id)]
-                            [:* 1 (mt/$ids orders &o.orders.product_id)]]}]]
+                            [:/ (mt/$ids orders &o.orders.product_id) 1]]}]]
       (testing (str "\n" description "\n" condition)
         (is (= [["Doohickey" 297271.47 14388.0]
                 ["Gadget" 406619.75 18865.0]
@@ -2014,7 +2024,8 @@
                              (lib.tu/merged-mock-metadata-provider
                               {:cards [{:id 1, :name (apply str (repeat 65 \a))}]}))
               card       (lib.metadata/card mp 1)
-              base       (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+              base       (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                             (lib/filter (lib/< (lib.metadata/field mp (mt/id :orders :id)) 101)))
               orders-pid (lib.metadata/field mp (mt/id :orders :product_id))
               ;; derive the joined card's columns instead of hardcoding "PRODUCT_ID"/"CATEGORY" (CI: case-folding drivers)
               card-pid   (m/find-first #(= (mt/id :orders :product_id) (:id %))

@@ -4,7 +4,6 @@ import {
   ActionIcon,
   Button,
   CopyButton,
-  Group,
   Icon,
   Modal,
   Stack,
@@ -29,7 +28,7 @@ export const SecretKeyModal = ({
     title={t`Copy and save this API key`}
     data-testid="secret-key-modal"
   >
-    <Stack gap="lg">
+    <Stack gap="xl">
       <Text c="text-secondary">{t`Store this key somewhere safe. For security reasons, we can't show it to you again.`}</Text>
       <TextInput
         aria-label={t`The API key`}
@@ -43,6 +42,7 @@ export const SecretKeyModal = ({
               <Tooltip label={t`Copied!`} opened={copied}>
                 <ActionIcon
                   variant="subtle"
+                  size="sm"
                   aria-label={t`Copy`}
                   onClick={copy}
                 >
@@ -53,9 +53,9 @@ export const SecretKeyModal = ({
           </CopyButton>
         }
       />
-      <Group justify="flex-end">
-        <Button onClick={onClose} variant="filled">{t`Done`}</Button>
-      </Group>
     </Stack>
+    <Modal.Footer>
+      <Button onClick={onClose} variant="filled">{t`Done`}</Button>
+    </Modal.Footer>
   </Modal>
 );

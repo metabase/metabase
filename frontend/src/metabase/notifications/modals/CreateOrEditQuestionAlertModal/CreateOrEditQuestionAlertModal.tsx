@@ -10,7 +10,8 @@ import {
   useSendUnsavedNotificationMutation,
   useUpdateNotificationMutation,
 } from "metabase/api";
-import type { ScheduleValueType } from "metabase/common/components/Schedule/types";
+import { findErrorMessage } from "metabase/api/utils/errors";
+import type { ScheduleValueType } from "metabase/common/components/Schedule/domain";
 import CS from "metabase/css/core/index.css";
 import {
   canAccessSettings,
@@ -41,7 +42,6 @@ import {
   Text,
   rem,
 } from "metabase/ui";
-import { getResponseErrorMessage } from "metabase/utils/errors";
 import type Question from "metabase-lib/v1/Question";
 import type {
   AdminNotification,
@@ -211,12 +211,11 @@ export const CreateOrEditQuestionAlertModal = ({
 
       if (result.error) {
         const errorText =
-          getResponseErrorMessage(result.error) ?? t`An error occurred`;
+          findErrorMessage(result.error) ?? t`An error occurred`;
 
         dispatch(
           addUndo({
-            icon: "warning",
-            toastColor: "feedback-negative",
+            variant: "negative",
             message: t`Failed save alert. ${errorText}`,
           }),
         );
@@ -247,9 +246,8 @@ export const CreateOrEditQuestionAlertModal = ({
       if (result.error) {
         dispatch(
           addUndo({
-            icon: "warning",
-            toastColor: "feedback-negative",
-            message: t`Failed to send test alert. ${getResponseErrorMessage(result.error) ?? t`An error occurred`}`,
+            variant: "negative",
+            message: t`Failed to send test alert. ${findErrorMessage(result.error) ?? t`An error occurred`}`,
           }),
         );
       }
@@ -314,7 +312,6 @@ export const CreateOrEditQuestionAlertModal = ({
       opened
       size={rem(680)}
       onClose={onClose}
-      padding="2.5rem"
       title={isEditMode ? t`Edit alert` : t`New alert`}
       styles={{
         body: {
@@ -324,11 +321,11 @@ export const CreateOrEditQuestionAlertModal = ({
         },
       }}
     >
-      <Stack gap="xl" mt="1.5rem" mb="2rem" px="2.5rem">
+      <Stack gap="xxl" mt="1.5rem" mb="2rem" px="xl">
         <AlertModalSettingsBlock
           title={t`What do you want to be alerted about?`}
         >
-          <Flex gap="lg" align="center">
+          <Flex gap="xl" align="center">
             <AlertTriggerIcon />
             {hasSingleTriggerOption ? (
               <Paper
@@ -409,13 +406,7 @@ export const CreateOrEditQuestionAlertModal = ({
         <AlertModalSettingsBlock title={t`More options`}>
           <Switch
             label={t`Delete this Alert after it's triggered`}
-            styles={{
-              label: {
-                lineHeight: "1.5rem",
-              },
-            }}
             labelPosition="right"
-            size="sm"
             checked={notification.payload?.send_once}
             onChange={(event) => {
               setNotification({
@@ -436,13 +427,13 @@ export const CreateOrEditQuestionAlertModal = ({
       <Flex
         justify="space-between"
         align="center"
-        px="2.5rem"
-        pt="lg"
+        px="xl"
+        pt="xl"
         className={CS.borderTop}
       >
         <Button
-          variant="outline"
-          color="core-brand"
+          variant="subtle"
+          color="brand"
           disabled={!hasValidTarget}
           loading={isLoading}
           onClick={onSendNow}
@@ -453,7 +444,7 @@ export const CreateOrEditQuestionAlertModal = ({
           <Button onClick={onClose}>{t`Cancel`}</Button>
           <Button
             variant="filled"
-            color={hasError ? "feedback-negative" : "core-brand"}
+            color={hasError ? "negative" : "brand"}
             disabled={!isValid || isCreating || isUpdating}
             loading={isCreating || isUpdating}
             onClick={onCreateOrEditAlert}

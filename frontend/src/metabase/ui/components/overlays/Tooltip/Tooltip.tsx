@@ -1,4 +1,8 @@
-import { Tooltip as MantineTooltip, type TooltipProps } from "@mantine/core";
+import {
+  Tooltip as MantineTooltip,
+  type TooltipProps,
+  useProps,
+} from "@mantine/core";
 import {
   type PropsWithChildren,
   createContext,
@@ -6,6 +10,9 @@ import {
   useContext,
   useMemo,
 } from "react";
+
+import { useIsTransitionOpen } from "./use-is-transition-open";
+import { useTooltipEventIsolation } from "./use-tooltip-event-isolation";
 
 const TooltipPortalTargetContext = createContext<HTMLElement | null>(null);
 
@@ -21,18 +28,44 @@ export function TooltipPortalTargetProvider({
 }
 
 const TooltipImpl = forwardRef<HTMLDivElement, TooltipProps>(
-  function TooltipImpl({ portalProps, ...props }, ref) {
+  function TooltipImpl(props, ref) {
+    const { label, portalProps, transitionProps, mod, ...rest } = useProps(
+      "Tooltip",
+      {},
+      props,
+    );
     const contextTarget = useContext(TooltipPortalTargetContext);
+    const callerPortalTarget = props.portalProps?.target;
     const resolvedPortalProps = useMemo(
       () =>
-        contextTarget && portalProps?.target == null
+        contextTarget && callerPortalTarget == null
           ? { ...portalProps, target: contextTarget }
           : portalProps,
-      [contextTarget, portalProps],
+      [contextTarget, callerPortalTarget, portalProps],
     );
 
+    const isControlled = rest.opened !== undefined;
+    const { isOpen, transitionProps: resolvedTransitionProps } =
+      useIsTransitionOpen(transitionProps);
+
+    const isHoverable = isOpen && !isControlled;
+
+    const { tooltipProps, labelProps } = useTooltipEventIsolation(rest);
+
     return (
-      <MantineTooltip {...props} portalProps={resolvedPortalProps} ref={ref} />
+      <MantineTooltip
+        {...rest}
+        {...tooltipProps}
+        // The delay only gives the pointer time to reach the tooltip. Mantine
+        // still opens a disabled one invisibly, and while open it takes the
+        // Escape key, so it shouldn't linger.
+        closeDelay={rest.disabled ? 0 : rest.closeDelay}
+        label={<div {...labelProps}>{label}</div>}
+        mod={[{ hoverable: isHoverable }, mod]}
+        portalProps={resolvedPortalProps}
+        transitionProps={resolvedTransitionProps}
+        ref={ref}
+      />
     );
   },
 );

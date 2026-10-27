@@ -117,13 +117,13 @@
 (mu/defn add-types-to-fields
   "Add `:base-type` and `:effective-type` to options of fields in `x` using `metadata-provider`. Works on MBQL 5 fields.
   `:effective-type` is required for coerced fields to pass schema checks."
-  [x metadata-provider :- ::lib.schema.metadata/metadata-provider]
+  [x                 :- [:or ::lib.schema/query ::lib.schema/stage]
+   metadata-provider :- ::lib.schema.metadata/metadata-provider]
   (if-let [field-ids (match/match-many x
                        [:field
                         (opts :guard (and (map? opts) (not (and (:base-type opts) (:effective-type opts)))))
                         (id :guard (and (integer? id) (pos? id)))]
-                       (when-not (some #{:mbql/stage-metadata} &parents)
-                         id))]
+                       id)]
     ;; "pre-warm" the metadata provider
     (do (lib.metadata/bulk-metadata metadata-provider :metadata/column field-ids)
         (match/replace x
@@ -131,31 +131,31 @@
            (options :guard (and (map? options) (not (and (:base-type options)
                                                          (:effective-type options)))))
            (id :guard pos-int?)]
-          (if (some #{:mbql/stage-metadata} &parents)
-            &match
-            (update &match 1 merge
-                    ;; TODO: For brush filters, query with different base type as in metadata is sent from FE. In that
-                    ;;       case no change is performed. Find a way how to handle this properly!
-                    (when-not (and (some? (:base-type options))
-                                   (not= (:base-type options)
-                                         (:base-type (lib.metadata/field metadata-provider id))))
-                      ;; Following key is used to track which base-types we added during `query` call. It is used in
-                      ;; [[metabase.lib.convert/options->legacy-MBQL]] to remove those, so query after conversion
-                      ;; as legacy -> MBQL 5 -> legacy looks closer to the original.
-                      (merge (when-not (contains? options :base-type)
-                               {:lib/transformation-added-base-type true})
-                             (-> (lib.metadata/field metadata-provider id)
-                                 (select-keys [:base-type :effective-type]))))))))
+          (let [{:keys [base-type]} options
+                mp-field (lib.metadata/field metadata-provider id)]
+            ;; TODO: For brush filters, query with different base type as in metadata is sent from FE. In that
+            ;;       case no change is performed. Find a way how to handle this properly!
+            (if (and base-type (not= base-type (:base-type mp-field)))
+              &match
+              ;; Following key is used to track which base-types we added during `query` call. It is used in
+              ;; [[metabase.lib.convert/options->legacy-MBQL]] to remove those, so query after conversion
+              ;; as legacy -> MBQL 5 -> legacy looks closer to the original.
+              (let [new-opts (-> options
+                                 (cond-> (nil? base-type) (assoc :lib/transformation-added-base-type true))
+                                 (m/assoc-some :base-type (:base-type mp-field))
+                                 (m/assoc-some :effective-type (:effective-type mp-field)))]
+                [:field new-opts id])))))
     x))
 
 (mu/defn query-with-stages :- ::lib.schema/query
   "Create a query from a sequence of stages."
-  ([metadata-providerable stages]
+  ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+    stages                :- [:sequential ::lib.util/query-like]]
    (query-with-stages (:id (lib.metadata/database metadata-providerable)) metadata-providerable stages))
 
   ([database-id           :- ::lib.schema.id/database
     metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-    stages]
+    stages                :- [:sequential ::lib.util/query-like]]
    (->> (merge
          {:lib/type     :mbql/query
           :lib/metadata (lib.metadata/->metadata-provider metadata-providerable)
@@ -173,9 +173,11 @@
      (let [mbql5-query (binding [lib.schema.expression/*suppress-expression-type-check?* true]
                          (lib.convert/->mbql5 (mbql.normalize/normalize-or-throw legacy-query)))
            mp          (lib.metadata/->metadata-provider metadata-providerable (:database mbql5-query))
-           mbql5-query (add-types-to-fields mbql5-query mp)]
+           converted?  (:lib.convert/converted? mbql5-query)
+           mbql5-query (-> mbql5-query (dissoc :lib.convert/converted?) (add-types-to-fields mp))]
        (merge
-        mbql5-query
+        (cond-> mbql5-query
+          converted? (assoc :lib.convert/converted? true))
         (query-with-stages mp (:stages mbql5-query)))))
    (fn [e]
      (throw (ex-info (i18n/tru "Error creating query from legacy query: {0}" (ex-message e))
@@ -186,7 +188,9 @@
   "Implementation for [[query]]."
   {:arglists '([metadata-providerable x])}
   (fn [_metadata-providerable x]
-    ((some-fn lib.util/normalized-query-type lib.dispatch/dispatch-value) x))
+    (or (when (and (map? x) (some #(contains? x %) [:lib/type :type "lib/type" "type"]))
+          (lib.util/normalized-query-type x))
+        (lib.dispatch/dispatch-value x)))
   :hierarchy lib.hierarchy/hierarchy)
 
 (defmethod query-method :query ; legacy MBQL query
@@ -299,7 +303,7 @@
   existing MBQL query or saved question or whatever. If the thing in question does not already include metadata, pass
   it in separately -- metadata is needed for most query manipulation operations."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   x :- some?]
+   x                     :- ::lib.util/query-like]
   (ensure-cached-metadata-provider (query-method metadata-providerable x)))
 
 (mu/defn ->query :- ::lib.schema/query
@@ -308,7 +312,7 @@
   Create a new MBQL query from anything that could conceptually be an MBQL query, like a Database or Table or an
   existing MBQL query or saved question or whatever. If the thing in question does not already include metadata, pass
   it in separately -- metadata is needed for most query manipulation operations."
-  [x
+  [x                     :- ::lib.util/query-like
    metadata-providerable :- ::lib.schema.metadata/metadata-providerable]
   (query metadata-providerable x))
 
@@ -316,7 +320,7 @@
   "Create a MBQL 5 query from a legacy inner query."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    database-id           :- ::lib.schema.id/database
-   inner-query           :- :map]
+   inner-query           :- :metabase.legacy-mbql.schema/SourceQuery]
   (->> (lib.convert/legacy-query-from-inner-query database-id inner-query)
        lib.convert/->mbql5
        (query metadata-providerable)))

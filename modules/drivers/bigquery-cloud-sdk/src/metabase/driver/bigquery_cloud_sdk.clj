@@ -1,5 +1,4 @@
 (ns metabase.driver.bigquery-cloud-sdk
-  (:refer-clojure :exclude [mapv some empty? not-empty])
   (:require
    [clojure.core.async :as a]
    [clojure.set :as set]
@@ -8,6 +7,7 @@
    [metabase.driver :as driver]
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.bigquery-cloud-sdk.common :as bigquery.common]
+   [metabase.driver.bigquery-cloud-sdk.db :as bigquery.db]
    [metabase.driver.bigquery-cloud-sdk.params :as bigquery.params]
    [metabase.driver.bigquery-cloud-sdk.query-processor :as bigquery.qp]
    [metabase.driver.common :as driver.common]
@@ -29,10 +29,9 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [every? mapv some empty? not-empty]]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2])
+   [metabase.util.performance :as perf])
   (:import
+   (clojure.core.async.impl.channels ManyToManyChannel)
    (clojure.lang PersistentList)
    (com.google.api.gax.rpc FixedHeaderProvider)
    (com.google.cloud.bigquery
@@ -46,10 +45,12 @@
     BigQueryException
     BigQueryOptions
     Clustering
+    ConnectionProperty
     Dataset
     DatasetId
     Field
     Field$Mode
+    FieldList
     FieldValue
     FieldValueList
     Job
@@ -97,7 +98,7 @@
   chosen by whoever supplied the credentials rather than a fixed Google endpoint."
   [service-account-json]
   (or (when-not (str/blank? service-account-json)
-        (not-empty (get (json/decode service-account-json) "token_uri")))
+        (perf/not-empty (get (json/decode service-account-json) "token_uri")))
       default-token-uri))
 
 (defmethod driver/connection-hosts :bigquery-cloud-sdk
@@ -108,7 +109,7 @@
    [:api-host :token-host]))
 
 (mu/defn- database-details->client
-  ^BigQuery [details :- :map]
+  ^BigQuery [details :- :metabase.lib.schema.common/database-details]
   (driver.u/validate-connection-hosts! :bigquery-cloud-sdk details)
   (let [base-creds   (bigquery.common/database-details->service-account-credential details)
         creds        (.createScoped base-creds bigquery-scopes)
@@ -117,6 +118,9 @@
         user-agent   (format "Metabase/%s (GPN:Metabase; %s)" mb-version run-mode)
         header-provider (FixedHeaderProvider/create
                          (ImmutableMap/of "user-agent" user-agent))
+        universe-domain (or (:universe-domain details)
+                            (System/getenv "GOOGLE_CLOUD_UNIVERSE_DOMAIN")
+                            (System/getProperty "google.cloud.universe_domain"))
         read-timeout-ms driver.settings/*query-timeout-ms*
         transport-options (-> (HttpTransportOptions/newBuilder)
                               (.setReadTimeout read-timeout-ms)
@@ -125,13 +129,19 @@
                        (.setCredentials creds)
                        (.setHeaderProvider header-provider)
                        (.setTransportOptions transport-options))]
-    (when-let [host (not-empty (:host details))]
+    (when universe-domain
+      (.setUniverseDomain bq-bldr universe-domain))
+    (when-let [host (perf/not-empty (:host details))]
       (.setHost bq-bldr host))
+    (when-let [^String billing-project-id (perf/not-empty (:billing-project-id details))]
+      ;; Jobs are created and billed in this project; queried tables can live elsewhere.
+      (.setProjectId bq-bldr billing-project-id))
     (.. bq-bldr build getService)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Transducing Query Results                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *page-callback*
   "Callback to execute when a new page is retrieved, used for testing"
   (constantly nil))
@@ -164,7 +174,7 @@
   [{:keys [dataset-filters-type dataset-filters-patterns]}]
   (when (= "inclusion" dataset-filters-type)
     (let [segments (map str/trim (str/split (str dataset-filters-patterns) #","))]
-      (when (every? #(re-matches exact-dataset-id-re %) segments)
+      (when (perf/every? #(re-matches exact-dataset-id-re %) segments)
         ;; a scan yields each dataset once however many segments matched it
         (distinct segments)))))
 
@@ -240,7 +250,9 @@
     (.getTable client dataset-id table-id empty-table-options)))
 
 (mu/defn- get-table :- (driver-api/instance-of-class Table)
-  (^Table [database dataset-id table-id]
+  (^Table [database   :- :metabase.warehouses.schema/database-or-metadata
+           dataset-id :- driver-api/schema.common.non-blank-string
+           table-id   :- driver-api/schema.common.non-blank-string]
    (let [details    (driver.conn/effective-details database)
          project-id (:project-id details)]
      (get-table (database-details->client details) project-id dataset-id table-id)))
@@ -294,19 +306,34 @@
                                      :where [:and
                                              [:= :o.table_name :t.table_name]
                                              [:= :o.option_name "require_partition_filter"]]}
-                                    :require_partition_filter]]
+                                    :require_partition_filter]
+                                   ;; TABLE_OPTIONS stores the description as a GoogleSQL string literal, e.g. `"it's \"x\""`.
+                                   ;; That is not always valid JSON (control characters come out as `\xHH`), but the STRING
+                                   ;; overload of JSON_VALUE decodes BigQuery's escapes, and returns NULL rather than throwing
+                                   ;; on anything it can't parse. (BigQuery rejects `SAFE.JSON_VALUE` on a STRING argument.)
+                                   [{:select [[[:json_value :o.option_value]]]
+                                     :from [[(information-schema-table project-id dataset-id "TABLE_OPTIONS") :o]]
+                                     :where [:and
+                                             [:= :o.table_name :t.table_name]
+                                             [:= :o.option_name "description"]]}
+                                    :description]]
                           :from [[(information-schema-table project-id dataset-id "TABLES") :t]]}))
-        table-info (fn [dataset-id {table-name :table_name table-type :table_type require-partition-filter :require_partition_filter}]
-                     {:schema dataset-id
-                      :name table-name
-                      :database_require_filter
-                      (boolean (and
-                                ;; Materialized views can be partitioned, and whether the view require a filter or not is based
-                                ;; on the base table it selects from, without parsing the view query we can't find out the base table,
-                                ;; thus we can't know whether the view require a filter or not.
-                                ;; Maybe this is something we can do once we can parse sql
-                                (= "BASE TABLE" table-type)
-                                require-partition-filter))})]
+        table-info (fn [dataset-id {table-name :table_name
+                                    table-type :table_type
+                                    require-partition-filter :require_partition_filter
+                                    description :description}]
+                     (cond-> {:schema dataset-id
+                              :name table-name
+                              :database_require_filter
+                              (boolean (and
+                                        ;; Materialized views can be partitioned, and whether the view require a filter or not is based
+                                        ;; on the base table it selects from, without parsing the view query we can't find out the base table,
+                                        ;; thus we can't know whether the view require a filter or not.
+                                        ;; Maybe this is something we can do once we can parse sql
+                                        (= "BASE TABLE" table-type)
+                                        require-partition-filter))}
+                       (not (str/blank? description))
+                       (assoc :description description)))]
     (->> (list-datasets details :logging-schema-exclusions? true)
          (eduction (mapcat (fn [dataset-id] (eduction (map #(table-info dataset-id %)) (query-dataset dataset-id))))))))
 
@@ -332,32 +359,9 @@
     "BIGNUMERIC" :type/Decimal
     :type/*))
 
-(defmulti ^:private type->database-type
-  "Internal type->database-type multimethod for BigQuery that dispatches on type."
-  {:arglists '([type])}
-  identity)
-
-;; we can't recover the parameterized types
-(defmethod type->database-type :type/Array [_] [[:raw "JSON"]])
-(defmethod type->database-type :type/Dictionary [_] [[:raw "JSON"]])
-
-(defmethod type->database-type :type/Boolean [_] [[:raw "BOOL"]])
-(defmethod type->database-type :type/Float [_] [[:raw "FLOAT64"]])
-(defmethod type->database-type :type/Integer [_] [[:raw "INT"]])
-(defmethod type->database-type :type/Number [_] [[:raw "INT"]])
-(defmethod type->database-type :type/Text [_] [[:raw "STRING"]])
-(defmethod type->database-type :type/TextLike [_] [[:raw "STRING"]])
-(defmethod type->database-type :type/Date [_] [[:raw "DATE"]])
-(defmethod type->database-type :type/DateTime [_] [[:raw "DATETIME"]])
-(defmethod type->database-type :type/DateTimeWithTZ [_] [[:raw "TIMESTAMP"]])
-(defmethod type->database-type :type/Time [_] [[:raw "TIME"]])
-(defmethod type->database-type :type/JSON [_] [[:raw "JSON"]])
-(defmethod type->database-type :type/SerializedJSON [_] [[:raw "JSON"]])
-(defmethod type->database-type :type/Decimal [_] [[:raw "BIGDECIMAL"]])
-
 (defmethod driver/type->database-type :bigquery-cloud-sdk
   [_driver base-type]
-  (type->database-type base-type))
+  [[:raw (bigquery.common/base-type->bigquery-type base-type)]])
 
 (defn- field->database+base-type
   "Returns a normalized `database-type` and its `base-type` for a type from BigQuery Field type.
@@ -388,9 +392,11 @@
     [database-type (database-type->base-type database-type)]))
 
 (mu/defn- fields->metabase-field-info
-  ([fields]
+  ([fields :- (driver-api/instance-of-class FieldList)]
    (fields->metabase-field-info nil nil fields))
-  ([database-position nfc-path fields]
+  ([database-position :- [:maybe :int]
+    nfc-path          :- [:maybe [:sequential :string]]
+    fields            :- (driver-api/instance-of-class FieldList)]
    (into
     []
     (map
@@ -425,16 +431,17 @@
 (defn- column-field-path-row->nested-col
   "Map a `COLUMN_FIELD_PATHS` row to a nested-column map (later keyed by its `:nfc-path`), or `nil` for a top-level
   (non-nested) field."
-  [dataset-id {data-type :data_type field-path-str :field_path table-name :table_name}]
+  [dataset-id {data-type :data_type field-path-str :field_path table-name :table_name description :description}]
   (let [field-path                (str/split field-path-str #"\.")
         [database-type base-type] (raw-type->database+base-type data-type)]
-    (when-let [nfc-path (not-empty (pop field-path))]
-      {:name          (peek field-path)
-       :table-name    table-name
-       :table-schema  dataset-id
-       :database-type database-type
-       :base-type     base-type
-       :nfc-path      nfc-path})))
+    (when-let [nfc-path (perf/not-empty (pop field-path))]
+      (cond-> {:name          (peek field-path)
+               :table-name    table-name
+               :table-schema  dataset-id
+               :database-type database-type
+               :base-type     base-type
+               :nfc-path      nfc-path}
+        (not (str/blank? description)) (assoc :field-comment description)))))
 
 (defn- nested-rows->table-lookup
   "Build a single table's nested-column lookup `{nfc-path [cols]}` from that table's `COLUMN_FIELD_PATHS` rows.
@@ -464,18 +471,20 @@
      (fn [{column-name :column_name
            data-type :data_type
            database-position :ordinal_position
-           partitioned? :partitioned}]
+           partitioned? :partitioned
+           description :description}]
        (let [database-position (or (some-> database-position dec) max-position)
              [database-type base-type] (raw-type->database+base-type data-type)]
          (cond-> [(maybe-add-nested-fields
                    nested-column-lookup
-                   {:name column-name
-                    :table-name table-name
-                    :table-schema dataset-id
-                    :database-type database-type
-                    :base-type base-type
-                    :database-partitioned partitioned?
-                    :database-position database-position}
+                   (cond-> {:name column-name
+                            :table-name table-name
+                            :table-schema dataset-id
+                            :database-type database-type
+                            :base-type base-type
+                            :database-partitioned partitioned?
+                            :database-position database-position}
+                     (not (str/blank? description)) (assoc :field-comment description))
                    nil
                    database-position)]
            ;; _PARTITIONDATE does not appear so add it in if we see _PARTITIONTIME
@@ -491,9 +500,10 @@
 
 (defn- describe-dataset-table
   "Build the field descriptions for a single table from its joined `COLUMNS`/`COLUMN_FIELD_PATHS` rows (see
-  [[describe-dataset-fields-reducible]]). Each top-level column appears once per nested leaf, or once with a `nil`
-  `:field_path` when it has none, so de-dup the columns by `:column_name` and build the nested-field lookup from
-  the rows that carry a `:field_path` (whose leaf type is in `:nested_data_type`)."
+  [[describe-dataset-fields-reducible]]). Each top-level column appears once per field path -- its own entry
+  (`:field_path` = `:column_name`) plus one per nested field -- or once with a `nil` `:field_path` when it has none, so
+  de-dup the columns by `:column_name`, take each column's `:description` from its own entry, and build the
+  nested-field lookup from the rows that carry a `:field_path` (whose type is in `:nested_data_type`)."
   [dataset-id table-rows]
   (let [table-name    (:table_name (first table-rows))
         nested-lookup (nested-rows->table-lookup
@@ -501,10 +511,19 @@
                        (eduction (filter :field_path)
                                  (map #(assoc % :data_type (:nested_data_type %)))
                                  table-rows))
+        ;; the row kept by the de-dup below may belong to a nested field, so look up the column's own description
+        descriptions  (into {}
+                            (keep (fn [{column-name :column_name field-path :field_path description :description}]
+                                    (when (= column-name field-path)
+                                      [column-name description])))
+                            table-rows)
         ;; de-dup by `:column_name`, not `:ordinal_position`: BigQuery reports a NULL `ordinal_position` for
         ;; pseudo-columns (e.g. `_PARTITIONTIME`), and a table can carry more than one, so keying on position would
         ;; collapse distinct columns into one.
-        columns       (into [] (m/distinct-by :column_name) table-rows)]
+        columns       (into []
+                            (comp (m/distinct-by :column_name)
+                                  (map #(assoc % :description (get descriptions (:column_name %)))))
+                            table-rows)]
     (sort-by (juxt :table-name :database-position :name)
              (describe-dataset-rows nested-lookup dataset-id table-name columns))))
 
@@ -520,9 +539,10 @@
 (defn- describe-dataset-fields-reducible
   "Reducibly describe the fields (including nested STRUCT fields) of `table-names` within `dataset-id`.
 
-  Runs a single `INFORMATION_SCHEMA` query that LEFT JOINs `COLUMNS` (top-level fields) to `COLUMN_FIELD_PATHS` (nested
-  STRUCT leaves) on `(table_name, column_name)`. A non-nested column yields one row with a `nil` `:field_path`; a STRUCT
-  column yields one row per nested leaf. Ordering by `table_name` keeps each table's rows contiguous, so we consume the
+  Runs a single `INFORMATION_SCHEMA` query that LEFT JOINs `COLUMNS` (top-level fields) to `COLUMN_FIELD_PATHS` (every
+  field path, which is also where descriptions live) on `(table_name, column_name)`. A column yields one row for its own
+  entry plus one per nested STRUCT field, or a single row with a `nil` `:field_path` when it has no entry (e.g.
+  pseudo-columns). Ordering by `table_name` keeps each table's rows contiguous, so we consume the
   live result with a `partition-by` transducer and reconstruct one table at a time (see [[describe-dataset-table]]) --
   never realizing more than a single table's rows. This matters for wide and/or deeply-nested datasets (e.g.
   GA4/Firebase exports, or schemas with thousands of columns per table) where realizing a whole batch's columns would
@@ -541,15 +561,15 @@
                                             [:c.ordinal_position :ordinal_position]
                                             [[:= :c.is_partitioning_column "YES"] :partitioned]
                                             [[:substr :p.data_type 1 max-data-type-length] :nested_data_type]
-                                            [:p.field_path :field_path]]
+                                            [:p.field_path :field_path]
+                                            ;; `COLUMNS` has no description column, so a top-level column's comes from
+                                            ;; its own `COLUMN_FIELD_PATHS` entry (field_path = column_name)
+                                            [:p.description :description]]
                                 :from      [[(information-schema-table project-id dataset-id "COLUMNS") :c]]
                                 :left-join [[(information-schema-table project-id dataset-id "COLUMN_FIELD_PATHS") :p]
                                             [:and
                                              [:= :c.table_name :p.table_name]
-                                             [:= :c.column_name :p.column_name]
-                                             ;; only nested leaves -- the top-level entry (field_path = column_name) has
-                                             ;; no `.` and is described from the `COLUMNS` side
-                                             [:> [:strpos :p.field_path "."] 0]]]
+                                             [:= :c.column_name :p.column_name]]]
                                 :where     [:in :c.table_name table-names]
                                 :order-by  [:c.table_name]})
                (catch Throwable e
@@ -640,11 +660,21 @@
 ;;; wildly inaccurate -- a TEXT column may hold 5 bytes or 5 MB), we *measure* it: fetch a small probe page, then
 ;;; recompute the next page size from the average bytes/row actually seen, so each page targets a fixed byte budget.
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *page-byte-budget*
-  "Target measured bytes per result page, for both `tabledata.list` sampling and regular query execution. The next
-  page size is `budget / measured-bytes-per-row`, clamped to [1, remaining]. Kept well under the server's ~10 MB page
-  cap to leave headroom for JVM object expansion when the page is parsed."
+  "Target measured bytes per result page for `tabledata.list` sampling. The next page size is
+  `budget / measured-bytes-per-row`, clamped to [1, remaining]. Kept well under the server's ~10 MB page cap to leave
+  headroom for JVM object expansion when the page is parsed. Sync may have several tables in flight at once, so this
+ stays small. Regular query execution uses the larger [[*query-page-byte-budget*]]."
   (* 4 1024 1024))
+
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:private ^:dynamic *query-page-byte-budget*
+  "Target measured bytes per result page for regular query execution. Deliberately larger than [[*page-byte-budget*]]
+  because the QP streams rows and holds only one parsed page at a time, and the number of `getQueryResults` round trips
+  is inversely proportional to this budget, so a small budget makes CSV downloads of larger tables >2x slower (#79273).
+  Still a hard bound, so the unbounded-first-page OOM this pagination was added to prevent (#76459) cannot recur."
+  (* 32 1024 1024))
 
 (def ^:private initial-page-rows
   "Rows to request for the *first* result page of every BigQuery fetch -- both `tabledata.list` sampling and regular
@@ -652,8 +682,9 @@
   otherwise requests an unbounded first page, so a wide/large result (e.g. the `INFORMATION_SCHEMA.COLUMNS` sweep in
   `describe-fields` over a 1000-column dataset, or a heavy sample) materializes hundreds of thousands of `FieldValue`s
   at once and can OOM sync. After this probe, [[adaptive-sample-next-page]]/[[adaptive-query-next-page]] grow each
-  subsequent page from the *measured* bytes/row toward [[*page-byte-budget*]]. Small enough to stay within budget even
-  for heavy rows, but not 1 -- a handful averages out per-row size variance."
+  subsequent page from the *measured* bytes/row toward that path's byte budget ([[*page-byte-budget*]] for sampling,
+  [[*query-page-byte-budget*]] for query execution). Small enough to stay within budget even for heavy rows, but not
+  1 -- a handful averages out per-row size variance."
   10)
 
 (def ^:private sample-cell-overhead-bytes
@@ -733,9 +764,9 @@
   lifted by matching the names in `fields` to the names in the table schema."
   [^Table bq-table fields rff]
   (let [^Schema schema (.. bq-table getDefinition getSchema)
-        field-idxs     (mapv :database_position fields)
+        field-idxs     (perf/mapv :database_position fields)
         all-parsers    (get-field-parsers schema)
-        parsers        (mapv all-parsers field-idxs)
+        parsers        (perf/mapv all-parsers field-idxs)
         probe          (list-sample-page bq-table (min (long initial-page-rows) table-rows-sample/max-sample-rows) nil)]
     (transduce
      (comp (take table-rows-sample/max-sample-rows)
@@ -749,11 +780,11 @@
 
 (defn- ingestion-time-partitioned-table?
   [table-id]
-  (t2/exists? :model/Field :table_id table-id :name partitioned-time-field-name :database_partitioned true :active true))
+  (bigquery.db/active-partitioned-field-exists? table-id partitioned-time-field-name))
 
 (defmethod driver/table-rows-sample :bigquery-cloud-sdk
   [driver {table-name :name, dataset-id :schema :as table} fields rff opts]
-  (let [database (driver-api/table->database table)
+  (let [database (driver.u/lib-database (:db_id table))
         bq-table (get-table database dataset-id table-name)]
     (if (or (#{TableDefinition$Type/MATERIALIZED_VIEW TableDefinition$Type/VIEW
                ;; We couldn't easily test if the following two can show up as
@@ -797,6 +828,7 @@
 ;;; 1. The initial query done by `execute-bigquery` where the `.query` call can be shortcircuited by `cancel-chan`.
 ;;; 2. The "lazy" iteration of `TableResult` done by the QP. Any exceptions, or `cancel-chan` checking will be done in the context of the pipeline, solely around the code in `reducible-bigquery-results`.
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic ^Long *page-size*
   "Maximum number of rows to return per page in a query. Leave unset (falls back to [[initial-page-rows]] for the first
   page, then adaptive sizing) by default, but override for testing."
@@ -876,23 +908,30 @@
   ^TableResult [^Job job options]
   (.getQueryResults job options))
 
+(def ^:private measured-rows-per-page
+  "Rows of each consumed page [[adaptive-query-next-page]] measured to estimate bytes/row. Measuring the whole page
+  re-walks every cell a second time after normal result parsing but a prefix estimates the average just as well.
+  Only the query path can take this shortcut: [[adaptive-sample-next-page]] also needs the *exact* per-page row count
+  for its `max-rows` budget, so it still measures every row."
+  32)
+
 (defn- adaptive-query-next-page
   "Adaptive page-advance for query-job results (the regular execution path), mirroring [[adaptive-sample-next-page]]
   but paging via `getQueryResults` -- the query result's own `.getNextPage` re-uses the original page size and can't
-  be re-sized. Measures the just-consumed page's real bytes/row and re-issues the next page with a `pageSize`
-  targeting [[*page-byte-budget*]], so a wide or heavy result fetches fewer rows per page instead of holding a
-  large parsed page in memory. Returns nil once the result set is exhausted; throws if BigQuery reports another
-  page is available (non-blank page token) but fails to return it, so we surface the error instead of silently
-  truncating the result set."
+  be re-sized. Measures the just-consumed page's real bytes/row (a [[measured-rows-per-page]] prefix) and re-issues
+  the next page with a `pageSize` targeting [[*query-page-byte-budget*]], so a wide or heavy result fetches fewer
+  rows per page instead of holding a large parsed page in memory. Returns nil once the result set is exhausted;
+  throws if BigQuery reports another page is available (non-blank page token) but fails to return it, so we surface
+  the error instead of silently truncating the result set."
   [^Job job]
-  (let [budget (long *page-byte-budget*)
+  (let [budget (long *query-page-byte-budget*)
         seen   (atom {:bytes 0, :rows 0})]
     (fn [^TableResult page]
       (let [token (.getNextPageToken page)]
         (when-not (str/blank? token)
           (let [[page-bytes page-rows] (reduce (fn [[b n] row] [(+ (long b) (row-bytes row)) (inc (long n))])
                                                [0 0]
-                                               (.getValues page))
+                                               (eduction (take measured-rows-per-page) (.getValues page)))
                 {:keys [bytes rows]}   (swap! seen (fn [s] {:bytes (+ (long (:bytes s)) (long page-bytes))
                                                             :rows  (+ (long (:rows s)) (long page-rows))}))]
             (log/trace "BigQuery: Fetching new page")
@@ -971,10 +1010,11 @@
         columns (for [column (some-> schema .getFields fields->metabase-field-info)]
                   (-> column
                       (set/rename-keys {:base-type :base_type})
-                      (dissoc :database-type :database-position)))
+                      ;; `:nested-fields` describes a RECORD's sub-fields for sync, not a result column
+                      (dissoc :database-type :database-position :nested-fields)))
         cols {:cols columns}
         results (eduction (map (fn [^FieldValueList row]
-                                 (mapv parse-field-value row parsers)))
+                                 (perf/mapv parse-field-value row parsers)))
                           (reducible-bigquery-results page cancel-chan attempt-job-cancel-fn
                                                       (adaptive-query-next-page job)))]
     (respond cols results)))
@@ -1029,12 +1069,13 @@
                     (throw-cancelled sql parameters)))
         :ready  (bigquery-execute-response result job client respond cancel-chan)))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (mu/defn- ^:dynamic *process-native*
-  [respond  :- fn?
-   database :- [:map [:details :map]]
-   sql
-   parameters
-   cancel-chan]
+  [respond     :- fn?
+   database    :- :metabase.warehouses.schema/database-or-metadata
+   sql         :- :string
+   parameters  :- [:maybe [:sequential :metabase.lib.schema.common/field-value]]
+   cancel-chan :- [:maybe (driver-api/instance-of-class ManyToManyChannel)]]
   {:pre [(map? database) (map? (:details database))]}
   ;; automatically retry the query if it times out or otherwise fails. This is on top of the auto-retry added by
   ;; `execute`
@@ -1105,7 +1146,8 @@
                               ;; statements by using a different driver-native API for affected-row counts.
                               :transforms/accurate-rows-affected false
                               :transforms/python                true
-                              :transforms/table                 true}]
+                              :transforms/table                 true
+                              :transforms/testing               false}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
 (defmethod driver/qualified-name-components :bigquery-cloud-sdk
@@ -1155,13 +1197,7 @@
     (log/infof "DB %s had hardcoded dataset-id; changing to an inclusion pattern and updating table schemas"
                (pr-str db-id))
     (try
-      (t2/query-one {:update (t2/table-name :model/Table)
-                     :set    {:schema dataset-id}
-                     :where  [:and
-                              [:= :db_id db-id]
-                              [:or
-                               [:= :schema nil]
-                               [:not= :schema dataset-id]]]})
+      (bigquery.db/set-table-schemas! db-id dataset-id)
       ;; if we are upgrading to the sdk driver after having downgraded back to the old driver we end up with
       ;; duplicated tables with nil schema. Happily only in the "dataset-id" schema and not all schemas. But just
       ;; leave them with nil schemas and they will get deactivated in sync.
@@ -1170,19 +1206,19 @@
                               (assoc :dataset-filters-type "inclusion")
                               (assoc :dataset-filters-patterns dataset-id)
                               (dissoc :dataset-id))]
-      (t2/update! :model/Database db-id {:details updated-details})
+      (bigquery.db/update-database-details! db-id updated-details)
       (assoc database :details updated-details))))
 
 ;; TODO: THIS METHOD SHOULD NOT BE UPDATING THE APP-DB (which it does in [convert-dataset-id-to-filters!])
 ;; Issue: https://github.com/metabase/metabase/issues/39392
 ;; This normalize is a legacy migration (OAuth -> service-account, dataset-id -> filters); it
-;; runs only against `:details` because the overlay maps (`:write-data-details`, `:admin-details`)
-;; never carry these legacy fields, and `convert-dataset-id-to-filters!` writes side effects
+;; runs only against `:details` because the overlay map (`:write-data-details`)
+;; never carries these legacy fields, and `convert-dataset-id-to-filters!` writes side effects
 ;; specific to the primary details.
 (defmethod driver/normalize-db-details :bigquery-cloud-sdk
   [_driver database]
   (let [details (driver.conn/default-details database)]
-    (when-not (empty? (filter some? ((juxt :auth-code :client-id :client-secret) details)))
+    (when-not (perf/empty? (filter some? ((juxt :auth-code :client-id :client-secret) details)))
       (log/errorf (str "Database ID %d, which was migrated from the legacy :bigquery driver to :bigquery-cloud-sdk, has"
                        " one or more OAuth style authentication scheme parameters saved to db-details, which cannot"
                        " be automatically migrated to the newer driver (since it *requires* service-account-json instead);"
@@ -1215,7 +1251,7 @@
 (defn- clustering-clause
   "Inline `CLUSTER BY col, ...` clause for a table's `indexes`, or nil when there's no clustering."
   [indexes]
-  (when-let [{:keys [columns]} (some #(when (= :clustering (:kind %)) %) indexes)]
+  (when-let [{:keys [columns]} (perf/some #(when (= :clustering (:kind %)) %) indexes)]
     (let [cols (str/join ", " (map #(sql.u/quote-name :bigquery-cloud-sdk :field (:name %)) columns))]
       (format "CLUSTER BY %s" cols))))
 
@@ -1231,7 +1267,7 @@
         (let [definition (.getDefinition bq-table)]
           (when (instance? StandardTableDefinition definition)
             (when-let [^Clustering clustering (.getClustering ^StandardTableDefinition definition)]
-              (not-empty (vec (.getFields clustering))))))))))
+              (perf/not-empty (vec (.getFields clustering))))))))))
 
 (defmethod driver/fetch-table-indexes :bigquery-cloud-sdk
   [_driver database schema table]
@@ -1280,19 +1316,91 @@
   (let [table-str (get-table-str table)]
     [(str "DROP TABLE IF EXISTS " table-str)]))
 
+(defn- session-query-config
+  "The configuration of a job running the `[sql params]` query in the session `session-id`, or creating a new session
+  when `session-id` is nil."
+  ^QueryJobConfiguration [^String session-id [^String sql params]]
+  (let [builder (doto (QueryJobConfiguration/newBuilder sql)
+                  (bigquery.params/set-parameters! params)
+                  (.setUseLegacySql false))]
+    (if session-id
+      (.setConnectionProperties builder [(-> (ConnectionProperty/newBuilder)
+                                             (.setKey "session_id")
+                                             (.setValue session-id)
+                                             (.build))])
+      (.setCreateSession builder true))
+    (.build builder)))
+
+(defn- run-session-job!
+  "Runs the `[sql params]` query in the session `session-id`, or in a new session when `session-id` is nil, and returns
+  its finished job."
+  ^Job [^BigQuery client session-id query]
+  (let [job (.create client (JobInfo/of (session-query-config session-id query)) (u/varargs BigQuery$JobOption))]
+    (.getQueryResults job (u/varargs BigQuery$QueryResultsOption))
+    job))
+
+(defmethod driver/do-with-test-connection :bigquery-cloud-sdk
+  [driver database f]
+  (let [details    (driver/connection-spec driver database)
+        client     (database-details->client details)
+        _          (driver.conn/track-connection-acquisition! details)
+        job        (.reload (run-session-job! client nil ["SELECT 1" nil]) (u/varargs BigQuery$JobOption))
+        session-id (.getSessionId (.getSessionInfo (.getStatistics job)))]
+    (try
+      (f {:client client, :session-id session-id})
+      (finally
+        (try
+          (run-session-job! client session-id ["CALL BQ.ABORT_SESSION()" nil])
+          (catch Exception e
+            (log/warnf "Failed to abort BigQuery transform test session: %s" (ex-message e))))))))
+
+(defmethod driver/execute-on-connection! :bigquery-cloud-sdk
+  [_driver {:keys [client session-id]} query]
+  (run-session-job! client session-id query)
+  {:rows-affected 0})
+
+(defmethod driver/query-on-connection :bigquery-cloud-sdk
+  [_driver {:keys [client session-id]} query {:keys [max-rows]}]
+  ;; Every scalar arrives as a String, and a NULL as an Object (TBD-1592), so the values go through the same per-field
+  ;; parsers the query processor reads results with rather than straight off the cell.
+  (let [^TableResult result (.getQueryResults (run-session-job! client session-id query)
+                                              (u/varargs BigQuery$QueryResultsOption))
+        ^Schema schema      (.getSchema result)
+        parsers             (get-field-parsers schema)]
+    {:columns (perf/mapv (fn [^Field field]
+                           {:name          (.getName field)
+                            :database_type (.. field getType name)})
+                         (.getFields schema))
+     :rows    (into []
+                    (comp (map (fn [^FieldValueList row]
+                                 (perf/mapv parse-field-value row parsers)))
+                          (if max-rows (take max-rows) identity))
+                    (.iterateAll result))}))
+
+(defmethod driver/compile-create-temp-table :bigquery-cloud-sdk
+  [_driver {:keys [table query]}]
+  (let [{sql-query :query sql-params :params} query]
+    [(format "CREATE TEMP TABLE %s AS %s" (get-table-str (keyword table)) sql-query)
+     sql-params]))
+
+(defmethod driver/compile-drop-temp-table :bigquery-cloud-sdk
+  [_driver table]
+  [(str "DROP TABLE IF EXISTS " (get-table-str (keyword table)))
+   []])
+
 (defmethod driver/create-table! :bigquery-cloud-sdk
   [driver database-id table-name column-definitions & {:keys [primary-key indexes]}]
   (let [base      (#'driver.sql-jdbc/create-table!-sql driver table-name column-definitions :primary-key primary-key)
         cluster   (clustering-clause indexes)
         sql       (if cluster (str base " " cluster) base)
-        database  (t2/select-one :model/Database database-id)
+        database  (driver.u/lib-database database-id)
         conn-spec (driver/connection-spec driver database)]
     (driver/execute-raw-queries! driver conn-spec [sql])))
 
 (defmethod driver/drop-table! :bigquery-cloud-sdk
   [driver database-id table-name]
   (let [sql       (driver/compile-drop-table driver table-name)
-        database  (t2/select-one :model/Database database-id)
+        database  (driver.u/lib-database database-id)
         conn-spec (driver/connection-spec driver database)]
     (driver/execute-raw-queries! driver conn-spec [sql])))
 
@@ -1347,18 +1455,18 @@
   ;; update their metadata caches frequently enough for timely transform runs (or interactive previews).
   ;; rather than waiting many minutes, we trade torward consistency by using SQL DML, whose table metadata
   ;; is consistent, and we do not see cached non-existence and things like that causing trouble.
-  (let [database   (t2/select-one :model/Database db-id)
-        col-kws    (mapv (comp keyword name :name) columns)
+  (let [database   (driver.u/lib-database db-id)
+        col-kws    (perf/mapv (comp keyword name :name) columns)
         num-cols   (count col-kws)
         ;; bigquery allows 10k query parameters per request
         max-rows   (max 1 (quot 10000 num-cols))
         chunk-size (min (or driver/*insert-chunk-rows* 1000) max-rows)]
     (doseq [chunk (partition-all chunk-size data)
             :let [lift       #(if (coll? %) [:lift %] %)
-                  lift-tuple #(mapv lift %)]]
+                  lift-tuple #(perf/mapv lift %)]]
       (let [[sql & params] (sql.qp/format-honeysql driver {:insert-into table-name
                                                            :columns     col-kws
-                                                           :values      (mapv lift-tuple chunk)})]
+                                                           :values      (perf/mapv lift-tuple chunk)})]
         (driver/execute-raw-queries! driver database [[sql params]])))))
 
 (defmethod driver/execute-raw-queries! :bigquery-cloud-sdk
@@ -1402,7 +1510,7 @@
   (driver.conn/effective-details database))
 
 (defmethod driver.sql/default-schema :bigquery-cloud-sdk
-  [_]
+  [_driver _database]
   nil)
 
 (defmethod driver/create-schema-if-needed! :bigquery-cloud-sdk
@@ -1423,7 +1531,7 @@
          driver-api/database
          driver.conn/effective-details
          list-datasets
-         (some #{schema}))))
+         (perf/some #{schema}))))
 
 (defmethod driver/table-name-length-limit :bigquery-cloud-sdk
   [_driver]

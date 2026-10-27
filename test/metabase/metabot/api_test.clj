@@ -17,6 +17,7 @@
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.conversation-title :as conversation-title]
+   [metabase.metabot.feedback :as metabot.feedback]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as metabot.self]
@@ -26,9 +27,11 @@
    [metabase.metabot.test-util :as mut]
    [metabase.premium-features.core :as premium-features]
    [metabase.search.test-util :as search.tu]
-   [metabase.server.instance :as server.instance]
    [metabase.server.streaming-response :as sr]
+   [metabase.server.test-util :as server.tu]
    [metabase.test :as mt]
+   [metabase.test.http-client :as client]
+   [metabase.test.server.handler :as test.server.handler]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -36,6 +39,61 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private test-provider "openrouter/anthropic/claude-haiku-4-5")
+
+(deftest agent-streaming-metabot-resolution-test
+  (mt/with-temporary-setting-values [metabot-enabled? true
+                                     embedded-metabot-enabled? true]
+    (doseq [[request-id entity-id profile-id]
+            [["metabotmetabotmetabot" "metabotmetabotmetabot" :internal]
+             ["embeddedmetabotmetabo" "embeddedmetabotmetabo" :embedding_next]
+             ["b5716059-ad40-4d83-a4e1-673af020b2d8" "metabotmetabotmetabot" :internal]
+             ["c61bf5f5-1025-47b6-9298-bf1827105bb6" "embeddedmetabotmetabo" :embedding_next]
+             [nil "metabotmetabotmetabot" :internal]]]
+      (testing (str "Metabot request id " request-id)
+        (let [received (atom nil)
+              received-context (atom nil)
+              create-context (mt/original-fn #'metabot.context/create-context)]
+          (mt/with-model-cleanup [:model/MetabotMessage
+                                  [:model/MetabotConversation :created_at]]
+            (mt/with-dynamic-fn-redefs [metabot.context/create-context (fn [ctx opts]
+                                                                         (reset! received-context opts)
+                                                                         (create-context ctx opts))
+                                        agent/run-agent-loop (fn [opts]
+                                                               (reset! received opts)
+                                                               [])
+                                        conversation-title/ensure-title! (constantly {:status :missing})]
+              (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                    (cond-> {:message "Hello"
+                                             :context {}
+                                             :conversation_id (str (random-uuid))}
+                                      request-id (assoc :metabot_id request-id)))
+              (is (= (t2/select-one :model/Metabot :entity_id entity-id)
+                     (:metabot @received)))
+              (is (= (:metabot @received) (:metabot @received-context)))
+              (is (= profile-id (:profile-id @received))))))))))
+
+(deftest agent-streaming-unknown-metabot-test
+  (let [conversation-id (str (random-uuid))]
+    (is (= "Unknown Metabot."
+           (mt/user-http-request :rasta :post 400 "metabot/agent-streaming"
+                                 {:metabot_id "nonexistent-entity-id"
+                                  :message "Hello"
+                                  :context {}
+                                  :conversation_id conversation-id})))
+    (is (not (t2/exists? :model/MetabotConversation :id conversation-id)))))
+
+(deftest feedback-metabot-id-test
+  (mt/with-temp [:model/Metabot {:keys [id entity_id]} {:name "Feedback Metabot"}]
+    (mt/with-temporary-setting-values [metabot-enabled? false
+                                       embedded-metabot-enabled? true]
+      (mt/with-dynamic-fn-redefs [metabot.feedback/persist-feedback! (constantly nil)
+                                  metabot.feedback/persist-source-feedback! (constantly nil)]
+        (doseq [metabot-id [nil id entity_id]
+                [endpoint feedback] [["feedback" {:positive true}]
+                                     ["source-feedback" {:positive true :source_id 42 :source_type "table"}]]]
+          (is (nil? (mt/user-http-request :rasta :post 204 (str "metabot/" endpoint)
+                                          (cond-> (assoc feedback :message_id "test-message")
+                                            metabot-id (assoc :metabot_id metabot-id))))))))))
 
 (deftest native-agent-streaming-test
   (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
@@ -91,12 +149,232 @@
                             :role         :user
                             :data         [{:type "text" :text (:content question)}]
                             :data_version 2}
-                           {:total_tokens pos-int?
-                            :role         :assistant
-                            :data         [{:type "step-start"}
-                                           {:type "text" :text "Hello from native agent!" :state "done"}]
-                            :data_version 2}]
-                          messages)))))))))))
+                           {:total_tokens  pos-int?
+                            :role          :assistant
+                            :data          [{:type "step-start"}
+                                            {:type "text" :text "Hello from native agent!" :state "done"}]
+                            :data_version  2
+                            ;; the provider truncated this turn, so the row records why it stopped
+                            :finished      true
+                            :finish_reason "length"}]
+                          messages))
+                  (is (nil? (:context_window_full (second messages)))
+                      "15 context tokens against a 1000-token window leave room, so the row is not full"))))))))))
+
+(deftest native-agent-streaming-records-context-window-full-test
+  (testing "a length stop whose context reached the streamed window is saved as full"
+    (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
+                                       metabot.settings/llm-metabot-provider test-provider]
+      (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+        (let [conversation-id (str (random-uuid))]
+          (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
+                                                              (mut/mock-llm-response
+                                                               [{:type :start :id "msg-1"}
+                                                                {:type :text :text "cut o"}
+                                                                {:type  :usage       :usage {:promptTokens 10 :completionTokens 5}
+                                                                 :model "test-model" :id    "msg-1"
+                                                                 :finish-reason "length"}]))
+                                      metabot.self/context-window-tokens (constantly 15)
+                                      conversation-title/ensure-title! (constantly {:status :ready
+                                                                                    :title  "Orders by Month"})]
+            (mt/with-model-cleanup [:model/MetabotMessage
+                                    [:model/MetabotConversation :created_at]]
+              (let [response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                   {:message         "Test full window"
+                                                    :context         {}
+                                                    :conversation_id conversation-id
+                                                    :state           {}})
+                    finish   (->> (str/split-lines response)
+                                  (filter #(str/starts-with? % "data: "))
+                                  (remove #(= "data: [DONE]" %))
+                                  (map #(json/decode+kw (subs % 6)))
+                                  (u/seek #(= "finish" (:type %))))]
+                (testing "the stream reports the same window the row is judged against"
+                  (is (=? {:finishReason    "length"
+                           :messageMetadata {:contextTokens 15 :contextWindowTokens 15}}
+                          finish)))
+                (is (=? {:finish_reason "length" :context_tokens 15 :context_window_full true}
+                        (t2/select-one :model/MetabotMessage
+                                       :conversation_id conversation-id :role "assistant")))))))))))
+
+(deftest agent-streaming-offers-run-query-only-in-a-private-conversation-test
+  (let [rasta (mt/user->id :rasta)]
+    (mt/with-temporary-setting-values [llm.settings/llm-providers                       llm.tu/default-connections
+                                       metabot.settings/llm-metabot-provider             test-provider
+                                       metabot.settings/metabot-query-execution-enabled? true]
+      (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+        (mt/with-temp [:model/MetabotConversation {own :id}    {:user_id rasta}
+                       :model/MetabotConversation {joined :id} {:user_id rasta}
+                       :model/MetabotMessage      _            {:conversation_id joined, :user_id (mt/user->id :lucky)}
+                       :model/MetabotConversation {thread :id} {:user_id rasta, :slack_thread_ts "1.2"}]
+          (mt/with-model-cleanup [:model/MetabotMessage]
+            (let [offered? (fn [conversation-id]
+                             (let [requests (atom [])]
+                               (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                                           (fn [request]
+                                                             (swap! requests conj request)
+                                                             (mut/mock-llm-response [{:type :text :text "Done"}]))
+                                                           conversation-title/ensure-title!
+                                                           (constantly {:status :ready, :title "Orders"})]
+                                 (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                       {:message         "How many orders?"
+                                                        :context         {}
+                                                        :conversation_id conversation-id
+                                                        :state           {}}))
+                               (contains? (set (map :tool-name (:tools (first @requests)))) "run_query")))]
+              (testing "the user's own conversation offers run_query"
+                (is (true? (offered? own))))
+              (testing "a conversation someone else has written to does not"
+                (is (false? (offered? joined))))
+              (testing "a Slack thread does not"
+                (is (false? (offered? thread)))))))))))
+
+(deftest native-agent-streaming-context-overflow-error-test
+  (testing "an OpenRouter 400 for a request over the window streams the \"full\" copy and error code"
+    (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
+                                       metabot.settings/llm-metabot-provider test-provider]
+      (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+        (let [conversation-id (str (random-uuid))
+              ;; OpenRouter's 400 body for a request over the window (probed 2026-10-09,
+              ;; https://github.com/metabase/metabase/pull/83989).
+              e               (ex-info "OpenRouter API error (HTTP 400)"
+                                       {:api-error true
+                                        :status    400
+                                        :provider  "openrouter"
+                                        :body      {:error {:message  "This endpoint's maximum context length is 200000 tokens."
+                                                            :code     400
+                                                            :metadata {:provider_name nil}}}})]
+          (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_] (throw e))
+                                      conversation-title/ensure-title! (constantly {:status :ready
+                                                                                    :title  "Orders by Month"})]
+            (mt/with-model-cleanup [:model/MetabotMessage
+                                    [:model/MetabotConversation :created_at]]
+              (let [response (mt/with-log-level [metabase.metabot.agent.core :fatal]
+                               (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                     {:message         "Test full context"
+                                                      :context         {}
+                                                      :conversation_id conversation-id
+                                                      :state           {}}))
+                    events   (->> (str/split-lines response)
+                                  (filter #(str/starts-with? % "data: "))
+                                  (remove #(= "data: [DONE]" %))
+                                  (mapv #(json/decode+kw (subs % 6))))]
+                (is (=? {:errorText "This conversation has reached its maximum length and can't continue. Please start a new chat."}
+                        (u/seek #(= "error" (:type %)) events)))
+                (is (=? {:finishReason    "error"
+                         :messageMetadata {:errorCode "ai_provider_context_full"}}
+                        (u/seek #(= "finish" (:type %)) events)))
+                (testing "the conversation endpoint keeps the turn, so a reload still reads as full"
+                  (is (=? [{:role "user"}
+                           {:role   "agent"
+                            :status {:type "errored" :error {:type "ai_provider_context_full" :message string?}}}]
+                          (:messages (mt/user-http-request :rasta :get 200
+                                                           (str "metabot/conversations/" conversation-id))))))))))))))
+
+(def ^:private openrouter-error-chunks
+  "Raw OpenRouter chunks for a generation the upstream model abandoned: OpenRouter reports that as
+  `finish_reason \"error\"` rather than as an error event."
+  [{:id      "gen-error-1"
+    :model   "anthropic/claude-haiku-4-5"
+    :choices [{:index 0 :delta {:role "assistant" :content "Here's what I fou"} :finish_reason nil}]}
+   {:choices [{:index 0 :delta {} :finish_reason "error"}]}
+   {:choices [] :usage {:prompt_tokens 12 :completion_tokens 3}}])
+
+(deftest native-agent-streaming-openrouter-error-finish-persists-errored-turn-test
+  (testing "a provider failure reported as a finish reason ends the stream as an error and persists as one"
+    (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
+                                       metabot.settings/llm-metabot-provider test-provider]
+      (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+        (with-redefs [config/is-dev? true]
+          (let [conversation-id (str (random-uuid))]
+            (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
+                                                                (eduction (openrouter/openrouter->aisdk-chunks-xf)
+                                                                          openrouter-error-chunks))
+                                        metabot.self/context-window-tokens (constantly 1000)
+                                        conversation-title/ensure-title! (constantly {:status :ready
+                                                                                      :title  "Orders by Month"})]
+              (mt/with-model-cleanup [:model/MetabotMessage
+                                      [:model/MetabotConversation :created_at]]
+                (let [response  (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                      {:message         "Test provider failure"
+                                                       :context         {}
+                                                       :conversation_id conversation-id
+                                                       :state           {}})
+                      events    (->> (str/split-lines response)
+                                     (filter #(str/starts-with? % "data: "))
+                                     (remove #(= "data: [DONE]" %))
+                                     (mapv #(json/decode+kw (subs % 6))))
+                      messages  (t2/select :model/MetabotMessage :conversation_id conversation-id)
+                      assistant (u/seek #(= :assistant (:role %)) messages)]
+                  (testing "the SSE stream carries an error event and finishes as an error"
+                    (is (= 1 (count (filterv #(= "error" (:type %)) events))))
+                    (is (=? {:type "finish" :finishReason "error"}
+                            (u/seek #(= "finish" (:type %)) events))))
+                  (testing "so the turn is persisted as errored, not as a clean stop"
+                    ;; the error column is filled by api.clj's own seek over the finalized parts
+                    (is (some? (:error assistant)))
+                    (is (=? {:message string?} (json/decode+kw (:error assistant))))
+                    (is (true? (:finished assistant)))
+                    (is (nil? (:finish_reason assistant))
+                        "an errored turn is not also an incomplete one"))
+                  (testing "and the conversation endpoint drops the errored pair"
+                    (is (= []
+                           (:messages (mt/user-http-request :rasta :get 200
+                                                            (str "metabot/conversations/" conversation-id)))))))))))))))
+
+(def ^:private openrouter-midstream-overflow-chunks
+  "Raw OpenRouter chunks for an overflow streamed after the 200: a first chunk of text, then OpenRouter's documented
+  mid-stream error event.
+
+  The event is the Chat Completions example at https://openrouter.ai/docs/api_reference/errors-and-debugging, with
+  `error.code` 400, `error.message` \"Provider returned error\" and `error.metadata.error_type`
+  \"context_length_exceeded\" in place of the example's rate-limit values."
+  [{:id      "gen-abc123"
+    :object  "chat.completion.chunk"
+    :created 1234567890
+    :model   "anthropic/claude-haiku-4.5"
+    :choices [{:index 0 :delta {:role "assistant" :content "Here's what I fou"} :finish_reason nil}]}
+   {:id       "gen-abc123"
+    :object   "chat.completion.chunk"
+    :created  1234567890
+    :model    "anthropic/claude-haiku-4.5"
+    :provider "Anthropic"
+    :error    {:code 400 :message "Provider returned error" :metadata {:error_type "context_length_exceeded"}}
+    :choices  [{:index 0 :delta {:content ""} :finish_reason "error"}]}])
+
+(deftest native-agent-streaming-openrouter-midstream-context-overflow-test
+  (testing "an overflow OpenRouter streams after its 200 streams the \"full\" copy and error code"
+    (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
+                                       metabot.settings/llm-metabot-provider test-provider]
+      (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+        (let [conversation-id (str (random-uuid))]
+          (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
+                                                              (eduction (openrouter/openrouter->aisdk-chunks-xf)
+                                                                        openrouter-midstream-overflow-chunks))
+                                      conversation-title/ensure-title! (constantly {:status :ready
+                                                                                    :title  "Orders by Month"})]
+            (mt/with-model-cleanup [:model/MetabotMessage
+                                    [:model/MetabotConversation :created_at]]
+              (let [response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                                   {:message         "Test full context"
+                                                    :context         {}
+                                                    :conversation_id conversation-id
+                                                    :state           {}})
+                    events   (->> (str/split-lines response)
+                                  (filter #(str/starts-with? % "data: "))
+                                  (remove #(= "data: [DONE]" %))
+                                  (mapv #(json/decode+kw (subs % 6))))]
+                (is (=? {:errorText "This conversation has reached its maximum length and can't continue. Please start a new chat."}
+                        (u/seek #(= "error" (:type %)) events)))
+                (is (=? {:finishReason    "error"
+                         :messageMetadata {:errorCode "ai_provider_context_full"}}
+                        (u/seek #(= "finish" (:type %)) events)))
+                (testing "the conversation endpoint keeps the turn, so a reload still reads as full"
+                  (is (=? [{:role "user"}
+                           {:role   "agent"
+                            :status {:type "errored" :error {:type "ai_provider_context_full" :message string?}}}]
+                          (:messages (mt/user-http-request :rasta :get 200
+                                                           (str "metabot/conversations/" conversation-id))))))))))))))
 
 (deftest emits-title-event-inline-when-ready-during-stream-test
   (testing "when the title becomes ready while streaming, the real title event is injected inline before the finish event"
@@ -139,18 +417,19 @@
   (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]
     (let [generate-title! #(#'conversation-title/generate! conversation-id "default" "Show orders by month")
           stored-title    #(t2/select-one-fn :title :model/MetabotConversation :id conversation-id)]
-      (with-redefs [metabot.self/call-llm-structured (constantly {:title "\"Orders by Month!\""})]
+      (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured (constantly {:title "\"Orders by Month!\""})]
         (is (= "Orders by Month" (generate-title!)))
         (is (= "Orders by Month" (stored-title))))
-      (with-redefs [metabot.self/call-llm-structured (constantly {:title "Different title"})]
+      (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured (constantly {:title "Different title"})]
         (is (nil? (generate-title!)))
         (is (= "Orders by Month" (stored-title)))))))
 
 (deftest conversation-title-generation-skips-existing-title-test
   (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)
                                                                    :title   "Existing Title"}]
-    (with-redefs [metabot.self/call-llm-structured (fn [& _]
-                                                     (throw (ex-info "should not generate" {})))]
+    (mt/with-dynamic-fn-redefs
+      [metabot.self/call-llm-structured (fn [& _]
+                                          (throw (ex-info "should not generate" {})))]
       (is (= {:status :ready :title "Existing Title"}
              (conversation-title/ensure-title! conversation-id "default" "Show orders by month")))
       (is (= {:status "ready" :title "Existing Title"}
@@ -160,10 +439,11 @@
   (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]
     (let [gate       (promise)
           call-count (atom 0)]
-      (with-redefs [metabot.self/call-llm-structured (fn [& _]
-                                                       (swap! call-count inc)
-                                                       @gate
-                                                       {:title "Recovered Title"})]
+      (mt/with-dynamic-fn-redefs
+        [metabot.self/call-llm-structured (fn [& _]
+                                            (swap! call-count inc)
+                                            @gate
+                                            {:title "Recovered Title"})]
         (let [future-1 (conversation-title/submit! conversation-id "default" "Show orders by month")
               future-2 (conversation-title/submit! conversation-id "default" "Use a different prompt")]
           (is (some? future-1))
@@ -183,6 +463,112 @@
   ^String [data]
   (str "data: " (json/encode data) "\n\n"))
 
+(defn- fake-openrouter-handler
+  "A fake OpenRouter (Chat Completions) server: an async ring handler that streams SSE text deltas, one every
+  10 ms, while `cnt` is positive. It decrements `cnt` after each delta, and stops when its consumer disconnects.
+
+  When it stops with `cnt` still positive, it delivers the remaining `cnt` to the optional `:stopped-early` promise."
+  [cnt & {:keys [stopped-early]}]
+  (let [chat-id (str "chatcmpl-" (random-uuid))]
+    (fn [req respond _raise]
+      (respond
+       (compojure.response/render
+        (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os llm-canceled-chan]
+          (try
+            (let [write!    (fn [^String s]
+                              (.write os (.getBytes s "UTF-8"))
+                              (.flush os))
+                  canceled? #(some? (a/poll! llm-canceled-chan))]
+              ;; First chunk: role assignment (empty content to establish assistant role)
+              (write! (sse-event {:id      chat-id
+                                  :model   "anthropic/claude-haiku-4-5"
+                                  :choices [{:index         0
+                                             :delta         {:role "assistant" :content ""}
+                                             :finish_reason nil}]}))
+              ;; Stream text content chunks slowly, stop early if the consumer disconnects
+              (loop []
+                (when (and (pos? @cnt) (not (canceled?)))
+                  (write! (sse-event {:id      chat-id
+                                      :model   "anthropic/claude-haiku-4-5"
+                                      :choices [{:index         0
+                                                 ;; pad past Jetty's 8 KB buffer so .flush reaches the client mid-stream
+                                                 :delta         {:content (str "chunk-" @cnt " " (apply str (repeat 512 \x)))}
+                                                 :finish_reason nil}]}))
+                  (swap! cnt dec)
+                  (Thread/sleep 10)
+                  (recur)))
+              (when-not (canceled?)
+                ;; Finish reason
+                (write! (sse-event {:id      chat-id
+                                    :model   "anthropic/claude-haiku-4-5"
+                                    :choices [{:index         0
+                                               :delta         {}
+                                               :finish_reason "stop"}]}))
+                ;; Usage (separate final chunk, as OpenRouter does)
+                (write! (sse-event {:id      chat-id
+                                    :model   "anthropic/claude-haiku-4-5"
+                                    :choices []
+                                    :usage   {:prompt_tokens     10
+                                              :completion_tokens 50}}))
+                (write! "data: [DONE]\n\n")))
+            (catch Exception _e nil)
+            ;; A write after the disconnect can throw before `canceled?` turns true. So the `finally` reports the
+            ;; early stop, which covers both paths.
+            (finally
+              (when (and stopped-early (pos? @cnt))
+                (deliver stopped-early @cnt)))))
+        req)))))
+
+(defn- do-with-closed-agent-stream!
+  "Start a native-agent turn against the fake LLM at `llm-url`, read one byte of the response, and close the
+  client. Wait up to 3 s for `finalize-assistant-turn!`, then call `f` with `:stored-parts`, `:stored-kwargs`
+  (the finalize arguments, nil if it did not run) and the `:conversation-id`."
+  [llm-url f]
+  (let [stored-parts  (atom nil)
+        stored-kwargs (atom nil)]
+    (mt/test-helpers-set-global-values!
+      (search.tu/with-index-disabled
+        ;; the fake LLM server is on localhost, which the network policy refuses on a hosted instance
+        (mt/with-temp-env-var-value! [mb-llm-allowed-networks "allow-all"]
+          (mt/with-temporary-setting-values [llm.settings/llm-providers [(llm.tu/connection "openrouter" {:base-url llm-url})]
+                                             metabot.settings/llm-metabot-provider test-provider]
+            (let [real-llm-request self.core/request]
+              (with-redefs [scope/resolve-user-permissions               (constantly scope/all-yes-permissions)
+                            conversation-title/ensure-title!             (constantly {:status :missing})
+                            ;; The fake LLM server gzips whenever the caller accepts it, and clj-http
+                            ;; wraps the body in a GZIPInputStream. Closing mid-stream causes ZLIB errors.
+                            self.core/request                            (fn [auth req]
+                                                                           (real-llm-request auth (assoc req :decompress-body false)))
+                            metabot.context/create-context               (fn [ctx & _] ctx)
+                            metabot.persistence/finalize-assistant-turn! (fn [_pk parts & kwargs]
+                                                                           (reset! stored-parts parts)
+                                                                           (reset! stored-kwargs (apply hash-map kwargs)))
+                            sr/async-cancellation-poll-interval-ms       5]
+                (mt/with-model-cleanup [:model/MetabotMessage
+                                        [:model/MetabotConversation :created_at]]
+                  (let [conversation-id (str (random-uuid))
+                        response (mt/user-real-request-full-response
+                                  :rasta :post 202 "metabot/agent-streaming"
+                                  {:request-options {:as              :stream
+                                                     :decompress-body false}}
+                                  {:message         "Test closure"
+                                   :context         {}
+                                   :conversation_id conversation-id
+                                   :state           {}})]
+                    (.read ^java.io.InputStream (:body response)) ;; start the handler
+                    ;; Close the underlying client, not the body stream: closing the body would
+                    ;; make clj-http drain the (now chunked) response to completion, which looks
+                    ;; like a normal finish rather than a disconnect. Closing the client aborts
+                    ;; the connection, which is what the server's cancel loop detects.
+                    (.close ^java.io.Closeable (:http-client response))
+                    (u/poll {:thunk       #(deref stored-parts)
+                             :done?       some?
+                             :interval-ms 10
+                             :timeout-ms  3000})
+                    (f {:stored-parts    @stored-parts
+                        :stored-kwargs   @stored-kwargs
+                        :conversation-id conversation-id})))))))))))
+
 (deftest closing-connection-native-agent-test
   (testing "When the client closes a native-agent streaming connection, the
             pipeline tears down and the partial turn is persisted as aborted."
@@ -196,111 +582,136 @@
     ;; the agent loop unwinds, and `finalize-assistant-turn!` is called from the
     ;; `finally` with `:finished? false`, UPDATEing the placeholder row inserted
     ;; by `start-turn!`.
-    (let [total-chunks  30
+    (let [cnt (atom 30)]
+      (server.tu/with-test-server [llm-url (fake-openrouter-handler cnt)]
+        (testing "Closing stream body tears down the pipeline and persists the aborted turn"
+          (do-with-closed-agent-stream!
+           llm-url
+           (fn [{:keys [stored-parts stored-kwargs conversation-id]}]
+             (is (some? stored-parts)
+                 "finalize-assistant-turn! was called even though the client disconnected")
+             (is (false? (:finished? stored-kwargs))
+                 "the finalized turn is marked :finished? false — the cancel was detected")
+             (is (= 2 (count (t2/select :model/MetabotMessage
+                                        :conversation_id conversation-id)))
+                 "start-turn! inserted exactly user + placeholder; no extra row from finalize"))))))))
+
+(deftest closing-connection-stops-upstream-llm-test
+  (testing "When the client closes a native-agent streaming connection during a long LLM stream, Metabase drops
+            its connection to the LLM, so the LLM stops sending and the turn finalizes at once"
+    ;; Before the workaround for https://github.com/dakrone/clj-http/issues/627, a close of the LLM response body
+    ;; read the rest of the chunked stream. The turn then finalized only when the LLM finished (about 20 s here).
+    (let [total-chunks  2000
           cnt           (atom total-chunks)
-          stored-parts  (atom nil)
-          stored-kwargs (atom nil)
-          chat-id       (str "chatcmpl-" (random-uuid))
-          ;; Fake OpenRouter API: streams Chat Completions SSE text deltas.
-          llm-handler
-          (fn [req respond _raise]
-            (respond
-             (compojure.response/render
-              (sr/streaming-response {:content-type "text/event-stream; charset=utf-8"} [os llm-canceled-chan]
-                (try
-                  (let [write!    (fn [^String s]
-                                    (.write os (.getBytes s "UTF-8"))
-                                    (.flush os))
-                        canceled? #(some? (a/poll! llm-canceled-chan))]
-                    ;; First chunk: role assignment (empty content to establish assistant role)
-                    (write! (sse-event {:id      chat-id
-                                        :model   "anthropic/claude-haiku-4-5"
-                                        :choices [{:index         0
-                                                   :delta         {:role "assistant" :content ""}
-                                                   :finish_reason nil}]}))
-                    ;; Stream text content chunks slowly, stop early if the consumer disconnects
-                    (loop []
-                      (when (and (pos? @cnt) (not (canceled?)))
-                        (write! (sse-event {:id      chat-id
-                                            :model   "anthropic/claude-haiku-4-5"
-                                            :choices [{:index         0
-                                                       ;; pad past Jetty's 8 KB buffer so .flush reaches the client mid-stream
-                                                       :delta         {:content (str "chunk-" @cnt " " (apply str (repeat 512 \x)))}
-                                                       :finish_reason nil}]}))
-                        (swap! cnt dec)
-                        (Thread/sleep 10)
-                        (recur)))
-                    (when-not (canceled?)
-                      ;; Finish reason
-                      (write! (sse-event {:id      chat-id
-                                          :model   "anthropic/claude-haiku-4-5"
-                                          :choices [{:index         0
-                                                     :delta         {}
-                                                     :finish_reason "stop"}]}))
-                      ;; Usage (separate final chunk, as OpenRouter does)
-                      (write! (sse-event {:id      chat-id
-                                          :model   "anthropic/claude-haiku-4-5"
-                                          :choices []
-                                          :usage   {:prompt_tokens     10
-                                                    :completion_tokens 50}}))
-                      (write! "data: [DONE]\n\n")))
-                  (catch Exception _e nil)))
-              req)))
-          llm-server
-          (doto (server.instance/create-server llm-handler {:port 0 :join? false})
-            .start)
-          llm-url       (str "http://localhost:" (.. llm-server getURI getPort))]
-      (try
-        (mt/test-helpers-set-global-values!
-          (search.tu/with-index-disabled
-            (mt/with-temporary-setting-values [llm.settings/llm-providers [(llm.tu/connection "openrouter" {:base-url llm-url})]
-                                               metabot.settings/llm-metabot-provider test-provider]
-              (let [real-llm-request self.core/request]
-                (with-redefs [scope/resolve-user-permissions               (constantly scope/all-yes-permissions)
-                              conversation-title/ensure-title!             (constantly {:status :missing})
-                              ;; The fake LLM server gzips whenever the caller accepts it, and clj-http
-                              ;; wraps the body in a GZIPInputStream. Closing mid-stream causes ZLIB errors.
-                              self.core/request                            (fn [auth req]
-                                                                             (real-llm-request auth (assoc req :decompress-body false)))
-                              metabot.context/create-context               (fn [ctx & _] ctx)
-                              metabot.persistence/finalize-assistant-turn! (fn [_pk parts & kwargs]
-                                                                             (reset! stored-parts parts)
-                                                                             (reset! stored-kwargs (apply hash-map kwargs)))
-                              sr/async-cancellation-poll-interval-ms       5]
-                  (testing "Closing stream body tears down the pipeline and persists the aborted turn"
-                    (reset! cnt total-chunks)
-                    (reset! stored-parts nil)
-                    (reset! stored-kwargs nil)
-                    (mt/with-model-cleanup [:model/MetabotMessage
-                                            [:model/MetabotConversation :created_at]]
-                      (let [conversation-id (str (random-uuid))
-                            response (mt/user-real-request-full-response
-                                      :rasta :post 202 "metabot/agent-streaming"
-                                      {:request-options {:as              :stream
-                                                         :decompress-body false}}
-                                      {:message         "Test closure"
-                                       :context         {}
-                                       :conversation_id conversation-id
-                                       :state           {}})]
-                        (.read ^java.io.InputStream (:body response)) ;; start the handler
-                        ;; Close the underlying client, not the body stream: closing the body would
-                        ;; make clj-http drain the (now chunked) response to completion, which looks
-                        ;; like a normal finish rather than a disconnect. Closing the client aborts
-                        ;; the connection, which is what the server's cancel loop detects.
-                        (.close ^java.io.Closeable (:http-client response))
-                        (u/poll {:thunk       #(deref stored-parts)
-                                 :done?       some?
-                                 :interval-ms 10
-                                 :timeout-ms  3000})
-                        (is (some? @stored-parts)
-                            "finalize-assistant-turn! was called even though the client disconnected")
-                        (is (false? (:finished? @stored-kwargs))
-                            "the finalized turn is marked :finished? false — the cancel was detected")
-                        (is (= 2 (count (t2/select :model/MetabotMessage
-                                                   :conversation_id conversation-id)))
-                            "start-turn! inserted exactly user + placeholder; no extra row from finalize")))))))))
-        (finally
-          (.stop llm-server))))))
+          stopped-early (promise)]
+      (server.tu/with-test-server [llm-url (fake-openrouter-handler cnt :stopped-early stopped-early)]
+        (do-with-closed-agent-stream!
+         llm-url
+         (fn [{:keys [stored-parts stored-kwargs]}]
+           (is (some? stored-parts)
+               "finalize-assistant-turn! ran within 3 s of the disconnect")
+           (is (false? (:finished? stored-kwargs))
+               "the finalized turn is marked :finished? false")
+           (let [remaining (deref stopped-early 2000 nil)]
+             (is (some? remaining)
+                 "the fake LLM saw the disconnect and stopped before it sent all its chunks")
+             (is (< (- total-chunks (or remaining 0)) 300)
+                 "the fake LLM saw the disconnect long before it sent all its chunks"))))))))
+
+(deftest turn-longer-than-async-response-timeout-finishes-test
+  (testing "A turn that outlasts MB_JETTY_ASYNC_RESPONSE_TIMEOUT streams its finish event and finalizes as finished"
+    (let [turn-started (promise)
+          release      (promise)
+          finished     (promise)
+          slow-turn    (reify clojure.lang.IReduceInit
+                         (reduce [_ rf init]
+                           (deliver turn-started true)
+                           (deref release 5000 nil)
+                           (reduce rf init [{:type :start :id "msg-1"} {:type :text :text "Done"}])))]
+      (mt/with-temp-env-var-value! [mb-jetty-async-response-timeout 100]
+        (mt/with-dynamic-fn-redefs
+          [agent/run-agent-loop                         (constantly slow-turn)
+           metabot.context/create-context               (fn [ctx & _] ctx)
+           metabot.self/context-window-tokens           (constantly 1000)
+           metabot.persistence/finalize-assistant-turn! (fn [_ _ & {:keys [finished?]}] (deliver finished finished?))]
+          (let [handler (bound-fn [req respond _raise]
+                          (respond (compojure.response/render
+                                    (if (= "/control" (:uri req))
+                                      (sr/streaming-response {:content-type "text/plain"} [os _]
+                                        (deref release 5000 nil)
+                                        (.write os (.getBytes "done" "UTF-8")))
+                                      (#'api/native-agent-streaming-request {:profile-id "internal"
+                                                                             :message    {:role "user" :content "Hi"}
+                                                                             :context    {}}))
+                                    req)))]
+            (server.tu/with-test-server [url handler]
+              (try
+                (let [turn (future (:body (server.tu/request url :get "/")))]
+                  (is (true? (deref turn-started 5000 ::timed-out)))
+                  (is (= "" (:body (server.tu/request url :get "/control")))
+                      "the timeout cuts a plain stream that started after the turn")
+                  (deliver release true)
+                  (let [lines  (->> (deref turn 5000 "")
+                                    str/split-lines
+                                    (filter #(str/starts-with? % "data: ")))
+                        events (->> lines
+                                    (remove #(= "data: [DONE]" %))
+                                    (mapv #(json/decode+kw (subs % 6))))]
+                    (is (= "data: [DONE]" (last lines)))
+                    (is (= "finish" (:type (last events))))
+                    (is (true? (deref finished 5000 ::timed-out)))))
+                (finally
+                  (deliver release true))))))))))
+
+(deftest turn-through-real-routes-outlasts-async-response-timeout-test
+  (testing "The real route and middleware let a long turn finish and persist the assistant as finished"
+    (let [turn-started (promise)
+          release      (promise)
+          slow-turn    (reify clojure.lang.IReduceInit
+                         (reduce [_ rf init]
+                           (deliver turn-started true)
+                           (deref release 5000 nil)
+                           (reduce rf init [{:type :start :id "msg-1"} {:type :text :text "Done"}])))
+          real-handler (test.server.handler/test-handler)
+          handler      (fn [req respond raise]
+                         (if (= "/control" (:uri req))
+                           (respond (compojure.response/render
+                                     (sr/streaming-response {:content-type "text/plain"} [os _]
+                                       (deref release 5000 nil)
+                                       (.write os (.getBytes "done" "UTF-8")))
+                                     req))
+                           (real-handler req respond raise)))]
+      (mt/with-temp-env-var-value! [mb-jetty-async-response-timeout 100]
+        (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
+                                           metabot.settings/llm-metabot-provider test-provider
+                                           metabot.settings/metabot-chat-turn-async-timeout-ms 2000]
+          (mt/with-dynamic-fn-redefs [agent/run-agent-loop           (constantly slow-turn)
+                                      metabot.context/create-context (fn [ctx & _] ctx)
+                                      metabot.self/context-window-tokens (constantly 1000)
+                                      conversation-title/ensure-title! (constantly {:status :missing})]
+            (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]
+              (server.tu/with-test-server [url handler]
+                (let [options (client/build-request-map (mt/user->credentials :rasta)
+                                                        {:message "Hi" :context {} :conversation_id conversation-id}
+                                                        nil)
+                      turn    (future (server.tu/request url :post "/api/metabot/agent-streaming" options))]
+                  (try
+                    (is (true? (deref turn-started 5000 ::timed-out)))
+                    (is (= "" (:body (server.tu/request url :get "/control")))
+                        "the server timeout has elapsed while the turn is still running")
+                    (is (=? {:finished nil}
+                            (t2/select-one [:model/MetabotMessage :finished]
+                                           :conversation_id conversation-id :role :assistant)))
+                    (deliver release true)
+                    (let [{:keys [status body]} (deref turn 5000 nil)]
+                      (is (= 202 status))
+                      (is (str/includes? (or body "") "\"type\":\"finish\""))
+                      (is (str/ends-with? (or body "") "data: [DONE]\n\n")))
+                    (is (true? (t2/select-one-fn :finished :model/MetabotMessage
+                                                 :conversation_id conversation-id :role :assistant)))
+                    (finally
+                      (deliver release true)
+                      (deref turn 5000 nil))))))))))))
 
 (deftest thrown-during-agent-setup-persists-as-errored-test
   (testing "A throwable escaping the agent loop (e.g. permission/setup throw before
@@ -312,18 +723,19 @@
       (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
         (let [stored-parts  (atom nil)
               stored-kwargs (atom nil)]
-          (with-redefs [;; Pre-reducible throw: this is the exact escape path the new
-                        ;; catch covers. The agent loop's own (catch Exception) is
-                        ;; inside the reify, so a throw from `run-agent-loop` itself
-                        ;; bypasses it entirely.
-                        agent/run-agent-loop
-                        (fn [_opts]
-                          (throw (ex-info "agent setup exploded"
-                                          {:status 503 :provider :test})))
-                        metabot.persistence/finalize-assistant-turn!
-                        (fn [_pk parts & kwargs]
-                          (reset! stored-parts parts)
-                          (reset! stored-kwargs (apply hash-map kwargs)))]
+          (mt/with-dynamic-fn-redefs
+            [;; Pre-reducible throw: this is the exact escape path the new
+             ;; catch covers. The agent loop's own (catch Exception) is
+             ;; inside the reify, so a throw from `run-agent-loop` itself
+             ;; bypasses it entirely.
+             agent/run-agent-loop
+             (fn [_opts]
+               (throw (ex-info "agent setup exploded"
+                               {:status 503 :provider :test})))
+             metabot.persistence/finalize-assistant-turn!
+             (fn [_pk parts & kwargs]
+               (reset! stored-parts parts)
+               (reset! stored-kwargs (apply hash-map kwargs)))]
             (mt/with-model-cleanup [:model/MetabotMessage
                                     [:model/MetabotConversation :created_at]]
               (let [response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
@@ -523,6 +935,32 @@
              (thunk)
              (is (empty? @queue) "unconsumed mock LLM responses"))))))))
 
+(deftest agent-streaming-rejects-unknown-profile-test
+  (testing "agent-streaming rejects an unregistered profile, and an eval-only one where evals don't run, before starting a turn"
+    (mt/with-temporary-setting-values [llm.settings/llm-providers llm.tu/default-connections
+                                       metabot.settings/llm-metabot-provider test-provider]
+      (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+        (doseq [profile-id ["no_such_profile" "internal-sql"]]
+          (testing profile-id
+            (let [title-calls     (atom 0)
+                  llm-calls       (atom 0)
+                  conversation-id (str (random-uuid))]
+              (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_] (swap! llm-calls inc) (mut/mock-llm-response []))
+                                          conversation-title/ensure-title! (fn [& _] (swap! title-calls inc) {:status :ready :title "x"})]
+                (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
+                  (is (=? #"Unknown profile.*"
+                          (mt/user-http-request :rasta :post 400 "metabot/agent-streaming"
+                                                {:message         "hello"
+                                                 :context         {}
+                                                 :conversation_id conversation-id
+                                                 :state           {}
+                                                 :profile_id      profile-id})))
+                  (testing "nothing was persisted and no LLM call was made"
+                    (is (nil? (t2/select-one :model/MetabotConversation :id conversation-id)))
+                    (is (empty? (t2/select :model/MetabotMessage :conversation_id conversation-id)))
+                    (is (zero? @title-calls))
+                    (is (zero? @llm-calls))))))))))))
+
 (deftest agent-streaming-rejects-stale-parent-message-id-test
   (testing "agent-streaming accepts nil/matching parent_message_id, rejects one that no longer matches the leaf"
     (with-mock-streaming-provider!
@@ -633,6 +1071,16 @@
     (mt/user-http-request :rasta :post 400 "metabot/agent-streaming"
                           (agent-request (str (random-uuid)) "first"
                                          :assistant_message_id "not-a-uuid"))))
+
+(deftest agent-streaming-accepts-question-without-data-source-test
+  (testing "a new question with no data source picked yet still gets an answer (#75195)"
+    (with-mock-streaming-provider!
+      (fn []
+        (let [draft    {:database nil :type "query" :query {:source-table nil}}
+              response (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                                             (agent-request (str (random-uuid)) "Show me all orders"
+                                                            :context {:user_is_viewing [{:type "adhoc" :query draft}]}))]
+          (is (str/includes? response "\"delta\":\"hi\"")))))))
 
 (deftest agent-streaming-replaces-trailing-failed-turn-test
   (testing "a resubmit whose parent points before a mid-stream-errored turn replaces the failed pair"
@@ -781,9 +1229,10 @@
     (let [title-requests (atom [])]
       (with-mock-streaming-provider!
         (fn []
-          (with-redefs [conversation-title/ensure-title! (fn [& args]
-                                                           (swap! title-requests conj args)
-                                                           {:status :missing})]
+          (mt/with-dynamic-fn-redefs
+            [conversation-title/ensure-title! (fn [& args]
+                                                (swap! title-requests conj args)
+                                                {:status :missing})]
             (let [conversation-id (str (random-uuid))
                   first-response  (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
                                                         (agent-request conversation-id "first prompt"))
@@ -829,21 +1278,22 @@
               turn-states   (atom [{:queries {"q_1" {:database 1}} :todos [{:id "a" :status "pending"}]}
                                    {:queries {"q_1" {:database 1} "q_2" {:database 2}} :todos [{:id "b" :status "done"}]}
                                    nil])]
-          (with-redefs [agent/run-agent-loop
-                        (fn [{:keys [state memory-atom]}]
-                          (swap! seeded-states conj state)
-                          (let [[turn-state] @turn-states]
-                            (swap! turn-states subvec 1)
-                            ;; mirror the real loop: populate the caller's atom so
-                            ;; finalize can persist this turn's state
-                            (some-> memory-atom
-                                    (reset! {:turn-state (or turn-state {})}))
-                            (cond-> [{:type :start :id "msg-1"}
-                                     {:type :text :text "ok"}]
-                              turn-state (conj {:type :data :data-type "state" :data turn-state}))))]
+          (mt/with-dynamic-fn-redefs
+            [agent/run-agent-loop
+             (fn [{:keys [state memory-atom]}]
+               (swap! seeded-states conj state)
+               (let [[turn-state] @turn-states]
+                 (swap! turn-states subvec 1)
+                 ;; mirror the real loop: populate the caller's atom so
+                 ;; finalize can persist this turn's state
+                 (some-> memory-atom
+                         (reset! {:turn-state (or turn-state {})}))
+                 (cond-> [{:type :start :id "msg-1"}
+                          {:type :text :text "ok"}]
+                   turn-state (conj {:type :data :data-type "state" :data turn-state}))))]
             (mt/with-model-cleanup [:model/MetabotMessage [:model/MetabotConversation :created_at]]
               (let [conversation-id (str (random-uuid))
-                    turn-1-state    {:queries {:q_1 {:database 1}} :todos [{:id "a" :status "pending"}]}
+                    turn-1-state    {:queries {"q_1" {:database 1}} :todos [{:id "a" :status "pending"}]}
                     first-response  (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
                                                           {:message         "make a query"
                                                            :context         {}
@@ -860,7 +1310,7 @@
                 (is (= {} (first @seeded-states))
                     "a new conversation seeds the loop with empty state")
                 (is (= turn-1-state (second @seeded-states))
-                    "the follow-up turn is seeded from the DB partial, keywordized — no client echo")
+                    "the follow-up turn is seeded from the DB partial, normalized — no client echo")
                 (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
                                       {:message          "another"
                                        :context          {}
@@ -950,13 +1400,13 @@
   (testing "metabase/ provider prefix sets ai_proxied true and stores bare model names"
     (let [msg (start-and-finalize-with-provider! "metabase/anthropic/claude-sonnet-4-6")]
       (is (true? (:ai_proxied msg)))
-      (is (= {:claude-sonnet-4-6 {:prompt 100 :completion 50}}
+      (is (= {"claude-sonnet-4-6" {:prompt 100 :completion 50}}
              (:usage msg))
           "usage keys should be bare model names, not metabase/anthropic/...")))
   (testing "BYOK provider (no metabase/ prefix) sets ai_proxied false"
     (let [msg (start-and-finalize-with-provider! "anthropic/claude-sonnet-4-6")]
       (is (false? (:ai_proxied msg)))
-      (is (= {:claude-sonnet-4-6 {:prompt 100 :completion 50}}
+      (is (= {"claude-sonnet-4-6" {:prompt 100 :completion 50}}
              (:usage msg))))))
 
 (deftest finalize-assistant-turn-data-part-filtering-test
@@ -979,10 +1429,10 @@
                 {:type :data :data-type "transform_suggestion" :version 1 :data {}}
                 {:type :data :data-type "adhoc_viz" :version 1 :data {:query {} :link "/q"}}
                 {:type :data :data-type "static_viz" :version 1 :data {:entity_id 1}}
-                {:type :data :data-type "state" :data {:step 1}}
+                {:type :data :data-type "state" :data {:todos [{:id "1"}]}}
                 {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 1 :completionTokens 1}}
                 {:type :finish}]
-               :turn-state {:step 1})
+               :turn-state {:todos [{:id "1"}]})
               (let [msg        (t2/select-one :model/MetabotMessage assistant-msg-id)
                     part-types (into #{} (map :type) (:data msg))
                     data-types (into #{}
@@ -995,7 +1445,7 @@
                     "text parts survive")
                 (is (not-any? part-types #{"start" "usage" "finish"})
                     "stream metadata is dropped")
-                (is (= {:step 1} (:state msg))
+                (is (= {:todos [{:id "1"}]} (:state msg))
                     "the turn's partial state lands on the message row"))))
           (finally
             (t2/delete! :model/MetabotMessage :conversation_id conv-id)
@@ -1073,16 +1523,21 @@
               :result {:structured-output {:some "data"}}}])))))
 
 (defn- legacy-query
-  "A legacy inner-query-style map suitable for [[#'api/upgrade-viewing-queries]]."
+  "A legacy inner-query-style map suitable for [[upgrade-viewing-queries]]."
   []
   {:database (mt/id)
    :query    {:source-table (mt/id :orders)}
    :type     :query})
 
+(defn- upgrade-viewing-queries
+  "Decodes `items` the way the `/agent-streaming` endpoint does, then runs [[api/upgrade-viewing-queries]] on them."
+  [items]
+  (#'api/upgrade-viewing-queries (lib/normalize [:vector metabot.context/ViewingItemSchema] items)))
+
 (deftest upgrade-viewing-queries-upgradable-types-test
   (doseq [item-type ["adhoc" "question" "metric" "model"]]
     (testing (str "upgrades query for type=" item-type)
-      (let [result (#'api/upgrade-viewing-queries [{:type item-type :query (legacy-query)}])
+      (let [result (upgrade-viewing-queries [{:type item-type :query (legacy-query)}])
             q      (:query (first result))]
         (is (= :mbql/query (:lib/type q)))
         (is (= (mt/id) (:database q)))))))
@@ -1093,7 +1548,7 @@
                 :query         lq
                 :chart_configs [{:query lq}
                                 {:query lq}]}
-        result (first (#'api/upgrade-viewing-queries [item]))]
+        result (first (upgrade-viewing-queries [item]))]
     (is (= :mbql/query (:lib/type (:query result))))
     (is (every? #(= :mbql/query (:lib/type (:query %)))
                 (:chart_configs result)))))
@@ -1101,9 +1556,9 @@
 (deftest upgrade-viewing-queries-missing-keys-test
   (testing "items without :query are unchanged"
     (let [item {:type "adhoc"}]
-      (is (= [item] (#'api/upgrade-viewing-queries [item])))))
+      (is (= [item] (upgrade-viewing-queries [item])))))
   (testing "items without :chart_configs keep no chart_configs"
-    (let [result (first (#'api/upgrade-viewing-queries [{:type "question" :query (legacy-query)}]))]
+    (let [result (first (upgrade-viewing-queries [{:type "question" :query (legacy-query)}]))]
       (is (nil? (:chart_configs result))))))
 
 (deftest upgrade-viewing-queries-mixed-items-test
@@ -1111,7 +1566,7 @@
         items [{:type "adhoc" :query lq}
                {:type "dashboard"}
                {:type "model" :query lq :chart_configs [{:query lq}]}]
-        result (#'api/upgrade-viewing-queries items)]
+        result (upgrade-viewing-queries items)]
     (is (=? [{:query {:lib/type :mbql/query}}
              {}
              {:query {:lib/type :mbql/query}
@@ -1124,7 +1579,7 @@
         items [{:type "adhoc" :query q}
                {:type "dashboard"}
                {:type "model" :query q :chart_configs [{:query q}]}]
-        result (#'api/upgrade-viewing-queries items)]
+        result (upgrade-viewing-queries items)]
     (is (=? [{:type "adhoc" :query q}
              {:type "dashboard"}
              {:type "model" :query q :chart_configs [{:query q}]}]
@@ -1138,14 +1593,14 @@
           items  [{:type "adhoc" :query legacy}
                   {:type "dashboard"}
                   {:type "model" :query legacy :chart_configs [{:query legacy}]}]
-          result (#'api/upgrade-viewing-queries items)]
+          result (upgrade-viewing-queries items)]
       (is (=? [{:type "adhoc" :query native}
                {:type "dashboard"}
                {:type "model" :query native :chart_configs [{:query native}]}]
               result)))))
 
-(deftest streaming-request-passes-metabot-id-test
-  (testing "streaming-request passes metabot-id to native-agent-streaming-request"
+(deftest streaming-request-metabot-test
+  (testing "streaming requests include the resolved Metabot"
     (let [captured-args (atom nil)
           test-metabot-id metabot.config/embedded-metabot-id]
       (mt/with-model-cleanup [:model/MetabotMessage
@@ -1171,11 +1626,8 @@
                                   :state           {}
                                   :debug           false}
                                  {:origin nil :referer nil :user-agent nil :ip-address nil})
-          (testing "metabot-id is included in the arguments"
-            (is (some? (:metabot-id @captured-args))
-                "metabot-id should not be nil")
-            (is (= test-metabot-id (:metabot-id @captured-args))
-                "metabot-id should match the input metabot_id")))))))
+          (is (= (t2/select-one :model/Metabot :entity_id test-metabot-id)
+                 (:metabot @captured-args))))))))
 
 (deftest streaming-request-ip-address-test
   (mt/with-model-cleanup [:model/MetabotMessage
@@ -1367,3 +1819,57 @@
                              :context         {}
                              :conversation_id (str (random-uuid))
                              :state           {}}))))
+
+(defn- llm-request-for!
+  "The last LLM request of one `metabot/agent-streaming` turn for `profile-id`, sent with `headers` and `context`."
+  [profile-id headers context]
+  (let [requests (atom [])]
+    (with-captured-llm-requests!
+      requests "ok"
+      (fn []
+        (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
+                              {:request-options {:headers headers}}
+                              {:message         "show me orders as SQL"
+                               :context         context
+                               :conversation_id (str (random-uuid))
+                               :profile_id      profile-id
+                               :state           {}})))
+    (last @requests)))
+
+(defn- embedded-system-prompt-for!
+  "The system prompt the LLM receives for an `embedding_next` turn sent with `headers` and `context`."
+  [headers context]
+  (:system (llm-request-for! "embedding_next" headers context)))
+
+(deftest embedding-host-app-header-reaches-prompt-test
+  (testing "SDK header: host-app Scope text, no hand-off"
+    (let [s (embedded-system-prompt-for! {"x-metabase-client" "embedding-sdk-react"} {})]
+      (is (str/includes? s "Never write SQL"))
+      (is (not (str/includes? s "direct the user to the SQL editor")))))
+  (testing "modular embedding header: host-app Scope text"
+    (is (str/includes? (embedded-system-prompt-for! {"x-metabase-client" "embedding-simple"} {})
+                       "Never write SQL")))
+  (testing "full-app iframe header: the hand-off stays"
+    (is (str/includes? (embedded-system-prompt-for! {"x-metabase-client" "embedding-iframe-full-app"} {})
+                       "direct the user to the SQL editor")))
+  (testing "a client-sent in_host_app is overridden by the server in both directions"
+    (is (str/includes? (embedded-system-prompt-for! {} {:in_host_app true})
+                       "direct the user to the SQL editor"))
+    (is (str/includes? (embedded-system-prompt-for! {"x-metabase-client" "embedding-sdk-react"} {:in_host_app false})
+                       "Never write SQL"))))
+
+(deftest dialect-preload-gates-on-sql-tools-through-the-loop-test
+  (testing "the loop hands its tools to the history builder, so the dialect skill is preloaded only where a tool can write SQL"
+    (let [native-item {:type       "adhoc"
+                       :sql_engine "postgres"
+                       :query      {:database (mt/id) :type "native" :native {:query "SELECT 1"}}}
+          preloaded?  (fn [request]
+                        (boolean (some #(and (= :tool-input (:type %)) (= "load_skill" (:function %)))
+                                       (:input request))))]
+      (testing "the SQL profile with the write_sql_queries capability gets the preload"
+        (is (preloaded? (llm-request-for! "sql" {} {:user_is_viewing [native-item]
+                                                    :capabilities    ["permission:write_sql_queries"]}))))
+      (testing "the embedded profile with the same native item, as a full-app embed, does not"
+        (is (not (preloaded? (llm-request-for! "embedding_next"
+                                               {"x-metabase-client" "embedding-iframe-full-app"}
+                                               {:user_is_viewing [native-item]}))))))))

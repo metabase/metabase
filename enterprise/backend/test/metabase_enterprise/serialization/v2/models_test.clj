@@ -8,12 +8,20 @@
    [metabase.models.resolution :as models.resolution]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.connection :as u.conn]
    [toucan2.core :as t2]))
 
 (comment
   metabase-enterprise.impersonation.models/keep-me)
+
+(use-fixtures :once
+  (fixtures/initialize :db)
+  (fn [thunk]
+    (doseq [model (keys models.resolution/model->namespace)]
+      (t2/resolve-model model))
+    (thunk)))
 
 (defn- parse-default-value
   "Parse a default value string into a Clojure value.
@@ -38,6 +46,42 @@
         (is (= (set known-models)
                (set (map name (keys models.resolution/model->namespace)))))))))
 
+(deftest ^:parallel timestamps-are-skipped-test
+  (testing "No serialized model exports or loads created_at or updated_at, so an entity serializes the same way on every
+           instance"
+    (doseq [m      (-> (methods serdes/make-spec) (dissoc :default) keys)
+            :let   [{:keys [copy skip transform]} (serdes/make-spec m nil)]
+            column [:created_at :updated_at]]
+      (testing (format "%s.%s" m (name column))
+        (is (not (some #{column} copy)))
+        (is (not (some #{column} skip)) "always skipped, so leave it out of :skip")
+        (is (not (contains? transform column)))))))
+
+(defn- entity-id-collation
+  "The collation of `table`'s entity_id column in the schema the `schema-fn` SQL function names."
+  [table schema-fn]
+  (first (vals (t2/query-one {:select [:collation_name]
+                              :from   [:information_schema.columns]
+                              :where  [:and
+                                       [:= :table_schema [schema-fn]]
+                                       [:= :table_name table]
+                                       [:= :column_name "entity_id"]]}))))
+
+(deftest entity-id-binary-collation-test
+  (testing "entity_id columns compare byte by byte, so every app DB orders exported entities, and names same-named
+           files, the same way"
+    (when-let [[expected schema-fn] (case (mdb/db-type)
+                                      :postgres ["C" :current_schema]
+                                      :mysql    ["utf8mb4_bin" :database]
+                                      nil)]
+      (doseq [model (keys models.resolution/model->namespace)
+              :when (isa? model :hook/entity-id)
+              :let  [table (name (t2/table-name model))]]
+        (testing table
+          (is (= expected (entity-id-collation table schema-fn))
+              (str "Create the entity_id column with type ${entity_id.type}, and re-state that type in any "
+                   "modifyDataType or addNotNullConstraint on it")))))))
+
 (deftest serialization-complete-spec-test
   (mt/with-empty-h2-app-db!
     ;; When serialization spec is defined, it describes every column
@@ -50,7 +94,7 @@
               fields (u.conn/app-db-column-types (mdb/app-db) t)
               spec'  (-> (merge (zipmap (:copy spec) (repeat :copy))
                                 (zipmap (:skip spec) (repeat :skip))
-                                (zipmap [:id :updated_at] (repeat :skip)) ; always skipped
+                                (zipmap [:id :created_at :updated_at] (repeat :skip)) ; always skipped
                                 (:transform spec))
                          ;; `nil`s are mostly fields which differ on `opts`
                          (dissoc nil))]
@@ -90,7 +134,8 @@
           (testing "Nested models should declare `parent-ref`\n"
             (doseq [[_nested transform] (filter #(::serdes/nested (second %)) spec')
                     :let                [{:keys [model backward-fk]} transform
-                                         inner-spec (serdes/make-spec (name model) nil)]]
+                                         inner-spec (serdes/make-spec (name model) nil)]
+                    :when               (not (:delete-children! (:opts transform)))]
               (testing (format "%s has %s declared as `parent-ref`" model backward-fk)
                 (is (= (serdes/parent-ref)
                        (get-in inner-spec [:transform backward-fk]))))))
@@ -116,13 +161,7 @@
   they don't have to be declared in `serdes/deserialization-dependencies`. Everything else MUST be declared
   — otherwise `*import-fk*` throws \"Could not find foreign key target\" and aborts the
   whole import (see GDGT-2444 for an example)."
-  #{:model/User :model/Table :model/Field})
-
-(def ^:private fk-completeness-known-exceptions
-  "`[model field]` pairs that look like FK-completeness violations but are intentionally
-  exempt. The map value is a human reason kept for grep-ability."
-  {["Database" :router_database_id]
-   "router_database_id rows are filtered out of `extract-query` (router DBs aren't serialized), so this FK never reaches the load path."})
+  #{:model/User :model/Database :model/Table :model/Field})
 
 (defn- inlined-via-nested?
   "True if `model-name` is loaded only as a nested child of some parent, never as a root.
@@ -158,12 +197,9 @@
               ;; check applies to the parent's `dependencies`, not theirs. Skipped either
               ;; via the explicit list in `serdes.models/inlined-models` or by detecting a
               ;; nil `generate-path` (the convention for nested-only models like
-              ;; QueryAction / HTTPAction / ImplicitAction).
+              ;; QueryAction / ImplicitAction).
               :when (not (or (inlined? m) (inlined-via-nested? m)))
-              :let [fks (->> (:transform (serdes/make-spec m nil))
-                             direct-fks
-                             (remove (fn [[field _]]
-                                       (contains? fk-completeness-known-exceptions [m field]))))]
+              :let [fks (direct-fks (:transform (serdes/make-spec m nil)))]
               :when (seq fks)]
         (testing (format "%s\n" m)
           (let [entity     (into {:serdes/meta [{:model m :id "self"}]}

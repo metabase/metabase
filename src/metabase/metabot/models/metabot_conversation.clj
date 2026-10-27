@@ -1,6 +1,7 @@
 (ns metabase.metabot.models.metabot-conversation
   (:require
    [metabase.api.common :as api]
+   [metabase.metabot.db :as metabot.db]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -16,9 +17,7 @@
   "True if `user-id` has sent at least one message in `conversation-id`."
   [conversation-id user-id]
   (when (and conversation-id user-id)
-    (t2/exists? :model/MetabotMessage
-                :conversation_id conversation-id
-                :user_id         user-id)))
+    (metabot.db/participant? conversation-id user-id)))
 
 (defmethod mi/can-read? :model/MetabotConversation
   ;; Access: superuser, or originator (first-writer, set on insert and never
@@ -32,7 +31,7 @@
               (or (= originator-id user-id)
                   (participant? conversation-id user-id))))))
   ([_model pk]
-   (when-let [instance (t2/select-one [:model/MetabotConversation :id :user_id] :id pk)]
+   (when-let [instance (metabot.db/conversation-id-and-user-id pk)]
      (mi/can-read? instance))))
 
 (methodical/defmethod t2/batched-hydrate [:model/MetabotConversation :user]
@@ -41,7 +40,5 @@
   [_model k conversations]
   (mi/instances-with-hydrated-data
    conversations k
-   #(t2/select-pk->fn (fn [u] (select-keys u [:id :email :first_name :last_name]))
-                      [:model/User :id :email :first_name :last_name]
-                      :id (keep :user_id conversations))
+   #(metabot.db/user-summaries-by-id (keep :user_id conversations))
    :user_id {:default nil}))

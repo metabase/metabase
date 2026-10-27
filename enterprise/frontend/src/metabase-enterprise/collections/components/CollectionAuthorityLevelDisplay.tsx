@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import type { ObjectWithModel } from "metabase/common/utils/icon";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import { useGetIcon } from "metabase/hooks/use-icon";
 import { Group, Icon, Text } from "metabase/ui";
 import type { Collection } from "metabase-types/api";
 
@@ -11,7 +11,7 @@ export const CollectionAuthorityLevelDisplay = ({
 }: {
   collection: Collection;
 }) => {
-  const getIcon = PLUGIN_COLLECTIONS.useGetIcon();
+  const getIcon = useGetIcon();
   const iconProps = useMemo(
     () =>
       // Unjustified type cast. FIXME

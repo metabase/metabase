@@ -15,7 +15,8 @@
    [metabase.util.malli :as mu]
    [weavejester.dependency :as dep])
   (:import
-   (clojure.lang ExceptionInfo)))
+   (clojure.lang ExceptionInfo)
+   (weavejester.dependency MapDependencyGraph)))
 
 (mu/defn- resolve-referenced-card-resources*
   "Done for side effects; warm the MetadataProvider."
@@ -46,7 +47,7 @@
 
 (mu/defn- subquery-graph
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
-   graph :- :map
+   graph :- (lib.schema.common/instance-of-class MapDependencyGraph)
    init-query :- ::lib.schema/query]
   (letfn [(card-subquery-graph [mp graph card-id]
             (let [card-query  (fetch-card-query mp card-id)
@@ -65,16 +66,22 @@
             (as-> graph <>
               (reduce (card-recurse mp node-type node-id) <> card-ids)
               (reduce (snippet-recurse mp node-type node-id) <> snippet-ids)))
+          ;; a node that is already in the graph has already been walked (or is being walked), so we only need to add
+          ;; the new edge (which throws if it creates a cycle) instead of walking it again
+          (depend-and-walk [graph node dependency walk]
+            (let [visited? (seq (dep/immediate-dependents graph dependency))
+                  graph    (dep/depend graph node dependency)]
+              (if visited?
+                graph
+                (walk graph))))
           (card-recurse [mp node-type id]
             (fn [graph nested-card-id]
-              (card-subquery-graph mp
-                                   (dep/depend graph [node-type id] [::card nested-card-id])
-                                   nested-card-id)))
+              (depend-and-walk graph [node-type id] [::card nested-card-id]
+                               #(card-subquery-graph mp % nested-card-id))))
           (snippet-recurse [mp node-type id]
             (fn [graph nested-snippet-id]
-              (snippet-subquery-graph mp
-                                      (dep/depend graph [node-type id] [::snippet nested-snippet-id])
-                                      nested-snippet-id)))]
+              (depend-and-walk graph [node-type id] [::snippet nested-snippet-id]
+                               #(snippet-subquery-graph mp % nested-snippet-id))))]
     (let [card-ids    (lib/native-query-card-ids init-query)
           snippet-ids (lib/native-query-snippet-ids init-query)]
       (subquery-graph* metadata-providerable

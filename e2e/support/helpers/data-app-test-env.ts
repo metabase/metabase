@@ -1,8 +1,3 @@
-import type {
-  LocalFieldReference,
-  QuestionColumnReference,
-} from "@metabase/embedding-sdk-react/data-app";
-
 /**
  * The config a spec injects into a data-app fixture (via `H.mockDataApp`'s
  * `testEnv`), so a fixture doesn't hard-code values that track the Cypress
@@ -14,8 +9,9 @@ import type {
  * runtime through its own `getTestEnv()`.
  */
 export type DataAppTestEnv = {
-  scalarQuery: { source: TableSource; aggregations: CountAggregation[] };
-  questionQuery: { source: TableSource };
+  /** Every query the fixture renders is a saved question, named by entity ID. */
+  scalarQuery: { source: CardSource };
+  questionQuery: { source: CardSource };
   /**
    * `/download-question` page: the id of a saved CHART question (so a `.png`
    * export is offered). Passed in because the id tracks the Cypress snapshot.
@@ -39,43 +35,17 @@ export type DataAppTestEnv = {
     xhrBlockedUrl?: string;
   };
   /**
-   * `/query-states` page: a deliberately invalid query (bad table id), so the hook
-   * resolves to an `error` state; the page also exercises `refetch`.
+   * `/query-states` page: a deliberately invalid query (a card that does not
+   * exist), so the hook resolves to an `error` state; the page also exercises
+   * `refetch`.
    */
-  errorQuery?: { source: TableSource };
+  errorQuery?: { source: CardSource };
   /**
-   * `/combinators` page: exercises `filter`/`breakout`/`orderBy`/`aggregations`.
-   * The page hardcodes a `>` filter and a count aggregation ordered desc, so
-   * `filterField` must be numeric; `breakoutField` groups the rows.
+   * `/actions` page: the entity ID of the action the spec creates and
+   * `useAction` executes, so it can't be hard-coded in the app. Left out to
+   * exercise the "no action" path, where the hook must not request anything.
    */
-  combinators?: {
-    source: TableSource;
-    filterField: LocalFieldReference;
-    filterValue: number;
-    breakoutField: LocalFieldReference;
-  };
-  /**
-   * `/card-source` page: exercises a saved-question source with filters,
-   * aggregations, and breakouts. Each clause set runs against both sources and
-   * the page reports whether they agree, so `source` must be an unfiltered copy
-   * of `tableSource`. `*Field` addresses the table, `*Column` the question's
-   * result columns.
-   */
-  cardSource?: {
-    source: CardSource;
-    tableSource: TableSource;
-    filterField: LocalFieldReference;
-    filterColumn: QuestionColumnReference;
-    filterValue: number;
-    breakoutField: LocalFieldReference;
-    breakoutColumn: QuestionColumnReference;
-  };
-  /**
-   * `/actions` page: the id of the action the spec creates and `useAction`
-   * executes, so it can't be hard-coded in the app. Left out to exercise the "no
-   * action id" path, where the hook must not request anything.
-   */
-  actionId?: number;
+  actionEntityId?: string;
   /** `/actions` page: the parameters the page passes to `execute()`. */
   actionParams?: Record<string, string | number>;
   /**
@@ -87,8 +57,4 @@ export type DataAppTestEnv = {
   nativeQuery?: { database: number; query: string };
 };
 
-// The queries use the SDK's `source` API (`{ type: "table", id }`); the database
-// is resolved from the SDK's metadata store, so no databaseId is passed.
-type TableSource = { type: "table"; id: number };
-type CardSource = { type: "card"; id: number };
-type CountAggregation = { type: "operator"; operator: "count"; args: [] };
+type CardSource = { type: "card"; entityId: string };

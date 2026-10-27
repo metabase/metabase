@@ -9,6 +9,10 @@
   (and (api/keyword-node? node)
        (= (:k node) k)))
 
+(defn- var-reader-node? [node]
+  (and (api/node? node)
+       (= (:tag node) :var)))
+
 (defn- binding-symbol?
   "True when the token is a plain symbol that should be treated as a binding
   (not a keyword, not a boolean literal, not nil, not a number, not `_`)."
@@ -28,6 +32,9 @@
   (cond
     (binding-symbol? pattern)
     [[pattern opaque-node]]
+
+    (var-reader-node? pattern)
+    [[(api/token-node '_) (first (:children pattern))]]
 
     ;; Lists: (:or ...), (:and ...), (sym :guard pred ...), or a quoted symbol.
     (api/list-node? pattern)
@@ -124,8 +131,28 @@
                       (concat [(api/token-node 'clojure.core/or)] result-exprs [opaque-node]))))]
       {:node new-node})))
 
+(defn matches?
+  "clj-kondo :analyze-call hook for matches?. Similar to `match-one`, but supports just a single clause with no result."
+  [{:keys [node]}]
+  (let [[_ value pat] (:children node)]
+    (let [all-bindings (->> (collect-bindings pat)
+                            dedupe-bindings)
+          special-bindings [(api/token-node '_)        value
+                            (api/token-node '&match)   opaque-node
+                            ;; Pretend to use &match so that Kondo doesn't complain about it.
+                            (api/token-node '_) (api/token-node '&match)]
+          binding-nodes (into special-bindings all-bindings)
+          new-node (api/list-node
+                    (list
+                     (api/token-node 'let)
+                     (api/vector-node binding-nodes)
+                     (api/list-node
+                      (list opaque-node))))]
+      {:node new-node})))
+
 (def match-many match-one)
 (def replace match-one)
+(def replace-all match-one)
 
 (defn replace-in [context]
   ;; Everything is the same as in match-one, just drop the middle argument.

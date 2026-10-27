@@ -125,10 +125,12 @@ export function initializePlugin() {
   if (hasPremiumFeature("tenants")) {
     PLUGIN_TENANTS.isEnabled = true;
 
-    PLUGIN_TENANTS.useListActiveTenants = () => {
-      const { data, isLoading, error } = useListTenantsQuery({
-        status: "active",
-      });
+    PLUGIN_TENANTS.useListActiveTenants = ({ skip } = {}) => {
+      const { data, isLoading, error } = useListTenantsQuery(
+        { status: "active" },
+        { skip },
+      );
+
       return { data: data?.data, isLoading, error };
     };
 
@@ -192,7 +194,7 @@ export function initializePlugin() {
             },
           )}
           <Route path=":userId">
-            <Route index element={redirect("/admin/people/tenants/people")} />
+            <Route index element={redirect("..")} />
             {modalRoute(
               "edit",
               (props) => (

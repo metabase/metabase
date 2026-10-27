@@ -83,14 +83,14 @@ export function NewExplorationEntry({ selection }: NewExplorationEntryProps) {
   }, [prompt, submitInput, goToPlanPage]);
 
   return (
-    <Stack h="100%" bg="background-primary" align="center" p="2rem">
-      <Stack w="100%" maw="42rem" align="flex-start" gap="lg" mih={0}>
+    <Stack h="100%" align="center" p="2rem" className={S.page}>
+      <Stack w="100%" maw="42rem" align="flex-start" gap="xl" mih={0}>
         {hasNlqAccess && (
           <Button
             component={ForwardRefLink}
             to={Urls.newQuestion({ mode: "ask" })}
-            c="text-secondary"
-            bd="none"
+            variant="subtle"
+            color="neutral"
             flex="none"
             leftSection={<Icon name="arrow_left" />}
           >
@@ -102,7 +102,7 @@ export function NewExplorationEntry({ selection }: NewExplorationEntryProps) {
         </Text>
         <Paper
           w="100%"
-          bd="1px solid border"
+          bd="1px solid border-neutral"
           bdrs="0.75rem"
           p="0.5rem 1rem 1rem"
           className={S.inputContainer}
@@ -130,9 +130,8 @@ export function NewExplorationEntry({ selection }: NewExplorationEntryProps) {
           )}
           <Flex justify="space-between" align="center">
             <Button
-              c="text-secondary"
-              bd="none"
-              className={S.buttonHoverSecondary}
+              variant="subtle"
+              color="neutral"
               leftSection={<Icon name="collection" />}
               onClick={() => setIsCollectionPickerOpen(true)}
             >
@@ -140,9 +139,8 @@ export function NewExplorationEntry({ selection }: NewExplorationEntryProps) {
             </Button>
             <Flex gap="sm">
               <Button
-                c="text-secondary"
-                bd="none"
-                className={S.buttonHoverSecondary}
+                variant="subtle"
+                color="neutral"
                 onClick={handleManualSetup}
               >
                 {t`Manual setup`}
@@ -207,18 +205,19 @@ function Banner() {
     <Flex
       justify="space-between"
       align="center"
-      gap="lg"
-      bg="background-brand"
-      px="lg"
-      py="md"
-      bd="1px solid border"
-      bdrs="md"
+      gap="xl"
+      bg="background_surface-brand-subtle"
+      px="xl"
+      py="lg"
+      bd="1px solid border-neutral"
+      bdrs="sm"
       data-testid="research-mode-banner"
     >
       <Text>
         {t`Research mode helps automate running and inspecting combinations of metrics, dimensions, and event timelines so you can use your brain for analysis, not busy work.`}
       </Text>
       <ActionIcon
+        variant="subtle"
         onClick={() => setHasDismissedBanner(true)}
         aria-label={t`Dismiss`}
       >
@@ -248,9 +247,9 @@ function ExplorationList({ explorations }: ExplorationListProps) {
               component={ForwardRefLink}
               to={Urls.exploration(id)}
               key={id}
-              px="md"
+              px="lg"
               py="sm"
-              bdrs="md"
+              bdrs="sm"
               className={S.explorationLink}
               style={{
                 animationDelay: `${index * 75}ms`,

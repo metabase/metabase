@@ -1,8 +1,11 @@
 import { t } from "ttag";
 
 import { ChartSettingSeriesOrder } from "metabase/visualizations/components/settings/ChartSettingSeriesOrder";
-import { getTreemapChartColumns } from "metabase/visualizations/echarts/graph/treemap/model/data";
-import type { TreemapGroupsPickerProps } from "metabase/visualizations/types";
+import {
+  type TreemapGroupsPickerProps,
+  getTreemapChartColumns,
+  withColorName,
+} from "metabase/viz-core";
 import type { TreemapRow } from "metabase-types/api";
 
 export function TreemapGroupsPicker({
@@ -21,13 +24,20 @@ export function TreemapGroupsPicker({
     getTreemapChartColumns(rawSeries[0]?.data?.cols ?? [], settings)
       ?.subGrouping != null;
 
-  const handleChangeSeriesColor = (groupKey: string, color: string) =>
+  const handleChangeSeriesColor = (
+    groupKey: string,
+    hexValue: string,
+    colorName?: string,
+  ) =>
     onChangeSettings({
       "treemap.rows": treemapRows.map((row) => {
         if (row.key !== groupKey) {
           return row;
         }
-        return { ...row, color, defaultColor: false };
+        return withColorName(
+          { ...row, color: hexValue, defaultColor: false },
+          colorName,
+        );
       }),
     });
 

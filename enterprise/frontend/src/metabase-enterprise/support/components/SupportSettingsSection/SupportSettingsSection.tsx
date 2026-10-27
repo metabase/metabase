@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useNavigate } from "metabase/router";
+import { SettingsSection } from "metabase/settings-components";
 import { Box, Button, Flex, LoadingOverlay, Text, Title } from "metabase/ui";
 import { adminHelpGrantAccess } from "metabase/urls";
 
@@ -46,7 +46,7 @@ export function SupportSettingsSection() {
         error={accessGrantsError}
         loading={isLoadingAccessGrants}
       >
-        <Box pb="lg">
+        <Box pb="xl">
           <Button
             disabled={!!currentAccessGrant}
             onClick={() => navigate(adminHelpGrantAccess())}
@@ -56,7 +56,7 @@ export function SupportSettingsSection() {
                 ? t`You already have an active access grant`
                 : undefined
             }
-            mt="md"
+            mt="lg"
             mb="sm"
           >
             {t`Request a helping hand`}
@@ -70,9 +70,9 @@ export function SupportSettingsSection() {
               <LoadingOverlay
                 visible={isFetchingAccessGrants}
                 zIndex={1000}
-                overlayProps={{ radius: "sm", blur: 0.25 }}
+                overlayProps={{ radius: "xs", blur: 0.25 }}
               />
-              <Title lh="2.5rem" order={4} pt="lg">
+              <Title lh="2.5rem" order={4} pt="xl">
                 {t`History`}
               </Title>
               <AccessGrantList accessGrants={accessGrants} />

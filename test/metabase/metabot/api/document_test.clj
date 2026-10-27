@@ -1,12 +1,16 @@
 (ns metabase.metabot.api.document-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.analytics.snowplow-test :as snowplow-test]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.test-util :as mut]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
+   [metabase.metabot.usage :as metabot.usage]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
@@ -34,6 +38,24 @@
                                    :post 200 "metabot/document/generate-content"
                                    {:instructions "Show me sales data"}))))))
 
+(deftest generate-content-permission-denied-body-test
+  (testing "the 403 body is the plain denial sentence, not a map carrying a stack trace"
+    (binding [scope/*current-user-metabot-permissions* {:permission/metabot             :yes
+                                                        :permission/metabot-other-tools :no}]
+      (is (= "You do not have permission to use the document-generate-content assistant."
+             (mt/user-http-request :rasta
+                                   :post 403 "metabot/document/generate-content"
+                                   {:instructions "Show me sales data"}))))))
+
+(deftest generate-content-free-limit-body-test
+  (testing "the 402 body is the message and error code alone, not a map carrying a stack trace"
+    (mt/with-dynamic-fn-redefs [metabot.usage/managed-free-limit-reached? (constantly true)]
+      (is (= {:message    "You've used all of your included AI service tokens. To keep using AI features, end your trial early and start your subscription, or add your own AI provider API key."
+              :error-code "metabase_ai_managed_locked"}
+             (mt/user-http-request :crowberto
+                                   :post 402 "metabot/document/generate-content"
+                                   {:instructions "Show me sales data"}))))))
+
 (deftest generate-content-prometheus-test
   (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                      llm-metabot-provider test-provider]
@@ -53,11 +75,11 @@
       (is (== 1 (:sum (mt/metric-value system :metabase-metabot/agent-iterations
                                        {:profile-id "document-generate-content"}))))
       (is (== 1 (mt/metric-value system :metabase-metabot/llm-requests
-                                 {:model "openrouter/anthropic/claude-haiku-4-5" :source "agent"})))
+                                 {:model "openrouter/anthropic/claude-haiku-4-5" :source "agent" :provider "openrouter"})))
       (is (== 100 (mt/metric-value system :metabase-metabot/llm-input-tokens
-                                   {:model "openrouter/anthropic/claude-haiku-4-5" :source "agent"})))
+                                   {:model "openrouter/anthropic/claude-haiku-4-5" :source "agent" :provider "openrouter"})))
       (is (== 20 (mt/metric-value system :metabase-metabot/llm-output-tokens
-                                  {:model "openrouter/anthropic/claude-haiku-4-5" :source "agent"}))))))
+                                  {:model "openrouter/anthropic/claude-haiku-4-5" :source "agent" :provider "openrouter"}))))))
 
 (deftest generate-content-tool-call-produces-draft-card-test
   (testing "a document_construct_sql_chart tool call round trip produces a :draft_card (#73690)"
@@ -98,6 +120,106 @@
             (is (=? {:error      nil
                      :draft_card {:name "Orders by day"}}
                     response))))))))
+
+(deftest generate-content-model-chart-round-trip-test
+  (testing "the model loads the query skills, then charts a model by its column names"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Card model {:type          :model
+                                        :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}]
+        (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                           llm-metabot-provider test-provider]
+          (let [requests  (atom [])
+                responses [[{:type      :tool-input
+                             :id        "t1"
+                             :function  "load_skill"
+                             :arguments {:ids ["construct-notebook-query-core" "construct-notebook-query-advanced"]}}]
+                           [{:type      :tool-input
+                             :id        "t2"
+                             :function  "document_construct_model_chart"
+                             :arguments {:name         "Orders by month"
+                                         :description  "Count of orders per month."
+                                         :query        {"lib/type" "mbql/query"
+                                                        "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                                                     "source-card" (:entity_id model)
+                                                                     "aggregation" [["count" {}]]
+                                                                     "breakout"    [["field" {"temporal-unit" "month"}
+                                                                                     "CREATED_AT"]]}]}
+                                         :viz_settings {:chart_type "line"}}}]]]
+            (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                        (fn [request]
+                                          (let [n (count (swap! requests conj request))]
+                                            (mut/mock-llm-response
+                                             (get responses (dec n) [{:type :text :text "Chart created"}]))))]
+              (let [response (mt/user-http-request :crowberto
+                                                   :post 200 "metabot/document/generate-content"
+                                                   {:instructions "Chart orders by month"})
+                    [first-request second-request] @requests]
+                (is (some #{"load_skill"} (map :tool-name (:tools first-request))))
+                (is (some #(and (string? %)
+                                (str/includes? % "<skill id=\"construct-notebook-query-advanced\">"))
+                          (tree-seq coll? seq (:input second-request)))
+                    "the skill body reaches the model before it writes the query")
+                (is (=? {:error      nil
+                         :draft_card {:name          "Orders by month"
+                                      :display       "line"
+                                      :database_id   (mt/id)
+                                      :dataset_query {:stages [{:source-card (:id model)}]}}}
+                        response))))))))))
+
+(deftest generate-content-database-mention-test
+  (testing "a SQL chart without exactly one @-mentioned database stops after one call, with a message for the user"
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider test-provider]
+      (doseq [[references message] [[nil "Mention a database with @ to create this chart with SQL."]
+                                    [{"database:1" "Sample" "database:2" "Other"}
+                                     "Mention only one database with @ to create this chart with SQL."]]]
+        (testing (pr-str references)
+          (let [calls (atom 0)]
+            (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                        (fn [_]
+                                          (mut/mock-llm-response
+                                           [{:type      :tool-input
+                                             :id        (str "t" (swap! calls inc))
+                                             :function  "document_schema_collect"
+                                             :arguments {}}]))]
+              (is (= {:draft_card  nil
+                      :description nil
+                      :error       message}
+                     (mt/user-http-request :crowberto
+                                           :post 200 "metabot/document/generate-content"
+                                           (cond-> {:instructions "Chart revenue by month with SQL"}
+                                             references (assoc :references references)))))
+              (is (= 1 @calls)))))))))
+
+(deftest generate-content-failed-calls-error-test
+  (testing "when the model runs out of steps on failed calls, the error is not the text written for the model"
+    (let [db-id (mt/id)]
+      (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                         llm-metabot-provider test-provider]
+        (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
+                                    (fn [_]
+                                      {:validation-result {:valid?        false
+                                                           :dialect       "h2"
+                                                           :error-message "syntax error near FROM"}})
+                                    openrouter/openrouter
+                                    (fn [_]
+                                      (mut/mock-llm-response
+                                       [{:type      :tool-input
+                                         :id        (str (random-uuid))
+                                         :function  "document_construct_sql_chart"
+                                         :arguments {:database_id  db-id
+                                                     :name         "Orders"
+                                                     :description  "Count of orders"
+                                                     :analysis     "Simple count"
+                                                     :approach     "Direct SQL"
+                                                     :sql          "SELECT COUNT(*) FROM"
+                                                     :viz_settings {:chart_type "bar"}}}]))]
+          (is (= {:draft_card  nil
+                  :description nil
+                  :error       "Metabot could not complete this step."}
+                 (mt/user-http-request :crowberto
+                                       :post 200 "metabot/document/generate-content"
+                                       {:instructions "chart it"}))))))))
 
 (deftest generate-content-snowplow-test
   (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections

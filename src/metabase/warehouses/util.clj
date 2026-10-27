@@ -8,23 +8,23 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [metabase.warehouses.db :as warehouses.db]))
 
 (mu/defn get-database
   "Retrieve database respecting `include-editable-data-model?`, `exclude-uneditable-details?` and `include-mirror-databases?`"
-  ([id] (get-database id {}))
+  ([id :- ms/PositiveInt] (get-database id {}))
   ([id :- ms/PositiveInt
     {:keys [include-editable-data-model?
             exclude-uneditable-details?
             include-destination-databases?]}
-    :- [:map
+    :- [:map {:closed true}
         [:include-editable-data-model? {:optional true :default false} ms/MaybeBooleanValue]
         [:exclude-uneditable-details? {:optional true :default false} ms/MaybeBooleanValue]
         [:include-destination-databases? {:optional true :default false} ms/MaybeBooleanValue]]]
    (let [filter-by-data-access? (not (or include-editable-data-model? exclude-uneditable-details?))
          database               (api/check-404 (if include-destination-databases?
-                                                 (t2/select-one :model/Database :id id)
-                                                 (t2/select-one :model/Database :id id :router_database_id nil)))
+                                                 (warehouses.db/database id)
+                                                 (warehouses.db/non-destination-database id)))
          router-db-id           (:router_database_id database)]
      (cond-> database
        filter-by-data-access? api/read-check
@@ -82,7 +82,7 @@
   the details used to successfully connect. Otherwise returns a map with the connection error message. (This map will
   also contain the key `:valid` = `false`, which you can use to distinguish an error from valid details.)"
   [engine  :- [:or keyword? string?]
-   details :- :map]
+   details :- ms/DatabaseDetails]
   (let [;; Try SSL first if SSL is supported and not already enabled
         ;; If not successful or not applicable, details-with-ssl will be nil
         details-with-ssl (assoc details :ssl true)

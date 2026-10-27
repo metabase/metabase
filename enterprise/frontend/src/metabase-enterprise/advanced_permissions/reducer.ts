@@ -5,11 +5,9 @@ import {
   LOAD_DATA_PERMISSIONS,
   SAVE_DATA_PERMISSIONS,
   UPDATE_DATA_PERMISSION,
-} from "metabase/admin/permissions/permissions";
-import {
-  DATABASES_BASE_PATH,
-  GROUPS_BASE_PATH,
-} from "metabase/admin/permissions/utils/urls";
+  getDatabasesBasePath,
+  getGroupsBasePath,
+} from "metabase/permissions";
 import { navigate } from "metabase/router";
 import {
   DataPermission,
@@ -26,10 +24,10 @@ export const getImpersonatedPostAction = (
 ) =>
   view === "database"
     ? navigate(
-        `${DATABASES_BASE_PATH}/${entityId.databaseId}/impersonated/group/${groupId}`,
+        `${getDatabasesBasePath()}/${entityId.databaseId}/impersonated/group/${groupId}`,
       )
     : navigate(
-        `${GROUPS_BASE_PATH}/${groupId}/impersonated/database/${entityId.databaseId}`,
+        `${getGroupsBasePath()}/${groupId}/impersonated/database/${entityId.databaseId}`,
       );
 
 const UPDATE_IMPERSONATION =

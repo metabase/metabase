@@ -5,27 +5,32 @@
    [buddy.core.mac :as mac]
    [buddy.core.nonce :as nonce]
    [clojure.string :as str]
-   [malli.core :as mc]
    [metabase.api-scope.core :as api-scope]
    [metabase.api.macros :as api.macros]
+   [metabase.mcp.core :as mcp]
    [metabase.oauth-server.consent-page :as consent-page]
    [metabase.oauth-server.core :as oauth-server]
+   [metabase.oauth-server.db :as oauth-server.db]
+   [metabase.oauth-server.jwt-bearer :as jwt-bearer]
    [metabase.oauth-server.models.oauth-client-event :as client-event]
    [metabase.oauth-server.settings :as oauth-settings]
    [metabase.request.core :as request]
+   [metabase.server.middleware.security :as mw.security]
    [metabase.system.core :as system]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [metabase.util.throttle :as u.throttle]
    [oidc-provider.core :as oidc]
    [oidc-provider.protocol :as proto]
    [oidc-provider.registration :as reg]
+   [oidc-provider.token-endpoint :as oidc.token-endpoint]
    [oidc-provider.util :as oidc-util]
    [ring.util.response :as response]
    [throttle.core :as throttle])
   (:import
    (clojure.lang ExceptionInfo)
-   (java.net URI URLEncoder)))
+   (java.net URI URISyntaxException URLEncoder)))
 
 (set! *warn-on-reflection* true)
 
@@ -100,22 +105,142 @@
     (str (subs s 0 (- max-len 3)) "...")
     s))
 
-(defn- requested-scope-descriptions
-  "Turn the space-separated OAuth `scope` value into a vector of `{:scope :description}` maps for the
-   consent page, so the user sees exactly what the client is asking for. Falls back to the raw scope
-   string when a scope has no registered human-readable description. Returns nil when no scope was
-   requested."
+(defn- scope-tokens
+  "Split a space-separated OAuth `scope` value into its distinct scope strings, in first-seen order. Returns nil when
+  blank."
   [scope-param]
-  (when-let [scope-str (some-> scope-param str not-empty)]
-    (->> (str/split scope-str #"\s+")
-         (remove str/blank?)
-         distinct
-         (mapv (fn [s]
-                 {:scope        s
-                  :description  (or (some-> (api-scope/scope-description s) str) s)
-                  ;; Flag the broad first-party grant so the consent page can warn about it without
-                  ;; hardcoding the scope string in the view.
-                  :full-access? (= s oauth-server/full-access-scope)})))))
+  ;; deduplicate to keep repeated scope out of granted token
+  (some-> scope-param str str/trim not-empty (str/split #"\s+") distinct vec))
+
+(defn- requested-scope-descriptions
+  "Turn the space-separated OAuth `scope` value into a vector of `{:scope :description :full-access? :locked?}` maps for
+   the consent page, so the user sees exactly what the client is asking for. Scopes in [[metabase.mcp.core/v2-scopes]] come
+   first in that order, then the rest in request order. `:locked?` marks an MCP baseline scope, which is always granted;
+   `:full-access?` marks the full account access scope. Falls back to the raw scope string when a scope has no
+   registered human-readable description. Returns nil when no scope was requested."
+  [scope-param]
+  (when-let [scopes (scope-tokens scope-param)]
+    (let [rank (zipmap (mcp/v2-scopes) (range))]
+      (->> scopes
+           ;; `sort-by` is stable, so unranked scopes keep their request order
+           (sort-by #(rank % (count rank)))
+           (mapv (fn [s]
+                   {:scope        s
+                    :description  (or (some-> (api-scope/scope-description s) str) s)
+                    ;; Flag the broad first-party grant so the consent page can warn about it without
+                    ;; hardcoding the scope string in the view.
+                    :full-access? (= s oauth-server/full-access-scope)
+                    :locked?      (mcp/v2-baseline-scope? s)}))))))
+
+(defn- form-values
+  "A form field that may repeat, as a vector: Ring decodes one value to a string and several to a vector."
+  [v]
+  (cond
+    (nil? v)        []
+    (sequential? v) (vec v)
+    :else           [v]))
+
+(defn- granted-scopes
+  "The scopes an approved decision grants, in offered order: every `offered` scope the user `chosen`, plus every
+   offered MCP baseline scope, which the consent page shows as always granted. Returns nil when `chosen` names a scope
+   that was not offered."
+  [offered chosen]
+  (when (every? (set offered) chosen)
+    (filterv (some-fn (set chosen) mcp/v2-baseline-scope?) offered)))
+
+;;; ------------------------------------------- Error descriptions ------------------------------------------------
+
+;;; Fixed strings, never echoing what the request sent, and within the RFC 6749 section 5.2 character set.
+
+(def ^:private invalid-authorization-request-description "The authorization request is invalid.")
+
+(def ^:private invalid-token-request-description "The token request is invalid.")
+
+(def ^:private invalid-target-description
+  "The resource parameter must be an absolute URI without a fragment.")
+
+(defn- narrowed-away-scope-description
+  "The `error_description` for an authorization request in which no requested scope is accepted by `resources`."
+  [resources]
+  ;; Names only the server's own MCP resource URL: the client's `resource` may hold characters RFC 6749 forbids here.
+  (let [mcp-resource (str (system/site-url) (mcp/mcp-canonical-path))]
+    (if (empty? resources)
+      (str "No resource was requested, so no MCP scopes can be granted. "
+           "Send the MCP server's resource URL, which is " mcp-resource ".")
+      (str "The requested scopes are not accepted by the requested resource. "
+           "The MCP server's resource URL is " mcp-resource "."))))
+
+(defn- authorization-server-metadata-url
+  "Absolute URL of the RFC 8414 authorization server metadata document, which lists `scopes_supported`."
+  []
+  (str (system/site-url) "/.well-known/oauth-authorization-server"))
+
+(defn- unsupported-scopes-description
+  "The `error_description` for a registration naming a scope that is not registered."
+  []
+  (str "The request contained unsupported scopes. Request only scopes listed in scopes_supported at "
+       (authorization-server-metadata-url)))
+
+(defn- no-supported-scopes-description
+  "The `error_description` for an authorization request in which no requested scope is registered."
+  []
+  (str "None of the requested scopes are supported. Request only scopes listed in scopes_supported at "
+       (authorization-server-metadata-url)))
+
+(defn- missing-scope-description
+  "The `error_description` for an authorization request with no scope."
+  []
+  (str "The request must include a scope. Request only scopes listed in scopes_supported at "
+       (authorization-server-metadata-url)))
+
+(defn- empty-scope-description
+  "The `error_description` for a client registration whose `scope` is present but empty."
+  []
+  (str "The scope must not be empty. Omit scope, or include only scopes listed in scopes_supported at "
+       (authorization-server-metadata-url)))
+
+(defn- invalid-client-metadata-response
+  "The RFC 7591 `invalid_client_metadata` 400 for a registration this endpoint refuses before the library sees it."
+  [description]
+  {:status  400
+   :headers {"Content-Type" "application/json"}
+   :body    {"error"             "invalid_client_metadata"
+             "error_description" description}})
+
+;;; -------------------------------------------- Resource indicators ----------------------------------------------
+
+(defn- malformed-resource?
+  "True when any `resource` indicator (a string, or a sequence of strings) is not an absolute URI without a fragment,
+   as RFC 8707 section 2 requires."
+  [resource]
+  ;; oidc-provider validates resource indicators by constructing a `java.net.URI`, so an unparseable one reaches the
+  ;; endpoints as a URISyntaxException rather than the ex-info they catch. Checked here before the library sees it,
+  ;; which also lets every malformed indicator be answered with the description saying what a valid one looks like.
+  (boolean
+   (some (fn [r]
+           (try
+             (let [uri (URI. (str r))]
+               (or (not (.isAbsolute uri))
+                   (some? (.getFragment uri))))
+             (catch URISyntaxException _
+               true)))
+         (if (string? resource) [resource] resource))))
+
+(defn- check-resource-indicators!
+  "Throw the RFC 8707 `invalid_target` error when any `resource` indicator is malformed."
+  [resource]
+  (when (malformed-resource? resource)
+    (throw (ex-info "resource is not a valid indicator" {:error             "invalid_target"
+                                                         :error-description invalid-target-description}))))
+
+(defn- may-consent?
+  "Whether `request` may consent to an authorization request. Only a personal user that a login session authenticated
+  may."
+  [request]
+  (boolean
+   (when-let [user-id (and (:metabase/authed-session-key-hash request)
+                           (:metabase-user-id request))]
+     (oauth-server.db/personal-user? user-id))))
 
 (defn- redirect-authorization-decision
   "Issue a 302 redirect for an approved or denied authorization decision, clearing the CSRF cookie."
@@ -148,6 +273,7 @@
 
 (def ^:private one-minute-ms (* 60 1000))
 (def ^:private one-hour-ms (* 60 one-minute-ms))
+(def ^:private max-client-id-length 255)
 
 ;; /oauth/token is the highest-risk endpoint: unauthenticated, accepts client credentials,
 ;; and is the primary target for brute-forcing client secrets or replaying authorization codes.
@@ -185,6 +311,36 @@
                                            :error_description (ex-message e#)})
          (throw e#)))))
 
+(defn- retry-after-seconds
+  "Return how many seconds `throttle-key` must wait before another attempt."
+  [{:keys [attempts attempts-threshold attempt-ttl-ms]} throttle-key]
+  (if-let [[_ blocking-attempt-ms] (nth (filter (fn [[attempt-key]] (= throttle-key attempt-key)) @attempts)
+                                        (dec attempts-threshold) nil)]
+    (quot (+ 999 (max 0 (- (+ blocking-attempt-ms attempt-ttl-ms) (System/currentTimeMillis)))) 1000)
+    0))
+
+(defn- do-with-token-throttling
+  "Apply the token throttles to `f`.
+   The client limit keys on the stored `client_id` of the client the given ID resolves to, found the same way
+   the token request finds it, so the two agree on which client an ID names however the app DB compares strings.
+   Requests use only the IP limit when the client ID is missing or names no client."
+  [ip-address client-id f]
+  (let [client-id (when (seq client-id)
+                    (:client_id (oauth-server.db/oauth-client client-id)))
+        response  (with-throttling-429 [token-ip-throttler ip-address]
+                    (if client-id
+                      (with-throttling-429 [token-client-throttler client-id]
+                        (f))
+                      (f)))]
+    (if (= 429 (:status response))
+      (let [retry-after (max (retry-after-seconds token-ip-throttler ip-address)
+                             (if client-id (retry-after-seconds token-client-throttler client-id) 0))]
+        (-> response
+            (assoc-in [:headers "Retry-After"] (str retry-after))
+            (assoc-in [:body :error_description]
+                      (format "Too many attempts! You must wait %d seconds before trying again." retry-after))))
+      response)))
+
 ;;; ------------------------------------------------ Endpoints ----------------------------------------------------
 
 (api.macros/defendpoint :post "/register"
@@ -194,7 +350,7 @@
    _query-params
    body :- [:maybe {:decode/api {:enter (fn [body] (when (map? body) body))}}
             ;; the RFC 7591 client metadata we keep -- see the column list in `metabase.oauth-server.store`
-            [:map
+            [:map {:closed true}
              [:application_type           {:optional true} [:maybe :string]]
              [:client_name                {:optional true} [:maybe :string]]
              [:client_uri                 {:optional true} [:maybe :string]]
@@ -212,23 +368,35 @@
      :body    {"error" "registration_not_supported"}}
     (with-throttling-429 [registration-throttler (request/ip-address request)]
       (or (when-let [provider (oauth-server/get-provider)]
-            (if (nil? body)
-              {:status  400
-               :headers {"Content-Type" "application/json"}
-               :body    {"error"             "invalid_client_metadata"
-                         "error_description" "Invalid or missing JSON body"}}
+            (cond
+              (nil? body)
+              (invalid-client-metadata-response "Invalid or missing JSON body")
+
+              ;; Only an omitted `scope` gets the default below; an empty one would register a client that
+              ;; can never authorize.
+              (and (contains? body :scope) (str/blank? (:scope body)))
+              (invalid-client-metadata-response (empty-scope-description))
+
+              ;; A client's registered scopes are the ceiling /authorize checks requests against, so a
+              ;; self-nominated wildcard such as `*` would later be granted as one.
+              (not (oauth-server/all-scopes-registered? (:scope body)))
+              (invalid-client-metadata-response (unsupported-scopes-description))
+
+              :else
               (try
                 ;; MCP clients frequently omit application_type, scope, and may request
                 ;; unsupported grant types. We are required to support poorly-configured
                 ;; clients, so we apply sensible defaults here:
                 ;; - application_type defaults to "native" (not the RFC default "web") so
                 ;;   CLI tools and desktop apps can use HTTP loopback redirects.
-                ;; - scope defaults to all provider-supported scopes when not specified.
+                ;; - scope defaults to every scope any surface advertises. That is a ceiling on
+                ;;   what the client may later request, not a grant (RFC 7591), and clients derive
+                ;;   what to request from discovery metadata rather than from this value.
                 (let [body       (cond-> body
                                    (not (contains? body :application_type))
                                    (assoc :application_type "native")
                                    (not (contains? body :scope))
-                                   (assoc :scope (str/join " " (oauth-server/all-agent-scopes)))
+                                   (assoc :scope (str/join " " (oauth-server/supported-scopes)))
                                    ;; Remove client_credentials grant type — tokens issued without a
                                    ;; user context are unusable for MCP (validate-bearer-token requires
                                    ;; a valid user-id).
@@ -252,7 +420,7 @@
 (api.macros/defendpoint :get "/register/:client-id"
   :- [:map [:status [:enum 200 401 404]] [:body :map]]
   "Handles client configuration read (RFC 7592)."
-  [{:keys [client-id]} :- [:map
+  [{:keys [client-id]} :- [:map {:closed true}
                            [:client-id ms/NonBlankString]]
    _query-params
    _body
@@ -269,12 +437,190 @@
                :body    body}))))
       {:status 404 :body {:error "not_found"}}))
 
+(defn- authorization-error-code
+  "The RFC 6749 section 4.1.2.1 (or RFC 8707) `error` code for the ex-data of an exception thrown while validating an
+   authorization request."
+  [{:keys [oauth-error error] :as data}]
+  (or oauth-error
+      ;; oidc-provider names a code only for its PKCE and resource-indicator errors; its response_type and scope
+      ;; errors are told apart by the data they carry, and malformed parameters carry neither.
+      error
+      (cond
+        (contains? data :response-type) "unsupported_response_type"
+        (contains? data :requested)     "invalid_scope"
+        :else                           "invalid_request")))
+
+(defn- token-error-code
+  "The RFC 6749 section 5.2 `error` code for the ex-data of an exception thrown while handling a token request."
+  [{:keys [error] :as data}]
+  (or error
+      ;; oidc-provider names a code only for its PKCE, expired refresh token, and resource-indicator errors. Its other
+      ;; grant failures carry the code or refresh token that failed, or the client or redirect URI the grant is bound
+      ;; to as `:expected`/`:actual`. Malformed requests carry none of these. A missing `redirect_uri` also carries
+      ;; `:code`, and `invalid_grant` is right for it too: the code is consumed by then, so a retry cannot succeed.
+      (if (or (contains? data :code)
+              (contains? data :refresh-token)
+              (and (contains? data :expected) (contains? data :actual)))
+        "invalid_grant"
+        "invalid_request")))
+
+(defn- error-description
+  "The `error_description` for an exception's ex-data: the one it carries, else `fallback`."
+  [data fallback]
+  (or (:error-description data)
+      (:error_description data)
+      fallback))
+
+(def ^:private scheme-default-port
+  {"http" 80, "https" 443})
+
+(defn- canonical-resource-uri
+  "Canonical form of a resource identifier, for comparing indicators that clients spell differently.
+
+  Lowercases scheme and host, elides the scheme's default port, and trims a trailing slash. Query and fragment are
+  dropped: the canonical form has neither, and ignoring them can only cause narrowing, never widening. Returns nil for
+  anything that is not an absolute URI, which then matches nothing.
+
+  Per RFC 3986 the scheme and host are case-insensitive and the default port is elidable; the path is neither, so
+  `/API/v2` deliberately does not canonicalize to `/api/v2`."
+  [s]
+  (when s
+    (try
+      (let [^java.net.URI uri (java.net.URI. (str s))
+            scheme            (some-> (.getScheme uri) u/lower-case-en)
+            ;; `.getHost` is nil for a host java.net.URI considers non-conformant -- notably one with an
+            ;; underscore, which is routine for Docker Compose / k8s service names and which Metabase's own
+            ;; `u/url?` accepts. Reading the authority instead keeps those canonicalizing; a nil host here
+            ;; would return nil, match nothing, and disable narrowing instance-wide and silently.
+            authority         (some-> (.getAuthority uri) u/lower-case-en)
+            [host port]       (when authority
+                                (if-let [[_ h p] (re-matches #"(?:[^@]*@)?(.*?)(?::(\d+))?" authority)]
+                                  [h (some-> p parse-long)]
+                                  [authority nil]))
+            path              (or (.getPath uri) "")]
+        (when (and scheme (not-empty host))
+          (str scheme "://" host
+               (when-not (or (nil? port) (= port (scheme-default-port scheme)))
+                 (str ":" port))
+               (cond-> path
+                 (and (> (count path) 1) (str/ends-with? path "/"))
+                 (subs 0 (dec (count path)))))))
+      (catch java.net.URISyntaxException _ nil))))
+
+(defn narrow-scope-to-resource
+  "Narrow an OAuth `scope` string to what the requested `resources` accept.
+
+  An MCP token has one or more MCP `resources` listed and only MCP `resources`. Anything else (including missing
+  `resources`) is a REST token. An MCP `resource` matches the current site URL and an MCP path.
+
+  Narrows MCP tokens to only MCP scopes, and REST tokens to anything but MCP scopes. Narrowing is the way we deal with
+  mutually exclusive scopes and surfaces. Mixed resources throw invalid_scope. Returns `nil` if there are no scopes
+  valid to the resource."
+  [resources scope]
+  (let [mcp-endpoints (into #{}
+                            (map #(canonical-resource-uri (str (system/site-url) %)))
+                            (mcp/mcp-endpoint-paths))
+        resources-by-type (group-by #(if (mcp-endpoints %) :resource/mcp :resource/rest)
+                                    (into #{}
+                                          (keep canonical-resource-uri)
+                                          (cond-> resources (string? resources) vector)))]
+    (cond
+      (and (seq (:resource/mcp  resources-by-type))
+           (seq (:resource/rest resources-by-type)))
+      (throw (ex-info "cannot mix mcp and rest resources in one token"
+                      {:oauth-error       "invalid_scope"
+                       :error-description "Request a token for MCP resources or for other resources, not both."
+                       :resource          resources}))
+
+      (seq (:resource/mcp  resources-by-type))
+      (not-empty (str/join " " (filter (set (mcp/v2-scopes)) (scope-tokens scope))))
+
+      :else
+      (not-empty (str/join " " (remove (set (mcp/v2-scopes)) (scope-tokens scope)))))))
+
+(defn- token-error-response
+  "The token endpoint's response to an exception `e` thrown while handling a token request."
+  [e]
+  (log/warnf "OAuth token request failed: %s" (ex-message e))
+  (let [data  (ex-data e)
+        error (token-error-code data)]
+    {:status  (if (= error "invalid_client") 401 400)
+     :headers {"Content-Type"  "application/json"
+               "Cache-Control" "no-store"
+               "Pragma"        "no-cache"}
+     :body    {:error             error
+               :error_description (error-description data invalid-token-request-description)}}))
+
+(defn- scope-to-grant
+  "The scope a parsed authorization request may be granted: its requested scopes filtered to the registered ones,
+  then narrowed to the `resource` indicator it names (none means REST). Throws `ex-info` carrying `:oauth-error` and
+  `:error-description` when the request names no scope, when none of its scopes are registered, when none of them
+  survive narrowing, or when incompatible resources are requested.
+
+  Applied by both the consent page and the decision endpoint. The consent form's signature proves only that the form
+  was not tampered with by a third party: it is keyed by the CSRF token the page shows the user, so the user can
+  re-sign anything. The endpoint that issues the code has to apply these rules itself.
+
+  Never returns a blank scope. The decision endpoint leans on that: it answers a nil grant with 403 `params_tampered`,
+  which is only the right status while the sole way to reach it is a choice naming an unoffered scope. A blank offer
+  would make an honest approval look like tampering."
+  [parsed]
+  {:post [(not (str/blank? %))]}
+  ;; A scope-less request would otherwise mint a token with no scopes.
+  (when (str/blank? (:scope parsed))
+    (throw (ex-info "no scope was requested"
+                    {:oauth-error       "invalid_scope"
+                     :error-description (missing-scope-description)})))
+  (let [;; A client can hold an unregistered scope from before registration validated them, and `scope-matches?` would
+        ;; honor `*` or `agent:*` as a wildcard grant, so one must never survive. Dropping rather than refusing (RFC
+        ;; 6749 section 3.3) keeps a client that still holds a since-deprecated scope able to re-authorize, and the
+        ;; refusal would reach a browser tab rather than the client program. Filtered before narrowing, so this filter
+        ;; does not depend on `resource`.
+        registered (or (oauth-server/registered-scopes-only (:scope parsed))
+                       (throw (ex-info "no requested scope is a registered scope"
+                                       {:oauth-error       "invalid_scope"
+                                        :error-description (no-supported-scopes-description)})))]
+    (or (narrow-scope-to-resource (:resource parsed) registered)
+        (throw (ex-info "no requested scope is accepted by the named resource"
+                        {:oauth-error       "invalid_scope"
+                         :error-description (narrowed-away-scope-description (:resource parsed))
+                         :resource          (:resource parsed)})))))
+
+(defn- authorization-consent-response
+  "Validate the authorization request `query-params` and return the consent page response, which sets the CSRF
+   cookie. Throws `ex-info` when the request is invalid; its data may carry `:oauth-error` and `:error-description`."
+  [provider query-params request]
+  (let [_            (check-resource-indicators! (:resource query-params))
+        ;; A blank scope is dropped so the provider validates the rest of the request first; the missing scope is
+        ;; then reported as `invalid_scope` by [[scope-to-grant]].
+        parsed       (oidc/parse-authorization-request provider
+                                                       (cond-> query-params
+                                                         (str/blank? (:scope query-params)) (dissoc :scope)))
+        ;; Narrowed before signing, so the signature binds the granted scope through the consent form round-trip.
+        parsed       (assoc parsed :scope (scope-to-grant parsed))
+        client       (proto/get-client (:client-store provider) (:client_id parsed))
+        csrf-token   (generate-csrf-token)
+        oauth-params (select-keys parsed oauth-param-keys)
+        params-sig   (sign-oauth-params csrf-token oauth-params)]
+    (-> {:status                               200
+         :headers                              {"Content-Type" "text/html; charset=utf-8"}
+         ;; the page's inline script is nonce'd, so it needs the nonce in `script-src`
+         mw.security/script-nonce-response-key true
+         :body                                 (consent-page/render-consent-page
+                                                {:client-name  (some-> (:client-name client) (truncate 64))
+                                                 :nonce        (:nonce request)
+                                                 :csrf-token   csrf-token
+                                                 :params-sig   params-sig
+                                                 :scopes       (requested-scope-descriptions (:scope oauth-params))
+                                                 :oauth-params oauth-params})}
+        (response/set-cookie csrf-cookie-name csrf-token (csrf-cookie-opts 600)))))
+
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case]}
 (api.macros/defendpoint :get "/authorize"
   :- [:map [:status [:enum 200 302 400 404]] [:body [:or :string :map]]]
   "Handles the authorization endpoint (GET /oauth/authorize)."
   [_route-params
-   query-params :- [:map
+   query-params :- [:map {:closed true}
                     [:client_id             {:optional true} [:maybe :string]]
                     [:response_type         {:optional true} [:maybe :string]]
                     [:redirect_uri          {:optional true} [:maybe :string]]
@@ -283,37 +629,28 @@
                     [:code_challenge        {:optional true} [:maybe :string]]
                     [:code_challenge_method {:optional true} [:maybe :string]]
                     [:nonce                 {:optional true} [:maybe :string]]
-                    [:resource              {:optional true} [:maybe [:or :string [:sequential :string]]]]
-                    [::mc/default [:map-of :keyword :string]]]
+                    [:resource              {:optional true} [:maybe [:or :string [:sequential :string]]]]]
    _body
    request]
-  (if-not (:metabase-user-id request)
+  (if-not (may-consent? request)
     {:status  302
      :headers {"Location" (login-redirect-url request)}
      :body    ""}
     (or (when-let [provider (oauth-server/get-provider)]
           (try
-            (let [parsed       (oidc/parse-authorization-request provider query-params)
-                  client       (proto/get-client (:client-store provider) (:client_id parsed))
-                  csrf-token   (generate-csrf-token)
-                  oauth-params (select-keys parsed oauth-param-keys)
-                  params-sig   (sign-oauth-params csrf-token oauth-params)]
-              (-> {:status  200
-                   :headers {"Content-Type" "text/html; charset=utf-8"}
-                   :body    (consent-page/render-consent-page
-                             {:client-name  (some-> (:client-name client) (truncate 64))
-                              :nonce        (:nonce request)
-                              :csrf-token   csrf-token
-                              :params-sig   params-sig
-                              :scopes       (requested-scope-descriptions (:scope oauth-params))
-                              :oauth-params oauth-params})}
-                  (response/set-cookie csrf-cookie-name csrf-token (csrf-cookie-opts 600))))
+            (authorization-consent-response provider query-params request)
             (catch ExceptionInfo e
               (log/warnf "OAuth authorize request failed: %s" (ex-message e))
-              {:status  400
-               :headers {"Content-Type" "application/json"}
-               :body    {:error             "invalid_request"
-                         :error_description "The authorization request is invalid."}})))
+              ;; Reported to the user in their own browser, never by redirecting to the client's redirect URI.
+              ;; Dynamic registration is unauthenticated, so a client can register any redirect URI it likes, and
+              ;; redirecting errors there would turn a link on this host into a zero-click open redirector
+              ;; (RFC 9700 section 4.11).
+              (let [data  (ex-data e)
+                    error (authorization-error-code data)]
+                {:status  400
+                 :headers {"Content-Type" "application/json"}
+                 :body    {:error             error
+                           :error_description (error-description data invalid-authorization-request-description)}}))))
         {:status 404 :body {:error "not_found"}})))
 
 (api.macros/defendpoint :post "/authorize/decision"
@@ -321,7 +658,7 @@
   "Handles the authorization decision (POST /oauth/authorize/decision)."
   [_route-params
    _query-params
-   body :- [:map {:decode/api {:enter (fn [body] (if (map? body) body {}))}}
+   body :- [:map {:closed true, :decode/api {:enter (fn [body] (if (map? body) body {}))}}
             [:csrf_token            {:optional true} [:maybe :string]]
             [:params_sig            {:optional true} [:maybe :string]]
             [:approved              {:optional true} [:maybe :string]]
@@ -329,14 +666,14 @@
             [:response_type         {:optional true} [:maybe :string]]
             [:redirect_uri          {:optional true} [:maybe :string]]
             [:scope                 {:optional true} [:maybe :string]]
+            [:granted_scope         {:optional true} [:maybe [:or :string [:sequential :string]]]]
             [:state                 {:optional true} [:maybe :string]]
             [:code_challenge        {:optional true} [:maybe :string]]
             [:code_challenge_method {:optional true} [:maybe :string]]
             [:nonce                 {:optional true} [:maybe :string]]
-            [:resource              {:optional true} [:maybe [:or :string [:sequential :string]]]]
-            [::mc/default [:map-of :keyword :string]]]
+            [:resource              {:optional true} [:maybe [:or :string [:sequential :string]]]]]
    request]
-  (if-not (:metabase-user-id request)
+  (if-not (may-consent? request)
     {:status  401
      :headers {"Content-Type" "application/json"}
      :body    {:error "unauthorized"}}
@@ -354,24 +691,54 @@
                  :body    {:error "csrf_validation_failed"}}
                 (let [approved (= "true" (str (:approved body)))]
                   (try
+                    (check-resource-indicators! (:resource auth-params))
                     (let [parsed        (oidc/parse-authorization-request provider auth-params)
                           ;; Verify the HMAC against the *parsed* params (same normalized form as the consent page).
                           ;; This must happen after parsing to ensure form-encoding round-trips don't cause mismatches.
-                          parsed-params (select-keys parsed oauth-param-keys)]
-                      (if (or (str/blank? params-sig)
-                              (not (re-matches #"[a-fA-F0-9]+" params-sig))
-                              (odd? (count params-sig))
-                              (not (verify-oauth-params-signature cookie-token parsed-params params-sig)))
+                          parsed-params (select-keys parsed oauth-param-keys)
+                          signature-ok? (and (not (str/blank? params-sig))
+                                             (some? (re-matches #"[a-fA-F0-9]+" params-sig))
+                                             (even? (count params-sig))
+                                             (verify-oauth-params-signature cookie-token parsed-params params-sig))
+                          ;; The signature says the form was not tampered with by a third party, not that its
+                          ;; scope was ever validated: it is keyed by the CSRF token printed on the consent page,
+                          ;; so the user can re-sign anything. This is where the code is issued, so the scope
+                          ;; rules apply here too. A denial grants nothing and needs none of them. Evaluated only
+                          ;; once the signature holds, so a forged form is still answered `params_tampered`.
+                          offered       (when (and signature-ok? approved)
+                                          (scope-tokens (scope-to-grant parsed)))
+                          ;; The offered scope is what the consent page showed; the user's ticked boxes are
+                          ;; unsigned, so they may only narrow the offer.
+                          granted       (when (and signature-ok? approved)
+                                          (granted-scopes offered (form-values (:granted_scope body))))]
+                      (cond
+                        (or (not signature-ok?)
+                            ;; A choice naming a scope the consent page never offered.
+                            (and approved (nil? granted)))
                         {:status  403
                          :headers {"Content-Type" "application/json"}
                          :body    {:error "params_tampered"}}
-                        (redirect-authorization-decision provider parsed approved request)))
+
+                        ;; Nothing granted would mint a token that can do nothing.
+                        (and approved (empty? granted))
+                        {:status  400
+                         :headers {"Content-Type" "application/json"}
+                         :body    {:error             "invalid_request"
+                                   :error_description "No scope was selected."}}
+
+                        :else
+                        (redirect-authorization-decision provider
+                                                         (cond-> parsed
+                                                           approved
+                                                           (assoc :scope (str/join " " granted)))
+                                                         approved
+                                                         request)))
                     (catch ExceptionInfo e
                       (log/warnf "OAuth authorization decision failed: %s" (ex-message e))
                       {:status  400
                        :headers {"Content-Type" "application/json"}
                        :body    {:error             "invalid_request"
-                                 :error_description "The authorization request is invalid."}}))))))
+                                 :error_description invalid-authorization-request-description}}))))))
           {:status 404 :body {:error "not_found"}}))))
 
 (api.macros/defendpoint :post "/token"
@@ -379,51 +746,56 @@
   "Handles the token endpoint (POST /oauth/token)."
   [_route-params
    _query-params
-   body :- [:map {:decode/api {:enter (fn [body] (if (map? body) body {}))}}
+   body :- [:map {:closed true, :decode/api {:enter (fn [body] (if (map? body) body {}))}}
             [:grant_type    {:optional true} [:maybe :string]]
+            [:assertion     {:optional true} [:maybe :string]]
             [:code          {:optional true} [:maybe :string]]
             [:redirect_uri  {:optional true} [:maybe :string]]
             [:refresh_token {:optional true} [:maybe :string]]
-            [:client_id     {:optional true} [:maybe :string]]
+            [:client_id     {:optional true} [:maybe [:string {:max max-client-id-length}]]]
             [:client_secret {:optional true} [:maybe :string]]
             [:scope         {:optional true} [:maybe :string]]
             [:code_verifier {:optional true} [:maybe :string]]
-            [:resource      {:optional true} [:maybe [:or :string [:sequential :string]]]]
-            [::mc/default [:map-of :keyword :string]]]
+            [:resource      {:optional true} [:maybe [:or :string [:sequential :string]]]]]
    request]
-  (let [ip-address (request/ip-address request)
-        ;; Fall back to IP when client_id isn't in the body (e.g. confidential clients using
-        ;; HTTP Basic auth) to avoid pooling unrelated clients into a shared throttle bucket.
-        client-id  (or (:client_id body) ip-address)]
-    (with-throttling-429 [token-client-throttler client-id
-                          token-ip-throttler     ip-address]
-      (or (when-let [provider (oauth-server/get-provider)]
-            (let [authorization-header (get-in request [:headers "authorization"])]
-              (try
-                (let [response (oidc/token-request provider body authorization-header)]
-                  {:status  200
-                   :headers {"Content-Type"  "application/json"
-                             "Cache-Control" "no-store"
-                             "Pragma"        "no-cache"}
-                   :body    response})
-                (catch ExceptionInfo e
-                  (log/warnf "OAuth token request failed: %s" (ex-message e))
-                  (let [data  (ex-data e)
-                        error (or (:error data) "invalid_request")]
-                    {:status  (if (= error "invalid_client") 401 400)
-                     :headers {"Content-Type"  "application/json"
-                               "Cache-Control" "no-store"
-                               "Pragma"        "no-cache"}
-                     :body    {:error             error
-                               :error_description (or (:error_description data) "The token request is invalid.")}})))))
-          {:status 404 :body {:error "not_found"}}))))
+  (let [ip-address           (request/ip-address request)
+        authorization-header (get-in request [:headers "authorization"])
+        client-id            (or (:client-id (oidc.token-endpoint/parse-basic-auth authorization-header))
+                                 (:client_id body))]
+    (try
+      (do-with-token-throttling ip-address client-id
+                                (fn []
+                                  (try
+                                    (or (when-let [provider (oauth-server/get-provider)]
+                                          (check-resource-indicators! (:resource body))
+                                          (let [response (if (= jwt-bearer/grant-type (:grant_type body))
+                                                           (jwt-bearer/exchange-jwt-for-token!
+                                                            provider request
+                                                            {:assertion (:assertion body)
+                                                             :scopes    (when (some? (:scope body))
+                                                                          (or (scope-tokens (:scope body)) []))
+                                                             :resource  (:resource body)})
+                                                           (oidc/token-request provider body authorization-header))]
+                                            {:status  200
+                                             :headers {"Content-Type"  "application/json"
+                                                       "Cache-Control" "no-store"
+                                                       "Pragma"        "no-cache"}
+                                             :body    response}))
+                                        {:status 404 :body {:error "not_found"}})
+                                    (catch ExceptionInfo e
+                                      ;; A refused JWT that passed verification is no guess, so it returns uncounted
+                                      (if (jwt-bearer/verified-refusal? e)
+                                        (token-error-response e)
+                                        (throw e))))))
+      (catch ExceptionInfo e
+        (token-error-response e)))))
 
 (api.macros/defendpoint :post "/revoke"
   :- [:map [:status [:enum 200 404]]]
   "Handles the token revocation endpoint (POST /oauth/revoke) per RFC 7009."
   [_route-params
    _query-params
-   _body :- [:map {:decode/api {:enter (fn [body] (if (map? body) body {}))}}
+   _body :- [:map {:closed true :decode/api {:enter (fn [body] (if (map? body) body {}))}}
              [:token           {:optional true} [:maybe :string]]
              [:token_type_hint {:optional true} [:maybe :string]]
              [:client_id       {:optional true} [:maybe :string]]

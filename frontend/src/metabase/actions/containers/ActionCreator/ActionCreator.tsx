@@ -7,19 +7,20 @@ import { useBeforeUnload } from "metabase/common/hooks/use-before-unload";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { Modal } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
-import type { WritebackAction } from "metabase-types/api";
+import type { CardId, WritebackAction } from "metabase-types/api";
 
 import { isSavedAction } from "../../utils";
 
 import { useActionContext } from "./ActionContext";
-import ActionCreatorView from "./ActionCreatorView";
+import { ActionCreatorView } from "./ActionCreatorView";
 import type { FormValues as CreateActionFormValues } from "./CreateActionForm";
 import CreateActionForm from "./CreateActionForm";
 import type { DataReferenceSlot } from "./types";
 
 export interface ActionCreatorProps {
-  model?: Question;
+  modelId?: CardId;
+  canCreateActions?: boolean;
+  canWriteAction?: boolean;
   /**
    * Whether the creator is mounted as its own route. A routed creator guards
    * leaving with `LeaveRouteConfirmModal`; an inline one only has `beforeunload`.
@@ -32,7 +33,9 @@ export interface ActionCreatorProps {
 }
 
 export function ActionCreator({
-  model,
+  modelId,
+  canCreateActions = false,
+  canWriteAction = false,
   isRouted,
   dataReference,
   onSubmit,
@@ -60,7 +63,7 @@ export function ActionCreator({
   const [isCallbackScheduled, scheduleCallback] = useCallbackEffect();
   const [isSaveModalShown, setShowSaveModal] = useState(false);
 
-  const isEditable = isNew || (model != null && model.canWriteActions());
+  const isEditable = isSavedAction(action) ? canWriteAction : canCreateActions;
 
   const showUnsavedChangesWarning =
     isEditable && isDirty && !isCallbackScheduled;
@@ -68,14 +71,17 @@ export function ActionCreator({
   useBeforeUnload(!isRouted && showUnsavedChangesWarning);
 
   const handleCreate = async (values: CreateActionFormValues) => {
-    if (action.type !== "query") {
+    if (action.type !== "query" || action.dataset_query == null) {
       return; // only query action creation is supported now
     }
+    const { dataset_query } = action;
 
     try {
       const createdAction = await createAction({
         ...action,
         ...values,
+        type: "query",
+        dataset_query,
         visualization_settings: formSettings,
       }).unwrap();
 
@@ -89,7 +95,7 @@ export function ActionCreator({
         onClose?.();
       });
     } catch (_error) {
-      sendToast({ icon: "warning", message: t`Failed to create action` });
+      sendToast({ variant: "negative", message: t`Failed to create action` });
     }
   };
 
@@ -101,7 +107,7 @@ export function ActionCreator({
     try {
       const updatedAction = await updateAction({
         ...action,
-        model_id: model?.id(),
+        model_id: modelId,
         visualization_settings: formSettings,
       }).unwrap();
 
@@ -111,7 +117,7 @@ export function ActionCreator({
         onClose?.();
       });
     } catch (_error) {
-      sendToast({ icon: "warning", message: t`Failed to update action` });
+      sendToast({ variant: "negative", message: t`Failed to update action` });
     }
   };
 
@@ -147,6 +153,7 @@ export function ActionCreator({
         {renderEditorBody({ isEditable })}
       </ActionCreatorView>
       <Modal
+        density="relaxed"
         opened={isSaveModalShown}
         title={t`New Action`}
         onClose={handleCloseNewActionModal}
@@ -155,7 +162,7 @@ export function ActionCreator({
           initialValues={{
             name: action.name,
             description: action.description,
-            model_id: model?.id(),
+            model_id: modelId,
           }}
           onCreate={handleCreate}
           onCancel={handleCloseNewActionModal}

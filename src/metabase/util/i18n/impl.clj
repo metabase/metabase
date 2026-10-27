@@ -29,12 +29,12 @@
   Returns `nil` for invalid strings -- you can use this to check whether a String is valid."
   ^String [s]
   {:pre [((some-fn nil? string?) s)]}
-  #_{:clj-kondo/ignore [:discouraged-var]}
   (when (string? s)
     (when-let [[_ language country] (re-matches #"^(\w{2})(?:[-_](\w{2}))?$" s)]
-      (let [language (str/lower-case language)]
+      ;; Locale/US casing so a Turkish default locale can't mangle codes like "ID"
+      (let [language (.toLowerCase ^String language Locale/US)]
         (if country
-          (str language \_ (some-> country str/upper-case))
+          (str language \_ (some-> ^String country (.toUpperCase Locale/US)))
           language)))))
 
 (extend-protocol CoerceToLocale
@@ -213,6 +213,7 @@
              (log/errorf "Invalid format string %s: %s" (pr-str format-string) (ex-message e))
              format-string)))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *in-site-locale-from-setting*
   "Whether we're currently inside a call to [[site-locale-from-setting]], so we can prevent infinite recursion."
   false)

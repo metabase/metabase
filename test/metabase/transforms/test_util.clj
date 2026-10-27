@@ -3,9 +3,10 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
-   [metabase.driver.sql :as driver.sql]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
@@ -20,6 +21,25 @@
   "How long tests wait for a transform run to finish execution and sync."
   ;; BigQuery runs routinely take 50-70s in CI.
   120)
+
+(defn do-with-transforms-api-users!
+  "Implementation of [[with-transforms-api-users!]]."
+  [f]
+  ;; a data analyst only reaches the transforms API with `advanced-permissions`, which no OSS build can
+  ;; have — so under OSS only the superuser drives these endpoints
+  (doseq [user (cond-> [:crowberto] config/ee-available? (conj :lucky))]
+    (testing (str "as " (name user))
+      (if (= user :crowberto)
+        (f user)
+        (mt/with-data-analyst-role! (mt/user->id user)
+          (f user))))))
+
+(defmacro with-transforms-api-users!
+  "Runs `body` once per user who may drive the transforms API, with `user` bound to the test-user keyword:
+  `:crowberto` in every edition, and `:lucky` as a data analyst when EE is available. Every assertion in
+  `body` must hold for both."
+  [[user] & body]
+  `(do-with-transforms-api-users! (^:once fn* [~user] ~@body)))
 
 (defn seconds-from-now-ns
   "Returns a deadline `seconds` from now in nanoseconds, for use with `System/nanoTime`.
@@ -68,15 +88,15 @@
                          ;; assume this is just a plain table name
                          {:type :table, :name target})
                  (and (nil? (:schema target)) (isa? driver/hierarchy driver/*driver* :sql))
-                 (assoc :schema (driver.sql/default-schema driver)))]
+                 (assoc :schema (:default_schema (mt/db))))]
     (binding [api/*is-superuser?* true
               api/*current-user-id* (mt/user->id :crowberto)]
       ;; Drop the actual table/view from the database
       (try
-        (driver/drop-transform-target! driver (mt/db) (update target :type (fn [target-type]
-                                                                             (if (string? target-type)
-                                                                               (keyword target-type)
-                                                                               target-type))))
+        (driver/drop-transform-target! driver (lib.metadata/database (mt/metadata-provider)) (update target :type (fn [target-type]
+                                                                                                                    (if (string? target-type)
+                                                                                                                      (keyword target-type)
+                                                                                                                      target-type))))
         (catch Exception e
           (log/warnf e "Failed to drop transform target table %s.%s for driver %s"
                      (:schema target) (:name target) driver)))
@@ -251,8 +271,7 @@
   "Returns the driver's default schema (e.g., 'dbo' for SQL Server) or 'public' as fallback.
    Useful for tests that need to create tables with a schema matching transform targets."
   []
-  (or (when (get-method driver.sql/default-schema driver/*driver*)
-        (driver.sql/default-schema driver/*driver*))
+  (or (:default_schema (mt/db))
       (if (= :bigquery-cloud-sdk driver/*driver*)
         (t2/select-one-fn :schema :model/Table :db_id (mt/id))
         "public")))
@@ -267,16 +286,16 @@
 
 (doseq [driver [:postgres :snowflake]]
   (defmethod delete-schema! driver [driver db schema]
-    (let [conn-spec (driver/connection-spec driver db)
+    (let [conn-spec (driver/connection-spec driver (driver.u/ensure-lib-database db))
           sql [[(format "DROP SCHEMA IF EXISTS \"%s\" CASCADE;" schema)]]]
       (driver/execute-raw-queries! driver/*driver* conn-spec sql))))
 
 (defmethod delete-schema! :sqlserver [driver db schema]
-  (let [conn-spec (driver/connection-spec driver db)
+  (let [conn-spec (driver/connection-spec driver (driver.u/ensure-lib-database db))
         sql [[(format "IF EXISTS (SELECT * FROM sys.schemas WHERE name = '%s') DROP SCHEMA [%s];" schema schema)]]]
     (driver/execute-raw-queries! driver/*driver* conn-spec sql)))
 
 (defmethod delete-schema! :clickhouse [driver db schema]
-  (let [conn-spec (driver/connection-spec driver db)
+  (let [conn-spec (driver/connection-spec driver (driver.u/ensure-lib-database db))
         sql [[(format "DROP DATABASE IF EXISTS `%s`;" schema)]]]
     (driver/execute-raw-queries! driver/*driver* conn-spec sql)))

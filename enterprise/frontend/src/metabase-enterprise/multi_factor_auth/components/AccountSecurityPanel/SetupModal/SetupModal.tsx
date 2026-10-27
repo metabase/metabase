@@ -1,5 +1,4 @@
 import { useState } from "react";
-import QRCode from "react-qr-code";
 import { jt, t } from "ttag";
 import * as Yup from "yup";
 
@@ -10,7 +9,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { Box, Button, Center, Group, Modal, Stack, Text } from "metabase/ui";
+import { Box, Button, Modal, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import {
   useConfirmMfaEnrollmentMutation,
@@ -20,10 +19,8 @@ import type { MfaEnrollResponse } from "metabase-types/api";
 
 import { TOTP_CODE_LENGTH } from "../../../constants";
 import { withTotpCodeRules } from "../../../schemas";
-import { CopyableCodeBlock } from "../CopyableCodeBlock";
-import { RecoveryCodesForm } from "../RecoveryCodesForm";
-
-const QR_CODE_SIZE = 180;
+import { RecoveryCodesForm } from "../../common/RecoveryCodesForm";
+import { TotpEnrollInstructions } from "../../common/TotpEnrollInstructions";
 
 type SetupModalProps = {
   opened: boolean;
@@ -35,6 +32,7 @@ export function SetupModal({ opened, onSuccess, onCancel }: SetupModalProps) {
   return (
     <Modal
       title={t`Set up two-factor authentication`}
+      density="relaxed"
       opened={opened}
       onClose={onCancel}
     >
@@ -113,7 +111,7 @@ function ConfirmPasswordForm({ onEnroll, onCancel }: ConfirmPasswordFormProps) {
       onSubmit={handleSubmit}
     >
       <Form>
-        <Stack gap="md">
+        <Stack gap="lg">
           <Text c="text-secondary">
             {t`Protect your account by requiring a code from an authenticator app when you sign in.`}
           </Text>
@@ -123,12 +121,12 @@ function ConfirmPasswordForm({ onEnroll, onCancel }: ConfirmPasswordFormProps) {
             label={t`Confirm your password to begin`}
             data-autofocus
           />
-          <FormErrorMessage />
-          <Group justify="flex-end">
-            <Button onClick={onCancel}>{t`Cancel`}</Button>
-            <FormSubmitButton label={t`Continue`} variant="filled" />
-          </Group>
         </Stack>
+        <Modal.Footer>
+          <FormErrorMessage flex={1} />
+          <Button onClick={onCancel}>{t`Cancel`}</Button>
+          <FormSubmitButton label={t`Continue`} variant="filled" />
+        </Modal.Footer>
       </Form>
     </FormProvider>
   );
@@ -169,19 +167,11 @@ function EnrollForm({ enrollment, onSuccess, onCancel }: EnrollFormProps) {
       onSubmit={handleSubmit}
     >
       <Form>
-        <Stack gap="md">
-          <Stack gap="sm">
-            <Box>{t`Scan this QR code with an authenticator app:`}</Box>
-            <Center>
-              <Box bg="white" p="md">
-                <QRCode value={enrollment.otpauth_uri} size={QR_CODE_SIZE} />
-              </Box>
-            </Center>
-          </Stack>
-          <Stack gap="sm">
-            <Box>{t`Or enter this key in the app manually:`}</Box>
-            <CopyableCodeBlock codes={[enrollment.secret]} />
-          </Stack>
+        <Stack gap="lg">
+          <TotpEnrollInstructions
+            otpauthUri={enrollment.otpauth_uri}
+            secret={enrollment.secret}
+          />
           <FormTextInput
             name="code"
             label={t`Enter the 6-digit code from the authenticator app`}
@@ -190,15 +180,12 @@ function EnrollForm({ enrollment, onSuccess, onCancel }: EnrollFormProps) {
             inputMode="numeric"
             autoFocus
           />
-          <FormErrorMessage />
-          <Group justify="flex-end">
-            <Button onClick={onCancel}>{t`Cancel`}</Button>
-            <FormSubmitButton
-              label={t`Set up authentication`}
-              variant="filled"
-            />
-          </Group>
         </Stack>
+        <Modal.Footer>
+          <FormErrorMessage flex={1} />
+          <Button onClick={onCancel}>{t`Cancel`}</Button>
+          <FormSubmitButton label={t`Set up authentication`} variant="filled" />
+        </Modal.Footer>
       </Form>
     </FormProvider>
   );

@@ -2,6 +2,8 @@
   "JWT authentication provider implementation."
   (:require
    [buddy.sign.jwt :as jwt]
+   [buddy.sign.util :as buddy-util]
+   [metabase-enterprise.sso.db :as sso.db]
    [metabase-enterprise.sso.integrations.sso-utils :as sso-utils]
    [metabase-enterprise.sso.settings :as sso-settings]
    [metabase.auth-identity.core :as auth-identity]
@@ -10,19 +12,20 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [methodical.core :as methodical]))
 
 (set! *warn-on-reflection* true)
 
 ;; Register JWT provider
-(derive :provider/jwt :metabase.auth-identity.provider/provider)
-(derive :provider/jwt :metabase.auth-identity.provider/create-user-if-not-exists)
-(derive :provider/jwt :metabase-enterprise.tenants.auth-provider/create-tenant-if-not-exists)
+(auth-identity/derive! :provider/jwt :metabase.auth-identity.provider/provider)
+(auth-identity/derive! :provider/jwt :metabase.auth-identity.provider/create-user-if-not-exists)
+(auth-identity/derive! :provider/jwt :metabase-enterprise.tenants.auth-provider/create-tenant-if-not-exists)
 
 ;; JWTs use seconds since Epoch, not milliseconds since Epoch for the `iat` and `max_age` time.
 ;; 3 minutes is the time used by Zendesk for their JWT SSO
 (def ^:private ^:const three-minutes-in-seconds 180)
+
+(def ^:private ^:const clock-skew-in-seconds 60)
 
 (def ^:private ^{:arglists '([])} jwt-attribute-email
   (comp keyword sso-settings/jwt-attribute-email))
@@ -77,8 +80,28 @@
                       {:status-code 401
                        :error :invalid-jwt})))))
 
+(defn- check-exp-and-iat
+  "Return the verified `jwt-data` after checking its `exp` and `iat` claims.
+
+  Both claims must be present. An `iat` up to [[clock-skew-in-seconds]] seconds ahead of now is accepted
+  for clock skew. Throw when a check fails."
+  [{:keys [exp iat] :as jwt-data}]
+  (cond
+    (not (and exp iat))
+    (throw (ex-info (tru "The JWT must have exp and iat claims.")
+                    {:status-code 400
+                     :error :missing-exp-or-iat}))
+
+    (> iat (+ (buddy-util/now) clock-skew-in-seconds))
+    (throw (ex-info (tru "The JWT has an iat claim in the future.")
+                    {:status-code 400
+                     :error :future-iat}))
+
+    :else
+    jwt-data))
+
 (methodical/defmethod auth-identity/authenticate :provider/jwt
-  [_provider {:keys [token] :as _request}]
+  [_provider {:keys [token jwt/require-exp-and-iat?] :as _request}]
   (cond
     (not (sso-settings/jwt-enabled-and-configured))
     {:success? false
@@ -92,7 +115,8 @@
 
     :else
     (try
-      (let [jwt-data (decode-and-verify-jwt token)
+      (let [jwt-data (cond-> (decode-and-verify-jwt token)
+                       require-exp-and-iat? check-exp-and-iat)
             email (get jwt-data (jwt-attribute-email))
             first-name (get jwt-data (jwt-attribute-firstname))
             last-name (get jwt-data (jwt-attribute-lastname))
@@ -161,7 +185,9 @@
   [group-names]
   (if-let [name-mappings (not-empty (sso-settings/jwt-group-mappings))]
     (sso-utils/group-names->ids group-names name-mappings)
-    (t2/select-pks-set :model/PermissionsGroup :name [:in group-names])))
+    (let [names (into #{} (sso-utils/group-names->strings group-names))]
+      (when (seq names)
+        (sso.db/group-ids-by-name names)))))
 
 (methodical/defmethod auth-identity/login! :after :provider/jwt
   "Sync JWT group memberships after successful login.

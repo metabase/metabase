@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { Ellipsified, Icon, Text } from "metabase/ui";
 
 import { HomeCard } from "../HomeCard";
@@ -24,7 +26,7 @@ export const HomeXrayCard = ({
         flex="0 0 auto"
         size={20}
       />
-      <Ellipsified fz="md" fw="bold" ml="sm" pr="xs">
+      <Ellipsified fz="md" fw="bold" ml="sm" pr="xxs">
         <Text component="span" c="text-secondary">
           {message}
         </Text>{" "}

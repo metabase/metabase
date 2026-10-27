@@ -1,5 +1,7 @@
 (ns metabase.embedding.util
-  "Utility functions for common operations related to embedding.")
+  "Utility functions for common operations related to embedding."
+  (:require
+   [metabase.analytics.core :as analytics]))
 
 (def ^:private embedding-sdk-client "embedding-sdk-react")
 (def ^:private embedded-analytics-js-client "embedding-simple")
@@ -8,6 +10,15 @@
   "Check if the client has indicated it is from the Embedding SDK for React."
   [request]
   (= (get-in request [:headers "x-metabase-client"]) embedding-sdk-client))
+
+(defn has-data-app-header?
+  "Check if the client has indicated it is a sandboxed data app.
+
+  Unlike its siblings here this one gates authorization, not behaviour:
+  [[metabase.server.middleware.data-app-scope]] confines a request to the `data-app` scope
+  on the strength of it."
+  [request]
+  (analytics/data-app-client? (get-in request [:headers "x-metabase-client"])))
 
 (defn has-embedded-analytics-js-header?
   "Check if the client has indicated it is from modular embedding."
