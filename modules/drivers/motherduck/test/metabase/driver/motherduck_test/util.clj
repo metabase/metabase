@@ -27,9 +27,15 @@
       (parse-dotenv (slurp f))
       {})))
 
+(def ^:private token-vars
+  "Variables that may hold the token, in order of preference. CI sets MB_MOTHERDUCK_TEST_TOKEN; MOTHERDUCK_TOKEN is
+  MotherDuck's own convention, convenient locally."
+  ["MB_MOTHERDUCK_TEST_TOKEN" "MOTHERDUCK_TOKEN"])
+
 (defn motherduck-token
-  "Return MOTHERDUCK_TOKEN from the environment, falling back to .env in the repository root.
+  "Return the MotherDuck token from the environment, falling back to .env in the repository root.
   The MotherDuck Postgres endpoint uses this token as the Postgres password."
   []
-  (or (not-empty (System/getenv "MOTHERDUCK_TOKEN"))
-      (not-empty (get (dotenv) "MOTHERDUCK_TOKEN"))))
+  (or (some #(not-empty (System/getenv ^String %)) token-vars)
+      (let [env (dotenv)]
+        (some #(not-empty (get env %)) token-vars))))

@@ -42,6 +42,7 @@ jobs:
       mongo-should-run: ${{ steps.driver-decisions.outputs.mongo-should-run }}
       mongo-ssl-should-run: ${{ steps.driver-decisions.outputs.mongo-ssl-should-run }}
       mongo-sharded-cluster-should-run: ${{ steps.driver-decisions.outputs.mongo-sharded-cluster-should-run }}
+      motherduck-should-run: ${{ steps.driver-decisions.outputs.motherduck-should-run }}
       mysql-mariadb-should-run: ${{ steps.driver-decisions.outputs.mysql-mariadb-should-run }}
       oracle-should-run: ${{ steps.driver-decisions.outputs.oracle-should-run }}
       postgres-should-run: ${{ steps.driver-decisions.outputs.postgres-should-run }}
@@ -653,6 +654,36 @@ jobs:
         junit-name: 'be-tests-mongo-sharded-cluster-ee'
         test-args: >-
           :only metabase.driver.mongo.sharded-cluster-test
+
+  be-tests-motherduck-ee:
+    needs: determine-driver-skips
+    if: ${{ needs.determine-driver-skips.outputs.motherduck-should-run == 'true' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        runner-index: [0, 1]
+    env:
+      CI: 'true'
+      DRIVERS: motherduck
+      MB_MOTHERDUCK_TEST_TOKEN: ${{ secrets.MB_MOTHERDUCK_TEST_TOKEN }}
+    name: MotherDuck Driver Tests ${{ matrix.runner-index }}
+    steps:
+    - uses: actions/checkout@v7
+    - name: Test MotherDuck driver
+      id: test-driver
+      uses: ./.github/actions/test-driver
+      with:
+        junit-name: 'be-tests-motherduck-ee'
+        test-args: >-
+          :only-tags [:mb/driver-tests]
+          :exclude-tags [:mb/transforms-python-test]
+        runner-index: ${{ matrix.runner-index }}
+        runner-count: ${{ strategy.job-total }}
+        jvms-per-runner: '2'
+        heap-per-jvm: '4g'
+        artifact-suffix: runner-${{ matrix.runner-index }}
 
   be-tests-oracle:
     needs: determine-driver-skips
@@ -1333,6 +1364,7 @@ jobs:
       - be-tests-mongo
       - be-tests-mongo-sharded-cluster-ee
       - be-tests-mongo-ssl
+      - be-tests-motherduck-ee
       - be-tests-mysql-mariadb
       - be-tests-oracle
       - be-tests-postgres

@@ -12,7 +12,7 @@
 (def ^:private default-drivers
   "Drivers implementing [[tx/gc-orphans!]]. Athena and Databricks are excluded: their datasets are preloaded, not
   created by tests."
-  [:snowflake :bigquery-cloud-sdk :redshift])
+  [:snowflake :bigquery-cloud-sdk :redshift :motherduck])
 
 (def ^:private default-report-dir
   "Where [[write-report!]] leaves its files for the workflow to upload as an artifact."
