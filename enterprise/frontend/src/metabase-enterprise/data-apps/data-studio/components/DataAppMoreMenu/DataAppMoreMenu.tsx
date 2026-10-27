@@ -3,11 +3,13 @@ import { t } from "ttag";
 
 import { MoreMenuButton } from "metabase/common/data-studio/components/MoreMenuButton";
 import { useConfirmation, useMetadataToasts } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
 import { Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { useSetDataAppEnabledMutation } from "metabase-enterprise/api";
 import type { DataApp } from "metabase-types/api";
 
+import { getCrossOriginDataAppHref } from "../../../host/lib/get-cross-origin-data-app-href";
 import { trackDataAppMadeDraft, trackDataAppMadeLive } from "../../analytics";
 import { isDataAppOpenable } from "../../utils";
 
@@ -19,6 +21,12 @@ export function DataAppMoreMenu({ app }: DataAppMoreMenuProps) {
   const [setDataAppEnabled] = useSetDataAppEnabledMutation();
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const { show: showConfirmation, modalContent } = useConfirmation();
+
+  const isolatedOrigin = useSetting("isolated-origin");
+  const siteUrl = useSetting("site-url");
+  const href =
+    getCrossOriginDataAppHref(app.name, isolatedOrigin, siteUrl) ??
+    Urls.getSubpathSafeUrl(Urls.dataApp(app.name));
 
   const handleToggleEnabled = () => {
     const enabled = !app.enabled;
@@ -69,7 +77,7 @@ export function DataAppMoreMenu({ app }: DataAppMoreMenuProps) {
           {isDataAppOpenable(app) && (
             <Menu.Item
               component="a"
-              href={Urls.getSubpathSafeUrl(Urls.dataApp(app.name))}
+              href={href}
               target="_blank"
               rel="noreferrer"
               leftSection={<Icon name="external" />}
