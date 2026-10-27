@@ -1,6 +1,8 @@
 import {
   type Finding,
   MAX_BISECTS,
+  MAX_LISTED,
+  MAX_MSG,
   applyBisected,
   bisectTargets,
   carryOver,
@@ -208,6 +210,27 @@ describe("formatReport", () => {
     expect(report).toContain(
       "- [`test/metabase/foo_test.clj:12`](https://github.com/metabase/metabase/blob/hhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh/test/metabase/foo_test.clj#L12) `suspicious-test`: Found (is ...) form",
     );
+  });
+
+  it(`lists at most ${MAX_LISTED} findings and counts the rest`, () => {
+    const many = Array.from({ length: MAX_LISTED + 5 }, (_, i) =>
+      finding({ line: i + 1 }),
+    );
+    const report = formatReport(many, context);
+    expect(
+      report.split("\n").filter((line) => line.startsWith("- ")),
+    ).toHaveLength(MAX_LISTED);
+    expect(report).toContain("…and 5 more in the run.");
+  });
+
+  it(`cuts a message at ${MAX_MSG} characters, and puts it on one line`, () => {
+    const report = formatReport(
+      [finding({ msg: `first\nsecond ${"x".repeat(MAX_MSG)}` })],
+      context,
+    );
+    const item = report.split("\n").find((line) => line.startsWith("- "));
+    expect(item).toMatch(/`suspicious-test`: first second x+…$/);
+    expect(item?.split("`: ")[1]).toHaveLength(MAX_MSG + 1);
   });
 
   it("leaves out a section with nothing in it", () => {
