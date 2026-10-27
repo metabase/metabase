@@ -11,7 +11,10 @@
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest table-schema-rows-are-permission-checkable-test
   (testing "Narrowed table rows preserve query and read permission checks"
