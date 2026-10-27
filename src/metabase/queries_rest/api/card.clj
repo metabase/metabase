@@ -236,8 +236,8 @@
    _body
    request]
   (let [resolved-id (eid-translation/->id-or-404 :card id)
+        _           (some-> (data-apps/request-data-app request) (data-apps/check-card resolved-id))
         card (get-card resolved-id)]
-    (some-> (data-apps/request-data-app request) (data-apps/check-card card))
     (cond-> card
       legacy-mbql?
       (update :dataset_query (fn [query]
@@ -664,9 +664,9 @@
    _query-params
    _body
    request]
-  (let [card (get-card (eid-translation/->id-or-404 :card id))]
-    (some-> (data-apps/request-data-app request) (data-apps/check-card card))
-    (queries/batch-fetch-card-metadata [card])))
+  (let [resolved-id (eid-translation/->id-or-404 :card id)]
+    (some-> (data-apps/request-data-app request) (data-apps/check-card resolved-id))
+    (queries/batch-fetch-card-metadata [(get-card resolved-id)])))
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
 
@@ -824,10 +824,12 @@
         [:maybe [:enum "value_asc" "value_desc" "label_asc" "label_desc"]]]]
    request]
   (let [resolved-card-id (eid-translation/->id-or-404 :card card-id)
-        card             (api/read-check (api/check-404 (queries-rest.db/card resolved-card-id)))]
-    (some-> (data-apps/request-data-app request) (data-apps/check-card card))
+        _                (some-> (data-apps/request-data-app request) (data-apps/check-card resolved-card-id))
+        card             (api/check-404 (queries-rest.db/card resolved-card-id))]
     (if stored_result_id
-      (serve-cached-stored-result resolved-card-id stored_result_id sort)
+      (do
+        (api/read-check card)
+        (serve-cached-stored-result resolved-card-id stored_result_id sort))
       (do
         (when dashboard_id
           (api/read-check :model/Dashboard dashboard_id))
@@ -875,20 +877,19 @@
        [:pivot_results {:default false} ms/BooleanValue]
        [:csv_include_bom {:default false} ms/BooleanValue]]
    request]
-  (let [card (api/read-check (api/check-404 (queries-rest.db/card card-id)))]
-    (some-> (data-apps/request-data-app request) (data-apps/check-card card))
-    (qp.card/process-query-for-card
-     card export-format
-     :parameters  parameters
-     :constraints nil
-     :context     (api.dataset/export-format->context export-format)
-     :middleware  {:process-viz-settings?  true
-                   :skip-results-metadata? true
-                   :ignore-cached-results? true
-                   :format-rows?           format-rows?
-                   :pivot?                 pivot-results?
-                   :csv-include-bom?        (if (some? csv-include-bom?) csv-include-bom? false)
-                   :js-int-to-string?      false})))
+  (some-> (data-apps/request-data-app request) (data-apps/check-card card-id))
+  (qp.card/process-query-for-card
+   (api/check-404 (queries-rest.db/card card-id)) export-format
+   :parameters  parameters
+   :constraints nil
+   :context     (api.dataset/export-format->context export-format)
+   :middleware  {:process-viz-settings?  true
+                 :skip-results-metadata? true
+                 :ignore-cached-results? true
+                 :format-rows?           format-rows?
+                 :pivot?                 pivot-results?
+                 :csv-include-bom?        (if (some? csv-include-bom?) csv-include-bom? false)
+                 :js-int-to-string?      false}))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
@@ -962,8 +963,8 @@
                                     [:dashboard_id {:optional true} [:maybe ms/PositiveInt]]
                                     [:parameters   {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]]
    request]
-  (let [card (api/read-check (api/check-404 (queries-rest.db/card card-id)))]
-    (some-> (data-apps/request-data-app request) (data-apps/check-card card))
+  (some-> (data-apps/request-data-app request) (data-apps/check-card card-id))
+  (let [card (api/check-404 (queries-rest.db/card card-id))]
     (when dashboard_id
       (api/read-check :model/Dashboard dashboard_id))
     (qp.card/process-query-for-card card :api
@@ -990,10 +991,9 @@
    _query-params
    _body
    request]
-  (let [card (api/read-check :model/Card card-id)]
-    (some-> (data-apps/request-data-app request) (data-apps/check-card card))
-    (binding [qp.perms/*param-values-query* true]
-      (queries/card-param-values card param-key))))
+  (some-> (data-apps/request-data-app request) (data-apps/check-card card-id))
+  (binding [qp.perms/*param-values-query* true]
+    (queries/card-param-values (api/read-check :model/Card card-id) param-key)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1014,10 +1014,9 @@
    _query-params
    _body
    request]
-  (let [card (api/read-check :model/Card card-id)]
-    (some-> (data-apps/request-data-app request) (data-apps/check-card card))
-    (binding [qp.perms/*param-values-query* true]
-      (queries/card-param-values card param-key query))))
+  (some-> (data-apps/request-data-app request) (data-apps/check-card card-id))
+  (binding [qp.perms/*param-values-query* true]
+    (queries/card-param-values (api/read-check :model/Card card-id) param-key query)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1035,7 +1034,7 @@
    {:keys [value]}        :- [:map {:closed true} [:value :string]]
    _body
    request]
-  (let [card (api/read-check :model/Card id)]
-    (some-> (data-apps/request-data-app request) (data-apps/check-card card))
-    (binding [qp.perms/*param-values-query* true]
-      (queries/card-param-remapped-value card param-key (codec/url-decode value)))))
+  (some-> (data-apps/request-data-app request) (data-apps/check-card id))
+  (binding [qp.perms/*param-values-query* true]
+    (-> (api/read-check :model/Card id)
+        (queries/card-param-remapped-value param-key (codec/url-decode value)))))

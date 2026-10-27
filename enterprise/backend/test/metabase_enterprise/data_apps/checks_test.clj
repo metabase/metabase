@@ -39,7 +39,7 @@
 (defn- card-error
   "The error message for a data app's run of the card with `card-id`."
   [card-id]
-  (format "A data app can run only the cards in its own collection, not the card %d." card-id))
+  (format "A data app can use only the cards in its own collection, not the card %d." card-id))
 
 (defn- run-query
   "The response to a data app's request to run `query` through `POST /api/dataset`, expecting `status`."

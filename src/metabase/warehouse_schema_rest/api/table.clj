@@ -358,8 +358,7 @@
    _query-params
    _body
    request]
-  (when-let [data-app (data-apps/request-data-app request)]
-    (data-apps/check-card data-app (api/read-check :model/Card id)))
+  (some-> (data-apps/request-data-app request) (data-apps/check-card id))
   (first (schema.table/batch-fetch-card-query-metadatas [id] {:include-database? true})))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API

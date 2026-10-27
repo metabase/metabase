@@ -11,6 +11,7 @@
    [metabase.data-apps.schema :as data-apps.schema]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
    [metabase.util.i18n :refer [tru]]))
 
@@ -72,10 +73,10 @@
   nil)
 
 (defenterprise-schema check-card :- :nil
-  "Throws a 400 unless `card` is in `data-app`'s collection."
+  "Throws a 400 unless the card with `card-id` is in `data-app`'s collection, after a read check of the card."
   :feature :data-apps
   [data-app :- ::data-apps.schema/data-app
-   card     :- :metabase.queries.schema/card]
-  (when-not (in-app-collection? data-app card)
-    (throw (data-app-error (tru "A data app can run only the cards in its own collection, not the card {0}." (:id card)))))
+   card-id  :- ::lib.schema.id/card]
+  (when-not (in-app-collection? data-app (api/read-check :model/Card card-id))
+    (throw (data-app-error (tru "A data app can use only the cards in its own collection, not the card {0}." card-id))))
   nil)

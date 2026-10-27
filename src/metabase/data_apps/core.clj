@@ -5,6 +5,7 @@
    [metabase.api.macros.scope :as scope]
    [metabase.data-apps.schema :as data-apps.schema]
    [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]))
 
 (defenterprise visible-data-app-filter-select
@@ -58,10 +59,9 @@
   nil)
 
 (defenterprise-schema check-card :- :nil
-  "Throws a 400 unless `data-app` may run `card`, which the endpoint has fetched and read-checked; does nothing without
+  "Throws a 400 unless `data-app` may use the card with `card-id`, after a read check of the card; does nothing without
   the data-apps feature."
   metabase-enterprise.data-apps.checks
   [_data-app :- ::data-apps.schema/data-app
-   _card     :- :metabase.queries.schema/card]
+   _card-id  :- ::lib.schema.id/card]
   nil)
-

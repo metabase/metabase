@@ -870,6 +870,7 @@
            api
            api-scope
            lib.be
+           lib.schema
            premium-features
            util}}
 
@@ -3476,8 +3477,7 @@
            warehouse-schema-overlay
            warehouses.schema
            xrays}
-   :model-imports #{:model/Card
-                    :model/Collection
+   :model-imports #{:model/Collection
                     :model/Database
                     :model/Dimension
                     :model/Field
