@@ -12,14 +12,7 @@ const dashboardsPage = () => cy.findByTestId("library-page");
 const dashboardHeader = () => cy.findByTestId("dashboard-pane-header");
 
 function createLibraryDashboard() {
-  H.createLibrary().then(({ body: library }) => {
-    const dashboardsCollection = library.effective_children?.find(
-      ({ type }) => type === "library-dashboards",
-    );
-    if (dashboardsCollection == null) {
-      throw new Error("The Library has no Dashboards collection");
-    }
-
+  H.createLibrary().then(({ dashboardsCollectionId }) => {
     H.createQuestionAndDashboard({
       questionDetails: {
         name: QUESTION_NAME,
@@ -27,7 +20,7 @@ function createLibraryDashboard() {
       },
       dashboardDetails: {
         name: DASHBOARD_NAME,
-        collection_id: dashboardsCollection.id,
+        collection_id: dashboardsCollectionId,
       },
     }).then(({ body: dashcard }) => {
       cy.wrap(dashcard.dashboard_id).as("dashboardId");

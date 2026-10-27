@@ -140,9 +140,8 @@ describe("scenarios > admin > settings > public sharing", () => {
         ...DEFAULT_ACTION_DETAILS,
         name: expectedActionName,
         model_id: modelId,
-      }).then(({ body }) => {
-        const actionId = body.id;
-        cy.wrap(actionId).as("actionId");
+      }).then((action) => {
+        cy.wrap(action.id).as("actionId");
       });
     });
 
