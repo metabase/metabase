@@ -14,11 +14,13 @@
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
    [metabase.api.macros.scope :as api.scope]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.db :as lib-be.db]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.mcp.core :as mcp]
    [metabase.metabot.agent.profiles :as metabot.profiles]
    [metabase.metabot.scope :as metabot.scope]
@@ -326,6 +328,19 @@
                                          {:query (orders-query
                                                   :aggregation [(orders-field-ref "ID")])})]
       (is (=? {:error "aggregation-entry-not-aggregation"} response)))))
+
+(deftest construct-query-ambiguous-field-recovery-test
+  (let [mp           (mt/metadata-provider)
+        ambiguous-mp (lib.tu/merged-mock-metadata-provider
+                      mp {:fields [(assoc (lib.metadata/field mp (mt/id :orders :total)) :id Integer/MAX_VALUE)]})]
+    (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (constantly ambiguous-mp)]
+      (let [response (mt/user-http-request :rasta :post 400 "agent/v2/construct-query"
+                                           {:query (orders-query :fields [(orders-field-ref "TOTAL")])})]
+        (is (= "ambiguous-field" (:error response)))
+        (is (str/includes? (:message response)
+                           (str "The field name matches more than one column in this table, "
+                                "so it cannot be referenced by name. "
+                                "Tell the user about the ambiguous column name.")))))))
 
 (deftest construct-query-metadata-lookup-failure-test
   (mt/with-prometheus-system! [_ system]

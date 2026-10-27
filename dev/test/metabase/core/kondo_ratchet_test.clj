@@ -45,7 +45,23 @@
     ;; start a comment
     "(f \"      \")"         "(f \"a\\\"b c\")"
     "[\\  \"   \"]"          "[\\\" \"abc\"]"
-    "(f \\  \"   \")"        "(f \\; \"a;b\")")
+    "(f \\  \"   \")"        "(f \\; \"a;b\")"
+    ;; input that ends mid-token: an unterminated string runs to the end, a trailing backslash is kept
+    ""                       ""
+    "\""                     "\""
+    "(f \"            "      "(f \"never closed"
+    "(f \"               "   "(f \"ends on escape\\"
+    "(f) \\"                 "(f) \\"
+    "(f) ;           "       "(f) ; no newline"
+    "\"  \n \" \\\n ;  "     "\"a\\\nb\" \\\n ; c")
+  (testing "characters outside the basic plane keep their two-char length, and a char literal masks one char"
+    (is (= "(f \"       \") ;   \n(g \\ \uDE00)"
+           (kondo-ratchet/mask-strings-and-comments
+            "(f \"😀 café\") ; 😀\n(g \\😀)"))))
+  (testing "a string with more escapes than a recursive regex could match"
+    (is (= (str "(def x \"" (str/join (repeat 60000 \space)) "\")")
+           (kondo-ratchet/mask-strings-and-comments
+            (str "(def x \"" (str/join (repeat 20000 "\\\"a")) "\")")))))
   (testing "masking preserves length and newline positions"
     (let [content "(f \"a\nb\") ; c\n(g)"
           masked  (kondo-ratchet/mask-strings-and-comments content)]

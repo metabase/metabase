@@ -165,7 +165,7 @@
     (testing "DB details visibility"
       (testing "Regular users should not see DB details"
         (is (= (-> (db-details)
-                   (dissoc :details :write_data_details :admin_details :initial_sync_error :schedules))
+                   (dissoc :details :write_data_details :initial_sync_error :schedules))
                (-> (mt/user-http-request :rasta :get 200 (format "database/%d" (mt/id)))
                    (dissoc :schedules :can_upload)))))
       (testing "Superusers should see DB details"
@@ -212,6 +212,12 @@
       (is (= {:errors          {:include "nullable enum of tables, tables.fields"},
               :specific-errors {:include ["should be either \"tables\" or \"tables.fields\", received: \"schemas\""]}}
              (mt/user-http-request :lucky :get 400 (format "database/%d?include=schemas" (mt/id))))))))
+
+(deftest ^:parallel get-database-not-found-test
+  (testing "GET /api/database/:id"
+    (testing "A database that does not exist should return a 404 (#11037)"
+      (is (= "Not found."
+             (mt/user-http-request :crowberto :get 404 (format "database/%d" Integer/MAX_VALUE)))))))
 
 (deftest get-database-stub-test
   (testing "GET /api/database"
@@ -873,12 +879,12 @@
             db                 (first (t2/insert-returning-instances! :model/Database {:name    database-name
                                                                                        :engine  (u/qualified-name driver/*driver*)
                                                                                        :details connection-details}))
-            _                  (sync/sync-database! db)
+            _                  (sync/sync-database! (:id db))
             ;; 2. start a long running process on another thread that uses a connection
             connections-stay-open? (future
                                      (sql-jdbc.execute/do-with-connection-with-options
                                       driver/*driver*
-                                      db
+                                      (driver.u/ensure-lib-database db)
                                       nil
                                       (fn [^Connection conn]
                                         ;; sleep long enough to make sure the PUT request below finishes processing,
@@ -900,7 +906,7 @@
 
 (deftest ^:parallel fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
-    (is (= (merge (dissoc (db-details) :details :write_data_details :admin_details :initial_sync_error :router_user_attribute)
+    (is (= (merge (dissoc (db-details) :details :write_data_details :initial_sync_error :router_user_attribute)
                   {:engine        "h2"
                    :name          "test-data (h2)"
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
@@ -1231,7 +1237,7 @@
       (testing "Database details/settings *should not* come back for Rasta since she's not a superuser"
         (let [expected-keys (-> #{:features :native_permissions :can_upload :router_user_attribute :transforms_permissions}
                                 (into (keys (t2/select-one :model/Database :id (mt/id))))
-                                (disj :details :write_data_details :admin_details :initial_sync_error))]
+                                (disj :details :write_data_details :initial_sync_error))]
           (doseq [db (:data (mt/user-http-request :rasta :get 200 "database"))]
             (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
               (is (= expected-keys
@@ -2977,18 +2983,13 @@
                      :unaggregated-query-row-limit (symbol "nil #_\"key is not present.\"")}
                     (settings)))))))))
 
-(deftest log-an-error-if-contains-undefined-setting-test
-  (testing "should log an error message if database contains undefined settings"
+(deftest hide-undefined-setting-test
+  (testing "undefined settings are hidden from the response without logging an error"
     (mt/with-temp [:model/Database {db-id :id} {:settings {:undefined-setting true}}]
       (mt/with-log-messages-for-level [messages :error]
-        (testing "does not includes undefined keys by default"
-          (is (not (contains? (:settings (mt/user-http-request :crowberto :get 200 (str "database/" db-id)))
-                              :undefined-setting))))
-        (is (= (str "Error checking the readability of :undefined-setting setting. The setting will be hidden in API response."
-                    " Error: Unknown setting: :undefined-setting")
-               (-> (messages)
-                   first
-                   :message)))))))
+        (is (not (contains? (:settings (mt/user-http-request :crowberto :get 200 (str "database/" db-id)))
+                            :undefined-setting)))
+        (is (not-any? #(str/includes? (:message %) "undefined-setting") (messages)))))))
 
 (deftest autocomplete-suggestions-do-not-include-dashboard-cards
   (testing "GET /api/database/:id/card_autocomplete_suggestions"
@@ -3389,54 +3390,6 @@
                  (mt/user-http-request :crowberto :put 400 (format "database/%d" router-id)
                                        {:write_data_details {:host "write-host"
                                                              :write-data-connection true}}))))))))
-
-;;; ----------------------------------------- admin_details tests -----------------------------------------
-
-(deftest ^:parallel upsert-sensitive-fields-admin-details-test
-  (testing "upsert-sensitive-fields works with :admin_details key"
-    (is (= {:host "localhost"
-            :port 5432
-            :password "new-password"}
-           (#'api.database/upsert-sensitive-fields
-            {:engine :h2
-             :id (mt/id)
-             :details {:host "localhost" :port 5432 :password "main-pass"}
-             :admin_details {:host "localhost" :port 5432 :password "admin-pass"}}
-            {:host "localhost"
-             :port 5432
-             :password "new-password"}
-            :admin_details)))
-    (testing "protected passwords are replaced from original"
-      (is (= {:host "localhost"
-              :port 5432
-              :password "admin-pass"}
-             (#'api.database/upsert-sensitive-fields
-              {:engine :h2
-               :id (mt/id)
-               :details {:host "localhost" :port 5432 :password "main-pass"}
-               :admin_details {:host "localhost" :port 5432 :password "admin-pass"}}
-              {:host "localhost"
-               :port 5432
-               :password secret/protected-password}
-              :admin_details))))))
-
-(deftest get-database-admin-details-test
-  (testing "GET /api/database/:id"
-    (testing "Superusers see admin_details with sensitive fields redacted"
-      (mt/with-temp [:model/Database {db-id :id} {:engine :h2
-                                                  :details {:host "localhost"}
-                                                  :admin_details {:host "admin-host"
-                                                                  :password "secret-admin-pass"}}]
-        (let [response (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id))]
-          (is (= "admin-host" (get-in response [:admin_details :host])))
-          (is (= secret/protected-password (get-in response [:admin_details :password]))))))
-    (testing "Regular users do not see admin_details"
-      (mt/with-temp [:model/Database {db-id :id} {:engine :h2
-                                                  :details {:host "localhost"}
-                                                  :admin_details {:host "admin-host"}}]
-        (let [response (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))]
-          (is (not (contains? response :admin_details)))
-          (is (not (contains? response :details))))))))
 
 (deftest update-database-preserves-overlay-details-test
   (testing "PUT /api/database/:id without write_data_details/provider_name keys"

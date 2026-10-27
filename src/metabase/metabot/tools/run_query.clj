@@ -8,6 +8,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.query-execution :as query-execution]
    [metabase.metabot.scope :as scope]
@@ -21,6 +22,7 @@
    [metabase.metabot.tools.util :as tools.u]
    [metabase.models.interface :as mi]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.middleware.catch-exceptions :as qp.catch-exceptions]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
@@ -72,6 +74,13 @@
   {:payload [:map {:closed true}]}
   [_]
   {:message  "Query execution is turned off for Metabot."
+   :recovery []})
+
+(tools/defrecoverable embedded-metabot!
+  "The embedded Metabot asked to run a query. The rows would be the embedding customer's end users' data."
+  {:payload [:map {:closed true}]}
+  [_]
+  {:message  "Metabot can't run queries in embedded apps."
    :recovery []})
 
 (tools/defrecoverable no-conversation!
@@ -369,7 +378,9 @@
   (try
     (:query (qp.compile/compile query))
     (catch Exception e
-      (sql.common/query-failed! {:error-message (ex-message e)}))))
+      (if (query-execution/caller-facing-failure? (qp.catch-exceptions/exception-response e))
+        (sql.common/query-failed! {:error-message (ex-message e)})
+        (throw e)))))
 
 (defn- read-only-problem
   "A sentence saying why `sql` is not a single read-only SELECT statement for `driver`, so the model knows what to
@@ -500,17 +511,19 @@
 
 (defn- run-page!
   "Run `query` for one page of rows through [[query-execution/execute-page!]].
-   Throw this tool's declared errors for permission failures, query failures, cancellation and timeouts."
+   Throw this tool's declared errors for permission failures, failures of the query or its database, cancellation and
+   timeouts, and rethrow a failure inside Metabase."
   [query-id query row-limit]
   (try
     (query-execution/execute-page! query row-limit :metabot (run-options))
     (catch clojure.lang.ExceptionInfo e
-      (let [{:keys [error query-error permissions-error? timeout-ms]} (ex-data e)]
+      (let [{:keys [error query-error permissions-error? caller-facing? timeout-ms]} (ex-data e)]
         (case error
           ;; The QP's refusal is ours to state plainly. Its text can name a question the user can't read.
-          :query-failed    (if permissions-error?
-                             (no-permission! {:query-id query-id})
-                             (sql.common/query-failed! {:error-message query-error}))
+          :query-failed    (cond
+                             permissions-error? (no-permission! {:query-id query-id})
+                             caller-facing?     (sql.common/query-failed! {:error-message query-error})
+                             :else              (throw e))
           :query-canceled  (query-canceled! {})
           :query-timed-out (query-timed-out! {:seconds (quot timeout-ms 1000)})
           (throw e))))))
@@ -677,6 +690,8 @@
   [{:keys [query_id row_limit]} allow-non-sql?]
   (when-not (metabot.settings/metabot-query-execution-enabled?)
     (query-execution-off! {}))
+  (when (= (:entity_id shared/*metabot*) metabot.config/embedded-metabot-id)
+    (embedded-metabot! {}))
   (check-private-conversation!)
   (let [{:keys [query saved-card]} (stored-query query_id allow-non-sql?)
         runnable                   (runnable-query query_id query allow-non-sql?)]

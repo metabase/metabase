@@ -121,6 +121,14 @@
                 driver
                 (fake-query mp "select bad from products"))))))))
 
+(deftest ^:parallel validate-non-sql-native-query-test
+  (testing "native queries for non-SQL drivers aren't sent to the SQL parser (GHY-4955)"
+    (let [mp (deps.tu/default-metadata-provider)]
+      (is (= #{}
+             (deps.native-validation/validate-native-query
+              :mongo
+              (fake-query mp "[{\"$match\": {\"status\": \"active\"}}]")))))))
+
 (deftest ^:parallel validate-table-function-query-test
   (testing "can validate queries using table functions"
     (let [mp (deps.tu/default-metadata-provider)
@@ -618,8 +626,6 @@
         (mt/with-temp [:model/DatabaseRouter _ {:database_id    (mt/id)
                                                 :user_attribute "db_name"}]
           (testing "validate-native-query doesn't throw"
-            ;; Without the fix, this would throw:
-            ;; "Anonymous users cannot access a database with routing enabled."
             (is (set? (deps.native-validation/validate-native-query
                        driver
                        (lib/native-query mp "SELECT * FROM ORDERS")))))

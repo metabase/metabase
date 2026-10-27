@@ -1,6 +1,6 @@
 (ns metabase-enterprise.data-apps.api
-  "Data-app endpoints, mounted at `/api/ee/apps`: manage data apps and their groups, serve their bundles, and generate
-  their typed schema."
+  "Data-app endpoints, mounted at `/api/ee/apps`: manage data apps and the groups that can read their collections, serve
+  their bundles, and generate their typed schema."
   (:require
    [clojure.string :as str]
    [metabase-enterprise.data-apps.apps :as data-apps.apps]
@@ -15,7 +15,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
-   [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -99,8 +98,11 @@
 
 (def ^:private PublicDataAppResponse
   [:map {:closed true}
+   [:id           ms/PositiveInt]
    [:name         ms/NonBlankString]
-   [:display_name ms/NonBlankString]])
+   [:display_name ms/NonBlankString]
+   [:enabled      :boolean]
+   [:outdated     :boolean]])
 
 (def ^:private RepoStatusResponse
   [:map
@@ -162,17 +164,8 @@
   "Return full data-app metadata, with whether the app is outdated, to superusers and only
    navigational fields to other users."
   [app]
-  (if api/*is-superuser?*
-    (assoc app :outdated (data-app.config/outdated? app))
-    (select-keys app [:name :display_name])))
-
-(defn- read-check-data-app
-  "Check whether the current user can access a data app. Viewing requires read access to the app's
-   resource collection, which every app has."
-  [app]
-  (api/read-check app)
-  (api/read-check :model/Collection (:resource_collection_id app))
-  app)
+  (cond-> (assoc app :outdated (data-app.config/outdated? app))
+    (not api/*is-superuser?*) (select-keys [:id :name :display_name :enabled :outdated])))
 
 (defn- check-not-outdated
   "Refuse an app built for an older contract than this Metabase serves with a 409 carrying
@@ -188,14 +181,11 @@
   app)
 
 (api.macros/defendpoint :get "/" :- [:sequential [:or DataAppResponse PublicDataAppResponse]]
-  "List the data apps. Pass `available=true` to return only enabled apps. Disabled and outdated apps are listed only
-  to superusers, who see them badged, and never as available."
-  [_route-params
-   {:keys [available]} :- [:map {:closed true} [:available {:optional true} [:maybe :boolean]]]]
-  (->> (data-apps.db/data-apps available)
-       (filter mi/can-read?)
-       (remove #(and (or available (not api/*is-superuser?*))
-                     (data-app.config/outdated? %)))
+  "List the data apps the user can read. Disabled and outdated apps are listed only to superusers, who see them
+  badged."
+  []
+  (->> (data-apps.db/readable-data-apps api/*current-user-id* (boolean api/*is-superuser?*))
+       (remove #(and (not api/*is-superuser?*) (data-app.config/outdated? %)))
        (mapv data-app-response)))
 
 (defn- with-bundle
@@ -258,7 +248,7 @@
   (update-app! slug {:bundle bundle}))
 
 (api.macros/defendpoint :delete ["/:slug" :slug slug-regex] :- :nil
-  "Delete a data app, its bundle, its collection, and its group assignments."
+  "Delete a data app, its bundle, and its collection with the grants on it."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
   (let [app (write-check-data-app slug)]
     (check-editable! app)
@@ -297,7 +287,7 @@
 
 (api.macros/defendpoint :get ["/:slug/group-permission-warnings" :slug slug-regex]
   :- [:sequential GroupPermissionWarning]
-  "Return missing table access for groups already assigned to this app."
+  "Return missing table access for the groups listed for this app."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
   (api/check-superuser)
   (data-app.group-access/permission-warnings (api/check-404 (data-apps.db/data-app-by-slug slug))))
@@ -309,13 +299,13 @@
    [:member_count ms/IntGreaterThanOrEqualToZero]])
 
 (api.macros/defendpoint :get ["/:slug/groups" :slug slug-regex] :- [:sequential AssignedGroup]
-  "List the groups assigned to a data app."
+  "List the groups other than Administrators that can read a data app's resource collection."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
   (api/check-superuser)
   (data-app.group-access/assigned-groups (api/check-404 (data-apps.db/data-app-by-slug slug))))
 
 (api.macros/defendpoint :post ["/:slug/groups" :slug slug-regex] :- [:sequential AssignedGroup]
-  "Assign a batch of internal groups atomically."
+  "Grant a batch of internal groups read access to a data app's resource collection atomically."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
    _query-params
    {group-ids :group_ids} :- AddGroupsRequest]
@@ -323,7 +313,7 @@
   (data-app.group-access/add-groups! (api/check-404 (data-apps.db/data-app-by-slug slug)) group-ids))
 
 (api.macros/defendpoint :delete ["/:slug/groups/:group-id" :slug slug-regex] :- :nil
-  "Remove a group's assignment and collection access."
+  "Revoke a group's access to a data app's resource collection."
   [{:keys [slug group-id]} :- [:map {:closed true} [:slug ms/NonBlankString] [:group-id ms/PositiveInt]]]
   (api/check-superuser)
   (data-app.group-access/remove-group! (api/check-404 (data-apps.db/data-app-by-slug slug)) group-id))
@@ -335,7 +325,7 @@
 (api.macros/defendpoint :get ["/:slug" :slug slug-regex] :- [:or DataAppResponse PublicDataAppResponse]
   "Fetch metadata for a single data app by its slug, disabled ones to superusers only."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
-  (let [app (read-check-data-app (data-apps.db/data-app-by-slug slug))]
+  (let [app (api/read-check (data-apps.db/data-app-by-slug slug))]
     (data-app-response (cond-> app (not api/*is-superuser?*) check-not-outdated))))
 
 (api.macros/defendpoint :get ["/:slug/bundle" :slug slug-regex] :- :any
@@ -349,7 +339,7 @@
    respond
    raise]
   (try
-    (let [row  (check-not-outdated (read-check-data-app (data-apps.db/data-app-by-slug slug)))
+    (let [row  (check-not-outdated (api/read-check (data-apps.db/data-app-by-slug slug)))
           hash (:bundle_hash row)
           etag (some->> hash (format "\"%s\""))]
       (cond

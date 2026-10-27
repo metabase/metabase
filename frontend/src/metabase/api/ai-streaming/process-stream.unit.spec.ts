@@ -105,7 +105,7 @@ describe("processChatResponse", () => {
     ]);
   });
 
-  it("should fire reasoning callbacks and not append reasoning to result", async () => {
+  it("should fire one reasoning callback per server delta and not append reasoning to result", async () => {
     const mockStream = createMockSSEStream([
       { type: "reasoning-start", id: "r1" },
       { type: "reasoning-delta", id: "r1", delta: "Think" },
@@ -116,14 +116,41 @@ describe("processChatResponse", () => {
 
     const result = await processChatResponse(mockStream, config);
     expect(config.onReasoningStart).toHaveBeenCalledTimes(1);
-    expect(config.onReasoningDelta).toHaveBeenCalledTimes(1);
-    expect(config.onReasoningDelta).toHaveBeenCalledWith(
-      expect.objectContaining({ delta: "Thinking" }),
+    expect(config.onReasoningDelta).toHaveBeenCalledTimes(2);
+    expect(config.onReasoningDelta).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ delta: "Think" }),
+    );
+    expect(config.onReasoningDelta).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ delta: "ing" }),
     );
     expect(config.onReasoningEnd).toHaveBeenCalledTimes(1);
     expect(config.onError).not.toHaveBeenCalled();
     expect(result.data).toEqual([]);
     expect(result.toolCalls).toEqual([]);
+  });
+
+  it("paces reasoning callbacks when shouldPaceReasoning returns true", async () => {
+    const mockStream = createMockSSEStream([
+      { type: "reasoning-delta", id: "r1", delta: "thinking it over" },
+    ]);
+    const config = {
+      ...getMockedCallbacks(),
+      shouldPaceReasoning: () => true,
+    };
+
+    await processChatResponse(mockStream, config);
+
+    expect(config.onReasoningDelta).toHaveBeenCalledTimes(3);
+    expect(config.onReasoningDelta).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ delta: "thinking " }),
+    );
+    expect(config.onReasoningDelta).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({ delta: "over" }),
+    );
   });
 
   it("should ignore unhandled event types", async () => {

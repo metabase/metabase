@@ -44,28 +44,37 @@
 
 (defn- with-recovery-hint
   "`e` rewrapped by [[common/message-ex-info]] with v2's recovery message for its `ex-data` on a line after its
-   message, keeping its data and with `e` as the cause, or unchanged when there is none."
+   message, keeping its data and with `e` as the cause, or unchanged when there is none.
+
+   `e`'s message is quoted, except for a preprocessing rejection. The pipeline writes that message from server text
+   and quotes the query processor's text in it."
   [^clojure.lang.ExceptionInfo e]
   (if-let [hint (v2.recovery-hints/recovery-hint (ex-data e))]
     (common/message-ex-info (if-let [text (common/exception-message e)]
-                              (message/msg ["%s" "%s"] text hint)
+                              (message/msg ["%s" "%s"]
+                                           (cond-> text
+                                             (= :query-preprocessing-failed (:error (ex-data e))) message/raw)
+                                           hint)
                               hint)
                             (ex-data e)
                             e)
     e))
 
 (defn execute-representations-query
-  "Run the shared representations pipeline (validate → repair → resolve) as the MCP v2 surface —
-   the one entry point for v2 tools that accept an agent-authored MBQL query. Binds the numeric-id
-   dialect on. A structural failure gains the offending paths ([[with-schema-detail]]), and an
-   agent error gains v2's recovery message ([[with-recovery-hint]])."
-  [external-query]
-  (binding [serdes.resolve/*numeric-ids-allowed?* true]
-    (try
-      (metabot.construct/execute-representations-query external-query)
-      (catch clojure.lang.ExceptionInfo e
-        (throw (cond-> (with-schema-detail e)
-                 (:agent-error? (ex-data e)) with-recovery-hint))))))
+  "Run the shared representations pipeline for MCP v2 queries.
+   Validate, repair and resolve an agent-authored MBQL query with numeric IDs allowed.
+   Add the offending paths to structural errors ([[with-schema-detail]]) and v2 recovery advice to
+   agent errors when available ([[with-recovery-hint]]). Pass `opts` to
+   [[metabot.construct/execute-representations-query]]."
+  ([external-query]
+   (execute-representations-query external-query nil))
+  ([external-query opts]
+   (binding [serdes.resolve/*numeric-ids-allowed?* true]
+     (try
+       (metabot.construct/execute-representations-query external-query opts)
+       (catch clojure.lang.ExceptionInfo e
+         (throw (cond-> (with-schema-detail e)
+                  (:agent-error? (ex-data e)) with-recovery-hint)))))))
 
 ;;; ------------------------------------------------ Portable queries ----------------------------------------------
 

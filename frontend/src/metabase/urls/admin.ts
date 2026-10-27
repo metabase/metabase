@@ -83,10 +83,6 @@ export function editDatabaseWritableConnection(databaseId: DatabaseId) {
   return `/admin/databases/${databaseId}/write-data`;
 }
 
-export function editDatabaseAdminConnection(databaseId: DatabaseId) {
-  return `/admin/databases/${databaseId}/admin`;
-}
-
 type DataModelParams = {
   databaseId?: DatabaseId;
   schemaName?: SchemaName | null;

@@ -4,6 +4,7 @@
    [java-time.api :as t]
    [metabase.config.core :as config]
    [metabase.connection-pool :as connection-pool]
+   [metabase.util.connection :as u.connection]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -55,7 +56,7 @@
   ;; no-op
   )
 
-(p/deftype+ MetabaseConnectionCustomizer []
+(p/deftype+ AppDbConnectionCustomizer []
   ConnectionCustomizer
   (onAcquire [_this connection _identity-token]
     (on-acquire connection))
@@ -66,19 +67,7 @@
   (onDestroy [_this connection _identity-token]
     (on-destroy connection)))
 
-(defn- register-customizer!
-  "c3p0 allows for hooking into lifecycles with its interface
-  ConnectionCustomizer. https://www.mchange.com/projects/c3p0/apidocs/com/mchange/v2/c3p0/ConnectionCustomizer.html. But
-  Clojure defined code is in memory in a dynamic class loader not available to c3p0's use of Class/forName. Luckily it
-  looks up the instances in a cache which I pre-seed with out impl here. Issue for better access here:
-  https://github.com/swaldman/c3p0/issues/166"
-  [^Class klass]
-  (let [field (doto (.getDeclaredField com.mchange.v2.c3p0.C3P0Registry "classNamesToConnectionCustomizers")
-                (.setAccessible true))]
-    (.put ^java.util.HashMap (.get field com.mchange.v2.c3p0.C3P0Registry)
-          (.getName klass) (.newInstance klass))))
-
-(register-customizer! MetabaseConnectionCustomizer)
+(u.connection/register-c3p0-connection-customizer! AppDbConnectionCustomizer)
 
 (defn- application-db-connection-pool-props
   "Options for c3p0 connection pool for the application DB. These are set in code instead of the `c3p0.properties` file
@@ -105,7 +94,7 @@
    ;; https://www.mchange.com/projects/c3p0/#connectionCustomizerClassName
    ;;
    "connectionCustomizerClassName"
-   (.getName MetabaseConnectionCustomizer)
+   (.getName AppDbConnectionCustomizer)
    ;;
    ;; Number of seconds that Connections in excess of minPoolSize should be permitted to remain idle in the pool before
    ;; being culled. Intended for applications that wish to aggressively minimize the number of open Connections,
