@@ -44,3 +44,5 @@ export const DATA_APP_IFRAME_LOCALE_HASH_KEY = "__mb_locale";
 export const DATA_APP_BROKER_READY = "metabase.data-app.broker-ready";
 /** host to iframe: carries the `MessagePort` (in `event.ports[0]`). */
 export const DATA_APP_BROKER_INIT = "metabase.data-app.broker-init";
+/** iframe to host, cross-origin: the app's route changed (`path`, a pathname), for the host's URL mirror. */
+export const DATA_APP_ROUTE_MESSAGE_TYPE = "metabase.data-app.route" as const;
