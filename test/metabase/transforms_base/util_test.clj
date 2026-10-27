@@ -77,13 +77,13 @@
                                                 :router_database_id (mt/id)
                                                 :details            (:details (mt/db))}]
       (is (nil? (transforms-base.u/throw-if-destination!
-                 {:name "Router transform"}
+                 {:name "Router transform" :source {:type :query}}
                  (lib.metadata/database (mt/metadata-provider)))))
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #".*is a routing destination"
            (transforms-base.u/throw-if-destination!
-            {:name "Destination transform"}
+            {:name "Destination transform" :source {:type :query}}
             (driver.u/lib-database (:id destination))))))))
 
 (deftest activate-table-syncs-despite-disable-auto-sync-test
