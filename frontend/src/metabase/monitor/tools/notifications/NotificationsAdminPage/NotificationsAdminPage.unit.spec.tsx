@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock, { type CallLog } from "fetch-mock";
 
 import {
+  countRequests,
   findRequests,
   setupCardEndpoints,
   setupCardQueryMetadataEndpoint,
@@ -249,9 +250,11 @@ const getListCalls = () =>
 const getCountCalls = () =>
   fetchMock.callHistory.calls("path:/api/notification/admin/counts");
 
+const BULK_PATH = "/api/notification/admin/bulk";
+
 const getBulkPosts = async () =>
   (await findRequests("POST")).filter((request) =>
-    request.url.includes("/api/notification/admin/bulk"),
+    request.url.includes(BULK_PATH),
   );
 
 // Tabs, filters, and the table skeleton render immediately (no page-blocking
@@ -944,8 +947,8 @@ describe("NotificationsAdminPage", () => {
         within(confirmModal).getByRole("button", { name: "Delete" }),
       );
 
-      await waitFor(async () => {
-        expect(await getBulkPosts()).toHaveLength(1);
+      await waitFor(() => {
+        expect(countRequests("POST", BULK_PATH)).toBe(1);
       });
       const posts = await getBulkPosts();
       expect(posts[0].body).toEqual({
@@ -994,8 +997,8 @@ describe("NotificationsAdminPage", () => {
         within(dialog).getByRole("button", { name: "Change owner" }),
       );
 
-      await waitFor(async () => {
-        expect(await getBulkPosts()).toHaveLength(1);
+      await waitFor(() => {
+        expect(countRequests("POST", BULK_PATH)).toBe(1);
       });
       const posts = await getBulkPosts();
       expect(posts[0].body).toEqual({
@@ -1084,8 +1087,8 @@ describe("NotificationsAdminPage", () => {
         within(confirmModal).getByRole("button", { name: "Delete" }),
       );
 
-      await waitFor(async () => {
-        expect(await getBulkPosts()).toHaveLength(1);
+      await waitFor(() => {
+        expect(countRequests("POST", BULK_PATH)).toBe(1);
       });
       const posts = await getBulkPosts();
       expect(posts[0].body).toEqual({
