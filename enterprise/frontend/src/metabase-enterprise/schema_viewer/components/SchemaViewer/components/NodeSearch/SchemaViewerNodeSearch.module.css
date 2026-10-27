@@ -22,6 +22,7 @@
 .fieldCount {
   flex-shrink: 0;
   color: var(--mb-color-text-secondary);
+  font-size: var(--mantine-font-size-xs);
 
   [data-combobox-option]:hover &,
   [data-combobox-selected] & {

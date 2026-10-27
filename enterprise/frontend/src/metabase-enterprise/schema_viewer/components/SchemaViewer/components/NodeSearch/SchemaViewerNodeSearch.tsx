@@ -6,7 +6,6 @@ import {
   Combobox,
   FixedSizeIcon,
   Group,
-  Text,
   TextInput,
   useCombobox,
 } from "metabase/ui";
@@ -136,13 +135,9 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
             {filteredItems.map((item) => (
               <Combobox.Option value={item.id} key={item.id}>
                 <Group gap="sm" wrap="nowrap" justify="space-between" w="100%">
-                  <Text className={S.label} c="inherit">
-                    {item.label}
-                  </Text>
+                  <div className={S.label}>{item.label}</div>
                   <Group gap="xxs" wrap="nowrap" className={S.fieldCount}>
-                    <Text c="inherit" fz="xs">
-                      {item.fkCount}
-                    </Text>
+                    <span>{item.fkCount}</span>
                     <FixedSizeIcon name="connections" size={12} />
                   </Group>
                 </Group>

@@ -44,7 +44,7 @@ export const GitSyncOptionsDropdown = ({
           >
             <Group gap="lg" wrap="nowrap">
               <Icon name="arrow_up" size={12} />
-              <Text c="inherit">{t`Push changes`}</Text>
+              <div>{t`Push changes`}</div>
             </Group>
           </Combobox.Option>
         </Tooltip>
@@ -63,7 +63,7 @@ export const GitSyncOptionsDropdown = ({
               ) : (
                 <Icon name="arrow_down" size={12} />
               )}
-              <Text c="inherit">{t`Pull changes`}</Text>
+              <div>{t`Pull changes`}</div>
             </Group>
           </Combobox.Option>
         </Tooltip>

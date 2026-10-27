@@ -162,7 +162,7 @@ export const BranchDropdown = ({
                           data-testid={`branch-item-${branch}`}
                         >
                           <Group gap="xxs" wrap="nowrap">
-                            <Text c="inherit">{branch}</Text>
+                            <div>{branch}</div>
                           </Group>
                         </Combobox.Option>
                       ))}
@@ -181,10 +181,7 @@ export const BranchDropdown = ({
                       <Group gap="xxs" wrap="nowrap">
                         <Icon name="add" size={16} />
                         <Box>
-                          <Text
-                            c="inherit"
-                            lh="md"
-                          >{t`Create branch "${searchValue}"`}</Text>
+                          <div>{t`Create branch "${searchValue}"`}</div>
                           <Text size="xs" className={S.branchSource}>
                             {t`from ${baseBranch || value}`}
                           </Text>
