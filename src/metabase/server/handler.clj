@@ -122,7 +122,8 @@
         #'mw.route-template-carrier/wrap-route-template-carrier ; Install a carrier so routing can report which route matched
         #'mw.misc/bind-request                       ; bind `metabase.middleware.misc/*request*` for the duration of the request
         #'mw.ssl/redirect-to-https-middleware
-        ;; Outside the HTTPS redirect, which would send an isolated-origin request to the site URL's host.
+        ;; Outside the HTTPS redirect, so the isolated origin's own rules answer first: the redirect would send a
+        ;; request to the site URL's host.
         #'mw.isolated-origin/isolated-origin-middleware
         wrap-reload-dev-mw                           ; reloads outdated clojure code when --hot flag is passed with the :dev-start alias
         wrap-remote-api-proxy-dev-mw                 ; proxies /api/* to remote backend if MB_REMOTE_API_URL is set (dev only)

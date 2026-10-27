@@ -10,6 +10,7 @@
    [metabase.config.core :as config]
    [metabase.initialization-status.core :as init-status]
    [metabase.premium-features.core :as premium-features]
+   [metabase.request.core :as request]
    [metabase.server.middleware.isolated-origin :as mw.isolated-origin]
    [metabase.settings.core :as setting]
    [metabase.system.core :as system]
@@ -180,8 +181,11 @@
         (log/error (str "Refusing to serve a data app: a Metabase session reached the isolated origin "
                         "(MB_ISOLATED_ORIGIN). The session cookie must be host-only; check that no cookie Domain or "
                         "reverse proxy makes it visible there."))
-        (respond {:status 403
-                  :body   "Data apps are misconfigured: a Metabase session reached the isolated origin."}))
+        ;; A session cookie left from when this host served Metabase is host-only here, so this deletes it and the next
+        ;; load works. One the main host leaks with a `Domain` stays, and keeps the app refused.
+        (respond (request/clear-session-cookie
+                  {:status 403
+                   :body   "Data apps are misconfigured: a Metabase session reached the isolated origin."})))
       (data-app-shell request respond raise))
 
     (nil? (:metabase-user-id request))         (respond (login-redirect request))
