@@ -1,15 +1,13 @@
 import { useAction } from "@metabase/embedding-sdk-react/data-app";
 import { useState } from "react";
 
-import { CreateScore } from "../actions/orders.action";
+import { actions } from "./metabase";
 
 /**
- * Passes a typed-schema definition to `useAction`, which executes the action in
- * the app's collection by its entity ID. The spec that drives this app writes
- * `actions/orders.action.ts` after creating the action.
+ * Executes the action that the app's typed schema defines as `addTeam`.
  */
 export default function App() {
-  const action = useAction(CreateScore);
+  const action = useAction(actions.addTeam);
   const [output, setOutput] = useState("idle");
 
   const onExecute = async () => {

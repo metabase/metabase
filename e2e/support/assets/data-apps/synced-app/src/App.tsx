@@ -1,14 +1,12 @@
 import { useMetabaseQuery } from "@metabase/embedding-sdk-react/data-app";
 
-import { OrdersCount } from "../queries/orders.query";
+import { queries } from "./metabase";
 
 /**
- * Runs the saved question its typed-schema definition names. The spec that
- * drives this app writes `queries/orders.query.ts` and the app's collection files
- * before publishing it.
+ * Runs the saved question that the app's typed schema defines as `ordersCount`.
  */
 export default function App() {
-  const orders = useMetabaseQuery(OrdersCount);
+  const orders = useMetabaseQuery(queries.ordersCount);
   const rows = orders.data?.rawRows;
 
   const total = rows?.[0]?.[1];

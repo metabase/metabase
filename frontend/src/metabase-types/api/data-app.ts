@@ -38,6 +38,16 @@ export interface DataApp {
   updated_at: string;
 }
 
+export interface CreateDataAppRequest {
+  name: string;
+  display_name?: string;
+  description?: string | null;
+  version?: number;
+  bundle_path?: string;
+  allowed_hosts?: string[];
+  enabled?: boolean;
+}
+
 /**
  * Status of the connected repository as it relates to data apps. The connection
  * itself (URL / branch / token) is configured on the remote-sync settings page.

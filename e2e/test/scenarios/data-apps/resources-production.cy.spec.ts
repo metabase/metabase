@@ -1,4 +1,5 @@
 import { USERS } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { PortableTable } from "e2e/support/helpers";
 import type { Card } from "metabase-types/api";
 
@@ -9,26 +10,16 @@ const APP_DISPLAY_NAME = "Synced App";
 
 /** The fixture's `data_app.yaml` names this collection. */
 const COLLECTION = "syncedAppCollection01";
-const QUESTION = "syncedAppOrdersCount1";
+const QUESTION_ENTITY_ID = "syncedAppOrdersCount1";
 
 const ORDERS_TABLE: PortableTable = ["Sample Database", "PUBLIC", "ORDERS"];
 
 const APP_ROOT = () =>
   `${Cypress.config("projectRoot")}/e2e/support/assets/data-apps/${APP_SLUG}`;
 
-/** The definition the app's typed schema holds for its saved question. */
-const DECLARATION = [
-  'import { defineQuery } from "@metabase/embedding-sdk-react/data-app";',
-  "",
-  "export const OrdersCount = defineQuery({",
-  `  source: { type: "card", entityId: "${QUESTION}" },`,
-  "});",
-  "",
-].join("\n");
-
-/** The saved question an author writes for `OrdersCount`. */
+/** The saved question an author writes, which the app's typed schema defines as `ordersCount`. */
 const ORDERS_COUNT_QUESTION = H.dataAppRepresentations.card({
-  entityId: QUESTION,
+  entityId: QUESTION_ENTITY_ID,
   name: "OrdersCount",
   type: "question",
   collection: COLLECTION,
@@ -47,23 +38,22 @@ const ORDERS_COUNT_QUESTION = H.dataAppRepresentations.card({
 
 /**
  * An app imported from a repository runs the saved question its typed schema
- * names, which the pull loaded into the app's collection.
+ * defines, which the pull loaded into the app's collection.
  */
 describe("scenarios > data apps > resources from a repository", () => {
   const removeTestFiles = () =>
     cy.task("removeDataAppPaths", {
-      paths: [`${APP_ROOT()}/queries`, `${APP_ROOT()}/collections`],
+      paths: [`${APP_ROOT()}/collections`],
     });
 
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
+    H.createLibrary();
+    H.publishTables({ table_ids: [SAMPLE_DATABASE.ORDERS_ID] });
 
     removeTestFiles();
-    cy.task("writeDataAppFiles", {
-      files: { [`${APP_ROOT()}/queries/orders.query.ts`]: DECLARATION },
-    });
     H.writeDataAppResources(APP_ROOT(), {
       collection: H.dataAppRepresentations.collection(
         COLLECTION,
@@ -77,20 +67,21 @@ describe("scenarios > data apps > resources from a repository", () => {
     removeTestFiles();
   });
 
-  /** Publishes the fixture and yields the app with the ID of the card it must now run. */
+  /** Publishes the fixture, uploads its bundle, and yields the app with the ID of the card it must now run. */
   const publishApp = () =>
     H.publishDataApp(APP_ROOT(), APP_SLUG).then((app) =>
-      cy
-        .request<Card>(`/api/card/${QUESTION}`)
-        .then(({ body: card }) =>
-          cy.wrap({ app, cardId: card.id }, { log: false }),
-        ),
+      H.uploadDataAppBundle(app).then(() =>
+        cy
+          .request<Card>(`/api/card/${QUESTION_ENTITY_ID}`)
+          .then(({ body: card }) =>
+            cy.wrap({ app, cardId: card.id }, { log: false }),
+          ),
+      ),
     );
 
   it("runs the saved question its definition names", () => {
     publishApp().then(({ cardId }) => {
       cy.intercept("POST", "/api/dataset").as("dataset");
-      H.mockDataApp(APP_SLUG, { displayName: APP_DISPLAY_NAME });
       cy.visit(`/apps/${APP_SLUG}`);
 
       H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
@@ -115,7 +106,6 @@ describe("scenarios > data apps > resources from a repository", () => {
       });
 
       cy.signInAsNormalUser();
-      H.mockDataApp(APP_SLUG, { displayName: APP_DISPLAY_NAME });
       cy.visit(`/apps/${APP_SLUG}`);
 
       H.dataAppIframe(APP_DISPLAY_NAME).within(() => {

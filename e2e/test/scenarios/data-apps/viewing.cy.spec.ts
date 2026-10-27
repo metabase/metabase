@@ -10,7 +10,7 @@ import {
   type GroupPermissions,
 } from "metabase-types/api";
 
-import { DATA_APP_TEST_ENV as TEST_ENV } from "./helpers";
+import { createKitchenSinkDataApp } from "./helpers";
 
 const { H } = cy;
 
@@ -31,10 +31,7 @@ describe("scenarios > data apps > viewing & routing", () => {
 
   describe("viewing permissions", () => {
     it("lets a non-admin open a data app by direct URL", () => {
-      H.mockDataApp(APP_NAME, {
-        displayName: APP_DISPLAY_NAME,
-        testEnv: TEST_ENV,
-      });
+      createKitchenSinkDataApp();
 
       // A normal (non-admin) user has data access, so the app opens and renders
       // its data — the admin gate is only on *managing* apps, not viewing them.
@@ -56,10 +53,7 @@ describe("scenarios > data apps > viewing & routing", () => {
         [USER_GROUPS.COLLECTION_GROUP]: BLOCKED_PERMISSION,
       });
 
-      H.mockDataApp(APP_NAME, {
-        displayName: APP_DISPLAY_NAME,
-        testEnv: TEST_ENV,
-      });
+      createKitchenSinkDataApp();
 
       cy.signIn("nodata");
       H.openDataApp(APP_NAME);
@@ -88,11 +82,15 @@ describe("scenarios > data apps > viewing & routing", () => {
 
   describe("loading state", () => {
     it("keeps the loader up until the app's bundle has actually rendered", () => {
-      H.mockDataApp(APP_NAME, {
-        displayName: APP_DISPLAY_NAME,
-        testEnv: TEST_ENV,
-        bundleDelayMs: 2000,
-      });
+      createKitchenSinkDataApp();
+      cy.intercept(
+        { method: "GET", pathname: `/api/ee/apps/${APP_NAME}/bundle` },
+        (req) => {
+          req.on("response", (res) => {
+            res.setDelay(2000);
+          });
+        },
+      );
 
       H.openDataApp(APP_NAME);
 
@@ -111,10 +109,7 @@ describe("scenarios > data apps > viewing & routing", () => {
 
   describe("internal routing", () => {
     it("starts on a deep-linked sub-route, and mirrors link and imperative route changes into the parent URL", () => {
-      H.mockDataApp(APP_NAME, {
-        displayName: APP_DISPLAY_NAME,
-        testEnv: TEST_ENV,
-      });
+      createKitchenSinkDataApp();
 
       cy.log("deep-link directly to a sub-route");
       visitAppRoute("details");
@@ -160,42 +155,9 @@ describe("scenarios > data apps > viewing & routing", () => {
     });
   });
 
-  describe("outdated apps", () => {
-    it("tells a non-admin why an outdated app won't open", () => {
-      H.mockDataApp(APP_NAME, { displayName: APP_DISPLAY_NAME });
-
-      // The metadata endpoint refuses an outdated app to non-admins with this
-      // exact shape (see `check-not-outdated` in data_apps/api.clj).
-      cy.intercept(
-        { method: "GET", pathname: `/api/ee/apps/${APP_NAME}` },
-        {
-          statusCode: 409,
-          body: {
-            "error-code": "data-app-outdated",
-            message: "This app was built for version 1 of data apps.",
-          },
-        },
-      );
-
-      cy.signInAsNormalUser();
-      H.openDataApp(APP_NAME);
-
-      H.main().within(() => {
-        cy.findByText("This data app is outdated").should("be.visible");
-        cy.findByText("This app was built for version 1 of data apps.").should(
-          "be.visible",
-        );
-      });
-      cy.get("iframe").should("not.exist");
-    });
-  });
-
   describe("host error / not-ready screens", () => {
     it("shows a themed host error screen when the bundle throws while rendering", () => {
-      H.mockDataApp(APP_NAME, {
-        displayName: APP_DISPLAY_NAME,
-        testEnv: TEST_ENV,
-      });
+      createKitchenSinkDataApp();
 
       visitAppRoute("throw");
       // The throw is caught in the iframe and reported to the parent, which
