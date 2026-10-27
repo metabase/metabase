@@ -439,6 +439,8 @@ categories:
             url: "configuring-metabase/settings"
           - name: "Allowed domains"
             url: "configuring-metabase/domains"
+          - name: "Data apps on a separate address"
+            url: "configuring-metabase/isolated-origin"
           - name: "Set up email"
             url: "configuring-metabase/email"
           - name: "Set up Slack"
