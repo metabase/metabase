@@ -940,6 +940,10 @@
     ;; functions)
     :window-functions/offset
     ;;
+    ;; Does this driver support the `:window` MBQL clause: `row_number`, `lag`, `lead`, `min`, `max`, `sum` and `count`
+    ;; over a stated `PARTITION BY`, `ORDER BY` and `ROWS BETWEEN` frame?
+    :window-functions/general
+    ;;
     ;; Can a query stage append the rows of other stages to its source with `:union-all`? (SQL `UNION ALL`)
     :union-all-stages
     ;;

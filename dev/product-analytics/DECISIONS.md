@@ -203,3 +203,50 @@ Status:
   to rebuild them with. Pays back with D18.
 - Evidence: event counts by name over `pageview` rows plus other rows with `session_id` standing in for `person_id`
   match hand-written `UNION ALL` SQL on ClickHouse (DB 2) and Postgres (DB 81).
+
+## D20: A `:window` expression states its own window
+
+- **keep**, shape; **budget**, the items below.
+- Shape:
+  `[:window {:frame {:mode :rows :start <bound> :end <bound>}} <fn> [:partition-by {} & exprs] [:order-by {} & [:asc|:desc {} expr]]]`.
+  `<bound>` is `:unbounded-preceding`, `:current-row`, `:unbounded-following`, `[:preceding n]` or `[:following n]`.
+  `<fn>` is `[:row-number {}]`, `[:lag {} expr n default?]`, `[:lead {} expr n default?]`, or the aggregation clauses
+  `:min`, `:max`, `:sum`, `:count`. `:frame` is optional; partition and order may be empty (`sum(x) OVER ()`).
+  Order and partition items are any expressions, e.g. a `:case` for `multiIf`.
+- Where: in `:expressions` of a stage with no aggregation or breakout. The stage's filters apply before the window, as
+  in SQL. A filter on a window, directly or through its expression name, is refused; it goes in the next stage.
+  `:row-number`, `:lag` and `:lead` are refused anywhere except as a window's function.
+- Types: `row-number` and `count` are Integer; `lag`, `lead`, `min`, `max` take their argument's type; `sum` follows
+  the aggregation rule.
+- Compile: `->honeysql [:sql :window]` emits `fn OVER (PARTITION BY … ORDER BY … ROWS BETWEEN … AND …)`; the frame is
+  a registered HoneySQL clause (`::window-frame`) next to `::rows-unbounded-preceding`. The frame is emitted as written,
+  so the funnel's growing `ORDER BY rn DESC ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING` stays that way.
+  ClickHouse writes `lag`/`lead` as `lagInFrame`/`leadInFrame`, wraps the argument in `toNullable` when there is no
+  default (NULL past the frame, as elsewhere), and uses the whole partition as the frame unless the query states one.
+- `nest-expressions` only splits a window stage when its order-by uses an expression. Filters and windows stay in the
+  inner stage and the order-by moves out, so filters still apply first.
+- Gate: driver feature `:window-functions/general`, true for `:sql` and stated for ClickHouse.
+- Changes from the starting design: none to the shape. Added the stage rules above (the design allowed a filter on a
+  window, which SQL rejects) and `:mode` is `:rows` only.
+- Why: funnels, paths and retention need per-actor ordering (`row_number`, `lead`, running sums, earliest later step).
+  The existing `:offset`, `:cum-sum` and `:cum-count` take their window from the stage's breakouts, so they can't say
+  "partition by actor".
+- Rejected:
+  - Growing `:offset` with partition options: it is an aggregation, tied to breakouts.
+  - The window in a stage key (`:window {:partition-by …}` shared by several expressions): every PA window that shares
+    a partition still differs in order or frame.
+  - Frame bounds as clauses (`[:preceding {} 1]`): they hold no expressions, so they belong in options with the other
+    modifiers.
+  - Windows over aggregations in one stage: aggregate in one stage and window in the next.
+- Budget:
+  - `:mode :range` and `GROUPS` frames are not supported.
+  - The stage rule walks every stage on validation.
+  - Legacy MBQL (D18) passes `:window` through unchecked, as `:dialect-fn` does.
+  - MySQL inherits `:window-functions/general` from `:sql`, though it opts out of `:window-functions/offset`. That
+    opt-out is about `GROUP BY`, which a window stage can't have; untested.
+  - The driver changelog in `docs/developers-guide` doesn't list the two new features.
+- Evidence: a 1,929-row per-person query (`row_number` ordered by a `:case`, the funnel's `MIN(CASE …)` over
+  `ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING`, `lead`, `lag` with a default, a running `SUM`, a partition-only
+  `MIN`, `COUNT(*) OVER ()`) matches hand-written SQL row for row on ClickHouse (DB 2, with
+  `leadInFrame … ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING`) and Postgres (DB 81). Shares
+  (`SUM(count) OVER ()` in the stage after a count) match on both.

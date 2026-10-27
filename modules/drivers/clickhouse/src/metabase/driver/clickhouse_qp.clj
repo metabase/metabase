@@ -490,6 +490,27 @@
          (h2x/with-database-type-info (h2x/database-type expr-hsql))))
    {::rows-between-unbounded []}))
 
+;;; ClickHouse's `lag`/`lead` are `lagInFrame`/`leadInFrame`, which read only the rows of the window frame. Without a
+;;; default they fill the type's default value, not NULL, past the frame, so the argument is made Nullable first.
+(defn- lag-or-lead-in-frame [driver f [_tag _opts expr n default]]
+  (let [expr-hsql (sql.qp/->honeysql driver expr)]
+    (-> (if (some? default)
+          [f expr-hsql [:inline n] (sql.qp/->honeysql driver default)]
+          [f [:'toNullable expr-hsql] [:inline n]])
+        (h2x/with-database-type-info (h2x/database-type expr-hsql)))))
+
+(defmethod sql.qp/->honeysql [:clickhouse :lag]  [driver clause] (lag-or-lead-in-frame driver :'lagInFrame clause))
+(defmethod sql.qp/->honeysql [:clickhouse :lead] [driver clause] (lag-or-lead-in-frame driver :'leadInFrame clause))
+
+(defmethod sql.qp/->honeysql [:clickhouse :window]
+  [driver [_tag opts [fn-tag] :as clause]]
+  ;; a frame is the whole partition unless the query says otherwise, as `lag` and `lead` read in other databases
+  ((get-method sql.qp/->honeysql [:sql :window])
+   driver
+   (cond-> clause
+     (and (#{:lag :lead} fn-tag) (not (:frame opts)))
+     (assoc-in [1 :frame] {:mode :rows, :start :unbounded-preceding, :end :unbounded-following}))))
+
 (def ^:private clickhouse-interval-units
   #{:millisecond :second :minute :hour :day :week :month :quarter :year})
 

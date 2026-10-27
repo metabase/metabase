@@ -1248,6 +1248,50 @@
      (-> [f expr-hsql [:inline n]]
          (h2x/with-database-type-info (h2x/database-type expr-hsql))))))
 
+;;;; `:window`: a window function whose window the clause states. See [[metabase.lib.schema.expression.window]].
+
+(defn- format-window-frame-bound [bound]
+  (case bound
+    :unbounded-preceding "UNBOUNDED PRECEDING"
+    :current-row         "CURRENT ROW"
+    :unbounded-following "UNBOUNDED FOLLOWING"
+    (let [[direction n] bound]
+      (assert (nat-int? n))
+      (str n (case direction :preceding " PRECEDING" :following " FOLLOWING")))))
+
+(defn- format-window-frame [_clause {:keys [mode start end]}]
+  (assert (= mode :rows))
+  [(str "ROWS BETWEEN " (format-window-frame-bound start) " AND " (format-window-frame-bound end))])
+
+(sql/register-clause! ::window-frame #'format-window-frame nil)
+
+;;; The functions a `:window` computes, other than the aggregations. Lib only allows them as the function of a
+;;; `:window`, which adds the `OVER (...)`.
+(defmethod ->honeysql [:sql :row-number]
+  [_driver _clause]
+  [:row_number])
+
+(defn- lag-or-lead->honeysql [driver f [_tag _opts expr n default]]
+  (let [expr-hsql (->honeysql driver expr)]
+    (-> (cond-> [f expr-hsql [:inline n]]
+          (some? default) (conj (->honeysql driver default)))
+        (h2x/with-database-type-info (h2x/database-type expr-hsql)))))
+
+(defmethod ->honeysql [:sql :lag]  [driver clause] (lag-or-lead->honeysql driver :lag clause))
+(defmethod ->honeysql [:sql :lead] [driver clause] (lag-or-lead->honeysql driver :lead clause))
+
+(defmethod ->honeysql [:sql :window]
+  [driver [_window {:keys [frame]} window-function [_partition-by _ & partition-exprs] [_order-by _ & order-bys]]]
+  (let [fn-hsql (->honeysql driver window-function)
+        over    (cond-> {}
+                  (seq partition-exprs) (assoc :partition-by (mapv (fn [expr] [(->honeysql driver expr)]) partition-exprs))
+                  (seq order-bys)       (assoc :order-by (mapv (fn [[direction _opts expr]]
+                                                                 [(->honeysql driver expr) direction])
+                                                               order-bys))
+                  frame                 (assoc ::window-frame frame))]
+    (-> [:over [fn-hsql over]]
+        (h2x/with-database-type-info (h2x/database-type fn-hsql)))))
+
 (defn- interval? [expr]
   (driver-api/is-clause? :interval expr))
 

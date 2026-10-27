@@ -58,6 +58,7 @@
                  :standard-deviation-aggregations
                  :window-functions/cumulative
                  :window-functions/offset
+                 :window-functions/general
                  :union-all-stages]]
   (defmethod driver/database-supports? [:sql feature] [_driver _feature _db] true))
 

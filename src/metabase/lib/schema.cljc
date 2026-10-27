@@ -386,6 +386,7 @@
     (complement (comp #(= (count %) 1) #{:source-table :source-card}))]
    [:ref ::stage.valid-refs]
    [:ref ::stage.page-and-limit-are-mutually-exclusive]
+   [:ref :metabase.lib.schema.expression.window/stage.valid-windows]
    (common/disallowed-keys
     {:native             ":native is not allowed in an MBQL stage."
      :aggregation-idents ":aggregation-idents is deprecated and should not be used"

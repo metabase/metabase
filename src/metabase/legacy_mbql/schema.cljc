@@ -538,6 +538,15 @@
 
 (defmethod options-style-method :dialect-aggregation [_tag] ::options-style.mbql5)
 
+;; See [[metabase.lib.schema.expression.window]]. Here only because drivers still run the legacy form of a query, so
+;; the arguments pass through unchecked.
+(defclause window
+  opts [:ref ::lib.schema.expression.window/window.options]
+  args (rest :any))
+
+(doseq [tag [:window :partition-by :order-by :row-number :lag :lead]]
+  (defmethod options-style-method tag [_tag] ::options-style.mbql5))
+
 ;; Expressions are "calculated column" definitions, defined once and then used elsewhere in the MBQL query.
 
 (def string-functions
@@ -624,6 +633,7 @@
                        (is-clause? datetime-functions x) :datetime-expression
                        (is-clause? aggregations x)       :aggregation
                        (is-clause? :aggregation x)       :aggregation-ref
+                       (is-clause? :window x)            :window
                        (string? x)                       :string
                        (is-clause? string-functions x)   :string-expression
                        (is-clause? :value x)             :value
@@ -635,6 +645,7 @@
    [:datetime-expression  [:ref ::DatetimeExpression]]
    [:aggregation          [:ref ::Aggregation]]
    [:aggregation-ref      [:ref ::aggregation]]
+   [:window               [:ref ::window]]
    [:string               :string]
    [:string-expression    [:ref ::StringExpression]]
    [:value                [:ref ::value]]
@@ -1308,6 +1319,7 @@
                        (is-clause? :case x)                               :case
                        (is-clause? :if   x)                               :if
                        (is-clause? :offset x)                             :offset
+                       (is-clause? :window x)                             :window
                        (is-clause? :value x)                              :value
                        :else                                              :else))}
    [:numeric         [:ref ::NumericExpression]]
@@ -1322,6 +1334,7 @@
    [:case            [:ref ::case]]
    [:if              [:ref ::if]]
    [:offset          [:ref ::offset]]
+   [:window          [:ref ::window]]
    [:value           [:ref ::value]]
    [:else            [:ref ::FieldOrExpressionRef]]])
 

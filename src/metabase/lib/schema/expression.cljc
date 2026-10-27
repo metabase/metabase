@@ -248,6 +248,8 @@
                (lib.hierarchy/isa? tag :metabase.lib.schema.aggregation/aggregation-clause-tag))
              (agg-expr? [expr]
                (and (vector? expr)
+                    ;; a `:window` computes its aggregation function per row
+                    (not= (first expr) :window)
                     (or (agg-tag? (first expr))
                         (some agg-expr? (nnext expr)))))]
        (not (agg-expr? %)))]])
