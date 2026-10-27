@@ -4,7 +4,11 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 import type { SummaryBase, SummaryDefinition } from "./types";
-import { buildSummaryQuery, getPivotConfig, getSummaryBase } from "./utils";
+import {
+  buildSummaryQuery,
+  getPivotColumnSplit,
+  getSummaryBase,
+} from "./utils";
 
 /** A filter on the summary's output, e.g. Count > 10, with the column it filters when it has one. */
 type SummaryOutputFilter = {
@@ -92,15 +96,16 @@ export function getSummaryQuestion({
     return summaryQuestion.setDisplayIsLocked(false).setDefaultDisplay();
   }
 
-  const { columnSplit } = getPivotConfig(
-    summaryQuery,
-    base.stageIndex,
-    definition,
-  );
   return summaryQuestion
     .setDisplay("pivot")
     .lockDisplay()
-    .updateSettings({ "pivot_table.column_split": columnSplit });
+    .updateSettings({
+      "pivot_table.column_split": getPivotColumnSplit(
+        summaryQuery,
+        base.stageIndex,
+        definition,
+      ),
+    });
 }
 
 /** The filters in the stage right after the summary, each with the column it filters. */
@@ -204,6 +209,21 @@ function rebaseSummarySession(
   };
 }
 
+/** Whether `question` is the one the session's summary produces. */
+export function isSummaryShown(
+  session: SummarySession,
+  question: Question,
+): boolean {
+  const summaryQuestion = getSummaryQuestion(session);
+  return (
+    summaryQuestion != null &&
+    Lib.areLegacyQueriesEqual(
+      summaryQuestion.datasetQuery(),
+      question.datasetQuery(),
+    )
+  );
+}
+
 /**
  * The session whose summary `question` shows — `candidate`, or the last edited session by default —
  * carried over to `question` when only the stage under its summary changed, or else a new, empty
@@ -214,14 +234,7 @@ export function getSummarySession(
   candidate: SummarySession | null = lastSession,
 ): SummarySession {
   if (candidate != null) {
-    const candidateQuestion = getSummaryQuestion(candidate);
-    if (
-      candidateQuestion != null &&
-      Lib.areLegacyQueriesEqual(
-        candidateQuestion.datasetQuery(),
-        question.datasetQuery(),
-      )
-    ) {
+    if (isSummaryShown(candidate, question)) {
       return candidate;
     }
     const rebasedSession = rebaseSummarySession(candidate, question);

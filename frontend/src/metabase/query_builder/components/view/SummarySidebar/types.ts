@@ -6,6 +6,9 @@ export type SummaryWellId = (typeof SUMMARY_WELL_IDS)[number];
 
 export type SummaryDimensionWellId = Exclude<SummaryWellId, "values">;
 
+/** `aggregation` for Values, `expression` for the custom columns Rows and Columns group by. */
+export type SummaryExpressionMode = "aggregation" | "expression";
+
 /** A custom expression written in a well's formula input, with the name its result column gets. */
 export type SummaryExpression = {
   name: string;

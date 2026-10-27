@@ -1,8 +1,12 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { diagnoseAndCompile } from "metabase/querying/expressions";
 import * as Lib from "metabase-lib";
-import type { PivotTableColumnSplitSetting } from "metabase-types/api";
+import type {
+  Database,
+  PivotTableColumnSplitSetting,
+} from "metabase-types/api";
 
 import type {
   SummaryBase,
@@ -11,6 +15,7 @@ import type {
   SummaryDimensionWellId,
   SummaryDragItem,
   SummaryExpression,
+  SummaryExpressionMode,
   SummaryValue,
   SummaryWellId,
 } from "./types";
@@ -56,7 +61,7 @@ export function getMetricLabel(
   return Lib.displayInfo(query, stageIndex, metric).displayName;
 }
 
-export type SummaryColumnSection = {
+type SummaryColumnSection = {
   name: string;
   columns: Lib.ColumnMetadata[];
 };
@@ -114,7 +119,7 @@ function findOperatorColumn(
   );
 }
 
-export type SummaryOperatorOption = {
+type SummaryOperatorOption = {
   shortName: string;
   displayName: string;
 };
@@ -370,38 +375,63 @@ export function getItemLabels(
   return labels;
 }
 
-export type SummaryPivotConfig = {
-  columnSplit: PivotTableColumnSplitSetting;
-  pivotRows: number[];
-  pivotCols: number[];
-};
-
-export function getPivotConfig(
-  summaryQuery: Lib.Query,
-  stageIndex: number,
-  definition: SummaryDefinition,
-): SummaryPivotConfig {
+/** The summary's result column names, as the results table keys its cells: breakouts, rows first, then aggregations. */
+function getResultColumnNames(summaryQuery: Lib.Query, stageIndex: number) {
   const columnInfos = Lib.returnedColumns(summaryQuery, stageIndex).map(
     (column) => Lib.displayInfo(summaryQuery, stageIndex, column),
   );
-  const breakoutNames = columnInfos
-    .filter((info) => info.isBreakout)
-    .map((info) => info.name);
-  const aggregationNames = columnInfos
-    .filter((info) => info.isAggregation)
-    .map((info) => info.name);
-  const rowCount = definition.rows.length;
-  const dimensionCount = rowCount + definition.columns.length;
-
   return {
-    columnSplit: {
-      rows: breakoutNames.slice(0, rowCount),
-      columns: breakoutNames.slice(rowCount, dimensionCount),
-      values: aggregationNames,
-    },
-    pivotRows: _.range(0, rowCount),
-    pivotCols: _.range(rowCount, dimensionCount),
+    breakoutNames: columnInfos
+      .filter((info) => info.isBreakout)
+      .map((info) => info.name),
+    aggregationNames: columnInfos
+      .filter((info) => info.isAggregation)
+      .map((info) => info.name),
   };
+}
+
+export function getPivotColumnSplit(
+  summaryQuery: Lib.Query,
+  stageIndex: number,
+  definition: SummaryDefinition,
+): PivotTableColumnSplitSetting {
+  const { breakoutNames, aggregationNames } = getResultColumnNames(
+    summaryQuery,
+    stageIndex,
+  );
+  const rowCount = definition.rows.length;
+  return {
+    rows: breakoutNames.slice(0, rowCount),
+    columns: breakoutNames.slice(
+      rowCount,
+      rowCount + definition.columns.length,
+    ),
+    values: aggregationNames,
+  };
+}
+
+/** The name of the result column an item produces, or `null` when the summary doesn't build. */
+export function getItemColumnName(
+  summaryQuery: Lib.Query | null,
+  stageIndex: number,
+  definition: SummaryDefinition,
+  itemId: string,
+): string | null {
+  if (summaryQuery == null) {
+    return null;
+  }
+  const { breakoutNames, aggregationNames } = getResultColumnNames(
+    summaryQuery,
+    stageIndex,
+  );
+  const dimensionIndex = [...definition.rows, ...definition.columns].findIndex(
+    ({ id }) => id === itemId,
+  );
+  if (dimensionIndex >= 0) {
+    return breakoutNames[dimensionIndex] ?? null;
+  }
+  const valueIndex = definition.values.findIndex(({ id }) => id === itemId);
+  return valueIndex >= 0 ? (aggregationNames[valueIndex] ?? null) : null;
 }
 
 export function canDropOnWell(
@@ -433,7 +463,7 @@ export function canDropOnWell(
   }
 }
 
-export function createItemId() {
+function createItemId() {
   return _.uniqueId("summary-item-");
 }
 
@@ -593,6 +623,42 @@ export function getFormulaClause(
   return value.type === "expression"
     ? value.expression.clause
     : getOperatorClause(base, value);
+}
+
+export function getFormulaColumns(
+  { query, stageIndex }: SummaryBase,
+  expressionMode: SummaryExpressionMode,
+): Lib.ColumnMetadata[] {
+  return expressionMode === "aggregation"
+    ? Lib.aggregableColumns(query, stageIndex)
+    : Lib.expressionableColumns(query, stageIndex);
+}
+
+export function getFormulaMetrics(
+  { query, stageIndex }: SummaryBase,
+  expressionMode: SummaryExpressionMode,
+): Lib.MetricMetadata[] | undefined {
+  return expressionMode === "aggregation"
+    ? Lib.availableMetrics(query, stageIndex)
+    : undefined;
+}
+
+/** Compiles a formula against the summary's query, with the error that keeps it from compiling, if any. */
+export function compileFormula(
+  base: SummaryBase,
+  database: Database | undefined,
+  expressionMode: SummaryExpressionMode,
+  source: string,
+) {
+  return diagnoseAndCompile({
+    source,
+    expressionMode,
+    query: base.query,
+    stageIndex: base.stageIndex,
+    database,
+    availableColumns: getFormulaColumns(base, expressionMode),
+    availableMetrics: getFormulaMetrics(base, expressionMode),
+  });
 }
 
 /** "Sum(Total) / Count": the name a formula's result gets when nobody names it. */

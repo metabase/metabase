@@ -250,11 +250,7 @@
   box-shadow:
     var(--mantine-shadow-sm_outline),
     0 0 0 2px var(--mb-color-core-summarize);
-  background-color: color-mix(
-    in srgb,
-    var(--mb-color-core-summarize) 10%,
-    var(--mb-color-background_surface-primary)
-  );
+  background-color: var(--mb-color-background_surface-success);
 }
 
 .wellRejectsDrop {
@@ -277,11 +273,7 @@
   border-radius: var(--mantine-radius-lg);
   font-weight: bold;
   color: var(--mb-color-text-primary);
-  background-color: color-mix(
-    in srgb,
-    var(--mb-color-core-summarize) 10%,
-    var(--mb-color-background_surface-primary)
-  );
+  background-color: var(--mb-color-background_surface-success);
   opacity: 0;
   translate: 0 -4px;
   transition-property: opacity, translate;
@@ -483,11 +475,7 @@
     calc(0.5rem - 1px);
   border: 1px dashed var(--mb-color-core-summarize);
   color: var(--mb-color-core-summarize);
-  background-color: color-mix(
-    in srgb,
-    var(--mb-color-core-summarize) 8%,
-    var(--mb-color-background_surface-primary)
-  );
+  background-color: var(--mb-color-background_surface-success);
   cursor: default;
 }
 
@@ -656,9 +644,8 @@
   padding: 0.0625rem 0.25rem;
   border-radius: 4px;
   color: var(--token-color);
-  background-color: color-mix(in srgb, var(--token-color) 14%, transparent);
-  box-shadow: inset 0 0 0 1px
-    color-mix(in srgb, var(--token-color) 40%, transparent);
+  background-color: var(--mb-color-background_surface-secondary);
+  box-shadow: inset 0 0 0 1px var(--token-color);
 }
 
 .tokenColumn0 {

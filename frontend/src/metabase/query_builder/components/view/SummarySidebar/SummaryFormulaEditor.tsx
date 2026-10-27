@@ -12,16 +12,25 @@ import { Tooltip as ExpressionTooltip } from "metabase/querying/components/expre
 import { useCustomTooltip } from "metabase/querying/components/expressions/Editor/custom-tooltip";
 import { useExtensions } from "metabase/querying/components/expressions/Editor/extensions";
 import { hasActiveSnippet } from "metabase/querying/components/expressions/Editor/utils";
-import { diagnoseAndCompile, format } from "metabase/querying/expressions";
+import { format } from "metabase/querying/expressions";
 import { ActionIcon, Box, Flex, Icon, Text, Tooltip } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
 
 import S from "./SummarySidebar.module.css";
 import { parenPairDeletion } from "./formula-parens";
 import { formulaTokens } from "./formula-tokens";
-import type { SummaryBase, SummaryExpression } from "./types";
-import { getDefaultFormulaName } from "./utils";
+import type {
+  SummaryBase,
+  SummaryExpression,
+  SummaryExpressionMode,
+} from "./types";
+import {
+  compileFormula,
+  getDefaultFormulaName,
+  getFormulaColumns,
+  getFormulaMetrics,
+} from "./utils";
 
 // formulas live on one line, like a spreadsheet's formula bar
 const singleLine = /* #__PURE__ */ EditorState.transactionFilter.of(
@@ -39,8 +48,7 @@ const BASIC_SETUP = {
 type SummaryFormulaEditorProps = {
   base: SummaryBase;
   database: Database | undefined;
-  /** `aggregation` for Values, `expression` for the custom columns Rows and Columns group by. */
-  expressionMode: "aggregation" | "expression";
+  expressionMode: SummaryExpressionMode;
   /** The formula being edited, if any; it's printed back into the editor once loaded. */
   initialClause?: Lib.Expressionable | null;
   /** What was typed after `=` in a well, or what AI drafted, for a new formula. */
@@ -92,18 +100,12 @@ export function SummaryFormulaEditor({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const availableColumns = useMemo(
-    () =>
-      expressionMode === "aggregation"
-        ? Lib.aggregableColumns(query, stageIndex)
-        : Lib.expressionableColumns(query, stageIndex),
-    [expressionMode, query, stageIndex],
+    () => getFormulaColumns(base, expressionMode),
+    [base, expressionMode],
   );
   const availableMetrics = useMemo(
-    () =>
-      expressionMode === "aggregation"
-        ? Lib.availableMetrics(query, stageIndex)
-        : undefined,
-    [expressionMode, query, stageIndex],
+    () => getFormulaMetrics(base, expressionMode),
+    [base, expressionMode],
   );
 
   // the edited formula is printed once, when the editor opens, so later renders don't reset what was typed
@@ -172,20 +174,17 @@ export function SummaryFormulaEditor({
   }, []);
 
   /** The formula as an expression, or `null` after showing why it isn't one. */
-  const compileFormula = (): SummaryExpression | null => {
+  const getExpression = (): SummaryExpression | null => {
     const formula = source.trim();
     if (formula.length === 0) {
       return null;
     }
-    const { error, expressionClause } = diagnoseAndCompile({
-      source: formula,
-      expressionMode,
-      query,
-      stageIndex,
+    const { error, expressionClause } = compileFormula(
+      base,
       database,
-      availableColumns,
-      availableMetrics,
-    });
+      expressionMode,
+      formula,
+    );
     if (error || expressionClause == null) {
       setErrorMessage(error?.message ?? t`This formula isn't valid.`);
       return null;
@@ -194,7 +193,7 @@ export function SummaryFormulaEditor({
   };
 
   const handleSubmit = () => {
-    const expression = compileFormula();
+    const expression = getExpression();
     if (expression != null) {
       onSubmit(expression);
     }
@@ -208,7 +207,7 @@ export function SummaryFormulaEditor({
     if (!hasTypedRef.current) {
       return onNavigate(direction, null);
     }
-    const expression = compileFormula();
+    const expression = getExpression();
     return expression == null || onNavigate(direction, expression);
   };
 

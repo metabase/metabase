@@ -28,13 +28,14 @@ import type { Database, IconName } from "metabase-types/api";
 
 import { MatchedLabel } from "./MatchedLabel";
 import S from "./SummarySidebar.module.css";
-import { compileFormula, getFormulaRequest } from "./ai-formula";
+import { getFormulaRequest } from "./ai-formula";
 import type { SummaryBase, SummaryDefinition, SummaryWellId } from "./types";
 import {
   addCountValue,
   addExpressionDimension,
   addExpressionValue,
   addMetricValue,
+  compileFormula,
   dropOnWell,
   getAvailableMetrics,
   getColumnLabel,
@@ -86,21 +87,6 @@ function getCardFrame(field: HTMLElement): DropdownFrame | null {
   };
 }
 
-type SummaryWellInputProps = {
-  base: SummaryBase;
-  database: Database | undefined;
-  wellId: SummaryWellId;
-  definition: SummaryDefinition;
-  /** The well's chips, laid out inline before the field. */
-  children: ReactNode;
-  onChange: (definition: SummaryDefinition) => void;
-  /** Opens a new formula for this well in the formula bar, from `=`, Custom, or an AI draft that doesn't compile. */
-  onStartFormula: (source: string, name: string) => void;
-  formulaInput: PendingFormulaInput;
-  /** Shift+Tab out of the field; returns whether it moved focus, so the browser shouldn't. */
-  onShiftTab: () => boolean;
-};
-
 /**
  * Keys typed right after `=` land in the well's field until the formula bar's editor mounts and
  * takes focus. While `isPending()`, the field hands them to `insert` instead of searching with them.
@@ -109,46 +95,6 @@ export type PendingFormulaInput = {
   isPending: () => boolean;
   insert: (text: string) => void;
 };
-
-/**
- * A well's field: its chips followed by a typeahead that finds metrics (Values) or columns
- * (Rows, Columns) by name. Typing `=` hands off to the formula bar for custom aggregations and
- * custom columns.
- */
-export function SummaryWellInput({
-  base,
-  database,
-  wellId,
-  definition,
-  children,
-  onChange,
-  onStartFormula,
-  formulaInput,
-  onShiftTab,
-}: SummaryWellInputProps) {
-  const canWriteFormula =
-    database != null &&
-    hasFeature(
-      database,
-      wellId === "values" ? "expression-aggregations" : "expressions",
-    );
-
-  return (
-    <SummaryWellSearch
-      base={base}
-      database={database}
-      wellId={wellId}
-      definition={definition}
-      canWriteFormula={canWriteFormula}
-      onChange={onChange}
-      onStartFormula={(source, name = "") => onStartFormula(source, name)}
-      formulaInput={formulaInput}
-      onShiftTab={onShiftTab}
-    >
-      {children}
-    </SummaryWellSearch>
-  );
-}
 
 type SummarySearchOption = {
   value: string;
@@ -229,16 +175,18 @@ function getSearchPlaceholder({
   return isValues ? t`Drag or type a metric` : t`Drag or type a column`;
 }
 
-type SummaryWellSearchProps = {
+type SummaryWellInputProps = {
   base: SummaryBase;
   database: Database | undefined;
   wellId: SummaryWellId;
   definition: SummaryDefinition;
-  canWriteFormula: boolean;
+  /** The well's chips, laid out inline before the field. */
   children: ReactNode;
   onChange: (definition: SummaryDefinition) => void;
+  /** Opens a new formula for this well in the formula bar, from `=`, Custom, or an AI draft that doesn't compile. */
   onStartFormula: (source: string, name?: string) => void;
   formulaInput: PendingFormulaInput;
+  /** Shift+Tab out of the field; returns whether it moved focus, so the browser shouldn't. */
   onShiftTab: () => boolean;
 };
 
@@ -248,18 +196,22 @@ type GenerateState =
   | { status: "loading" }
   | { status: "error"; message: string };
 
-function SummaryWellSearch({
+/**
+ * A well's field: its chips followed by a typeahead that finds metrics (Values) or columns
+ * (Rows, Columns) by name. Typing `=` hands off to the formula bar for custom aggregations and
+ * custom columns.
+ */
+export function SummaryWellInput({
   base,
   database,
   wellId,
   definition,
-  canWriteFormula,
   children,
   onChange,
   onStartFormula,
   formulaInput,
   onShiftTab,
-}: SummaryWellSearchProps) {
+}: SummaryWellInputProps) {
   const [suggestFormula] = useSuggestSummaryFormulaMutation();
   const [generateState, setGenerateState] = useState<GenerateState>({
     status: "idle",
@@ -275,6 +227,10 @@ function SummaryWellSearch({
   });
   const [searchText, setSearchText] = useState("");
   const isValues = wellId === "values";
+  const expressionMode = isValues ? "aggregation" : "expression";
+  const canWriteFormula =
+    database != null &&
+    hasFeature(database, isValues ? "expression-aggregations" : "expressions");
 
   const options = useMemo(
     () => getSearchOptions(base, wellId, searchText),
@@ -311,7 +267,6 @@ function SummaryWellSearch({
 
   const handleGenerate = async () => {
     const prompt = searchText.trim();
-    const expressionMode = isValues ? "aggregation" : "expression";
     setGenerateState({ status: "loading" });
     const { data } = await suggestFormula(
       getFormulaRequest(base, prompt, expressionMode),
@@ -326,18 +281,24 @@ function SummaryWellSearch({
     }
 
     const name = data?.name ?? "";
-    const expression = compileFormula(base, database, expressionMode, {
+    const { error, expressionClause } = compileFormula(
+      base,
+      database,
+      expressionMode,
       source,
-      name: name || getDefaultFormulaName(source),
-    });
+    );
     setGenerateState({ status: "idle" });
     setSearchText("");
     combobox.closeDropdown();
-    if (expression == null) {
+    if (error != null || expressionClause == null) {
       // a draft that doesn't compile opens in the formula editor, where its error shows
       onStartFormula(source, name);
       return;
     }
+    const expression = {
+      name: name || getDefaultFormulaName(source),
+      clause: expressionClause,
+    };
     onChange(
       isValues
         ? addExpressionValue(definition, expression)

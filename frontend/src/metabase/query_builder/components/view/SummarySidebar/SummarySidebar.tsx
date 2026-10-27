@@ -14,7 +14,6 @@ import { t } from "ttag";
 
 import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { ActionIcon, Box, Button, Flex, Icon, Tooltip } from "metabase/ui";
-import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 import { type SummaryFieldItem, SummaryFieldList } from "./SummaryFieldList";
@@ -24,6 +23,7 @@ import {
   type SummarySession,
   getSummaryQuestion,
   getSummarySession,
+  isSummaryShown,
   rememberSummarySession,
 } from "./summary-session";
 import {
@@ -32,13 +32,11 @@ import {
   type SummaryDefinition,
   type SummaryDimension,
   type SummaryDragItem,
-  type SummaryExpression,
   type SummaryValue,
   type SummaryWellId,
 } from "./types";
 import {
   addCountValue,
-  addExpressionValue,
   buildSummaryQuery,
   dropOnWell,
   getItemKey,
@@ -49,8 +47,6 @@ import {
 type SummarySidebarProps = {
   question: Question;
   onQuestionChange: (question: Question) => void;
-  /** Prototype harness only: formulas the prototype page's example picker asked to add. */
-  seededValues?: readonly SummaryExpression[] | null;
 };
 
 function getDropWellId(data: unknown): SummaryWellId | null {
@@ -67,17 +63,6 @@ function withStartingCount(session: SummarySession): SummarySession {
     return session;
   }
   return { ...session, definition: addCountValue(session.definition) };
-}
-
-function isSessionShown(session: SummarySession, question: Question): boolean {
-  const sessionQuestion = getSummaryQuestion(session);
-  return (
-    sessionQuestion != null &&
-    Lib.areLegacyQueriesEqual(
-      sessionQuestion.datasetQuery(),
-      question.datasetQuery(),
-    )
-  );
 }
 
 /** Whether the summary goes beyond the starting count: a breakout, or a value other than the count. */
@@ -170,21 +155,6 @@ function addItem(
     : dropOnWell(base, definition, item, "columns");
 }
 
-/** Adds each seeded formula to the values, skipping any whose name the values already have. */
-function addSeededValues(
-  definition: SummaryDefinition,
-  seededValues: readonly SummaryExpression[],
-): SummaryDefinition {
-  const valueNames = new Set(
-    definition.values.flatMap((value) =>
-      value.type === "expression" ? [value.expression.name] : [],
-    ),
-  );
-  return seededValues
-    .filter((expression) => !valueNames.has(expression.name))
-    .reduce(addExpressionValue, definition);
-}
-
 /**
  * Summarizes the question starting from Count of rows. Clicking a column swaps it in as the one
  * breakout and option-clicking adds it; dragging places it in any well, and dragging one below
@@ -196,13 +166,12 @@ function addSeededValues(
 export function SummarySidebar({
   question,
   onQuestionChange,
-  seededValues,
 }: SummarySidebarProps) {
   const [session, setSession] = useState(() =>
     withStartingCount(getSummarySession(question)),
   );
   const [isHoldingStartingCount, setIsHoldingStartingCount] = useState(
-    () => !isSessionShown(session, question),
+    () => !isSummaryShown(session, question),
   );
   const { base, definition } = session;
 
@@ -246,17 +215,6 @@ export function SummarySidebar({
   const [isFieldListOpen, setIsFieldListOpen] = useState(true);
   const { rows, columns, values } = definition;
   const hasItems = rows.length > 0 || columns.length > 0 || values.length > 0;
-
-  // the seed controls hand over a new array per click, applied once; skipped on mount, where it's left over
-  useUpdateEffect(() => {
-    if (seededValues == null) {
-      return;
-    }
-    const nextDefinition = addSeededValues(definition, seededValues);
-    if (nextDefinition !== definition) {
-      handleChange(nextDefinition);
-    }
-  }, [seededValues]);
 
   const handleFieldClick = (nextDefinition: SummaryDefinition) => {
     // a click that changes nothing shouldn't rerun the question

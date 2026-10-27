@@ -1,14 +1,9 @@
 import type { EditorView } from "@codemirror/view";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import cx from "classnames";
-import {
-  type MouseEvent,
-  type ReactNode,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { type MouseEvent, type ReactNode, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useMount } from "react-use";
 import { t } from "ttag";
 
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
@@ -50,6 +45,7 @@ import {
   findDimension,
   getColumnOperatorOptions,
   getFormulaClause,
+  getItemColumnName,
   removeItem,
   replaceWithExpression,
 } from "./utils";
@@ -99,13 +95,14 @@ export function SummaryWells({
 }: SummaryWellsProps) {
   const formulaBarSlot = useFormulaBarSlot();
   const wellsRef = useRef<HTMLDivElement>(null);
+  const focusWellField = (wellId: SummaryWellId) =>
+    wellsRef.current
+      ?.querySelector<HTMLElement>(`[data-well-field="${wellId}"]`)
+      ?.focus();
 
   // the summary opens ready to type into its first well
-  useEffect(() => {
-    wellsRef.current
-      ?.querySelector<HTMLElement>(`[data-well-field="values"]`)
-      ?.focus();
-  }, []);
+  useMount(() => focusWellField("values"));
+
   const databaseId = Lib.databaseID(base.query);
   const { data: database } = useGetDatabaseQuery(
     databaseId != null ? { id: databaseId } : skipToken,
@@ -174,7 +171,7 @@ export function SummaryWells({
   const handleStartFormula = (
     wellId: SummaryWellId,
     source: string,
-    name: string,
+    name = "",
   ) => openFormula({ kind: "new", key: Date.now(), wellId, source, name });
   // a formula already open, by a double-click's first click or otherwise, isn't reopened, which
   // would discard what's typed; the bar takes focus instead
@@ -185,11 +182,6 @@ export function SummaryWells({
     }
     openFormula({ kind: "edit", key: Date.now(), itemId });
   };
-
-  const focusWellField = (wellId: SummaryWellId) =>
-    wellsRef.current
-      ?.querySelector<HTMLElement>(`[data-well-field="${wellId}"]`)
-      ?.focus();
 
   /**
    * Tab and Shift+Tab step through a well's formulas, then its field, opening each formula in the
@@ -471,34 +463,6 @@ export function SummaryWells({
 }
 
 /**
- * The name of the result column an item produces, as the results table keys its cells, or `null`
- * when the summary doesn't build. Breakouts come first in the results, rows before columns.
- */
-function getItemColumnName(
-  summaryQuery: Lib.Query | null,
-  stageIndex: number,
-  definition: SummaryDefinition,
-  itemId: string,
-): string | null {
-  if (summaryQuery == null) {
-    return null;
-  }
-  const columnInfos = Lib.returnedColumns(summaryQuery, stageIndex).map(
-    (column) => Lib.displayInfo(summaryQuery, stageIndex, column),
-  );
-  const dimensionIndex = [...definition.rows, ...definition.columns].findIndex(
-    ({ id }) => id === itemId,
-  );
-  if (dimensionIndex >= 0) {
-    const breakoutInfos = columnInfos.filter((info) => info.isBreakout);
-    return breakoutInfos[dimensionIndex]?.name ?? null;
-  }
-  const valueIndex = definition.values.findIndex(({ id }) => id === itemId);
-  const aggregationInfos = columnInfos.filter((info) => info.isAggregation);
-  return valueIndex >= 0 ? (aggregationInfos[valueIndex]?.name ?? null) : null;
-}
-
-/**
  * Highlights the edited formula's column in the results table, like a spreadsheet outlining the
  * cells a formula writes to. The table belongs to the page, so this styles its cells by column
  * name, the key the table renders on each header and cell.
@@ -513,11 +477,11 @@ function ResultColumnHighlight({ columnName }: { columnName: string | null }) {
     <style nonce={getCspNonce()}>
       {`
         main [data-header-id="${name}"] {
-          background-color: color-mix(in srgb, var(--mb-color-core-brand) 12%, transparent);
+          background-color: var(--mb-color-background_surface-brand-subtle);
           box-shadow: inset 0 -2px 0 var(--mb-color-core-brand);
         }
         main [data-column-id="${name}"] {
-          background-color: color-mix(in srgb, var(--mb-color-core-brand) 6%, transparent);
+          background-color: var(--mb-color-background_page-highlighted);
         }
       `}
     </style>
@@ -747,7 +711,7 @@ type WellChipProps = {
   wellId: SummaryWellId;
   itemId: string;
   label: string;
-  isEditing?: boolean;
+  isEditing: boolean;
   children?: ReactNode;
   onRemove: (itemId: string) => void;
 };
@@ -756,7 +720,7 @@ function WellChip({
   wellId,
   itemId,
   label,
-  isEditing = false,
+  isEditing,
   children,
   onRemove,
 }: WellChipProps) {
@@ -777,16 +741,10 @@ function WellChip({
       {...listeners}
     >
       {children || <span className={S.chipLabel}>{label}</span>}
-      <ActionIcon
-        className={S.chipRemove}
-        size="sm"
-        variant="transparent"
-        c="inherit"
-        aria-label={t`Remove ${label}`}
+      <ChipRemoveButton
+        label={t`Remove ${label}`}
         onClick={() => onRemove(itemId)}
-      >
-        <Icon name="close" size={12} />
-      </ActionIcon>
+      />
     </Box>
   );
 }
@@ -812,17 +770,28 @@ function PlaceholderChip({ label, onFocus, onRemove }: PlaceholderChipProps) {
         <Icon name="function" size={12} />
         <span className={S.chipLabel}>{label}</span>
       </UnstyledButton>
-      <ActionIcon
-        className={S.chipRemove}
-        size="sm"
-        variant="transparent"
-        c="inherit"
-        aria-label={t`Cancel the new formula`}
-        onClick={onRemove}
-      >
-        <Icon name="close" size={12} />
-      </ActionIcon>
+      <ChipRemoveButton label={t`Cancel the new formula`} onClick={onRemove} />
     </Box>
+  );
+}
+
+type ChipRemoveButtonProps = {
+  label: string;
+  onClick: () => void;
+};
+
+function ChipRemoveButton({ label, onClick }: ChipRemoveButtonProps) {
+  return (
+    <ActionIcon
+      className={S.chipRemove}
+      size="sm"
+      variant="subtle"
+      c="inherit"
+      aria-label={label}
+      onClick={onClick}
+    >
+      <Icon name="close" size={12} />
+    </ActionIcon>
   );
 }
 
@@ -834,7 +803,7 @@ type FormulaChipRenameProps = {
   onCancelRename: () => void;
 };
 
-type FormulaChipLabelProps = Partial<FormulaChipRenameProps> & {
+type FormulaChipLabelProps = FormulaChipRenameProps & {
   label: string;
   onEdit?: () => void;
 };
@@ -842,12 +811,12 @@ type FormulaChipLabelProps = Partial<FormulaChipRenameProps> & {
 function FormulaChipLabel({
   label,
   onEdit,
-  isRenaming = false,
+  isRenaming,
   onStartRename,
   onRename,
   onCancelRename,
 }: FormulaChipLabelProps) {
-  if (isRenaming && onRename != null && onCancelRename != null) {
+  if (isRenaming) {
     return (
       <span className={S.chipButton}>
         <Icon name="function" size={12} />
@@ -896,41 +865,6 @@ function ValueChip({
   onRemove,
   ...renameProps
 }: ValueChipProps) {
-  if (value.type === "expression") {
-    return (
-      <WellChip
-        wellId="values"
-        itemId={value.id}
-        label={label}
-        isEditing={isEditing}
-        onRemove={onRemove}
-      >
-        <FormulaChipLabel
-          label={label}
-          onEdit={onEditFormula}
-          {...renameProps}
-        />
-      </WellChip>
-    );
-  }
-
-  if (value.type !== "column") {
-    return (
-      <WellChip
-        wellId="values"
-        itemId={value.id}
-        label={label}
-        isEditing={isEditing}
-        onRemove={onRemove}
-      >
-        <Icon name={value.type === "metric" ? "metric" : "sum"} size={12} />
-        <span className={S.chipLabel}>{label}</span>
-      </WellChip>
-    );
-  }
-
-  const operatorOptions = getColumnOperatorOptions(base, value.column);
-
   return (
     <WellChip
       wellId="values"
@@ -939,43 +873,88 @@ function ValueChip({
       isEditing={isEditing}
       onRemove={onRemove}
     >
-      <Menu position="bottom-start">
-        <Menu.Target>
-          <UnstyledButton
-            className={S.chipButton}
-            aria-label={t`Change how ${label} is calculated`}
-          >
-            <span className={S.chipLabel}>{label}</span>
-            <Icon name="chevrondown" size={10} />
-          </UnstyledButton>
-        </Menu.Target>
-        <Menu.Dropdown>
-          {operatorOptions.map((option) => (
-            <Menu.Item
-              key={option.shortName}
-              rightSection={
-                option.shortName === value.operatorShortName ? (
-                  <Icon name="check" />
-                ) : null
-              }
-              onClick={() => onChangeOperator(option.shortName)}
-            >
-              {option.displayName}
-            </Menu.Item>
-          ))}
-          {onEditFormula && (
-            <>
-              <Menu.Divider />
-              <Menu.Item
-                leftSection={<Icon name="function" />}
-                onClick={onEditFormula}
-              >
-                {t`Edit as formula`}
-              </Menu.Item>
-            </>
-          )}
-        </Menu.Dropdown>
-      </Menu>
+      {value.type === "expression" && (
+        <FormulaChipLabel
+          label={label}
+          onEdit={onEditFormula}
+          {...renameProps}
+        />
+      )}
+      {(value.type === "count" || value.type === "metric") && (
+        <>
+          <Icon name={value.type === "metric" ? "metric" : "sum"} size={12} />
+          <span className={S.chipLabel}>{label}</span>
+        </>
+      )}
+      {value.type === "column" && (
+        <ColumnValueMenu
+          base={base}
+          column={value.column}
+          operatorShortName={value.operatorShortName}
+          label={label}
+          onChangeOperator={onChangeOperator}
+          onEditFormula={onEditFormula}
+        />
+      )}
     </WellChip>
+  );
+}
+
+type ColumnValueMenuProps = {
+  base: SummaryBase;
+  column: Lib.ColumnMetadata;
+  operatorShortName: string;
+  label: string;
+  onChangeOperator: (operatorShortName: string) => void;
+  onEditFormula?: () => void;
+};
+
+/** A column value's chip: picks how the column is aggregated, or opens it as a formula. */
+function ColumnValueMenu({
+  base,
+  column,
+  operatorShortName,
+  label,
+  onChangeOperator,
+  onEditFormula,
+}: ColumnValueMenuProps) {
+  return (
+    <Menu position="bottom-start">
+      <Menu.Target>
+        <UnstyledButton
+          className={S.chipButton}
+          aria-label={t`Change how ${label} is calculated`}
+        >
+          <span className={S.chipLabel}>{label}</span>
+          <Icon name="chevrondown" size={10} />
+        </UnstyledButton>
+      </Menu.Target>
+      <Menu.Dropdown>
+        {getColumnOperatorOptions(base, column).map((option) => (
+          <Menu.Item
+            key={option.shortName}
+            rightSection={
+              option.shortName === operatorShortName ? (
+                <Icon name="check" />
+              ) : null
+            }
+            onClick={() => onChangeOperator(option.shortName)}
+          >
+            {option.displayName}
+          </Menu.Item>
+        ))}
+        {onEditFormula && (
+          <>
+            <Menu.Divider />
+            <Menu.Item
+              leftSection={<Icon name="function" />}
+              onClick={onEditFormula}
+            >
+              {t`Edit as formula`}
+            </Menu.Item>
+          </>
+        )}
+      </Menu.Dropdown>
+    </Menu>
   );
 }
