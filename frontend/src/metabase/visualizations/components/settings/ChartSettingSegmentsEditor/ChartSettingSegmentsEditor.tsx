@@ -1,5 +1,5 @@
 import Color from "color";
-import { t } from "ttag";
+import { c, t } from "ttag";
 import _ from "underscore";
 
 import { ColorSelector } from "metabase/common/components/ColorSelector";
@@ -59,7 +59,10 @@ export const ChartSettingSegmentsEditor = ({
                 <td>
                   <ChartSettingInput
                     value={segment.label}
-                    placeholder={t`Label for this range (optional)`}
+                    placeholder={c(
+                      'Short placeholder meaning "label for this range"',
+                    ).t`Label`}
+                    title={t`Label for this range (optional)`}
                     onChange={(val) => onChangeProperty(index, "label", val)}
                   />
                 </td>
