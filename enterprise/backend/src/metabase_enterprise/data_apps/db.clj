@@ -176,13 +176,6 @@
   (set/difference card-ids (when collection-id
                              (t2/select-pks-set :model/Card :id [:in card-ids] :collection_id collection-id))))
 
-(mu/defn external-action-ids :- [:set ms/PositiveInt]
-  "Among `action-ids`, those of no Action in the collection with `collection-id`."
-  [collection-id :- [:maybe ::lib.schema.id/collection]
-   action-ids    :- [:set {:min 1} ms/PositiveInt]]
-  (set/difference action-ids (when collection-id
-                               (t2/select-pks-set :model/Action :id [:in action-ids] :collection_id collection-id))))
-
 (mu/defn external-metric-ids :- [:set ::lib.schema.id/card]
   "Among `card-ids`, those of no metric in the Library's Metrics collection or one of its subcollections."
   [card-ids :- [:set {:min 1} ::lib.schema.id/card]]

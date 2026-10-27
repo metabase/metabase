@@ -88,8 +88,9 @@
   nil)
 
 (defenterprise-schema check-action :- :nil
-  "Throws a 400 unless `data-app` may run the action with `action-id`; does nothing without the data-apps feature."
+  "Throws a 400 unless `data-app` may run `action`, which the endpoint has fetched and read-checked; does nothing
+  without the data-apps feature."
   metabase-enterprise.data-apps.checks
-  [_data-app  :- ::data-apps.schema/data-app
-   _action-id :- ms/PositiveInt]
+  [_data-app :- ::data-apps.schema/data-app
+   _action   :- :metabase.actions.schema/action]
   nil)

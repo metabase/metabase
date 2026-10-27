@@ -1,7 +1,7 @@
 (ns metabase-enterprise.data-apps.checks
-  "The checks that hold a data app's ad-hoc queries and card runs to its own cards and the Library: no native or
-  internal queries, cards from the app's collection, tables published to the Library, Library metrics, and segments and
-  measures of published tables."
+  "The checks that hold a data app's ad-hoc queries and card runs to its own cards and the Library, and its action runs
+  to the actions in its collection: no native or internal queries, cards from the app's collection, tables published to
+  the Library, Library metrics, segments and measures of published tables, and actions from the app's collection."
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -152,11 +152,11 @@
   nil)
 
 (defenterprise-schema check-action :- :nil
-  "Throws a 400 unless the action with `action-id` is an action of `data-app`."
+  "Throws a 400 unless `action` is in `data-app`'s collection."
   :feature :data-apps
-  [data-app  :- ::data-apps.schema/data-app
-   action-id :- ms/PositiveInt]
-  (when-let [external (not-empty (data-apps.db/external-action-ids (:resource_collection_id data-app) #{action-id}))]
-    (throw (data-app-error (tru "A data app can run only the actions of its own app, not the actions {0}."
-                                (format-ids external)))))
+  [data-app :- ::data-apps.schema/data-app
+   action   :- :metabase.actions.schema/action]
+  (when-not (in-app-collection? data-app action)
+    (throw (data-app-error (tru "A data app can run only the actions in its own collection, not the action {0}."
+                                (:id action)))))
   nil)
