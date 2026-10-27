@@ -12,7 +12,7 @@ Write SQL to update records in your databases.
 
 ## Creating a custom action
 
-> Only admins can create custom actions.
+Only admins can create custom actions.
 
 1. First, [create a model](../../../data-modeling/models/models.md).
 2. Visit the model and click the **info** button.
