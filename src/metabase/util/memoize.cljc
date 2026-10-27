@@ -1,5 +1,5 @@
 (ns metabase.util.memoize
-  "Cross-platform version of `clojure.core.memoize`.
+  "Cross-platform variant of `clojure.core.memoize`.
 
   In CLJ this re-exports some of the public functions from `clojure.core.memoize`.
   In CLJS it implements the same design in CLJS.
