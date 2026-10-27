@@ -86,6 +86,20 @@ These seven things are, and each is a reason to cut or relocate:
 
 Use `ex-cause`/`ex-message`/`ex-data`/`ex-info` rather than `.getCause`/`.getMessage`/`(.getData ^ExceptionInfo …)` where possible.
 
+**`(set! *warn-on-reflection* true)` goes in a file only when that file does Java interop:**
+
+Add it after the `ns` form when the file has `.method` calls, `Class/staticMethod` calls, constructors or used
+`:import`s, so the compiler reports any call it has to resolve by reflection. A file with no interop does not get the
+line, whatever its neighbours do: nine sibling files that use interop say nothing about a tenth that does not. Add it
+when interop is added later.
+
+In a `.cljc` file the same rule applies to the JVM-only code: when a `#?(:clj …)` or `#?@(:clj …)` branch does Java
+interop, the file gets the line, itself inside a reader conditional:
+
+```clojure
+#?(:clj (set! *warn-on-reflection* true))
+```
+
 ## Style Conventions
 
 **Keywords and Metadata:**
@@ -605,7 +619,7 @@ Other useful map ops:
 - **`(:import (java.time …))` + `(LocalDate/now)`** in new code — use `[java-time.api :as t]` + `[metabase.util.date-2 :as u.date]`. Direct `java.time` interop only when a Java API genuinely needs the class.
 - **Vanilla `defmethod`** — use `methodical/defmethod` (it takes a docstring; the codebase uses it uniformly).
 - **`(when (premium/has-feature? :flag) …)` in code** — gate via `defenterprise` so OSS/EE bodies live in their respective namespaces; never sprinkle runtime feature checks.
-- **No `(set! *warn-on-reflection* true)` after the `ns` form** in a new `.clj` file — every `.clj` source file in this repo has it (not `.cljc`).
+- **`(set! *warn-on-reflection* true)` missing from a file that does Java interop, or present in one that does not** — the line is there to surface reflective calls, so it follows the interop, not the convention of neighbouring files. In `.cljc`, it is `#?(:clj (set! *warn-on-reflection* true))` when a `:clj` branch does interop. See "Java interop".
 - **`(ns … (:require [a :as a] [b :as b]))` on one line; `(:import java.io.File java.net.URI)` bare** — both wrong shapes. Requires one per line under `:require`, imports as `(Package Class)` lists.
 - **Inventing a fresh `:as` alias for `metabase.util`, `metabase.util.malli`, `metabase.util.log`, `java-time.api`, etc.** — use the canonical alias (see the table in Style Conventions). Mixing aliases makes `grep`-based discovery worse.
 - **`(def Foo [:map …])` for a Malli schema** — `(mr/def ::foo "doc" [:map …])` and reference it as `::foo`, even in `dev/`. See "Schemas".
