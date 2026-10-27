@@ -1,12 +1,18 @@
 // Runs one spec file: collects its tests, runs them as node:test subtests in
 // jest's order with jest's hooks, and then resets the worker for the next file.
-import { AsyncLocalStorage } from "node:async_hooks";
 import { createRequire } from "node:module";
 import path from "node:path";
 import type { TestContext } from "node:test";
 
 import { root, testTimeoutMs } from "../jest-config.ts";
 
+import {
+  runInFileScope,
+  runInTestScope,
+  takeLateLeaks,
+  takeRunningWorkOf,
+  trackAsyncWrapper,
+} from "./async-leaks.ts";
 import {
   type Hooks,
   type Suite,
@@ -51,6 +57,7 @@ import {
 } from "./realm.ts";
 import {
   recordFailure,
+  recordLateFailure,
   recordPassed,
   recordSkipped,
   startTestOutput,
@@ -99,31 +106,6 @@ let pendingUncaught: Failure | null = null;
 // was given.
 let actEnvironmentForFile: unknown;
 
-// The file whose code is running, as seen from each async callback.
-const fileScope = new AsyncLocalStorage<string>();
-let runningFile = "";
-
-/**
- * An act() or waitFor that a file did not wait for can finish during a later
- * file. It then restores the act environment flag that it saw when it
- * started, and can switch the flag off or on under the later file's own
- * waitFor. Such writes from an earlier file are ignored.
- */
-export function guardActEnvironment(): void {
-  let isActEnvironment: unknown = globals.IS_REACT_ACT_ENVIRONMENT;
-  Object.defineProperty(globalThis, "IS_REACT_ACT_ENVIRONMENT", {
-    configurable: true,
-    enumerable: true,
-    get: () => isActEnvironment,
-    set: (value: unknown) => {
-      const writer = fileScope.getStore();
-      if (writer === undefined || writer === runningFile) {
-        isActEnvironment = value;
-      }
-    },
-  });
-}
-
 export function setRepositoryReset(reset: () => void): void {
   repositoryReset = reset;
 }
@@ -144,8 +126,7 @@ export function captureUncaughtExceptions(): void {
 }
 
 export function runFile(t: TestContext, file: string): Promise<void> {
-  runningFile = file;
-  return fileScope.run(file, () => runFileInScope(t, file));
+  return runInFileScope(file, () => runFileInScope(t, file));
 }
 
 async function runFileInScope(t: TestContext, file: string): Promise<void> {
@@ -154,6 +135,7 @@ async function runFileInScope(t: TestContext, file: string): Promise<void> {
   startSnapshots(file);
   evictProjectModules();
   runSetupFiles();
+  trackAsyncWrapper();
 
   const fileSuite = createSuite(file, "run");
   collect(fileSuite, () => require(file));
@@ -163,6 +145,7 @@ async function runFileInScope(t: TestContext, file: string): Promise<void> {
   } finally {
     logFile(path.relative(root, file), startedAt);
     await resetForNextFile();
+    recordLateLeaks();
   }
 }
 
@@ -249,7 +232,39 @@ async function runTest(test: TestNode, hooks: HookChain): Promise<void> {
     globals.IS_REACT_ACT_ENVIRONMENT = actEnvironmentForFile;
   }
   setCurrentTestName(fullName(test, " "));
+  const identity = { ancestors: test.path, title: test.name };
+  const testScope = {
+    name: fullName(test, " > "),
+    identity,
+    hasEnded: false,
+  };
 
+  let failure = await runInTestScope(testScope, () =>
+    runHooksAndBody(test, hooks),
+  );
+  const leak = takeRunningWorkOf(testScope);
+  if (leak) {
+    failure ??= { error: leak };
+  }
+  if (pendingUncaught) {
+    failure ??= pendingUncaught;
+    pendingUncaught = null;
+  }
+  recordLateLeaks();
+
+  const output = takeTestOutput();
+  if (!failure) {
+    recordPassed(identity);
+    return;
+  }
+  recordFailure(testScope.name, failure.error, output, identity);
+  throw failure.error;
+}
+
+async function runHooksAndBody(
+  test: TestNode,
+  hooks: HookChain,
+): Promise<Failure | null> {
   let failure = await runBeforeEachAndBody(test, hooks.beforeEach);
   setTestPhase("afterEach");
   for (const fn of hooks.afterEach) {
@@ -265,19 +280,15 @@ async function runTest(test: TestNode, hooks: HookChain): Promise<void> {
     removeRoutes();
     setTestPhase("between");
   });
-  if (pendingUncaught) {
-    failure ??= pendingUncaught;
-    pendingUncaught = null;
-  }
+  return failure;
+}
 
-  const output = takeTestOutput();
-  const identity = { ancestors: test.path, title: test.name };
-  if (!failure) {
-    recordPassed(identity);
-    return;
+// A test that already passed fails when async work it left behind starts
+// later, while the file still runs.
+function recordLateLeaks(): void {
+  for (const { test, error } of takeLateLeaks()) {
+    recordLateFailure(test.name, error, test.identity);
   }
-  recordFailure(fullName(test, " > "), failure.error, output, identity);
-  throw failure.error;
 }
 
 async function runBeforeEachAndBody(
@@ -363,6 +374,7 @@ async function resetForNextFile(): Promise<void> {
   evictProjectModules();
   resetClipboard();
   runSetupFiles();
+  trackAsyncWrapper();
   rememberCanvasMocks();
   recordRealmBaseline();
 }

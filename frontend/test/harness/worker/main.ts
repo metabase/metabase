@@ -12,6 +12,11 @@ import {
   RECYCLE_EXIT_CODE,
 } from "../types.ts";
 
+import {
+  guardActEnvironment,
+  trackAsyncActs,
+  trackAsyncWrapper,
+} from "./async-leaks.ts";
 import { installTestGlobals } from "./collect.ts";
 import { installDom } from "./dom.ts";
 import { ignoreUnmatchedCallsAfterBody } from "./fetch-mock.ts";
@@ -25,7 +30,6 @@ import { recordEnvironmentBaseline, recordRealmBaseline } from "./realm.ts";
 import { captureConsole, recordFailure, takeFileResult } from "./results.ts";
 import {
   captureUncaughtExceptions,
-  guardActEnvironment,
   runFile,
   setRepositoryReset,
 } from "./run-file.ts";
@@ -57,7 +61,9 @@ function installEnvironment(): void {
   watchPackageLoading();
   loadSchedulerWithRealTimers();
   trackTimers();
+  trackAsyncActs();
   runSetupFiles();
+  trackAsyncWrapper();
   guardActEnvironment();
   recordRealmBaseline();
   recordEnvironmentBaseline();
