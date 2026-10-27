@@ -6,6 +6,7 @@ import type { FilterDirection } from "../types";
 
 import { DataViewCanvas } from "./chart-filters/DataViewCanvas";
 import { DrillMenuCanvas } from "./chart-filters/DrillMenuCanvas";
+import { LegendFilterWrap, LegendFilters } from "./chart-filters/LegendFilters";
 import { StackedCanvas } from "./chart-filters/StackedCanvas";
 import { ChartHandlesCanvas } from "./chart-handles/ChartHandlesCanvas";
 import { ExpressionBarDataZone } from "./expression-bar-rows/DataZone";
@@ -18,6 +19,24 @@ import {
 
 /** Iteration 3: the expression bar with the stages folded into one stream. */
 export const ITERATION_3_DIRECTIONS: FilterDirection[] = [
+  {
+    id: "legend-filters",
+    get name() {
+      return t`Aggregation filters from the legend`;
+    },
+    get description() {
+      return t`"Aggregation filters with \"show if\" pills" without the "Show if…" and "+" beside the legend: the legend is the way in. Each measure in it is a pill, outlined on hover with a "Click to filter" tooltip; clicking it opens the number filter for that measure right there. Once filtered, the legend reads the condition: "Count ≥ 3", the name bold and the value regular, with × to remove it.`;
+    },
+    Component: ExpressionBarSplitPrototype,
+    Canvas: (props) =>
+      createElement(DataViewCanvas, {
+        ...props,
+        DataZone: ExpressionBarDataZone,
+        Legend: LegendFilters,
+        LegendWrap: LegendFilterWrap,
+      }),
+    initialExample: REALISTIC_EXAMPLES[0],
+  },
   {
     id: "data-view-zones",
     get name() {
@@ -33,7 +52,7 @@ export const ITERATION_3_DIRECTIONS: FilterDirection[] = [
   {
     id: "data-view-zones-bar",
     get name() {
-      return t`Data and View zones: expression bar`;
+      return t`Aggregation filters with "show if" pills`;
     },
     get description() {
       return t`"Data and View zones" with the Data chip replaced by the drill-through expression bar. While you edit, every parenthesized group drops onto its own indented row, like Filter rows, but you still type and switch the "and" / "or" yourself. Click away and it folds back into one line. The Metabot icon on the right of the bar opens a menu: "Generate filters" and "Summarize" (placeholders). Opening it doesn't unfold the bar.`;

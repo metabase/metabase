@@ -97,3 +97,83 @@
 .thresholdRemove {
   color: var(--mb-color-text-secondary);
 }
+
+.legendFilters {
+  position: relative;
+  z-index: 1;
+}
+
+/* The chart's own legend gives way to the filterable pills. */
+.hidesNativeLegend [data-testid="legend-horizontal"],
+.hidesNativeLegend [data-testid="legend-vertical"] {
+  display: none;
+}
+
+.legendPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 1.75rem;
+  padding: 0 0.625rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: var(--mb-color-text-primary);
+  cursor: pointer;
+}
+
+.legendPill:hover,
+.legendPill[data-active] {
+  border-color: var(--mb-color-border-neutral);
+}
+
+.legendDot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.legendLabel {
+  white-space: nowrap;
+}
+
+.legendRemove {
+  visibility: hidden;
+}
+
+.legendPill:hover .legendRemove,
+.legendPill[data-active] .legendRemove,
+.legendWrap[data-active] .legendRemove {
+  visibility: visible;
+}
+
+/* Outlines the chart's own legend row; it lets the pointer through to the series. */
+.legendWrap {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  height: 1.75rem;
+  padding-left: calc(0.625rem - 1px);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: var(--mb-color-text-primary);
+}
+
+.legendWrap[data-active] {
+  border-color: var(--mb-color-border-neutral);
+}
+
+.legendLead {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.legendMeasureOption {
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  color: var(--mb-color-text-primary);
+}
+
+.legendMeasureOption:hover {
+  background-color: var(--mb-color-background_page-secondary);
+}

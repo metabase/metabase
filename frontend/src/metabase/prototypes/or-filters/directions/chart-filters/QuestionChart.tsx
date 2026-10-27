@@ -48,6 +48,8 @@ type QuestionChartProps = {
   onHeaderClick?: (column: DatasetColumn, element: Element) => void;
   /** Sits right after the legend's last item; under the chart when there is no legend. */
   legendAccessory?: ReactNode;
+  /** Drawn around the whole legend row; a `[data-legend-lead]` inside it pushes the items along. */
+  legendWrap?: (frame: LegendFrame) => ReactNode;
 };
 
 type OpenMenu = { model: DrillMenuModel; x: number; y: number };
@@ -66,13 +68,19 @@ export function QuestionChart({
   pickQuery = query,
   onHeaderClick,
   legendAccessory,
+  legendWrap,
 }: QuestionChartProps) {
   const metadataProvider = useMetadataProviderUnfiltered(Lib.databaseID(query));
   const jsQuery = useMemo(() => Lib.toJsQuery(query), [query]);
   const result = useGetAdhocQueryQuery({ ...jsQuery, ignore_error: true });
   const [menu, setMenu] = useState<OpenMenu>();
   const containerRef = useRef<HTMLDivElement>(null);
-  const legendEnd = useLegendEnd(containerRef, legendAccessory != null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const legendEnd = useLegendEnd(
+    containerRef,
+    legendAccessory != null || legendWrap != null,
+    legendWrap != null ? wrapRef : undefined,
+  );
 
   const isAggregated = Lib.aggregations(query, 0).length > 0;
   const effectiveDisplay = isAggregated ? display : "table";
@@ -155,6 +163,24 @@ export function QuestionChart({
         ) : (
           result.isFetching && <Loader />
         )}
+        {legendWrap && legendEnd && (
+          <Box
+            ref={wrapRef}
+            pos="absolute"
+            left={0}
+            top={legendEnd.top}
+            style={{
+              transform: "translateY(-50%)",
+              zIndex: 1,
+              pointerEvents: "none",
+            }}
+          >
+            {legendWrap({
+              width: legendEnd.left + LEGEND_WRAP_PADDING,
+              row: legendEnd.row,
+            })}
+          </Box>
+        )}
         {legendAccessory && legendEnd && (
           <Box
             pos="absolute"
@@ -187,8 +213,16 @@ export function QuestionChart({
 }
 
 const LEGEND_ACCESSORY_GAP = 12;
+const LEGEND_WRAP_PADDING = 10;
 
-type LegendEnd = { left: number; top: number };
+export type LegendFrame = { width: number; row: HTMLElement };
+
+type LegendEnd = {
+  left: number;
+  top: number;
+  row: HTMLElement;
+  leadWidth: number;
+};
 
 /**
  * Where the chart's legend ends, relative to the container, kept up to date as
@@ -199,6 +233,7 @@ function useLegendEnd(
   containerRef: RefObject<HTMLDivElement>,
 
   isEnabled: boolean,
+  wrapRef?: RefObject<HTMLDivElement>,
 ): LegendEnd | undefined {
   const [legendEnd, setLegendEnd] = useState<LegendEnd>();
 
@@ -210,6 +245,9 @@ function useLegendEnd(
     const update = () => {
       const items = container.querySelectorAll('[data-testid="legend-item"]');
       const lastItem = items[items.length - 1];
+      const lead =
+        wrapRef?.current?.querySelector<HTMLElement>("[data-legend-lead]");
+      const leadWidth = lead ? lead.offsetWidth + LEGEND_ACCESSORY_GAP : 0;
       if (!lastItem) {
         setLegendEnd(undefined);
         return;
@@ -217,14 +255,21 @@ function useLegendEnd(
       const legendRow =
         lastItem.closest<HTMLElement>('[data-testid="legend-horizontal"]') ??
         lastItem.parentElement;
-      if (legendRow) {
-        Object.assign(legendRow.style, {
-          order: "-1",
-          justifyContent: "flex-start",
-          marginTop: "0",
-          marginBottom: "0.75rem",
-        });
+      if (!legendRow) {
+        setLegendEnd(undefined);
+        return;
       }
+      Object.assign(legendRow.style, {
+        order: "-1",
+        justifyContent: "flex-start",
+        marginTop: "0",
+        marginBottom: "0.75rem",
+        // Wrapped, the pill starts at the chart's edge, so no indent.
+        ...(wrapRef && {
+          marginLeft: "0",
+          paddingLeft: `${LEGEND_WRAP_PADDING + leadWidth}px`,
+        }),
+      });
       const containerRect = container.getBoundingClientRect();
       const itemRect = lastItem.getBoundingClientRect();
       const left = Math.round(itemRect.right - containerRect.left);
@@ -232,9 +277,12 @@ function useLegendEnd(
         itemRect.top - containerRect.top + itemRect.height / 2,
       );
       setLegendEnd((previous) =>
-        previous?.left === left && previous.top === top
+        previous?.left === left &&
+        previous.top === top &&
+        previous.row === legendRow &&
+        previous.leadWidth === leadWidth
           ? previous
-          : { left, top },
+          : { left, top, row: legendRow, leadWidth },
       );
     };
     update();
@@ -245,7 +293,7 @@ function useLegendEnd(
       observer.disconnect();
       window.removeEventListener("resize", update);
     };
-  }, [containerRef, isEnabled]);
+  }, [containerRef, isEnabled, wrapRef]);
 
   return legendEnd;
 }

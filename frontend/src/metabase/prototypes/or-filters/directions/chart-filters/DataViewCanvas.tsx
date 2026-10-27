@@ -1,5 +1,13 @@
 import cx from "classnames";
-import { type ComponentType, useContext, useMemo, useState } from "react";
+import {
+  type ComponentType,
+  type RefObject,
+  useContext,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { t } from "ttag";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
@@ -22,10 +30,11 @@ import * as Lib from "metabase-lib";
 
 import { toFilterClause } from "../../harness/clauses";
 import type { FilterCanvasProps } from "../../types";
+import BarS from "../expression-bar-rows/ExpressionBar.module.css";
 import { ExpressionBar } from "../expression-bar-unified/ExpressionBar";
 
 import S from "./ChartFilters.module.css";
-import { QuestionChart } from "./QuestionChart";
+import { type LegendFrame, QuestionChart } from "./QuestionChart";
 import {
   LandedFlash,
   QuestionShell,
@@ -48,10 +57,27 @@ export function DataViewCanvas({
   onChange,
   heading,
   DataZone = SourceDataZone,
-}: FilterCanvasProps & { DataZone?: ComponentType<FilterCanvasProps> }) {
+  Legend,
+  LegendWrap,
+}: FilterCanvasProps & {
+  DataZone?: ComponentType<FilterCanvasProps>;
+  /** Replaces the chart's legend and the thresholds beside it. */
+  Legend?: ComponentType<FilterCanvasProps>;
+  /** Wraps the chart's own legend when it shows series rather than measures. */
+  LegendWrap?: ComponentType<FilterCanvasProps & { frame: LegendFrame }>;
+}) {
   const question = useQuestionHistory(query, onChange);
   const [hasLlm, setHasLlm] = useState(true);
   const isAggregated = Lib.aggregations(query, ROWS_STAGE).length > 0;
+  // A second breakout splits the chart into series: the legend shows those, and
+  // the measures lead it.
+  const hasSeries = Lib.breakouts(query, ROWS_STAGE).length > 1;
+  const isLegendReplaced = Legend != null && !hasSeries;
+  const chartRef = useRef<HTMLDivElement>(null);
+  const chartInset = useFirstFilterInset(
+    chartRef,
+    Legend != null || LegendWrap != null,
+  );
   // A swapped-in Data zone is a plain bar, with the thresholds right under it.
   const isCompact = DataZone !== SourceDataZone;
 
@@ -84,14 +110,39 @@ export function DataViewCanvas({
             <DataZone query={query} onChange={onChange} />
           </Box>
         )}
-        <Box p="lg">
+        <Box
+          ref={chartRef}
+          p="lg"
+          pl={chartInset}
+          className={cx(isLegendReplaced && S.hidesNativeLegend)}
+        >
+          {isLegendReplaced && isAggregated && (
+            <Box pos="relative">
+              {question.landed === "summary" && (
+                <LandedFlash landedKey={question.landedKey} />
+              )}
+              <Legend query={query} onChange={onChange} />
+            </Box>
+          )}
           <QuestionChart
             query={query}
             display="bar"
             onPick={question.apply}
+            legendWrap={
+              LegendWrap && hasSeries && isAggregated
+                ? (frame) => (
+                    <LegendWrap
+                      query={query}
+                      onChange={onChange}
+                      frame={frame}
+                    />
+                  )
+                : undefined
+            }
             legendAccessory={
               isCompact &&
-              isAggregated && (
+              isAggregated &&
+              !Legend && (
                 <Box pos="relative">
                   {question.landed === "summary" && (
                     <LandedFlash landedKey={question.landedKey} />
@@ -113,6 +164,48 @@ export function DataViewCanvas({
       </QuestionShell>
     </LlmContext.Provider>
   );
+}
+
+const BAR_INSET = 32;
+
+/**
+ * How far in from the chart's edge the filter bar's first pill starts, so the
+ * legend can line up with it. Falls back to the bar's own padding.
+ */
+function useFirstFilterInset(
+  chartRef: RefObject<HTMLDivElement>,
+  isEnabled: boolean,
+): number | undefined {
+  const [inset, setInset] = useState<number>();
+
+  useLayoutEffect(() => {
+    const chart = chartRef.current;
+    const root = chart?.parentElement;
+    if (!chart || !root || !isEnabled) {
+      return;
+    }
+    const update = () => {
+      const bar = root.querySelector(`.${BarS.bar}`);
+      const pill = bar?.querySelector(`.${BarS.pill}`);
+      const chartLeft = chart.getBoundingClientRect().left;
+      const nextInset = pill
+        ? Math.round(pill.getBoundingClientRect().left - chartLeft)
+        : bar
+          ? Math.round(bar.getBoundingClientRect().left - chartLeft) + BAR_INSET
+          : undefined;
+      setInset(nextInset);
+    };
+    update();
+    const observer = new MutationObserver(update);
+    observer.observe(root, { childList: true, subtree: true });
+    window.addEventListener("resize", update);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, [chartRef, isEnabled]);
+
+  return inset;
 }
 
 function SourceDataZone({ query, onChange }: FilterCanvasProps) {
