@@ -29,6 +29,41 @@
             (is (= false
                    (server.settings/redirect-all-requests-to-https)))))))))
 
+(deftest isolated-origin-is-an-origin-test
+  (testing "MB_ISOLATED_ORIGIN reads back as a bare origin, the form the frontend and the
+            redirect build on"
+    (mt/with-temporary-setting-values [site-url "https://mb.example.com"]
+      (doseq [[env expected] [["https://apps.example.com"            "https://apps.example.com"]
+                              ["https://apps.example.com/"           "https://apps.example.com"]
+                              ["  https://apps.example.com  "        "https://apps.example.com"]
+                              ["https://Apps.Example.com/x/y?z=1#h"  "https://apps.example.com"]
+                              ["https://apps.example.com:443"        "https://apps.example.com"]
+                              ["https://apps.example.com:8443/"      "https://apps.example.com:8443"]
+                              ["apps.example.com"                    "https://apps.example.com"]]]
+        (testing (pr-str env)
+          (mt/with-temp-env-var-value! [mb-isolated-origin env]
+            (is (= expected (server.settings/isolated-origin))))))))
+  (testing "a value without a scheme takes the site URL's scheme"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (mt/with-temp-env-var-value! [mb-isolated-origin "apps.localhost:3000"]
+        (is (= "http://apps.localhost:3000" (server.settings/isolated-origin))))))
+  (testing "an unusable value turns data apps off rather than serving them without the isolated origin, and logs why
+            once"
+    (mt/with-temporary-setting-values [site-url "https://mb.example.com"]
+      (doseq [env ["https://" "ftp://apps.example.com" "https://apps example.com"
+                   "https://mb.example.com:8443" "https://MB.example.com" "http://apps.example.com"]]
+        (testing (pr-str env)
+          (mt/with-temp-env-var-value! [mb-isolated-origin env]
+            (mt/with-log-messages-for-level [messages [metabase.server.settings :error]]
+              (is (nil? (server.settings/isolated-origin)))
+              (is (true? (server.settings/isolated-origin-misconfigured?)))
+              (is (= 1 (count (messages)))))))))))
+
+(deftest isolated-origin-unset-is-not-misconfigured-test
+  (mt/with-temp-env-var-value! [mb-isolated-origin nil]
+    (is (nil? (server.settings/isolated-origin)))
+    (is (false? (server.settings/isolated-origin-misconfigured?)))))
+
 (deftest site-url-should-update-https-redirect-test
   (testing "Changing `site-url` to non-HTTPS should disable forced HTTPS redirection"
     (mt/with-temporary-setting-values [site-url                       "https://example.com"
