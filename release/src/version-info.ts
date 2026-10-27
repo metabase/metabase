@@ -201,17 +201,17 @@ export const hasRecentMinorReleaseIn = (
   );
 };
 
-export async function hasRecentMinorRelease(
-  majorVersion: number,
-  windowDays: number,
-  today: string = new Date().toISOString().slice(0, 10),
-): Promise<boolean> {
+export async function getOssVersionInfo(): Promise<VersionInfoFile> {
   const url = getVersionInfoUrl("v0");
-  const versionInfo = (await fetch(url).then((r) =>
-    r.json(),
-  )) as VersionInfoFile;
+  const response = await fetch(url);
 
-  return hasRecentMinorReleaseIn(versionInfo, majorVersion, windowDays, today);
+  if (!response.ok) {
+    throw new Error(
+      `Could not fetch ${url}: ${response.status} ${response.statusText}`,
+    );
+  }
+
+  return (await response.json()) as VersionInfoFile;
 }
 
 // for promoting a released version to `latest` in version-info.json

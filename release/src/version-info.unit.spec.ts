@@ -3,10 +3,10 @@ import fetch from "node-fetch";
 import type { VersionInfoFile } from "./types";
 import {
   generateVersionInfoJson,
+  getOssVersionInfo,
   getSupportedMajorVersions,
   getSupportedMajors,
   getVersionInfoUrl,
-  hasRecentMinorRelease,
   hasRecentMinorReleaseIn,
   isLtsVersion,
   updateVersionInfoLatest,
@@ -555,7 +555,7 @@ describe("version-info", () => {
     });
   });
 
-  describe("hasRecentMinorRelease", () => {
+  describe("getOssVersionInfo", () => {
     beforeEach(() => {
       process.env.AWS_S3_STATIC_BUCKET = "my.metabase.com";
       process.env.AWS_REGION = "us-north-9";
@@ -563,21 +563,27 @@ describe("version-info", () => {
     });
 
     it("fetches the OSS version-info.json", async () => {
+      const versionInfo = { latest: {}, older: [] };
       mockFetch.mockResolvedValue({
-        json: async () => ({
-          latest: {
-            version: "v0.65.2",
-            released: "2026-10-27",
-            patch: true,
-            highlights: [],
-          },
-          older: [],
-        }),
+        ok: true,
+        json: async () => versionInfo,
       } as Awaited<ReturnType<typeof fetch>>);
 
-      expect(await hasRecentMinorRelease(65, 3, "2026-10-27")).toBe(true);
+      expect(await getOssVersionInfo()).toEqual(versionInfo);
       expect(mockFetch).toHaveBeenCalledWith(
         "http://my.metabase.com.s3.us-north-9.amazonaws.com/version-info.json",
+      );
+    });
+
+    it("throws a clear error when the fetch fails", async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 403,
+        statusText: "Forbidden",
+      } as Awaited<ReturnType<typeof fetch>>);
+
+      await expect(getOssVersionInfo()).rejects.toThrow(
+        "Could not fetch http://my.metabase.com.s3.us-north-9.amazonaws.com/version-info.json: 403 Forbidden",
       );
     });
   });
