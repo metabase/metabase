@@ -374,7 +374,10 @@ async function main([command, ...args]: string[]) {
     case "sync": {
       const [report, file] = args;
       const findings = readFindings(file);
-      const fresh = findings.filter((finding) => !finding.carried).length;
+      // Without a previous report, every finding looks new, so an update says nothing.
+      const fresh = env.BASE_SHA
+        ? findings.filter((finding) => !finding.carried).length
+        : 0;
       return reportIssue({
         title: "metabase/metabase Eastwood report",
         report: readText(report).trim(),

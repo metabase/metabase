@@ -38,10 +38,15 @@ jobs:
       - name: Run Eastwood
         id: lint
         continue-on-error: true
-        run: ${{ matrix.command }} :out '"warnings.txt"'
+        run: ${{ matrix.command }} :out '"warnings.txt"' 2>&1 | tee lint.log
+      # Eastwood stops at the first exception, so only its closing summary shows it linted every namespace.
       - name: Save the outcome and show the warnings
         run: |
-          echo "${{ steps.lint.outcome }}" > outcome.txt
+          if grep -qE '^== Warnings: [0-9]+\. Exceptions thrown: 0$' lint.log; then
+            echo complete > outcome.txt
+          else
+            echo incomplete > outcome.txt
+          fi
           touch warnings.txt
           cat warnings.txt
       - uses: actions/upload-artifact@v7
@@ -78,14 +83,13 @@ jobs:
           bun-version-file: "package.json"
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      # A target ran when Eastwood passed or printed warnings. Failing with none means it didn't get that far.
-      - name: Check that both targets ran
+      # A partial run would make the findings it didn't reach look fixed.
+      - name: Check that both targets linted everything
         run: |
           ran=true
           for target in source tests; do
-            dir=eastwood/eastwood-$target
-            if [ "$(cat "$dir/outcome.txt" 2>/dev/null)" != success ] && [ ! -s "$dir/warnings.txt" ]; then
-              echo "::error::Eastwood didn't run on $target. See its job log."
+            if [ "$(cat "eastwood/eastwood-$target/outcome.txt" 2>/dev/null)" != complete ]; then
+              echo "::error::Eastwood didn't finish linting $target. See its job log."
               ran=false
             fi
           done
@@ -172,6 +176,7 @@ jobs:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
           LINEAR_TEAM_ID: 2e3af6a2-9b19-4abd-b72c-4b5665054861 # DEV
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          BASE_SHA: ${{ steps.previous.outputs.base }}
         run: bun .github/scripts/eastwood-report.ts sync report.md report/findings.json
 
       - name: Alert when Eastwood can't run
