@@ -283,6 +283,23 @@
          (is (= "completed" (:status (mt/user-http-request :crowberto :post 202
                                                            (format "card/%d/query" elsewhere-id))))))))))
 
+(deftest card-read-endpoints-check-card-test
+  (do-with-app-card!
+   (fn [card-id _collection-id]
+     (mt/with-temp [:model/Card {elsewhere-id :id} {:name "Venues elsewhere" :dataset_query (data-apps.tu/venues-query)}]
+       (testing "the app's card and its metadata are readable"
+         (is (=? {:id card-id} (mt/user-http-request :crowberto :get 200 (format "card/%d" card-id) as-data-app)))
+         (is (map? (mt/user-http-request :crowberto :get 200 (format "card/%d/query_metadata" card-id) as-data-app)))
+         (is (=? {:id (str "card__" card-id)}
+                 (mt/user-http-request :crowberto :get 200 (format "table/card__%d/query_metadata" card-id) as-data-app))))
+       (testing "a card outside the app's collection is refused"
+         (doseq [url ["card/%d" "card/%d/query_metadata" "table/card__%d/query_metadata"]]
+           (is (= (card-error elsewhere-id)
+                  (mt/user-http-request :crowberto :get 400 (format url elsewhere-id) as-data-app))
+               url)))
+       (testing "a request that is not a data app's still reads it"
+         (is (=? {:id elsewhere-id} (mt/user-http-request :crowberto :get 200 (format "card/%d" elsewhere-id)))))))))
+
 (def ^:private static-parameter
   "A parameter whose values are a static list, so loading them runs no query."
   {:id                   "kind"

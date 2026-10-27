@@ -3456,6 +3456,7 @@
            api-scope
            app-db
            collections
+           data-apps
            database-routing
            driver
            events
@@ -3475,7 +3476,8 @@
            warehouse-schema-overlay
            warehouses.schema
            xrays}
-   :model-imports #{:model/Collection
+   :model-imports #{:model/Card
+                    :model/Collection
                     :model/Database
                     :model/Dimension
                     :model/Field
