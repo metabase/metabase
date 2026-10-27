@@ -33,6 +33,7 @@ describe("isBrokerResponseMessage", () => {
         networkError: "TypeError: Failed to fetch",
       }),
     ).toBe(true);
+    expect(isBrokerResponseMessage({ id: 1, opaqueRedirect: true })).toBe(true);
   });
 
   it("refuses anything else", () => {
@@ -40,6 +41,9 @@ describe("isBrokerResponseMessage", () => {
     expect(isBrokerResponseMessage({ status: 200 })).toBe(false);
     expect(isBrokerResponseMessage({ id: "1", networkError: "x" })).toBe(false);
     expect(isBrokerResponseMessage({ id: 1, networkError: 1 })).toBe(false);
+    expect(isBrokerResponseMessage({ id: 1, opaqueRedirect: false })).toBe(
+      false,
+    );
     expect(
       isBrokerResponseMessage({
         id: 1,
@@ -111,10 +115,13 @@ describe("isBrokerPortMessage", () => {
     url: "https://x.test/api/card",
     headers: { accept: "application/json" },
     body: null,
+    redirect: "follow",
   };
 
   it("accepts the requests and cancellations the iframe sends", () => {
     expect(isBrokerPortMessage(request)).toBe(true);
+    expect(isBrokerPortMessage({ ...request, redirect: "error" })).toBe(true);
+    expect(isBrokerPortMessage({ ...request, redirect: "manual" })).toBe(true);
     expect(isBrokerPortMessage({ ...request, body: new ArrayBuffer(1) })).toBe(
       true,
     );
@@ -129,6 +136,9 @@ describe("isBrokerPortMessage", () => {
       false,
     );
     expect(isBrokerPortMessage({ ...request, body: "text" })).toBe(false);
+    expect(isBrokerPortMessage({ ...request, redirect: "sideways" })).toBe(
+      false,
+    );
     expect(isBrokerPortMessage({ ...request, type: "other" })).toBe(false);
   });
 });

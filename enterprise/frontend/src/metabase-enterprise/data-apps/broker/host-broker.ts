@@ -15,6 +15,7 @@ import {
   type BrokerResponseMessage,
   getBrokerableApiPath,
   isBrokerPortMessage,
+  isInstanceApiUrl,
 } from "./protocol";
 
 const NULL_BODY_STATUS = new Set([204, 205, 304]);
@@ -62,7 +63,7 @@ export async function handleBrokerRequest(
   request: BrokerRequestMessage,
   signal?: AbortSignal,
 ): Promise<BrokerResponseMessage> {
-  const { id, method, url, headers, body } = request;
+  const { id, method, url, headers, body, redirect } = request;
 
   let parsed: URL;
   try {
@@ -95,12 +96,22 @@ export async function handleBrokerRequest(
         },
         body: body ?? undefined,
         credentials: "include",
+        redirect,
         signal,
       },
     );
     addAntiCsrfToken(outbound);
 
     const response = await fetch(outbound);
+
+    if (response.type === "opaqueredirect") {
+      return { id, opaqueRedirect: true };
+    }
+
+    // Outside the API no endpoint scope applies, so the app mustn't read what the session fetched there.
+    if (response.redirected && !isInstanceApiUrl(new URL(response.url))) {
+      return { id, networkError: "TypeError: redirected outside the API" };
+    }
 
     updateAntiCsrfToken(response);
 
@@ -177,7 +188,9 @@ export function installHostBroker(
       inFlight.delete(data.id);
 
       if (!controller.signal.aborted) {
-        channel.port1.postMessage(response);
+        const transfer =
+          "body" in response && response.body ? [response.body] : [];
+        channel.port1.postMessage(response, transfer);
       }
     };
 
