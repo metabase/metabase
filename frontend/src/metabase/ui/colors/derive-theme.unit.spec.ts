@@ -183,6 +183,60 @@ describe("deriveFullMetabaseTheme", () => {
       );
     });
 
+    describe("solid fills", () => {
+      const BRAND = "var(--mb-color-core-brand)";
+
+      it.each([
+        ["whitelabel", { whitelabelColors: { brand: "#ff0000" } }],
+        [
+          "embedding",
+          {
+            embeddingThemeOverride: {
+              version: 2 as const,
+              colors: { "core-brand": "#00ff00" },
+            },
+          },
+        ],
+      ])(
+        "use the exact brand color when %s sets a brand color",
+        (_source, options) => {
+          const derived = deriveFullMetabaseTheme({
+            colorScheme: "light",
+            ...options,
+          });
+
+          expect(derived.colors).toMatchObject({
+            "button-filled-brand-default": BRAND,
+            "background_surface-brand-strong": BRAND,
+            "switch-checked": BRAND,
+          });
+        },
+      );
+
+      it("use the exact brand color in the dark theme", () => {
+        const derived = deriveFullMetabaseTheme({
+          colorScheme: "dark",
+          whitelabelColors: { brand: "#ff0000" },
+        });
+
+        expect(derived.colors).toMatchObject({
+          "button-filled-brand-default": BRAND,
+          "background_surface-brand-strong": BRAND,
+          "switch-checked": BRAND,
+        });
+      });
+
+      it("use the darker Ocean shade when the brand color is not customized", () => {
+        const derived = deriveFullMetabaseTheme({ colorScheme: "light" });
+
+        expect(derived.colors).toMatchObject({
+          "button-filled-brand-default": baseColors.ocean[60],
+          "background_surface-brand-strong": baseColors.ocean[60],
+          "switch-checked": baseColors.ocean[60],
+        });
+      });
+    });
+
     it("keeps the dynamic brand ramp when the caller asks for it", () => {
       const derived = deriveFullMetabaseTheme({
         colorScheme: "light",
