@@ -348,6 +348,17 @@
         "sales * 1.5"            [:* {} sales 1.5]))
     (testing "CASE WHEN"
       (are [expr clause] (= [:sum {} clause] (aggregation-of-expr expr))
+    (testing "dividing by NULLIF(x, 0) is plain division: Metabase's / already returns NULL for a zero divisor"
+      (are [expr clause] (= [:sum {} clause] (aggregation-of-expr expr))
+        "sales / nullif(quantity, 0)"     [:/ {} sales quantity]
+        "sales / NULLIF(quantity, 0.0)"   [:/ {} sales quantity]
+        "sales / nullif(quantity + 1, 0)" [:/ {} sales [:+ {} quantity 1]])
+      (testing "but NULLIF anywhere else, or against another value, is a function like any other"
+        (are [expr] (re-find #"the function nullif" (expr-reason expr))
+          "nullif(sales, 0)"
+          "sales / nullif(quantity, 1)"
+          "sales / nullif(quantity, '0')"
+          "nullif(sales, 0) / quantity")))
         "case when is_returned then sales else 0 end"          [:case {} [[[:= {} is-returned true] sales]] 0]
         "case when status = 'Cancelled' then 1 else 0 end"     [:case {} [[[:= {} status "Cancelled"] 1]] 0]
         "case when status = 'a' then 1 when status = 'b' then 2 end" [:case {} [[[:= {} status "a"] 1] [[:= {} status "b"] 2]]]
