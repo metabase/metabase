@@ -5,8 +5,7 @@
    [metabase.api.macros.scope :as scope]
    [metabase.data-apps.schema :as data-apps.schema]
    [metabase.lib-be.schema :as lib-be.schema]
-   [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]))
 
 (defenterprise visible-data-app-filter-select
   "A HoneySQL query of the ids of the data apps that the user described by `user-info` (`:user-id`, `:is-superuser?`)
@@ -67,10 +66,11 @@
   nil)
 
 (defenterprise-schema check-action :- :nil
-  "Throws a 400 unless `data-app` may run the action with `action-id`; does nothing without the data-apps feature."
+  "Throws a 400 unless `data-app` may run `action`, which the endpoint has fetched and read-checked; does nothing
+  without the data-apps feature."
   metabase-enterprise.data-apps.checks
-  [_data-app  :- ::data-apps.schema/data-app
-   _action-id :- ms/PositiveInt]
+  [_data-app :- ::data-apps.schema/data-app
+   _action   :- :metabase.actions.schema/action]
   nil)
 
 (defn check-request

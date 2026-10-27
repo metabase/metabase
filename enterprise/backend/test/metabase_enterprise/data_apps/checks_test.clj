@@ -29,8 +29,7 @@
    :metrics  "A data app can use only metrics from the Library, not the metrics %s."
    :tables   "A data app can read only tables published to the Library, not the tables %s."
    :segments "A data app can use only segments of tables published to the Library, not the segments %s."
-   :measures "A data app can use only measures of tables published to the Library, not the measures %s."
-   :actions  "A data app can run only the actions of its own app, not the actions %s."})
+   :measures "A data app can use only measures of tables published to the Library, not the measures %s."})
 
 (defn- error-message
   "The error message for a data app's use of the entities of `kind` with `ids`."
@@ -41,6 +40,11 @@
   "The error message for a data app's run of the card with `card-id`."
   [card-id]
   (format "A data app can run only the cards in its own collection, not the card %d." card-id))
+
+(defn- action-error
+  "The error message for a data app's run of the action with `action-id`."
+  [action-id]
+  (format "A data app can run only the actions in its own collection, not the action %d." action-id))
 
 (defn- run-query
   "The response to a data app's request to run `query` through `POST /api/dataset`, expecting `status`."
@@ -287,14 +291,14 @@
                                                                      "UPDATE categories SET name = name WHERE id = 1")}]
     (f action-id)))
 
-(deftest app-action-runs-test
+(deftest action-endpoints-run-app-action-test
   (mt/with-actions-test-data-and-actions-enabled
     (do-with-app-collection
      (fn [collection-id]
        (do-with-rename-action!
         collection-id
         (fn [action-id]
-          (testing "the app's action runs, and its values load"
+          (testing "the app's action runs, and its values endpoint answers"
             (is (= {:rows-affected 1}
                    (mt/user-http-request :crowberto :post 200 (format "action/%d/execute" action-id) as-data-app
                                          {:parameters {}})))
@@ -309,7 +313,7 @@
                                          as-data-app
                                          {:parameters {}}))))))))))
 
-(deftest other-action-runs-are-refused-test
+(deftest action-endpoints-refuse-other-actions-test
   (mt/with-actions-test-data-and-actions-enabled
     (do-with-app-collection
      (fn [_collection-id]
@@ -317,14 +321,16 @@
          (do-with-rename-action!
           elsewhere-collection-id
           (fn [elsewhere-id]
-            (testing "an action outside the app's collection, or of no action at all, is refused alike"
-              (doseq [other-id [elsewhere-id 999999999]]
-                (is (= (error-message :actions other-id)
-                       (mt/user-http-request :crowberto :post 400 (format "action/%d/execute" other-id) as-data-app
-                                             {:parameters {}})))
-                (is (= (error-message :actions other-id)
-                       (mt/user-http-request :crowberto :post 400 (format "action/%d/execute/values" other-id)
-                                             as-data-app {:parameters {}})))))
+            (testing "an action outside the app's collection is refused"
+              (is (= (action-error elsewhere-id)
+                     (mt/user-http-request :crowberto :post 400 (format "action/%d/execute" elsewhere-id) as-data-app
+                                           {:parameters {}})))
+              (is (= (action-error elsewhere-id)
+                     (mt/user-http-request :crowberto :post 400 (format "action/%d/execute/values" elsewhere-id)
+                                           as-data-app {:parameters {}}))))
+            (testing "an ID of no action is not found, as for any request"
+              (is (= "Not found." (mt/user-http-request :crowberto :post 404 "action/999999999/execute" as-data-app
+                                                        {:parameters {}}))))
             (testing "a request that is not a data app's still runs the action"
               (is (= {:rows-affected 1}
                      (mt/user-http-request :crowberto :post 200 (format "action/%d/execute" elsewhere-id)
