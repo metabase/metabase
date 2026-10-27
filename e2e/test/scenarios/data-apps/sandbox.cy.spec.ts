@@ -4,7 +4,10 @@ import {
   visitDataAppRoute as visitAppRoute,
 } from "e2e/support/helpers";
 
-import { DATA_APP_TEST_ENV as TEST_ENV } from "./helpers";
+import {
+  SANDBOX_BLOCKED_PROBE_IDS,
+  DATA_APP_TEST_ENV as TEST_ENV,
+} from "./helpers";
 
 const { H } = cy;
 
@@ -20,19 +23,6 @@ describe("scenarios > data apps > sandbox & isolation", () => {
     const ALLOWED_ORIGIN = "https://allowed.data-app.test";
     const ALLOWED_URL = `${ALLOWED_ORIGIN}/ping`;
     const BLOCKED_URL = "https://blocked.data-app.test/ping";
-
-    // Method/constructor calls the sandbox distortion replaces with a throwing
-    // shim. (Getter-only reads like `localStorage` aren't intercepted, so they
-    // aren't asserted here.)
-    const BLOCKED_PROBE_IDS = [
-      "script",
-      "window-open",
-      "alert",
-      "history",
-      "keydown-listener",
-      "websocket",
-      "sendbeacon",
-    ];
 
     it("blocks dangerous globals, strips innerHTML, gates XHR, and blocks cross-origin fetch but permits allowed_hosts", () => {
       // The allowed host is stubbed with a CORS header so the sandbox's real
@@ -60,7 +50,7 @@ describe("scenarios > data apps > sandbox & isolation", () => {
 
       visitAppRoute("sandboxing");
       H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
-        BLOCKED_PROBE_IDS.forEach((id) => {
+        SANDBOX_BLOCKED_PROBE_IDS.forEach((id) => {
           cy.findByTestId(`probe-${id}`, { timeout: 30000 }).should(
             "have.text",
             "blocked",

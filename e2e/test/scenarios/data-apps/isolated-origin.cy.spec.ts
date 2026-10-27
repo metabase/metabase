@@ -2,7 +2,10 @@ import type { Interception } from "cypress/types/net-stubbing";
 
 import { USERS, USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ADMIN_USER_ID,
+  ORDERS_BY_YEAR_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   DATA_APP_DISPLAY_NAME as APP_DISPLAY_NAME,
   DATA_APP_NAME as APP_NAME,
@@ -11,10 +14,12 @@ import {
 } from "e2e/support/helpers";
 
 import {
+  SANDBOX_BLOCKED_PROBE_IDS,
   DATA_APP_TEST_ENV as TEST_ENV,
   enableIsolatedOrigin,
   getIsolatedOrigin,
   getSiteUrl,
+  setIsolatedOrigin,
 } from "./helpers";
 
 const { H } = cy;
@@ -27,7 +32,27 @@ const SITE_HOSTNAME = new URL(SITE_URL).hostname;
 const ISOLATED_ORIGIN = getIsolatedOrigin();
 const ISOLATED_HOSTNAME = new URL(ISOLATED_ORIGIN).hostname;
 
+const SESSION_COOKIE = "metabase.SESSION";
+const ALLOWED_ORIGIN = "https://allowed.data-app.test";
+const ALLOWED_URL = `${ALLOWED_ORIGIN}/ping`;
+
 const appIframe = () => cy.get(`iframe[title="${APP_DISPLAY_NAME}"]`);
+
+const expectFrameServedFrom = (origin: string) =>
+  appIframe().should(($iframe) => {
+    expect(new URL(String($iframe.attr("src"))).origin).to.eq(origin);
+  });
+
+/** Records as `@alias` the requests the page sends to the main host for `route`. */
+const interceptFromPage = (
+  alias: string,
+  route: { method: string; pathname: string | RegExp },
+  response?: Parameters<typeof cy.intercept>[1],
+) =>
+  (response === undefined
+    ? cy.intercept({ hostname: SITE_HOSTNAME, ...route })
+    : cy.intercept({ hostname: SITE_HOSTNAME, ...route }, response)
+  ).as(alias);
 
 /** Checks that a request the page made for the app went out as the page's own. */
 const expectBrokered = ({ request }: Interception) => {
@@ -35,15 +60,79 @@ const expectBrokered = ({ request }: Interception) => {
   expect(request.headers["sec-fetch-site"], "fetch site").to.eq("same-origin");
 };
 
-const assertBrokered = (alias: string) => cy.wait(alias).then(expectBrokered);
+const assertBrokered = (
+  alias: string,
+  { statusCode }: { statusCode?: number } = {},
+) =>
+  cy.wait(alias).then((interception) => {
+    expectBrokered(interception);
+    if (statusCode !== undefined) {
+      expect(interception.response?.statusCode, "status").to.eq(statusCode);
+    }
+  });
 
-/** The isolated origin's app document CSP header, which must be there for its contents to mean anything. */
-const documentPolicy = (response: Cypress.Response<unknown>): string => {
-  const policy = response.headers["content-security-policy"];
-  expect(policy, "the app document's CSP").to.be.a("string");
-  expect(policy).to.match(/connect-src[^;]*\*/);
-  return String(policy);
+/**
+ * The anonymous app document's CSP leaves out `origin`: its hosts are `*` there, until
+ * the policy the bundle brings narrows them.
+ */
+const expectAnonymousDocumentOmits = (origin: string) =>
+  cy.request(`${ISOLATED_ORIGIN}/embed/apps/${APP_NAME}`).then((response) => {
+    const policy = response.headers["content-security-policy"];
+    if (typeof policy !== "string") {
+      throw new Error("the app document has no CSP header");
+    }
+    expect(policy).to.match(/connect-src[^;]*\*/);
+    expect(policy).not.to.contain(origin);
+  });
+
+const stubAllowedHost = () =>
+  cy.intercept("GET", ALLOWED_URL, {
+    statusCode: 200,
+    headers: { "access-control-allow-origin": "*" },
+    body: "pong",
+  });
+
+/** Opens a question in the app's `download-question` page, which renders it. */
+const openQuestionInApp = (details: Parameters<typeof H.createQuestion>[0]) => {
+  H.createQuestion(details).then(({ body: { id: questionId } }) => {
+    H.mockDataApp(APP_NAME, {
+      displayName: APP_DISPLAY_NAME,
+      testEnv: { ...TEST_ENV, downloadQuestionId: questionId },
+    });
+  });
+  visitAppRoute("download-question");
 };
+
+const pinMap = (pinType: "tiles" | "markers") => ({
+  name: `People ${pinType}`,
+  query: { "source-table": PEOPLE_ID, limit: 10 },
+  display: "map" as const,
+  visualization_settings: {
+    "map.type": "pin",
+    "map.pin_type": pinType,
+    "map.latitude_column": "LATITUDE",
+    "map.longitude_column": "LONGITUDE",
+  },
+});
+
+const statesMap = (region: string) => ({
+  name: "People by state",
+  query: {
+    "source-table": PEOPLE_ID,
+    aggregation: [["count"]],
+    breakout: [["field", PEOPLE.STATE, null]],
+  },
+  display: "map" as const,
+  visualization_settings: {
+    "map.type": "region",
+    "map.region": region,
+    "map.dimension": "STATE",
+    "map.metric": "count",
+  },
+});
+
+// A states map draws a path per state.
+const MIN_STATE_PATHS = 40;
 
 describe("scenarios > data apps > isolated origin", () => {
   let isolatedOriginApiRequests: string[] = [];
@@ -80,11 +169,10 @@ describe("scenarios > data apps > isolated origin", () => {
       hostname: ISOLATED_HOSTNAME,
       pathname: `/embed/apps/${APP_NAME}`,
     }).as("appDocument");
-    cy.intercept({
-      hostname: SITE_HOSTNAME,
+    interceptFromPage("brokeredQuery", {
       method: "POST",
       pathname: "/api/dataset",
-    }).as("brokeredQuery");
+    });
 
     H.mockDataApp(APP_NAME, {
       displayName: APP_DISPLAY_NAME,
@@ -92,15 +180,11 @@ describe("scenarios > data apps > isolated origin", () => {
     });
     H.openDataApp(APP_NAME);
 
-    appIframe()
-      .invoke("attr", "src")
-      .then((src) => {
-        expect(new URL(String(src)).origin).to.eq(ISOLATED_ORIGIN);
-      });
+    expectFrameServedFrom(ISOLATED_ORIGIN);
 
     cy.wait("@appDocument").then(({ request, response }) => {
       expect(String(request.headers.cookie ?? "")).not.to.contain(
-        "metabase.SESSION",
+        SESSION_COOKIE,
       );
       expect(response?.statusCode).to.eq(200);
     });
@@ -126,11 +210,10 @@ describe("scenarios > data apps > isolated origin", () => {
   });
 
   it("previews the app in Data Studio from the isolated origin", () => {
-    cy.intercept({
-      hostname: SITE_HOSTNAME,
+    interceptFromPage("brokeredQuery", {
       method: "POST",
       pathname: "/api/dataset",
-    }).as("brokeredQuery");
+    });
 
     H.mockDataApp(APP_NAME, {
       displayName: APP_DISPLAY_NAME,
@@ -138,29 +221,20 @@ describe("scenarios > data apps > isolated origin", () => {
     });
     cy.visit(`/data-studio/apps/${APP_NAME}`);
 
-    appIframe()
-      .invoke("attr", "src")
-      .then((src) => {
-        expect(new URL(String(src)).origin).to.eq(ISOLATED_ORIGIN);
-      });
+    expectFrameServedFrom(ISOLATED_ORIGIN);
     H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
       cy.findByTestId("orders-count", { timeout: TIMEOUT })
         .invoke({ timeout: TIMEOUT }, "text")
         .should("match", /^\d+$/);
     });
 
-    assertBrokered("@brokeredQuery");
-    cy.get("@brokeredQuery")
+    assertBrokered("@brokeredQuery")
       .its("request.headers.x-metabase-client-identifier")
       .should("eq", APP_NAME);
   });
 
   it("passes the user's locale to the app, which the isolated origin can't learn without a session", () => {
-    cy.request<{ id: number }>("GET", "/api/user/current").then(
-      ({ body: { id } }) => {
-        cy.request("PUT", `/api/user/${id}`, { locale: "de" });
-      },
-    );
+    cy.request("PUT", `/api/user/${ADMIN_USER_ID}`, { locale: "de" });
 
     H.mockDataApp(APP_NAME, {
       displayName: APP_DISPLAY_NAME,
@@ -201,10 +275,10 @@ describe("scenarios > data apps > isolated origin", () => {
     });
 
     cy.log("and refuses it to a request with one");
-    cy.getCookie("metabase.SESSION").then((cookie) => {
+    cy.getCookie(SESSION_COOKIE).then((cookie) => {
       cy.request({
         url: `${ISOLATED_ORIGIN}/embed/apps/${APP_NAME}`,
-        headers: { cookie: `metabase.SESSION=${cookie?.value}` },
+        headers: { cookie: `${SESSION_COOKIE}=${cookie?.value}` },
         failOnStatusCode: false,
       })
         .its("status")
@@ -268,9 +342,7 @@ describe("scenarios > data apps > isolated origin", () => {
       testEnv: TEST_ENV,
     });
     // The site URL's own host name: a different port isn't a different host for cookies.
-    cy.request("PUT", "/api/testing/isolated-origin", {
-      value: `${new URL(SITE_URL).protocol}//${SITE_HOSTNAME}:1`,
-    });
+    setIsolatedOrigin(`${new URL(SITE_URL).protocol}//${SITE_HOSTNAME}:1`);
 
     cy.request({ url: `/embed/apps/${APP_NAME}`, failOnStatusCode: false })
       .its("status")
@@ -320,11 +392,10 @@ describe("scenarios > data apps > isolated origin", () => {
       .its("0.contentWindow")
       .should("not.have.property", "beforeReload");
 
-    cy.intercept({
-      hostname: SITE_HOSTNAME,
+    interceptFromPage("brokeredQuery", {
       method: "POST",
       pathname: "/api/dataset",
-    }).as("brokeredQuery");
+    });
     H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
       cy.findByRole("heading", {
         name: "Order details",
@@ -346,11 +417,10 @@ describe("scenarios > data apps > isolated origin", () => {
   });
 
   it("brings query errors and refetches through the page", () => {
-    cy.intercept({
-      hostname: SITE_HOSTNAME,
+    interceptFromPage("brokeredQuery", {
       method: "POST",
       pathname: "/api/dataset",
-    }).as("brokeredQuery");
+    });
 
     H.mockDataApp(APP_NAME, {
       displayName: APP_DISPLAY_NAME,
@@ -387,11 +457,10 @@ describe("scenarios > data apps > isolated origin", () => {
 
   it("downloads a question's results through the page", () => {
     cy.deleteDownloadsFolder();
-    cy.intercept({
-      hostname: SITE_HOSTNAME,
+    interceptFromPage("brokeredDownload", {
       method: "POST",
       pathname: `/api/card/${ORDERS_BY_YEAR_QUESTION_ID}/query/csv`,
-    }).as("brokeredDownload");
+    });
 
     H.mockDataApp(APP_NAME, {
       displayName: APP_DISPLAY_NAME,
@@ -412,32 +481,13 @@ describe("scenarios > data apps > isolated origin", () => {
   });
 
   it("loads pin map tiles through the page", () => {
-    cy.intercept({
-      hostname: SITE_HOSTNAME,
+    interceptFromPage("brokeredTile", {
       method: "GET",
       pathname: /^\/api\/tiles\//,
-    }).as("brokeredTile");
-
-    H.createQuestion({
-      name: "People map",
-      query: { "source-table": PEOPLE_ID, limit: 10 },
-      display: "map",
-      visualization_settings: {
-        "map.type": "pin",
-        "map.pin_type": "tiles",
-        "map.latitude_column": "LATITUDE",
-        "map.longitude_column": "LONGITUDE",
-      },
-    }).then(({ body: { id: questionId } }) => {
-      H.mockDataApp(APP_NAME, {
-        displayName: APP_DISPLAY_NAME,
-        testEnv: { ...TEST_ENV, downloadQuestionId: questionId },
-      });
     });
 
-    visitAppRoute("download-question");
-    assertBrokered("@brokeredTile");
-    cy.get("@brokeredTile").its("response.statusCode").should("eq", 200);
+    openQuestionInApp(pinMap("tiles"));
+    assertBrokered("@brokeredTile", { statusCode: 200 });
     H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
       // Pin tiles come back through the page and render as `data:` images; base-map
       // tiles load straight from the tile server.
@@ -462,29 +512,9 @@ describe("scenarios > data apps > isolated origin", () => {
         )
         .as("baseTile");
 
-    const openMarkersMap = () => {
-      H.createQuestion({
-        name: "People markers",
-        query: { "source-table": PEOPLE_ID, limit: 10 },
-        display: "map",
-        visualization_settings: {
-          "map.type": "pin",
-          "map.pin_type": "markers",
-          "map.latitude_column": "LATITUDE",
-          "map.longitude_column": "LONGITUDE",
-        },
-      }).then(({ body: { id: questionId } }) => {
-        H.mockDataApp(APP_NAME, {
-          displayName: APP_DISPLAY_NAME,
-          testEnv: { ...TEST_ENV, downloadQuestionId: questionId },
-        });
-      });
-      visitAppRoute("download-question");
-    };
-
     it("loads base-map tiles from the default tile server, which the app's policy allows", () => {
       stubTileServer(/(^|\.)tile\.openstreetmap\.org$/);
-      openMarkersMap();
+      openQuestionInApp(pinMap("markers"));
 
       cy.wait("@baseTile");
       H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
@@ -501,7 +531,7 @@ describe("scenarios > data apps > isolated origin", () => {
         "https://tile.openstreetmap.de/{z}/{x}/{y}.png",
       );
       stubTileServer("tile.openstreetmap.de");
-      openMarkersMap();
+      openQuestionInApp(pinMap("markers"));
 
       cy.wait("@baseTile");
       H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
@@ -513,36 +543,12 @@ describe("scenarios > data apps > isolated origin", () => {
   });
 
   describe("region maps", () => {
-    const createStatesMap = (region: string) =>
-      H.createQuestion({
-        name: "People by state",
-        query: {
-          "source-table": PEOPLE_ID,
-          aggregation: [["count"]],
-          breakout: [["field", PEOPLE.STATE, null]],
-        },
-        display: "map",
-        visualization_settings: {
-          "map.type": "region",
-          "map.region": region,
-          "map.dimension": "STATE",
-          "map.metric": "count",
-        },
-      }).then(({ body: { id: questionId } }) => {
-        H.mockDataApp(APP_NAME, {
-          displayName: APP_DISPLAY_NAME,
-          testEnv: { ...TEST_ENV, downloadQuestionId: questionId },
-        });
-      });
-
     it("draws a built-in region map", () => {
-      createStatesMap("us_states");
-
-      visitAppRoute("download-question");
+      openQuestionInApp(statesMap("us_states"));
       H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
         cy.findByTestId("data-app-download-question")
           .find("svg path", { timeout: TIMEOUT })
-          .should("have.length.above", 40);
+          .should("have.length.above", MIN_STATE_PATHS);
       });
     });
 
@@ -555,20 +561,16 @@ describe("scenarios > data apps > isolated origin", () => {
           region_name: "NAME",
         },
       });
-      cy.intercept({
-        hostname: SITE_HOSTNAME,
+      interceptFromPage("brokeredGeoJson", {
         method: "GET",
         pathname: "/api/geojson/test_states",
-      }).as("brokeredGeoJson");
-      createStatesMap("test_states");
-
-      visitAppRoute("download-question");
-      assertBrokered("@brokeredGeoJson");
-      cy.get("@brokeredGeoJson").its("response.statusCode").should("eq", 200);
+      });
+      openQuestionInApp(statesMap("test_states"));
+      assertBrokered("@brokeredGeoJson", { statusCode: 200 });
       H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
         cy.get(".leaflet-container path", { timeout: TIMEOUT }).should(
           "have.length.above",
-          40,
+          MIN_STATE_PATHS,
         );
       });
     });
@@ -587,14 +589,7 @@ describe("scenarios > data apps > isolated origin", () => {
   });
 
   it("keeps the sandbox's protections on the isolated origin", () => {
-    const ALLOWED_ORIGIN = "https://allowed.data-app.test";
-    const ALLOWED_URL = `${ALLOWED_ORIGIN}/ping`;
-
-    cy.intercept("GET", ALLOWED_URL, {
-      statusCode: 200,
-      headers: { "access-control-allow-origin": "*" },
-      body: "pong",
-    });
+    stubAllowedHost();
 
     H.mockDataApp(APP_NAME, {
       displayName: APP_DISPLAY_NAME,
@@ -610,14 +605,12 @@ describe("scenarios > data apps > isolated origin", () => {
 
     visitAppRoute("sandboxing");
     H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
-      ["script", "window-open", "history", "websocket", "sendbeacon"].forEach(
-        (id) => {
-          cy.findByTestId(`probe-${id}`, { timeout: TIMEOUT }).should(
-            "have.text",
-            "blocked",
-          );
-        },
-      );
+      SANDBOX_BLOCKED_PROBE_IDS.forEach((id) => {
+        cy.findByTestId(`probe-${id}`, { timeout: TIMEOUT }).should(
+          "have.text",
+          "blocked",
+        );
+      });
       cy.findByTestId("probe-innerhtml").should("have.text", "stripped");
       cy.findByTestId("blocked-fetch-result", { timeout: TIMEOUT }).should(
         "contain",
@@ -631,7 +624,6 @@ describe("scenarios > data apps > isolated origin", () => {
   });
 
   it("keeps an app's allowed hosts out of the anonymous app document, and enforces them with the policy the bundle brings", () => {
-    const ALLOWED_ORIGIN = "https://allowed.data-app.test";
     const UNLISTED_URL = "https://unlisted.data-app.test/collect";
 
     // Answers whenever the browser lets the request out, so only a CSP can stop it.
@@ -647,9 +639,7 @@ describe("scenarios > data apps > isolated origin", () => {
       testEnv: TEST_ENV,
     });
 
-    cy.request(`${ISOLATED_ORIGIN}/embed/apps/${APP_NAME}`).then((response) => {
-      expect(documentPolicy(response)).not.to.contain(ALLOWED_ORIGIN);
-    });
+    expectAnonymousDocumentOmits(ALLOWED_ORIGIN);
 
     H.openDataApp(APP_NAME);
     H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
@@ -690,16 +680,15 @@ describe("scenarios > data apps > isolated origin", () => {
       "DELETE",
       `/api/ee/apps/${APP_NAME}/groups/${USER_GROUPS.ALL_USERS_GROUP}`,
     );
-    cy.intercept({
-      hostname: SITE_HOSTNAME,
+    interceptFromPage("brokeredBundle", {
       method: "GET",
       pathname: `/api/ee/apps/${APP_NAME}/bundle`,
-    }).as("brokeredBundle");
+    });
 
     cy.signInAsNormalUser();
     H.openDataApp(APP_NAME);
 
-    cy.wait("@brokeredBundle").its("response.statusCode").should("eq", 403);
+    assertBrokered("@brokeredBundle", { statusCode: 403 });
     H.main()
       .findByText(/couldn.t be loaded/i, { timeout: TIMEOUT })
       .should("be.visible");
@@ -707,17 +696,11 @@ describe("scenarios > data apps > isolated origin", () => {
   });
 
   it("previews a disabled app in Data Studio with its allowed hosts, which the anonymous app document leaves out", () => {
-    const ALLOWED_ORIGIN = "https://allowed.data-app.test";
-    const ALLOWED_URL = `${ALLOWED_ORIGIN}/ping`;
-
-    cy.intercept("GET", ALLOWED_URL, {
-      statusCode: 200,
-      headers: { "access-control-allow-origin": "*" },
-      body: "pong",
-    });
+    stubAllowedHost();
     H.mockDataApp(APP_NAME, {
       displayName: APP_DISPLAY_NAME,
       allowedHosts: [ALLOWED_ORIGIN],
+      enabled: false,
       testEnv: {
         ...TEST_ENV,
         sandbox: {
@@ -726,11 +709,8 @@ describe("scenarios > data apps > isolated origin", () => {
         },
       },
     });
-    cy.request("PUT", `/api/ee/apps/${APP_NAME}`, { enabled: false });
 
-    cy.request(`${ISOLATED_ORIGIN}/embed/apps/${APP_NAME}`).then((response) => {
-      expect(documentPolicy(response)).not.to.contain(ALLOWED_ORIGIN);
-    });
+    expectAnonymousDocumentOmits(ALLOWED_ORIGIN);
 
     cy.visit(`/data-studio/apps/${APP_NAME}`);
     H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
@@ -743,11 +723,10 @@ describe("scenarios > data apps > isolated origin", () => {
   });
 
   it("edits and reruns a question in the notebook through the page", () => {
-    cy.intercept({
-      hostname: SITE_HOSTNAME,
+    interceptFromPage("brokeredQuery", {
       method: "POST",
       pathname: "/api/dataset",
-    }).as("brokeredQuery");
+    });
 
     H.mockDataApp(APP_NAME, {
       displayName: APP_DISPLAY_NAME,
@@ -765,33 +744,32 @@ describe("scenarios > data apps > isolated origin", () => {
       );
 
       cy.findByTestId("action-buttons").findByText("Filter").click();
-      cy.get('[data-element-id="mantine-popover"]')
-        .should("have.length.above", 0)
-        .last()
-        .within(() => {
-          cy.findByText("Discount").click();
-        });
+      H.popover().findByText("Discount").click();
       cy.findByPlaceholderText("Min").type("2");
       cy.findByText("Add filter").click();
-
-      cy.findByText("Visualize").click();
-      cy.findByText("Back to visualization", { timeout: TIMEOUT }).should(
-        "not.exist",
-      );
-      cy.findByTestId("interactive-question-result-toolbar", {
-        timeout: TIMEOUT,
-      }).should("exist");
     });
 
-    cy.get<Interception[]>("@brokeredQuery.all").should((interceptions) => {
-      const last = interceptions[interceptions.length - 1];
-      expect(interceptions.length, "queries").to.be.above(1);
-      interceptions.forEach(({ request }) =>
-        expect(request.headers["x-metabase-client"]).to.eq("data-app"),
-      );
-      expect(JSON.stringify(last?.request.body), "the edited query").to.match(
-        /"filters?"/,
-      );
+    cy.get<Interception[]>("@brokeredQuery.all").then((queriesBefore) => {
+      const countBefore = queriesBefore.length;
+      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+        cy.findByText("Visualize").click();
+        cy.findByText("Back to visualization", { timeout: TIMEOUT }).should(
+          "not.exist",
+        );
+        cy.findByTestId("interactive-question-result-toolbar", {
+          timeout: TIMEOUT,
+        }).should("exist");
+      });
+
+      cy.get<Interception[]>("@brokeredQuery.all").should((queries) => {
+        const rerun = queries.slice(countBefore);
+        expect(rerun, "queries after Visualize").to.have.length.above(0);
+        rerun.forEach(expectBrokered);
+        expect(
+          JSON.stringify(rerun[rerun.length - 1]?.request.body),
+          "the edited query",
+        ).to.match(/"filters?"/);
+      });
     });
   });
 
@@ -808,11 +786,10 @@ describe("scenarios > data apps > isolated origin", () => {
     // the stub proves the app reaches the host clipboard with the text.
     H.dataAppIframe(APP_DISPLAY_NAME).then(($body) => {
       const win = $body[0].ownerDocument.defaultView;
-      if (win) {
-        cy.stub(win.navigator.clipboard, "writeText")
-          .resolves()
-          .as("writeText");
+      if (!win) {
+        throw new Error("the app frame has no window");
       }
+      cy.stub(win.navigator.clipboard, "writeText").resolves().as("writeText");
     });
     H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
       cy.findByTestId("clipboard-copy").click();
@@ -837,9 +814,9 @@ describe("scenarios > data apps > isolated origin", () => {
     it("renders a custom visualization inside a data app on the isolated origin, with its icon fetched through the page", () => {
       // The fixture plugin names an icon its archive doesn't hold, so the main
       // host answers for it.
-      cy.intercept(
+      interceptFromPage(
+        "brokeredIcon",
         {
-          hostname: SITE_HOSTNAME,
           method: "GET",
           pathname: /^\/api\/ee\/custom-viz-plugin\/\d+\/asset$/,
         },
@@ -848,7 +825,7 @@ describe("scenarios > data apps > isolated origin", () => {
           headers: { "content-type": "image/svg+xml" },
           body: '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>',
         },
-      ).as("brokeredIcon");
+      );
 
       H.mockDataApp(APP_NAME, {
         displayName: APP_DISPLAY_NAME,
@@ -890,11 +867,10 @@ describe("scenarios > data apps > isolated origin", () => {
     });
 
     it("executes an action through the page", () => {
-      cy.intercept({
-        hostname: SITE_HOSTNAME,
+      interceptFromPage("brokeredAction", {
         method: "POST",
         pathname: /^\/api\/action\/.+\/execute$/,
-      }).as("brokeredAction");
+      });
 
       createDataAppScoreboardAction().then((action) => {
         H.mockDataApp(APP_NAME, {

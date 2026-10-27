@@ -55,6 +55,8 @@ type MockDataAppOptions<TestEnv> = {
   displayName?: string;
   /** `allowed_hosts` of an app this registers. */
   allowedHosts?: string[];
+  /** Whether an app this registers is live; `false` makes it a draft. Defaults to `true`. */
+  enabled?: boolean;
   /**
    * Config a fixture reads at runtime, rather than hard-coding ids that track the
    * Cypress snapshot.
@@ -71,6 +73,7 @@ export const mockDataApp = <TestEnv = DataAppTestEnv>(
   const slug = appName;
   const displayName = options.displayName ?? appName;
   const allowedHosts = options.allowedHosts ?? [];
+  const enabled = options.enabled ?? true;
 
   let registered = false;
 
@@ -93,7 +96,7 @@ export const mockDataApp = <TestEnv = DataAppTestEnv>(
       display_name: displayName,
       bundle_path: "dist/index.js",
       allowed_hosts: allowedHosts,
-      enabled: true,
+      enabled,
     });
 
     cy.log("assign the data app to all users group");
@@ -114,6 +117,7 @@ export const mockDataApp = <TestEnv = DataAppTestEnv>(
       name: slug,
       display_name: displayName,
       allowed_hosts: allowedHosts,
+      enabled,
     });
 
     cy.intercept("GET", "/api/ee/apps/repo-status", {

@@ -36,13 +36,30 @@ export function getSiteUrl(): string {
 }
 
 /**
- * Serves data apps from `getIsolatedOrigin()` until the next snapshot restore.
- * `MB_ISOLATED_ORIGIN` is environment-only, and every spec shares one backend, so a
- * testing endpoint sets it.
+ * Sets `MB_ISOLATED_ORIGIN` until the next snapshot restore. It is environment-only, and
+ * every spec shares one backend, so a testing endpoint sets it.
  */
+export function setIsolatedOrigin(value: string | null) {
+  return cy.request("PUT", "/api/testing/isolated-origin", { value });
+}
+
+/** Serves data apps from `getIsolatedOrigin()` until the next snapshot restore. */
 export function enableIsolatedOrigin() {
   updateSetting("site-url", getSiteUrl());
-  return cy.request("PUT", "/api/testing/isolated-origin", {
-    value: getIsolatedOrigin(),
-  });
+  return setIsolatedOrigin(getIsolatedOrigin());
 }
+
+/**
+ * The fixture's sandbox probes for method and constructor calls the sandbox distortion
+ * replaces with a throwing shim. (Getter-only reads like `localStorage` aren't
+ * intercepted, so they aren't probed.)
+ */
+export const SANDBOX_BLOCKED_PROBE_IDS = [
+  "script",
+  "window-open",
+  "alert",
+  "history",
+  "keydown-listener",
+  "websocket",
+  "sendbeacon",
+];
