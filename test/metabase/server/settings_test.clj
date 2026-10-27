@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.server.settings :as server.settings]
+   [metabase.settings.core :as setting]
    [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
@@ -65,6 +66,14 @@
       (mt/with-temp-env-var-value! [mb-isolated-origin "http://localhost:3001"]
         (is (nil? (server.settings/isolated-origin)))
         (is (true? (server.settings/isolated-origin-misconfigured?)))))))
+
+(deftest isolated-origin-misconfigured-is-public-test
+  (testing "the frontend learns that the value can't be used, so it can say so instead of loading nothing"
+    (mt/with-temporary-setting-values [site-url "https://mb.example.com"]
+      (mt/with-temp-env-var-value! [mb-isolated-origin "https://mb.example.com:8443"]
+        (is (true? (:isolated-origin-misconfigured? (setting/user-readable-values-map #{:public}))))))
+    (mt/with-temp-env-var-value! [mb-isolated-origin nil]
+      (is (false? (:isolated-origin-misconfigured? (setting/user-readable-values-map #{:public})))))))
 
 (deftest isolated-origin-unset-is-not-misconfigured-test
   (mt/with-temp-env-var-value! [mb-isolated-origin nil]
