@@ -16,14 +16,13 @@ export type OriginMismatch =
  * origin, or null when nothing is wrong.
  */
 export function getOriginMismatch(
-  isCrossOrigin: boolean,
   siteUrl: string | null,
   location: Pick<
     Location,
     "origin" | "hostname" | "pathname" | "search" | "hash"
   >,
 ): OriginMismatch | null {
-  if (!isCrossOrigin || !siteUrl) {
+  if (!siteUrl) {
     return null;
   }
 

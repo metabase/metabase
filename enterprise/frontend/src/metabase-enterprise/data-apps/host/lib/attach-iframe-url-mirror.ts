@@ -53,10 +53,38 @@ export function mirrorIframePath(iframePath: string, parentName: string): void {
 }
 
 /**
+ * Calls `onChange` after each route change in `win`: a `pushState` or `replaceState`
+ * (programmatic navigation), or a `popstate` (browser back/forward). Returns a function
+ * that restores `win`'s `History` methods.
+ */
+export function observeHistory(
+  win: UrlMirrorWindow,
+  onChange: () => void,
+): () => void {
+  const history = win.history;
+  const origPush = history.pushState;
+  const origReplace = history.replaceState;
+
+  history.pushState = function (...args) {
+    origPush.apply(this, args);
+    onChange();
+  };
+  history.replaceState = function (...args) {
+    origReplace.apply(this, args);
+    onChange();
+  };
+  win.addEventListener("popstate", onChange);
+
+  return () => {
+    history.pushState = origPush;
+    history.replaceState = origReplace;
+    win.removeEventListener("popstate", onChange);
+  };
+}
+
+/**
  * Mirrors a same-origin iframe's URL into the parent's URL bar (no page reload),
- * by patching the iframe's `History` methods directly. Wrapping
- * `pushState`/`replaceState` catches programmatic nav; `popstate` catches browser
- * back/forward inside the iframe.
+ * by patching the iframe's `History` methods directly.
  *
  * Returns a cleanup that restores the originals.
  */
@@ -64,28 +92,13 @@ export function attachIframeUrlMirror(
   iframeWindow: UrlMirrorWindow,
   parentName: string,
 ): () => void {
-  const mirror = () =>
-    mirrorIframePath(iframeWindow.location.pathname, parentName);
-
-  const history = iframeWindow.history;
-  const origPush = history.pushState;
-  const origReplace = history.replaceState;
-
-  history.pushState = function (...args) {
-    origPush.apply(this, args);
-    mirror();
-  };
-  history.replaceState = function (...args) {
-    origReplace.apply(this, args);
-    mirror();
-  };
-  iframeWindow.addEventListener("popstate", mirror);
+  const restore = observeHistory(iframeWindow, () =>
+    mirrorIframePath(iframeWindow.location.pathname, parentName),
+  );
 
   return () => {
     try {
-      history.pushState = origPush;
-      history.replaceState = origReplace;
-      iframeWindow.removeEventListener("popstate", mirror);
+      restore();
     } catch (error) {
       // Expected only when the frame navigated cross-origin: its window can no
       // longer be touched, and the patched history/listeners are gone with the old

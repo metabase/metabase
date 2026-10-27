@@ -6,11 +6,10 @@ import {
   SidebarSection,
 } from "metabase/nav/containers/MainNavbar/Sidebar";
 import { SidebarLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
-import { useSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { useListDataAppsQuery } from "metabase-enterprise/api";
 
-import { getCrossOriginDataAppHref } from "../host/lib/get-cross-origin-data-app-href";
+import { useCrossOriginDataAppHref } from "../host/lib/get-cross-origin-data-app-href";
 
 export function DataAppsNavbarSection({
   onItemSelect,
@@ -21,8 +20,7 @@ export function DataAppsNavbarSection({
   const dataApps = allDataApps.filter(
     (dataApp) => dataApp.enabled && !dataApp.outdated,
   );
-  const isolatedOrigin = useSetting("isolated-origin");
-  const siteUrl = useSetting("site-url");
+  const getCrossOriginHref = useCrossOriginDataAppHref();
 
   if (dataApps.length === 0) {
     return null;
@@ -44,13 +42,7 @@ export function DataAppsNavbarSection({
             onClick={onItemSelect}
             rel="noopener noreferrer"
             target="_blank"
-            url={
-              getCrossOriginDataAppHref(
-                dataApp.name,
-                isolatedOrigin,
-                siteUrl,
-              ) ?? Urls.dataApp(dataApp.name)
-            }
+            url={getCrossOriginHref(dataApp.name) ?? Urls.dataApp(dataApp.name)}
           >
             {dataApp.display_name}
           </SidebarLink>
