@@ -174,15 +174,20 @@ const pathWindowCtes = (
   const start = paths.direction !== "to" ? paths.start : null;
   const end = paths.direction !== "from" ? paths.end : null;
 
-  const base = scopedEvents(spec, undefined, [
-    { as: "is_step", sql: `(${isStep})` },
-    { as: "is_start", sql: start !== null ? flagSql(start.flag) : "0" },
-    { as: "is_end", sql: end !== null ? flagSql(end.flag) : "0" },
-    { as: "step_name", sql: stepNameSql(spec) },
-    ...(paths.visit.kind === "session" && spec.grain !== "session"
-      ? [SESSION_EXTRA_COLUMN]
-      : []),
-  ]);
+  const base = scopedEvents(
+    spec,
+    undefined,
+    [
+      { as: "is_step", sql: `(${isStep})` },
+      { as: "is_start", sql: start !== null ? flagSql(start.flag) : "0" },
+      { as: "is_end", sql: end !== null ? flagSql(end.flag) : "0" },
+      { as: "step_name", sql: stepNameSql(spec) },
+      ...(paths.visit.kind === "session" && spec.grain !== "session"
+        ? [SESSION_EXTRA_COLUMN]
+        : []),
+    ],
+    { breakoutAnchor: start !== null ? "is_start" : undefined },
+  );
   warnings.push(...base.warnings);
 
   const ctes: Cte[] = [...base.ctes];

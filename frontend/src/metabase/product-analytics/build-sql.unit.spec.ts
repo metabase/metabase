@@ -103,16 +103,17 @@ describe("buildSql", () => {
       expect(sql).toContain("addWeeks(cohort, offset) AS date");
     });
 
-    it("places people by their attribute value as of their start", () => {
+    it("places people by the first value on their start events", () => {
       const sql = getCohortsSql({
         breakout: { type: "property", column: "plan" },
         granularity: "month",
       });
 
       expect(sql).toContain(
-        "argMaxIf(e.breakout_value, e.ts, e.ts <= f.start_ts AND e.breakout_value != '') AS cohort",
+        "argMinIf(breakout_value, ts, breakout_value != '' AND (is_start)) AS breakout",
       );
-      expect(sql).toContain("toStartOfMonth(f.start_ts) AS started");
+      expect(sql).toContain("breakout AS cohort");
+      expect(sql).toContain("toStartOfMonth(start_ts) AS started");
     });
 
     it("only counts the people who have reached a period", () => {

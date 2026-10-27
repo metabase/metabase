@@ -74,13 +74,13 @@ export const defaultSpec = (kind: AnalysisKind): AnalysisSpec => {
             { flag: FLAG.report },
             { flag: FLAG.checkout },
           ],
-          sessionGapMinutes: 30,
+          visit: { kind: "inactivity", gap: { value: 30, unit: "minute" } },
           mergeRepeats: true,
           hideNoisyEvents: false,
           maxNodes: 8,
           minVolume: 5,
         },
-        output: { pathsEdgeMetric: "people" },
+        output: {},
       };
     case "habit":
       return {
@@ -101,6 +101,7 @@ export const defaultSpec = (kind: AnalysisKind): AnalysisSpec => {
           active: { flag: FLAG.active },
           period: "week",
           hasFirstSeen: true,
+          counted: "person",
         },
         output: {
           lifecycleShown: ["new", "returning", "resurrected", "dormant"],

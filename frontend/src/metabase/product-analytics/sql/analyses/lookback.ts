@@ -23,7 +23,9 @@ const PREVIOUS_PERIOD_DAYS: Record<Period, number> = {
  * inside the range.
  *
  * Lifecycle reads one period back, so people active then and in the range's
- * first period are returning, and those who stopped went quiet in it.
+ * first period are returning, and those who stopped went quiet in it. Habit's
+ * DAU/MAU (or WAU/MAU) reads a month back, so the range's first periods have
+ * a whole month of monthly users.
  */
 export const getLookbackDays = (spec: AnalysisSpec): number => {
   if (spec.kind === "habit" && spec.habit?.measure === "ratio") {

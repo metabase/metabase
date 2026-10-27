@@ -13,7 +13,6 @@ import {
 } from "./base";
 import {
   BREAKOUT_COLUMN,
-  BREAKOUT_VALUE_COLUMN,
   breakoutDeps,
   breakoutOrderBy,
   withBreakout,
@@ -46,22 +45,25 @@ export const planCohorts = (spec: AnalysisSpec): QueryPlan => {
   }
 
   const period = periodOf(spec);
-  const isByAttribute = spec.breakout?.type === "property";
-  const isBySegments = spec.breakout?.type === "segments";
   const isGrouped = spec.breakout !== undefined;
   const warnings: string[] = [];
 
-  const base = scopedEvents(spec, undefined, [
-    {
-      as: "is_start",
-      sql: cohorts.start !== undefined ? flagSql(cohorts.start.flag) : "1",
-    },
-    {
-      as: "is_return",
-      sql: cohorts.return !== undefined ? flagSql(cohorts.return.flag) : "1",
-    },
-    SESSION_EXTRA_COLUMN,
-  ]);
+  const base = scopedEvents(
+    spec,
+    undefined,
+    [
+      {
+        as: "is_start",
+        sql: cohorts.start !== undefined ? flagSql(cohorts.start.flag) : "1",
+      },
+      {
+        as: "is_return",
+        sql: cohorts.return !== undefined ? flagSql(cohorts.return.flag) : "1",
+      },
+      SESSION_EXTRA_COLUMN,
+    ],
+    { breakoutAnchor: "is_start" },
+  );
   warnings.push(...base.warnings);
 
   const ctes: Cte[] = [...base.ctes];
@@ -80,10 +82,10 @@ export const planCohorts = (spec: AnalysisSpec): QueryPlan => {
     ].join("\n"),
   });
 
-  // An attribute that changes, like a plan, is read as of the start: its
-  // latest value then would favor the people who stayed long enough to change it.
+  // A property's value comes from the start events, the breakout's anchor: a
+  // later value would favor the people who stayed long enough to change it.
   ctes.push(
-    isBySegments
+    isGrouped
       ? {
           name: "starts",
           note: `each ${spec.grain} placed in every cohort they're in, from their start`,
@@ -96,33 +98,18 @@ export const planCohorts = (spec: AnalysisSpec): QueryPlan => {
             `FROM ${withBreakout(spec, "first_starts")}`,
           ].join("\n"),
         }
-      : isByAttribute
-        ? {
-            name: "starts",
-            note: `each ${spec.grain} placed with their latest value of the property as of their start`,
-            deps: ["scoped_events", "first_starts"],
-            body: [
-              "SELECT",
-              "  f.actor AS actor,",
-              `  argMaxIf(e.${BREAKOUT_VALUE_COLUMN}, e.ts, e.ts <= f.start_ts AND e.${BREAKOUT_VALUE_COLUMN} != '') AS cohort,`,
-              `  ${startOf(period, "f.start_ts")} AS started`,
-              "FROM first_starts AS f",
-              "INNER JOIN scoped_events AS e ON e.actor = f.actor",
-              "GROUP BY f.actor, f.start_ts",
-            ].join("\n"),
-          }
-        : {
-            name: "starts",
-            note: `each ${spec.grain} placed in the ${period} they started in`,
-            deps: ["first_starts"],
-            body: [
-              "SELECT",
-              "  actor,",
-              `  ${startOf(period, "start_ts")} AS cohort,`,
-              "  cohort AS started",
-              "FROM first_starts",
-            ].join("\n"),
-          },
+      : {
+          name: "starts",
+          note: `each ${spec.grain} placed in the ${period} they started in`,
+          deps: ["first_starts"],
+          body: [
+            "SELECT",
+            "  actor,",
+            `  ${startOf(period, "start_ts")} AS cohort,`,
+            "  cohort AS started",
+            "FROM first_starts",
+          ].join("\n"),
+        },
   );
 
   // Returns only count inside the date range, so an actor's offsets stop at

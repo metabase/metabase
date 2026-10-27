@@ -20,7 +20,10 @@ import type {
 } from "../../frontend/src/metabase/product-analytics/spec/types";
 import { BREAKOUT_PROPERTY_COLUMN } from "../../frontend/src/metabase/product-analytics/sql/analyses/breakout";
 import { activeColumn } from "../../frontend/src/metabase/product-analytics/sql/analyses/habit";
-import { FIRST_SEEN_EXTRA_COLUMN } from "../../frontend/src/metabase/product-analytics/sql/analyses/lifecycle";
+import {
+  FIRST_SEEN_EXTRA_COLUMN,
+  LIFECYCLE_VALUE_COLUMN,
+} from "../../frontend/src/metabase/product-analytics/sql/analyses/lifecycle";
 import {
   IN_RANGE_FLAG,
   getLookbackDays,
@@ -591,7 +594,7 @@ const breakoutCases: BreakoutCase[] = [
     label: "lifecycle",
     spec: defaultSpec("lifecycle"),
     keys: ["period", "state"],
-    metric: "actors",
+    metric: LIFECYCLE_VALUE_COLUMN,
     withEveryone: true,
   },
   {
@@ -674,9 +677,9 @@ const sharesSum = (
   include: (row: Record<string, unknown>) => boolean,
   metric: string,
 ): number[] =>
-  [
-    ...sumByKey(rows.filter(include), { keys, metric }).values(),
-  ].map((sum) => Math.round(sum * 100) / 100);
+  [...sumByKey(rows.filter(include), { keys, metric }).values()].map(
+    (sum) => Math.round(sum * 100) / 100,
+  );
 
 const percentSpec = (spec: AnalysisSpec): AnalysisSpec => ({
   ...spec,
@@ -809,7 +812,7 @@ const lifecycleAt = (state: string) =>
       (row) =>
         String(row.period) === String(lifecycleDirect?.week) &&
         row.state === state,
-    )?.actors,
+    )?.[LIFECYCLE_VALUE_COLUMN],
   );
 check(
   "lifecycle starts at the range's first week",
@@ -833,14 +836,20 @@ type FixtureEvent = {
   actor: string;
   flag: (typeof FLAG)[keyof typeof FLAG];
   at: string;
+  /** The event property breakouts read. Empty when left out. */
+  country?: string;
+  /** False for the history before the date range. True when left out. */
+  inRange?: boolean;
 };
 
+// Events are named after their flag, so paths tell their steps apart.
 const fixtureEventsSql = (events: FixtureEvent[]): string =>
   events
     .map(
-      ({ actor, flag, at }, index) =>
+      ({ actor, flag, at, country = "", inRange = true }, index) =>
         `SELECT '${actor}' AS person_id, toDateTime('${at}') AS created_at, ` +
-        `'s' AS session_id, 'e${index}' AS event_id, 'event' AS event_name, '/' AS url_path, ` +
+        `'s' AS session_id, 'e${index}' AS event_id, '${flag}' AS event_name, '/' AS url_path, ` +
+        `'${country}' AS country, ${Number(inRange)} AS ${IN_RANGE_FLAG}, ` +
         Object.values(FLAG)
           .map((other) => `${Number(other === flag)} AS ${other}`)
           .join(", "),
@@ -969,6 +978,307 @@ checkRows(
   "counted from each step, a run starts at the last first step before going on",
   await funnelFixtureRows(REVIEWING, { anchor: "each" }, "timeToConvert"),
   TOOK_TWO_DAYS,
+);
+
+// Breakouts by an event property, on hand-written events. Each person is in
+// one group, for everything they did: their first touchpoint's. That's the
+// property's latest non-empty value as of the first event that can place
+// them, like a funnel's first step, however it changes after.
+const propertyFixtureRows = (spec: AnalysisSpec, events: FixtureEvent[]) => {
+  const brokenOut: AnalysisSpec = { ...spec, breakout: { type: "property" } };
+  return chJson(
+    buildSql(brokenOut, fixtureEventsSql(events), baseColumns(brokenOut)).sql,
+  );
+};
+
+// Each group, with the rows' metric added up, in the order they come.
+const groupTotals = (
+  rows: Record<string, unknown>[],
+  metric: string,
+  group = "breakout",
+): Record<string, number> => {
+  const totals: Record<string, number> = {};
+  for (const row of rows) {
+    const key = String(row[group]);
+    totals[key] = (totals[key] ?? 0) + asNumber(row[metric]);
+  }
+  return totals;
+};
+
+const checkGroups = (
+  name: string,
+  actual: Record<string, number>,
+  expected: Record<string, number>,
+) =>
+  check(
+    name,
+    JSON.stringify(actual) === JSON.stringify(expected),
+    JSON.stringify(actual),
+  );
+
+console.log("\nbreakouts by an event property");
+// Viewed pricing in the US, then went on in Canada.
+const MOVED_ON: FixtureEvent[] = [
+  {
+    actor: "moved",
+    flag: FLAG.pricing,
+    at: "2026-01-01 00:00:00",
+    country: "US",
+  },
+  {
+    actor: "moved",
+    flag: FLAG.trial,
+    at: "2026-01-02 00:00:00",
+    country: "CA",
+  },
+  {
+    actor: "moved",
+    flag: FLAG.checkout,
+    at: "2026-01-03 00:00:00",
+    country: "CA",
+  },
+  {
+    actor: "moved",
+    flag: FLAG.error,
+    at: "2026-01-20 00:00:00",
+    country: "CA",
+  },
+];
+// Seen in Mexico on an event that isn't a step, viewed pricing on one
+// without a country, then started a trial in Germany.
+const FIRST_VALUE_LATER: FixtureEvent[] = [
+  {
+    actor: "later",
+    flag: FLAG.error,
+    at: "2026-01-01 00:00:00",
+    country: "MX",
+  },
+  { actor: "later", flag: FLAG.pricing, at: "2026-01-05 00:00:00" },
+  {
+    actor: "later",
+    flag: FLAG.trial,
+    at: "2026-01-06 00:00:00",
+    country: "DE",
+  },
+];
+// Never had a country on a step.
+const NO_VALUE: FixtureEvent[] = [
+  {
+    actor: "none",
+    flag: FLAG.error,
+    at: "2026-01-01 00:00:00",
+    country: "MX",
+  },
+  { actor: "none", flag: FLAG.pricing, at: "2026-01-05 00:00:00" },
+];
+checkRows(
+  "a funnel places each person by the first value on any of its steps",
+  await propertyFixtureRows(defaultSpec("funnel"), [
+    ...MOVED_ON,
+    ...FIRST_VALUE_LATER,
+    ...NO_VALUE,
+  ]),
+  [
+    { breakout: "DE", label: "1. Viewed pricing", people: 1 },
+    { breakout: "DE", label: "2. Started trial", people: 1 },
+    { breakout: "DE", label: "3. Purchased", people: 0 },
+    { breakout: "US", label: "1. Viewed pricing", people: 1 },
+    { breakout: "US", label: "2. Started trial", people: 1 },
+    { breakout: "US", label: "3. Purchased", people: 1 },
+    { breakout: "", label: "1. Viewed pricing", people: 1 },
+    { breakout: "", label: "2. Started trial", people: 0 },
+    { breakout: "", label: "3. Purchased", people: 0 },
+  ],
+);
+
+// Active in France, then viewed pricing in the US, and again in Canada as
+// they came back from there. Unlike PostHog, whose returns must have the
+// start's value, the returns count for the US.
+const cohortsDefault = defaultSpec("cohorts");
+const fromPricing: AnalysisSpec = {
+  ...cohortsDefault,
+  cohorts: cohortsDefault.cohorts && {
+    ...cohortsDefault.cohorts,
+    start: { flag: FLAG.pricing },
+  },
+};
+const retentionRows = await propertyFixtureRows(fromPricing, [
+  {
+    actor: "moved",
+    flag: FLAG.active,
+    at: "2025-12-31 00:00:00",
+    country: "FR",
+  },
+  {
+    actor: "moved",
+    flag: FLAG.pricing,
+    at: "2026-01-05 00:00:00",
+    country: "US",
+  },
+  {
+    actor: "moved",
+    flag: FLAG.pricing,
+    at: "2026-01-12 00:00:00",
+    country: "CA",
+  },
+  {
+    actor: "moved",
+    flag: FLAG.active,
+    at: "2026-01-12 00:00:00",
+    country: "CA",
+  },
+  {
+    actor: "moved",
+    flag: FLAG.active,
+    at: "2026-01-19 00:00:00",
+    country: "CA",
+  },
+]);
+checkRows(
+  "retention places each person by their start, and counts their returns from anywhere",
+  retentionRows,
+  [
+    // Viewing pricing isn't coming back.
+    { cohort: "US", offset: 0, value: 0 },
+    { cohort: "US", offset: 1, value: 1 },
+    { cohort: "US", offset: 2, value: 1 },
+  ],
+);
+
+// Active in the US, then Canada, after an event that isn't activity in France.
+checkGroups(
+  "habit places each person by their first activity",
+  groupTotals(
+    await propertyFixtureRows(defaultSpec("habit"), [
+      {
+        actor: "moved",
+        flag: FLAG.error,
+        at: "2026-01-01 00:00:00",
+        country: "FR",
+      },
+      {
+        actor: "moved",
+        flag: FLAG.active,
+        at: "2026-01-02 00:00:00",
+        country: "US",
+      },
+      {
+        actor: "moved",
+        flag: FLAG.active,
+        at: "2026-01-03 00:00:00",
+        country: "CA",
+      },
+      {
+        actor: "moved",
+        flag: FLAG.active,
+        at: "2026-01-04 00:00:00",
+        country: "CA",
+      },
+    ]),
+    "people",
+  ),
+  { US: 1 },
+);
+
+// Lifecycle reads the week before the range, and so does the breakout: "quiet"
+// was only active then, and is dormant in the range's first week. Active in
+// France that week, then in the US and Canada, "moved" stays in France.
+const lifecycleDefault = defaultSpec("lifecycle");
+checkGroups(
+  "lifecycle places each person by their first activity it reads, before the range too",
+  groupTotals(
+    await propertyFixtureRows(
+      {
+        ...lifecycleDefault,
+        lifecycle: lifecycleDefault.lifecycle && {
+          ...lifecycleDefault.lifecycle,
+          hasFirstSeen: false,
+        },
+      },
+      [
+        {
+          actor: "quiet",
+          flag: FLAG.active,
+          at: "2025-12-29 00:00:00",
+          country: "DE",
+          inRange: false,
+        },
+        {
+          actor: "moved",
+          flag: FLAG.active,
+          at: "2025-12-29 00:00:00",
+          country: "FR",
+          inRange: false,
+        },
+        {
+          actor: "moved",
+          flag: FLAG.active,
+          at: "2026-01-05 00:00:00",
+          country: "US",
+        },
+        {
+          actor: "moved",
+          flag: FLAG.active,
+          at: "2026-01-12 00:00:00",
+          country: "CA",
+        },
+      ],
+    ),
+    LIFECYCLE_VALUE_COLUMN,
+  ),
+  // Dormant counts down. "moved" has a state in each of the range's weeks.
+  { DE: -1, FR: 2 },
+);
+
+// Reported from France, then viewed pricing in the US and went on in
+// Canada, and two days later viewed pricing there.
+const pathsDefault = defaultSpec("paths");
+checkGroups(
+  "paths place each person by their starting event",
+  groupTotals(
+    await propertyFixtureRows(
+      {
+        ...pathsDefault,
+        paths: pathsDefault.paths && { ...pathsDefault.paths, minVolume: 1 },
+      },
+      [
+        {
+          actor: "moved",
+          flag: FLAG.report,
+          at: "2026-01-01 00:00:00",
+          country: "FR",
+        },
+        {
+          actor: "moved",
+          flag: FLAG.pricing,
+          at: "2026-01-01 00:01:00",
+          country: "US",
+        },
+        {
+          actor: "moved",
+          flag: FLAG.trial,
+          at: "2026-01-01 00:02:00",
+          country: "CA",
+        },
+        {
+          actor: "moved",
+          flag: FLAG.checkout,
+          at: "2026-01-01 00:03:00",
+          country: "CA",
+        },
+        {
+          actor: "moved",
+          flag: FLAG.pricing,
+          at: "2026-01-03 00:00:00",
+          country: "CA",
+        },
+      ],
+    ),
+    "weight",
+  ),
+  // Pricing to trial, trial to checkout, and dropping off after checkout,
+  // then after the second visit's pricing.
+  { US: 4 },
 );
 
 if (failures.length > 0) {

@@ -25,11 +25,20 @@ export interface BaseBlock {
   warnings: string[];
 }
 
+type ScopedEventsOptions = {
+  extraWhere?: string[];
+  /**
+   * A condition on `scoped_events` for the events whose property value can
+   * place their actor in a breakout's group. Undefined: any of them can.
+   */
+  breakoutAnchor?: string;
+};
+
 export const scopedEvents = (
   spec: AnalysisSpec,
   match?: FlagRef,
   extraColumns: { as: string; sql: string }[] = [],
-  extraWhere: string[] = [],
+  { extraWhere = [], breakoutAnchor }: ScopedEventsOptions = {},
 ): BaseBlock => {
   const warnings: string[] = [];
   const actor = compileGrain(spec.grain);
@@ -94,7 +103,7 @@ export const scopedEvents = (
   });
 
   if (spec.breakout !== undefined) {
-    ctes.push(actorBreakoutsCte(spec.breakout));
+    ctes.push(actorBreakoutsCte(spec.breakout, breakoutAnchor));
   }
 
   return { ctes, warnings };

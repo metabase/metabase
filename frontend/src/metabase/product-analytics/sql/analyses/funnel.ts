@@ -199,7 +199,12 @@ const funnelLevels = (spec: AnalysisSpec, funnel: FunnelSpec): FunnelLevels => {
   const warnings: string[] = [];
   const n = funnel.steps.length;
 
-  const base = scopedEvents(spec, undefined, funnelFlags(funnel));
+  // PostHog's first touchpoint: the first value on any of the steps' events.
+  const base = scopedEvents(spec, undefined, funnelFlags(funnel), {
+    breakoutAnchor: funnel.steps
+      .map((_, index) => `step_${index + 1}`)
+      .join(" OR "),
+  });
   warnings.push(...base.warnings);
 
   let levelExpr: string;

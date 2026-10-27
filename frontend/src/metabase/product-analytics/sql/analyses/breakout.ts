@@ -50,25 +50,36 @@ export const breakoutEventColumns = (
 };
 
 /**
- * The groups each actor is in. A property gives each actor one: its latest
- * non-empty value in the range. Segments give each actor every group they're
+ * The groups each actor is in. A property gives each actor one, their first
+ * touchpoint's: the first non-empty value on the events `anchor` picks out of
+ * `scoped_events`, like a funnel's steps, or on any of them without one. A
+ * value that changes later doesn't move them, and an actor with no value
+ * there is in the empty group. Segments give each actor every group they're
  * in, so an actor can count in several.
  */
-export const actorBreakoutsCte = (breakout: BreakoutSpec): Cte => {
+export const actorBreakoutsCte = (
+  breakout: BreakoutSpec,
+  anchor?: string,
+): Cte => {
   switch (breakout.type) {
-    case "property":
+    case "property": {
+      const condition = [
+        `${BREAKOUT_VALUE_COLUMN} != ''`,
+        ...(anchor !== undefined ? [`(${anchor})`] : []),
+      ].join(" AND ");
       return {
         name: ACTOR_BREAKOUTS_CTE,
-        note: "each actor's latest value of the property",
+        note: "each actor's value of the property at their first touchpoint",
         deps: ["scoped_events"],
         body: [
           "SELECT",
           "  actor,",
-          `  argMaxIf(${BREAKOUT_VALUE_COLUMN}, ts, ${BREAKOUT_VALUE_COLUMN} != '') AS ${BREAKOUT_COLUMN}`,
+          `  argMinIf(${BREAKOUT_VALUE_COLUMN}, ts, ${condition}) AS ${BREAKOUT_COLUMN}`,
           "FROM scoped_events",
           "GROUP BY actor",
         ].join("\n"),
       };
+    }
     case "segments":
       return {
         name: ACTOR_BREAKOUTS_CTE,
