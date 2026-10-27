@@ -53,8 +53,10 @@ export const fakeDataApp = (overrides: Partial<DataApp> = {}): DataApp => ({
 type MockDataAppOptions<TestEnv> = {
   /** Display name (iframe title + admin list); defaults to the fixture dir name. */
   displayName?: string;
-  /** `allowed_hosts` served in the bundle response header. */
+  /** `allowed_hosts` of an app this registers. */
   allowedHosts?: string[];
+  /** Whether an app this registers is live; `false` makes it a draft. Defaults to `true`. */
+  enabled?: boolean;
   /**
    * Config a fixture reads at runtime, rather than hard-coding ids that track the
    * Cypress snapshot.
@@ -71,6 +73,9 @@ export const mockDataApp = <TestEnv = DataAppTestEnv>(
   const slug = appName;
   const displayName = options.displayName ?? appName;
   const allowedHosts = options.allowedHosts ?? [];
+  const enabled = options.enabled ?? true;
+
+  let registered = false;
 
   // the entrypoint checks for app access before serving its HTML
   // we need to have a real app in the database - mocking the endpoint isn't enough
@@ -83,6 +88,7 @@ export const mockDataApp = <TestEnv = DataAppTestEnv>(
     }
 
     expect(status).to.equal(404);
+    registered = true;
 
     cy.log("register the data app");
     cy.request("POST", "/api/ee/apps", {
@@ -90,7 +96,7 @@ export const mockDataApp = <TestEnv = DataAppTestEnv>(
       display_name: displayName,
       bundle_path: "dist/index.js",
       allowed_hosts: allowedHosts,
-      enabled: true,
+      enabled,
     });
 
     cy.log("assign the data app to all users group");
@@ -111,6 +117,7 @@ export const mockDataApp = <TestEnv = DataAppTestEnv>(
       name: slug,
       display_name: displayName,
       allowed_hosts: allowedHosts,
+      enabled,
     });
 
     cy.intercept("GET", "/api/ee/apps/repo-status", {
@@ -118,21 +125,27 @@ export const mockDataApp = <TestEnv = DataAppTestEnv>(
     });
     cy.intercept("GET", "/api/ee/apps", [app]);
     cy.intercept({ method: "GET", pathname: `/api/ee/apps/${slug}` }, app);
+    const bundle = prelude + bundleCode;
+
+    // The real endpoint serves the bundle, so the response carries the headers the
+    // server builds for the app, its CSP among them.
+    if (registered) {
+      cy.request("PUT", `/api/ee/apps/${slug}/bundle`, { bundle });
+    }
     cy.intercept(
       { method: "GET", pathname: `/api/ee/apps/${slug}/bundle` },
-      {
-        statusCode: 200,
-        headers: {
-          // Match the REAL bundle endpoint (`data_apps/api.clj`), which serves
-          // `application/javascript` + `nosniff`. The runtime fetch-and-evals the
-          // bundle, so the type is irrelevant there — but a stricter mock (e.g.
-          // `text/plain`) would diverge from production, so keep it aligned.
-          "content-type": "application/javascript",
-          "X-Content-Type-Options": "nosniff",
-          "X-Metabase-Data-App-Allowed-Hosts": JSON.stringify(allowedHosts),
-        },
-        body: prelude + bundleCode,
-        ...(options.bundleDelayMs ? { delay: options.bundleDelayMs } : {}),
+      (req) => {
+        // A conditional request could come back as a bodiless 304.
+        delete req.headers["if-none-match"];
+        req.continue((res) => {
+          // An app a sync loaded holds a placeholder bundle. A refusal keeps its body.
+          if (res.statusCode === 200) {
+            res.body = bundle;
+          }
+          if (options.bundleDelayMs) {
+            res.setDelay(options.bundleDelayMs);
+          }
+        });
       },
     );
 
