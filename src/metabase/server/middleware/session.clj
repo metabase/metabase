@@ -92,38 +92,47 @@
   (when-let [header (get-in request [:headers "cookie"])]
     (vec (for [pair  (str/split header #";")
                :let  [[cookie-name value] (str/split (str/trim pair) #"=" 2)]
-               :when (= request/metabase-session-cookie cookie-name)]
-           (str/trim (or value ""))))))
+               ;; Without `=`, a browser sends a cookie that has no name, and this text as its value.
+               :when (and (= request/metabase-session-cookie cookie-name) value)]
+           (str/trim value)))))
+
+(def ^:private max-stray-session-cookie-deletions-bytes
+  ;; A proxy refuses a response whose headers outgrow its buffer: nginx's default `proxy_buffer_size` is 4 KB, and an
+  ;; API response's other headers take about 2 KB of it.
+  1536)
 
 (defn- expired-stray-session-cookies
-  "`Set-Cookie` values that delete each `metabase.SESSION` cookie this request could carry other than the browser's
+  "`Set-Cookie` values that delete the `metabase.SESSION` cookies this request could carry other than the browser's
   own, which is host-only at `/`: one set with a `Domain` (by another host of the same site, at any parent domain of
-  this host, `Partitioned` too on HTTPS) or at a deeper path. Paths are taken with and without a trailing slash and the
-  site URL's path, which a proxy removes before the request reaches Metabase."
+  this host or of the site URL's host, `Partitioned` too on HTTPS) or at a deeper path. Paths are taken with and
+  without a trailing slash and the site URL's path, which a proxy removes before the request reaches Metabase.
+
+  Shallow paths come first, and the values stop at [[max-stray-session-cookie-deletions-bytes]]: a cookie at a deeper
+  path reaches fewer requests."
   [{:keys [uri] :as request}]
-  (let [domains  (distinct (for [host  (request/host-names request)
-                                 :when (not (u.http/ip-literal? host))
-                                 :let  [labels (str/split host #"\.")]
-                                 n     (range (dec (count labels)))]
-                             (str/join "." (drop n labels))))
-        prefixes (->> (str/split (or uri "/") #"/")
-                      (remove str/blank?)
-                      (reductions #(str %1 "/" %2) ""))
-        paths    (distinct (for [base   (distinct ["" (system/site-path)])
-                                 prefix prefixes
-                                 path   [(str base prefix) (str base prefix "/")]]
-                             (if (= "" path) "/" path)))
-        https?   (#{:https :unknown} (request/https-state request))
-        expire   (fn [attributes]
-                   (str request/metabase-session-cookie "=; " attributes
-                        "Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT"))]
-    (concat (for [domain      domains
-                  path        paths
-                  partitioned (if https? ["" "Secure; Partitioned; "] [""])]
-              (expire (format "Domain=%s; Path=%s; %s" domain path partitioned)))
-            (for [path  paths
-                  :when (not= "/" path)]
-              (expire (format "Path=%s; " path))))))
+  (let [hosts     (concat (request/host-names request) (some-> (system/site-url) u.http/host-name list))
+        domains   (distinct (for [host  hosts
+                                  :when (not (u.http/ip-literal? host))
+                                  :let  [labels (str/split host #"\.")]
+                                  n     (range (dec (count labels)))]
+                              (str/join "." (drop n labels))))
+        prefixes  (->> (str/split (or uri "/") #"/")
+                       (remove str/blank?)
+                       (reductions #(str %1 "/" %2) ""))
+        paths     (distinct (for [prefix prefixes
+                                  base   (distinct ["" (system/site-path)])
+                                  path   [(str base prefix) (str base prefix "/")]]
+                              (if (= "" path) "/" path)))
+        https?    (#{:https :unknown} (request/https-state request))
+        deletions (for [path       paths
+                        attributes (concat (for [domain      domains
+                                                 partitioned (if https? ["" "Secure; Partitioned; "] [""])]
+                                             (format "Domain=%s; Path=%s; %s" domain path partitioned))
+                                           (when-not (= "/" path)
+                                             [(format "Path=%s; " path)]))]
+                    (str request/metabase-session-cookie "=; " attributes "Max-Age=0"))]
+    (map first (take-while (fn [[_ total]] (<= total max-stray-session-cookie-deletions-bytes))
+                           (map vector deletions (reductions + (map count deletions)))))))
 
 (defn- add-set-cookies [response cookies]
   (let [existing (get-in response [:headers "Set-Cookie"])]
