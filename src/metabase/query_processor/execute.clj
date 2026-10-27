@@ -2,6 +2,7 @@
   (:require
    [medley.core :as m]
    [metabase.lib.core :as lib]
+   [metabase.prototype.core :as prototype]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.cache :as cache]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
@@ -68,6 +69,8 @@
    #'qp.middleware.enterprise/apply-impersonation-postprocessing-middleware
    #'update-used-cards/update-used-cards!
    #'add-native-form-to-result-metadata
+   ;; Inside the cache middleware, so that cached results do not wait.
+   #'prototype/delay-slow-queries
    #'cache/maybe-return-cached-results
    #'remove-native-form-without-native-perms
    #'qp.perms/check-query-permissions

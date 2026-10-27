@@ -2068,6 +2068,25 @@
                     :model/Database
                     :model/User}}
 
+  prototype
+  {:team "Gadget"
+   :api  #{metabase.prototype.core
+           metabase.prototype.init}
+   :uses #{app-db
+           lib.schema
+           settings
+           startup
+           sync
+           util
+           util.config
+           warehouse-schema-overlay
+           warehouses}
+   :model-imports #{:model/Database
+                    :model/Field
+                    :model/FieldUserSettings
+                    :model/Table
+                    :model/TableUserSettings}}
+
   public-sharing
   {:team "UX West"
    :api  #{metabase.public-sharing.core
@@ -2342,6 +2361,7 @@
            parameters.schema
            permissions
            premium-features
+           prototype
            queries
            query-permissions
            query-processor.cache-backend
