@@ -1,0 +1,1 @@
+update general skill to never add session to PR description
