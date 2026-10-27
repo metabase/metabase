@@ -329,7 +329,7 @@ describe("installHostBroker", () => {
 
   function handedPort(index = 0): MessagePort {
     const [message, targetOrigin, transfer] = postToFrame.mock.calls[index];
-    expect(message).toEqual({ type: DATA_APP_BROKER_INIT_MESSAGE_TYPE });
+    expect(message).toMatchObject({ type: DATA_APP_BROKER_INIT_MESSAGE_TYPE });
     expect(targetOrigin).toBe(FRAME_ORIGIN);
     const [port] = transfer;
     if (!(port instanceof MessagePort)) {
@@ -353,6 +353,21 @@ describe("installHostBroker", () => {
 
     expect(postToFrame).toHaveBeenCalledTimes(1);
     expect(await isRelayed(handedPort())).toBe(true);
+  });
+
+  it("passes the user's locale with the port, since the isolated origin serves the frame without a signed-in user", () => {
+    window.MetabaseLocales = { user: "pt_BR", site: "en" };
+
+    try {
+      sendReady();
+
+      expect(postToFrame.mock.calls[0][0]).toEqual({
+        type: DATA_APP_BROKER_INIT_MESSAGE_TYPE,
+        locale: "pt_BR",
+      });
+    } finally {
+      delete window.MetabaseLocales;
+    }
   });
 
   it("ignores a ready message from another origin, from another window, or of another type", () => {

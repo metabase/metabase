@@ -1,9 +1,8 @@
 import { defer } from "metabase/utils/promise";
+import MetabaseSettings from "metabase/utils/settings";
 import {
   DATA_APP_BROKER_INIT_MESSAGE_TYPE,
   DATA_APP_BROKER_READY_MESSAGE_TYPE,
-  DATA_APP_IFRAME_BROKER_HASH_KEY,
-  DATA_APP_IFRAME_LOCALE_HASH_KEY,
   DATA_APP_ROUTE_MESSAGE_TYPE,
 } from "metabase-enterprise/data-apps/constants";
 import { isDataAppMessage } from "metabase-enterprise/data-apps/host/lib/is-data-app-message";
@@ -16,18 +15,16 @@ import {
   isBrokerResponseMessage,
 } from "./protocol";
 
-const HOST_ORIGIN_STORAGE_KEY = "metabase.data-app.broker-host-origin";
-const USER_LOCALE_STORAGE_KEY = "metabase.data-app.user-locale";
 const LOCALE_PATTERN = /^[a-z]{2,3}(?:[-_][A-Za-z0-9]{2,8})*$/;
 
 let started = false;
 let hostOrigin: string | null = null;
-let userLocale: string | null = null;
 let nextId = 1;
 const pending = new Map<number, (message: BrokerResponseMessage) => void>();
 const hostPort = defer<MessagePort>();
+const hostUserLocale = defer<string | null>();
 
-function parseOrigin(value: string | null): string | null {
+function parseOrigin(value: string | null | undefined): string | null {
   if (!value) {
     return null;
   }
@@ -39,66 +36,21 @@ function parseOrigin(value: string | null): string | null {
   }
 }
 
-function parseLocale(value: string | null): string | null {
-  return value !== null && LOCALE_PATTERN.test(value) ? value : null;
-}
-
-function readStorage(key: string): string | null {
-  try {
-    return window.sessionStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-function writeStorage(key: string, value: string | null): void {
-  try {
-    if (value === null) {
-      window.sessionStorage.removeItem(key);
-    } else {
-      window.sessionStorage.setItem(key, value);
-    }
-  } catch {
-    // Without storage, a reload after in-app navigation loses these values.
-  }
+function parseLocale(value: unknown): string | null {
+  return typeof value === "string" && LOCALE_PATTERN.test(value) ? value : null;
 }
 
 /**
- * The top page writes its origin and the user's locale into the URL hash. In-app
- * navigation drops the hash, and a reload of the frame must still find them, so they
- * are kept in `sessionStorage`. The hash entries are removed, so an app's own hash
- * router never sees them.
+ * The top page's origin when this document is served from the isolated origin, or null.
+ * Only the site URL may frame the document there.
  */
-function readLaunchParams(): {
-  hostOrigin: string | null;
-  userLocale: string | null;
-} {
-  const hash = new URLSearchParams(window.location.hash.slice(1));
-  const fromHash = parseOrigin(hash.get(DATA_APP_IFRAME_BROKER_HASH_KEY));
+function getHostOrigin(): string | null {
+  const isOnIsolatedOrigin =
+    MetabaseSettings.get("isolated-origin") === window.location.origin;
 
-  if (!fromHash) {
-    return {
-      hostOrigin: parseOrigin(readStorage(HOST_ORIGIN_STORAGE_KEY)),
-      userLocale: parseLocale(readStorage(USER_LOCALE_STORAGE_KEY)),
-    };
-  }
-
-  const localeFromHash = parseLocale(hash.get(DATA_APP_IFRAME_LOCALE_HASH_KEY));
-  hash.delete(DATA_APP_IFRAME_BROKER_HASH_KEY);
-  hash.delete(DATA_APP_IFRAME_LOCALE_HASH_KEY);
-  const restOfHash = hash.toString();
-  window.history.replaceState(
-    window.history.state,
-    "",
-    window.location.pathname +
-      window.location.search +
-      (restOfHash ? `#${restOfHash}` : ""),
-  );
-
-  writeStorage(HOST_ORIGIN_STORAGE_KEY, fromHash);
-  writeStorage(USER_LOCALE_STORAGE_KEY, localeFromHash);
-
-  return { hostOrigin: fromHash, userLocale: localeFromHash };
+  return isOnIsolatedOrigin
+    ? parseOrigin(MetabaseSettings.get("site-url"))
+    : null;
 }
 
 /** True when the iframe is served cross-origin and must proxy instance traffic. */
@@ -107,11 +59,11 @@ export function isDataAppBrokerMode(): boolean {
 }
 
 /**
- * The user's locale that the top page passed in cross-origin mode, or null. Call after
- * [[initDataAppBroker]].
+ * The user's locale that the top page passes with its port in cross-origin mode, or null.
+ * Call after [[initDataAppBroker]].
  */
-export function getDataAppUserLocale(): string | null {
-  return userLocale;
+export function getDataAppUserLocale(): Promise<string | null> {
+  return isDataAppBrokerMode() ? hostUserLocale.promise : Promise.resolve(null);
 }
 
 /**
@@ -133,7 +85,7 @@ export function initDataAppBroker(): void {
   }
   started = true;
 
-  ({ hostOrigin, userLocale } = readLaunchParams());
+  hostOrigin = getHostOrigin();
 
   if (!hostOrigin) {
     return;
@@ -158,6 +110,7 @@ export function initDataAppBroker(): void {
       }
     };
 
+    hostUserLocale.resolve(parseLocale(event.data.locale));
     hostPort.resolve(port);
   });
 

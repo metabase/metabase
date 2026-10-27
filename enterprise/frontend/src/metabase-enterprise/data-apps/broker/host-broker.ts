@@ -10,6 +10,7 @@ import {
 import { isDataAppMessage } from "metabase-enterprise/data-apps/host/lib/is-data-app-message";
 
 import {
+  type BrokerInitMessage,
   type BrokerRequestMessage,
   type BrokerResponseMessage,
   getBrokerableApiPath,
@@ -180,11 +181,11 @@ export function installHostBroker(
       }
     };
 
-    iframe.contentWindow?.postMessage(
-      { type: DATA_APP_BROKER_INIT_MESSAGE_TYPE },
-      frameOrigin,
-      [channel.port2],
-    );
+    const init: BrokerInitMessage = {
+      type: DATA_APP_BROKER_INIT_MESSAGE_TYPE,
+      locale: window.MetabaseLocales?.user ?? null,
+    };
+    iframe.contentWindow?.postMessage(init, frameOrigin, [channel.port2]);
   };
 
   window.addEventListener("message", onMessage);

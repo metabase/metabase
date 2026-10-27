@@ -13,6 +13,14 @@
 
 import { getBasenamePath } from "metabase/api/client/utils";
 import { getBasename } from "metabase/utils/basename";
+import type { DATA_APP_BROKER_INIT_MESSAGE_TYPE } from "metabase-enterprise/data-apps/constants";
+
+/** top page to iframe, with the port in `event.ports[0]`. */
+export interface BrokerInitMessage {
+  type: typeof DATA_APP_BROKER_INIT_MESSAGE_TYPE;
+  /** The isolated origin serves the iframe document without a signed-in user, so its document can't carry the user's locale. */
+  locale: string | null;
+}
 
 /** iframe to top page: make this request. */
 export interface BrokerRequestMessage {
