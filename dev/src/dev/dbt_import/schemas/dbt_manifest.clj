@@ -209,31 +209,37 @@
 
 (mr/def ::metric-aggregation-params
   "`type_params.metric_aggregation_params`. New in dbt 1.12 for the inline (`models:`-nested) spec, where a simple
-  metric carries its own aggregation instead of pointing at a measure. All keys are optional because the exact shape
-  is unverified on a real 1.12-spec manifest; QRES-6 confirms it. On the legacy spec this is `nil`."
+  metric carries its own aggregation instead of pointing at a measure: the semantic model it aggregates (also in
+  `depends_on`), the `agg` and its params, the aggregation time dimension already defaulted from the model, and the
+  non-additive dimension. The expression is *not* here but in `type_params.expr`, and `agg_params` is always written,
+  with nil `percentile`, for every aggregation. Verified against the `parcel_delivery` fixture, dbt 1.12.6 (QRES-6).
+  On the legacy spec this is `nil`."
   [:map
-   [:semantic_model         {:optional true} [:maybe :string]]
-   [:agg                    {:optional true} [:maybe ::aggregation-type]]
-   [:expr                   {:optional true} [:maybe :string]]
-   [:agg_params             {:optional true} [:maybe ::aggregation-params]]
-   [:agg_time_dimension     {:optional true} [:maybe :string]]
-   [:non_additive_dimension {:optional true} [:maybe ::non-additive-dimension]]])
+   [:semantic_model         [:maybe :string]]
+   [:agg                    ::aggregation-type]
+   [:agg_params             [:maybe ::aggregation-params]]
+   [:agg_time_dimension     [:maybe :string]]
+   [:non_additive_dimension [:maybe ::non-additive-dimension]]])
 
 (mr/def ::cumulative-type-params
-  "`type_params.cumulative_type_params` (QRES-5)."
+  "`type_params.cumulative_type_params` (QRES-5). On the 1.12 inline spec `metric` is the input metric the running
+  total is over, which the converter does not need: a plain cumulative metric aggregates its semantic model directly,
+  and one with a window or `grain_to_date` is reported before anything is read."
   [:map
    [:window        [:maybe ::time-window]]
    [:grain_to_date [:maybe :string]]
-   [:period_agg    {:optional true} [:maybe [:enum :first :last :average]]]])
+   [:period_agg    {:optional true} [:maybe [:enum :first :last :average]]]
+   [:metric        {:optional true} [:maybe ::metric-input]]])
 
 ;; TODO (Cam 2026-10-22) make this a `:multi` schema with separate schemas based on `:type`
 (mr/def ::metric-type-params
   "`metrics[].type_params`. Which keys are populated depends on `type`:
 
-  * simple: `measure` (legacy spec) or `metric_aggregation_params` (1.12 inline spec)
+  * simple: `measure` (legacy spec) or `metric_aggregation_params` plus `expr` (1.12 inline spec)
   * ratio: `numerator`, `denominator`
   * derived: `metrics`, `expr`
-  * cumulative: `measure` plus `window` / `grain_to_date` (or `cumulative_type_params`)
+  * cumulative: `measure` plus `window` / `grain_to_date` (legacy spec), or `cumulative_type_params` with the input
+    metric under `metric` (1.12 inline spec, where the metric is also in `depends_on`)
   * conversion: `conversion_type_params` (out of scope, left untyped)
 
   `input_measures` is dbt's flattened list of every measure the metric transitively depends on."

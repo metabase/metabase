@@ -125,11 +125,14 @@
    :reason    reason})
 
 (mu/defn- inline-aggregation :- ::ir/aggregation
-  "The aggregation of a 1.12 inline-spec simple metric, which carries it in `metric_aggregation_params` instead of
-  pointing at a measure. Shape unverified on a real 1.12 manifest (QRES-6)."
+  "The aggregation of a 1.12 inline-spec simple metric, which carries it in `type_params.metric_aggregation_params`
+  instead of pointing at a measure. dbt writes the expression next to it, as `type_params.expr`, the same place a
+  derived metric's goes; it is `nil` when the metric is written without one, meaning the column is the metric's name.
+  Verified against the `parcel_delivery` fixture, dbt 1.12.6 (QRES-6)."
   [metric-name    :- :string
    semantic-model :- ::ir/semantic-model
-   {:keys [agg expr agg_params non_additive_dimension agg_time_dimension]} :- ::dbt-manifest/metric-aggregation-params]
+   expr           :- [:maybe :string]
+   {:keys [agg agg_params non_additive_dimension agg_time_dimension]} :- ::dbt-manifest/metric-aggregation-params]
   {:agg                    agg
    :expr                   (or expr metric-name)
    :agg-params             agg_params
@@ -226,9 +229,14 @@
               (pr-str grain-to-date) grain-to-date))))
 
 (mu/defn- parse-simple :- [:or ::ir/metric.simple ::ir/unsupported]
-  "A simple or cumulative metric, which aggregate one measure of one semantic model."
+  "A simple or cumulative metric, which aggregate one measure of one semantic model. A legacy-spec metric of either
+  kind points at the measure. An inline-spec (dbt 1.12) simple metric carries the aggregation itself, in
+  `metric_aggregation_params` and `expr`; an inline-spec cumulative metric points at the simple metric it runs over,
+  in `cumulative_type_params.metric` and `depends_on`, and takes that metric's aggregation, semantic model and
+  filters."
   [semantic-models :- [:map-of :string ::ir/semantic-model]
-   {metric-name :name, metric-type :type, :keys [type_params depends_on] :as metric}
+   metrics         :- [:map-of :string ::dbt-manifest/metric]
+   {metric-type :type, :keys [type_params depends_on] :as metric}
    :- ::dbt-manifest/metric]
   (b/cond
     :let [reason (when (= metric-type :cumulative) (cumulative-reason type_params))]
@@ -236,48 +244,76 @@
     reason
     (unsupported metric reason)
 
-    :let [semantic-model-id (m/find-first #(str/starts-with? % "semantic_model.") (:nodes depends_on))
+    :let [node-id-with-prefix (fn [prefix nodes] (m/find-first #(str/starts-with? % prefix) nodes))
+          input-metric-id     (when (= metric-type :cumulative)
+                                (node-id-with-prefix "metric." (:nodes depends_on)))
+          input-metric        (get metrics input-metric-id)]
+
+    (and input-metric-id (not input-metric))
+    (unsupported metric (format "input metric %s not found in manifest" (pr-str input-metric-id)))
+
+    (and input-metric (not= :simple (:type input-metric)))
+    (unsupported metric (format "a cumulative metric over the %s metric %s has no Metabase equivalent: only a simple aggregation can run cumulatively"
+                                (name (:type input-metric)) (pr-str (:name input-metric))))
+
+    ;; the metric whose type_params carry the aggregation: the input metric of an inline-spec cumulative metric,
+    ;; otherwise this one
+    :let [source            (or input-metric metric)
+          source-params     (:type_params source)
+          semantic-model-id (node-id-with-prefix "semantic_model." (-> source :depends_on :nodes))
           semantic-model    (get semantic-models semantic-model-id)]
 
     (not semantic-model)
     (unsupported metric (format "semantic model %s not found in manifest" (pr-str semantic-model-id)))
 
-    :let [input-measure (:measure type_params)
+    :let [input-measure (:measure source-params)
           measure       (when input-measure
                           (get-in semantic-model [:measures (:name input-measure)]))
-          inline-params (:metric_aggregation_params type_params)]
+          inline-params (:metric_aggregation_params source-params)]
 
     (and input-measure (not measure))
     (unsupported metric (format "measure %s not found on semantic model %s"
                                 (pr-str (:name input-measure)) (pr-str (:name semantic-model))))
 
-    (and (not measure) (not (:agg inline-params)))
+    (and (not measure) (not inline-params))
     (unsupported metric "simple metric has neither a measure nor metric_aggregation_params")
 
     :let [aggregation (if measure
                         (select-keys measure [:agg :expr :agg-params :non-additive-dimension :agg-time-dimension])
-                        (inline-aggregation metric-name semantic-model inline-params))]
+                        (inline-aggregation (:name source) semantic-model (:expr source-params) inline-params))]
 
     :else
     (merge aggregation
            (metric-common metric-type metric)
            {:semantic-model    (:name semantic-model)
             :measure           (:name measure)
-            :filters           (into (filter-templates (:filter metric))
-                                     (filter-templates (:filter input-measure)))
-            :fill-nulls-with   (or (:fill_nulls_with type_params) (:fill_nulls_with input-measure))
-            :join-to-timespine (boolean (or (:join_to_timespine type_params) (:join_to_timespine input-measure)))})))
+            ;; the metric's own filters, then those of the metric it runs over and of the reference to it, then the
+            ;; measure's; a filter on either side of a reference applies to its use
+            :filters           (-> []
+                                   (into (filter-templates (:filter metric)))
+                                   (into (when input-metric (filter-templates (:filter input-metric))))
+                                   (into (filter-templates (get-in type_params [:cumulative_type_params :metric :filter])))
+                                   (into (filter-templates (:filter input-measure))))
+            :fill-nulls-with   (or (:fill_nulls_with type_params) (:fill_nulls_with source-params) (:fill_nulls_with input-measure))
+            :join-to-timespine (boolean (or (:join_to_timespine type_params) (:join_to_timespine source-params) (:join_to_timespine input-measure)))})))
 
 (mu/defn parse-metric :- [:or ::ir/metric ::ir/unsupported]
   "Parse one manifest metric into an `::ir/metric`, or an `::ir/unsupported` record saying why it could not be.
-  `semantic-models` is keyed by semantic model unique ID, which is how a simple metric's `depends_on` refers to it."
-  [semantic-models :- [:map-of :string ::ir/semantic-model]
-   {metric-type :type, :as metric} :- ::dbt-manifest/metric]
-  (case metric-type
-    (:simple :cumulative) (parse-simple semantic-models metric)
-    :ratio                (parse-ratio metric)
-    :derived              (parse-derived metric)
-    :conversion           (unsupported metric "conversion metrics are out of scope: a per-entity funnel is nothing a Metabase metric expresses")))
+  `semantic-models` is keyed by semantic model unique ID, which is how a simple metric's `depends_on` refers to it;
+  `metrics` is the manifest's own `metrics` map, keyed by metric unique ID, which is how an inline-spec cumulative
+  metric refers to the metric it runs over. Without it, such a metric is reported."
+  ([semantic-models :- [:map-of :string ::ir/semantic-model]
+    metric          :- ::dbt-manifest/metric]
+   (parse-metric semantic-models {} metric))
+
+  ([semantic-models :- [:map-of :string ::ir/semantic-model]
+    metrics         :- [:map-of :string ::dbt-manifest/metric]
+    {metric-type :type, :as metric} :- ::dbt-manifest/metric]
+   (case metric-type
+     (:simple :cumulative) (parse-simple semantic-models metrics metric)
+     :ratio                (parse-ratio metric)
+     :derived              (parse-derived metric)
+     :conversion           (unsupported metric "conversion metrics are out of scope: a per-entity funnel is nothing a Metabase metric expresses"))))
 
 (mu/defn parse-manifest :- ::ir/manifest
   "Parse a decoded manifest (see [[read-manifest]]) into the IR. Metrics that cannot be parsed land in `:unsupported`
@@ -287,7 +323,7 @@
                                                        #(parse-semantic-model manifest %))
         {metrics false, unsupported-metrics true} (->> (vals (:metrics manifest))
                                                (sort-by :name)
-                                               (map #(parse-metric semantic-models %))
+                                               (map #(parse-metric semantic-models (:metrics manifest) %))
                                                (group-by #(contains? % :reason)))]
     {:source          {:tool    "dbt"
                        :version (-> manifest :metadata :dbt_version)
