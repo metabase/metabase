@@ -199,7 +199,8 @@
     (t2/with-transaction [_conn]
       (when removed-fk?
         (clear-dimension-on-fk-change! field))
-      (clear-dimension-on-type-change! field (:base_type field) new-semantic-type)
+      (when (not= (keyword (:semantic_type field)) new-semantic-type)
+        (clear-dimension-on-type-change! field (:base_type field) new-semantic-type))
       (schema.field-user-settings/upsert-user-settings
        field
        (cond-> body

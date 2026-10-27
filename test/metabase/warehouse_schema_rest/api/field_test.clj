@@ -856,6 +856,20 @@
             (is (= expected
                    (mt/boolean-ids-and-timestamps (dimension-for-field field-id))))))))))
 
+(deftest update-field-keeps-custom-mapping-when-semantic-type-is-unchanged-test
+  (testing "PUT /api/field/:id keeps an internal dimension when the semantic type does not change (#43382)"
+    (doseq [body [{:description "Rating of the bird sighting"}
+                  {:display_name "Sighting rating"}
+                  {:semantic_type "type/Score"}]]
+      (testing (pr-str body)
+        (mt/with-temp [:model/Field {field-id :id} {:name          "Sighting rating"
+                                                    :base_type     :type/Integer
+                                                    :semantic_type :type/Score}]
+          (create-dimension-via-API! field-id {:name "Sighting rating", :type "internal"})
+          (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) body)
+          (is (=? {:type :internal}
+                  (dimension-for-field field-id))))))))
+
 (deftest update-field-settings-test
   (testing "Can we update Field.settings, and fetch it?"
     (mt/with-temp [:model/Field field {:name "Crissy Field"}]
