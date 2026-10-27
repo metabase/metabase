@@ -80,7 +80,7 @@
   "The path of [[site-url]] without a trailing slash, such as `/metabase` when Metabase is served under a path, or an
   empty string."
   []
-  ;; `java.net.URL` keeps the path encoded, as request URIs and cookie paths are.
+  ;; `java.net.URL` keeps the path encoded, as request URIs are.
   (or (when-let [^java.net.URL url (some-> (site-url) io/as-url)]
         (not-empty (str/replace (.getPath url) #"/$" "")))
       ""))
