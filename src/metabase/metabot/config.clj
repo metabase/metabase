@@ -21,23 +21,6 @@
        (or (metabot.settings/metabot-enabled?)
            (metabot.settings/embedded-metabot-enabled?))))
 
-(defn check-metabot-enabled!
-  "Throws a 403 if metabot is not enabled. When called with no arguments, checks that at least one metabot instance is
-   enabled. When called with a `metabot-id`, checks the specific instance's setting."
-  ([]
-   (api/check (llm.settings/ai-features-enabled?)
-              [403 "AI features are not enabled."])
-   (api/check (any-metabot-enabled?)
-              [403 "Metabot is not enabled."]))
-  ([metabot-id]
-   (api/check (llm.settings/ai-features-enabled?)
-              [403 "AI features are not enabled."])
-   (if (= metabot-id embedded-metabot-id)
-     (api/check (metabot.settings/embedded-metabot-enabled?)
-                [403 "Embedded Metabot is not enabled."])
-     (api/check (metabot.settings/metabot-enabled?)
-                [403 "Metabot is not enabled."]))))
-
 (def metabot-config
   "The name of the collection exposed by the answer-sources tool."
   {internal-metabot-id {:profile-id "internal"
@@ -50,6 +33,23 @@
   A request can name it either way."
   [metabot-id]
   (contains? #{embedded-metabot-id (get-in metabot-config [embedded-metabot-id :entity-id])} metabot-id))
+
+(defn check-metabot-enabled!
+  "Throws a 403 if metabot is not enabled. When called with no arguments, checks that at least one metabot instance is
+   enabled. When called with a `metabot-id`, checks the specific instance's setting."
+  ([]
+   (api/check (llm.settings/ai-features-enabled?)
+              [403 "AI features are not enabled."])
+   (api/check (any-metabot-enabled?)
+              [403 "Metabot is not enabled."]))
+  ([metabot-id]
+   (api/check (llm.settings/ai-features-enabled?)
+              [403 "AI features are not enabled."])
+   (if (embedded-metabot-id? metabot-id)
+     (api/check (metabot.settings/embedded-metabot-enabled?)
+                [403 "Embedded Metabot is not enabled."])
+     (api/check (metabot.settings/metabot-enabled?)
+                [403 "Metabot is not enabled."]))))
 
 (defn metabot-id->profile-id
   "Return the profile-id for the Metabot instance with ID `metabot-id` or \"default\" if no profile-id is configured."

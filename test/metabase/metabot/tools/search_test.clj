@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.lib-be.metadata.jvm :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.search :as search]
@@ -887,6 +888,16 @@
             (is (= confined-id (collection-for {}))))
           (testing "an explicit collection-id elsewhere cannot escape the confinement"
             (is (= confined-id (collection-for {:collection-id elsewhere-id}))))
+          (testing "the embedded metabot is confined under any profile, whether named by UUID or by entity ID"
+            (let [embedded-uuid metabot.config/embedded-metabot-id
+                  embedded-eid  (get-in metabot.config/metabot-config [embedded-uuid :entity-id])
+                  embedded-pk   (t2/select-one-pk :model/Metabot :entity_id embedded-eid)]
+              (mt/with-temp-vals-in-db :model/Metabot embedded-pk {:collection_id confined-id}
+                (doseq [embedded-id [embedded-uuid embedded-eid]]
+                  (testing embedded-id
+                    (is (= confined-id (collection-for {:metabot-id    embedded-id
+                                                        :profile-id    "internal"
+                                                        :collection-id elsewhere-id}))))))))
           (testing "an unconfined metabot still honours an explicit collection-id"
             (mt/with-temp [:model/Metabot {open-eid :entity_id} {:name "open bot" :collection_id nil}]
               (is (= elsewhere-id (collection-for {:metabot-id    open-eid
