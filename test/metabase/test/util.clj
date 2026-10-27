@@ -136,7 +136,8 @@
 
    :model/Action
    (fn [_] {:creator_id (rasta-id)
-            :entity_id (u/generate-nano-id)})
+            :entity_id (u/generate-nano-id)
+            :name (u.random/random-name)})
 
    :model/Channel
    (fn [_] (default-timestamped
@@ -183,7 +184,8 @@
    (fn [_] {:entity_id    (u/generate-nano-id)
             :name         (u/lower-case-en (u.random/random-name))
             :display_name (u.random/random-name)
-            :bundle_path  "dist/index.js"})
+            :bundle_path  "dist/index.js"
+            :bundle       (.getBytes "" "UTF-8")})
 
    :model/Database
    (fn [_] (default-timestamped
@@ -491,6 +493,17 @@
   ;; `locking` is reentrant, so nesting Dimensions in one `with-temp` is fine.
   (locking dimension-lock
     (next-method model explicit-attributes f)))
+
+;; A data app's resource collection is created by the API, not by the model, so a temp app gets a temp one named like
+;; the API names it, unless the test passes its own.
+(methodical/defmethod t2.with-temp/do-with-temp* :around :model/DataApp
+  [model explicit-attributes f]
+  (let [attributes (merge (t2.with-temp/with-temp-defaults model) explicit-attributes)]
+    (if (contains? attributes :resource_collection_id)
+      (next-method model attributes f)
+      (t2.with-temp/with-temp [:model/Collection {collection-id :id} {:name      (str "Data App: " (:name attributes))
+                                                                      :namespace "data-apps"}]
+        (next-method model (assoc attributes :resource_collection_id collection-id) f)))))
 
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]
