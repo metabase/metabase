@@ -733,9 +733,9 @@
                                                     :bundle_hash  "abc123"}]
       (testing "returns bundle with correct content-type and ETag"
         (mt/with-dynamic-fn-redefs [cache/resolve-dev-bundle (constantly nil)
-                                    cache/resolve-bundle     (constantly {:content "{}" :hash "deadbeef"})]
+                                    cache/resolve-bundle     (constantly {:content "console.log('hello')" :hash "deadbeef"})]
           (let [resp (mt/user-http-request :crowberto :get 200 (str "ee/custom-viz-plugin/" id "/bundle"))]
-            (is (= "{}" resp)))))
+            (is (= "console.log('hello')" resp)))))
       (testing "returns 503 when bundle is not available"
         (mt/with-dynamic-fn-redefs [cache/resolve-dev-bundle (constantly nil)
                                     cache/resolve-bundle     (constantly nil)]
@@ -750,9 +750,9 @@
                                                     :enabled      true
                                                     :bundle_hash  "abc123"}]
       (mt/with-dynamic-fn-redefs [cache/resolve-dev-bundle (constantly nil)
-                                  cache/resolve-bundle     (constantly {:content "{}" :hash "h1"})]
+                                  cache/resolve-bundle     (constantly {:content "console.log('hi')" :hash "h1"})]
         (testing "authenticated non-admin user can access /bundle"
-          (is (= "{}"
+          (is (= "console.log('hi')"
                  (mt/user-http-request :rasta :get 200 (str "ee/custom-viz-plugin/" id "/bundle")))))
         (testing "unauthenticated user cannot access /bundle"
           (is (= "Unauthenticated"
