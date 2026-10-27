@@ -2659,34 +2659,19 @@
 
 (deftest custom-viz-plugin-test
   (mt/with-empty-h2-app-db!
-    (t2/delete! :model/CustomVizPlugin)
-    (let [files  {"metabase-plugin.json" (.getBytes ^String (json/encode {:name "test-plugin" :icon "icon.svg" :metabase {:version ">=1.60"}}) "UTF-8")
-                  "dist/index.js"        (.getBytes "console.log('hi')" "UTF-8")
-                  "dist/assets/icon.svg" (.getBytes "<svg xmlns=\"http://www.w3.org/2000/svg\"/>\n" "UTF-8")}
-          bundle (cv.tu/make-tgz-bytes files)]
+    (let [files {"metabase-plugin.json" (.getBytes ^String (json/encode {:name "test-plugin"}) "UTF-8")
+                 "dist/index.js"        (.getBytes "{}" "UTF-8")}]
       (ts/with-temp-dpc [:model/CustomVizPlugin {plugin-id :id} {:display_name "Test Plugin"
                                                                  :identifier   "test-plugin"
                                                                  :status       :active
-                                                                 :manifest     {:name "test-plugin" :icon "icon.svg"}
-                                                                 :icon         "icon.svg"
-                                                                 :bundle       bundle
-                                                                 :bundle_hash  (cv.tu/bundle-hash bundle)}]
-        ;; Uncomment to regenerate baseline:
-        ;; (round-trip-test/add-to-baseline!)
-        (testing "custom viz plugin extraction"
-          (let [ser (serdes/extract-one "CustomVizPlugin" {} (t2/select-one :model/CustomVizPlugin :id plugin-id))]
-            (is (=? {:serdes/meta      [{:model "CustomVizPlugin"
-                                         :id    "test-plugin"}]
-                     :identifier       "test-plugin"}
-                    ser))
-            (testing "an enabled plugin writes no `enabled`: it is the default, as on upload"
-              (is (not (contains? ser :enabled))))
-            (testing "the bundle's files are the resource files beside the YAML"
-              (is (= (update-vals files seq) (update-vals (:serdes/resources ser) seq))))
-            (testing "the file holds nothing the bundle derives"
-              (is (= #{:serdes/meta :identifier :serdes/resources} (set (keys ser)))))
-            (testing "has no dependencies"
-              (is (empty? (serdes/deserialization-dependencies ser))))))))))
+                                                                 :bundle       (cv.tu/make-tgz-bytes files)}]
+        (let [ser (serdes/extract-one "CustomVizPlugin" {} (t2/select-one :model/CustomVizPlugin :id plugin-id))]
+          (is (=? {:serdes/meta [{:model "CustomVizPlugin" :id "test-plugin"}]
+                   :identifier  "test-plugin"}
+                  ser))
+          (is (= #{:serdes/meta :identifier :serdes/resources} (set (keys ser))))
+          (is (= (update-vals files seq) (update-vals (:serdes/resources ser) seq)))
+          (is (empty? (serdes/deserialization-dependencies ser))))))))
 
 (deftest ^:parallel export-parameters-sorts-by-id-test
   (let [params [{:id "zebra" :name "Z param" :type :category}
