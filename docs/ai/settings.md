@@ -140,7 +140,7 @@ Toggling off Metabot only turns off in-app Metabot features. People can still us
 
 _Internal tab._
 
-The Query execution setting determines whether Metabot can run queries and read their _results_, so it can answer questions about values in the results. Query execution is on by default.
+This setting determines whether Metabot can run queries and read their _results_, so it can answer questions about values in the results. Query execution is on by default.
 
 When query execution is off, Metabot can still build queries and charts for you, but it can't read their results.
 
