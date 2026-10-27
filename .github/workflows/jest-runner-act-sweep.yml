@@ -12,8 +12,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2]
-        copy: [1, 2, 3, 4, 5]
+        shard: [2]
+        copy: [1, 2]
     steps:
       - uses: actions/checkout@v7
       - name: Prepare front-end environment
@@ -24,8 +24,11 @@ jobs:
         run: bun run build-pure:cljs
       - name: Run the shard and list failed tests
         run: |
-          node_modules/.bin/jest --ignoreProjects ci-scripts --silent --shard=${{ matrix.shard }}/2 --reporters=./frontend/test/harness/jest-agent-reporter.ts --runner ./frontend/test/harness/jest-runner.ts > run.log 2>&1 || true
+          NT_FILE_LOG=1 node_modules/.bin/jest --ignoreProjects ci-scripts --silent --shard=${{ matrix.shard }}/2 --reporters=./frontend/test/harness/jest-agent-reporter.ts --runner ./frontend/test/harness/jest-runner.ts > run.log 2>&1 || true
           grep -E "^SUMMARY" run.log
+          grep -E "^\[file\]" run.log | awk '{print "FILELOG", $2, $3, $NF}' > files.txt
+          pid=$(grep "QueryBuilder.beforeunload-events" files.txt | awk '{print $2}' | head -1)
+          grep " $pid " files.txt | tail -40
           grep -E "^FAIL" run.log | sed 's/ |.*//' | sed "s/^/SWEEP shard=${{ matrix.shard }} copy=${{ matrix.copy }} /" | tee failures.txt
           { echo '```'; grep -E "^SUMMARY" run.log; cat failures.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v7
