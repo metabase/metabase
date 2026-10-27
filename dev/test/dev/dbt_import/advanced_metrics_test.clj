@@ -5,9 +5,8 @@
   `:cum-sum` or `:cum-count`, and what has no Metabase equivalent (offsets, cumulative windows, conversion) is
   reported.
 
-  Written ahead of the implementation as its target: these fail until it lands, while the baseline in
-  `dev.dbt-import.parse-test` and `dev.dbt-import.emit-test` (every advanced metric reported) passes and is retired
-  then, along with `dev.dbt-import.parse-test/other-metric-types-test`.
+  Written ahead of the implementation as its target. The parse-time reasons for what is reported (offsets, windows,
+  conversion) are in `dev.dbt-import.parse-test/advanced-metric-types-test`.
 
   Each built manifest puts simple metrics (see [[input-metrics]]) next to the metric under test, `m`, in the shape
   dbt 1.12 writes: a ratio or derived
@@ -53,7 +52,7 @@
   [base [metric-name measure-name metric-filter]]
   (-> base
       (assoc :name metric-name, :unique_id (str "metric.p." metric-name), :label metric-name, :type "simple"
-             :filter metric-filter)
+             :filter metric-filter, :depends_on {:macros [], :nodes [tu/sm-id]})
       (assoc-in [:type_params :measure] (tu/input-measure {:name measure-name}))
       (assoc-in [:type_params :input_measures] [(tu/input-measure {:name measure-name})])))
 
@@ -70,6 +69,7 @@
   metrics `inputs`, alongside the simple metrics."
   [metric-type inputs type-params]
   {:measures    input-measures
+   :columns     {"target" "float"}
    :metric      {:type       metric-type
                  :depends_on {:macros [], :nodes (mapv #(str "metric.p." %) inputs)}}
    :type-params (merge {:measure nil, :input_measures (mapv #(tu/input-measure {:name %}) inputs)} type-params)
@@ -80,6 +80,7 @@
   otherwise), alongside the simple metrics."
   [type-params]
   {:measures    input-measures
+   :columns     {"target" "float"}
    :metric      {:type "cumulative"}
    :type-params (merge {:measure (tu/input-measure {:name "sales"}), :input_measures [(tu/input-measure {:name "sales"})]}
                        type-params)

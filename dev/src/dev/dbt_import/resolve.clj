@@ -2,10 +2,13 @@
   "Stage 2 of the converter: bind IR metrics to Lib queries.
 
   Takes the IR (see [[dev.dbt-import.schemas.ir]]) and a config and, for every metric, builds with Lib the query that
-  computes it against the [[dev.dbt-import.metadata]] provider for its database: the source table, one aggregation
-  over the measure's `expr`, and a filter per `where_sql_template`; plus a deterministic `entity_id`. Metrics that
-  cannot be expressed as a single-aggregation Metabase metric are reported in `:unsupported` with a reason instead of
-  failing the run.
+  computes it against the [[dev.dbt-import.metadata]] provider for its database: the source table, one aggregation,
+  and a filter per `where_sql_template`; plus a deterministic `entity_id`. For a simple or cumulative metric the
+  aggregation is over the measure's `expr`; for a ratio or derived metric it is arithmetic over `[:metric id]`
+  references to the cards its input metrics became, which is why metrics are resolved in dependency order (see
+  [[order-metrics]]) and each converted metric is added to the provider as a card. An input used with a filter of its
+  own is inlined as the filtered form of its aggregation (see [[filtered-input]]). Metrics that cannot be expressed as
+  a single-aggregation Metabase metric are reported in `:unsupported` with a reason instead of failing the run.
 
   The manifest's column list is documentation, not the warehouse schema: a project may declare no `data_type`, or
   not document the column at all. Such a column is a Field of unknown type in the provider (see
@@ -202,23 +205,32 @@
   (if (> p 1) (/ p 100.0) (double p)))
 
 (mu/defn- aggregation :- ::lib.schema.aggregation/aggregation
-  "The Lib aggregation clause for the metric over `expression`, nil being a row count."
-  [{:keys [agg agg-params fill-nulls-with]} :- ::schemas.ir/metric
-   expression                               :- [:maybe ::sql/value]]
+  "The Lib aggregation clause for the metric over `expression`, nil being a row count. A cumulative metric runs over
+  everything up to each row, which Metabase has for a sum and a row count only."
+  [{:keys [type agg agg-params fill-nulls-with]} :- ::schemas.ir/metric.simple
+   expression                                    :- [:maybe ::sql/value]]
   (let [f      expression
-        clause (case agg
-                 ;; SQL COUNT(col) skips nulls, COUNT(1) does not
-                 :count          (if f (lib/count-where (lib/not-null f)) (lib/count))
-                 ;; a sum of the literal 1 is a row count
-                 :sum            (if f (lib/sum f) (lib/count))
-                 :average        (lib/avg f)
-                 :min            (lib/min f)
-                 :max            (lib/max f)
-                 :median         (lib/median f)
-                 :count_distinct (lib/distinct f)
-                 ;; the expression is already the condition to count rows by
-                 :sum_boolean    (lib/count-where f)
-                 :percentile     (lib/percentile f (percentile-fraction (:percentile agg-params))))]
+        clause (if (= type :cumulative)
+                 (case agg
+                   ;; a sum of the literal 1 is a row count
+                   :sum   (if f (lib/cum-sum f) (lib/cum-count))
+                   :count (if f
+                            (sql/unsupported "a running count of a column has no Metabase equivalent: cum-count counts rows, nulls included")
+                            (lib/cum-count))
+                   (sql/unsupported "a running %s has no Metabase equivalent: only a running sum or row count does" (name agg)))
+                 (case agg
+                   ;; SQL COUNT(col) skips nulls, COUNT(1) does not
+                   :count          (if f (lib/count-where (lib/not-null f)) (lib/count))
+                   ;; a sum of the literal 1 is a row count
+                   :sum            (if f (lib/sum f) (lib/count))
+                   :average        (lib/avg f)
+                   :min            (lib/min f)
+                   :max            (lib/max f)
+                   :median         (lib/median f)
+                   :count_distinct (lib/distinct f)
+                   ;; the expression is already the condition to count rows by
+                   :sum_boolean    (lib/count-where f)
+                   :percentile     (lib/percentile f (percentile-fraction (:percentile agg-params)))))]
     (if (some? fill-nulls-with)
       (lib/coalesce clause fill-nulls-with)
       clause)))
@@ -571,98 +583,289 @@
         (sql/unsupported "%s: %s" context (ex-message e))
         (throw e)))))
 
-(mu/defn resolve-metric :- [:or ::schemas.resolved/metric ::schemas.ir/unsupported]
-  "Resolve one IR metric against the IR `semantic-models` (keyed by name), the metadata `providers` (keyed by Metabase
-  database name, see [[metadata/providers]]) and `config`, or explain why it cannot be a Metabase metric yet."
+(mu/defn- metric-context :- ::context
+  "The context for resolving `metric` against `model`: the provider for the model's database, a query over its table
+  and a callback for its columns. [[sql/unsupported]] when the config maps the model's warehouse database to no
+  Metabase database."
+  [config                               :- ::schemas.resolved/config
+   providers                            :- [:map-of :string ::lib.schema.metadata/metadata-provider]
+   semantic-models                      :- [:map-of :string ::schemas.ir/semantic-model]
+   {:keys [relation columns] :as model} :- ::schemas.ir/semantic-model
+   metric                               :- ::schemas.ir/metric]
+  (let [database (get-in config [:databases (:database relation)])]
+    (when-not database
+      (sql/unsupported "no Metabase database configured for warehouse database %s; add it to :databases"
+                       (pr-str (:database relation))))
+    (let [provider (get providers database)
+          table    (metadata/table provider (:schema relation) (:table relation))]
+      {:config         config
+       :provider       provider
+       :models         semantic-models
+       :query          (lib/query provider table)
+       :model          model
+       :metric         metric
+       :dialect        (sql-tools/driver->dialect (:driver config))
+       :resolve-column (partial column-ref config provider (:id table) columns)})))
+
+(mu/defn- resolved-metric :- ::schemas.resolved/metric
+  "The resolve stage's output for the metric of `context`, computed by `query`: the query, the metric's dimension set
+  and entity_id, and the card added to the provider for it, which later metrics refer to."
+  [{:keys [provider metric] :as context} :- ::context
+   query                                 :- ::lib.schema/query]
+  (let [entity-id (metric-entity-id metric)
+        card-id   (metadata/add-metric! provider {:name          (:label metric)
+                                                  :description   (:description metric)
+                                                  :table-id      (get-in query [:stages 0 :source-table])
+                                                  :dataset-query query
+                                                  :entity-id     entity-id})]
+    (merge {:metric            metric
+            :entity-id         entity-id
+            :card-id           card-id
+            :metadata-provider provider
+            :query             query}
+           (dimension-set context))))
+
+(mu/defn- filter-clauses :- [:sequential ::lib.schema.expression/boolean]
+  "The Lib filter clauses for `templates`, each failure saying which template."
+  [context   :- ::context
+   templates :- [:sequential :string]]
+  (mapv (fn [template]
+          (with-context (str "filter " (pr-str template)) #(filter-clause context template)))
+        templates))
+
+(mu/defn- resolve-simple :- ::schemas.resolved/metric
+  "Resolve a simple or cumulative metric: one aggregation over its measure's `expr`, filtered by its templates."
   [config          :- ::schemas.resolved/config
    providers       :- [:map-of :string ::lib.schema.metadata/metadata-provider]
    semantic-models :- [:map-of :string ::schemas.ir/semantic-model]
    {:keys [agg expr agg-params non-additive-dimension filters semantic-model fill-nulls-with] :as metric}
-   :- ::schemas.ir/metric]
-  (let [unsupported (fn [reason]
-                      {:name      (:name metric)
-                       :unique-id (:unique-id metric)
-                       :reason    reason})
-        {:keys [relation columns] :as model} (get semantic-models semantic-model)]
-    (b/cond
-      (not model)
-      (unsupported (format "semantic model %s not found" (pr-str semantic-model)))
+   :- ::schemas.ir/metric.simple]
+  (let [model      (get semantic-models semantic-model)
+        percentile (:percentile agg-params)]
+    (when-not model
+      (sql/unsupported "semantic model %s not found" (pr-str semantic-model)))
+    (when non-additive-dimension
+      (sql/unsupported "non-additive measures have no Metabase equivalent"))
+    (when (= agg :percentile)
+      (cond
+        (nil? percentile)
+        (sql/unsupported "percentile aggregation without a percentile value")
 
-      non-additive-dimension
-      (unsupported "non-additive measures have no Metabase equivalent")
+        ;; dbt documents the percentile as a fraction; emit tolerates a percentage, so allow up to 100
+        (not (<= 0 percentile 100))
+        (sql/unsupported "percentile %s is out of range; dbt expects a fraction between 0 and 1" percentile)
 
-      :let [percentile (:percentile agg-params)]
-
-      (and (= agg :percentile) (nil? percentile))
-      (unsupported "percentile aggregation without a percentile value")
-
-      ;; dbt documents the percentile as a fraction; emit tolerates a percentage, so allow up to 100
-      (and (= agg :percentile) (not (<= 0 percentile 100)))
-      (unsupported (format "percentile %s is out of range; dbt expects a fraction between 0 and 1" percentile))
-
-      (and (= agg :percentile) (:use_discrete_percentile agg-params))
-      (unsupported "discrete percentiles have no Metabase equivalent: Metabase percentiles are continuous")
-
-      :let [database (get-in config [:databases (:database relation)])]
-
-      (not database)
-      (unsupported (format "no Metabase database configured for warehouse database %s; add it to :databases"
-                           (pr-str (:database relation))))
-
-      :let [provider  (get providers database)
-            table     (metadata/table provider (:schema relation) (:table relation))
-            query     (lib/query provider table)
-            context   {:config         config
-                       :provider       provider
-                       :models         semantic-models
-                       :query          query
-                       :model          model
-                       :metric         metric
-                       :dialect        (sql-tools/driver->dialect (:driver config))
-                       :resolve-column (partial column-ref config provider (:id table) columns)}
-            converted (try
-                        {:expression (with-context (str "expr " (pr-str expr))
-                                       #(measure-expression context agg expr))
-                         :filters    (mapv (fn [template]
-                                             (with-context (str "filter " (pr-str template))
-                                               #(filter-clause context template)))
-                                           filters)}
-                        (catch ExceptionInfo e
-                          (if (sql/unsupported? e)
-                            {:reason (ex-message e)}
-                            (throw e))))]
-
-      (:reason converted)
-      (unsupported (:reason converted))
-
-      :let [{:keys [expression filters]} converted
-            result-type (when (and (some? fill-nulls-with) (#{:min :max} agg) expression)
-                          (lib/type-of query expression))]
-
+        (:use_discrete_percentile agg-params)
+        (sql/unsupported "discrete percentiles have no Metabase equivalent: Metabase percentiles are continuous")))
+    (let [{:keys [query] :as context} (metric-context config providers semantic-models model metric)
+          expression  (with-context (str "expr " (pr-str expr)) #(measure-expression context agg expr))
+          filters     (filter-clauses context filters)
+          result-type (when (and (some? fill-nulls-with) (#{:min :max} agg) expression)
+                        (lib/type-of query expression))]
       ;; COALESCE(MAX(text), 0) fails in the warehouse; every other aggregation has a numeric result
-      (and (known-type? result-type) (not (isa? result-type :type/Number)))
-      (unsupported (format "fill_nulls_with %s on a non-numeric aggregation: %s of %s, which is %s"
-                           fill-nulls-with (name agg) (pr-str expr) result-type))
+      (when (and (known-type? result-type) (not (isa? result-type :type/Number)))
+        (sql/unsupported "fill_nulls_with %s on a non-numeric aggregation: %s of %s, which is %s"
+                         fill-nulls-with (name agg) (pr-str expr) result-type))
+      (resolved-metric context (reduce lib/filter (lib/aggregate query (aggregation metric expression)) filters)))))
+
+(mr/def ::inputs
+  "What the metrics a ratio or derived metric may refer to became, by name: `resolved`, or `failed` with the reason."
+  [:map
+   [:resolved [:map-of :string ::schemas.resolved/metric]]
+   [:failed   [:map-of :string :string]]])
+
+(mu/defn- metric-inputs :- [:sequential ::schemas.ir/metric-input]
+  "The references a metric makes to other metrics; none for a simple or cumulative one."
+  [metric :- ::schemas.ir/metric]
+  (case (:type metric)
+    :ratio   [(:numerator metric) (:denominator metric)]
+    :derived (:inputs metric)
+    []))
+
+(defn- conjunction
+  "`clauses` as one condition: the clause itself when there is one, otherwise their `:and`."
+  [clauses]
+  (if (next clauses)
+    (apply lib/and clauses)
+    (first clauses)))
+
+(mu/defn- filtered-input :- ::lib.schema.aggregation/aggregation
+  "A reference to `resolved-input` that carries a filter of its own, inlined as the filtered form of the input's
+  aggregation over its measure, `sum-where`, `count-where` or `distinct-where`, with the input metric's own filters
+  and the reference's combined, so the metric stays one card. Only a simple metric can be inlined, and only a sum, a
+  count and a distinct count have a filtered form."
+  [context                  :- ::context
+   resolved-input           :- ::schemas.resolved/metric
+   {:keys [metric filters]} :- ::schemas.ir/metric-input]
+  (let [{:keys [type agg expr fill-nulls-with], input-filters :filters} (:metric resolved-input)]
+    (when-not (= type :simple)
+      (sql/unsupported "metric %s is a %s metric; only a simple metric can take a filter where it is referred to"
+                       (pr-str metric) (name type)))
+    (let [expression (with-context (str "expr " (pr-str expr)) #(measure-expression context agg expr))
+          condition  (conjunction (filter-clauses context (into (vec input-filters) filters)))
+          clause     (case agg
+                       :sum            (if expression (lib/sum-where expression condition) (lib/count-where condition))
+                       ;; SQL COUNT(col) skips nulls, COUNT(1) does not
+                       :count          (if expression
+                                         (lib/count-where (lib/and condition (lib/not-null expression)))
+                                         (lib/count-where condition))
+                       :count_distinct (lib/distinct-where expression condition)
+                       ;; the expression is already the condition to count rows by
+                       :sum_boolean    (lib/count-where (lib/and condition expression))
+                       (sql/unsupported "a filtered %s has no Metabase equivalent: only sum, count and count_distinct have a filtered form"
+                                        (name agg)))]
+      (if (some? fill-nulls-with)
+        (lib/coalesce clause fill-nulls-with)
+        clause))))
+
+(mu/defn- input-leaf :- ::lib.schema.aggregation/aggregation
+  "What a reference to another metric becomes in a ratio or derived metric's aggregation: a `[:metric id]` reference
+  to the card the input became or, when the reference carries a filter, the input's aggregation inlined (see
+  [[filtered-input]]). An input that is not in the manifest, or was not converted, is [[sql/unsupported]]."
+  [{:keys [provider] :as context}          :- [:maybe ::context]
+   {:keys [resolved failed]}                :- ::inputs
+   {:keys [metric filters] :as metric-input} :- ::schemas.ir/metric-input]
+  (let [resolved-input (get resolved metric)]
+    (cond
+      (and (not resolved-input) (contains? failed metric))
+      (sql/unsupported "metric %s was not converted: %s" (pr-str metric) (get failed metric))
+
+      (not resolved-input)
+      (sql/unsupported "metric %s not found" (pr-str metric))
+
+      (seq filters)
+      (filtered-input context resolved-input metric-input)
 
       :else
-      (merge {:metric            metric
-              :entity-id         (metric-entity-id metric)
-              :metadata-provider provider
-              :query             (reduce lib/filter
-                                         (lib/aggregate query (aggregation metric expression))
-                                         filters)}
-             (dimension-set context)))))
+      ;; the ref's effective type is the input card's, which the instance works out itself, and would be `:type/*`
+      ;; for a column the project does not type
+      (-> (lib/ref (lib.metadata/metric provider (:card-id resolved-input)))
+          (lib/update-options dissoc :effective-type)))))
+
+(mu/defn- composed-expression :- ::lib.schema.aggregation/aggregation
+  "The aggregation of a ratio or derived metric: arithmetic over what its inputs became (see [[input-leaf]]). A derived
+  `expr` is SQL whose identifiers are the inputs' aliases, or names."
+  [{:keys [dialect] :as context} :- ::context
+   inputs                        :- ::inputs
+   {:keys [type expr] :as metric} :- ::schemas.ir/metric]
+  (case type
+    :ratio
+    (lib// (input-leaf context inputs (:numerator metric))
+           (input-leaf context inputs (:denominator metric)))
+
+    :derived
+    (let [by-name (into {} (map (fn [{:keys [alias] :as input} ] [(or alias (:metric input)) input])) (:inputs metric))
+          value   (sql/expression->mbql dialect expr
+                                        (fn [identifier]
+                                          (if-let [input (get by-name identifier)]
+                                            (input-leaf context inputs input)
+                                            (sql/unsupported "%s is not one of the metric's inputs (%s)"
+                                                             (pr-str identifier) (str/join ", " (map pr-str (keys by-name)))))))]
+      (if (vector? value)
+        value
+        (sql/unsupported "expr %s is the constant %s, not arithmetic over the inputs" (pr-str expr) (pr-str value))))))
+
+(mu/defn- resolve-composed :- ::schemas.resolved/metric
+  "Resolve a ratio or derived metric against what its `inputs` became. Its table, and so its dimensions, are its
+  inputs', which must all be on one semantic model; its default dimension is their `agg_time_dimension` when they
+  agree on one."
+  [config                      :- ::schemas.resolved/config
+   providers                   :- [:map-of :string ::lib.schema.metadata/metadata-provider]
+   semantic-models             :- [:map-of :string ::schemas.ir/semantic-model]
+   {:keys [resolved] :as inputs} :- ::inputs
+   metric                      :- ::schemas.ir/metric]
+  (let [metric-inputs (metric-inputs metric)
+        present       (keep #(get resolved (:metric %)) metric-inputs)
+        models        (distinct (map #(-> % :metric :semantic-model) present))]
+    (when (empty? present)
+      ;; nothing to build on: say why the first input is missing
+      (run! #(input-leaf nil inputs %) metric-inputs))
+    (when (next models)
+      (sql/unsupported "inputs are on different semantic models (%s); a metric has one table"
+                       (str/join ", " (map #(format "%s on %s" (-> % :metric :name) (-> % :metric :semantic-model)) present))))
+    (let [model-name         (first models)
+          agg-time-dimension (let [candidates (distinct (map #(-> % :metric :agg-time-dimension) present))]
+                               (when-not (next candidates)
+                                 (first candidates)))
+          metric             (assoc metric :semantic-model model-name, :agg-time-dimension agg-time-dimension)
+          {:keys [query] :as context} (metric-context config providers semantic-models (get semantic-models model-name) metric)
+          expression         (with-context (case (:type metric) :ratio "ratio" :derived (str "expr " (pr-str (:expr metric))))
+                               #(composed-expression context inputs metric))
+          filters            (filter-clauses context (:filters metric))]
+      (resolved-metric context (reduce lib/filter (lib/aggregate query expression) filters)))))
+
+(mu/defn resolve-metric :- [:or ::schemas.resolved/metric ::schemas.ir/unsupported]
+  "Resolve one IR metric against the IR `semantic-models` (keyed by name), the metadata `providers` (keyed by Metabase
+  database name, see [[metadata/providers]]) and `config`, or explain why it cannot be a Metabase metric. `inputs` is
+  what the metrics a ratio or derived metric refers to became (see [[resolve-manifest]]); a simple metric needs none."
+  ([config          :- ::schemas.resolved/config
+    providers       :- [:map-of :string ::lib.schema.metadata/metadata-provider]
+    semantic-models :- [:map-of :string ::schemas.ir/semantic-model]
+    metric          :- ::schemas.ir/metric]
+   (resolve-metric config providers semantic-models {:resolved {}, :failed {}} metric))
+
+  ([config          :- ::schemas.resolved/config
+    providers       :- [:map-of :string ::lib.schema.metadata/metadata-provider]
+    semantic-models :- [:map-of :string ::schemas.ir/semantic-model]
+    inputs          :- ::inputs
+    metric          :- ::schemas.ir/metric]
+   (try
+     (case (:type metric)
+       (:simple :cumulative) (resolve-simple config providers semantic-models metric)
+       (:ratio :derived)     (resolve-composed config providers semantic-models inputs metric))
+     (catch ExceptionInfo e
+       (if (sql/unsupported? e)
+         {:name      (:name metric)
+          :unique-id (:unique-id metric)
+          :reason    (ex-message e)}
+         (throw e))))))
+
+(mu/defn- order-metrics :- [:map
+                            [:ordered [:sequential ::schemas.ir/metric]]
+                            [:cyclic  [:sequential ::schemas.ir/metric]]]
+  "`metrics` with every ratio or derived metric after the metrics it refers to, otherwise in their order, so the cards
+  a metric refers to exist, and are written, before it. A metric that refers to itself, directly or through others,
+  can never be placed and is `cyclic`. A reference to a metric that is not in `metrics` holds nothing back; it is
+  reported when the metric is resolved."
+  [metrics :- [:sequential ::schemas.ir/metric]]
+  (let [names (into #{} (map :name) metrics)]
+    (loop [remaining metrics, placed #{}, ordered []]
+      (let [ready? (fn [metric]
+                     (every? #(or (placed %) (not (names %))) (map :metric (metric-inputs metric))))
+            ready  (filter ready? remaining)]
+        (cond
+          (empty? remaining) {:ordered ordered, :cyclic []}
+          (empty? ready)     {:ordered ordered, :cyclic (vec remaining)}
+          :else              (recur (remove ready? remaining)
+                                    (into placed (map :name) ready)
+                                    (into ordered ready)))))))
 
 (mu/defn resolve-manifest :- ::schemas.resolved/manifest
-  "Resolve every metric in the IR. Unsupported metrics from the parse stage are carried over, so the result's
-  `:unsupported` is the complete list for the run."
+  "Resolve every metric in the IR, each after the metrics it refers to. Unsupported metrics from the parse stage are
+  carried over, so the result's `:unsupported` is the complete list for the run."
   [config                                                     :- ::schemas.resolved/config
    {:keys [semantic-models metrics unsupported source] :as ir} :- ::schemas.ir/manifest]
-  (let [providers                     (metadata/providers config ir)
-        {resolved false, failed true} (->> metrics
-                                           (map #(resolve-metric config providers semantic-models %))
-                                           (group-by #(contains? % :reason)))]
+  (let [providers                (metadata/providers config ir)
+        {:keys [ordered cyclic]} (order-metrics metrics)
+        results                  (reduce (fn [{:keys [resolved failed] :as results} metric]
+                                           (let [result (resolve-metric config providers semantic-models
+                                                                        {:resolved resolved, :failed failed} metric)]
+                                             (if (contains? result :reason)
+                                               (-> results
+                                                   (update :failed assoc (:name metric) (:reason result))
+                                                   (update :unsupported conj result))
+                                               (-> results
+                                                   (update :resolved assoc (:name metric) result)
+                                                   (update :metrics conj result)))))
+                                         {:resolved {}, :failed {}, :metrics [], :unsupported []}
+                                         ordered)]
     {:collection  {:name      (:collection-name config "dbt metrics")
                    :entity-id (collection-entity-id (:project source))}
-     :metrics     (vec resolved)
-     :unsupported (into (vec unsupported) failed)}))
+     :metrics     (:metrics results)
+     :unsupported (-> (vec unsupported)
+                      (into (:unsupported results))
+                      (into (map (fn [{metric-name :name, :keys [unique-id]}]
+                                   {:name      metric-name
+                                    :unique-id unique-id
+                                    :reason    "metric refers to itself, directly or through the metrics it refers to"}))
+                            cyclic))}))

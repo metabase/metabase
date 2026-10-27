@@ -66,11 +66,12 @@
   (let [resolved (resolve/resolve-manifest config (flexanalytics-ir))]
     (is (mr/validate ::resolved/manifest resolved))
     (is (= "dbt metrics" (-> resolved :collection :name)))
-    (testing "the 9 simple metrics resolve; the advanced ones the parse stage reported are carried over (until QRES-5 lands)"
-      (is (= ["customer_count" "order_count" "price" "product_count" "quantity" "row_count" "sales" "sales_to_target" "target"]
+    (testing "every metric resolves, a ratio or derived one after the metrics it refers to, except the ones the parse stage reported, which are carried over"
+      (is (= ["cumulative_sales" "customer_count" "order_count" "price" "product_count" "quantity" "row_count" "sales"
+              "sales_to_target" "target"
+              "cancelled_order_share" "sales_minus_target" "sales_pct_of_target" "sales_to_target_ratio_2"]
              (map (comp :name :metric) (:metrics resolved))))
-      (is (= ["cancelled_order_share" "cumulative_sales" "customer_reorder_rate" "sales_minus_target" "sales_mtd"
-              "sales_pct_of_target" "sales_to_target_ratio_2" "sales_trailing_7d" "sales_vs_prior_week"]
+      (is (= ["customer_reorder_rate" "sales_mtd" "sales_trailing_7d" "sales_vs_prior_week"]
              (map :name (:unsupported resolved)))))
     (let [stage (fn [metric-name] (-> (emit/dataset-query (resolved-metric-named resolved metric-name)) :stages first))]
       (testing "sales is a sum over its column, typed from the project"

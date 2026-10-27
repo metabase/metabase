@@ -43,23 +43,28 @@
 (deftest ^:parallel files-test
   (let [resolved (flexanalytics-resolved)
         files    (emit/files config resolved)]
-    (is (= ["collections/main/dbt_metrics.yaml"
-            "collections/main/dbt_metrics/customer_count.yaml"
-            "collections/main/dbt_metrics/order_count.yaml"
-            "collections/main/dbt_metrics/price.yaml"
-            "collections/main/dbt_metrics/product_count.yaml"
-            "collections/main/dbt_metrics/quantity.yaml"
-            "collections/main/dbt_metrics/rowcount.yaml"
-            "collections/main/dbt_metrics/sales.yaml"
-            "collections/main/dbt_metrics/sales_to_target_ratio.yaml"
-            "collections/main/dbt_metrics/target.yaml"]
-           (map :path files)))
+    (testing "the collection, then the metrics by name, a ratio or derived metric after the metrics it refers to"
+      (is (= ["collections/main/dbt_metrics.yaml"
+              "collections/main/dbt_metrics/cumulative_sales.yaml"
+              "collections/main/dbt_metrics/customer_count.yaml"
+              "collections/main/dbt_metrics/order_count.yaml"
+              "collections/main/dbt_metrics/price.yaml"
+              "collections/main/dbt_metrics/product_count.yaml"
+              "collections/main/dbt_metrics/quantity.yaml"
+              "collections/main/dbt_metrics/rowcount.yaml"
+              "collections/main/dbt_metrics/sales.yaml"
+              "collections/main/dbt_metrics/sales_to_target_ratio.yaml"
+              "collections/main/dbt_metrics/target.yaml"
+              "collections/main/dbt_metrics/cancelled_order_share.yaml"
+              "collections/main/dbt_metrics/sales_minus_target.yaml"
+              "collections/main/dbt_metrics/sales_pct_of_target.yaml"
+              "collections/main/dbt_metrics/sales_to_target_ratio_2.yaml"]
+             (map :path files))))
     (is (= [{:model "Collection"}]
            (map #(select-keys % [:model]) (-> files first :entity :serdes/meta))))
     (is (every? #(= "Card" (-> % :entity :serdes/meta last :model)) (rest files)))
-    (testing "the ratio, derived, cumulative and conversion metrics are reported, not written, until QRES-5 lands"
-      (is (= #{"cancelled_order_share" "cumulative_sales" "customer_reorder_rate" "sales_minus_target" "sales_mtd"
-               "sales_pct_of_target" "sales_to_target_ratio_2" "sales_trailing_7d" "sales_vs_prior_week"}
+    (testing "the metrics with no Metabase equivalent are reported, not written"
+      (is (= #{"customer_reorder_rate" "sales_mtd" "sales_trailing_7d" "sales_vs_prior_week"}
              (set (map :name (:unsupported resolved))))))))
 
 (defn- temp-dir []
@@ -71,7 +76,7 @@
         paths     (emit/write! out-dir (emit/files config resolved))
         read-yaml (fn [path] (yaml/parse-string (slurp (io/file out-dir path))))
         sales     (m/find-first (comp #{"sales"} :name :metric) (:metrics resolved))]
-    (is (= 10 (count paths)))
+    (is (= 15 (count paths)))
     (testing "the collection file"
       (is (= {:name        "dbt metrics"
               :entity_id   (-> resolved :collection :entity-id)
