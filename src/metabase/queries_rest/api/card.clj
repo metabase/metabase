@@ -979,9 +979,14 @@
   {:scope api-scope/data-app}
   [{:keys [card-id param-key]} :- [:map {:closed true}
                                    [:card-id   ms/PositiveInt]
-                                   [:param-key ::lib.schema.parameter/id]]]
-  (binding [qp.perms/*param-values-query* true]
-    (queries/card-param-values (api/read-check :model/Card card-id) param-key)))
+                                   [:param-key ::lib.schema.parameter/id]]
+   _query-params
+   _body
+   request]
+  (let [card (api/read-check :model/Card card-id)]
+    (data-apps/check-request request data-apps/check-card card)
+    (binding [qp.perms/*param-values-query* true]
+      (queries/card-param-values card param-key))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -998,9 +1003,14 @@
   [{:keys [card-id param-key query]} :- [:map {:closed true}
                                          [:card-id   ms/PositiveInt]
                                          [:param-key ::lib.schema.parameter/id]
-                                         [:query     ms/NonBlankString]]]
-  (binding [qp.perms/*param-values-query* true]
-    (queries/card-param-values (api/read-check :model/Card card-id) param-key query)))
+                                         [:query     ms/NonBlankString]]
+   _query-params
+   _body
+   request]
+  (let [card (api/read-check :model/Card card-id)]
+    (data-apps/check-request request data-apps/check-card card)
+    (binding [qp.perms/*param-values-query* true]
+      (queries/card-param-values card param-key query))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1015,7 +1025,10 @@
   [{:keys [id param-key]} :- [:map {:closed true}
                               [:id ::lib.schema.id/card]
                               [:param-key ::lib.schema.parameter/id]]
-   {:keys [value]}        :- [:map {:closed true} [:value :string]]]
-  (binding [qp.perms/*param-values-query* true]
-    (-> (api/read-check :model/Card id)
-        (queries/card-param-remapped-value param-key (codec/url-decode value)))))
+   {:keys [value]}        :- [:map {:closed true} [:value :string]]
+   _body
+   request]
+  (let [card (api/read-check :model/Card id)]
+    (data-apps/check-request request data-apps/check-card card)
+    (binding [qp.perms/*param-values-query* true]
+      (queries/card-param-remapped-value card param-key (codec/url-decode value)))))

@@ -299,7 +299,6 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/parameter/values"
   "Return parameter values for cards or dashboards that are being edited."
-  {:scope api-scope/data-app}
   [_route-params
    _query-params
    {:keys     [parameter]
@@ -314,7 +313,6 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/parameter/search/:query"
   "Return parameter values for cards or dashboards that are being edited. Expects a query string at `?query=foo`."
-  {:scope api-scope/data-app}
   [{:keys [query]} :- [:map {:closed true}
                        [:query ms/NonBlankString]]
    _query-params
@@ -344,7 +342,6 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/parameter/remapping"
   "Return the remapped parameter values for cards or dashboards that are being edited."
-  {:scope api-scope/data-app}
   [_route-params
    _query-params
    {:keys [parameter value field_ids]} :- [:map {:closed true}
