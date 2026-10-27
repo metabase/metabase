@@ -255,6 +255,7 @@
    :qp/compiled-inline                       {:query "SELECT 1"}
    :qp/source-card-id                        1
    :qp/skip-result-metadata-persistence      true
+   :qp/non-default-parameterized?            true
    :qp.pivot/unremapped-breakout-combination [0 1]
    :qp.pivot/remapped-breakout-combination   [0]
    :qp.pivot/num-remapped-cols               3
