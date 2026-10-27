@@ -224,7 +224,7 @@
                 (is (thrown-with-msg? clojure.lang.ExceptionInfo #"already belongs to another data app"
                                       (app! "second" root-id)))))))))))
 
-(deftest apps-collection-stays-at-the-root-of-its-namespace-test
+(deftest app-collection-stays-at-namespace-root-test
   (testing "an app's collection lives in the data-apps namespace, so it can't be filed under a regular collection,
             where trashing the ancestor would take the app's copies with it"
     (mt/with-temp [:model/Collection {ancestor-id :id} {}

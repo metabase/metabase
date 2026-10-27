@@ -494,9 +494,9 @@
   (locking dimension-lock
     (next-method model explicit-attributes f)))
 
-;; A data app's resource collection is created by the API, not by the model, so a temp app gets a temp one named like
-;; the API names it, unless the test passes its own.
 (methodical/defmethod t2.with-temp/do-with-temp* :around :model/DataApp
+  "Give a temp data app a temp collection named like the one the API creates, unless the attributes set
+  `resource_collection_id`, even to nil."
   [model explicit-attributes f]
   (let [attributes (merge (t2.with-temp/with-temp-defaults model) explicit-attributes)]
     (if (contains? attributes :resource_collection_id)

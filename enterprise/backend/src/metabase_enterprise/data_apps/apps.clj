@@ -21,13 +21,18 @@
     (when-not (str/blank? url)
       url)))
 
+(defn collection-name
+  "The name of the resource collection the API creates for the data app with `slug`."
+  [slug]
+  (format "Data App: %s" slug))
+
 (defn create-app!
-  "Create the data app `row` with its resource collection, a root collection of the `data-apps` namespace, and return
-  its ID. Throws a 409 when a data app already has the slug."
+  "Create the data app `row` with a new root collection of the `data-apps` namespace as its resource collection, and
+  return the app's ID; throws a 409 when a data app already has the slug."
   [{slug :name :as row}]
   (t2/with-transaction [_conn]
     (api/check (not (data-apps.db/data-app-exists? slug))
                [409 (tru "A data app with this slug already exists.")])
-    (let [collection (collections/create-collection! {:name      (format "Data App: %s" slug)
+    (let [collection (collections/create-collection! {:name      (collection-name slug)
                                                       :namespace (name collections/data-apps-ns)})]
       (data-apps.db/insert-data-app-returning-pk! (assoc row :resource_collection_id (:id collection))))))

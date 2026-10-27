@@ -34,7 +34,7 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"bundle hash is computed from its bundle"
                               (t2/update! :model/DataApp id {:bundle_hash "stale"})))))))
 
-(deftest insert-requires-a-resource-collection-test
+(deftest insert-requires-resource-collection-test
   (testing "the API creates an app's collection, so an insert without one is refused"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"needs a collection of its own"
                           (mt/with-temp [:model/DataApp _ {:name "m" :resource_collection_id nil}])))
@@ -51,6 +51,18 @@
     (testing "an update that names the same collection is not a change"
       (t2/update! :model/DataApp id {:resource_collection_id collection-id :display_name "Renamed"})
       (is (= "Renamed" (t2/select-one-fn :display_name :model/DataApp id))))))
+
+(deftest app-without-collection-can-be-given-one-test
+  (mt/with-temp [:model/DataApp    {id :id collection-id :resource_collection_id} {}
+                 :model/DataApp    {taken-id :resource_collection_id} {}
+                 :model/Collection {other-id :id} {:namespace :data-apps}]
+    (t2/delete! :model/Collection collection-id)
+    (is (nil? (t2/select-one-fn :resource_collection_id :model/DataApp id)))
+    (testing "another app's collection is refused"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"already belongs to another data app"
+                            (t2/update! :model/DataApp id {:resource_collection_id taken-id}))))
+    (t2/update! :model/DataApp id {:resource_collection_id other-id})
+    (is (= other-id (t2/select-one-fn :resource_collection_id :model/DataApp id)))))
 
 (deftest delete-removes-the-resource-collection-the-app-owns-test
   (mt/with-temp [:model/DataApp {id :id collection-id :resource_collection_id} {}]

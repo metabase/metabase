@@ -69,12 +69,13 @@
   [schema row]
   (->> row
        (lib/normalize schema)
-       (mu/validate-throw schema)))
+       (mu/validate-throw schema)
+       with-bundle-hash))
 
 (defn- check-resource-collection
-  "Throws unless the Collection with `collection-id` can be the resource collection of the data app `app-id`: a
-  top-level collection of data apps, not archived, official, typed or the sample, that no other app has; remote sync may
-  sync it."
+  "Throws unless the Collection with `collection-id` can be the resource collection of the data app `app-id`, nil for a
+  new app: a top-level collection of data apps, not archived, official, typed or the sample, that no other app has;
+  remote sync may sync it."
   [collection-id app-id]
   (let [collection (data-apps.db/resource-collection collection-id)]
     (when-not (and collection
@@ -95,18 +96,20 @@
       (throw (ex-info (tru "A data app needs a collection of its own.")
                       {:status-code 400})))
     (check-resource-collection (:resource_collection_id row) nil)
-    (assoc row :bundle_hash (some-> ^bytes (:bundle row) bytes-hash))))
+    row))
 
 (t2/define-before-update :model/DataApp
   [data-app]
   (let [changes (t2/changes data-app)]
     (when (contains? changes :resource_collection_id)
-      (throw (ex-info (tru "A data app''s resource collection cannot be changed.")
-                      {:status-code 400, :data-app-id (:id data-app)})))
+      (when (some? (:resource_collection_id (t2/original data-app)))
+        (throw (ex-info (tru "A data app''s resource collection cannot be changed.")
+                        {:status-code 400, :data-app-id (:id data-app)})))
+      (check-resource-collection (:resource_collection_id changes) (:id data-app)))
     (when (contains? changes :bundle_hash)
       (throw (ex-info (tru "A data app''s bundle hash is computed from its bundle.")
                       {:status-code 400, :data-app-id (:id data-app)})))
-    (merge data-app (some->> changes (prepare ::data-apps.schema/data-app.update) with-bundle-hash))))
+    (merge data-app (some->> changes (prepare ::data-apps.schema/data-app.update)))))
 
 ;; Reads always see `allowed_hosts` as a vector, never nil — a row synced before
 ;; the column existed has NULL until it's re-synced. Guard on `contains?` so

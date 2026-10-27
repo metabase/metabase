@@ -57,30 +57,29 @@
          extra))
 
 (deftest export-writes-the-manifest-and-the-bundle-file-test
-  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-    (ts/with-random-dump-dir [dump-dir "data-app-export-"]
-      (mt/with-temp [:model/DataApp app {:name "sales-ops" :display_name "Sales Ops" :description "Pipeline health" :bundle app-bundle
-                                         :allowed_hosts ["https://api.example.com"]}]
-        (export! dump-dir)
-        (testing "the manifest is a serdes YAML in the app's directory, keyed like a hand-written data_app.yaml"
-          (is (= {:serdes/meta   [{:model "DataApp"}]
-                  :entity_id     (:entity_id app)
-                  :slug          "sales-ops"
-                  :name          "Sales Ops"
-                  :description   "Pipeline health"
-                  :version       1
-                  :path          "dist/index.js"
-                  :allowed_hosts ["https://api.example.com"]
-                  :collection    (t2/select-one-fn :entity_id :model/Collection :id (:resource_collection_id app))}
-                 (dissoc (yaml/from-file (io/file dump-dir "data_apps" "sales-ops" "data_app.yaml"))
-                         :created_at))))
-        (testing "the bundle is a plain file at its path next to the manifest"
-          (is (= "console.log(1)"
-                 (slurp (io/file dump-dir "data_apps" "sales-ops" "dist" "index.js")))))))))
+  (ts/with-random-dump-dir [dump-dir "data-app-export-"]
+    (mt/with-temp [:model/DataApp app {:name "sales-ops" :display_name "Sales Ops" :description "Pipeline health" :bundle app-bundle
+                                       :allowed_hosts ["https://api.example.com"]}]
+      (export! dump-dir)
+      (testing "the manifest is a serdes YAML in the app's directory, keyed like a hand-written data_app.yaml"
+        (is (= {:serdes/meta   [{:model "DataApp"}]
+                :entity_id     (:entity_id app)
+                :slug          "sales-ops"
+                :name          "Sales Ops"
+                :description   "Pipeline health"
+                :version       1
+                :path          "dist/index.js"
+                :allowed_hosts ["https://api.example.com"]
+                :collection    (t2/select-one-fn :entity_id :model/Collection :id (:resource_collection_id app))}
+               (dissoc (yaml/from-file (io/file dump-dir "data_apps" "sales-ops" "data_app.yaml"))
+                       :created_at))))
+      (testing "the bundle is a plain file at its path next to the manifest"
+        (is (= "console.log(1)"
+               (slurp (io/file dump-dir "data_apps" "sales-ops" "dist" "index.js"))))))))
 
 (deftest round-trip-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection]
       (ts/with-random-dump-dir [dump-dir "data-app-round-trip-"]
         (mt/with-temp [:model/DataApp app {:name "sales-ops" :display_name "Sales Ops" :enabled false :bundle app-bundle
                                            :allowed_hosts ["https://api.example.com"]}]
@@ -110,19 +109,18 @@
 
 (deftest import-refuses-a-manifest-that-names-another-collection-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (ts/with-random-dump-dir [dump-dir "data-app-switch-"]
-        (mt/with-temp [:model/Collection {other-entity-id :entity_id} {:namespace :data-apps}
-                       :model/DataApp    app                          {:name "sales-ops"}]
-          (write-app-files! dump-dir "sales-ops" (app-yaml (:entity_id app) "sales-ops" :collection other-entity-id)
-                            {"dist/index.js" "B"})
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Failed to load" (import! dump-dir)))
-          (is (= (:resource_collection_id app)
-                 (t2/select-one-fn :resource_collection_id :model/DataApp :id (:id app)))))))))
+    (ts/with-random-dump-dir [dump-dir "data-app-switch-"]
+      (mt/with-temp [:model/Collection {other-entity-id :entity_id} {:namespace :data-apps}
+                     :model/DataApp    app                          {:name "sales-ops"}]
+        (write-app-files! dump-dir "sales-ops" (app-yaml (:entity_id app) "sales-ops" :collection other-entity-id)
+                          {"dist/index.js" "B"})
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Failed to load" (import! dump-dir)))
+        (is (= (:resource_collection_id app)
+               (t2/select-one-fn :resource_collection_id :model/DataApp :id (:id app))))))))
 
 (deftest import-refuses-a-manifest-naming-a-collection-the-repository-lacks-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection]
       (ts/with-random-dump-dir [dump-dir "data-app-no-collection-"]
         (write-app-files! dump-dir "x" (app-yaml "pZrj7PDuz3vSWYYi0QFhd" "x" :collection "nosuchcollection00001")
                           {"dist/index.js" "B"})
@@ -132,26 +130,25 @@
 
 (deftest import-updates-in-place-and-keeps-local-state-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (ts/with-random-dump-dir [dump-dir "data-app-update-"]
-        (mt/with-temp [:model/DataApp app {:name "sales-ops" :enabled false} :model/PermissionsGroup group {}]
-          (group-access/add-groups! app [(:id group)])
-          (write-app-files! dump-dir "sales-ops" (app-yaml (:entity_id app) "sales-ops" :name "Renamed"
-                                                           :path "./dist/index.js")
-                            {"dist/index.js" "console.log(2)"})
-          (import! dump-dir)
-          (let [updated (t2/select-one :model/DataApp :id (:id app))]
-            (is (=? {:display_name           "Renamed"
-                     :enabled                false
-                     :resource_collection_id (:resource_collection_id app)}
-                    updated))
-            (is (= [(:id group)] (mapv :id (group-access/assigned-groups updated))))
-            (is (= "console.log(2)" (bundle-text updated)))
-            (is (not= (:bundle_hash app) (:bundle_hash updated)))))))))
+    (ts/with-random-dump-dir [dump-dir "data-app-update-"]
+      (mt/with-temp [:model/DataApp app {:name "sales-ops" :enabled false} :model/PermissionsGroup group {}]
+        (group-access/add-groups! app [(:id group)])
+        (write-app-files! dump-dir "sales-ops" (app-yaml (:entity_id app) "sales-ops" :name "Renamed"
+                                                         :path "./dist/index.js")
+                          {"dist/index.js" "console.log(2)"})
+        (import! dump-dir)
+        (let [updated (t2/select-one :model/DataApp :id (:id app))]
+          (is (=? {:display_name           "Renamed"
+                   :enabled                false
+                   :resource_collection_id (:resource_collection_id app)}
+                  updated))
+          (is (= [(:id group)] (mapv :id (group-access/assigned-groups updated))))
+          (is (= "console.log(2)" (bundle-text updated)))
+          (is (not= (:bundle_hash app) (:bundle_hash updated))))))))
 
 (deftest import-rejects-invalid-apps-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+    (mt/with-model-cleanup [:model/DataApp :model/Collection]
       (testing "a missing bundle file"
         (ts/with-random-dump-dir [dump-dir "data-app-missing-"]
           (write-app-files! dump-dir "x" (app-yaml "pZrj7PDuz3vSWYYi0QFhd" "x") {})
@@ -177,25 +174,23 @@
 
 (deftest import-clears-an-omitted-description-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (ts/with-random-dump-dir [dump-dir "data-app-description-"]
-        (mt/with-temp [:model/DataApp app {:name "sales-ops" :description "Pipeline health"}]
-          (write-app-files! dump-dir "sales-ops" (app-yaml (:entity_id app) "sales-ops") {"dist/index.js" "B"})
-          (import! dump-dir)
-          (is (nil? (t2/select-one-fn :description :model/DataApp :id (:id app)))))))))
+    (ts/with-random-dump-dir [dump-dir "data-app-description-"]
+      (mt/with-temp [:model/DataApp app {:name "sales-ops" :description "Pipeline health"}]
+        (write-app-files! dump-dir "sales-ops" (app-yaml (:entity_id app) "sales-ops") {"dist/index.js" "B"})
+        (import! dump-dir)
+        (is (nil? (t2/select-one-fn :description :model/DataApp :id (:id app))))))))
 
 (deftest import-does-not-take-over-an-app-made-on-the-instance-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (ts/with-random-dump-dir [dump-dir "data-app-takeover-"]
-        (mt/with-temp [:model/DataApp app {:name "sales-ops"}]
-          (write-app-files! dump-dir "sales-ops" (app-yaml "Ld3cXiYs9n8HP3q3FvC7R" "sales-ops") {"dist/index.js" "B"})
-          (let [e (try (import! dump-dir) nil (catch clojure.lang.ExceptionInfo e e))]
-            (is (re-find #"Failed to load" (ex-message e)))
-            (testing "the pull says what to do, rather than failing on the slug's unique index"
-              (is (re-find #"named \"sales-ops\" already exists on this instance"
-                           (ex-message (ex-cause e))))))
-          (is (=? {:entity_id (:entity_id app)} (t2/select-one :model/DataApp :id (:id app)))))))))
+    (ts/with-random-dump-dir [dump-dir "data-app-takeover-"]
+      (mt/with-temp [:model/DataApp app {:name "sales-ops"}]
+        (write-app-files! dump-dir "sales-ops" (app-yaml "Ld3cXiYs9n8HP3q3FvC7R" "sales-ops") {"dist/index.js" "B"})
+        (let [e (try (import! dump-dir) nil (catch clojure.lang.ExceptionInfo e e))]
+          (is (re-find #"Failed to load" (ex-message e)))
+          (testing "the pull says what to do, rather than failing on the slug's unique index"
+            (is (re-find #"named \"sales-ops\" already exists on this instance"
+                         (ex-message (ex-cause e))))))
+        (is (=? {:entity_id (:entity_id app)} (t2/select-one :model/DataApp :id (:id app))))))))
 
 (deftest export-includes-data-apps-test
   (mt/with-temp [:model/DataApp {app-entity-id :entity_id} {}]
@@ -206,7 +201,7 @@
   (testing "an app travels with its collection and what that holds, written under collections/data_apps/"
     (mt/with-premium-features #{:data-apps}
       (data-apps.tu/with-published-tables! [(mt/id :venues)]
-        (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup :model/Card :model/Action]
+        (mt/with-model-cleanup [:model/DataApp :model/Collection :model/Card :model/Action]
           (ts/with-random-dump-dir [dump-dir "data-app-resources-"]
             (mt/with-temp [:model/DataApp     {app-id :id app-entity-id :entity_id collection-id :resource_collection_id}
                            {:name "sales-ops"}
