@@ -4,7 +4,7 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
-## Metabase 0.66.0
+## Metabase 0.65.3
 
 - `metabase.driver.sql-jdbc.execute/impl-error-in-query?` `[driver exception]` identifies query errors raised while
   reading rows. The default recognizes SQLState classes `21`, `22`, `23` and `42`. Override it to add vendor query
