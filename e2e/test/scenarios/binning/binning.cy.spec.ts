@@ -84,13 +84,16 @@ describe("scenarios > binning", () => {
       toBinning: "Year",
       isSelected: true,
     });
-    cy.wait("@breakoutQuery").then((interception) => {
-      cy.wrap(interception)
-        .its("request.body.stages.0.breakout.0.1.temporal-unit")
-        .should("eq", "year");
-      cy.wrap(interception)
-        .its("response.body.data.rows")
-        .then((rows: unknown) => assertYearRows(rows));
+    cy.wait("@breakoutQuery").then(({ request, response }) => {
+      expect(request.body.stages[0].breakout[0][1]["temporal-unit"]).to.eq(
+        "year",
+      );
+      const rows: [string, number][] = response?.body.data.rows ?? [];
+      expect(rows).to.have.length.greaterThan(1);
+      rows.forEach(([year]) => expect(year).to.match(/^\d{4}-01-01T/));
+      H.echartsContainer()
+        .findByText(rows[0][0].slice(0, 4))
+        .should("be.visible");
     });
 
     cy.log("default binning");
@@ -122,12 +125,16 @@ describe("scenarios > binning", () => {
     H.rightSidebar().button("Done").click();
 
     cy.log("the binning survives a save and a reload");
-    H.saveQuestion("Binned totals", undefined, { path: ["Our analytics"] });
+    H.saveQuestionToCollection("Binned totals");
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.reload();
     cy.wait("@cardQuery")
       .its("response.body.data.cols.0.display_name")
       .should("eq", "Total: 10 bins");
+    H.queryBuilderHeader()
+      .findByDisplayValue("Binned totals")
+      .should("be.visible");
+    H.echartsContainer().findByText("Total: 10 bins").should("be.visible");
     H.chartPathWithFillColor(BAR_COLOR)
       .should("have.length.greaterThan", 1)
       .and("have.length.at.most", 10);
@@ -152,12 +159,3 @@ describe("scenarios > binning", () => {
     });
   });
 });
-
-function assertYearRows(rows: unknown) {
-  expect(rows).to.be.an("array").with.length.greaterThan(1);
-  const years = (Array.isArray(rows) ? rows : []).map((row: unknown) =>
-    Array.isArray(row) ? String(row[0]) : "",
-  );
-  years.forEach((year) => expect(year).to.match(/^\d{4}-01-01T/));
-  H.echartsContainer().findByText(years[0].slice(0, 4)).should("exist");
-}
