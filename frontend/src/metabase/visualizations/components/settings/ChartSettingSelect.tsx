@@ -36,6 +36,7 @@ type ChartSettingSelectProps = Pick<
   options?: ChartSettingSelectOption[];
   placeholder?: string;
   placeholderNoOptions?: string;
+  disabled?: boolean;
   rightSectionWidth?: string;
   searchProp?: string;
   value?: ChartSettingSelectValue;
@@ -58,6 +59,7 @@ export const ChartSettingSelect = ({
   placeholder,
   placeholderNoOptions,
   pr,
+  disabled: externallyDisabled,
   rightSection,
   rightSectionWidth,
   searchProp,
@@ -88,6 +90,7 @@ export const ChartSettingSelect = ({
   }, [scrollContainer, dropdownOpened]);
 
   const disabled =
+    externallyDisabled ||
     options.length === 0 ||
     (options.length === 1 && options[0].value === value);
 
@@ -128,6 +131,16 @@ export const ChartSettingSelect = ({
         section: S.section,
         input: cx(S.input, { [S.inputWithLeftSection]: hasLeftSection }),
       }}
+      styles={
+        externallyDisabled
+          ? {
+              input: {
+                backgroundColor: "var(--mb-color-background_surface-disabled)",
+                color: "var(--mb-color-text-disabled)",
+              },
+            }
+          : undefined
+      }
       data={data}
       disabled={disabled}
       value={selectedValue}

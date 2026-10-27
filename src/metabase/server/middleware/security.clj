@@ -276,7 +276,7 @@
                                     (str "http://localhost:" cljs-dev-port)])
                                  ;; NOTE: data-app routes deliberately do NOT get 'unsafe-eval'.
                                  ;; Near-Membrane needs `eval` to run the app bundle, but it runs it
-                                 ;; inside a realm iframe served from `/api/apps/sandbox-host`, whose
+                                 ;; inside a realm iframe served from `/api/ee/apps/sandbox-host`, whose
                                  ;; own CSP grants 'unsafe-eval' for that document alone. Granting it
                                  ;; here instead would also hand `eval`/`Function` to anything running
                                  ;; in the data-app document itself — including guest code that escaped
@@ -342,7 +342,7 @@
                                   (when (analytics/anon-tracking-enabled)
                                     (setting/get-value-of-type :string :snowplow-url))
                                   (when (analytics/anon-tracking-enabled)
-                                    (setting/get-value-of-type :string :metaplow-url))
+                                    (analytics/metaplow-url))
                                   ;; Webpack dev server
                                   (when config/is-dev?
                                     (str "*:" frontend-dev-port " ws://*:" frontend-dev-port))

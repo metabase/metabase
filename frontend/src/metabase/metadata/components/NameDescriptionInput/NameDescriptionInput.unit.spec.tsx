@@ -8,12 +8,14 @@ interface SetupOpts {
   description: string;
   name: string;
   namePrefix?: string;
+  readOnly?: boolean;
 }
 
 function setup({
   description = "",
   name = "",
   namePrefix,
+  readOnly,
 }: Partial<SetupOpts> = {}) {
   const onDescriptionChange = jest.fn();
   const onNameChange = jest.fn();
@@ -26,6 +28,7 @@ function setup({
       nameIcon="table2"
       namePlaceholder="Enter name"
       namePrefix={namePrefix}
+      readOnly={readOnly}
       onDescriptionChange={onDescriptionChange}
       onNameChange={onNameChange}
     />,
@@ -91,5 +94,17 @@ describe("NameDescriptionInput", () => {
     setup({ namePrefix: "prefix" });
 
     expect(screen.getByText("prefix:")).toBeInTheDocument();
+  });
+
+  it("shows the name icon and makes both inputs read-only when read-only", () => {
+    setup({ name: "Orders", description: "All orders", readOnly: true });
+
+    expect(screen.getByLabelText("table2 icon")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Enter name")).toHaveAttribute(
+      "readonly",
+    );
+    expect(screen.getByPlaceholderText("Enter description")).toHaveAttribute(
+      "readonly",
+    );
   });
 });

@@ -6,9 +6,9 @@ function CreateQuestion(props: CreateQuestionProps | undefined): Element;
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                 |
-| :-------- | :------------------------------------------------------------------- |
-| `props`   | [`CreateQuestionProps`](./api/CreateQuestionProps.md) \| `undefined` |
+| Parameter | Type                                                                                          |
+| :-------- | :-------------------------------------------------------------------------------------------- |
+| `props`   | [`CreateQuestionProps`](/docs/latest/embedding/sdk/api/CreateQuestionProps.md) \| `undefined` |
 
 <!-- [<endsnippet parameters>] -->
 

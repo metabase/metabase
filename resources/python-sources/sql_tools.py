@@ -134,6 +134,12 @@ def statements(sql, dialect=None):
     return [ast for ast in sqlglot.parse(sql, read=dialect) if ast is not None]
 
 
+def _nonempty_statements(stmts):
+    """`stmts` from `sqlglot.parse` without the empty ones: a stray semicolon parses as `None`, and a comment after a
+    semicolon as a bare `exp.Semicolon`."""
+    return [s for s in stmts if s is not None and not isinstance(s, exp.Semicolon)]
+
+
 def table_references(ast):
     """Every table the statement `ast` names, as sqlglot Table nodes.
 
@@ -1815,7 +1821,8 @@ def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
 
     Returns:
         JSON string with keys transpiled_sql and status on success.
-        On failure the object contains keys status and error_message.
+        On failure the object contains keys status and error_message, and reason
+        'multiple_statements' when the SQL holds more than one statement.
     """
     result = {}
     if has_metabase_templates(sql):
@@ -1829,10 +1836,11 @@ def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
     else:
         try:
             write = sqlglot.Dialect.get_or_raise(to_dialect)
-            expressions = sqlglot.parse(sql, read=from_dialect)
+            expressions = _nonempty_statements(sqlglot.parse(sql, read=from_dialect))
 
             if len(expressions) > 1:
                 result['status'] = 'error'
+                result['reason'] = 'multiple_statements'
                 result['error_message'] = 'Multiple SQL statements are not supported. Please provide a single query.'
             else:
                 ast = _quote_reserved_identifiers(expressions[0], write)
@@ -1872,13 +1880,22 @@ _NOT_READ_ONLY_NODES = (
     exp.Pragma, exp.Cache, exp.Uncache, exp.Refresh, exp.Analyze, exp.NextValueFor, exp.QueryTransform,
 )
 
-# Advancing a sequence is a write a SELECT can make. sqlglot parses only the SQL-standard `NEXT VALUE FOR` as its
-# own node; Postgres and Redshift spell it as a function, Oracle and Snowflake as a `.NEXTVAL` pseudo-column, and
-# Snowflake also as the table function `TABLE(GETNEXTVAL(seq))`.
-_SEQUENCE_WRITE_FUNCTIONS = frozenset({"nextval", "setval", "getnextval"})
+# Writes a SELECT can make through a built-in function. Advancing a sequence is one: sqlglot parses only the
+# SQL-standard `NEXT VALUE FOR` as its own node; Postgres and Redshift spell it as a function, Oracle and Snowflake as
+# a `.NEXTVAL` pseudo-column, and Snowflake also as the table function `TABLE(GETNEXTVAL(seq))`. Postgres large objects
+# are another, and any role can create one by default.
+_WRITE_FUNCTIONS = frozenset(
+    {
+        # sequences
+        "nextval", "setval", "getnextval",
+        # Postgres large objects
+        "lo_creat", "lo_create", "lo_from_bytea", "lo_put", "lowrite", "lo_truncate", "lo_truncate64", "lo_unlink",
+        "lo_import", "lo_export",
+    }
+)
 
 # Built-in functions that reach past the query that calls them: they take a lock that can outlive it, change the
-# session's settings, signal or stop another session, or hold the connection waiting.
+# session's settings, signal or stop another session, hold the connection waiting, or act outside the database.
 _SESSION_EFFECT_FUNCTIONS = frozenset(
     {
         # Postgres advisory locks
@@ -1890,8 +1907,15 @@ _SESSION_EFFECT_FUNCTIONS = frozenset(
         "get_lock", "release_lock", "release_all_locks",
         # session settings and signals
         "set_config", "pg_notify", "pg_terminate_backend", "pg_cancel_backend", "pg_reload_conf",
+        # Postgres dblink: a named connection stays open on the session
+        "dblink_connect", "dblink_connect_u",
+        # Snowflake: stop another session's work
+        "system$cancel_query", "system$cancel_all_queries", "system$abort_session", "system$abort_transaction",
         # waiting
-        "pg_sleep", "pg_sleep_for", "pg_sleep_until", "sleep", "benchmark",
+        "pg_sleep", "pg_sleep_for", "pg_sleep_until", "sleep", "benchmark", "sleepeachrow", "system$wait",
+        "master_pos_wait", "source_pos_wait", "wait_for_executed_gtid_set", "wait_until_sql_thread_after_gtids",
+        # running a program, Java code or a request outside the database
+        "executable", "reflect", "java_method", "http_request", "system$send_email",
     }
 )
 
@@ -1946,6 +1970,14 @@ def _sql_executing_function(stmt: exp.Expression):
         name = _function_name(node)
         if name in _SQL_EXECUTING_FUNCTIONS:
             return name
+        # Trino passes a query through to a connector's database with `TABLE(catalog.system.query(query => '...'))`.
+        # The name `query` alone is too common to refuse, so it counts only under a `system` schema.
+        if (
+            isinstance(node, exp.Dot)
+            and node.this.name.lower() == "system"
+            and _function_name(node.expression) == "query"
+        ):
+            return "system.query"
     return None
 
 
@@ -1960,11 +1992,12 @@ def _writes_or_locks(node: exp.Expression) -> bool:
     if isinstance(node, _NOT_READ_ONLY_NODES):
         return True
     if isinstance(node, exp.Anonymous):
-        return node.name.lower() in _SEQUENCE_WRITE_FUNCTIONS
+        return node.name.lower() in _WRITE_FUNCTIONS
     # MySQL assigns a user variable inside a SELECT with `@x := ...`, and the value outlives the query on a pooled
     # connection. A bare name on the left is a named argument instead, as in DuckDB and Postgres, and changes nothing.
+    # The variable is searched for, not just checked for on top: a dotted name, `@x.y`, parses as a `Dot` around it.
     if isinstance(node, exp.PropertyEQ):
-        return isinstance(node.this, exp.Parameter)
+        return node.this.find(exp.Parameter) is not None
     if isinstance(node, exp.Column):
         return bool(node.table) and node.name.lower() == "nextval"
     if isinstance(node, exp.WithTableHint):
@@ -2074,7 +2107,7 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
         stmts = sqlglot.parse(_split_placeholder_casts(sql, dialect), read=dialect)
         allowed_types = (exp.Select, exp.SetOperation)
         if stmt_type == "read-only":
-            stmts = [s for s in stmts if s is not None and not isinstance(s, exp.Semicolon)]
+            stmts = _nonempty_statements(stmts)
         elif stmt_type != "read":
             allowed_types = (exp.Update, exp.Insert, exp.Delete)
         problem = _not_read_only_reason(stmts, sql, dialect) if stmt_type == "read-only" else None

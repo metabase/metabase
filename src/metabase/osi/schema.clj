@@ -32,6 +32,7 @@
   [:map {:closed true}
    [:entity_type     {:optional true} [:maybe [:or :keyword :string]]]
    [:entity_local_id {:optional true} [:maybe ms/PositiveInt]]
+   [:entity_id       {:optional true} [:maybe :string]]
    [:ai_context      {:optional true} [:maybe ::osi-ai-context.ai-context]]
    [:created_at      {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at      {:optional true} [:maybe ms/TemporalInstant]]])

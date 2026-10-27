@@ -110,6 +110,8 @@
    sdk-tracked-row
    id+timestamp
    [:map {:closed true}
+    [:dependency-jobs [:= true]]]
+   [:map {:closed true}
     [:host      :string]
     [:timestamp (ms/InstanceOfClass java.time.temporal.Temporal)]]
    [:map {:closed true}

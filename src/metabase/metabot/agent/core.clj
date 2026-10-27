@@ -16,6 +16,7 @@
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.capabilities :as capabilities]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as metabot.context]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
@@ -26,6 +27,7 @@
    [metabase.metabot.tools :as tools]
    [metabase.util :as u]
    [metabase.util.async :as async.u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -78,7 +80,7 @@
      :tool-results (mapv (fn [p] {:id     (:id p)
                                   :output (let [r (:result p)]
                                             (or (:output r) r))
-                                  :error  (:error p)})
+                                  :error  (get-in p [:result :error])})
                          outputs)}))
 
 (defn- debug-log!
@@ -177,12 +179,13 @@
 
 (defn- successful-tool-output?
   "Whether a `:tool-output` part represents a successful call.
-  Answer-producing tools attach `:structured-output` when they produce a result (a query, a chart
-  draft, a clarification question), and return just an `:output` error string on validation/exception
-  failures — so its presence is the success signal."
+
+  Success is the absence of `:error`. It used to be the presence of `:structured-output`, which made
+  a tool that produced no structured output indistinguishable from one that failed, and forced
+  answer-producing tools to attach one whether a consumer read it or not."
   [part]
   (and (= (:type part) :tool-output)
-       (some? (get-in part [:result :structured-output]))))
+       (nil? (get-in part [:result :error]))))
 
 (defn- terminal-tool-call?
   "Whether `parts` contain a **successful** call to one of the profile's `terminal-tools` (a set of
@@ -195,11 +198,11 @@
   [terminal-tools parts]
   (boolean
    (when (seq terminal-tools)
-     (let [success-ids (into #{} (comp (filter successful-tool-output?) (map :id)) parts)]
+     (let [outputs (u/index-by :id (filter #(= :tool-output (:type %)) parts))]
        (some (fn [p]
                (and (= (:type p) :tool-input)
                     (contains? terminal-tools (:function p))
-                    (contains? success-ids (:id p))))
+                    (successful-tool-output? (get outputs (:id p)))))
              parts)))))
 
 (defn- truncated?
@@ -217,12 +220,17 @@
   (some #(= (:type %) :error) parts))
 
 (defn- terminal-error-message
-  "Message from a tool failure no retry can fix (a permission denial), or nil if there was none."
+  "The user-facing message from a tool failure no retry can fix, or nil if there was none.
+
+  An unrecoverable failure is one only the user can act on — a permission denial, a server fault —
+  so the turn ends. The message is the `:user-message` the tool chose; a tool that set none gets the
+  generic one, because `:output` is written for the model and says only that the call failed."
   [parts]
   (some (fn [part]
           (when (and (= (:type part) :tool-output)
-                     (get-in part [:result :terminal-error?]))
-            (not-empty (get-in part [:result :output]))))
+                     (= :unrecoverable (get-in part [:result :error :class])))
+            (or (not-empty (get-in part [:result :error :user-message]))
+                (tru "Something went wrong."))))
         parts))
 
 (defn- should-continue?
@@ -273,9 +281,9 @@
   Rebuilding the history fetches the viewing context again and inverts links against a registry that grows within
   the turn, and Claude Opus, Sonnet and Haiku 5.5 and Fable 5.1 reject a replayed thinking block once anything
   before it has changed."
-  [sent-parts context memory link-registry]
+  [sent-parts context memory tools link-registry]
   (into sent-parts
-        (invert-links (subvec (messages/build-message-history context memory) (count sent-parts))
+        (invert-links (subvec (messages/build-message-history context memory tools) (count sent-parts))
                       link-registry)))
 
 (defn- call-llm
@@ -505,13 +513,14 @@
         profile      (or (profiles/get-profile profile-id)
                          (throw (ex-info "Unknown profile" {:profile-id profile-id})))
         capabilities (get context :capabilities #{})
-        ;; Where other people can read the conversation, or there is no conversation or user to check, run_query would
-        ;; refuse every call, so it is not offered and the prompt does not promise results. The tool checks again, for
-        ;; someone who joins mid-turn.
+        ;; Where run_query would refuse every call, it is not offered and the prompt does not promise results: where
+        ;; other people can read the conversation, where there is no conversation or user to check, and for the
+        ;; embedded Metabot, whatever profile the request names. The tool checks again, for someone who joins mid-turn.
         offered      (profiles/profile->tools profile capabilities)
         base-tools   (cond-> offered
                        (and (contains? offered "run_query")
                             (or (not (and conversation-id api/*current-user-id*))
+                                (= (:entity_id metabot) metabot.config/embedded-metabot-id)
                                 (metabot.db/conversation-open-to-others? conversation-id api/*current-user-id*)))
                        (dissoc "run_query"))
         seeded       (-> (or state {})
@@ -524,9 +533,14 @@
                                 :request-canceled-chan request-canceled-chan)
                          (memory/add-client-ids (client-content-ids context)))
         memory-atom  (doto (or external-memory-atom (atom nil)) (reset! memory))
-        ;; The show_chart argument only does anything alongside run_query, so a turn without run_query declares
-        ;; construct_notebook_query as it was before the argument existed.
-        tools        (update-vals (cond-> (tools/wrap-tools-with-state base-tools memory-atom metabot profile-id)
+        ;; `profile->tools` keys by name; `->entries` takes the tools themselves and keys them from
+        ;; their declarations, so converted and unconverted ones arrive the same way.
+        ;;
+        ;; The show_chart argument only does anything alongside run_query, so a turn without
+        ;; run_query declares construct_notebook_query as it was before the argument existed.
+        ;; `without-show-chart` edits the entry's `:schema`, which `->entries` synthesises in the
+        ;; same `[:=> [:cat args] out]` shape it read off the var before.
+        tools        (update-vals (cond-> (tools/->entries (vals base-tools) memory-atom metabot profile-id)
                                     (not (contains? base-tools "run_query"))
                                     (m/update-existing "construct_notebook_query" tools/without-show-chart))
                                   #(assoc % :declaration (delay (self.schema/tool-function %))))]
@@ -608,7 +622,7 @@
           memory             @memory-atom
           parts-atom         (atom [])
           link-registry-atom (atom (get-in memory [:state :link-registry] {}))
-          input-parts        (turn-input-parts sent-parts context memory @link-registry-atom)
+          input-parts        (turn-input-parts sent-parts context memory tools @link-registry-atom)
           xf                 (comp (accumulate-usage-xf usage-atom (:model profile))
                                    (u/tee-xf parts-atom))
           ;; We use `reduce` instead of `transduce` because rf is the outer reducing
@@ -645,9 +659,11 @@
         (do
           (log/debug "Got parts" {:count (count parts) :types (mapv :type parts)})
           (swap! memory-atom update-memory parts)
-          ;; these profiles cannot answer in text, so a denial would otherwise loop to max-iterations
-          (let [terminal-error (when (:required-tool-call? profile)
-                                 (terminal-error-message parts))]
+          ;; Every profile, not just the `:required-tool-call?` ones. An unrecoverable failure is
+          ;; defined as one only the user can act on, so the class is the decision and the profile
+          ;; is not part of it. A tool that wants the agent to carry on past a failure declares it
+          ;; recoverable, which is a choice made at the error, where the reason for it is visible.
+          (let [terminal-error (terminal-error-message parts)]
             (cond
               (reduced? result')
               ;; consumer signalled early termination (e.g. client disconnect / cancellation)

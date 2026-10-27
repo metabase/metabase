@@ -1,4 +1,4 @@
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, JSX } from "react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { t } from "ttag";
@@ -11,7 +11,7 @@ import {
   BasicAdminSettingInput,
   SettingHeader,
 } from "metabase/settings-components";
-import { Box, Button, Flex, Icon, Paper, Text } from "metabase/ui";
+import { ActionIcon, Box, Button, Flex, Icon, Paper, Text } from "metabase/ui";
 import type {
   EnterpriseSettingKey,
   IllustrationSettingValue,
@@ -242,17 +242,16 @@ export function IllustrationWidget({
                         ? fileName
                         : t`Remove uploaded image`}
                   </Text>
-                  {/* TODO: replace with ActionIcon (GDGT-2457) */}
                   {customIllustrationSource && (
-                    <Button
+                    <ActionIcon
                       variant="subtle"
-                      color="neutral"
                       size="sm"
-                      leftSection={<Icon name="close" />}
                       ml="lg"
                       onClick={handleRemoveCustomIllustration}
                       aria-label={t`Remove custom illustration`}
-                    />
+                    >
+                      <Icon name="close" />
+                    </ActionIcon>
                   )}
                 </Flex>
               ))}

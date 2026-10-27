@@ -14,7 +14,7 @@ import {
   multipleTimezoneWarning,
   unexpectedTimezoneWarning,
 } from "../../../lib/warnings";
-import type { ContinuousDomain } from "../../../shared/types/scale";
+import type { Extent } from "../../../types";
 import type { ShowWarning } from "../../types";
 import type { ChartLayout } from "../layout/types";
 import type {
@@ -302,7 +302,7 @@ export function getGridTickDates(
 // over years) would otherwise allocate millions of dates.
 export function expectedTickCount(
   interval: TimeSeriesInterval,
-  xDomain: ContinuousDomain,
+  xDomain: Extent,
   dataUnit: TimeSeriesInterval["unit"] = interval.unit,
 ): number {
   if (interval.unit === "ms") {
@@ -324,9 +324,9 @@ export function expectedTickCount(
 /// Get the appropriate tick interval option from the TIMESERIES_INTERVALS above based on the xAxis bucketing
 /// and the max number of ticks we want to show (itself calculated from chart width).
 export function computeTimeseriesTicksInterval(
-  xDomain: ContinuousDomain,
+  xDomain: Extent,
   xInterval: TimeSeriesInterval,
-  chartLayout: ChartLayout,
+  chartLayout: Pick<ChartLayout, "outerWidth" | "padding" | "ticksDimensions">,
   formatter: TimeSeriesAxisFormatter,
 ) {
   const minTickCount = 2;
@@ -352,8 +352,7 @@ export function computeTimeseriesTicksInterval(
     const interval = TICKS_TIMESERIES_INTERVALS[i];
     const maxTickCount = maxTicksForChartWidth(
       chartLayout,
-      interval.unit,
-      getFormatter(formatter, xInterval.unit, interval.unit),
+      getLongestTickLabel(formatter, xInterval.unit, interval.unit),
     );
     const intervalTicksCount = expectedTickCount(
       interval,
@@ -391,25 +390,50 @@ export function getFormatter(
   return formatter;
 }
 
-function maxTicksForChartWidth(
-  chartLayout: ChartLayout,
-  unit: CartesianChartDateTimeAbsoluteUnit,
+// A chart lays out several times (legend candidates, final layout, axis
+// options), so the longest representative label of each unit pair is kept per formatter
+const longestTickLabels = new WeakMap<
+  TimeSeriesAxisFormatter,
+  Map<string, string>
+>();
+
+function getLongestTickLabel(
   formatter: TimeSeriesAxisFormatter,
+  dataUnit: CartesianChartDateTimeAbsoluteUnit,
+  chartUnit: CartesianChartDateTimeAbsoluteUnit,
+): string {
+  let labelsByUnit = longestTickLabels.get(formatter);
+  if (labelsByUnit == null) {
+    labelsByUnit = new Map();
+    longestTickLabels.set(formatter, labelsByUnit);
+  }
+  const key = `${dataUnit}/${chartUnit}`;
+  const cachedLabel = labelsByUnit.get(key);
+  if (cachedLabel != null) {
+    return cachedLabel;
+  }
+  const unitFormatter = getFormatter(formatter, dataUnit, chartUnit);
+  const longestLabel = getRepresentativeDates(chartUnit)
+    .map((date) => getPaddedAxisLabel(unitFormatter(date)))
+    .reduce((longest, label) =>
+      label.length > longest.length ? label : longest,
+    );
+  labelsByUnit.set(key, longestLabel);
+  return longestLabel;
+}
+
+function maxTicksForChartWidth(
+  chartLayout: Pick<ChartLayout, "outerWidth" | "padding" | "ticksDimensions">,
+  longestLabel: string,
 ) {
   const availableWidth =
     chartLayout.outerWidth -
     chartLayout.padding.left -
     chartLayout.padding.right;
   const TICK_BUFFER_PIXELS = 4;
-  const representativeDates = getRepresentativeDates(unit).map((date) =>
-    getPaddedAxisLabel(formatter(date)),
-  );
-  const longestDate = representativeDates.reduce((longest, date) => {
-    return date.length > longest.length ? date : longest;
-  });
-  const longestDateWidth =
-    chartLayout.ticksDimensions.getXTickWidth(longestDate);
-  return Math.floor(availableWidth / (longestDateWidth + TICK_BUFFER_PIXELS));
+  const longestLabelWidth =
+    chartLayout.ticksDimensions.getXTickWidth(longestLabel);
+  return Math.floor(availableWidth / (longestLabelWidth + TICK_BUFFER_PIXELS));
 }
 
 /**

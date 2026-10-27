@@ -4,11 +4,60 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.66.0
+
+- `metabase.driver.sql-jdbc.execute/impl-error-in-query?` `[driver exception]` identifies query errors raised while
+  reading rows. The default recognizes SQLState classes `21`, `22`, `23` and `42`. Override it to add vendor query
+  error codes or exclude SQLStates that also cover operational failures. Unknown failures remain QP errors;
+  cancellation takes precedence over query-error evidence.
+
 ## Metabase 0.65.0
+
+- `metabase.driver.sql-jdbc.execute/set-role-if-supported!` moved to
+  `metabase.driver.sql-jdbc.connection/set-role-if-supported!`. The JDBC connection pool now sets the connection
+  impersonation role on every checkout, so a driver that overrides `do-with-connection-with-options` no longer calls
+  it, and `do-with-connection-with-options` no longer sets it either.
+
+- `metabase.driver.connection/effective-details` and `metabase.driver.sql-jdbc.connection/db->pooled-connection-spec`
+  resolve a database routing router to the current user's destination. Read connection details through
+  `effective-details` and get JDBC connections through the pool, so routing applies; building a connection from raw
+  details (`sql-jdbc.conn/connection-details->spec`, `driver.u/can-connect-with-details?`) is a discouraged var
+  outside driver namespaces.
+
+- The admin connection is removed: `metabase.driver.connection/with-admin-connection`,
+  `metabase.driver.connection/database-admin-details`, the `:admin` connection type,
+  `metabase.driver.common/admin-connection-option` (and its `"admin-connection"` `visible-if` marker) and
+  `metabase.driver.util/fields-hidden-for-admin-connection` are gone, and a Database no longer has `:admin_details`.
+  A driver's `normalize-db-details` normalizes only `:details` and `:write_data_details`.
+
+- `metabase.driver/disallowed-connection-parameters` `[driver]` -- new multimethod returning the names of client
+  connection parameters a user may never set, whether in `:additional-options` or as a detail key. Metabase refuses
+  details that set one when a connection is tested, when a connection pool is created, and when a Database is saved.
+  Names match case-insensitively and as substrings. Extend the parent's list rather than replacing it:
+
+  ```clj
+  (defmethod driver/disallowed-connection-parameters :my-driver
+    [driver]
+    (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver) ["someClassNameProperty"]))
+  ```
 
 - `sql.qp/use-ctes-for-stages?` is a multi-method for drivers to opt-in to compiling multi-stage queries
   with CTEs instead of nested subselects. Drivers should only do this if they satisfy all of the criteria
   in the docstring of this method.
+
+- `driver/native-query-table-refs` has been removed. Nothing calls it anymore, so drivers that implement it should
+  delete their `defmethod`, which no longer compiles.
+
+- `driver/native-query-deps` can now return `{:unresolved-table {:schema ... :table ...}}` for a table the query names
+  that matches no synced table or transform target. Dependency tracking recomputes such a query once sync finds the
+  table. Drivers built on `:sql` get this from `metabase.sql-tools.core/referenced-tables`.
+
+- `driver-api/default-query->remark` now includes the following fields when they are set: `userID`, `queryType`,
+  `queryHash`, `accountID`, `dashboardID`, `cardID`, `pulseID`, `context`, and `databaseID`. Drivers that override
+  `driver-api/query->remark` and add some of these fields to the default remark should remove them.
+
+- `driver-api/query->remark-data` has been added. It returns the data of the default query remark as a map, so that
+  drivers that format the remark in a different way (for example as JSON) include the same data.
 
 ## Metabase 0.64.0
 

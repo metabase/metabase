@@ -1,5 +1,3 @@
-import yaml from "js-yaml";
-
 import { USERS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 
 const { H } = cy;
@@ -15,14 +13,8 @@ const COLLECTION = "syncedActionsAppColl1";
 const APP_ROOT = () =>
   `${Cypress.config("projectRoot")}/e2e/support/assets/data-apps/${APP_SLUG}`;
 
-/**
- * The action half of the production path. Outside the dev preview
- * `toExecutableActionId` runs `copiedActionEntityId`, the copy in the app's
- * collection, because that is the only action an app's viewers may execute.
- * The copy reaches Metabase through the app's collection files and a repository pull.
- */
 describe(
-  "scenarios > data apps > resources in production (actions)",
+  "scenarios > data apps > resources from a repository (actions)",
   { tags: ["@external", "@actions"] },
   () => {
     const removeTestFiles = () =>
@@ -47,72 +39,32 @@ describe(
     });
 
     /**
-     * Declares an action that belongs to no model, writes the copy an author
-     * writes from its serialization, publishes the app, and yields it with the copy's
-     * entity ID.
+     * Publishes the app, creates an action in its collection, and declares it
+     * by its entity ID, as the app's typed schema does.
      */
-    const publishApp = () =>
-      H.createDataAppScoreboardAction().then((source) => {
-        const actionCopy = H.newEntityId();
-
-        H.declareDataAppActions(APP_ROOT(), [
-          {
-            exportName: "CreateScore",
-            sourceActionId: source.id,
-            copiedActionEntityId: actionCopy,
-          },
-        ]);
-
-        return H.serializeDataAppActionCopies(
-          [{ sourceActionId: source.id, entityId: actionCopy }],
+    const publishApp = () => {
+      H.writeDataAppResources(APP_ROOT(), {
+        collection: H.dataAppRepresentations.collection(
           COLLECTION,
-        )
-          .then((actions) =>
-            H.writeDataAppResources(APP_ROOT(), {
-              collection: H.dataAppRepresentations.collection(
-                COLLECTION,
-                "Data App: Synced Actions App",
-              ),
-              actions,
-            }),
-          )
-          .then(() => H.publishDataApp(APP_ROOT(), APP_SLUG))
-          .then((app) => cy.wrap({ app, actionCopy }, { log: false }));
+          "Data App: Synced Actions App",
+        ),
       });
 
-    it("serializes the action an author copies, with no model, as its file holds it", () => {
-      H.createDataAppScoreboardAction().then((source) => {
-        // Executing the action reads this, so the copy must keep it.
-        cy.request("PUT", `/api/action/${source.id}`, {
-          visualization_settings: {
-            fields: { score: { id: "score", hidden: true, defaultValue: 0 } },
-          },
-        });
+      return H.publishDataApp(APP_ROOT(), APP_SLUG).then((app) =>
+        H.createDataAppScoreboardAction({
+          collectionId: app.resource_collection_id,
+        }).then((action) => {
+          H.declareDataAppActions(APP_ROOT(), [
+            { exportName: "CreateScore", actionEntityId: action.entity_id },
+          ]);
 
-        const copy = H.newEntityId();
+          return cy.wrap({ app, action }, { log: false });
+        }),
+      );
+    };
 
-        H.serializeDataAppActions(
-          [{ sourceActionId: source.id, entityId: copy }],
-          COLLECTION,
-        ).then(([file]) => {
-          expect(file.file).to.eq("add_team.yaml");
-
-          const entity = yaml.load(file.yaml);
-          expect(entity).to.deep.include({
-            entity_id: copy,
-            collection_id: COLLECTION,
-            type: "query",
-          });
-          expect(entity).not.to.have.property("model_id");
-          expect(entity)
-            .to.have.nested.property("visualization_settings.fields.score")
-            .that.deep.include({ hidden: true, defaultValue: 0 });
-        });
-      });
-    });
-
-    it("executes the app's copy rather than the authored action, for a member of the app's group", () => {
-      publishApp().then(({ app, actionCopy }) => {
+    it("executes the action in the app's collection for a member of the app's group", () => {
+      publishApp().then(({ app, action }) => {
         H.assignTestGroupToDataApp(app.name).then((groupId) => {
           H.addUserToGroup(groupId, USERS.normal.email);
         });
@@ -129,7 +81,7 @@ describe(
 
         cy.wait("@execute")
           .its("request.url")
-          .should("contain", `/api/action/${actionCopy}/execute`);
+          .should("contain", `/api/action/${action.entity_id}/execute`);
       });
     });
   },

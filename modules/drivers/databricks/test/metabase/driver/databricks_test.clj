@@ -59,11 +59,11 @@
                  {:name "reviews", :schema (maybe-qualify-schema "test-data"), :description nil}
                  {:name "orders", :schema (maybe-qualify-schema "test-data"), :description nil}
                  {:name "products", :schema (maybe-qualify-schema "test-data"), :description nil}}
-               (into #{} (:tables (driver/describe-database :databricks (db)))))))
+               (into #{} (:tables (driver/describe-database :databricks (driver.u/ensure-lib-database (db))))))))
       (testing "`driver/describe-database` returns expected results for `all` schema filters."
-        (let [actual-tables (update (driver/describe-database :databricks (-> (db)
-                                                                              (update :details dissoc :schema-filters-patterns)
-                                                                              (update :details assoc :schema-filters-type "all")))
+        (let [actual-tables (update (driver/describe-database :databricks (driver.u/ensure-lib-database (-> (db)
+                                                                                                            (update :details dissoc :schema-filters-patterns)
+                                                                                                            (update :details assoc :schema-filters-type "all"))))
                                     ;; `:tables` is a reducible (streamed); realize it for the set ops below
                                     :tables #(into #{} %))]
           (testing "tables from multiple schemas were found"
@@ -76,9 +76,9 @@
           (testing "information_schema is excluded"
             (is (empty? (filter #(str/includes? "information_schema" (:schema %)) (:tables actual-tables)))))))
       (testing "`driver/describe-database` returns expected results for `exclusion` schema filters."
-        (let [actual-tables (update (driver/describe-database :databricks (update (db) :details assoc
-                                                                                  :schema-filters-patterns (maybe-qualify-schema "test-data")
-                                                                                  :schema-filters-type "exclusion"))
+        (let [actual-tables (update (driver/describe-database :databricks (driver.u/ensure-lib-database (update (db) :details assoc
+                                                                                                                :schema-filters-patterns (maybe-qualify-schema "test-data")
+                                                                                                                :schema-filters-type "exclusion")))
                                     ;; `:tables` is a reducible (streamed); realize it for the set ops below
                                     :tables #(into #{} %))]
           (testing "tables from multiple schemas were found"
@@ -89,8 +89,8 @@
 (deftest ^:parallel describe-fields-test
   (with-and-without-multi-level
     (mt/test-driver :databricks
-      (let [fields (vec (driver/describe-fields :databricks (db) {:schema-names [(maybe-qualify-schema "test-data")]
-                                                                  :table-names ["orders"]}))]
+      (let [fields (vec (driver/describe-fields :databricks (driver.u/ensure-lib-database (db)) {:schema-names [(maybe-qualify-schema "test-data")]
+                                                                                                 :table-names ["orders"]}))]
         (testing "Underlying query returns only fields from selected catalog"
           (is (= 9 (count fields))))
         (testing "Expected fields are returned"
@@ -174,8 +174,8 @@
   (with-and-without-multi-level
     (mt/test-driver :databricks
       (let [fks (driver/describe-fks :databricks
-                                     (assoc (lib.metadata/database (mt/metadata-provider))
-                                            :details (:details (db)))
+                                     (driver.u/ensure-lib-database (assoc (lib.metadata/database (mt/metadata-provider))
+                                                                          :details (:details (db))))
                                      {:schema-names [(maybe-qualify-schema "test-data")]
                                       :table-names ["orders"]})]
         (testing "Expected fks are returned"
@@ -360,7 +360,17 @@
                          :catalog "ccc"
                          :additional-options "IgnoreTransactions=0;bla=1"}
                         (sql-jdbc.conn/connection-details->spec :databricks)
-                        :subname))))))
+                        :subname))))
+    (testing "Thrift client can be selected"
+      (let [details {:host "localhost",
+                     :engine "databricks",
+                     :catalog "ccc"
+                     :additional-options "UseThriftClient=1"}
+            details2 (dissoc details :additional-options)]
+        (is (= 1 (:UseThriftClient (sql-jdbc.conn/connection-details->spec :databricks
+                                                                           details))))
+        (is (= 0 (:UseThriftClient (sql-jdbc.conn/connection-details->spec :databricks
+                                                                           details2))))))))
 
 (deftest multi-level-schema-test
   (mt/test-driver :databricks
@@ -376,7 +386,7 @@
       (mt/with-temp [:model/Database {db-id :id :as db} {:engine :databricks :details details}]
         (mt/with-db db
           (testing "With multi-level-schema default (off)"
-            (sync/sync-database! (mt/db))
+            (sync/sync-database! (mt/id))
             (is (= #{"test-data"} (t2/select-fn-set :schema :model/Table :db_id (mt/id) :active true)))
             (is (= 52 (count (t2/select
                               :model/Field
@@ -389,7 +399,7 @@
                                                              :schema-filters-patterns multi-pattern)})
           (mt/with-db
             (t2/select-one :model/Database db-id)
-            (sync/sync-database! (mt/db))
+            (sync/sync-database! (mt/id))
             (is (= #{(format "%s.%s" (:catalog details) "test-data")
                      (format "%s.%s" multicatalog multicatalog-schema)}
                    (t2/select-fn-set :schema :model/Table :db_id (mt/id) :active true)))
@@ -403,7 +413,7 @@
           (t2/update! :model/Database db-id {:details (assoc details :multi-level-schema false)})
           (mt/with-db
             (t2/select-one :model/Database db-id)
-            (sync/sync-database! (mt/db))
+            (sync/sync-database! (mt/id))
             (is (= #{"test-data"} (t2/select-fn-set :schema :model/Table :db_id (mt/id) :active true)))
             (is (= 52 (count (t2/select
                               :model/Field
@@ -426,7 +436,7 @@
         ;; First sync with multi-level-schema off
         (mt/with-db db
           (testing "With multi-level-schema default (off)"
-            (sync/sync-database! (mt/db))
+            (sync/sync-database! (mt/id))
             ;; originally we have unqualified schemas, only in one catalog
             (is (= #{"test-data"}
                    (t2/select-fn-set :schema :model/Table :db_id (mt/id))))))
@@ -438,7 +448,7 @@
           (t2/update! :model/Table {:db_id db-id} {:active false})
           (mt/with-db
             (t2/select-one :model/Database db-id)
-            (sync/sync-database! (mt/db))
+            (sync/sync-database! (mt/id))
             (is (= #{(format "%s.%s" (:catalog details) "test-data")
                      (format "%s.%s" multicatalog multicatalog-schema)}
                    ;; active` *and* inactive tables both have their schemas changed.
@@ -460,7 +470,7 @@
                                                                               :schema-filters-patterns (str/join ", " schema-filters)))}]
         (mt/with-db
           (t2/select-one :model/Database db-id)
-          (sync/sync-database! (mt/db) {:scan :schema})
+          (sync/sync-database! (mt/id) {:scan :schema})
           (let [table-schemas (t2/select-fn-set :schema :model/Table :db_id (mt/id) :active true)]
             (is (= schema-filters table-schemas))
             (is (nil? (some #(str/starts-with? % "__databricks") table-schemas)))))))))
@@ -481,7 +491,7 @@
                          :schema-filters-patterns multi-pattern)]
       (mt/with-temp [:model/Database {db-id :id :as db} {:engine :databricks :details details}]
         (mt/with-db db
-          (sync/sync-database! (mt/db) {:scan :schema})
+          (sync/sync-database! (mt/id) {:scan :schema})
           (let [mp (lib-be/application-database-metadata-provider db-id)
                 [t1-id t2-id] (t2/select-fn-vec
                                :id

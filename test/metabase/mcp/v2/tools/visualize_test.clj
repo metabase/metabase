@@ -131,6 +131,31 @@
             (testing "and carries the prompt for the visualization feedback flow"
               (is (= "show me orders" prompt)))))))))
 
+(deftest visualize-query-rejects-fresh-query-that-wont-run-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [mp     (lib-be/application-database-metadata-provider (mt/id))
+          orders (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+      (mt/with-temp [:model/Card {metric-id :id} {:type :metric :dataset_query (lib/aggregate orders (lib/count))}]
+        (testing "BOT-2391: a fresh query that the query processor rejects returns an error with recovery advice"
+          (doseq [[description stage rejection]
+                  [["a number column compared to text"
+                    {:filters [["=" {} ["field" {} (mt/id :orders :total)] "abc"]]}
+                    (str "\"Error filtering against :type/Float Field: unable to parse String \\\"abc\\\" "
+                         "to a :type/Float\"")]
+                   ["a metric used in a filter"
+                    {:aggregation [["count" {}]]
+                     :filters     [[">" {} ["metric" {} metric-id] 100]]}
+                    (str "Metabase could not expand a metric reference. Check that it is in an aggregation and "
+                         "applies to this stage's source.")]]]
+            (testing description
+              (is (= (str "Metabase could not prepare this query to run: " rejection "\n"
+                          "Fix that part of the query and retry.")
+                     (error-text (call! "visualize_query" (str (random-uuid))
+                                        {:query {:lib/type "mbql/query"
+                                                 :stages   [(merge {:lib/type     "mbql.stage/mbql"
+                                                                    :source-table (mt/id :orders)}
+                                                                   stage)]}})))))))))))
+
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
 (deftest visualize-query-rejects-display-test
   ;; `display` was accepted, enum-validated and echoed, but no renderer ever read it, and
@@ -366,13 +391,15 @@
         (let [{:keys [text minted?]} (read-with v2.resources/visualize-query-uri viz-scopes)]
           (is (str/includes? text "test-ui-credential"))
           (is (true? minted?))))
-      (testing "GHY-4543: a scope covering the shell's scope earns the credential too: wildcards, and the unrestricted
-                sentinel a cookie session binds"
-        (doseq [token-scopes [#{"agent:*"} #{"agent:query:*"} #{"*"} #{:metabase.api.macros.scope/unrestricted}]]
-          (testing (pr-str token-scopes)
-            (let [{:keys [text minted?]} (read-with v2.resources/visualize-query-uri token-scopes)]
-              (is (str/includes? text "test-ui-credential"))
-              (is (true? minted?))))))
+      (testing "GHY-4942: the unrestricted sentinel a cookie session binds, or a nil scope set, earns no credential"
+        (doseq [token-scopes [#{:metabase.api.macros.scope/unrestricted} nil]]
+          (let [{:keys [text minted?]} (read-with v2.resources/visualize-query-uri token-scopes)]
+            (is (not (str/includes? text "test-ui-credential")) (pr-str token-scopes))
+            (is (false? minted?) (pr-str token-scopes)))))
+      (testing "GHY-4942: a wildcard does not cover the shell's scope, so it earns no credential"
+        (doseq [token-scopes [#{"agent:*"} #{"agent:query:*"} #{"*"}]]
+          (is (false? (:minted? (read-with v2.resources/visualize-query-uri token-scopes)))
+              (pr-str token-scopes))))
       (testing "GHY-4543: a data resource is denied without its scope, naming the scope so the transport can
                 challenge for it"
         (is (= {:status :scope-denied :required-scope "agent:content:read"}

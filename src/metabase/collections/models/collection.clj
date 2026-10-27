@@ -607,6 +607,13 @@
                     (tru "A Collection placed in a remote-synced Collection must also be remote-synced."))]
           (throw (ex-info msg {:status-code 400, :errors {:location msg}})))))))
 
+(defn assert-remote-syncable
+  "Throws when `collection` is remote-synced but remote sync can't sync it."
+  [{:keys [is_remote_synced] :as collection}]
+  (when (and is_remote_synced (not (remote-sync/collection-syncable? collection)))
+    (let [msg (tru "Remote sync syncs only the Library, transforms, snippets and data apps unless remote-sync-custom-collections-enabled is on.")]
+      (throw (ex-info msg {:status-code 400, :errors {:is_remote_synced msg}})))))
+
 (defenterprise check-library-content
   "Checks contents of a library collection before saving it. The OSS implementation is a no-op."
   metabase-enterprise.library.validation
@@ -615,11 +622,8 @@
 
 (defn check-allowed-content
   "Checks the content of a collection before saving it. Throws when the collection with `collection-id` can't hold
-  content of `model-type`."
+  content of `model-type`; a data app's collection holds only what a remote-sync pull of the app accepts."
   [model-type collection-id]
-  ;; a data app's collection holds only what a pull of the app accepts; a bookmark is a user's pointer, not content.
-  ;; A load checks every question as a possible dashboard question before its dashboard is known, so that is a
-  ;; question here.
   (when (and collection-id
              (some? model-type)
              (not= :model/CollectionBookmark model-type)
@@ -1029,7 +1033,7 @@
                                                                             (when (perms/is-data-analyst? current-user-id)
                                                                               ^:allow-subquery {:select visible-union-columns
                                                                                                 :from [[:collection :c]]
-                                                                                                :where [:= :namespace ^:allow-raw-sql [:inline "transforms"]]})])}
+                                                                                                :where [:= :namespace "transforms"]})])}
                                :c])]
                      ;; The `WHERE` clause is where we apply the other criteria we were given:
                      :where [:and
@@ -1049,7 +1053,7 @@
                                [:not [:exists ^:allow-subquery {:select [1]
                                                                 :from [[:collection :sub_c]]
                                                                 :where [:and [:= :c.id :sub_c.id]
-                                                                        [:= :sub_c.namespace ^:allow-raw-sql [:inline "shared-tenant-collection"]]]}]])
+                                                                        [:= :sub_c.namespace (h2x/literal "shared-tenant-collection")]]}]])
                              ;; excluding things outside of the `archive_operation_id` you wanted...
                              (when-let [op-id (:archive-operation-id visibility-config)]
                                [:or
@@ -1410,6 +1414,9 @@
       ;; Actions without a model are synced with the Library rather than their collection
       :model/Action
       (collections.db/instances-with-columns [model-key :id :collection_id :model_id] ids)
+      ;; The Document spec's `:conditions` read `:exploration_id`; a row without the key never matches
+      :model/Document
+      (collections.db/instances-with-columns [model-key :id :collection_id :exploration_id] ids)
       ;; DashboardCard and DashboardCardSeries are nested under Dashboard - skip separate eligibility check
       (:model/DashboardCard :model/DashboardCardSeries)
       nil
@@ -1873,7 +1880,6 @@
                        :new-location new-location})))
     (when (= (:type collection) tenant-specific-root-collection-type)
       (throw (ex-info "Can't move a tenant collection" {:status-code 400})))
-    ;; an export writes a data app's collection under another as a file every pull refuses
     (when (perms/data-app-collection? (:id collection))
       (throw (ex-info "You cannot move a data app's collection." {:status-code 400})))
     ;; first move this Collection
@@ -1916,7 +1922,8 @@
                (assoc :slug (slugify collection-name))
                (cond->
                 (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))))
-    (assert-valid-remote-synced-parent <>)))
+    (assert-valid-remote-synced-parent <>)
+    (assert-remote-syncable <>)))
 
 (defn- copy-collection-permissions!
   "Grant read permissions to destination Collections for every Group with read permissions for a source Collection,
@@ -2099,12 +2106,13 @@
     (api/check
      (not (is-trash? collection-before-updates))
      [400 "You cannot modify the Trash Collection."])
-    ;; an export leaves out a trashed collection, which would delete the app's resource files, and writes an
-    ;; official one into a file every pull refuses
     (api/check
-     (not (and (or (:archived collection-updates) (some? (:authority_level collection-updates)))
+     (not (and (or (:archived collection-updates)
+                   (some? (:authority_level collection-updates))
+                   (contains? collection-updates :location)
+                   (some collection-updates [:type :personal_owner_id :is_sample :archive_operation_id]))
                (perms/data-app-collection? (:id collection-before-updates))))
-     [400 "You cannot move a data app's collection to the trash or make it official."])
+     [400 "A data app's collection stays a top-level collection of data apps: it can't be moved, trashed, made official or given a type."])
     ;; VARIOUS CHECKS BEFORE DOING ANYTHING:
     ;; (1) if this is a personal Collection, check that the 'propsed' changes are allowed
     (when (or (:personal_owner_id collection-before-updates)
@@ -2137,7 +2145,9 @@
                (= type "remote-synced") (-> (assoc :is_remote_synced true) (dissoc :type))
                collection-name (assoc :slug (slugify collection-name)))
       (when-not *clearing-remote-sync*
-        (assert-valid-remote-synced-parent (merge collection-before-updates <>))))))
+        (assert-valid-remote-synced-parent (merge collection-before-updates <>))
+        (when (contains? <> :is_remote_synced)
+          (assert-remote-syncable (merge collection-before-updates <>)))))))
 
 ;;; ----------------------------------------------------- DELETE -----------------------------------------------------
 
@@ -2204,7 +2214,7 @@
        [:not= (maybe-alias :type) instance-analytics-collection-type]
        [:not= (maybe-alias :type) trash-collection-type]]]
      [:or [:= (maybe-alias :namespace) nil]
-      [:not= (maybe-alias :namespace) ^:allow-raw-sql [:inline "analytics"]]]
+      [:not= (maybe-alias :namespace) "analytics"]]
      [:not (maybe-alias :is_sample)]]))
 
 (defmethod serdes/extract-query "Collection" [_model {:keys [collection-set filter-column filter-ids skip-archived]}]
@@ -2287,8 +2297,7 @@
           :slug
           :type]
    :skip []
-   :transform {:created_at        (serdes/date)
-               ;; We only dump the parent id, and recalculate the location from that on load.
+   :transform {;; We only dump the parent id, and recalculate the location from that on load.
                :location          (serdes/as :parent_id
                                              (serdes/compose
                                               (serdes/fk :model/Collection)

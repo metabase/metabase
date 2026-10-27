@@ -53,11 +53,12 @@
 
 (defmethod driver/host-carrying-parameters :starburst
   [_driver]
-  ["httpProxy" "socksProxy"])
+  ["httpProxy" "socksProxy" "oauth2TokenEndpoint"])
 
 (defmethod driver/non-host-parameters :starburst
   [_driver]
-  ["KerberosUseCanonicalHostname" "externalAuthenticationRedirectHandlers" "hostnameInCertificate"])
+  ["KerberosUseCanonicalHostname" "externalAuthenticationRedirectHandlers" "hostnameInCertificate"
+   "disallowLocalRedirect"])
 
 (set! *warn-on-reflection* true)
 
@@ -83,19 +84,9 @@
                               :regex/lookaheads-and-lookbehinds false}]
   (defmethod driver/database-supports? [:starburst feature] [_ _ _] supported?))
 
-(defn- format-field
-  [name value]
-  (if (nil? value)
-    ""
-    (str " " name ": " value)))
-
-(defmethod driver-api/query->remark :starburst
-  [_ {{:keys [card-id dashboard-id]} :info, :as query}]
-  (str
-   (driver-api/default-query->remark query)
-   (format-field "accountID" (driver-api/site-uuid))
-   (format-field "dashboardID" dashboard-id)
-   (format-field "cardID" card-id)))
+(defmethod sql.qp/use-ctes-for-stages? :starburst
+  [_driver]
+  true)
 
 (defn- handle-execution-error-details
   [^Exception e details]
@@ -206,8 +197,10 @@
         db-type     (h2x/type-info->db-type type-info)]
     (if (and ;; AT TIME ZONE is only valid on these starburst types; if applied to something else (ex: `date`), then
          ;; an error will be thrown by the query analyzer
-         db-type
-         (re-find #"(?i)^time(?:stamp)?(?:\(\d+\))?(?: with time zone)?$" db-type)
+         (if db-type
+           (re-find #"(?i)^time(?:stamp)?(?:\(\d+\))?(?: with time zone)?$" db-type)
+           ;; the database type is lost when `expr` comes from a nested query, e.g. a custom column
+           (isa? (h2x/effective-type expr) :type/DateTimeWithTZ))
          ;; if one has already been set, don't do so again
          (not (::in-report-zone? (meta expr)))
          report-zone)
@@ -400,6 +393,7 @@
     [#"(?i)real"                              :type/Float]
     [#"(?i)double"                            :type/Float]
     [#"(?i)decimal.*"                         :type/Decimal]
+    [#"(?i)^number$"                          :type/Decimal]
     [#"(?i)varchar.*"                         :type/Text]
     [#"(?i)char.*"                            :type/Text]
     [#"(?i)json"                              :type/Text]
@@ -600,16 +594,6 @@
    db-or-id-or-spec
    options
    (fn [^java.sql.Connection conn]
-     (when-let [db (cond
-                     ;; id?
-                     (integer? db-or-id-or-spec)
-                     (driver-api/with-metadata-provider db-or-id-or-spec
-                       (driver-api/database (driver-api/metadata-provider)))
-                     ;; db?
-                     (u/id db-or-id-or-spec)     db-or-id-or-spec
-                     ;; otherwise it's a spec and we can't get the db
-                     :else nil)]
-       (sql-jdbc.execute/set-role-if-supported! driver conn db))
      (try
        (sql-jdbc.execute/set-best-transaction-level! driver conn)
        (let [underlying-conn (pooled-conn->starburst-conn conn)]

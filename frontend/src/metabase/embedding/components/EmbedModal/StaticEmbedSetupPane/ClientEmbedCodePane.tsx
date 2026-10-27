@@ -1,3 +1,4 @@
+import type { JSX } from "react";
 import { t } from "ttag";
 
 import type { ClientCodeSampleConfig } from "metabase/embedding/types";

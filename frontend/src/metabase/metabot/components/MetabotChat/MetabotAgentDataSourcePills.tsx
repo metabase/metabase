@@ -41,7 +41,6 @@ import type {
   MetabotCodeEdit,
   MetabotCodeEditorBufferContext,
   MetabotSourceFeedback,
-  NativeDatasetQuery,
   TemplateTags,
 } from "metabase-types/api";
 
@@ -79,33 +78,31 @@ type SourceFeedbackTarget = Pick<
   "source_id" | "source_type"
 >;
 
-const isNativeDatasetQuery = (
-  datasetQuery: DatasetQuery,
-): datasetQuery is NativeDatasetQuery =>
-  "type" in datasetQuery && datasetQuery.type === "native";
-
 const decodeQuery = (datasetQuery: DatasetQuery | undefined): DecodedQuery => {
   try {
     if (!datasetQuery) {
       return { kind: "none" };
     }
 
-    if (isNativeDatasetQuery(datasetQuery)) {
-      const sql = datasetQuery.native.query;
-      const databaseId = datasetQuery.database;
-      if (typeof sql === "string" && typeof databaseId === "number") {
-        return {
-          kind: "native",
-          databaseId,
-          sql,
-          templateTags: datasetQuery.native["template-tags"],
-        };
-      }
-      return { kind: "none" };
-    }
-
     const question = Question.create({ dataset_query: datasetQuery });
     const query = question.query();
+    const isNativeOnly =
+      Lib.queryDisplayInfo(query).isNative && Lib.stageCount(query) === 1;
+
+    if (isNativeOnly) {
+      const databaseId = Lib.databaseID(query);
+      if (databaseId == null) {
+        return { kind: "none" };
+      }
+      const templateTags = Lib.templateTags(query);
+      return {
+        kind: "native",
+        databaseId,
+        sql: Lib.rawNativeQuery(query),
+        templateTags:
+          Object.keys(templateTags).length > 0 ? templateTags : undefined,
+      };
+    }
 
     return {
       kind: "mbql",
@@ -218,7 +215,7 @@ const SourceFeedbackButtons = ({
       <Tooltip label={t`Source is correct`}>
         <ActionIcon
           aria-label={t`Source is correct`}
-          size={24}
+          size="sm"
           variant="subtle"
           bdrs="xs"
           className={S.feedbackButton}
@@ -232,7 +229,7 @@ const SourceFeedbackButtons = ({
       <Tooltip label={t`Source is wrong`}>
         <ActionIcon
           aria-label={t`Source is wrong`}
-          size={24}
+          size="sm"
           variant="subtle"
           bdrs="xs"
           className={S.feedbackButton}

@@ -314,7 +314,7 @@
           ;; Now, all the tables are hidden, so do another sync with empty auto-cruft-tables setting
           ;; and make sure they are still hidden:
           (is (= {:hidden 8} (frequencies vis-types)))
-          (sync-metadata/sync-db-metadata! db)
+          (sync-metadata/sync-db-metadata! (:id db))
           (testing "Hidden tables stay hidden"
             (let [vis-types (t2/select-fn-vec :visibility_type :model/Table :db_id (u/the-id db))]
               (is (= {:hidden 8} (frequencies vis-types)))))))
@@ -332,7 +332,7 @@
         (is (future? sync-future))
         ;; wait for the sync to finish or crash out after 30 seconds
         (u/deref-with-timeout sync-future (u/seconds->ms 30))
-        (sync-metadata/sync-db-metadata! (t2/select-one :model/Database :name test-db-name))
+        (sync-metadata/sync-db-metadata! (:id (t2/select-one :model/Database :name test-db-name)))
         (is (= 1 (t2/count :model/Database :name test-db-name)))
         (let [db (t2/select-one :model/Database :name test-db-name)
               tables (t2/select :model/Table :db_id (u/the-id db))

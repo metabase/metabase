@@ -214,7 +214,7 @@ describe(
          * It will go in order from top to the bottom, which scrolls the
          * sidebar naturally. This prevents acting on an element that's not visible.
          */
-        const sortedCards = TEST_QUESTIONS.sort((a, b) =>
+        const sortedCards = TEST_QUESTIONS.toSorted((a, b) =>
           a.name.localeCompare(b.name),
         );
 
@@ -482,6 +482,10 @@ describe("issue 29304", () => {
         // cypress runs all tests in an iframe and the app uses this property to avoid embedding mode for all tests
         // by removing the property the app would work in embedding mode
         window.Cypress = undefined;
+        // Load charts up front so the lazy Suspense boundary never suspends.
+        // Nulling Cypress above also nulls isCypressActive, which keeps the
+        // frozen clock from advancing React 19's lazy retry (metabase#29304).
+        window.METABASE_LOAD_ALL_VISUALIZATIONS = true;
       },
     });
     H.closeNavigationSidebar();
@@ -668,6 +672,7 @@ describe("issue 31628", () => {
       .then((ids) => cy.get(`[data-dashcard-key="${ids[index]}"]`));
 
   const scalarContainer = (card) => card.findByTestId("scalar-container");
+  const scalarValue = (card) => card.findByTestId("scalar-value");
   const previousValue = (card) => card.findByTestId("scalar-previous-value");
 
   const moveMouseAway = () => {
@@ -738,7 +743,7 @@ describe("issue 31628", () => {
     H.getDashboardCards().should("have.length", cards.length);
 
     cy.log("scalar 1x2: should truncate value and show value tooltip on hover");
-    scalarContainer(card("scalar1x2")).then(($element) =>
+    scalarValue(card("scalar1x2")).then(($element) =>
       H.assertIsEllipsified($element[0]),
     );
     //TODO: Need to hover on the actual text, not just the container. This is a weird one
@@ -747,20 +752,22 @@ describe("issue 31628", () => {
     moveMouseAway();
 
     cy.log("scalar 2x2: should not truncate value");
-    scalarContainer(card("scalar2x2")).then(($element) =>
+    scalarValue(card("scalar2x2")).then(($element) =>
       H.assertIsNotEllipsified($element[0]),
     );
-    cy.log(
-      "scalar 2x2: should show the title tooltip on hover because the smallest cards hide the inline title",
-    );
+    cy.log("scalar 2x2: should keep the title visible without hovering");
+    card("scalar2x2")
+      .findByTestId("scalar-title")
+      .should("contain", SCALAR_QUESTION.name)
+      .and("be.visible");
     scalarContainer(card("scalar2x2")).realHover();
-    cy.findByRole("tooltip").findByText(SCALAR_QUESTION.name).should("exist");
+    cy.findByRole("tooltip").should("not.exist");
     moveMouseAway();
 
     cy.log(
       "scalar 6x3: should not truncate value and should not show value tooltip on hover",
     );
-    scalarContainer(card("scalar6x3")).then(($element) =>
+    scalarValue(card("scalar6x3")).then(($element) =>
       H.assertIsNotEllipsified($element[0]),
     );
     scalarContainer(card("scalar6x3")).realHover();
@@ -768,16 +775,16 @@ describe("issue 31628", () => {
     moveMouseAway();
 
     cy.log("smart scalar 2x2: should not truncate value");
-    scalarContainer(card("smart2x2")).then(($element) =>
+    scalarValue(card("smart2x2")).then(($element) =>
       H.assertIsNotEllipsified($element[0]),
     );
-    cy.log(
-      "smart scalar 2x2: should show the title tooltip on hover because the smallest cards hide the inline title",
-    );
+    cy.log("smart scalar 2x2: should keep the title visible without hovering");
+    card("smart2x2")
+      .findByTestId("scalar-title")
+      .should("contain", SMART_SCALAR_QUESTION.name)
+      .and("be.visible");
     scalarContainer(card("smart2x2")).realHover();
-    cy.findByRole("tooltip")
-      .findByText(SMART_SCALAR_QUESTION.name)
-      .should("exist");
+    cy.findByRole("tooltip").should("not.exist");
     moveMouseAway();
 
     cy.log(
@@ -818,7 +825,7 @@ describe("issue 31628", () => {
       moveMouseAway();
 
       cy.log(`${key}: should show description tooltip on hover`);
-      card(key).findByTestId("scalar-title").icon("info").realHover();
+      card(key).icon("info").realHover();
       cy.findByRole("tooltip")
         .findByText(SMART_SCALAR_QUESTION.description)
         .should("exist");
@@ -827,7 +834,7 @@ describe("issue 31628", () => {
       cy.log(
         `${key}: should not truncate value and should not show value tooltip on hover`,
       );
-      scalarContainer(card(key)).then(($element) =>
+      scalarValue(card(key)).then(($element) =>
         H.assertIsNotEllipsified($element[0]),
       );
       scalarContainer(card(key)).realHover();

@@ -47,6 +47,7 @@ const knownIssues = [
   "--mantine-shadow-xs_outline",
   "--mantine-shadow-sm_outline",
   "--mantine-shadow-lg_outline",
+  "--mantine-shadow-xs_on_dark",
 ];
 
 interface UsageMap {

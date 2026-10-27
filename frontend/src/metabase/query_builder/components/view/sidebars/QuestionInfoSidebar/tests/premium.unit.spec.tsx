@@ -103,6 +103,14 @@ describe("QuestionInfoSidebar > premium", () => {
     });
 
     describe("for admins", () => {
+      beforeEach(() => {
+        jest.useFakeTimers();
+      });
+
+      afterEach(() => {
+        jest.useRealTimers();
+      });
+
       it("should show tabs for Overview, History, and Relationships, and a link for Insights", async () => {
         setupEnterprise({ user: { is_superuser: true } });
         const tabs = await screen.findAllByRole("tab");

@@ -37,7 +37,6 @@
   [[:metabase_database :details]
    [:metabase_database :settings]
    [:metabase_database :write_data_details]
-   [:metabase_database :admin_details]
    [:core_user :settings]
    [:channel :details]
    [:api_key :key]

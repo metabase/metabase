@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.sqlite-test]}
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.driver.sqlite-test]}}}}}}
   (:require
+   [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
@@ -9,6 +10,7 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
@@ -16,12 +18,16 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.serialization :as serdes]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.sql ResultSet SQLException)
+   (org.sqlite SQLiteErrorCode)))
 
 (set! *warn-on-reflection* true)
 
@@ -306,12 +312,51 @@
 
 (deftest default-schema-test
   (mt/test-driver :sqlite
-    (is (nil? (driver.sql/default-schema :sqlite (mt/db))))))
+    (is (nil? (driver.sql/default-schema :sqlite (lib.metadata/database (mt/metadata-provider)))))))
+
+(deftest ^:parallel database-error-while-reading-rows-is-invalid-query-test
+  (mt/test-driver :sqlite
+    (testing "A database error raised while rows are read is :invalid-query, like one raised when the query starts"
+      (is (=? {:status     :failed
+               :error_type :invalid-query
+               :error      #"(?s).*malformed JSON.*"}
+              (qp/process-query
+               (qp/userland-query
+                (lib/native-query (mt/metadata-provider)
+                                  (str "SELECT json_extract(CASE WHEN ID = 1 THEN '{\"n\":1}' ELSE 'broken' END, '$.n')"
+                                       " AS N FROM VENUES")))))))))
+
+(deftest canceled-while-reading-rows-is-not-invalid-query-test
+  (mt/test-driver :sqlite
+    (let [query     (qp/userland-query
+                     (lib/native-query (mt/metadata-provider) "SELECT 1 AS X UNION ALL SELECT 2 AS X"))
+          row-thunk (mt/original-fn #'sql-jdbc.execute/row-thunk)]
+      (doseq [qp-canceled? [false true]]
+        (testing (str "A SQLite interrupt is a QP error with no SQLState, QP canceled: " qp-canceled?)
+          (let [interrupted (atom nil)]
+            (mt/with-dynamic-fn-redefs [sql-jdbc.execute/wire-up-canceled-chan-to-cancel-Statement! (constantly nil)
+                                        sql-jdbc.execute/row-thunk
+                                        (fn [driver ^ResultSet rs rsmeta]
+                                          (let [next-row (row-thunk driver rs rsmeta)
+                                                reads    (volatile! 0)]
+                                            (fn []
+                                              (when (= 2 (vswap! reads inc))
+                                                (when qp-canceled?
+                                                  (a/offer! qp.pipeline/*canceled-chan* ::canceled))
+                                                (.cancel (.getStatement rs)))
+                                              (try
+                                                (next-row)
+                                                (catch SQLException e
+                                                  (reset! interrupted e)
+                                                  (throw e))))))]
+              (is (=? {:status :failed, :error_type :qp} (qp/process-query query)))
+              (is (nil? (.getSQLState ^SQLException @interrupted)))
+              (is (= (.code SQLiteErrorCode/SQLITE_INTERRUPT) (.getErrorCode ^SQLException @interrupted))))))))))
 
 (deftest ^:parallel timezone-id-test
   (mt/test-driver :sqlite
     (is (= "UTC"
-           (driver/db-default-timezone :sqlite (mt/db))))))
+           (driver/db-default-timezone :sqlite (lib.metadata/database (mt/metadata-provider)))))))
 
 (deftest ^:parallel hour-bucketing-time-without-database-type-test
   (testing (str "Hour bucketing on a TIME-typed expression without `:database-type` (as happens for "
@@ -372,7 +417,7 @@
                    (map (fn [m] [(:table m) m])
                         (sql-jdbc.sync/current-user-table-privileges
                          :sqlite
-                         (sql-jdbc.conn/db->pooled-connection-spec (mt/db))))))))))
+                         (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))))))))))
 
 (deftest ^:parallel filter-by-date-test
   (testing "Make sure filtering against a LocalDate works correctly in SQLite"
@@ -415,7 +460,7 @@
                              "create view if not exists v_src as select id, strftime('%s', time) as time from src;"
                              "insert into src values(1, '2020-03-01 12:20:35');"]]
             (jdbc/execute! spec [statement]))
-          (sync/sync-database! database)
+          (sync/sync-database! (:id database))
           (is (= [{:name "src"
                    :fields [{:name      "id"
                              :base_type :type/Integer}
@@ -447,7 +492,7 @@
                               GROUP BY symbol
                               ORDER by dt;"]]
             (jdbc/execute! spec [statement]))
-          (sync/sync-database! database)
+          (sync/sync-database! (:id database))
           (is (= [{:name "groupby_test"
                    :fields [{:name      "id"
                              :base_type :type/Integer}
@@ -484,12 +529,12 @@
           (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver details)
                          [stmt]))
         (mt/with-temp [:model/Database db {:engine driver :details (assoc details :dbname db-name)}]
-          (sync/sync-database! db)
+          (sync/sync-database! (:id db))
           (mt/with-db db
             (testing "timestamp columns"
               (testing "database should be synced"
                 (is (= (set (map default-table-result ["timestamp_table"]))
-                       (into #{} (:tables (driver/describe-database driver db))))))
+                       (into #{} (:tables (driver/describe-database driver (driver.u/ensure-lib-database db)))))))
               (testing "timestamp column should exist"
                 (is (=? {:name "timestamp_table"
                          :schema nil
@@ -502,7 +547,7 @@
                                    :database-is-auto-increment false
                                    :database-is-nullable       true
                                    :database-is-generated      false}]}
-                        (-> (driver/describe-table driver db (t2/select-one :model/Table :id (mt/id :timestamp_table)))
+                        (-> (driver/describe-table driver (driver.u/ensure-lib-database db) (t2/select-one :model/Table :id (mt/id :timestamp_table)))
                             (update :fields (partial sort-by :name)))))))))))))
 
 (deftest select-query-datetime
@@ -525,7 +570,7 @@
         (jdbc/execute! (sql-jdbc.conn/connection-details->spec :sqlite details)
                        [stmt]))
       (mt/with-temp [:model/Database db {:engine :sqlite :details (assoc details :dbname db-name)}]
-        (sync/sync-database! db)
+        (sync/sync-database! (:id db))
         ;; In SQLite, you can actually store any value in any date/timestamp column,
         ;; let's test only values we'd reasonably run into.
         ;; Caveat: TIMESTAMP stored as string doesn't get parsed and is returned as-is by the driver,
@@ -569,11 +614,9 @@
 (deftest ^:parallel duplicate-identifiers-test
   (testing "Make sure duplicate identifiers (even with different cases) get unique aliases"
     (mt/test-driver :sqlite
-      (is (= '{:select   [__mb_source.CATEGORY AS CATEGORY
-                          COUNT (*)         AS count]
-               :from     [{:select [products.category || ? AS CATEGORY]
-                           :from   [products]}
-                          AS __mb_source]
+      (is (= '{:with     [__mb_stage_0 AS {:select [products.category || ? AS CATEGORY] :from [products]}]
+               :select   [__mb_source.CATEGORY AS CATEGORY COUNT (*) AS count]
+               :from     [__mb_stage_0 AS __mb_source]
                :group-by [__mb_source.CATEGORY]
                :order-by [__mb_source.CATEGORY ASC]
                :limit    [1]}
@@ -735,3 +778,8 @@
         (testing "so its base/effective type stays temporal (Lib's type wins over the storage affinity)"
           (is (isa? (:base_type col) :type/Temporal))
           (is (isa? (:effective_type col) :type/Temporal)))))))
+
+(deftest ^:parallel query-error-evidence-test
+  (mt/test-driver :sqlite
+    (doseq [code [1 19 20]]
+      (is (true? (sql-jdbc.execute/impl-error-in-query? :sqlite (SQLException. "Query error" nil code)))))))

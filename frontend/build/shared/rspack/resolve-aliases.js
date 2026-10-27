@@ -8,7 +8,6 @@ const ROOT_PATH = path.resolve(__dirname, "../../../..");
 const ASSETS_PATH = ROOT_PATH + "/resources/frontend_client/app/assets";
 const LOCALES_PATH = ROOT_PATH + "/resources/frontend_client/app/locales";
 const FONTS_PATH = ROOT_PATH + "/resources/frontend_client/app/fonts";
-const IMAGES_PATH = ROOT_PATH + "/resources/frontend_client/app/img";
 const DOCS_PATH = ROOT_PATH + "/docs";
 const FRONTEND_BUILD_CONFIGS_PATH = ROOT_PATH + "/frontend/build";
 const SRC_PATH = ROOT_PATH + "/frontend/src/metabase";
@@ -42,7 +41,6 @@ const RESOLVE_ALIASES = {
   assets: ASSETS_PATH,
   // Written by the `:translations` build step, which runs before the frontend one.
   locales: LOCALES_PATH,
-  img: IMAGES_PATH,
   fonts: FONTS_PATH,
   docs: DOCS_PATH,
   metabase: SRC_PATH,

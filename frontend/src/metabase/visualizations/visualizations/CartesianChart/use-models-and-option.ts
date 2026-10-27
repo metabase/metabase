@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { isReducedMotionPreferred } from "metabase/utils/dom";
+import type { LegendChart } from "metabase/visualizations/components/legend/plots";
 import { getTooltipOption } from "metabase/visualizations/echarts/cartesian/option/tooltip";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
@@ -13,6 +14,7 @@ import {
   getCartesianChartModel,
   getCartesianChartOption,
   getChartLayout,
+  getChartModelAtHeight,
   getScatterPlotModel,
   getScatterPlotOption,
   getTimelineEventsModel,
@@ -37,7 +39,7 @@ export function useModelsAndOption(
     onRender,
     isDashboard,
   }: VisualizationProps,
-  containerRef: React.RefObject<HTMLDivElement>,
+  containerRef: React.RefObject<HTMLDivElement | null>,
   containerSize: Pick<VisualizationProps, "width" | "height">,
 ) {
   const tc = useTranslateContent();
@@ -62,7 +64,7 @@ export function useModelsAndOption(
     ? timelineEvents.length !== 0
     : false;
 
-  const chartModel = useMemo(() => {
+  const baseChartModel = useMemo(() => {
     let getModel;
 
     settings["graph.x_axis.title_text"] = tc(
@@ -105,6 +107,22 @@ export function useModelsAndOption(
     showWarning,
     tc,
   ]);
+
+  // Fold before layout: the fold decides which category labels get measured.
+  const chartModel = useMemo(
+    () => getChartModelAtHeight(baseChartModel, height, settings),
+    [baseChartModel, height, settings],
+  );
+
+  const legendChart: LegendChart = useMemo(
+    () => ({
+      chartModel: baseChartModel,
+      settings,
+      hasTimelineEvents,
+      renderingContext,
+    }),
+    [baseChartModel, settings, hasTimelineEvents, renderingContext],
+  );
 
   const chartLayout = useMemo(
     () =>
@@ -208,6 +226,7 @@ export function useModelsAndOption(
   return {
     chartModel,
     chartLayout,
+    legendChart,
     timelineEventsModel,
     option,
     renderingContext,

@@ -6,6 +6,7 @@ import type {
   EnterpriseSettingKey,
   EnterpriseSettings,
   FontFile,
+  MajorVersionSupport,
   SettingDefinition,
   Settings,
   TokenFeatures,
@@ -79,6 +80,16 @@ export const createMockVersionInfo = (
 ): VersionInfo => ({
   latest: createMockVersionInfoRecord(),
   older: [createMockVersionInfoRecord()],
+  ...opts,
+});
+
+export const createMockMajorVersionSupport = (
+  opts?: Partial<MajorVersionSupport>,
+): MajorVersionSupport => ({
+  major: 56,
+  released: "2025-04-15",
+  lts: false,
+  eol: "2027-06-01",
   ...opts,
 });
 
@@ -320,6 +331,7 @@ export const createMockSettings = (
   "loading-message": "doing-science",
   "mcp-enabled?": true,
   "map-tile-server-url": "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+  "metabot-query-execution-enabled?": true,
   "native-query-autocomplete-match-style": "substring",
   "openai-api-key": null,
   "openai-organization": null,

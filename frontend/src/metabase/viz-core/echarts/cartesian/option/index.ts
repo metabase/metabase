@@ -28,11 +28,19 @@ import type {
   SeriesModel,
 } from "../model/types";
 import { getBarSeriesDataLabelKey } from "../model/util";
+import { getRowGoalLineSeriesOption } from "../row/option/goal-line";
+import { getRowChartSpacing } from "../row/spacing";
 import type { SplitPanelYExtent } from "../timeline-events/option";
 import { getTimelineEventsSelectionSeries } from "../timeline-events/option";
 import type { TimelineEventsModel } from "../timeline-events/types";
 
-import { buildAxes, buildDimensionAxis, buildMetricAxis } from "./axis";
+import {
+  buildAxes,
+  buildDimensionAxis,
+  buildMetricAxis,
+  getXAxisNameGap,
+  getYAxisNameGap,
+} from "./axis";
 import { getGoalLineParams, getGoalLineSeriesOption } from "./goal-line";
 import { applyResponsiveYAxisTicks } from "./responsive-axis";
 import { buildEChartsSeries } from "./series";
@@ -115,9 +123,14 @@ const isNonCategoryYAxisOption = (
   axis: YAXisOption,
 ): axis is NonCategoryYAxisOption => axis.type !== "category";
 
+const withAxisLabelMargin = <Axis extends { axisLabel?: object }>(
+  axis: Axis,
+  margin: number,
+): Axis => ({ ...axis, axisLabel: { ...axis.axisLabel, margin } });
+
 export const ensureRoomForLabels = (
   axes: Axes,
-  { leftAxisModel, rightAxisModel }: CartesianChartModel,
+  { leftAxisModel, rightAxisModel, isRowChart }: CartesianChartModel,
   chartLayout: ChartLayout,
   seriesOption: EChartsSeriesOption[],
 ): Axes => ({
@@ -134,6 +147,19 @@ export const ensureRoomForLabels = (
       return axis;
     }
     const [min] = axisModel.extent;
+    if (min < 0 && isRowChart) {
+      // Rotated, negative labels sit left of their bars
+      const labelWidth = chartLayout.negativeDataLabelsWidth ?? 0;
+      const { padding, outerWidth } = chartLayout;
+      const plotWidth = outerWidth - padding.left - padding.right;
+      if (labelWidth === 0 || !isNonCategoryYAxisOption(axis)) {
+        return axis;
+      }
+      return {
+        ...axis,
+        boundaryGap: [labelWidth / Math.max(plotWidth - labelWidth, 1), 0],
+      };
+    }
     if (min < 0) {
       const { bounds } = chartLayout;
       const innerHeight = Math.abs(bounds.bottom - bounds.top);
@@ -166,7 +192,10 @@ export function buildGridAndSeriesOption(
   const panelCount = visibleSeries.length;
   const isSplitPanels = chartLayout.panelHeight != null;
 
-  const baseGoalSeriesOption = getGoalLineSeriesOption(
+  const getGoalSeriesOption = chartModel.isRowChart
+    ? getRowGoalLineSeriesOption
+    : getGoalLineSeriesOption;
+  const baseGoalSeriesOption = getGoalSeriesOption(
     getGoalLineParams(chartModel),
     settings,
     renderingContext,
@@ -197,7 +226,13 @@ export function buildGridAndSeriesOption(
 
   const grid: GridOption | GridOption[] = isSplitPanels
     ? buildSplitPanelGrid(chartLayout, panelCount)
-    : { ...chartLayout.padding, outerBoundsMode: "none" };
+    : {
+        ...chartLayout.padding,
+        // Row charts let ECharts keep metric tick labels in bounds
+        ...(chartModel.isRowChart
+          ? { outerBoundsMode: "auto", outerBoundsContain: "axisLabel" }
+          : { outerBoundsMode: "none" }),
+      };
 
   const splitPanelOverrides = isSplitPanels
     ? buildSplitPanelOverrides(
@@ -296,8 +331,45 @@ export const getCartesianChartOption = (
       chartLayout,
       dataSeriesOptions,
     );
-    xAxis = axes.xAxis;
-    yAxis = axes.yAxis;
+    if (chartModel.isRowChart) {
+      // The rotation: metric axes become x, the dimension axis becomes y
+      // (`inverse` keeps the first row on top). Names and label margins follow.
+      const { ticksDimensions } = chartLayout;
+      const { theme } = renderingContext;
+      const spacing = getRowChartSpacing(theme);
+
+      xAxis = axes.yAxis.map(({ mainType: _omitMainType, ...axis }) => ({
+        ...withAxisLabelMargin(axis, spacing.metricTickMargin),
+        position: "bottom",
+        nameGap: getXAxisNameGap(ticksDimensions.xTicksHeight, theme),
+        axisLine: {
+          show: !!settings["graph.y_axis.axis_enabled"],
+          lineStyle: {
+            color: renderingContext.getColor("border-neutral"),
+          },
+        },
+      }));
+      const { mainType: _omitMainType, ...dimensionAxis } = axes.xAxis;
+      yAxis = [
+        {
+          ...withAxisLabelMargin(dimensionAxis, spacing.categoryTickMargin),
+          position: "left",
+          inverse: true,
+          offset: chartLayout.negativeDataLabelsInset,
+          nameGap: getYAxisNameGap(ticksDimensions.yTicksWidthLeft, theme),
+        },
+      ];
+    } else {
+      xAxis = axes.xAxis;
+      yAxis = axes.yAxis;
+    }
+  }
+
+  // echarts crashes building a cartesian coordinate system that has an x-axis
+  // but no y-axis, which happens on a render with no visible series. Drop the
+  // lone x-axis so an empty chart renders instead of throwing.
+  if (yAxis.length === 0) {
+    xAxis = [];
   }
 
   return {

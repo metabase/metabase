@@ -27,7 +27,7 @@ export function getTreemapTooltipOption(
   colors: Record<string, string>,
   formatValue: (value: number) => string,
   formatPercent: (ratio: number) => string,
-  containerRef: React.RefObject<HTMLDivElement>,
+  containerRef: React.RefObject<HTMLDivElement | null>,
   getViewRootId: () => string | null,
   getIsClicked: () => boolean,
   getIsAnimating: () => boolean,

@@ -144,10 +144,33 @@
 (deftest ^:parallel transpile-sql-multi-statement-rejected-test
   (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
     (testing "Multiple SQL statements should be rejected"
-      (let [{:keys [status error-message]} (sql-tools/transpile-sql "SELECT 1; SELECT 2"
-                                                                    "postgres" "postgres")]
+      (let [{:keys [status reason error-message]} (sql-tools/transpile-sql "SELECT 1; SELECT 2"
+                                                                           "postgres" "postgres")]
         (is (= :error status))
+        (is (= :multiple-statements reason))
         (is (str/includes? error-message "Multiple SQL statements"))))))
+
+(deftest ^:parallel transpile-sql-counts-statements-like-the-read-only-check-test
+  (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
+    (testing "a comment after a semicolon, or an empty statement, is not a second statement"
+      (doseq [sql ["SELECT 1; -- note" "SELECT 1; /* note */" "SELECT 1;;" "; SELECT 1"]]
+        (testing (pr-str sql)
+          (is (= :success (:status (sql-tools/transpile-sql sql "postgres" "postgres"))))
+          (is (nil? (sql-tools/read-only-select-problem :postgres sql))))))
+    (testing "a second query is a second statement for both checks"
+      (doseq [sql ["SELECT 1; SELECT 2" "SELECT 1; SELECT 2; -- note"]]
+        (testing (pr-str sql)
+          (is (= :multiple-statements (:reason (sql-tools/transpile-sql sql "postgres" "postgres"))))
+          (is (= :multiple-statements (:reason (sql-tools/read-only-select-problem :postgres sql)))))))))
+
+(deftest ^:parallel transpile-sql-parse-error-message-test
+  (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
+    (testing "a parse error names the token and its place, without the parser's internals or terminal escapes"
+      (is (= {:status        :error
+              :error-message (str "Expected table name but got 'where'. Line 1, Col: 17.\n"
+                                  "  select from where venues\n"
+                                  "              ^^^^^")}
+             (sql-tools/transpile-sql "select from where venues" "postgres" "postgres"))))))
 
 (deftest ^:parallel transpile-sql-preserves-query-structure-test
   (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
@@ -362,21 +385,47 @@
       :postgres "SELECT set_config('search_path', 'x', false)"
       :postgres "SELECT pg_terminate_backend(pid) FROM pg_stat_activity"
       :postgres "SELECT 1 WHERE pg_sleep(10) IS NULL"
+      :postgres "SELECT dblink_connect('c', 'dbname=x')"
       :mysql    "SELECT GET_LOCK('x', 10)"
       :mysql    "SELECT RELEASE_ALL_LOCKS()"
       :mysql    "SELECT SLEEP(10)"
-      :mysql    "SELECT BENCHMARK(1000000, MD5('x'))"))
+      :mysql    "SELECT BENCHMARK(1000000, MD5('x'))"
+      :mysql    "SELECT SOURCE_POS_WAIT('binlog.000001', 4, 10)"))
   (testing "a SELECT that assigns a user variable changes the session, so it is not read-only"
     (are [driver sql] (false? (sql-tools/read-only-select? driver sql))
       :mysql "SELECT @x := 1"
-      :mysql "SELECT @total := @total + a FROM t"))
+      :mysql "SELECT @total := @total + a FROM t"
+      :mysql "SELECT @x.y := 1"
+      :mysql "(SELECT @x.y := 1)"))
   (testing "reading a sequence or a user variable, hinting a plain read, or naming a function argument is read-only"
     (are [driver sql] (true? (sql-tools/read-only-select? driver sql))
       :sqlserver "SELECT * FROM t WITH (NOLOCK)"
       :sqlserver "SELECT * FROM dbo.fn(1)"
       :postgres  "SELECT currval('seq')"
+      :postgres  "SELECT lo_get(16384)"
       :mysql     "SELECT a FROM t WHERE b = @x"
       :postgres  "SELECT make_interval(days := 1)")))
+
+(deftest ^:parallel read-only-select?-side-effect-function-test
+  (testing "a SELECT that writes a Postgres large object is not read-only"
+    (are [driver sql] (false? (sql-tools/read-only-select? driver sql))
+      :postgres "SELECT lo_from_bytea(0, 'x')"
+      :postgres "SELECT lo_put(16384, 0, 'x')"
+      :postgres "SELECT lo_unlink(16384)"
+      :postgres "SELECT lo_export(16384, '/tmp/x')"))
+  (testing "a SELECT that waits or stops another session's work is not read-only"
+    (are [driver sql] (false? (sql-tools/read-only-select? driver sql))
+      :clickhouse "SELECT sleepEachRow(1) FROM numbers(100)"
+      :snowflake  "SELECT SYSTEM$WAIT(10)"
+      :snowflake  "SELECT SYSTEM$CANCEL_QUERY('01a2b3c4-0000-0000-0000-000000000000')"
+      :snowflake  "SELECT SYSTEM$ABORT_SESSION(1234)"))
+  (testing "a SELECT that runs a program, Java code or a request outside the database is not read-only"
+    (are [driver sql] (false? (sql-tools/read-only-select? driver sql))
+      :clickhouse "SELECT * FROM executable('script.sh', CSV, 'a Int32')"
+      :sparksql   "SELECT reflect('java.lang.Thread', 'sleep', 10000L)"
+      :databricks "SELECT java_method('java.lang.Thread', 'sleep', 10000L)"
+      :databricks "SELECT http_request(conn => 'c', method => 'POST', path => '/')"
+      :snowflake  "SELECT SYSTEM$SEND_EMAIL('i', 'a@b.c', 's', 'b')")))
 
 (deftest ^:parallel read-only-select?-sql-executing-function-test
   (testing "a SELECT that calls a function taking a SQL string to run is not read-only, whatever the string holds"
@@ -394,11 +443,15 @@
       :sqlserver "SELECT * FROM OPENQUERY(loop, 'DELETE FROM t')"
       :sqlserver "SELECT * FROM OPENROWSET('P', 's', 'DELETE FROM t')"
       :bigquery  "SELECT * FROM EXTERNAL_QUERY('c', 'DELETE FROM t')"
-      :snowflake "SELECT * FROM TABLE(TO_QUERY('SELECT seq.NEXTVAL'))"))
+      :snowflake "SELECT * FROM TABLE(TO_QUERY('SELECT seq.NEXTVAL'))"
+      :starburst "SELECT * FROM TABLE(system.query(query => 'SELECT pg_advisory_lock(1)'))"
+      :starburst "SELECT * FROM TABLE(pg.system.query(query => 'DELETE FROM t'))"
+      :athena    "SELECT * FROM TABLE(system.query(query => 'DELETE FROM t'))"))
   (testing "an ordinary read is still read-only"
     (are [driver sql] (true? (sql-tools/read-only-select? driver sql))
-      :postgres "SELECT id, name FROM t WHERE id = 5"
-      :postgres "SELECT * FROM generate_series(1, 10) g")))
+      :postgres  "SELECT id, name FROM t WHERE id = 5"
+      :postgres  "SELECT * FROM generate_series(1, 10) g"
+      :starburst "SELECT query FROM system.runtime.queries")))
 
 (deftest ^:parallel read-only-select?-hidden-sql-test
   (testing "SQL the database would run and the parser reads as something else is not read-only"
@@ -441,6 +494,7 @@
       :postgres  :session-function    "pg_advisory_lock" "SELECT pg_advisory_lock(42)"
       :mysql     :session-function    "get_lock"         "SELECT GET_LOCK('x', 10)"
       :postgres  :sql-executing-function "query_to_xml"  "SELECT query_to_xml('SELECT pg_advisory_lock(1)', true, false, '')"
+      :starburst :sql-executing-function "system.query"  "SELECT * FROM TABLE(system.query(query => 'SELECT 1'))"
       :postgres  :unparseable         nil                "SELECT ("
       :sqlserver :statement-word      "EXEC"             "SELECT 1 FROM t exec('DROP TABLE x')"
       :mysql     :executable-comment  nil                "SELECT * FROM t /*! FOR UPDATE */"

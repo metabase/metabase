@@ -6,9 +6,10 @@ import { allCollectionModels } from "metabase/common/components/Pickers/utils";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { DispatchFn } from "metabase/redux";
 import { mergeLazily } from "metabase/utils/merge-lazily";
-import type { CollectionNamespace } from "metabase-types/api";
+import type { CollectionNamespace, DataApp } from "metabase-types/api";
 
-import type { OmniPickerCollectionItem } from "../types";
+import { DATA_APPS_ROOT_ID } from "../constants";
+import type { OmniPickerCollectionItem, OmniPickerDataAppItem } from "../types";
 
 const getTransformsRootCollectionItem = ({
   namespace,
@@ -28,6 +29,20 @@ const getTransformsRootCollectionItem = ({
   }
   return null;
 };
+
+export const getDataAppsRootItem = (): OmniPickerCollectionItem => ({
+  model: "collection",
+  id: DATA_APPS_ROOT_ID,
+  name: t`Data apps`,
+  location: "/",
+  can_write: false,
+});
+
+export const getDataAppItem = (dataApp: DataApp): OmniPickerDataAppItem => ({
+  model: "data-app",
+  id: dataApp.id,
+  name: dataApp.display_name,
+});
 
 export const getOurAnalytics = (): OmniPickerCollectionItem => ({
   model: "collection",

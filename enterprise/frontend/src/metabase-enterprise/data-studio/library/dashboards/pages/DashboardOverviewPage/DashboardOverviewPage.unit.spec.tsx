@@ -2,12 +2,16 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  setupBookmarksEndpoints,
   setupCollectionByIdEndpoint,
   setupDashboardEndpoints,
   setupDashboardNotFoundEndpoint,
   setupDashboardQueryMetadataEndpoint,
+  setupUpdateDashboardEndpointWithError,
 } from "__support__/server-mocks";
 import { setupListSubscriptionsEndpoint } from "__support__/server-mocks/pulse";
+import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import {
   renderWithProviders,
   screen,
@@ -16,6 +20,7 @@ import {
   within,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import { Route } from "metabase/router";
 import type { Dashboard } from "metabase-types/api";
 import {
@@ -52,9 +57,16 @@ const SALES_COLLECTION = createMockCollection({
 type SetupOpts = {
   dashboard?: Partial<Dashboard>;
   isNotFound?: boolean;
+  hasUpdateError?: boolean;
+  isRemoteSyncReadOnly?: boolean;
 };
 
-function setup({ dashboard: dashboardOpts, isNotFound = false }: SetupOpts) {
+function setup({
+  dashboard: dashboardOpts,
+  isNotFound = false,
+  hasUpdateError = false,
+  isRemoteSyncReadOnly = false,
+}: SetupOpts) {
   const dashboard = createMockDashboard({
     id: 10,
     name: "Sales overview",
@@ -63,6 +75,11 @@ function setup({ dashboard: dashboardOpts, isNotFound = false }: SetupOpts) {
     ...dashboardOpts,
   });
   setupListSubscriptionsEndpoint([]);
+  setupBookmarksEndpoints([]);
+  if (hasUpdateError) {
+    // Registered before the default endpoints so this PUT route matches first
+    setupUpdateDashboardEndpointWithError(dashboard.id);
+  }
   if (isNotFound) {
     setupDashboardNotFoundEndpoint(dashboard);
   } else {
@@ -85,17 +102,34 @@ function setup({ dashboard: dashboardOpts, isNotFound = false }: SetupOpts) {
     <>
       <Route
         path="/data-studio/dashboards/:dashboardId"
-        element={<DashboardOverviewPage />}
+        element={
+          <>
+            <DashboardOverviewPage />
+            <UndoListing />
+          </>
+        }
       />
       <Route path="/dashboard/:slug" element={null} />
     </>,
     {
+      storeInitialState: createMockState({
+        settings: mockSettings({
+          "remote-sync-enabled": isRemoteSyncReadOnly,
+          "remote-sync-type": isRemoteSyncReadOnly ? "read-only" : undefined,
+        }),
+      }),
       withRouter: true,
       initialRoute: `/data-studio/dashboards/${dashboard.id}`,
     },
   );
 
   return { router };
+}
+
+function getUpdateCalls() {
+  return fetchMock.callHistory.calls("path:/api/dashboard/10", {
+    method: "PUT",
+  });
 }
 
 describe("DashboardOverviewPage", () => {
@@ -142,8 +176,64 @@ describe("DashboardOverviewPage", () => {
     setup({ dashboard: { description: null } });
 
     const info = await screen.findByTestId("dashboard-info");
-    expect(within(info).getByText("No description")).toBeInTheDocument();
+    expect(
+      within(info).getByPlaceholderText("No description"),
+    ).toBeInTheDocument();
   });
+
+  it("renames the dashboard from the header", async () => {
+    setup({});
+
+    const input = await screen.findByTestId("dashboard-name-input");
+    await userEvent.clear(input);
+    await userEvent.type(input, "Sales by region{enter}");
+
+    await waitFor(() => expect(getUpdateCalls()).toHaveLength(1));
+    expect(getUpdateCalls().map((call) => call.options.body)).toEqual([
+      JSON.stringify({ name: "Sales by region" }),
+    ]);
+  });
+
+  it("shows an error and keeps the unsaved name when the rename fails", async () => {
+    setup({ hasUpdateError: true });
+
+    const input = await screen.findByTestId("dashboard-name-input");
+    await userEvent.clear(input);
+    await userEvent.type(input, "Sales by region{enter}");
+
+    const toast = await screen.findByRole("status");
+    expect(
+      within(toast).getByText("Failed to update dashboard name"),
+    ).toBeInTheDocument();
+    expect(input).toHaveValue("Sales by region");
+    expect(getUpdateCalls()).toHaveLength(1);
+  });
+
+  it.each([
+    {
+      name: "the user cannot write the dashboard",
+      dashboard: { can_write: false },
+    },
+    {
+      name: "the dashboard is in the trash",
+      dashboard: { archived: true, can_restore: true },
+    },
+    {
+      name: "remote sync is read-only",
+      isRemoteSyncReadOnly: true,
+    },
+  ])(
+    "shows the name as plain text when $name",
+    async ({ dashboard, isRemoteSyncReadOnly }) => {
+      setup({ dashboard, isRemoteSyncReadOnly });
+
+      const header = await screen.findByTestId("dashboard-pane-header");
+      expect(within(header).getAllByText("Sales overview")).toHaveLength(2);
+      expect(
+        screen.queryByTestId("dashboard-name-input"),
+      ).not.toBeInTheDocument();
+    },
+  );
 
   it("hides Edit when the user cannot write the dashboard", async () => {
     setup({ dashboard: { can_write: false } });
