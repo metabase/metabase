@@ -49,6 +49,7 @@ export function ActionListPage() {
   const canCreate = isAdmin && canCreateActions(databases);
   const {
     tree,
+    rootCollection,
     isLoading: isLoadingActions,
     error: actionsError,
   } = useBuildActionTree({
@@ -86,6 +87,7 @@ export function ActionListPage() {
             to: Urls.dataStudioArchivedActions(),
           },
         ],
+        permissionsCollection: rootCollection,
         onOpenModal: setCollectionModal,
       }}
       renderRowMenu={renderRowMenu}

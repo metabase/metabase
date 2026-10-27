@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
    [metabase.app-db.core :as app-db]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.db :as sync.db]
@@ -339,7 +340,7 @@
       (with-redefs [sync.fingerprint/save-fingerprint! (constantly nil)
                     sync.fingerprint/max-refingerprint-field-count 31] ;; prime number so we don't have exact matches
         (let [results (sync.fingerprint/refingerprint-fields-for-db!
-                       (mt/db)
+                       (lib.metadata/database (mt/metadata-provider))
                        (constantly nil))
               attempted (:fingerprints-attempted results)]
           ;; it can exceed the max field count as our resolution is after each table check it.
@@ -407,5 +408,5 @@
                       sync.fingerprint/*refingerprint?* true]
           (is (= (assoc (sync.fingerprint/empty-stats-map 0)
                         :failed-fingerprints 1)
-                 (sync.fingerprint/fingerprint-fields-for-db! (mt/db) (constantly nil))))
+                 (sync.fingerprint/fingerprint-fields-for-db! (lib.metadata/database (mt/metadata-provider)) (constantly nil))))
           (is (= 1 @tables-fingerprinted)))))))

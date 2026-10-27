@@ -8,6 +8,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.query-execution :as query-execution]
    [metabase.metabot.scope :as scope]
@@ -73,6 +74,13 @@
   {:payload [:map {:closed true}]}
   [_]
   {:message  "Query execution is turned off for Metabot."
+   :recovery []})
+
+(tools/defrecoverable embedded-metabot!
+  "The embedded Metabot asked to run a query. The rows would be the embedding customer's end users' data."
+  {:payload [:map {:closed true}]}
+  [_]
+  {:message  "Metabot can't run queries in embedded apps."
    :recovery []})
 
 (tools/defrecoverable no-conversation!
@@ -682,6 +690,8 @@
   [{:keys [query_id row_limit]} allow-non-sql?]
   (when-not (metabot.settings/metabot-query-execution-enabled?)
     (query-execution-off! {}))
+  (when (= (:entity_id shared/*metabot*) metabot.config/embedded-metabot-id)
+    (embedded-metabot! {}))
   (check-private-conversation!)
   (let [{:keys [query saved-card]} (stored-query query_id allow-non-sql?)
         runnable                   (runnable-query query_id query allow-non-sql?)]

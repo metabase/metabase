@@ -45,7 +45,7 @@
 (defn- constraint->column-names
   "Given a constraint with `constraint-name` fetch the column names associated with that constraint."
   [database table-name constraint-name]
-  (let [jdbc-spec (sql-jdbc.conn/db->pooled-connection-spec (u/the-id database))
+  (let [jdbc-spec (sql-jdbc.conn/db->pooled-connection-spec database)
         sql-args  ["SELECT C.TABLE_CATALOG, C.TABLE_SCHEMA, K.COLUMN_NAME
                    FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS C
                    JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE K ON C.CONSTRAINT_NAME = K.CONSTRAINT_NAME

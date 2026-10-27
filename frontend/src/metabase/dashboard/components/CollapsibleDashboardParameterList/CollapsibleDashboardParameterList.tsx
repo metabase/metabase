@@ -5,8 +5,10 @@ import { t } from "ttag";
 
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import CS from "metabase/css/core/index.css";
+import { preventDragOrInputFocus } from "metabase/dashboard/components/DashCard/utils";
 import { DashboardParameterList } from "metabase/dashboard/components/DashboardParameterList";
 import { useDashboardContext } from "metabase/dashboard/context";
+import { getParametersWithValues } from "metabase/parameters/utils/ui";
 import { Icon, Menu } from "metabase/ui";
 
 interface CollapsibleDashboardParameterListProps extends ComponentProps<
@@ -27,7 +29,7 @@ export const CollapsibleDashboardParameterList = forwardRef<
   const { parameters } = listProps;
 
   const parametersWithValues = useMemo(
-    () => parameters.filter((p) => p.value != null),
+    () => getParametersWithValues(parameters),
     [parameters],
   );
 
@@ -108,7 +110,3 @@ export const CollapsibleDashboardParameterList = forwardRef<
     </>
   );
 });
-
-function preventDragOrInputFocus(e: React.MouseEvent) {
-  e.stopPropagation();
-}

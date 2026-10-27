@@ -1,1 +1,0 @@
-export { ModalFooter } from "./ModalFooter";

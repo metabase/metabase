@@ -680,7 +680,7 @@
                                   :target {:type "table" :schema (get-test-schema) :name table-name}}
                         created  (mt/user-http-request user :post 200 "transform" body)
                         get-resp (mt/user-http-request user :get 200 (format "transform/%s" (:id created)))
-                        kinds    (set (keys (driver/supported-index-methods driver/*driver* (mt/db))))]
+                        kinds    (set (keys (driver/supported-index-methods driver/*driver* (lib.metadata/database (mt/metadata-provider)))))]
                     (testing "the key is always present"
                       (is (contains? get-resp :requestable_indexes)))
                     (if (seq kinds)
