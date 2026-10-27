@@ -27,13 +27,17 @@ const setup = () => {
   return { user };
 };
 
+type NeighbouringTargetsProps = {
+  isPinnedOpened: boolean;
+  hasFirstTarget: boolean;
+};
+
 const NeighbouringTargets = ({
   isPinnedOpened,
-}: {
-  isPinnedOpened: boolean;
-}) => (
+  hasFirstTarget,
+}: NeighbouringTargetsProps) => (
   <div>
-    {["First", "Second"].map((name) => (
+    {(hasFirstTarget ? ["First", "Second"] : ["Second"]).map((name) => (
       <Tooltip
         key={name}
         label={`${name} tooltip`}
@@ -51,10 +55,18 @@ const NeighbouringTargets = ({
 
 const setupNeighbouringTargets = () => {
   const user = setupUser();
-  const { rerender } = render(<NeighbouringTargets isPinnedOpened={false} />);
-  const openPinnedTooltip = () =>
-    rerender(<NeighbouringTargets isPinnedOpened />);
-  return { user, openPinnedTooltip };
+  let props: NeighbouringTargetsProps = {
+    isPinnedOpened: false,
+    hasFirstTarget: true,
+  };
+  const { rerender } = render(<NeighbouringTargets {...props} />);
+  const updateProps = (changes: Partial<NeighbouringTargetsProps>) => {
+    props = { ...props, ...changes };
+    rerender(<NeighbouringTargets {...props} />);
+  };
+  const openPinnedTooltip = () => updateProps({ isPinnedOpened: true });
+  const removeFirstTarget = () => updateProps({ hasFirstTarget: false });
+  return { user, openPinnedTooltip, removeFirstTarget };
 };
 
 const ISOLATED_EVENTS = [
@@ -182,6 +194,24 @@ describe("Tooltip", () => {
     });
     expect(secondTooltip).toBeInTheDocument();
     expect(firstTooltip).not.toHaveAttribute("data-replaced");
+  });
+
+  it("fades in the next tooltip as usual after a shown one is removed", async () => {
+    const { user, removeFirstTarget } = setupNeighbouringTargets();
+
+    await user.hover(screen.getByRole("button", { name: "First" }));
+    await screen.findByRole("tooltip", { name: "First tooltip" });
+
+    removeFirstTarget();
+    expect(
+      screen.queryByRole("tooltip", { name: "First tooltip" }),
+    ).not.toBeInTheDocument();
+
+    await user.hover(screen.getByRole("button", { name: "Second" }));
+    const secondTooltip = await screen.findByRole("tooltip", {
+      name: "Second tooltip",
+    });
+    expect(secondTooltip).not.toHaveAttribute("data-entering-instantly");
   });
 
   it("neither hides nor is hidden by a tooltip whose owner controls whether it's open", async () => {
