@@ -1,6 +1,7 @@
 (ns metabase.tiles.api
   "`/api/tiles` endpoints."
   (:require
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    ;; TODO (Cam 10/10/25) -- update the tile API to use MBQL 5
@@ -225,6 +226,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:zoom/:x/:y"
   "Generates a single tile image for an ad-hoc query."
+  {:scope api-scope/data-app}
   [{:keys [zoom x y]} :- [:map {:closed true}
                           [:zoom ms/Int]
                           [:x ms/Int]
@@ -294,6 +296,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:card-id/:zoom/:x/:y"
   "Generates a single tile image for a saved Card."
+  {:scope api-scope/data-app}
   [{:keys [card-id zoom x y]}
    :- [:map {:closed true}
        [:card-id ::lib.schema.id/card]
@@ -314,6 +317,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/:zoom/:x/:y"
   "Generates a single tile image for a dashcard."
+  {:scope api-scope/data-app}
   [{:keys [dashboard-id dashcard-id card-id zoom x y], :as _route-params}
    :- [:map {:closed true}
        [:dashboard-id ::lib.schema.id/dashboard]
