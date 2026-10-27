@@ -14,20 +14,34 @@ export interface UrlMirrorWindow {
   removeEventListener: (type: "popstate", listener: () => void) => void;
 }
 
+function resolvePathname(path: string): string {
+  try {
+    return new URL(path, window.location.origin).pathname;
+  } catch {
+    return "";
+  }
+}
+
 /**
  * Puts the route of the app's iframe path (`/embed/apps/<name>/<route>`) into the
  * parent's URL as `/apps/<name>/<route>`, keeping the parent's own query and hash.
  * Uses `replaceState` (not `pushState`) so iframe-internal navigations don't clutter
- * the parent's back-history with one entry each.
+ * the parent's back-history with one entry each. A path outside the app puts the
+ * app's root there.
  */
 export function mirrorIframePath(iframePath: string, parentName: string): void {
   const iframePrefix = Urls.getSubpathSafeUrl(
     `${Urls.DATA_APP_EMBED_PREFIX}/${encodeURIComponent(parentName)}`,
   );
   const parentPrefix = Urls.getSubpathSafeUrl(Urls.dataApp(parentName));
-  const tail = iframePath.startsWith(iframePrefix)
-    ? iframePath.slice(iframePrefix.length)
-    : "";
+  // A frame on another origin reports its path in a message, so it can hold dot
+  // segments, a query or a fragment. Resolve it as the browser would, before
+  // `replaceState` does, and keep only its path.
+  const pathname = resolvePathname(iframePath);
+  const tail =
+    pathname === iframePrefix || pathname.startsWith(`${iframePrefix}/`)
+      ? pathname.slice(iframePrefix.length)
+      : "";
   const parentTarget =
     parentPrefix + tail + window.location.search + window.location.hash;
   const parentCurrent =

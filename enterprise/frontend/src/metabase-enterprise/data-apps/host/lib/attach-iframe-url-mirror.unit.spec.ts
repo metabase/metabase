@@ -3,6 +3,7 @@ import { setBasename } from "metabase/utils/basename";
 import {
   type UrlMirrorWindow,
   attachIframeUrlMirror,
+  mirrorIframePath,
 } from "./attach-iframe-url-mirror";
 
 type PopstateArgs = [type: "popstate", listener: () => void];
@@ -123,5 +124,47 @@ describe("attachIframeUrlMirror", () => {
     });
 
     expect(() => detach()).toThrow("boom");
+  });
+});
+
+describe("mirrorIframePath", () => {
+  beforeEach(() =>
+    window.history.replaceState({}, "", "/apps/sales?tab=1#top"),
+  );
+  afterEach(() => window.history.replaceState({}, "", "/"));
+
+  const mirrored = (iframePath: string) => {
+    mirrorIframePath(iframePath, "sales");
+    return (
+      window.location.pathname + window.location.search + window.location.hash
+    );
+  };
+
+  it("puts the app's route into the page URL, keeping the page's own query and hash", () => {
+    expect(mirrored("/embed/apps/sales/orders/42")).toBe(
+      "/apps/sales/orders/42?tab=1#top",
+    );
+  });
+
+  it("keeps a path that a frame on another origin reports under the app, wherever it points", () => {
+    expect(mirrored("/embed/apps/sales/../../auth/logout")).toBe(
+      "/apps/sales?tab=1#top",
+    );
+    expect(mirrored("/embed/apps/sales/%2e%2e/%2E%2E/auth/logout")).toBe(
+      "/apps/sales?tab=1#top",
+    );
+    expect(mirrored("/embed/apps/sales/..\\..\\auth/logout")).toBe(
+      "/apps/sales?tab=1#top",
+    );
+    expect(mirrored("/embed/apps/salesforce/orders")).toBe(
+      "/apps/sales?tab=1#top",
+    );
+    expect(mirrored("http://[")).toBe("/apps/sales?tab=1#top");
+  });
+
+  it("ignores a query or fragment in the reported path", () => {
+    expect(mirrored("/embed/apps/sales/orders?run=1#q")).toBe(
+      "/apps/sales/orders?tab=1#top",
+    );
   });
 });
