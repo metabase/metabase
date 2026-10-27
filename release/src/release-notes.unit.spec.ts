@@ -1,7 +1,4 @@
-import {
-  generateReleaseNotes,
-  getReleaseTitle,
-} from "./release-notes";
+import { generateReleaseNotes, getReleaseTitle } from "./release-notes";
 import { githubReleaseTemplate } from "./release-notes-templates";
 
 describe("Release Notes", () => {
