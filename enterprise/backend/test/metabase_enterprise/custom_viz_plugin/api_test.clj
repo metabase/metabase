@@ -124,13 +124,13 @@
         (let [identifiers (set (map :identifier (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")))]
           (is (not (contains? identifiers "colon:viz"))))))
     (testing "/list still serves a legacy plugin whose identifier a repository can't name"
-      (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "My Heatmap"
+      (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "My/Heatmap"
                                                :display_name "My Heatmap"
                                                :status       :active
                                                :enabled      true
-                                               :bundle_hash  "space-hash"}]
+                                               :bundle_hash  "slash-hash"}]
         (let [identifiers (set (map :identifier (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")))]
-          (is (contains? identifiers "My Heatmap")))))
+          (is (contains? identifiers "My/Heatmap")))))
     (testing "/list does not expose the raw bundle blob"
       (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "bundle-viz"
                                                :display_name "Bundle Viz"
@@ -175,13 +175,13 @@
           (is (contains? (warn-types "colon:dev-viz") "invalid-identifier")
               "dev-only plugins are exempt from version warnings but not from this one"))))
     (testing "GET / does not flag a legacy plugin whose identifier a repository can't name, it is still served"
-      (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "My Heatmap"
+      (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "My/Heatmap"
                                                :display_name "My Heatmap"
                                                :status       :active
                                                :enabled      true
-                                               :bundle_hash  "space-hash"}]
+                                               :bundle_hash  "slash-hash"}]
         (let [plugin (->> (mt/user-http-request :crowberto :get 200 "ee/custom-viz-plugin/")
-                          (filter #(= "My Heatmap" (:identifier %)))
+                          (filter #(= "My/Heatmap" (:identifier %)))
                           first)]
           (is (not (contains? (set (map :type (:warnings plugin))) "invalid-identifier"))))))))
 
@@ -520,15 +520,15 @@
 (deftest replace-bundle-legacy-non-directory-identifier-test
   (mt/with-premium-features #{:custom-viz}
     (testing "PUT /:id/bundle updates a plugin registered before the directory rule, it is served and stays updatable"
-      (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "My Heatmap"
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "My/Heatmap"
                                                       :display_name "My Heatmap"
                                                       :status       :active
                                                       :bundle_hash  "old"}]
-        (let [zip  (cvp.tu/valid-bundle-bytes "My Heatmap")
+        (let [zip  (cvp.tu/valid-bundle-bytes "My/Heatmap")
               resp (multipart-upload! :crowberto 200
                                       (str "ee/custom-viz-plugin/" id "/bundle") zip
                                       :method :put)]
-          (is (= "My Heatmap" (:identifier resp)))
+          (is (= "My/Heatmap" (:identifier resp)))
           (is (= (cvp.tu/bundle-hash zip) (:bundle_hash resp))))))))
 
 (deftest replace-bundle-legacy-colon-identifier-test
