@@ -22,9 +22,17 @@ export function useTooltipVisibility(
   { isControlled }: { isControlled: boolean },
 ) {
   const id = useId();
-  const activeId = useSyncExternalStore(subscribe, getActiveTooltipId);
   const [phase, setPhase] = useState<TooltipPhase>("closed");
   const [isReplacing, setIsReplacing] = useState(false);
+  const isShown = phase !== "closed";
+  const isReplaced = useSyncExternalStore(
+    subscribe,
+    () =>
+      !isControlled &&
+      isShown &&
+      activeTooltipId !== null &&
+      activeTooltipId !== id,
+  );
 
   // A tooltip removed while it's showing never reaches `onExited`.
   useEffect(() => () => releaseActiveTooltipId(id), [id]);
@@ -57,12 +65,9 @@ export function useTooltipVisibility(
     [transitionProps, id, isControlled],
   );
 
-  const isShown = phase !== "closed";
-
   return {
     isHoverable: !isControlled && (phase === "entering" || phase === "open"),
-    isReplaced:
-      !isControlled && isShown && activeId !== null && activeId !== id,
+    isReplaced,
     isEnteringInstantly: isReplacing && phase === "entering",
     transitionProps: resolvedTransitionProps,
   };
@@ -84,8 +89,4 @@ function subscribe(listener: () => void) {
   return () => {
     listeners.delete(listener);
   };
-}
-
-function getActiveTooltipId() {
-  return activeTooltipId;
 }
