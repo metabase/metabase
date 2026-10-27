@@ -10,6 +10,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]))
 
 (deftest ^:parallel supports-standalone-create-test
@@ -145,8 +146,8 @@
   (testing "the standalone-create path runs the rendered DDL and then ANALYZE against a real table"
     (mt/test-driver :postgres
       (mt/with-empty-db
-        (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-              conn-spec  (driver/connection-spec :postgres (mt/db))
+        (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
+              conn-spec  (driver/connection-spec :postgres (lib.metadata/database (mt/metadata-provider)))
               schema     "public"]
           (doseq [{:keys [label table columns structured expected]} execute-cases]
             (testing label
@@ -167,7 +168,7 @@
                                                  (driver/compile-create-index :postgres schema table structured))
                     (is (= expected (index-info admin-spec index-name))))
                   (testing "refresh-table-stats! runs ANALYZE without error"
-                    (is (some? (driver/refresh-table-stats! :postgres (mt/db) schema table :table))))
+                    (is (some? (driver/refresh-table-stats! :postgres (lib.metadata/database (mt/metadata-provider)) schema table :table))))
                   (finally
                     (jdbc/execute! admin-spec [(format "DROP TABLE IF EXISTS %s" qtable)])))))))))))
 
@@ -175,7 +176,7 @@
   (testing "driver/create-index! executes through the same per-driver rendering as compile-create-index"
     (mt/test-driver :postgres
       (mt/with-empty-db
-        (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+        (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
               db-id      (:id (mt/db))]
           (jdbc/execute! admin-spec ["DROP TABLE IF EXISTS \"public\".\"perf_idx_legacy\""])
           (jdbc/execute! admin-spec ["CREATE TABLE \"public\".\"perf_idx_legacy\" (id INT, user_id INT)"])

@@ -447,6 +447,30 @@ When a schema is used in 2+ places or has a name worth documenting, extract it i
 
 `mr/def` keys are always `::namespaced` keywords; downstream callers reference via the fully-qualified keyword. Single-use schemas stay inline in the `mu/defn`'s `:-` annotation — no need to extract.
 
+**Never bind a schema to a var with plain `def`** (`(def Foo [:map …])`). A named schema always goes through
+`mr/def` with a `::qualified` keyword, and other schemas reference it by that keyword, not by var. This holds in
+`dev/` and research code too: registered schemas resolve through the default registry, get cached validators and
+explainers, and `mr/def` takes a docstring.
+
+### Decoders — `mr/cached` + `mr/explain`, not a `def`'d `mc/coercer`
+
+Building an `mc/decoder` is expensive. Don't bind one with `def` (it is built at load time and goes stale when a
+schema it references is re-`mr/def`'d), don't rebuild it on every call, and don't reach for `mc/coercer`, which
+builds its own uncached validator. Wrap the decoder in `mr/cached` under a `::namespaced` key inside the function
+that uses it, then validate with the cached `mr/explain` / `mr/validate`. The cache is flushed whenever the registry
+changes:
+
+```clojure
+(defn decode-manifest [m]
+  (let [decoder (mr/cached ::decoder ::manifest (fn [] (mc/decoder ::manifest transformer)))
+        decoded (decoder m)]
+    (if-let [error (mr/explain ::manifest decoded)]
+      (throw (ex-info "Invalid manifest" {:errors (me/humanize error)}))
+      decoded)))
+```
+
+See `metabase.lib.normalize` for the same `mr/cached` pattern with several transformers.
+
 ## Malli — `metabase.util.malli`
 
 - `(mu/defn my-fn :- :string [x :- :int, y :- [:maybe :string]] …)` — inline schemas; runtime validation in dev, no-op in prod by default.
@@ -509,6 +533,8 @@ Other useful map ops:
 - **No `(set! *warn-on-reflection* true)` after the `ns` form** in a new `.clj` file — every `.clj` source file in this repo has it (not `.cljc`).
 - **`(ns … (:require [a :as a] [b :as b]))` on one line; `(:import java.io.File java.net.URI)` bare** — both wrong shapes. Requires one per line under `:require`, imports as `(Package Class)` lists.
 - **Inventing a fresh `:as` alias for `metabase.util`, `metabase.util.malli`, `metabase.util.log`, `java-time.api`, etc.** — use the canonical alias (see the table in Style Conventions). Mixing aliases makes `grep`-based discovery worse.
+- **`(def Foo [:map …])` for a Malli schema** — `(mr/def ::foo "doc" [:map …])` and reference it as `::foo`, even in `dev/`. See "Schemas".
+- **`(def decode (mc/decoder ::foo xf))` or `mc/coercer`** — build the decoder inside the fn with `(mr/cached ::key ::foo #(mc/decoder ::foo xf))` and validate with `mr/explain`. See "Decoders".
 
 ## When in doubt
 

@@ -37,5 +37,7 @@ export function getHeaderLabel(
       return t`Measures that use ${nodeLabel}`;
     case "action":
       return t`Data actions that use ${nodeLabel}`;
+    case "data-app":
+      return t`Data apps that use ${nodeLabel}`;
   }
 }

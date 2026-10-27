@@ -2,8 +2,8 @@ import { useDisclosure } from "@mantine/hooks";
 import { type FormEvent, useState } from "react";
 import { t } from "ttag";
 
+import { FilterFieldSet } from "metabase/transforms/components/FilterFieldSet";
 import { FILTER_WIDGET_MIN_WIDTH } from "metabase/transforms/constants";
-import { FilterFieldSet } from "metabase/transforms/pages/RunListPage/RunFilterBar/FilterFieldSet";
 import {
   Box,
   Button,

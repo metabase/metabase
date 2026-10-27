@@ -92,7 +92,7 @@
   (if (tdm/ssl-required?)
     (mt/test-driver :mongo
       (mt/dataset test-data (mt/db)
-        (mongo.connection/with-mongo-client [c (mt/db)]
+        (mongo.connection/with-mongo-client [c (mt/id)]
           (try
             ;; allow connecting with the client cert
             ;; https://www.mongodb.com/docs/manual/tutorial/configure-x509-client-authentication/#add-x-509-certificate-subject-as-a-user
@@ -270,7 +270,7 @@
              {:schema nil, :name "people"}
              {:schema nil, :name "products"}
              {:schema nil, :name "reviews"}}
-           (:tables (driver/describe-database :mongo (mt/db)))))))
+           (:tables (driver/describe-database :mongo (lib.metadata/database (mt/metadata-provider))))))))
 
 (tx/defdataset nested-bindata-coll
   (let [not-uuid (Binary. (byte 0) (byte-array 1))
@@ -321,7 +321,7 @@
                        :base-type         :type/Integer
                        :pk?               true
                        :database-position 0}}}
-           (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table :id (mt/id :venues)))))
+           (driver/describe-table :mongo (lib.metadata/database (mt/metadata-provider)) (t2/select-one :model/Table :id (mt/id :venues)))))
     (mt/dataset uuid-dogs
       (testing "binData uuid fields are identified as type/MongoBinData"
         (is (= {:schema nil,
@@ -331,7 +331,7 @@
                   {:name "name", :database-type "string", :base-type :type/Text, :database-position 2}
                   {:name "person_id", :database-type "binData", :base-type :type/MongoBinData, :database-position 3}
                   {:name "id", :database-type "binData", :base-type :type/MongoBinData, :database-position 1}}}
-               (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table :id (mt/id :dogs)))))))
+               (driver/describe-table :mongo (lib.metadata/database (mt/metadata-provider)) (t2/select-one :model/Table :id (mt/id :dogs)))))))
     (mt/dataset nested-bindata-coll
       (testing "nested fields with mixed binData subtypes are identified as type/*"
         (is (= {:schema nil, :name "nested-bindata",
@@ -350,7 +350,7 @@
                            :nested-fields #{{:name "nested_data_2", :database-type "binData", :base-type :type/MongoBinData, :database-position 5,
                                              :nfc-path ["nested_mixed_not_uuid" "nested_data_2"]}}
                            :visibility-type :details-only}}}
-               (driver/describe-table :mongo (mt/db) (t2/select-one :model/Table :id (mt/id :nested-bindata)))))))))
+               (driver/describe-table :mongo (lib.metadata/database (mt/metadata-provider)) (t2/select-one :model/Table :id (mt/id :nested-bindata)))))))))
 
 (deftest describe-table-respects-sync-max-fields-per-table-test
   (mt/test-driver :mongo
@@ -359,7 +359,7 @@
       ;; or deeply-nested collection can't OOM sync).
       (mt/with-temporary-setting-values [sync-max-fields-per-table 2]
         (is (= 2 (count (:fields (driver/describe-table
-                                  :mongo (mt/db)
+                                  :mongo (lib.metadata/database (mt/metadata-provider))
                                   (t2/select-one :model/Table :id (mt/id :venues)))))))))))
 
 ;; Index sync is turned off across the application as it is not used ATM.
@@ -382,15 +382,15 @@
             (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :singly-index :indexed))))
             (is (false? (t2/select-one-fn :database_indexed :model/Field (mt/id :singly-index :not-indexed)))))
           (testing "compound index"
-            (mongo.connection/with-mongo-database [db (mt/db)]
+            (mongo.connection/with-mongo-database [db (mt/id)]
               (mongo.util/create-index (mongo.util/collection db "compound-index") (array-map "first" 1 "second" 1)))
-            (sync/sync-database! (mt/db))
+            (sync/sync-database! (mt/id))
             (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :compound-index :first))))
             (is (false? (t2/select-one-fn :database_indexed :model/Field (mt/id :compound-index :second)))))
           (testing "multi key index"
-            (mongo.connection/with-mongo-database [db (mt/db)]
+            (mongo.connection/with-mongo-database [db (mt/id)]
               (mongo.util/create-index (mongo.util/collection db "multi-key-index") (array-map "url.small" 1)))
-            (sync/sync-database! (mt/db))
+            (sync/sync-database! (mt/id))
             (is (false? (t2/select-one-fn :database_indexed :model/Field :name "url")))
             (is (true? (t2/select-one-fn :database_indexed :model/Field :name "small"))))
           (finally
@@ -410,9 +410,9 @@
                                             [{:field-name "name" :indexed? false :base-type :type/Text}
                                              {:field-name "class" :indexed? false :base-type :type/Text}]
                                             [["Metabase" {"name" "Physics"}]]])
-          (mongo.connection/with-mongo-database [db (mt/db)]
+          (mongo.connection/with-mongo-database [db (mt/id)]
             (mongo.util/create-index (mongo.util/collection db "nested-indexed") (array-map "class.name" 1)))
-          (sync/sync-database! (mt/db) {:scan :schema})
+          (sync/sync-database! (mt/id) {:scan :schema})
           (testing "top level indexed, nested not"
             (let [name-fields (t2/select [:model/Field :name :parent_id :database_indexed]
                                          :table_id (mt/id :top-level-indexed) :name "name")]
@@ -461,11 +461,11 @@
                                            {:field-name "text-field" :indexed? false :base-type :type/Text}
                                            {:field-name "geospatial-field" :indexed? false :base-type :type/Text}]
                                           [["Ngoc" "Khuat" [10 20]]]])
-        (sync/sync-database! (mt/db))
+        (sync/sync-database! (mt/id))
         (try
           (let [describe-indexes (fn [table-name]
-                                   (driver/describe-table-indexes :mongo (mt/db) (t2/select-one :model/Table (mt/id table-name))))]
-            (mongo.connection/with-mongo-database [db (mt/db)]
+                                   (driver/describe-table-indexes :mongo (lib.metadata/database (mt/metadata-provider)) (t2/select-one :model/Table (mt/id table-name))))]
+            (mongo.connection/with-mongo-database [db (mt/id)]
               (testing "single column index"
                 (mongo.util/create-index (mongo.util/collection db "singly-index") {"a" 1})
                 (is (= #{{:type :normal-column-index :value "_id"}
@@ -551,7 +551,7 @@
   (mt/test-driver :mongo
     (mt/dataset all-null-columns
       ;; do a full sync on the DB to get the correct semantic type info
-      (sync/sync-database! (mt/db))
+      (sync/sync-database! (mt/id))
       (is (= [{:name "_id",            :database_type "long",   :base_type :type/Integer, :semantic_type :type/PK}
               {:name "favorite_snack", :database_type "null",   :base_type :type/*,       :semantic_type nil}
               {:name "name",           :database_type "string", :base_type :type/Text,    :semantic_type :type/Name}]
@@ -577,7 +577,7 @@
              ["Common Blackbird" "earthworms" nil]
              ["Silvereye" "cherries" nil]]]]
           ;; do a full sync on the DB to get the correct semantic type info
-          (sync/sync-database! (mt/db))
+          (sync/sync-database! (mt/id))
           (is (= #{{:name "_id",            :database_type "long",   :base_type :type/Integer, :semantic_type :type/PK}
                    {:name "favorite_snack", :database_type "string", :base_type :type/Text,    :semantic_type :type/Category}
                    {:name "name",           :database_type "string", :base_type :type/Text,    :semantic_type :type/Name}
@@ -823,7 +823,7 @@
                          (count row-maps) (pr-str database-name) (pr-str collection-name))))
           ;; now sync the Database.
           (let [db (first (t2/insert-returning-instances! :model/Database {:name database-name, :engine "mongo", :details details}))]
-            (sync/sync-database! db)
+            (sync/sync-database! (:id db))
             db)))))
 
 (defn- json-from-file [^String filename]
@@ -839,7 +839,7 @@
 (deftest sync-missing-fields-test
   (mt/test-driver :mongo
     (mt/with-db (missing-fields-db)
-      (sync/sync-database! (missing-fields-db))
+      (sync/sync-database! (:id (missing-fields-db)))
       (testing "Test that fields with missing or null values get synced correctly"
         (let [results (map #(into {} %)
                            (t2/select [:model/Field :id :name :database_type :base_type :semantic_type :parent_id]
@@ -912,18 +912,18 @@
                                                                       "versionArray" [4 0 29 -100]})]
         (is (= {:version "4.0.28-23"
                 :semantic-version [4 0 29]}
-               (driver/dbms-version :mongo (mt/db))))))
+               (driver/dbms-version :mongo (lib.metadata/database (mt/metadata-provider)))))))
     (testing "Any values after rubbish in versionArray are ignored"
       (mt/with-dynamic-fn-redefs [mongo.util/run-command (constantly {"version" "4.0.28-23"
                                                                       "versionArray" [4 0 "NaN" 29]})]
         (is (= {:version "4.0.28-23"
                 :semantic-version [4 0]}
-               (driver/dbms-version :mongo (mt/db))))))))
+               (driver/dbms-version :mongo (lib.metadata/database (mt/metadata-provider)))))))))
 
 (deftest object-columns-export-as-json
   (mt/test-driver :mongo
     (mt/with-db (missing-fields-db)
-      (sync/sync-database! (missing-fields-db))
+      (sync/sync-database! (:id (missing-fields-db)))
       (testing "Objects are formatted correctly as JSON in downloads"
         (mt/with-temp [:model/Card card {:display       :table
                                          :dataset_query {:database (mt/id)
@@ -1084,7 +1084,7 @@
     (binding [mongo.execute/*aggregate* (fn [db _coll session stages timeout-ms]
                                           (mongo.execute/aggregate-database db session stages timeout-ms))
               mongo/*sample-stages* (fn [& _#] [{"$documents" documents}])]
-      (let [dbfields (delay (@#'mongo/fetch-dbfields (mt/db) (t2/select-one-fn :name :model/Table :id (mt/id :venues))))
+      (let [dbfields (delay (@#'mongo/fetch-dbfields (lib.metadata/database (mt/metadata-provider)) (t2/select-one-fn :name :model/Table :id (mt/id :venues))))
             ftree (delay (@#'mongo/dbfields->ftree @dbfields))
             nested-fields (delay (@#'mongo/ftree->nested-fields @ftree))]
         (thunk dbfields ftree nested-fields)))))
@@ -1406,8 +1406,8 @@
       {:use-conn-uri true :conn-uri "mongodb+srv://user:pw@cluster.example.com/db"}
       ["cluster.example.com"]))
   (testing "a details map naming no host of its own contributes no hosts, as it does for every other driver"
-    ;; `write_data_details` and `admin_details` are overlays merged on top of `:details`, so they reach us as partial
-    ;; maps; one that only carries credentials repoints nothing, and the map it overlays is validated on its own
+    ;; `write_data_details` is an overlay merged on top of `:details`, so it reaches us as a partial
+    ;; map; one that only carries credentials repoints nothing, and the map it overlays is validated on its own
     (are [details] (= [] (driver/connection-hosts :mongo details))
       {}
       {:user "admin" :pass "x"}

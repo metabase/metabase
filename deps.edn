@@ -51,7 +51,7 @@
   com.google.auth/google-auth-library-credentials {:mvn/version "1.40.0"}       ; dep for BigQuery, Databricks, and Snowflake. Require here rather than letting different dep versions stomp on each other — see #70908
   com.google.auth/google-auth-library-oauth2-http {:mvn/version "1.40.0"}       ; Token refresh for the Metabot Google provider. Also a dep for BigQuery. Keep the version in step with google-auth-library-credentials
   com.google.code.gson/gson                 {:mvn/version "2.12.1"}             ; dep for BigQuery, Databricks, and Snowflake. Pin here so driver plugin JARs all use the same version — see #73736
-  com.google.guava/guava                    {:mvn/version "33.5.0-jre"}         ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
+  com.google.guava/guava                    {:mvn/version "33.7.2-jre"}         ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
   com.h2database/h2                         ^:antq/exclude                      ; https://metaboat.slack.com/archives/CKZEMT1MJ/p1727191010259979
   {:mvn/version "2.1.214"}            ; embedded SQL database
   com.ibm.icu/icu4j                         {:mvn/version "78.1"}               ; Used to transliterate Unicode characters into Latin characters
@@ -178,7 +178,7 @@
   org.mariadb.jdbc/mariadb-java-client      ^:antq/exclude                      ; 3.x only support jdbc:mariadb, so using 2.x for now
   {:mvn/version "2.7.15"}             ; MySQL/MariaDB driver
   org.mindrot/jbcrypt                       {:mvn/version "0.4"}                ; Crypto library
-  org.postgresql/postgresql                 {:mvn/version "42.7.12"}            ; Postgres driver
+  org.postgresql/postgresql                 {:mvn/version "42.7.14"}            ; Postgres driver
   org.semver4j/semver4j                     {:mvn/version "6.0.0"}              ; Semantic versioning parsing & comparison
   org.slf4j/slf4j-api                       {:mvn/version "2.0.17"}             ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
   org.tcrawley/dynapath                     {:mvn/version "1.1.0"}              ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
@@ -281,9 +281,6 @@
     io.zonky.test.postgres/embedded-postgres-binaries-linux-amd64    {:mvn/version "18.3.0"} ; Linux x86_64 (covers ubuntu-latest GH Actions runner)
     io.zonky.test.postgres/embedded-postgres-binaries-linux-arm64v8  {:mvn/version "18.3.0"} ; Linux arm64
     io.zonky.test.postgres/embedded-postgres-binaries-windows-amd64  {:mvn/version "18.3.0"} ; Windows x86_64
-    jonase/eastwood              {:mvn/version "1.4.3"                      ; inspects namespaces and reports possible problems using tools.analyzer
-                                  :exclusions
-                                  [org.ow2.asm/asm-all]}
     lambdaisland/deep-diff2      {:mvn/version "2.12.219"}                  ; way better diffs
     net.solovyov/hashp           {:mvn/version "0.4.0-1"}                   ; debugging/spying utility
     nrepl/nrepl                  {:mvn/version "1.5.1"}                     ; nREPL server
@@ -418,6 +415,9 @@
                ;; We use Snowplow micro in e2e tests
                "-Dmb.snowplow.available=true"
                "-Dmb.snowplow.url=http://localhost:9090"
+               ;; ...and the recording sink in `metaplow/` for Metabase Track. `metaplow-url`'s production
+               ;; default is nil outside production run mode, so e2e has to name the collector itself.
+               "-Dmb.metaplow.url=http://localhost:9091/api/send"
                ;; See: https://github.com/metabase/metabase/pull/38280
                "-Dmb.last.analytics.checksum=-1"
                "-Dmb.experimental.search.block.on.queue=true"
@@ -637,84 +637,6 @@
                  "modules/drivers/starburst/src"
                  "modules/drivers/vertica/src"]
    :jvm-opts    ["-Dclojure.main.report=stderr"]}
-
-  ;; clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood
-  :eastwood
-  {:exec-fn   metabase.linters.eastwood/eastwood
-   :exec-args {;; manually specify the source paths for the time being (exclude test paths) until we fix Eastwood
-               ;; errors in the test paths (once PR #17193 is merged)
-               :source-paths    ["src"
-                                 "enterprise/backend/src"
-                                 "modules/drivers/athena/src"
-                                 "modules/drivers/bigquery-cloud-sdk/src"
-                                 "modules/drivers/clickhouse/src"
-                                 "modules/drivers/databricks/src"
-                                 "modules/drivers/druid-jdbc/src"
-                                 "modules/drivers/hive-like/src"
-                                 "modules/drivers/mongo/src"
-                                 "modules/drivers/oracle/src"
-                                 "modules/drivers/presto-jdbc/src"
-                                 "modules/drivers/redshift/src"
-                                 "modules/drivers/snowflake/src"
-                                 "modules/drivers/sparksql/src"
-                                 "modules/drivers/sqlserver/src"
-                                 "modules/drivers/starburst/src"
-                                 "modules/drivers/vertica/src"]
-               :exclude-linters [;; Turn this off temporarily until we finish removing
-                                 ;; self-deprecated functions & macros
-                                 :deprecations
-                                 ;; this has a fit in libs that use Potemkin `import-vars` such
-                                 ;; as `java-time`
-                                 :implicit-dependencies
-                                 ;; too many false positives for now
-                                 :unused-ret-vals
-                                 :unused-ret-vals-in-try
-                                 ;; hard to clear on for metabase.util.match macros, and disabling the linter just
-                                 ;; there doesn't seem to work
-                                 :unused-meta-on-macro
-                                 ;; Kondo lints this for us anyway, and this isn't as easy to configure.
-                                 :wrong-arity
-                                 ;; Kondo lints this for us anyway, and this isn't as easy to configure.
-                                 :suspicious-expression]
-               ;; Snowplow has a dynamic dependency on okhttp3.CookieJar that we
-               ;; don't use but eastwood detects. This is discussed in Slack here
-               ;; https://clojurians.slack.com/archives/C03S1KBA2/p1667925853699669
-               ;; An issue has been filed here https://github.com/jonase/eastwood/issues/444
-               ;; and a simple reproduction repo can be found here https://github.com/metabase/snowplow-eastwood-issue
-               ;;
-               ;; The two Quartz queue-affinity DriverDelegate shims are `gen-class` namespaces whose
-               ;; only body is a `(.superRtp this ...)` call to their own exposed super method. That
-               ;; method exists only on the class the namespace itself generates, so `this` can't be
-               ;; type-hinted with it at compile time (the class isn't defined yet) — the reflective
-               ;; call is unavoidable. Eastwood also can't reliably analyze these gen-class shims.
-               :exclude-namespaces [metabase.analytics.snowplow
-                                    metabase.mq.quartz-affinity-delegate-std
-                                    metabase.mq.quartz-affinity-delegate-postgres]}}
-
-  ;; Test counterpart of :eastwood. Starts with :reflection only; add more linters as we fix other eastwood
-  ;; issues in tests.
-  ;;
-  ;; clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood/test
-  :eastwood/test
-  {:exec-fn   metabase.linters.eastwood/eastwood-tests
-   :exec-args {:linters      [:reflection]
-               :exclude-namespaces
-               [;; byte/1 dispatch value trips up Eastwood's reader
-                metabase.test.http-client
-                ;; Cookie/.getName qualified method trips up Eastwood's analyzer
-                metabase.server.middleware.settings-cache-test
-                ;; .cljc syntax error during Eastwood's analyze+eval phase
-                metabase.lib.query-test
-                ;; "count not supported on this type: Symbol" in Eastwood's analyzer
-                metabase.query-processor.parameters.temporal-units-test
-                ;; Syntax error compiling fn* in Eastwood's analyzer
-                metabase.sql-tools.macaw.references-test
-                ;; Method too large for Eastwood's analyzer
-                metabase.sql-tools.sqlglot.references-test
-                ;; dev/test namespaces that no longer load; nothing runs them
-                dev.deps-graph-test
-                dev.migrate-test
-                dev.model-tracking-test]}}
 
   ;; clojure -T:whitespace-linter
   :whitespace-linter
@@ -965,13 +887,14 @@
    :extra-paths ["dev/src"]
    :main-opts   ["-m" "dev.liquibase"]}
 
-  ;; Migrate CLI:
-  ;;    clojure -M:migrate <command>
+  ;; Migrate CLI (combine with :dev -- dev/src/user.clj needs the :dev classpath):
+  ;;    clojure -M:dev:migrate <command>
   ;; E.g.
-  ;;    clojure -M:migrate up                       ;; migrate up to the latest
-  ;;    clojure -M:migrate rollback count 2         ;; rollback 2 migrations
-  ;;    clojure -M:migrate rollback id "v40.00.001" ;; rollback to a specific migration with id
-  ;;    clojure -M:migrate status                   ;; print the latest migration id
+  ;;    clojure -M:dev:migrate up                          ;; migrate up to the latest
+  ;;    clojure -M:dev:migrate rollback last-deployment    ;; roll back the last migrate run
+  ;;    clojure -M:dev:migrate rollback deployment <id>    ;; roll back everything after that deployment_id
+  ;;    clojure -M:dev:migrate rollback count 2            ;; raw Liquibase rollback of 2 changesets
+  ;;    clojure -M:dev:migrate status                      ;; print the latest migration id
   :migrate
   {:extra-deps {io.github.camsaul/humane-are {:mvn/version "1.0.2"}}
    :extra-paths ["dev/src"]

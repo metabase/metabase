@@ -52,7 +52,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.models.table :as table]
    [toucan2.util :as t2.util]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -153,7 +152,16 @@
                                                                          table)]
                                                        (sync-and-update! database table all-metadata))
                                                      (catch Exception e
-                                                       (log/error (ex-message e))
+                                                       ;; an unreachable warehouse fails every table: abort the step
+                                                       (when (sync-util/transient-exception? e)
+                                                         (throw e))
+                                                       ;; a missing grant or FDW user mapping is for the customer to
+                                                       ;; fix, not a Metabase bug
+                                                       (if (sync-util/customer-environment-exception? e)
+                                                         (log/warnf "Error syncing Fields for %s: %s"
+                                                                    (sync-util/name-for-logging table) (ex-message e))
+                                                         (log/errorf e "Error syncing Fields for %s: %s"
+                                                                     (sync-util/name-for-logging table) (ex-message e)))
                                                        0))
                                                    0)]
                                      {:total-fields   (count table-metadata)
@@ -177,7 +185,7 @@
 (mu/defn sync-fields-for-table!
   "Sync the Fields in the Metabase application database for a specific `table`."
   ([table :- i/TableInstance]
-   (sync-fields-for-table! (table/database table) table))
+   (sync-fields-for-table! (driver.u/lib-database (:db_id table)) table))
 
   ([database :- i/DatabaseInstance
     table    :- i/TableInstance]

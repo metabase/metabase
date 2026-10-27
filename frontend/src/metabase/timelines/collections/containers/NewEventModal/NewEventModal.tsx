@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import {
   skipToken,
   useCreateTimelineEventMutation,
@@ -5,15 +7,17 @@ import {
 } from "metabase/api";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import { useNavigate } from "metabase/router";
-import NewEventModal from "metabase/timelines/common/components/NewEventModal";
+import NewEventForm from "metabase/timelines/common/components/NewEventForm";
+import {
+  TimelineModal,
+  TimelineModalLoadingState,
+} from "metabase/timelines/common/components/TimelineModal";
 import * as Urls from "metabase/urls";
 import type {
   CreateTimelineEventRequest,
   Timeline,
   TimelineEvent,
 } from "metabase-types/api";
-
-import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 
 function NewEventModalContainer({ params, onClose }: ModalComponentProps) {
   const navigate = useNavigate();
@@ -24,12 +28,6 @@ function NewEventModalContainer({ params, onClose }: ModalComponentProps) {
     isLoading,
     error,
   } = useGetTimelineQuery(id != null ? { id, include: "events" } : skipToken);
-
-  if (isLoading || error || !timeline) {
-    return (
-      <LoadingAndErrorWrapper loading={isLoading} error={error} noWrapper />
-    );
-  }
 
   const onSubmit = async (
     values: Partial<TimelineEvent>,
@@ -44,12 +42,24 @@ function NewEventModalContainer({ params, onClose }: ModalComponentProps) {
   };
 
   return (
-    <NewEventModal
-      source="collections"
-      timelines={[timeline]}
-      onSubmit={onSubmit}
+    <TimelineModal
+      title={t`New event`}
       onClose={onClose}
-    />
+      animated={false}
+      density="relaxed"
+      tall={isLoading || !!error || !timeline}
+    >
+      {isLoading || error || !timeline ? (
+        <TimelineModalLoadingState loading={isLoading} error={error} />
+      ) : (
+        <NewEventForm
+          source="collections"
+          timelines={[timeline]}
+          onSubmit={onSubmit}
+          onCancel={onClose}
+        />
+      )}
+    </TimelineModal>
   );
 }
 

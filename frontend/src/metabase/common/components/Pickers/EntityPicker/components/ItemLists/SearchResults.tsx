@@ -29,6 +29,7 @@ import {
   useCurrentSearchScope,
   useGetLastCollection,
 } from "../../hooks/use-current-search-scope";
+import { getDataAppsRootItem } from "../../hooks/utils";
 import { isSelectedItem, useGetEntityPickerIcon } from "../../utils";
 
 export const SearchResults = ({
@@ -163,6 +164,10 @@ const getItemText = (item: OmniPickerItem) => {
 
   if (item.model === "database") {
     return "";
+  }
+
+  if (item.model === "data-app") {
+    return getDataAppsRootItem().name;
   }
 
   if (isMeasure(item)) {

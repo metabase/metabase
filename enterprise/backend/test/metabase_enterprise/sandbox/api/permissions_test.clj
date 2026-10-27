@@ -111,6 +111,30 @@
             (testing "GTAP should not have been deleted"
               (is (t2/exists? :model/Sandbox :group_id (u/the-id (perms-group/all-users)), :table_id (mt/id :venues))))))))))
 
+(deftest collapsed-sandboxed-perms-dont-delete-gtaps-test
+  (testing "PUT /api/permissions/graph"
+    (testing (str "sandboxing the last unsandboxed table makes the frontend collapse the schema (or DB) to `sandboxed`, "
+                  "which should keep the existing sandboxes rather than delete them")
+      (doseq [[message updated-db-perms] {"schema-level sandboxed" {"PUBLIC" "sandboxed"}
+                                          "DB-level sandboxed"     "sandboxed"}]
+        (testing message
+          (met/with-gtaps! {:gtaps {:venues {}}}
+            (mt/with-model-cleanup [:model/Sandbox]
+              (let [graph (-> (mt/user-http-request :crowberto :get 200 "permissions/graph")
+                              (assoc-in (db-graph-keypath &group) updated-db-perms)
+                              (assoc :sandboxes [{:group_id (u/the-id &group)
+                                                  :table_id (mt/id :checkins)}]))]
+                (mt/user-http-request :crowberto :put 200 "permissions/graph" graph)
+                (testing "the existing sandbox is kept"
+                  (is (t2/exists? :model/Sandbox :group_id (u/the-id &group) :table_id (mt/id :venues))))
+                (testing "the newly added sandbox is saved"
+                  (is (t2/exists? :model/Sandbox :group_id (u/the-id &group) :table_id (mt/id :checkins))))
+                (testing "the graph reports both tables as sandboxed"
+                  (is (=? {(mt/id :venues)   :sandboxed
+                           (mt/id :checkins) :sandboxed}
+                          (get-in (data-perms.graph/api-graph)
+                                  [:groups (u/the-id &group) (mt/id) :view-data "PUBLIC"]))))))))))))
+
 (defn- fake-persist-card! [card]
   (let [persisted-info (persisted-info/turn-on-model! (mt/user->id :rasta) card)]
     (t2/update! :model/PersistedInfo {:card_id (u/the-id card)}

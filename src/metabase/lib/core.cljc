@@ -1709,7 +1709,8 @@
   temporal-bucket
   with-temporal-bucket]
  [lib.underlying
-  aggregation-sourced?]
+  aggregation-sourced?
+  breakout-sourced?]
  [lib.util
   clause?
   clause-of-type?
@@ -1744,6 +1745,7 @@
   all-implicitly-joined-field-ids
   all-implicitly-joined-table-ids
   all-measure-ids
+  all-metric-ids
   all-segment-ids
   all-source-card-ids
   all-source-card-ids-recursive

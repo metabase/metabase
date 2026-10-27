@@ -84,7 +84,6 @@ export {
 } from "./oss/notifications-sdk";
 export {
   PLUGIN_LIBRARY,
-  type CollectionPermissionsModalProps,
   type CreateLibraryModalProps,
   type PublishTablesModalProps,
   type UnpublishTablesModalProps,
@@ -147,7 +146,6 @@ export { PLUGIN_SMTP_OVERRIDE } from "./oss/smtp-override";
 export {
   PLUGIN_SNIPPET_FOLDERS,
   type MoveSnippetModalProps,
-  type SnippetCollectionPermissionsModalProps,
   type SnippetCollectionPickerModalProps,
   type SnippetSidebarContext,
   type SnippetSidebarMenuOption,
@@ -155,7 +153,9 @@ export {
 export {
   PLUGIN_TRANSFORMS,
   PLUGIN_TRANSFORMS_PYTHON,
+  PLUGIN_TRANSFORMS_TESTING,
   type TransformsPlugin,
+  type TransformsTestingPlugin,
   type PythonTransformEditorProps,
   type PythonTransformSourceSectionProps,
   type PythonTransformSourceValidationResult,
