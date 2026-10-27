@@ -43,15 +43,12 @@ export function deriveFullMetabaseTheme({
 
   const embeddingColors = embeddingThemeOverride?.colors;
 
-  const hasCustomBrandColor = Boolean(
-    embeddingColors?.["core-brand"] ?? whitelabelColors?.brand,
-  );
-
   // When instance doesn't have custom brand color configured, we replace brand
   // ramp (which is generated dynamically using color-mix to work with custom colors)
   // with a hand-picked `ocean` ramp
   const shouldKeepBrandRampDynamic =
-    forceDynamicBrandRamp || hasCustomBrandColor;
+    forceDynamicBrandRamp ||
+    Boolean(embeddingColors?.["core-brand"] ?? whitelabelColors?.brand);
 
   const baseColors = getBaseColorsForThemeDefinitionOnly();
 
@@ -60,14 +57,9 @@ export function deriveFullMetabaseTheme({
     shouldKeepBrandRampDynamic ? baseColors.brand : baseColors.ocean,
   );
 
-  const customBrandFillColors = hasCustomBrandColor
-    ? getCustomBrandFillColors(colorScheme, baseColors.brand)
-    : {};
-
   // Unjustified type cast. FIXME
   const colors = {
     ...baseTheme.colors,
-    ...customBrandFillColors,
     ...mapChartColorsToAccents(baseTheme.chartColors),
     ...deriveAllAccentColors(mapWhitelabelColorsToTokens(whitelabelColors)),
     ...filteredEmbeddingColors,
@@ -76,21 +68,3 @@ export function deriveFullMetabaseTheme({
 
   return { version: 2, colors };
 }
-
-const getCustomBrandFillColors = (
-  colorScheme: ResolvedColorScheme,
-  brand: ReturnType<typeof getBaseColorsForThemeDefinitionOnly>["brand"],
-): Partial<Record<MetabaseColorKey, string>> => {
-  const hover = colorScheme === "dark" ? brand[30] : brand[50];
-  const pressed = colorScheme === "dark" ? brand[40] : brand[60];
-
-  return {
-    "button-filled-brand-default": brand[40],
-    "button-filled-brand-hover": hover,
-    "button-filled-brand-pressed": pressed,
-    "background_surface-brand-strong": brand[40],
-    "background_surface-brand-strong-hover": hover,
-    "background_surface-brand-strong-pressed": pressed,
-    "switch-checked": brand[40],
-  };
-};

@@ -17,17 +17,17 @@ const baseColors = {
 
   // Brand colors (dynamic based on --mb-color-core-brand). Expanded to roughly match the values in the new color palette (but these should be reworked).
   brand: {
-    100: "color-mix(in srgb, var(--mb-color-core-brand), black 86%)",
-    90: "color-mix(in srgb, var(--mb-color-core-brand), black 75%)",
-    80: "color-mix(in srgb, var(--mb-color-core-brand), black 62%)",
-    70: "color-mix(in srgb, var(--mb-color-core-brand), black 47%)",
-    60: "color-mix(in srgb, var(--mb-color-core-brand), black 28%)",
-    50: "color-mix(in srgb, var(--mb-color-core-brand), black 12%)",
-    40: "var(--mb-color-core-brand)", // This is the base brand color
-    30: "color-mix(in srgb, var(--mb-color-core-brand), white 35%)",
-    20: "color-mix(in srgb, var(--mb-color-core-brand), white 70%)",
-    10: "color-mix(in srgb, var(--mb-color-core-brand), white 91%)",
-    5: "color-mix(in srgb, var(--mb-color-core-brand), white 96%)",
+    100: "color-mix(in srgb, var(--mb-color-core-brand), black 79%)",
+    90: "color-mix(in srgb, var(--mb-color-core-brand), black 64%)",
+    80: "color-mix(in srgb, var(--mb-color-core-brand), black 48%)",
+    70: "color-mix(in srgb, var(--mb-color-core-brand), black 26%)",
+    60: "var(--mb-color-core-brand)", // This is the base brand color
+    50: "color-mix(in srgb, var(--mb-color-core-brand), white 19%)",
+    40: "color-mix(in srgb, var(--mb-color-core-brand), white 31%)",
+    30: "color-mix(in srgb, var(--mb-color-core-brand), white 55%)",
+    20: "color-mix(in srgb, var(--mb-color-core-brand), white 79%)",
+    10: "color-mix(in srgb, var(--mb-color-core-brand), white 93%)",
+    5: "color-mix(in srgb, var(--mb-color-core-brand), white 97%)",
   },
 
   filter: {
