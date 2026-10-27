@@ -130,12 +130,16 @@ x.com")
   domain (such as `example-isolated.com` rather than `isolated.example.com`) isolates best while the session cookie's
   `SameSite` is `lax` or `strict`.")
 
-(defn isolated-origin-misconfigured?
+(defsetting isolated-origin-misconfigured?
   "True when `MB_ISOLATED_ORIGIN` is set but [[isolated-origin]] can't use it. Data apps are then refused, not served
-  without the isolated origin."
-  []
-  (and (some? (configured-isolated-origin))
-       (nil? (isolated-origin))))
+  without the isolated origin, and the frontend says why."
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :getter     #(and (some? (configured-isolated-origin))
+                    (nil? (isolated-origin)))
+  :export?    false
+  :doc        false)
 
 (defsetting csp-img-allowed-hosts
   (deferred-tru "Comma-separated list of hosts that images may load from (e.g. in dashboard text, entity descriptions, and custom visualizations) when `csp-img-enabled` is on. Empty by default, which restricts images to this Metabase instance and the map tile server used by map visualizations.")
