@@ -6,11 +6,14 @@
    [environ.core :as env]
    [metabase.config.core :as config]
    [metabase.server.instance :as server.instance]
+   [metabase.server.middleware.isolated-origin :as mw.isolated-origin]
    [metabase.server.middleware.security :as mw.security]
    [metabase.server.settings :as server.settings]
    [metabase.test :as mt]
+   [metabase.test.data.users :as test.users]
    [metabase.util :as u]
-   [stencil.core :as stencil]))
+   [stencil.core :as stencil]
+   [toucan2.core :as t2]))
 
 (defn- header->directive
   [csp-header directive]
@@ -186,6 +189,58 @@
        (filter #(str/starts-with? % (str directive " ")))
        first))
 
+(deftest data-app-cross-origin-csp-test
+  (testing "when MB_ISOLATED_ORIGIN is set, data apps are served from a separate origin"
+    (mt/with-dynamic-fn-redefs [server.settings/isolated-origin (constantly "https://apps.example.com")]
+      (mt/with-temporary-setting-values [site-url "https://mb.example.com"]
+        (testing "the isolated-origin document may be framed only by the site URL"
+          (is (= "frame-ancestors https://mb.example.com"
+                 (frame-ancestors-for "/embed/apps/sales")))
+          (testing "and omits X-Frame-Options, which can't express cross-origin framing"
+            (is (nil? (get (headers-for-uri "/embed/apps/sales") "X-Frame-Options")))))
+        (testing "the main app document may frame the isolated origin"
+          (is (str/includes? (csp-directive-for "/somepage" "frame-src")
+                             "https://apps.example.com")))
+        (testing "the data-app top page can frame the isolated origin even with no allowed_hosts"
+          ;; /apps/<slug> carries a (possibly empty) per-app `data-app-connect-hosts`, so its
+          ;; `frame-src` takes the per-app branch, which must still include the isolated origin.
+          (mt/with-dynamic-fn-redefs [mw.security/data-app-connect-src-hosts (constantly [])]
+            (is (str/includes? (csp-directive-for "/apps/sales" "frame-src")
+                               "https://apps.example.com"))))))))
+
+(deftest data-app-frame-ancestors-is-site-url-origin-test
+  (testing "on a subpath deployment, the apps document's frame-ancestors is the site URL's origin, without the path"
+    (mt/with-temp-env-var-value! [mb-isolated-origin "https://apps.example.com"]
+      (mt/with-temporary-setting-values [site-url "https://mb.example.com/metabase"]
+        (is (= "frame-ancestors https://mb.example.com"
+               (frame-ancestors-for "/embed/apps/sales")))))))
+
+(deftest isolated-origin-request-cannot-act-with-main-host-session-test
+  (testing "a cookie-authenticated form POST from the isolated origin cannot create a user on the main host"
+    (mt/with-temp-env-var-value! [mb-isolated-origin "https://apps.example.com"]
+      (mt/with-temporary-setting-values [site-url "https://mb.example.com"]
+        (let [cookie (str "metabase.SESSION=" (test.users/username->token :crowberto))
+              email  "isolated-origin-user@example.com"]
+          (testing "the session cookie authenticates, so a refusal is about where the request comes from"
+            (is (= "crowberto@metabase.com"
+                   (:email (mt/client :get 200 "user/current" {:request-options {:headers {"cookie" cookie}}})))))
+          (mt/with-model-cleanup [:model/User]
+            (let [response (mt/client-full-response
+                            :post "user"
+                            {:request-options {:headers {"host"           "mb.example.com"
+                                                         "origin"         "https://apps.example.com"
+                                                         "sec-fetch-site" "same-site"
+                                                         "content-type"   "application/x-www-form-urlencoded"
+                                                         "cookie"         cookie}}}
+                            {:first_name "Apps"
+                             :last_name  "Origin"
+                             :email      email
+                             :password   "Isolated-origin-pass-12345"})]
+              (testing "is refused"
+                (is (= 403 (:status response))))
+              (testing "and creates no user"
+                (is (not (t2/exists? :model/User :email email)))))))))))
+
 ;; `form-action` is the SOLE barrier (no JS backstop) against a hostile bundle
 ;; native-submitting a HOST `<form action="/api/user">` to provision an admin — the
 ;; backend takes `:form-params` before the JSON body and a normal-cookie session
@@ -211,19 +266,23 @@
       (is (nil? (csp-directive-for uri "form-action"))))))
 
 (deftest data-app-unsafe-eval-test
-  ;; Near-Membrane needs `eval` to run the app bundle, but it runs it inside a realm
-  ;; iframe served from `/api/ee/apps/sandbox-host`, which carries the grant in its own
-  ;; CSP. Granting it on the data-app document too would hand `eval`/`Function` to
-  ;; anything running there — including guest code that escaped the membrane.
-  (testing "the data-app document does not get 'unsafe-eval'"
-    (with-redefs [config/is-dev? false]
-      (doseq [uri ["/embed/apps/sales" "/embed/apps/sales/sub/route" "/apps/sales"]]
+  ;; Why only the isolated-origin document gets 'unsafe-eval': see `content-security-policy-header`.
+  (testing "same-origin: no data-app document or other embed page gets 'unsafe-eval'"
+    (with-redefs [config/is-dev?                  false
+                  server.settings/isolated-origin  (constantly nil)]
+      (doseq [uri ["/embed/apps/sales" "/embed/apps/sales/sub/route" "/apps/sales"
+                   "/embed/dashboard/abc"]]
         (is (not (str/includes? (csp-directive-for uri "script-src") "'unsafe-eval'"))
             (str uri " should not grant 'unsafe-eval'")))))
-  (testing "and neither does any other document"
-    (with-redefs [config/is-dev? false]
-      (is (not (str/includes? (csp-directive-for "/embed/dashboard/abc" "script-src")
-                              "'unsafe-eval'"))))))
+  (testing "cross-origin (MB_ISOLATED_ORIGIN): the app document on the isolated origin DOES get 'unsafe-eval'"
+    (with-redefs [config/is-dev?                  false
+                  server.settings/isolated-origin  (constantly "https://apps.example.com")]
+      (is (str/includes? (csp-directive-for "/embed/apps/sales" "script-src") "'unsafe-eval'"))
+      (is (str/includes? (csp-directive-for "/embed/apps/sales/sub/route" "script-src") "'unsafe-eval'"))
+      (testing "but the top page and unrelated documents do not"
+        (doseq [uri ["/apps/sales" "/embed/dashboard/abc" "/somepage"]]
+          (is (not (str/includes? (csp-directive-for uri "script-src") "'unsafe-eval'"))
+              (str uri " should not grant 'unsafe-eval'")))))))
 
 (deftest data-app-frame-src-test
   (testing "a data app's frame-src is a per-app allowlist: only 'self' + its allowed_hosts"
@@ -275,7 +334,19 @@
       (doseq [uri ["/embed/apps/sales" "/apps/sales"]]
         (is (str/includes? (get (headers-for-request {:uri uri :metabase-user-id 1}) "Content-Security-Policy")
                            "https://example.com")
-            uri)))))
+            uri))))
+  (testing "the app document on the isolated origin, which no signed-in request reaches, gets `*` in their place and
+            never looks them up: the runtime narrows it with the app's own policy from the bundle response"
+    (mt/with-dynamic-fn-redefs [server.settings/isolated-origin (constantly "https://apps.example.com")]
+      (let [lookups (atom 0)]
+        (mt/with-dynamic-fn-redefs [mw.security/data-app-connect-src-hosts
+                                    (fn [_slug] (swap! lookups inc) ["https://example.com"])]
+          (let [csp (get (headers-for-request {:uri "/embed/apps/sales" ::mw.isolated-origin/isolated-origin? true})
+                         "Content-Security-Policy")]
+            (is (not (str/includes? csp "https://example.com")))
+            (doseq [directive ["connect-src" "img-src" "form-action"]]
+              (is (some #{"*"} (str/split (header->directive csp directive) #" ")) directive))
+            (is (zero? @lookups))))))))
 
 (deftest data-app-instance-origin-excluded-test
   (testing "the Metabase instance origin is dropped from a data app's allowlist even if listed"
@@ -1149,3 +1220,14 @@
 (deftest embedded-data-app-policy-blocks-forms-without-allowed-hosts-test
   (is (= "form-action 'none'"
          (header->directive (mw.security/embedded-data-app-content-security-policy []) "form-action"))))
+
+(deftest embedded-data-app-policy-allows-eval-only-on-the-isolated-origin-test
+  (testing "same-origin, the bundle runs in the realm host, so the app's policy grants no eval"
+    (mt/with-dynamic-fn-redefs [server.settings/isolated-origin (constantly nil)]
+      (is (not (str/includes? (header->directive (mw.security/embedded-data-app-content-security-policy []) "script-src")
+                              "'unsafe-eval'")))))
+  (testing "on the isolated origin the bundle runs in an about:blank realm, which inherits the app's policy, so it
+            grants eval"
+    (mt/with-dynamic-fn-redefs [server.settings/isolated-origin (constantly "https://apps.example.com")]
+      (is (str/includes? (header->directive (mw.security/embedded-data-app-content-security-policy []) "script-src")
+                         "'unsafe-eval'")))))

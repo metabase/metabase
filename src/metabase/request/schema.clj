@@ -104,6 +104,7 @@
    [:token-exchange?         {:optional true} :boolean]
    [:metabase.server.middleware.offset-paging/limit  {:optional true} [:maybe :int]]
    [:metabase.server.middleware.offset-paging/offset {:optional true} [:maybe :int]]
+   [:metabase.server.middleware.isolated-origin/isolated-origin? {:optional true} :boolean]
    [:accept                  {:optional true} [:maybe :string]]
    [:redirect-strategy       {:optional true} [:maybe :keyword]]
    [:method                  {:optional true} [:maybe :keyword]]

@@ -11,6 +11,7 @@
    [metabase.embedding.settings :as embedding.settings]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.request.core :as request]
+   [metabase.server.middleware.isolated-origin :as mw.isolated-origin]
    [metabase.server.settings :as server.settings]
    [metabase.settings.core :as setting]
    [metabase.system.core :as system]
@@ -243,8 +244,9 @@
   [])
 
 (defn- content-security-policy-header
-  "`Content-Security-Policy` header. See https://content-security-policy.com for more details."
-  [nonce script-nonce? data-app-iframe? data-app-connect-hosts allow-blob-img?]
+  "`Content-Security-Policy` header. See https://content-security-policy.com for more details. `isolated-origin` is
+  [[server.settings/isolated-origin]], or nil."
+  [nonce script-nonce? data-app-iframe? data-app-connect-hosts allow-blob-img? isolated-origin]
   {"Content-Security-Policy"
    (str/join
     (for [[k vs] {:default-src  ["'none'"]
@@ -274,13 +276,12 @@
                                  (when config/is-dev?
                                    ["'unsafe-eval'"
                                     (str "http://localhost:" cljs-dev-port)])
-                                 ;; NOTE: data-app routes deliberately do NOT get 'unsafe-eval'.
-                                 ;; Near-Membrane needs `eval` to run the app bundle, but it runs it
-                                 ;; inside a realm iframe served from `/api/ee/apps/sandbox-host`, whose
-                                 ;; own CSP grants 'unsafe-eval' for that document alone. Granting it
-                                 ;; here instead would also hand `eval`/`Function` to anything running
-                                 ;; in the data-app document itself — including guest code that escaped
-                                 ;; the membrane.
+                                 ;; Near-Membrane needs `eval`. Same-origin, the realm host
+                                 ;; (`/api/ee/apps/sandbox-host`) holds that grant so the cookie-bearing
+                                 ;; document doesn't. On the isolated origin there is no session cookie and no realm
+                                 ;; host, so the membrane uses an `about:blank` realm that inherits this CSP.
+                                 (when (and data-app-iframe? isolated-origin)
+                                   ["'unsafe-eval'"])
                                  (when-not config/is-dev?
                                    (map (partial format "'sha256-%s'") inline-js-hashes)))
                   :child-src    ["'self'"
@@ -302,14 +303,17 @@
                                    (str "http://localhost:" cljs-dev-port))
                                  "https://accounts.google.com"]
                   :style-src-attr ["'self'"]
-                  :frame-src    (if (some? data-app-connect-hosts)
-                                  ;; Data-app docs get a per-app framing allowlist:
-                                  ;; only `'self'` and the origins the app declared
-                                  ;; in `allowed_hosts` — NOT the instance-wide iframe
-                                  ;; hosts, so a data app can't frame those unless it
-                                  ;; lists them itself.
-                                  (into ["'self'"] data-app-connect-hosts)
-                                  (parse-allowed-iframe-hosts (server.settings/allowed-iframe-hosts)))
+                  :frame-src    (cond-> (if (some? data-app-connect-hosts)
+                                          ;; Data-app docs get a per-app framing allowlist:
+                                          ;; only `'self'` and the origins the app declared
+                                          ;; in `allowed_hosts` — NOT the instance-wide iframe
+                                          ;; hosts, so a data app can't frame those unless it
+                                          ;; lists them itself.
+                                          (into ["'self'"] data-app-connect-hosts)
+                                          (parse-allowed-iframe-hosts (server.settings/allowed-iframe-hosts)))
+                                  ;; Both branches allow the isolated origin: the top page `/apps/<slug>` takes the
+                                  ;; per-app branch and frames it.
+                                  isolated-origin (conj isolated-origin))
                   :font-src     (into (cond-> always-allowed-resource-hosts
                                         config/is-dev? (conj frontend-address))
                                       (application-font-files->hosts))
@@ -388,20 +392,31 @@
        (valid-embedding-origins
         (setting/get-value-of-type :string :embedding-app-origins-interactive))))
 
+(defn- site-url-origin
+  "`scheme://host[:port]` of the site URL, without its path, or nil. A `frame-ancestors` source with a path matches
+  no framing page."
+  []
+  (when-let [site-url (not-empty (system/site-url))]
+    (let [uri  (java.net.URI. ^String site-url)
+          port (.getPort uri)]
+      (str (.getScheme uri) "://" (.getHost uri) (when-not (= -1 port) (str ":" port))))))
+
 (defn- frame-ancestors-value
   "The `frame-ancestors` CSP source-list for a given framing `mode`:
    `:any` (open embedding), `:self` (same-origin only, e.g. the internal data-app
-   iframe), or `:none` (no framing, unless interactive embedding is configured)."
+   iframe), `:main-app` (the site URL's origin, for the data-app iframe on the isolated origin),
+   or `:none` (no framing, unless interactive embedding is configured)."
   [mode]
   (case mode
-    :any  "*"
-    :self "'self'"
+    :any      "*"
+    :self     "'self'"
+    :main-app (or (site-url-origin) "'self'")
     (or (interactive-embedding-origins) "'none'")))
 
 (defn- content-security-policy-header-with-frame-ancestors
-  [frame-ancestors-mode nonce script-nonce? data-app-iframe? data-app-connect-hosts allow-blob-img?]
+  [frame-ancestors-mode nonce script-nonce? data-app-iframe? data-app-connect-hosts allow-blob-img? isolated-origin]
   (update (content-security-policy-header nonce script-nonce? data-app-iframe? data-app-connect-hosts
-                                          allow-blob-img?)
+                                          allow-blob-img? isolated-origin)
           "Content-Security-Policy"
           #(format "%s frame-ancestors %s;" % (frame-ancestors-value frame-ancestors-mode))))
 
@@ -411,6 +426,9 @@
   [mode]
   (case mode
     :any  nil
+    ;; X-Frame-Options can't allow another origin (browsers ignore ALLOW-FROM), so only
+    ;; `frame-ancestors` restricts it.
+    :main-app nil
     :self {"X-Frame-Options" "SAMEORIGIN"}
     {"X-Frame-Options" (if-let [eao (interactive-embedding-origins)]
                          (format "ALLOW-FROM %s" (-> eao (str/split #" ") first))
@@ -513,18 +531,18 @@
 (defn security-headers
   "Fetch a map of security headers that should be added to a response based on the passed options.
    `:frame-ancestors` controls clickjacking protection: `:any` (open embedding),
-   `:self` (same-origin only), or `:none` (default — no framing unless interactive
-   embedding is configured). `:script-nonce?` adds the nonce to `script-src`, see
-   [[script-nonce-response-key]]."
+   `:self` (same-origin only), `:main-app` (the site URL's origin), or `:none` (default — no framing unless
+   interactive embedding is configured). `:script-nonce?` adds the nonce to `script-src`, see
+   [[script-nonce-response-key]]. `:isolated-origin` is [[server.settings/isolated-origin]], or nil."
   [& {:keys [origin nonce script-nonce? frame-ancestors allow-cache? data-app-iframe? data-app-connect-hosts
-             allow-blob-img? cors]
+             allow-blob-img? cors isolated-origin]
       :or   {frame-ancestors :none, allow-cache? false, script-nonce? false, data-app-iframe? false,
              allow-blob-img? false}}]
   (merge
    (if allow-cache? cache-far-future-headers (cache-prevention-headers))
    strict-transport-security-header
    (content-security-policy-header-with-frame-ancestors frame-ancestors nonce script-nonce? data-app-iframe?
-                                                        data-app-connect-hosts allow-blob-img?)
+                                                        data-app-connect-hosts allow-blob-img? isolated-origin)
    (access-control-headers origin (embedding.settings/embedding-app-origins-sdk) cors)
    ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
    (x-frame-options-header frame-ancestors)
@@ -628,10 +646,12 @@
     hosts))
 
 (defn embedded-data-app-content-security-policy
-  "CSP for embedded data apps to be installed inside the data app iframe."
+  "CSP for embedded data apps to be installed inside the data app iframe. The isolated origin
+   (`MB_ISOLATED_ORIGIN`) also installs it, because it serves the iframe document without a session,
+   so that document's header can't carry the app's hosts."
   [allowed-hosts]
   (get (content-security-policy-header
-        nil false true (drop-instance-origin allowed-hosts) true)
+        nil false true (drop-instance-origin allowed-hosts) true (server.settings/isolated-origin))
        "Content-Security-Policy"))
 
 (defn- cacheable-status?
@@ -645,33 +665,40 @@
 
 (defn- add-security-headers* [cors request response]
   ;; merge is other way around so that handler can override headers
-  (let [headers (security-headers
+  (let [isolated-origin (server.settings/isolated-origin)
+        headers (security-headers
                  :origin                      (get (:headers request) "origin")
                  :cors                        cors
                  :nonce                       (:nonce request)
                  :script-nonce?               (boolean (get response script-nonce-response-key))
-                 ;; The internal data-app iframe is only ever framed by the
-                 ;; same-origin Metabase app, so restrict it to `'self'` rather
-                 ;; than the open embedding `*`. Check it before the broader
-                 ;; `embed?`, which `/embed/apps/...` also matches.
+                 :isolated-origin             isolated-origin
+                 ;; Only the Metabase app frames the data-app iframe: `'self'` when same-origin, the site URL when
+                 ;; served from the isolated origin. Check it before the broader `embed?`, which `/embed/apps/...` also
+                 ;; matches.
                  :frame-ancestors             (cond
-                                                (request/data-app? request)                       :self
+                                                (request/data-app? request)                       (if isolated-origin :main-app :self)
                                                 ((some-fn request/public? request/embed?) request) :any
                                                 :else                                              :none)
                  :allow-cache?                (and (request/cacheable? request)
                                                    (cacheable-status? (:status response)))
                  :data-app-iframe?            (data-app-iframe-request? request)
-                 ;; Per-app `allowed_hosts` → `connect-src`/`form-action` (iframe
-                 ;; doc) and `frame-src` (both the iframe doc and the top page,
-                 ;; whose `frame-src` gates the iframe's own navigations). The
-                 ;; hosts are looked up only for a signed-in user: the header would
-                 ;; otherwise hand an app's `allowed_hosts` to anyone who can guess
-                 ;; its slug, and let them probe which slugs exist. A signed-out
-                 ;; request still gets the data-app policy with an empty allowlist,
-                 ;; not the broader instance-wide one.
+                 ;; Per-app `allowed_hosts` go into `connect-src`/`form-action` (iframe doc) and `frame-src` (both
+                 ;; the iframe doc and the top page, whose `frame-src` gates the iframe's own navigations). On the
+                 ;; main host the hosts are looked up only for a signed-in user: the header would otherwise hand an
+                 ;; app's `allowed_hosts` to anyone who can guess its slug, and let them probe which slugs exist. The
+                 ;; isolated origin never has a signed-in user, so its document gets `*` in their place, the same for
+                 ;; every slug: the runtime installs the app's own policy from the bundle response, which narrows them
+                 ;; (see [[embedded-data-app-content-security-policy]]). A signed-out main-host request still gets
+                 ;; the data-app policy with an empty allowlist, not the broader instance-wide one.
                  :data-app-connect-hosts      (when-let [slug (data-app-slug request)]
-                                                (if (:metabase-user-id request)
+                                                (cond
+                                                  (mw.isolated-origin/isolated-origin-request? request)
+                                                  ["*"]
+
+                                                  (:metabase-user-id request)
                                                   (drop-instance-origin (data-app-connect-src-hosts slug))
+
+                                                  :else
                                                   []))
                  ;; Data apps and the EAJS embed page both render custom viz icons as blob: <img> URLs
                  :allow-blob-img?             (or (data-app-iframe-request? request)
