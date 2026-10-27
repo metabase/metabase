@@ -70,15 +70,13 @@ export const MetabotAsk = () => {
     >
       {showGreeting ? (
         <>
+          {historyAction && (
+            <Box className={S.historyAction}>{historyAction}</Box>
+          )}
           <MetabotGreeting
             conversationId={conversationId}
             suggestionModels={SUGGESTION_MODELS}
           />
-          {historyAction && (
-            <Box pos="absolute" top={0} right={0} pt="lg" pr="lg">
-              {historyAction}
-            </Box>
-          )}
         </>
       ) : (
         <Box pos="relative" h="100%" w="100%">
