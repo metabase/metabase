@@ -573,7 +573,6 @@ const StrategySelector = ({
         allowDeselect={false}
         aria-labelledby={headingId}
         data-testid="cache-strategy-select"
-        classNames={{ option: S.option }}
         renderOption={({ option }) => {
           const strategy = availableStrategies[option.value];
           if (!strategy) {
