@@ -10,6 +10,7 @@
    [metabase.config.core :as config]
    [metabase.initialization-status.core :as init-status]
    [metabase.premium-features.core :as premium-features]
+   [metabase.server.middleware.isolated-origin :as mw.isolated-origin]
    [metabase.settings.core :as setting]
    [metabase.system.core :as system]
    [metabase.users.settings :as users-settings]
@@ -25,8 +26,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- base-href []
-  (let [path (some-> (system/site-url) io/as-url .getPath)]
-    (str path "/")))
+  (str (system/site-path) "/"))
 
 (defn- escape-script [s]
   ;; Escapes text to be included in an inline <script> tag, in particular the string '</script'
@@ -163,11 +163,26 @@
   "`/embed/apps/:name` iframe entrypoint. Served only when the `:data-apps` feature is
    enabled; without it, responds nil so routing falls through to the generic embed handler — the
    instance then behaves exactly as if data apps did not exist, keeping the feature gate with the
-   data-app entrypoint rather than in the top-level route table. A signed-out visitor is sent to
-   the login page: the document's CSP carries the app's `allowed_hosts`, which only signed-in
-   users may see."
+   data-app entrypoint rather than in the top-level route table.
+
+   On the main host, a signed-out visitor is sent to the login page: the document's CSP carries the
+   app's `allowed_hosts`, which only signed-in users may see there. On the isolated origin
+   ([[metabase.server.settings/isolated-origin]]) no request has a session, so the document is served
+   to everyone; a request that resolves to a user is refused, because a session must never reach
+   the isolated origin."
   [request respond raise]
   (cond
     (not (premium-features/enable-data-apps?)) (respond nil)
+
+    (mw.isolated-origin/isolated-origin-request? request)
+    (if (:metabase-user-id request)
+      (do
+        (log/error (str "Refusing to serve a data app: a Metabase session reached the isolated origin "
+                        "(MB_ISOLATED_ORIGIN). The session cookie must be host-only; check that no cookie Domain or "
+                        "reverse proxy makes it visible there."))
+        (respond {:status 403
+                  :body   "Data apps are misconfigured: a Metabase session reached the isolated origin."}))
+      (data-app-shell request respond raise))
+
     (nil? (:metabase-user-id request))         (respond (login-redirect request))
     :else                                      (data-app-shell request respond raise)))

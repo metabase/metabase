@@ -54,9 +54,7 @@
   (re-pattern (str "^" data-app-embed-prefix "/.*$")))
 
 (defn data-app?
-  "Is this ring request the internal data-app iframe entrypoint (`/embed/apps/...`)?
-   It is only ever framed by the same-origin Metabase app, so it gets
-   `frame-ancestors 'self'` rather than the open embedding `*`."
+  "Is this ring request the internal data-app iframe entrypoint (`/embed/apps/...`)?"
   [{:keys [uri]}]
   (re-matches data-app-uri-regex uri))
 
