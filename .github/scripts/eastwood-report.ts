@@ -1,0 +1,283 @@
+// Turns the weekly Eastwood run's warnings into a Linear report that names the commit behind each finding.
+//
+//   bun eastwood-report.ts attribute <findings.json> <last-good-sha or ""> <target>=<warnings.txt> ...
+//   bun eastwood-report.ts bisect-targets <findings.json>
+//   bun eastwood-report.ts render <findings.json> <bisected.txt>
+//   bun eastwood-report.ts sync <report.md>
+//
+// A target is `source` or `tests`, the Eastwood alias that produced the warnings file (its `:out`).
+// `attribute` blames each finding's line. A line changed since the last passing run names its commit; the
+// rest are left for `bisect-targets`, which lists one `<target> <namespace> <linter>` per line for the
+// workflow to bisect. The workflow writes each result to `bisected.txt` as `<target> <namespace> <linter> <sha>`.
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+
+import { reportIssue } from "./report-issue";
+
+export type Cause = { sha: string; subject: string };
+
+export type Finding = {
+  target: string;
+  file: string;
+  line: number;
+  column: number;
+  linter: string;
+  msg: string;
+  namespace?: string;
+  cause?: Cause;
+};
+
+/** How many namespaces one run bisects. Each step loads the namespace in a fresh JVM, a few minutes in CI. */
+export const MAX_BISECTS = 3;
+const MAX_LISTED = 300;
+const MAX_MSG = 300;
+
+const WARNING = /^(.+?):(\d+):(\d+): ([a-z-]+)(?: \{:kind \S+\})?: (.*)$/;
+const SOURCE_ROOT =
+  /^(?:enterprise\/backend\/(?:src|test)|modules\/drivers\/[^/]+\/(?:src|test)|dev\/(?:src|test)|src|test)\/(.+)\.clj[cs]?$/;
+
+/** The namespace a source file defines, by Clojure's path convention, or undefined outside our source roots. */
+export function namespaceOf(file: string): string | undefined {
+  const match = SOURCE_ROOT.exec(file);
+  return match?.[1].replaceAll("/", ".").replaceAll("_", "-");
+}
+
+/** Warnings from an Eastwood `:out` file. A line that is not a warning continues the previous message. */
+export function parseWarnings(target: string, text: string): Finding[] {
+  const findings: Finding[] = [];
+  for (const line of text.split("\n")) {
+    const match = WARNING.exec(line);
+    if (match) {
+      const [, file, row, column, linter, msg] = match;
+      findings.push({
+        target,
+        file,
+        line: Number(row),
+        column: Number(column),
+        linter,
+        msg,
+        namespace: namespaceOf(file),
+      });
+    } else if (line.trim() && !line.startsWith("Entering directory")) {
+      const last = findings.at(-1);
+      if (last) {
+        last.msg += `\n${line}`;
+      }
+    }
+  }
+  return findings;
+}
+
+/** One `<target> <namespace> <linter>` per namespace and linter still without a cause, at most MAX_BISECTS. */
+export function bisectTargets(findings: Finding[]): string[] {
+  const keys = findings
+    .filter((finding) => !finding.cause && finding.namespace)
+    .map(
+      (finding) => `${finding.target} ${finding.namespace} ${finding.linter}`,
+    );
+  return [...new Set(keys)].slice(0, MAX_BISECTS);
+}
+
+/** Findings with each bisected commit filled in where blame left the cause empty. */
+export function applyBisected(
+  findings: Finding[],
+  bisected: string,
+  subjectOf: (sha: string) => string,
+): Finding[] {
+  const culprits = new Map<string, string>();
+  for (const line of bisected.split("\n")) {
+    const [target, namespace, linter, sha] = line.trim().split(/\s+/);
+    if (sha) {
+      culprits.set(`${target} ${namespace} ${linter}`, sha);
+    }
+  }
+  return findings.map((finding) => {
+    const sha = culprits.get(
+      `${finding.target} ${finding.namespace} ${finding.linter}`,
+    );
+    return finding.cause || !sha
+      ? finding
+      : { ...finding, cause: { sha, subject: subjectOf(sha) } };
+  });
+}
+
+type RenderContext = {
+  date: string;
+  runUrl: string;
+  /** `https://github.com/<owner>/<repo>` */
+  repoUrl: string;
+  headSha: string;
+  lastGood: string;
+};
+
+function heading(cause: Cause | undefined, repoUrl: string): string {
+  if (!cause) {
+    return "Cause not found";
+  }
+  const pr = /^(.*) \(#(\d+)\)$/.exec(cause.subject);
+  return pr
+    ? `[#${pr[2]}](${repoUrl}/pull/${pr[2]}) ${pr[1]}`
+    : `[\`${cause.sha.slice(0, 11)}\`](${repoUrl}/commit/${cause.sha}) ${cause.subject}`;
+}
+
+function item(finding: Finding, { repoUrl, headSha }: RenderContext): string {
+  const where = `[\`${finding.file}:${finding.line}\`](${repoUrl}/blob/${headSha}/${finding.file}#L${finding.line})`;
+  const flat = finding.msg.replace(/\s+/g, " ");
+  const msg = flat.length > MAX_MSG ? `${flat.slice(0, MAX_MSG)}…` : flat;
+  return `- ${where} \`${finding.linter}\`: ${msg}`;
+}
+
+/** The Linear description: findings grouped under the commit that most likely caused them. */
+export function formatReport(
+  findings: Finding[],
+  context: RenderContext,
+): string {
+  const { date, runUrl, repoUrl, lastGood } = context;
+  const lines = [
+    `> Generated by [\`eastwood.yml\`](${repoUrl}/blob/master/.github/workflows/eastwood.yml). Each weekly run replaces this description, so edits here are lost: comment instead.`,
+    "",
+    `The weekly Eastwood run found **${findings.length} findings** on ${date} ([run](${runUrl})).`,
+    lastGood
+      ? `The last passing run was at [\`${lastGood.slice(0, 11)}\`](${repoUrl}/commit/${lastGood}). A finding on a line changed since then is listed under that change. The rest are bisected, up to ${MAX_BISECTS} namespaces a run.`
+      : "No earlier run passed, so each finding is listed under the commit that last changed its line.",
+  ];
+
+  const groups = new Map<string, Finding[]>();
+  for (const finding of findings) {
+    const key = finding.cause?.sha ?? "";
+    groups.set(key, [...(groups.get(key) ?? []), finding]);
+  }
+  // Commits with the most findings first, and the findings without a cause last.
+  const ordered = [...groups.entries()].sort(
+    ([a, x], [b, y]) =>
+      Number(a === "") - Number(b === "") || y.length - x.length,
+  );
+
+  let listed = 0;
+  for (const [, group] of ordered) {
+    if (listed >= MAX_LISTED) {
+      break;
+    }
+    lines.push("", `### ${heading(group[0].cause, repoUrl)}`, "");
+    for (const finding of group.slice(0, MAX_LISTED - listed)) {
+      lines.push(item(finding, context));
+    }
+    listed += group.length;
+  }
+  if (findings.length > MAX_LISTED) {
+    lines.push("", `…and ${findings.length - MAX_LISTED} more in the run.`);
+  }
+  return lines.join("\n");
+}
+
+function git(...args: string[]): string {
+  return execFileSync("git", args, { encoding: "utf8" }).trim();
+}
+
+function isAncestor(sha: string, of: string): boolean {
+  try {
+    git("merge-base", "--is-ancestor", sha, of);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function blame(finding: Finding): string | undefined {
+  try {
+    const porcelain = git(
+      "blame",
+      "--porcelain",
+      "-L",
+      `${finding.line},${finding.line}`,
+      "HEAD",
+      "--",
+      finding.file,
+    );
+    return porcelain.split(" ")[0];
+  } catch {
+    return undefined;
+  }
+}
+
+const subjectOf = (sha: string) => git("log", "-1", "--format=%s", sha);
+
+function attribute(findings: Finding[], lastGood: string): Finding[] {
+  return findings.map((finding) => {
+    const sha = blame(finding);
+    const blamed = sha && (!lastGood || !isAncestor(sha, lastGood));
+    return blamed
+      ? { ...finding, cause: { sha, subject: subjectOf(sha) } }
+      : finding;
+  });
+}
+
+const readJson = (file: string): Finding[] =>
+  JSON.parse(readFileSync(file, "utf8"));
+
+async function main([command, ...args]: string[]) {
+  switch (command) {
+    case "attribute": {
+      const [out, lastGood, ...inputs] = args;
+      const findings = inputs.flatMap((input) => {
+        const [target, file] = input.split("=");
+        return existsSync(file)
+          ? parseWarnings(target, readFileSync(file, "utf8"))
+          : [];
+      });
+      writeFileSync(
+        out,
+        JSON.stringify(attribute(findings, lastGood), null, 2),
+      );
+      return;
+    }
+    case "bisect-targets":
+      for (const target of bisectTargets(readJson(args[0]))) {
+        console.log(target);
+      }
+      return;
+    case "render": {
+      const [file, bisected] = args;
+      const findings = applyBisected(
+        readJson(file),
+        existsSync(bisected) ? readFileSync(bisected, "utf8") : "",
+        subjectOf,
+      );
+      const env = process.env;
+      console.log(
+        findings.length === 0
+          ? ""
+          : formatReport(findings, {
+              date: new Date().toISOString().slice(0, 10),
+              runUrl: env.RUN_URL ?? "",
+              repoUrl: `${env.GITHUB_SERVER_URL}/${env.GITHUB_REPOSITORY}`,
+              headSha: env.GITHUB_SHA ?? "",
+              lastGood: env.LAST_GOOD ?? "",
+            }),
+      );
+      return;
+    }
+    case "sync": {
+      const [file] = args;
+      return reportIssue({
+        title: "metabase/metabase Eastwood report",
+        report: existsSync(file) ? readFileSync(file, "utf8").trim() : "",
+        opened: (link) =>
+          `:broom: The weekly Eastwood run found problems in metabase/metabase: ${link}`,
+        closed: (link) =>
+          `:white_check_mark: Eastwood passes again on metabase/metabase, closed ${link}`,
+        closedComment: `Eastwood passes as of ${process.env.RUN_URL}`,
+      });
+    }
+    default:
+      throw new Error(`Unknown command: ${command}`);
+  }
+}
+
+// `import.meta.main` keeps the specs, which import the helpers above, from running the script.
+if ((import.meta as ImportMeta & { main?: boolean }).main) {
+  main(process.argv.slice(2)).catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}

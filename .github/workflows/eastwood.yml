@@ -1,0 +1,162 @@
+name: Eastwood
+
+# Eastwood is too slow for PR CI: linting every test namespace takes about an hour. So it runs weekly, and on
+# master one open Linear issue lists the findings under the commit that most likely caused each one.
+# A manual run on another branch lints that branch and reports nothing.
+
+on:
+  schedule:
+    # Mondays at 03:00 UTC
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+
+jobs:
+  lint:
+    name: Eastwood (${{ matrix.target }})
+    if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 120
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: source
+            command: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood
+          - target: tests
+            command: clojure -X:dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:eastwood/test
+    steps:
+      - uses: actions/checkout@v7
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Run Eastwood
+        id: lint
+        continue-on-error: true
+        run: ${{ matrix.command }} :out '"warnings.txt"'
+      - name: Show the warnings
+        run: |
+          echo "${{ steps.lint.outcome }}" > outcome.txt
+          touch warnings.txt
+          cat warnings.txt
+      - uses: actions/upload-artifact@v7
+        with:
+          name: eastwood-${{ matrix.target }}
+          path: |
+            outcome.txt
+            warnings.txt
+
+  report:
+    name: Report Eastwood findings
+    needs: lint
+    if: ${{ !cancelled() && (github.event_name != 'schedule' || github.repository == 'metabase/metabase') }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 120
+    permissions:
+      actions: read
+      contents: read
+    env:
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      SLACK_CHANNEL: C5XHN8GLW # #engineering-ci
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Blame and bisect need the history back to the last passing run.
+          fetch-depth: 0
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: eastwood-*
+          path: eastwood
+      - name: Install bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: "package.json"
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # A target ran when Eastwood passed or printed warnings. Failing with none means it didn't get that far.
+      - name: Check that both targets ran
+        run: |
+          ran=true
+          for target in source tests; do
+            dir=eastwood/eastwood-$target
+            if [ "$(cat "$dir/outcome.txt" 2>/dev/null)" != success ] && [ ! -s "$dir/warnings.txt" ]; then
+              echo "::error::Eastwood didn't run on $target. See its job log."
+              ran=false
+            fi
+          done
+          $ran
+
+      - name: Blame the findings
+        id: blame
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          last_good=$(gh run list --workflow eastwood.yml --branch "$BRANCH" --status success --limit 1 \
+                        --json headSha --jq '.[0].headSha // ""')
+          echo "last-good=$last_good" >> "$GITHUB_OUTPUT"
+          bun .github/scripts/eastwood-report.ts attribute findings.json "$last_good" \
+            source=eastwood/eastwood-source/warnings.txt tests=eastwood/eastwood-tests/warnings.txt
+          bun .github/scripts/eastwood-report.ts bisect-targets findings.json > bisect-targets.txt
+          echo "Left for bisecting:"
+          cat bisect-targets.txt
+          if [ -n "$last_good" ] && [ -s bisect-targets.txt ]; then
+            echo "bisect=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Prepare back-end environment
+        if: steps.blame.outputs.bisect == 'true'
+        uses: ./.github/actions/prepare-backend
+
+      - name: Bisect the findings blame left without a cause
+        if: steps.blame.outputs.bisect == 'true'
+        env:
+          LAST_GOOD: ${{ steps.blame.outputs.last-good }}
+        run: |
+          # Older commits may not have the check, so it runs from outside the checkout.
+          check=$RUNNER_TEMP/eastwood-bisect-check.sh
+          log=$RUNNER_TEMP/bisect.log
+          cp .github/scripts/eastwood-bisect-check.sh "$check"
+          while read -r target namespace linter <&3; do
+            echo "::group::Bisect $linter in $namespace"
+            git bisect start HEAD "$LAST_GOOD"
+            git bisect run "$check" "$target" "$namespace" "$linter" 2>&1 | tee "$log" || true
+            # When every candidate was skipped, bisect names no commit.
+            if grep -q "is the first bad commit" "$log"; then
+              echo "$target $namespace $linter $(git rev-parse refs/bisect/bad)" >> bisected.txt
+            fi
+            git bisect reset
+            echo "::endgroup::"
+          done 3< bisect-targets.txt
+
+      - name: Build the report
+        env:
+          LAST_GOOD: ${{ steps.blame.outputs.last-good }}
+        run: |
+          bun .github/scripts/eastwood-report.ts render findings.json bisected.txt > report.md
+          cat report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Open, update, or close the Eastwood issue
+        if: github.ref == 'refs/heads/master'
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          LINEAR_TEAM_ID: 2e3af6a2-9b19-4abd-b72c-4b5665054861 # DEV
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        run: bun .github/scripts/eastwood-report.ts sync report.md
+
+      - name: Alert when Eastwood can't run
+        if: failure() && github.ref == 'refs/heads/master'
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        run: |
+          jq -n --arg channel "$SLACK_CHANNEL" --arg text ":x: The weekly Eastwood run on metabase/metabase failed to run: $RUN_URL" \
+            '{channel: $channel, text: $text}' |
+            curl -sSf https://slack.com/api/chat.postMessage \
+              -H "Authorization: Bearer $SLACK_BOT_TOKEN" \
+              -H "Content-Type: application/json; charset=utf-8" --data @-
+
+      - name: Fail the run on findings
+        run: test "$(jq length findings.json)" = 0
