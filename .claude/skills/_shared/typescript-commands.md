@@ -44,6 +44,9 @@ A test can fail because of a spec file that ran before it in the same worker. If
 passes when you run its file with `RERUN`, it is not a failure of the code under test. Mention it in your report,
 and do not try to fix it.
 
+A message that starts with "An async" or "An act() that a waitFor started" is different: the failing test itself
+left an `act()` or a `waitFor` running when it ended. Fix that test as the message says.
+
 More in `frontend/test/harness/README.md`.
 
 ### ClojureScript Tests

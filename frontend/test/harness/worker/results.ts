@@ -88,6 +88,23 @@ export function recordFailure(
 }
 
 /**
+ * Turns a test that was recorded as passed into a failure.
+ */
+export function recordLateFailure(
+  test: string,
+  error: unknown,
+  identity: TestIdentity,
+): void {
+  const index = fileResult.passedTests.indexOf(identity);
+  if (index === -1) {
+    return;
+  }
+  fileResult.passedTests.splice(index, 1);
+  fileResult.passed -= 1;
+  recordFailure(test, error, "", identity);
+}
+
+/**
  * The message and stack of anything thrown. An error from the jsdom window
  * belongs to another realm and is not an instance of this realm's Error, so
  * the fields are read by name.

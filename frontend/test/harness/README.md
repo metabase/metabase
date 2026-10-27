@@ -78,6 +78,21 @@ package loads while a spec file mocks a module, and the package requires that
 module, the package keeps the mock. The worker then ends after that file, and
 the pool starts a new one.
 
+## A test that leaves async work running
+
+React and Testing Library stay loaded between spec files. An `act()`, a
+`waitFor`, a `findBy` query or a user-event call that a test does not wait for
+can thus finish in a later test or a later file, and break it there. So a test
+fails when such a call is still running after its `afterEach` hooks, or when
+one starts after the test ended. The message names the call in the spec. jest
+does not have this check.
+
+| Message                                         | What to do                                                                                                  |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| An async waitFor, findBy or user-event call ... | Add `await` to the call, or to the async function that makes it. Usually that is `setup()`.                 |
+| An async act() ...                              | Add `await` to the `act()`.                                                                                 |
+| An act() that a waitFor started ...             | Under fake timers, a `waitFor` with an async callback ends before its last `act()`. Make the callback sync. |
+
 ## Debug a spec
 
 ```sh
@@ -140,6 +155,7 @@ own files are never transformed or evaluated again between spec files.
 | `worker/mocks.ts`                                                    | The registry behind `jest.mock`.                                                                             |
 | `worker/dom.ts`                                                      | The jsdom window as the global DOM.                                                                          |
 | `worker/timers.ts`                                                   | Deadlines, tracked timers and the fake clock.                                                                |
+| `worker/async-leaks.ts`                                              | Finds the test that left an `act()` or a `waitFor` running, and fails it.                                    |
 | Other files in `worker/`                                             | The resets between spec files, each for one kind of state.                                                   |
 
 `frontend/test/harness-between-files.ts` is next to the jest setup files. It
