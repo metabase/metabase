@@ -7,7 +7,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -140,6 +141,18 @@
                                      (lib.metadata/card (mt/metadata-provider) categories-id))))))
        (testing "the other app runs its own card"
          (is (= "completed" (:status (run-query 202 (lib/limit (card-query other-app-id) 1) (as-app "bees"))))))))))
+
+(deftest app-without-collection-uses-no-card-test
+  (do-with-app-card!
+   (fn [_card-id _collection-id]
+     (mt/with-temp [:model/DataApp app             {:name "wasps"}
+                    :model/Card    {elsewhere-id :id} {:dataset_query (data-apps.tu/venues-query)}]
+       (t2/delete! :model/Collection (:resource_collection_id app))
+       (testing "an app without a collection can use no card, not even one in the root collection"
+         (is (= (error-message :cards elsewhere-id)
+                (run-query 400 (card-query elsewhere-id) (as-app "wasps")))))
+       (testing "it still reads published tables"
+         (is (= "completed" (:status (run-query 202 (lib/limit (table-query :venues) 1) (as-app "wasps"))))))))))
 
 (deftest missing-entities-are-refused-test
   (do-with-app-card!
