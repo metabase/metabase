@@ -1,6 +1,13 @@
 import type { AnalysisSpec, FunnelSpec } from "../../spec/types";
 import { BREAKOUT_COLUMN } from "../../sql/analyses/breakout";
+import {
+  MEDIAN_SECONDS_FROM_PREVIOUS_COLUMN,
+  TIME_TO_CONVERT_COLUMN,
+  getFunnelStepLabels,
+  getTimeToConvertBuckets,
+} from "../../sql/analyses/funnel";
 import { seconds } from "../../sql/compile/actorPredicate";
+import { grainLabel } from "../../sql/compile/grain";
 import {
   type Clause,
   type Frame,
@@ -23,7 +30,9 @@ import {
   NotPortedError,
   type Query,
   StageList,
+  joinStage,
   stage,
+  valuesStage,
 } from "../query";
 
 import {
@@ -516,7 +525,239 @@ export const buildFunnelQuery = (spec: AnalysisSpec, base: MbqlBase): Query => {
       )
       .toQuery(base.database);
   }
-  throw new NotPortedError(
-    `The funnel's ${view} view isn't ported to MBQL yet`,
+  const people = grainLabel(spec.grain);
+  const labels = getFunnelStepLabels(
+    funnel.steps.map((step) => step.label),
+    funnel.ordering,
   );
+  const stepOf = () => field("step", "type/Integer", "s");
+  const reachedStep = () => clause(">=", integer("level"), stepOf());
+  const breakoutFields = () =>
+    spec.breakout !== undefined ? [field(BREAKOUT_COLUMN, "type/Text")] : [];
+  // Every literal row: a join to a values stage needs a condition.
+  const everyStep = () => [clause(">", stepOf(), 0)];
+  const stepTable = (name: string, numbers: number[]) =>
+    valuesStage(
+      name,
+      [
+        { name: "step", "base-type": "type/Integer" },
+        { name: "label", "base-type": "type/Text" },
+      ],
+      numbers.map((k) => [k, labels[k - 1] ?? ""]),
+    );
+
+  if (view === "overTime") {
+    // A line per step after the first, which everyone in a period reached.
+    const lineSteps = n > 1 ? stepNumbers(funnel, 2) : [1];
+    return stages
+      .add(
+        stepTable("funnel_lines", lineSteps),
+        stage("funnel_conversion", "funnel_runs", {
+          joins: [
+            joinStage("funnel_lines", "s", everyStep(), {
+              strategy: "inner-join",
+            }),
+          ],
+          breakout: [
+            bucketed("started_at", spec.bucket.granularity),
+            stepOf(),
+            field("label", "type/Text", "s"),
+          ],
+          aggregation: [
+            aggregation(
+              "conversion",
+              round4(
+                clause(
+                  "/",
+                  clause("count-where", reachedStep()),
+                  clause("count"),
+                ),
+              ),
+            ),
+          ],
+        }),
+        stage("funnel", undefined, {
+          expressions: [
+            expression("period", datetime("started_at")),
+            expression("label", field("s__label", "type/Text")),
+          ],
+          fields: [
+            expressionRef("period", "type/DateTime"),
+            expressionRef("label", "type/Text"),
+            field("conversion", "type/Float"),
+          ],
+          "order-by": [
+            asc(expressionRef("period", "type/DateTime")),
+            asc(integer("s__step")),
+          ],
+        }),
+      )
+      .toQuery(base.database);
+  }
+
+  if (view === "timeToConvert") {
+    const buckets = getTimeToConvertBuckets(funnel.window);
+    const took = () =>
+      secondsBetween(datetime("started_at"), datetime("finished_at"));
+    const bucketOf = () =>
+      caseWhen(
+        [...buckets]
+          .reverse()
+          .map((timeBucket): readonly [Clause, number] => [
+            clause(">=", took(), timeBucket.fromSeconds),
+            timeBucket.index,
+          ]),
+      );
+    const finished = () => clause(">=", integer("level"), n);
+    const bucketIn = (alias: string) => field("bucket", "type/Integer", alias);
+    return stages
+      .add(
+        // Broken out, everyone stays in with no range unless they finished,
+        // so a group nobody in finished still gets its rows.
+        stage("conversion_times", "funnel_runs", {
+          joins: groups.joins,
+          filters: spec.breakout !== undefined ? [] : [finished()],
+          expressions: [
+            ...groups.expressions,
+            expression(
+              "time_bucket",
+              spec.breakout !== undefined
+                ? caseWhen([[finished(), bucketOf()]])
+                : bucketOf(),
+            ),
+          ],
+        }),
+        stage("fastest_bucket", undefined, {
+          aggregation: [
+            aggregation("fastest", clause("min", integer("time_bucket"))),
+          ],
+        }),
+        valuesStage(
+          "time_buckets",
+          [
+            { name: "bucket", "base-type": "type/Integer" },
+            { name: "bucket_label", "base-type": "type/Text" },
+          ],
+          buckets.map((timeBucket) => [timeBucket.index, timeBucket.label]),
+        ),
+        // From the fastest anyone took, and past the window only when someone did.
+        stage("bucket_counts", "conversion_times", {
+          joins: [
+            joinStage("time_buckets", "b", [clause(">", bucketIn("b"), 0)], {
+              strategy: "inner-join",
+            }),
+            joinStage(
+              "fastest_bucket",
+              "f",
+              [
+                clause(
+                  "<=",
+                  field("fastest", "type/Integer", "f"),
+                  bucketIn("b"),
+                ),
+              ],
+              { strategy: "inner-join" },
+            ),
+          ],
+          breakout: [
+            ...breakoutFields(),
+            bucketIn("b"),
+            field("bucket_label", "type/Text", "b"),
+          ],
+          aggregation: [
+            aggregation(
+              people,
+              clause("count-where", eq(integer("time_bucket"), bucketIn("b"))),
+            ),
+          ],
+        }),
+        stage("funnel", undefined, {
+          filters: [
+            clause(
+              "or",
+              clause("<", integer("b__bucket"), buckets.length),
+              clause(">", integer(people), 0),
+            ),
+          ],
+          expressions: [
+            expression(
+              TIME_TO_CONVERT_COLUMN,
+              field("b__bucket_label", "type/Text"),
+            ),
+          ],
+          fields: [
+            expressionRef(TIME_TO_CONVERT_COLUMN, "type/Text"),
+            ...breakoutFields(),
+            integer(people),
+          ],
+          "order-by": [...breakoutFields().map(asc), asc(integer("b__bucket"))],
+        }),
+      )
+      .toQuery(base.database);
+  }
+
+  // Step by step: how many got to each step, and in order, the median time
+  // from the previous one among them.
+  const isOrdered = funnel.ordering !== "any";
+  const hopCondition = () => allOf([clause(">", stepOf(), 1), reachedStep()]);
+  const hops = stepNumbers(funnel, 2);
+  const hop = () =>
+    caseWhen(
+      hops.map((k): readonly [Clause, Clause] => [
+        eq(stepOf(), k),
+        secondsBetween(datetime(`t_${k - 1}`), datetime(`t_${k}`)),
+      ]),
+    );
+  const median = () =>
+    hops.length === 0
+      ? clause("+", value(null, "type/Float"), 0)
+      : caseWhen(
+          [
+            [
+              eq(clause("count-where", hopCondition()), 0),
+              value(null, "type/Float"),
+            ],
+          ],
+          clause(
+            "round",
+            clause("median", caseWhen([[hopCondition(), hop()]])),
+          ),
+        );
+  return stages
+    .add(
+      stepTable("funnel_steps", steps),
+      stage("funnel_step_counts", "funnel_runs", {
+        joins: [
+          joinStage("funnel_steps", "s", everyStep(), {
+            strategy: "inner-join",
+          }),
+          ...groups.joins,
+        ],
+        expressions: groups.expressions,
+        breakout: [
+          ...groups.breakout(),
+          stepOf(),
+          field("label", "type/Text", "s"),
+        ],
+        aggregation: [
+          aggregation(people, clause("count-where", reachedStep())),
+          ...(isOrdered
+            ? [aggregation(MEDIAN_SECONDS_FROM_PREVIOUS_COLUMN, median())]
+            : []),
+        ],
+      }),
+      stage("funnel", undefined, {
+        expressions: [expression("label", field("s__label", "type/Text"))],
+        fields: [
+          expressionRef("label", "type/Text"),
+          ...breakoutFields(),
+          integer(people),
+          ...(isOrdered
+            ? [field(MEDIAN_SECONDS_FROM_PREVIOUS_COLUMN, "type/Float")]
+            : []),
+        ],
+        "order-by": [...breakoutFields().map(asc), asc(integer("s__step"))],
+      }),
+    )
+    .toQuery(base.database);
 };

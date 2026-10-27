@@ -7,6 +7,7 @@ import {
   type BaseType,
   type Clause,
   type Literal,
+  copyOf,
   expressionRef,
   field,
   typeOf,
@@ -97,6 +98,17 @@ const CLAUSE_LISTS = [
   "order-by",
   "union-all",
 ] as const satisfies readonly (keyof StageInput)[];
+
+/** A stage of literal rows, read by later stages by name. */
+export const valuesStage = (
+  name: string,
+  columns: { name: string; "base-type": BaseType }[],
+  rows: Literal[][],
+): MbqlStage => ({
+  "lib/type": "mbql.stage/mbql",
+  name,
+  values: { columns, rows },
+});
 
 /** Joins the earlier stage `source` as `alias`. */
 export const joinStage = (
@@ -211,7 +223,7 @@ export class StageList {
         : join.fields === "none"
           ? []
           : join.fields;
-    return fields.map((ref) => ({ column: refColumn(ref), ref }));
+    return fields.map((ref) => ({ column: refColumn(ref), ref: copyOf(ref) }));
   }
 
   private withFields(stage: Stage): [Stage, StageColumn[]] {

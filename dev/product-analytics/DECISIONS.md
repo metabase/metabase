@@ -275,8 +275,8 @@ Status:
 
 ## D22: MBQL planners are not wired into the app yet
 
-- **budget**. Ported: habit (all measures), cohorts, lifecycle, each with breakouts, and the funnel's run query (checked
-  through the broken-out over-time view in every ordering). Not yet: the funnel's other views, paths.
+- **budget**. Every analysis is ported: funnel (all views, orderings, disqualifiers), habit, cohorts, lifecycle and
+  paths, with breakouts. All 55 comparable oracle variants match the string planners.
 - Not ported in any analysis: drill-through members, breakout chart ordering (the oracle compares rows as bags), and
   `use-analysis-query` still runs the string planners' SQL.
 - Pays back: port the rest, then drills, then switch the app.
@@ -355,3 +355,12 @@ Status:
   are refused. So it holds today, by convention: every entry path, and every new key, has to remember to strip.
 - Direction: keep derived state (source-card provenance, sandbox origin, stage metadata) beside the query, keyed by
   stage, so the query holds only what its author wrote and there is nothing to forge.
+
+## D27: An anti-join tests a non-text marker, not the joined key
+
+- **keep**, as a planner rule; a finding about MBQL semantics.
+- MBQL `:is-null` on a text column compiles to `IS NULL OR empty(x)` on ClickHouse: null and the empty string are one
+  thing. Paths' noisy events include the event with no name, `''`, so "left join noisy steps, keep where the joined
+  name is null" kept every noisy row. The planners anti-join on a `1` marker column the joined stage adds.
+- Why it matters beyond PA: a hand-built MBQL anti-join on a text key silently goes wrong on empty strings. SQL
+  semantics and MBQL semantics differ here, and neither the schema nor the oracle's other 54 variants showed it.

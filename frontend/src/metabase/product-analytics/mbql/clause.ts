@@ -40,6 +40,12 @@ const options = (extra: Record<string, unknown> = {}): ClauseOptions => ({
   ...extra,
 });
 
+/** `clause` again, with a uuid of its own: a clause can't appear twice in a query. */
+export const copyOf = (clause_: Clause): Clause => {
+  const [tag, opts, ...args] = clause_;
+  return [tag, { ...opts, "lib/uuid": uuid() }, ...args];
+};
+
 /** Any clause without options of its own, such as `clause("=", a, b)`. */
 export const clause = (tag: string, ...args: Arg[]): Clause => [
   tag,

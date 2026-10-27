@@ -5,7 +5,8 @@ import { buildCohortsQuery } from "./analyses/cohorts";
 import { buildFunnelQuery } from "./analyses/funnel";
 import { buildHabitQuery } from "./analyses/habit";
 import { buildLifecycleQuery } from "./analyses/lifecycle";
-import { NotPortedError, type Query } from "./query";
+import { buildPathsQuery } from "./analyses/paths";
+import type { Query } from "./query";
 
 /** The analysis as one MBQL 5 query on top of the base event query. */
 export const buildAnalysisMbql = (
@@ -22,6 +23,6 @@ export const buildAnalysisMbql = (
     case "funnel":
       return buildFunnelQuery(spec, base);
     case "paths":
-      throw new NotPortedError(`${spec.kind} isn't ported to MBQL yet`);
+      return buildPathsQuery(spec, base);
   }
 };
