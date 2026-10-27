@@ -50,8 +50,7 @@
     dst))
 
 (defn- check-entry-name!
-  "Throws unless `entry-name` is a relative `/`-separated path with no empty, `.` or `..` segments: an archive read
-   into a map of paths is written back to a directory by those paths."
+  "Reject unsafe or ambiguous archive paths."
   [^String entry-name]
   (when (or (str/starts-with? entry-name "/")
             (str/includes? entry-name "\\")
@@ -60,9 +59,7 @@
                     {:status-code 400 :path entry-name}))))
 
 (defn tgz-bytes
-  "A tar+gzip archive of `files`, a map of `/`-separated path to byte array, as bytes. The archive is deterministic:
-   entries in path order, mode 0644, no timestamps, so the same files always make the same bytes. It is compressed
-   as hard as gzip can, so repacking an archive that was within a size limit stays within it."
+  "Pack a path-to-bytes map into deterministic tar+gzip bytes with maximum compression."
   ^bytes [files]
   (let [baos (ByteArrayOutputStream.)]
     (with-open [tar (-> baos
@@ -100,8 +97,7 @@
           total)))))
 
 (defn- regular-file?
-  "Whether tar entry `e` is a regular file. `TarArchiveEntry.isFile` is true of any entry that isn't a directory,
-  including links and FIFOs, which an archive carries without content."
+  "Identify regular files, excluding links, FIFOs and devices."
   [^TarArchiveEntry e]
   (and (.isFile e)
        (not (.isSymbolicLink e))
@@ -110,70 +106,61 @@
        (not (.isCharacterDevice e))
        (not (.isBlockDevice e))))
 
+(defn- reduce-tar-entries
+  "Reduce non-hidden entries with shared extraction limits and a bounded content copier."
+  [archive {:keys [max-uncompressed-bytes max-entries]} f init]
+  (with-open [tar (tar-input-stream archive)]
+    (let [total-bytes (volatile! 0)
+          copy!       (fn [out]
+                        (vreset! total-bytes (copy-tar-entry! tar out @total-bytes max-uncompressed-bytes)))]
+      (loop [result init entry-count 0]
+        (if-let [^TarArchiveEntry entry (.getNextEntry tar)]
+          (if (str/starts-with? (last (.split (.getName entry) "/")) ".")
+            (recur result entry-count)
+            (let [next-count (inc entry-count)]
+              (when (and max-entries (> next-count ^long max-entries))
+                (throw (ex-info (format "Archive exceeds max entries (%d)" max-entries)
+                                {:status-code 400 :max-entries max-entries})))
+              (recur (f result entry copy!) next-count)))
+          {:result result :entry-count entry-count})))))
+
 (defn untgz
-  "Uncompress tar+gzip `archive` into directory `dst`.
-
-  `archive` can be anything `io/input-stream` coerces — a `File`, a byte array,
-  or a raw `InputStream`. Skips hidden entries; links, FIFOs and devices are
-  counted but not written. Returns the number of unpacked entries (files + dirs).
-
-  Optional `opts` (default unset, no behavior change):
-  - `:max-uncompressed-bytes` — abort with ex-info when total extracted bytes
-    would exceed this. Defends against tar bombs.
-  - `:max-entries` — abort with ex-info when entry count would exceed this."
+  "Extract tar+gzip to disk, skipping hidden and special entries. Return the non-hidden entry count.
+  Accepts any `io/input-stream` source. Optional `:max-uncompressed-bytes` and `:max-entries` limit extraction."
   ([archive ^File dst]
    (untgz archive dst nil))
-  ([archive ^File dst {:keys [max-uncompressed-bytes max-entries]}]
-   (with-open [tar (tar-input-stream archive)]
-     (let [dst-path (.toPath dst)]
-       (loop [entry-count 0 total-bytes 0]
-         (if-let [^TarArchiveEntry e (.getNextEntry tar)]
-           (let [actual-name (last (.split (.getName e) "/"))]
-             (if (str/starts-with? actual-name ".")
-               (recur entry-count total-bytes)
-               (let [next-count (inc entry-count)
-                     _          (when (and max-entries (> next-count ^long max-entries))
-                                  (throw (ex-info (format "Archive exceeds max entries (%d)" max-entries)
-                                                  {:status-code 400 :max-entries max-entries})))
-                     f          (.toFile (.resolveIn e dst-path))
-                     next-total (long (cond
-                                        (regular-file? e)
-                                        (do (io/make-parents f)
-                                            (with-open [out (io/output-stream f)]
-                                              (copy-tar-entry! tar out total-bytes max-uncompressed-bytes)))
+  ([archive ^File dst opts]
+   (let [dst-path (.toPath dst)]
+     (:entry-count
+      (reduce-tar-entries
+       archive opts
+       (fn [_ ^TarArchiveEntry entry copy!]
+         (let [file (.toFile (.resolveIn entry dst-path))]
+           (cond
+             (regular-file? entry)
+             (do (io/make-parents file)
+                 (with-open [out (io/output-stream file)]
+                   (copy! out)))
 
-                                        (.isDirectory e)
-                                        (do (.mkdirs f) total-bytes)
-
-                                        :else
-                                        total-bytes))]
-                 (recur next-count next-total))))
-           entry-count))))))
+             (.isDirectory entry)
+             (.mkdirs file))))
+       nil)))))
 
 (defn untgz-files
-  "The regular files in tar+gzip `archive` as a map of entry path to bytes. `archive` can be anything
-  `io/input-stream` coerces. Hidden entries, links, FIFOs and devices are skipped as [[untgz]] skips them, and an
-  entry whose path could leave a directory is refused. Dot segments are removed from file paths. Takes the same
-  `opts` as [[untgz]]."
+  "Read tar+gzip into a path-to-bytes map, normalizing dot segments and rejecting unsafe paths.
+  Skip hidden and special entries. Accepts the same sources and limits as [[untgz]]."
   ([archive]
    (untgz-files archive nil))
-  ([archive {:keys [max-uncompressed-bytes max-entries]}]
-   (with-open [tar (tar-input-stream archive)]
-     (loop [files {} entry-count 0 total-bytes 0]
-       (if-let [^TarArchiveEntry e (.getNextEntry tar)]
-         (let [entry-name  (.getName e)
-               actual-name (last (.split entry-name "/"))]
-           (if (str/starts-with? actual-name ".")
-             (recur files entry-count total-bytes)
-             (let [next-count (inc entry-count)]
-               (when (and max-entries (> next-count ^long max-entries))
-                 (throw (ex-info (format "Archive exceeds max entries (%d)" max-entries)
-                                 {:status-code 400 :max-entries max-entries})))
-               (if (regular-file? e)
-                 (let [entry-name (str/join "/" (remove #{"."} (str/split entry-name #"/" -1)))
-                       _          (check-entry-name! entry-name)
-                       out        (ByteArrayOutputStream.)
-                       next-total (copy-tar-entry! tar out total-bytes max-uncompressed-bytes)]
-                   (recur (assoc files entry-name (.toByteArray out)) next-count next-total))
-                 (recur files next-count total-bytes)))))
-         files)))))
+  ([archive opts]
+   (:result
+    (reduce-tar-entries
+     archive opts
+     (fn [files ^TarArchiveEntry entry copy!]
+       (if (regular-file? entry)
+         (let [path (str/join "/" (remove #{"."} (str/split (.getName entry) #"/" -1)))
+               out  (ByteArrayOutputStream.)]
+           (check-entry-name! path)
+           (copy! out)
+           (assoc files path (.toByteArray out)))
+         files))
+     {}))))
