@@ -188,6 +188,52 @@ segment "Connected an integration" "$(event_name_in integration_connected)"
 To start over, archive them with `mb segment archive <id>` (ids from
 `mb segment list`).
 
+## Add people segments
+
+Segments on `pa_identities_resolved` show up under "People segments", and
+clicking one adds it as a filter. They come from the table that
+`pa_events_resolved.person_id` points at, so link identities to events
+first. They filter on current traits, so like the implicitly joined columns
+they're not for insights. Re-running skips segments that already exist.
+
+```bash
+DB_ID=$(mb db list --json | jq '.data[] | select(.name == "Product Analytics") | .id')
+TABLE_ID=$(mb table list --db-id "$DB_ID" --json | jq '.data[] | select(.name == "pa_identities_resolved") | .id')
+FIELDS=$(mb table get "$TABLE_ID" --include fields --json)
+PLAN=$(jq '.fields[] | select(.name == "plan") | .id' <<<"$FIELDS")
+SIGNED_UP_AT=$(jq '.fields[] | select(.name == "signed_up_at") | .id' <<<"$FIELDS")
+
+# plan is any of the arguments
+plan_in() {
+  jq -nc --argjson f "$PLAN" '["=", {}, ["field", {}, $f]] + $ARGS.positional' --args "$@"
+}
+
+# Creates a segment from a name, a description and one filter clause, skipping existing names
+person_segment() {
+  if mb segment list --json | jq -e --arg n "$1" --argjson t "$TABLE_ID" \
+      'any(.data[]; .name == $n and .table_id == $t)' >/dev/null; then
+    echo "exists: $1"; return
+  fi
+  jq -n --arg name "$1" --arg description "$2" --argjson filter "$3" --argjson db "$DB_ID" --argjson table "$TABLE_ID" '{
+    name: $name,
+    description: $description,
+    table_id: $table,
+    definition: {
+      "lib/type": "mbql/query",
+      database: $db,
+      stages: [{"lib/type": "mbql.stage/mbql", "source-table": $table, filters: [$filter]}]
+    }
+  }' | mb segment create --json | jq -c '{id, name}'
+}
+
+person_segment "On a paid plan"       "Plan is Starter, Pro or Business." "$(plan_in starter pro business)"
+person_segment "Trialing"             "Plan is Trial."                    "$(plan_in trial)"
+person_segment "Signed up in the last 30 days" "Signed up within the last 30 days." \
+  "[\"time-interval\", {}, [\"field\", {}, $SIGNED_UP_AT], -30, \"day\"]"
+person_segment "On the Business plan" "Plan is Business, the top tier."   "$(plan_in business)"
+person_segment "Cancelled"            "Cancelled their subscription."     "$(plan_in cancelled)"
+```
+
 ## Check the planners
 
 ```bash

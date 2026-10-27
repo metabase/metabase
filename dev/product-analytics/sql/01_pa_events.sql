@@ -1,5 +1,3 @@
-CREATE DATABASE IF NOT EXISTS product_analytics;
-
 -- Copied from harbormaster's ClickHouse PA DDL (resources/harbormaster/clickhouse-pa/pa_events.sql),
 -- which is what Cloud provisions. Keep this identical so a swap to real Track data stays possible.
 CREATE TABLE IF NOT EXISTS product_analytics.pa_events

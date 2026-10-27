@@ -5,10 +5,23 @@
  *
  * Usage: bun run dev/product-analytics/generate.ts
  * Env:   PA_PEOPLE (default 25000), PA_DAYS (default 120),
- *        CLICKHOUSE_URL (default http://127.0.0.1:18123)
+ *        CLICKHOUSE_URL (default http://127.0.0.1:18123),
+ *        CLICKHOUSE_USER and CLICKHOUSE_PASSWORD (default: no credentials),
+ *        CLICKHOUSE_DATABASE (default product_analytics)
  */
 
 const CH = process.env.CLICKHOUSE_URL ?? "http://127.0.0.1:18123";
+const CH_HEADERS: Record<string, string> = process.env.CLICKHOUSE_USER
+  ? {
+      "X-ClickHouse-User": process.env.CLICKHOUSE_USER,
+      "X-ClickHouse-Key": process.env.CLICKHOUSE_PASSWORD ?? "",
+    }
+  : {};
+// Substituted into SQL, so only a plain identifier.
+const DATABASE = process.env.CLICKHOUSE_DATABASE ?? "product_analytics";
+if (!/^\w+$/.test(DATABASE)) {
+  throw new Error(`Invalid CLICKHOUSE_DATABASE: ${DATABASE}`);
+}
 const SEED = "pa-prototype-v1";
 const PEOPLE = Number(process.env.PA_PEOPLE ?? 25000);
 const DAYS = Number(process.env.PA_DAYS ?? 120);
@@ -68,7 +81,11 @@ type GroundTruth = {
   end: string;
   incident: { start: string; end: string };
   counts: Record<string, number>;
-  funnel: { pricing: number; trial_started: number; checkout_completed: number };
+  funnel: {
+    pricing: number;
+    trial_started: number;
+    checkout_completed: number;
+  };
   inviteWeek1: number;
   twoDevicePeople: number;
   /** People with at least one identify() call, so one pa_identities_resolved row each. */
@@ -77,7 +94,9 @@ type GroundTruth = {
 };
 
 /** A funnel transition, named by its steps in `check.ts`'s funnel spec. */
-type Transition = "Viewed pricing → Started trial" | "Started trial → Purchased";
+type Transition =
+  | "Viewed pricing → Started trial"
+  | "Started trial → Purchased";
 
 /** What the insight search should and shouldn't find; see `check-insights.ts`. */
 type PlantedInsights = {
@@ -177,15 +196,61 @@ const COUNTRIES: [string, number][] = [
 ];
 
 const FIRST_NAMES = [
-  "Ada", "Ben", "Chloe", "Dev", "Elena", "Femi", "Grace", "Hugo", "Iris", "Jonas",
-  "Kai", "Lena", "Mateo", "Nia", "Omar", "Priya", "Quinn", "Rosa", "Sam", "Tomas",
-  "Uma", "Viktor", "Wren", "Ximena", "Yusuf", "Zoe",
+  "Ada",
+  "Ben",
+  "Chloe",
+  "Dev",
+  "Elena",
+  "Femi",
+  "Grace",
+  "Hugo",
+  "Iris",
+  "Jonas",
+  "Kai",
+  "Lena",
+  "Mateo",
+  "Nia",
+  "Omar",
+  "Priya",
+  "Quinn",
+  "Rosa",
+  "Sam",
+  "Tomas",
+  "Uma",
+  "Viktor",
+  "Wren",
+  "Ximena",
+  "Yusuf",
+  "Zoe",
 ];
 
 const LAST_NAMES = [
-  "Adeyemi", "Brown", "Chen", "Dubois", "Evans", "Fischer", "Garcia", "Haddad",
-  "Ivanova", "Johansson", "Kim", "Lopez", "Mori", "Nguyen", "Okafor", "Patel",
-  "Quintero", "Rossi", "Silva", "Tanaka", "Ueda", "Varga", "Walsh", "Xu", "Yilmaz", "Zhang",
+  "Adeyemi",
+  "Brown",
+  "Chen",
+  "Dubois",
+  "Evans",
+  "Fischer",
+  "Garcia",
+  "Haddad",
+  "Ivanova",
+  "Johansson",
+  "Kim",
+  "Lopez",
+  "Mori",
+  "Nguyen",
+  "Okafor",
+  "Patel",
+  "Quintero",
+  "Rossi",
+  "Silva",
+  "Tanaka",
+  "Ueda",
+  "Varga",
+  "Walsh",
+  "Xu",
+  "Yilmaz",
+  "Zhang",
 ];
 
 /** Weights skew toward a few large accounts so company breakdowns have a head and a tail. */
@@ -353,10 +418,13 @@ function deviceProfile(rng: () => number): {
     return {
       device,
       os,
-      browser: os === "iOS" ? "Safari" : pickWeighted(rng, [
-        ["Chrome", 0.85],
-        ["Firefox", 0.15],
-      ]),
+      browser:
+        os === "iOS"
+          ? "Safari"
+          : pickWeighted(rng, [
+              ["Chrome", 0.85],
+              ["Firefox", 0.15],
+            ]),
     };
   }
   if (device === "tablet") {
@@ -424,8 +492,13 @@ function eventsOnActiveDay(persona: Persona, rng: () => number): number {
 }
 
 async function chQuery(sql: string, body?: string): Promise<string> {
-  const url = body === undefined ? CH : `${CH}/?query=${encodeURIComponent(sql)}`;
-  const res = await fetch(url, { method: "POST", body: body ?? sql });
+  const url =
+    body === undefined ? CH : `${CH}/?query=${encodeURIComponent(sql)}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: CH_HEADERS,
+    body: body ?? sql,
+  });
   const text = await res.text();
   if (!res.ok) {
     throw new Error(`ClickHouse ${res.status}: ${text.slice(0, 800)}`);
@@ -458,6 +531,8 @@ async function execSqlFile(path: string): Promise<void> {
       return comment === -1 ? line : line.slice(0, comment);
     })
     .join("\n")
+    // The files name the default database; `\b` leaves longer names alone.
+    .replaceAll(/\bproduct_analytics\b/g, DATABASE)
     .split(";")
     .map((part) => part.trim())
     .filter((part) => part.length > 0);
@@ -504,10 +579,10 @@ function bump(name: keyof GroundTruth["counts"], n = 1) {
 function makePerson(i: number) {
   const rng = rngFrom(`${SEED}:person:${i}`);
   const weeks = Math.max(1, Math.floor(DAYS / 7)) + LEAD_WEEKS;
-  const weekWeights: [number, number][] = Array.from({ length: weeks }, (_, w) => [
-    w,
-    1 + 0.03 * w,
-  ]);
+  const weekWeights: [number, number][] = Array.from(
+    { length: weeks },
+    (_, w) => [w, 1 + 0.03 * w],
+  );
   const totalW = weekWeights.reduce((s, [, w]) => s + w, 0);
   const signupWeek = pickWeighted(
     rng,
@@ -641,10 +716,17 @@ function emit(
     url_path: spec.path,
     hostname: HOSTNAME,
     referrer_domain: spec.sessionStart
-      ? pick(person.rng, ["google.com", "twitter.com", "linkedin.com", "direct"])
+      ? pick(person.rng, [
+          "google.com",
+          "twitter.com",
+          "linkedin.com",
+          "direct",
+        ])
       : null,
     referrer_path: spec.sessionStart ? "/" : null,
-    utm_source: utm ? pick(person.rng, ["google", "twitter", "newsletter"]) : null,
+    utm_source: utm
+      ? pick(person.rng, ["google", "twitter", "newsletter"])
+      : null,
     utm_medium: utm ? pick(person.rng, ["cpc", "social", "email"]) : null,
     utm_campaign: utm ? pick(person.rng, ["spring", "launch", "brand"]) : null,
     browser: person.browser,
@@ -748,12 +830,16 @@ function simulatePerson(
 
   // Anonymous browsing before signup.
   const preDays = 1 + Math.floor(rng() * 10);
-  let t = person.signupAt - preDays * 86_400_000 - Math.floor(rng() * 86_400_000);
+  let t =
+    person.signupAt - preDays * 86_400_000 - Math.floor(rng() * 86_400_000);
   t = Math.max(START_MS, t);
   let sawPricing = false;
   const preCount = 2 + Math.floor(rng() * 6);
   for (let n = 0; n < preCount && t < person.signupAt - 60_000; n++) {
-    path = n === 0 ? pick(rng, ["/", "/blog/launch", "/docs/start"]) : nextPage(rng, path);
+    path =
+      n === 0
+        ? pick(rng, ["/", "/blog/launch", "/docs/start"])
+        : nextPage(rng, path);
     if (person.sawPricing && n === preCount - 2) {
       path = "/pricing";
     }
@@ -774,8 +860,14 @@ function simulatePerson(
   }
 
   // Signup.
-  push(person.signupAt - 30_000, { type: 1, name: null, path: "/signup" }, false);
-  if (push(person.signupAt, { type: 2, name: "signup", path: "/signup" }, true)) {
+  push(
+    person.signupAt - 30_000,
+    { type: 1, name: null, path: "/signup" },
+    false,
+  );
+  if (
+    push(person.signupAt, { type: 2, name: "signup", path: "/signup" }, true)
+  ) {
     identify(identities, person, person.signupAt, account);
     truth.identifiedPeople += 1;
   }
@@ -806,7 +898,11 @@ function simulatePerson(
     const delay = (1 + rng() * rng() * 14) * 86_400_000;
     const checkoutAt = trialAt + delay;
     if (checkoutAt < END_MS) {
-      push(checkoutAt - 60_000, { type: 1, name: null, path: "/app/checkout" }, true);
+      push(
+        checkoutAt - 60_000,
+        { type: 1, name: null, path: "/app/checkout" },
+        true,
+      );
       push(
         checkoutAt,
         {
@@ -827,7 +923,11 @@ function simulatePerson(
   if (person.willInvite) {
     const inviteAt = person.signupAt + (2 + rng() * 5) * 3_600_000;
     if (inviteAt < person.signupAt + 7 * 86_400_000 && inviteAt < END_MS) {
-      push(inviteAt, { type: 2, name: "invite_sent", path: "/app/settings" }, true);
+      push(
+        inviteAt,
+        { type: 2, name: "invite_sent", path: "/app/settings" },
+        true,
+      );
       truth.inviteWeek1 += 1;
       if (rng() < 0.4) {
         push(
@@ -849,7 +949,9 @@ function simulatePerson(
     if (dayStart <= person.signupAt) {
       continue;
     }
-    const weekFromSignup = Math.floor((dayStart - person.signupAt) / (7 * 86_400_000));
+    const weekFromSignup = Math.floor(
+      (dayStart - person.signupAt) / (7 * 86_400_000),
+    );
     const chance = dailyActiveChance(
       person.persona,
       weekFromSignup,
@@ -863,14 +965,24 @@ function simulatePerson(
       continue;
     }
     const nEvents = eventsOnActiveDay(person.persona, rng);
-    let at = dayStart + (9 + Math.floor(rng() * 10)) * 3_600_000 + Math.floor(rng() * 3_600_000);
+    let at =
+      dayStart +
+      (9 + Math.floor(rng() * 10)) * 3_600_000 +
+      Math.floor(rng() * 3_600_000);
     path = "/app";
     for (let e = 0; e < nEvents && at < END_MS; e++) {
       path = nextPage(rng, path.startsWith("/app") ? path : "/app");
       push(at, { type: 1, name: null, path }, true);
-      if (path === "/app/reports" && rng() < (person.persona === "power" ? 0.35 : 0.12)) {
+      if (
+        path === "/app/reports" &&
+        rng() < (person.persona === "power" ? 0.35 : 0.12)
+      ) {
         at += 20_000 + Math.floor(rng() * 40_000);
-        push(at, { type: 2, name: "report_created", path: "/app/reports" }, true);
+        push(
+          at,
+          { type: 2, name: "report_created", path: "/app/reports" },
+          true,
+        );
       }
       const errorRate =
         at >= INCIDENT_START && at < INCIDENT_END && path === "/app/checkout"
@@ -878,7 +990,11 @@ function simulatePerson(
           : 0.004;
       if (rng() < errorRate) {
         at += 5_000;
-        push(at, { type: 2, name: "error", path, data: { code: "checkout_failed" } }, true);
+        push(
+          at,
+          { type: 2, name: "error", path, data: { code: "checkout_failed" } },
+          true,
+        );
       }
       at += (1 + Math.floor(rng() * 8)) * 60_000;
     }
@@ -898,7 +1014,11 @@ function simulatePerson(
   if (person.cancels) {
     const cancelAt = person.signupAt + (14 + rng() * 50) * 86_400_000;
     if (cancelAt < END_MS) {
-      push(cancelAt, { type: 2, name: "subscription_cancelled", path: "/app/settings" }, true);
+      push(
+        cancelAt,
+        { type: 2, name: "subscription_cancelled", path: "/app/settings" },
+        true,
+      );
       account.plan = "cancelled";
       identify(identities, person, cancelAt, account);
     }
@@ -910,7 +1030,7 @@ async function flush(table: string, buffer: object[]): Promise<void> {
     return;
   }
   const body = buffer.map((row) => JSON.stringify(row)).join("\n");
-  await chQuery(`INSERT INTO product_analytics.${table} FORMAT JSONEachRow`, body);
+  await chQuery(`INSERT INTO ${DATABASE}.${table} FORMAT JSONEachRow`, body);
   buffer.length = 0;
 }
 
@@ -918,15 +1038,20 @@ async function main() {
   if (!Number.isFinite(PEOPLE) || PEOPLE < 1) {
     throw new Error(`Invalid PA_PEOPLE: ${process.env.PA_PEOPLE}`);
   }
-  console.log(`Waiting for ClickHouse at ${CH}`);
+  console.log(`Waiting for ClickHouse at ${CH}, database ${DATABASE}`);
   await waitForClickHouse();
+  // Not `CREATE DATABASE IF NOT EXISTS`: that needs the CREATE DATABASE grant even when the
+  // database exists, and a shared server gives us only a database someone else created.
+  if ((await chQuery(`EXISTS DATABASE ${DATABASE}`)).trim() !== "1") {
+    await chQuery(`CREATE DATABASE ${DATABASE}`);
+  }
   await execSqlFile(`${import.meta.dir}/sql/01_pa_events.sql`);
   await execSqlFile(`${import.meta.dir}/sql/02_pa_identities.sql`);
   // Before any insert, so the history sees every identify().
   await execSqlFile(`${import.meta.dir}/sql/03_pa_identity_history.sql`);
-  await chQuery("TRUNCATE TABLE IF EXISTS product_analytics.pa_events");
-  await chQuery("TRUNCATE TABLE IF EXISTS product_analytics.pa_identities");
-  await chQuery("TRUNCATE TABLE IF EXISTS product_analytics.pa_identity_history");
+  await chQuery(`TRUNCATE TABLE IF EXISTS ${DATABASE}.pa_events`);
+  await chQuery(`TRUNCATE TABLE IF EXISTS ${DATABASE}.pa_identities`);
+  await chQuery(`TRUNCATE TABLE IF EXISTS ${DATABASE}.pa_identity_history`);
   console.log(`Generating ${PEOPLE} people over ${DAYS} days, seed=${SEED}`);
 
   const buffer: EventRow[] = [];
@@ -942,7 +1067,9 @@ async function main() {
     }
     if ((i + 1) % 2500 === 0) {
       const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
-      console.log(`  ${i + 1}/${PEOPLE} people, ${truth.counts.events} events, ${elapsed}s`);
+      console.log(
+        `  ${i + 1}/${PEOPLE} people, ${truth.counts.events} events, ${elapsed}s`,
+      );
     }
   }
   await flush("pa_events", buffer);
