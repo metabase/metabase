@@ -19,6 +19,7 @@ import { mountSdkContent } from "e2e/support/helpers/embedding-sdk-component-tes
 import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embedding-sdk-testing";
 import { mockAuthProviderAndJwtSignIn } from "e2e/support/helpers/embedding-sdk-testing/embedding-sdk-helpers";
 import { createLibraryWithTable } from "e2e/support/test-library-data";
+import type { SearchResponse } from "metabase-types/api";
 
 const { H } = cy;
 
@@ -248,8 +249,7 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
       </div>,
     );
 
-    // Wait until the entity picker modal is visible
-    getSdkRoot().contains("Pick your starting data");
+    getSdkRoot().findByText("Pick your starting data").should("be.visible");
 
     cy.log("list the table published in the Library, not the raw tables");
     H.popover().within(() => {
@@ -261,6 +261,51 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     H.popover().findByRole("link", { name: "Orders" }).click();
     getSdkRoot().within(() => {
       H.getNotebookStep("data").findByText("Orders").should("be.visible");
+    });
+  });
+
+  it('should list a table published in a Library subfolder when `entityTypes` = ["library"]', () => {
+    // Publishes only Orders, into Library > Data > Customer A
+    H.createLibrary().then(({ body: library }) => {
+      const dataCollection = library.effective_children?.find(
+        (collection) => collection.type === "library-data",
+      );
+
+      H.createCollection({
+        name: "Customer A",
+        parent_id: dataCollection?.id,
+      }).then(({ body: subfolder }) => {
+        H.publishTables({
+          table_ids: [SAMPLE_DATABASE.ORDERS_ID],
+          collection_id: subfolder.id,
+        });
+
+        // The search index catches up with the publish asynchronously, and the
+        // picker searches the Library only once, when it opens
+        H.retryRequest(
+          () =>
+            cy.request<SearchResponse>(
+              `/api/search?collection=${subfolder.id}&models=table`,
+            ),
+          ({ body }) => body.data.some((result) => result.name === "Orders"),
+        );
+      });
+    });
+    cy.signOut();
+    mockAuthProviderAndJwtSignIn();
+
+    mountSdkContent(
+      <div style={{ display: "flex", padding: "20px" }}>
+        <InteractiveQuestion questionId="new" entityTypes={["library"]} />
+      </div>,
+    );
+
+    getSdkRoot().findByText("Pick your starting data").should("be.visible");
+
+    cy.log("list the table published in the subfolder, not the raw tables");
+    H.popover().within(() => {
+      cy.findByRole("link", { name: "Orders" }).should("be.visible");
+      cy.findByRole("link", { name: "Reviews" }).should("not.exist");
     });
   });
 
