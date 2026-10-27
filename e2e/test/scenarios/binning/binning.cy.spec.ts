@@ -122,7 +122,7 @@ describe("scenarios > binning", () => {
     H.rightSidebar().button("Done").click();
 
     cy.log("the binning survives a save and a reload");
-    H.saveQuestion("Binned totals");
+    H.saveQuestion("Binned totals", undefined, { path: ["Our analytics"] });
     cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.reload();
     cy.wait("@cardQuery")
