@@ -595,34 +595,63 @@ export class UnconnectedDataSelector extends Component<
   };
 
   async hydrateActiveStep(): Promise<void> {
-    if (this.isSavedEntitySelected()) {
+    const { selectedCardType } = this.props;
+    if (
+      this.isSavedEntitySelected() &&
+      selectedCardType &&
+      !this.canSelectCardType(selectedCardType)
+    ) {
+      // A card of a type the entity types leave out opens where a fresh pick
+      // starts, as a table does when tables are left out
+      await this.switchToStep(
+        this.getFreshPickStep(),
+        this.getClearedStateForStep(DATA_BUCKET_STEP),
+      );
+    } else if (this.isSavedEntitySelected()) {
       // The card's type arrives with `fetchQuestion`, which hydrates again
-      const { selectedCardType } = this.props;
       if (selectedCardType) {
         await this.switchToStep(STEP_BY_CARD_TYPE[selectedCardType]);
       }
     } else if (
+      this.props.canSelectTable &&
       // Schema id is explicitly set when going through the New > Question/Model flow,
       // whereas we have to obtain it from the state when opening a saved question.
-      this.state.selectedSchemaId ||
-      this.state.selectedSchema?.id
+      (this.state.selectedSchemaId || this.state.selectedSchema?.id)
     ) {
       await this.switchToStep(TABLE_STEP);
     } else if (this.isJoinStep()) {
       const querySourceType = this.props.querySourceType;
-      if (querySourceType === "model") {
+      if (querySourceType === "model" && this.props.canSelectModel) {
         await this.switchToStep(MODEL_STEP, {}, false);
-      } else if (querySourceType === "question") {
+      } else if (
+        querySourceType === "question" &&
+        this.props.canSelectQuestion
+      ) {
         await this.switchToStep(SAVED_QUESTION_STEP, {}, false);
-      } else {
-        // query source is a table
+      } else if (this.props.canSelectTable) {
+        // query source is a table, or a card of a type left out
         await this.switchToStep(SCHEMA_STEP);
+      } else {
+        await this.switchToStep(DATA_BUCKET_STEP);
       }
-    } else if (this.props.canSelectTable && !this.hasUsableSavedEntities()) {
-      await this.switchToStep(DATABASE_STEP);
     } else {
-      await this.switchToStep(DATA_BUCKET_STEP);
+      await this.switchToStep(this.getFreshPickStep());
     }
+  }
+
+  canSelectCardType(cardType: CardType): boolean {
+    const { canSelectModel, canSelectQuestion, canSelectMetric } = this.props;
+    return {
+      model: canSelectModel,
+      question: canSelectQuestion,
+      metric: canSelectMetric,
+    }[cardType];
+  }
+
+  getFreshPickStep(): DataSelectorStep {
+    return this.props.canSelectTable && !this.hasUsableSavedEntities()
+      ? DATABASE_STEP
+      : DATA_BUCKET_STEP;
   }
 
   // for steps where there's a single option sometimes we want to automatically select it

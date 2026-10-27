@@ -6,6 +6,7 @@ import {
   FIRST_COLLECTION_ENTITY_ID,
   FIRST_COLLECTION_ID,
   ORDERS_DASHBOARD_ID,
+  ORDERS_MODEL_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
   assertSdkNotebookEditorUsable,
@@ -375,6 +376,72 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
       );
       cy.findByText("Sample Database").should("not.exist");
       cy.findByText("Orders").should("not.exist");
+    });
+  });
+
+  it('should keep a join in the staged picker to the semantic layer when `entityTypes` = ["semantic-layer"]', () => {
+    // Publishes only Orders
+    createLibraryWithTable();
+    cy.signOut();
+    mockAuthProviderAndJwtSignIn();
+
+    mountSdkContent(
+      <div style={{ display: "flex", padding: "20px" }}>
+        <InteractiveQuestion
+          questionId="new"
+          dataPicker="staged"
+          entityTypes={["semantic-layer"]}
+        />
+      </div>,
+    );
+
+    getSdkRoot().findByText("Pick your starting data").should("be.visible");
+
+    H.popover().findByText("Orders").click();
+    getSdkRoot().within(() => {
+      cy.button("Join data").click();
+    });
+
+    cy.log("the join lists the table published in the semantic layer");
+    H.popover().within(() => {
+      cy.findByText("Orders").should("be.visible");
+      cy.findByText("Reviews").should("not.exist");
+    });
+
+    cy.log("there is no way back out of the semantic layer");
+    H.popover().within(() => {
+      cy.findByTestId("saved-entity-title").should("have.text", "Data");
+      cy.findByTestId("saved-entity-back-navigation").should("not.exist");
+    });
+  });
+
+  it('should open the tables, not the models, in the staged picker when reopened on a model and `entityTypes` = ["table"]', () => {
+    createQuestion({
+      query: { "source-table": `card__${ORDERS_MODEL_ID}` },
+    }).then(({ body: question }) => {
+      cy.signOut();
+      mockAuthProviderAndJwtSignIn();
+
+      mountSdkContent(
+        <div style={{ display: "flex", padding: "20px" }}>
+          <InteractiveQuestion
+            questionId={question.id}
+            dataPicker="staged"
+            entityTypes={["table"]}
+          />
+        </div>,
+      );
+    });
+
+    getSdkRoot().within(() => {
+      cy.findByTestId("notebook-button").click();
+      cy.findByTestId("step-data-0-0").findByText("Orders Model").click();
+    });
+
+    H.popover().within(() => {
+      cy.findByText("Sample Database").should("be.visible");
+      cy.findByText("Orders").should("be.visible");
+      cy.findByText("Models").should("not.exist");
     });
   });
 
