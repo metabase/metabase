@@ -1,11 +1,9 @@
 import { act, waitFor } from "@testing-library/react";
 
-import {
-  DATA_APP_BROKER_INIT_MESSAGE_TYPE,
-  DATA_APP_IFRAME_BROKER_HASH_KEY,
-} from "metabase-enterprise/data-apps/constants";
+import { mockSettings } from "__support__/settings";
+import { DATA_APP_BROKER_INIT_MESSAGE_TYPE } from "metabase-enterprise/data-apps/constants";
 
-import type { BrokerPortMessage } from "../broker/protocol";
+import type { BrokerInitMessage, BrokerPortMessage } from "../broker/protocol";
 
 jest.mock("embedding-sdk-bundle/sdk-bundle-exports", () => ({
   sdkBundleExports: {},
@@ -29,6 +27,7 @@ describe("data-app iframe entry, on a subpath deployment", () => {
     history.pushState = pushState;
     history.replaceState = replaceState;
     window.MetabaseRoot = MetabaseRoot;
+    mockSettings();
     history.replaceState({}, "", "/");
     document.body.replaceChildren();
   });
@@ -40,11 +39,11 @@ describe("data-app iframe entry, on a subpath deployment", () => {
       value: { postMessage: jest.fn<void, [unknown, string]>() },
     });
     window.MetabaseRoot = "/mb/";
-    history.replaceState(
-      {},
-      "",
-      `/mb/embed/apps/sales#${DATA_APP_IFRAME_BROKER_HASH_KEY}=${encodeURIComponent(HOST_ORIGIN)}`,
-    );
+    mockSettings({
+      "isolated-origin": window.location.origin,
+      "site-url": `${HOST_ORIGIN}/mb`,
+    });
+    history.replaceState({}, "", "/mb/embed/apps/sales");
     const root = document.createElement("div");
     root.id = "root";
     document.body.append(root);
@@ -53,10 +52,11 @@ describe("data-app iframe entry, on a subpath deployment", () => {
       await import("./app-data-app");
     });
 
-    const init = new MessageEvent("message", {
-      data: { type: DATA_APP_BROKER_INIT_MESSAGE_TYPE },
-      origin: HOST_ORIGIN,
-    });
+    const data: BrokerInitMessage = {
+      type: DATA_APP_BROKER_INIT_MESSAGE_TYPE,
+      locale: null,
+    };
+    const init = new MessageEvent("message", { data, origin: HOST_ORIGIN });
     Object.defineProperties(init, {
       source: { value: window.parent },
       ports: { value: [hostPort] },
