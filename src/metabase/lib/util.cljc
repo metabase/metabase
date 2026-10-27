@@ -424,6 +424,8 @@
       ;; a `:values` stage after the first starts a chain of its own
       (some :values (rest stages))))
 
+(declare fresh-uuids-preserving-aggregation-refs)
+
 (defn expand-named-stages
   "`query` as a tree: every stage read by name is copied to where it is read, so each stage reads the stage before it
   and each join reads its own stages. A stage's `:union-all` becomes a vector of such chains, one per branch. Stages
@@ -457,17 +459,20 @@
                 (if-let [source-stage (:source-stage join)]
                   (-> join
                       (dissoc :source-stage)
-                      (assoc :stages (expand-chain (name->idx source-stage))))
+                      (assoc :stages (expand-copy (name->idx source-stage))))
                   (update join :stages #(mapv expand-stage %))))
               (expand-stage [stage]
                 (-> stage
                     (dissoc :name :source-stage)
                     ;; each branch becomes its own chain of stages
                     (m/update-existing :union-all (fn [branches]
-                                                    (mapv #(expand-chain (name->idx %)) branches)))
+                                                    (mapv #(expand-copy (name->idx %)) branches)))
                     (m/update-existing :joins #(mapv expand-join %))))
               (expand-chain [i]
-                (mapv (comp expand-stage stages) (chain i)))]
+                (mapv (comp expand-stage stages) (chain i)))
+              ;; a stage read in several places is written out in each, and every copy needs uuids of its own
+              (expand-copy [i]
+                (fresh-uuids-preserving-aggregation-refs (expand-chain i)))]
         (assoc query :stages (expand-chain (dec (count stages))))))))
 
 (def ^{:arglists '([query stage-number])} previous-stage-number

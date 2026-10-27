@@ -52,4 +52,12 @@
       (is (= [nil nil nil] (mapv :name (:stages expanded))))
       (is (= 2 (count (-> expanded :stages last :joins first :stages))))
       (is (not-any? #(or (:name %) (:source-stage %)) (:stages expanded)))
+      (testing "a stage written out in two places has its own uuids in each"
+        (let [filtered (lib/query meta/metadata-provider
+                                  {:lib/type :mbql/query
+                                   :database (meta/id)
+                                   :stages   (assoc-in stages [0 :filters]
+                                                       [(clause :> (field "PRICE" :type/Integer) 0)])})
+              uuids    (keep :lib/uuid (tree-seq coll? seq (lib.util/expand-named-stages filtered)))]
+          (is (= (count uuids) (count (set uuids))))))
       (is (mr/validate :metabase.lib.schema/query expanded)))))
