@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.driver.settings :as driver.settings]
    [metabase.query-processor.core :as qp]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -67,6 +68,18 @@
       (finally
         (.cancel task false)))))
 
+(defn caller-facing-failure?
+  "Whether failed QP `result` is about the query or its database, so that the caller may see its error text.
+   The database rejecting the query is one such failure. A failure inside Metabase, such as an app DB lookup, is not:
+   its error text can carry app DB SQL and class names."
+  [{error-type :error_type :as result}]
+  (let [status-code (get-in result [:ex-data :status-code])]
+    (boolean
+     (or (and status-code (<= 400 status-code 499))
+         (qp.error-type/client-error? error-type)
+         (qp.error-type/connection-pool-saturated? error-type)
+         (contains? #{qp.error-type/db qp.error-type/timed-out} error-type)))))
+
 (defn- execute!
   "Run a serialized MBQL query through the QP with the standard agent userland preparation.
    Caps this call's rows at `row-limit` (within the backend's 2000/10000 userland ceilings) and records the run
@@ -115,6 +128,7 @@
                       {:agent-error?       true
                        :error              :query-failed
                        :query-error        (:error result)
+                       :caller-facing?     (caller-facing-failure? result)
                        ;; The QP's own refusal, as opposed to an error from the database.
                        :permissions-error? (= :missing-required-permissions (:error_type result))})))
     result))
@@ -125,7 +139,8 @@
    The `truncated?` flag is true only when more rows exist, so a result that fills the page exactly is complete.
    A query failure throws an agent error with the QP's error text in quotes.
    Its ex-data is `{:agent-error? true :error :query-failed :query-error <QP error text or nil>}`, with a true
-   `:permissions-error?` when the QP refused the query because the current user may not run it.
+   `:permissions-error?` when the QP refused the query because the current user may not run it, and a true
+   `:caller-facing?` when [[caller-facing-failure?]] accepts the failure.
 
    Two options stop a run early, each with an agent error of its own:
    - `:request-canceled-chan`, a promise channel that receives a value when the request being served is canceled.

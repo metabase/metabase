@@ -26,11 +26,13 @@
 
 (defn handle-agent-or-api-error
   "Return an agent output for agent errors and API check refusals, re-throw `e` otherwise. A refusal is an exception
-  with a 4xx `:status-code`, like the 403 or 404 from [[api/read-check]]."
+  with a 4xx `:status-code`, like the 403 or 404 from [[api/read-check]].
+  A refusal's message can name stored content, such as a card's name, so it is quoted by
+  [[self.core/quoted-error-message]]."
   [e]
   (let [{:keys [agent-error? status-code]} (ex-data e)]
-    (if (and (not agent-error?) (int? status-code) (<= 400 status-code 499))
-      {:output (ex-message e) :status-code status-code}
+    (if (and (not agent-error?) (self.core/api-refusal? e))
+      {:output (self.core/quoted-error-message e) :status-code status-code}
       (handle-agent-error e))))
 
 (defn convert-field-type

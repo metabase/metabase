@@ -35,7 +35,9 @@
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.match :as match]))
+   [metabase.util.match :as match])
+  (:import
+   (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -654,8 +656,27 @@
 
 ;;; ---------------------------------------- Query execution ----------------------------------------
 
+(defn- input-error-data?
+  "Whether ex-data `data` marks an error in the LLM's input: a 4xx status, or an agent error with no status."
+  [{:keys [status-code agent-error?]}]
+  (or (and status-code (<= 400 status-code 499))
+      (and (nil? status-code) agent-error?)))
+
+(defn- database-error?
+  "Whether `e` is a failure of a database or the app DB rather than of the LLM's input.
+  A JDBC exception or a toucan2 failure anywhere in its cause chain marks one.
+  Its message can carry app DB SQL and stored values, so it is never relayed to the LLM."
+  [e]
+  (let [{:keys [status-code] :as data} (ex-data e)
+        causes                         (u/full-exception-chain e)]
+    (boolean
+     (and (not (and status-code (<= 400 status-code 499)))
+          (or (some #(instance? SQLException %) causes)
+              (and (not (input-error-data? data))
+                   (some #(contains? (ex-data %) :toucan2/context-trace) causes)))))))
+
 (defn- as-agent-input-error
-  "Wrap `e` as an agent-input error.
+  "Return a database failure unchanged; wrap any other exception as an agent-input error.
 
   Tool callers look at `:agent-error?` to decide whether to relay the message to the LLM.
   HTTP callers additionally need a status code; default representation/repair failures to
@@ -663,15 +684,18 @@
   Existing statuses are preserved (notably permission 403s, which callers should normally
   avoid wrapping in the first place).
 
-  An exception the pipeline did not raise as an agent error gets `:foreign-message? true`: its message comes from
-  lib, toucan2 or the database, so Metabot quotes it before the LLM reads it."
+  A [[database-error?]] is left unwrapped, so the tool executor logs it and the LLM reads a fixed sentence.
+  Any other exception the pipeline did not raise as an agent error, such as one from lib about the query, gets
+  `:foreign-message? true`: Metabot did not write its message, so Metabot quotes it before the LLM reads it."
   [^clojure.lang.ExceptionInfo e]
-  (let [foreign? (not (:agent-error? (ex-data e)))
-        base     (cond-> (assoc (or (ex-data e) {}) :agent-error? true)
-                   foreign? (assoc :foreign-message? true))
-        data     (cond-> base
-                   (nil? (:status-code base)) (assoc :status-code 400))]
-    (ex-info (ex-message e) data e)))
+  (if (database-error? e)
+    e
+    (let [foreign? (not (:agent-error? (ex-data e)))
+          base     (cond-> (assoc (or (ex-data e) {}) :agent-error? true)
+                     foreign? (assoc :foreign-message? true))
+          data     (cond-> base
+                     (nil? (:status-code base)) (assoc :status-code 400))]
+      (ex-info (ex-message e) data e))))
 
 (defn- not-runnable-problem
   "What is wrong at a Malli schema `error`, phrased for the LLM, or nil when there is nothing to add

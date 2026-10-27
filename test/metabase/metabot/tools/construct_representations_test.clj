@@ -230,6 +230,28 @@
             (catch clojure.lang.ExceptionInfo e
               (is (=? {:agent-error? true :foreign-message? true :status-code 400} (ex-data e))))))))))
 
+(deftest database-pipeline-error-is-not-relayed-test
+  (testing "a database or app DB failure inside the pipeline is rethrown unwrapped, so the LLM never reads its text"
+    (doseq [[label cause] [["a JDBC exception" (java.sql.SQLException. "relation \"report_card\" is locked")]
+                           ["a toucan2 failure" (ex-info "Error executing query: SELECT * FROM report_card"
+                                                         {:toucan2/context-trace []})]]]
+      (testing label
+        (with-mp-and-stubs!
+          (fn []
+            (mt/with-dynamic-fn-redefs [repr.resolve/resolve-query
+                                        (fn [& _] (throw (ex-info "Lookup failed" {} cause)))]
+              (try
+                (construct/execute-representations-query
+                 (query-data
+                  {"lib/type" "mbql/query"
+                   "database" "Sample"
+                   "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                "aggregation"  [["count" {}]]}]}))
+                (is false "expected throw")
+                (catch clojure.lang.ExceptionInfo e
+                  (is (=? {:agent-error? (symbol "nil #_\"key is not present.\"")} (ex-data e))))))))))))
+
 (deftest implicit-join-happy-path-test
   (testing "cross-table breakout gets auto-wired with a :source-field after repair"
     (with-mp-and-stubs!

@@ -62,6 +62,14 @@
         (mt/with-dynamic-fn-redefs [qp/process-query (constantly {:status :failed, :error "Column FOO not found"})]
           (is (=? {:error :query-failed, :permissions-error? false} (failure))))))))
 
+(deftest ^:parallel caller-facing-failure-test
+  (testing "a failure about the query or its database is caller-facing; one inside Metabase is not"
+    (is (= {:invalid-query true, :db true, :timed-out true, :qp false, :server false, nil false}
+           (into {} (for [error-type [:invalid-query :db :timed-out :qp :server nil]]
+                      [error-type (query-execution/caller-facing-failure? {:error_type error-type})])))))
+  (testing "a 4xx status in the failure's ex-data is caller-facing"
+    (is (true? (query-execution/caller-facing-failure? {:ex-data {:status-code 404}})))))
+
 (defn- received
   "The value `chan` delivers within 5 seconds, or nil."
   [chan]

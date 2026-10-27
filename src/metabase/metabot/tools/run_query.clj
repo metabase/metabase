@@ -19,6 +19,7 @@
    [metabase.metabot.tools.util :as tools.u]
    [metabase.models.interface :as mi]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.middleware.catch-exceptions :as qp.catch-exceptions]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
@@ -259,16 +260,21 @@
 (defn- compiled-sql
   "The native query `query` sends to its database: template tags substituted, snippets and card references expanded,
    and a nested native stage wrapped in the SQL compiled from the notebook stages around it. A query that does not
-   compile would fail to run too, so it fails the same way a run does."
+   compile would fail to run too, so it fails the same way a run does.
+   A failure inside Metabase, such as an app DB lookup, is rethrown as it is.
+   The model never reads its text."
   [query]
   (try
     (:query (qp.compile/compile query))
     (catch Exception e
-      (throw (ex-info (ex-message e)
-                      {:agent-error? true
-                       :error        :query-failed
-                       :query-error  (ex-message e)}
-                      e)))))
+      (throw (if (query-execution/caller-facing-failure? (qp.catch-exceptions/exception-response e))
+               (ex-info (ex-message e)
+                        {:agent-error?   true
+                         :error          :query-failed
+                         :query-error    (ex-message e)
+                         :caller-facing? true}
+                        e)
+               e)))))
 
 (defn- read-only-problem
   "A sentence saying why `sql` is not a single read-only SELECT statement for `driver`, so the model knows what to
@@ -580,15 +586,20 @@
                              :returned   returned
                              :truncated? truncated?}}))
     (catch Exception e
-      (let [{:keys [error query-error permissions-error?]} (ex-data e)]
+      (let [{:keys [error query-error permissions-error? caller-facing?]} (ex-data e)]
         (cond
           ;; The QP's refusal is ours to state plainly. Its text can name a question the user can't read.
           permissions-error?
           {:output (no-permission-message query_id)}
 
           ;; The exception message embeds the warehouse's error text unquoted.
-          (= :query-failed error)
+          (and (= :query-failed error) caller-facing?)
           {:output (query-failed-output query-error)}
+
+          ;; A failure inside Metabase. Its text can carry app DB SQL and class names,
+          ;; so the tool executor logs it and the model reads a fixed sentence instead.
+          (= :query-failed error)
+          (throw (ex-info "Metabot's query failed inside Metabase." {} e))
 
           :else
           (tools.u/handle-agent-or-api-error e))))))
