@@ -180,9 +180,9 @@ describe("FormDashboardTabSelect", () => {
 });
 
 async function waitForTabSelector(tabName: string) {
-  await waitFor(async () => {
-    expect(
-      await screen.findByLabelText(/Which tab should this go on/),
-    ).toHaveValue(tabName);
+  await waitFor(() => {
+    expect(screen.getByLabelText(/Which tab should this go on/)).toHaveValue(
+      tabName,
+    );
   });
 }

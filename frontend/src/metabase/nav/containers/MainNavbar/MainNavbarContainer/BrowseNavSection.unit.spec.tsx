@@ -25,7 +25,7 @@ describe("BrowseNavSection", () => {
   });
 
   it("should render a section title and an 'Add data' button", async () => {
-    setup({ isAdmin: true });
+    await setup({ isAdmin: true });
 
     const section = screen.getByRole("section", { name: "Data" });
 
@@ -39,7 +39,7 @@ describe("BrowseNavSection", () => {
   });
 
   it("should not render a section title and an 'Add data' button for users without enough permissions", async () => {
-    setup({ isAdmin: false });
+    await setup({ isAdmin: false, canUpload: false });
 
     const section = screen.getByRole("section", { name: "Data" });
 
@@ -52,8 +52,8 @@ describe("BrowseNavSection", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("should not render the 'Add data' button for full app embedding", () => {
-    setup({ isEmbeddingIframe: true });
+  it("should not render the 'Add data' button for full app embedding", async () => {
+    await setup({ isEmbeddingIframe: true });
 
     const section = screen.getByRole("section", { name: "Data" });
 
@@ -67,7 +67,7 @@ describe("BrowseNavSection", () => {
   });
 
   it("should be expanded by default but collapsible", async () => {
-    setup();
+    await setup();
 
     const section = screen.getByRole("section", { name: "Data" });
     const addDataButton = within(section).getByRole("button", {
@@ -102,8 +102,8 @@ describe("BrowseNavSection", () => {
     expect(onAddDataModalOpen).toHaveBeenCalledTimes(1);
   });
 
-  it("should render Models, Databases, and Metrics when not embedding in iframe", () => {
-    setup();
+  it("should render Models, Databases, and Metrics when not embedding in iframe", async () => {
+    await setup();
 
     expect(
       screen.getByRole("listitem", { name: "Browse models" }),
@@ -117,8 +117,8 @@ describe("BrowseNavSection", () => {
   });
 
   describe("interactive embedding with `entity_types` (EMB-229)", () => {
-    it("should show models and tables when no `entity_types` is provided", () => {
-      setup({ isEmbeddingIframe: true });
+    it("should show models and tables when no `entity_types` is provided", async () => {
+      await setup({ isEmbeddingIframe: true });
 
       expect(
         screen.getByRole("listitem", { name: "Browse models" }),
@@ -131,8 +131,8 @@ describe("BrowseNavSection", () => {
       ).not.toBeInTheDocument();
     });
 
-    it('should show models and tables when `entity_types` is `["model", "table"]`', () => {
-      setup({ isEmbeddingIframe: true, entityTypes: ["model", "table"] });
+    it('should show models and tables when `entity_types` is `["model", "table"]`', async () => {
+      await setup({ isEmbeddingIframe: true, entityTypes: ["model", "table"] });
 
       expect(
         screen.getByRole("listitem", { name: "Browse models" }),
@@ -145,8 +145,8 @@ describe("BrowseNavSection", () => {
       ).not.toBeInTheDocument();
     });
 
-    it('should show only models when `entity_types` is `["model"]`', () => {
-      setup({ isEmbeddingIframe: true, entityTypes: ["model"] });
+    it('should show only models when `entity_types` is `["model"]`', async () => {
+      await setup({ isEmbeddingIframe: true, entityTypes: ["model"] });
 
       expect(
         screen.getByRole("listitem", { name: "Browse models" }),
@@ -159,8 +159,8 @@ describe("BrowseNavSection", () => {
       ).not.toBeInTheDocument();
     });
 
-    it('should show only tables when `entity_types` is `["table"]`', () => {
-      setup({ isEmbeddingIframe: true, entityTypes: ["table"] });
+    it('should show only tables when `entity_types` is `["table"]`', async () => {
+      await setup({ isEmbeddingIframe: true, entityTypes: ["table"] });
 
       expect(
         screen.queryByRole("listitem", { name: "Browse models" }),
@@ -179,18 +179,20 @@ interface SetupOpts {
   isEmbeddingIframe?: boolean;
   entityTypes?: EmbeddingEntityType[];
   isAdmin?: boolean;
+  canUpload?: boolean;
 }
 
 async function setup({
   isEmbeddingIframe,
   entityTypes,
   isAdmin = true,
+  canUpload = true,
 }: SetupOpts = {}) {
   const onAddDataModalOpen = jest.fn();
 
   const database = createMockDatabase({
     uploads_enabled: true,
-    can_upload: true,
+    can_upload: canUpload,
   });
   setupDatabaseListEndpoint([database]);
   setupUpdateSettingEndpoint();

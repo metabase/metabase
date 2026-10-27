@@ -15,20 +15,20 @@ jest.mock("metabase/common/utils/dashboard", () => ({
 }));
 
 describe("DashboardInfoSidebar", () => {
-  it("should render the component", () => {
-    setup();
+  it("should render the component", async () => {
+    await setup();
 
     expect(screen.getByText("Info")).toBeInTheDocument();
     expect(screen.getByTestId("sidesheet")).toBeInTheDocument();
   });
 
-  it("should render overview tab", () => {
-    setup();
+  it("should render overview tab", async () => {
+    await setup();
     expect(screen.getByRole("tab", { name: "Overview" })).toBeInTheDocument();
   });
 
-  it("should render history tab", () => {
-    setup();
+  it("should render history tab", async () => {
+    await setup();
     expect(screen.getByRole("tab", { name: "History" })).toBeInTheDocument();
   });
 

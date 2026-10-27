@@ -92,7 +92,7 @@ describe("NewItemMenu", () => {
   });
 
   it("should properly render menu items", async () => {
-    setup();
+    await setup();
     expect(await screen.findByText("Question")).toBeInTheDocument();
     expect(await screen.findByText("SQL query")).toBeInTheDocument();
     expect(await screen.findByText("Dashboard")).toBeInTheDocument();

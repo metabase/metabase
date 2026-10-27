@@ -12,7 +12,7 @@ describe("QuestionSharingMenu > Enterprise", () => {
 
   describe("non-admins", () => {
     it("shows a sharing menu with both copy options when a public link exists", async () => {
-      setupQuestionSharingMenu({
+      await setupQuestionSharingMenu({
         canManageSubscriptions: false,
         isPublicSharingEnabled: true,
         hasPublicLink: true,
@@ -28,7 +28,7 @@ describe("QuestionSharingMenu > Enterprise", () => {
     });
 
     it("copies the public link from the menu instead of opening a popover", async () => {
-      setupQuestionSharingMenu({
+      await setupQuestionSharingMenu({
         canManageSubscriptions: false,
         isPublicSharingEnabled: true,
         hasPublicLink: true,
@@ -49,7 +49,7 @@ describe("QuestionSharingMenu > Enterprise", () => {
     });
 
     it("copies the app link directly without an admin prompt when public sharing is disabled", async () => {
-      setupQuestionSharingMenu({
+      await setupQuestionSharingMenu({
         isPublicSharingEnabled: false,
         hasPublicLink: true,
         canManageSubscriptions: false,
@@ -69,7 +69,7 @@ describe("QuestionSharingMenu > Enterprise", () => {
     });
 
     it("copies the app link directly without an admin prompt when there is no public link", async () => {
-      setupQuestionSharingMenu({
+      await setupQuestionSharingMenu({
         isPublicSharingEnabled: true,
         canManageSubscriptions: false,
         hasPublicLink: false,
@@ -90,7 +90,7 @@ describe("QuestionSharingMenu > Enterprise", () => {
 
   describe("admins", () => {
     it("should not allow sharing instance analytics question", async () => {
-      setupQuestionSharingMenu({
+      await setupQuestionSharingMenu({
         isAdmin: true,
         isPublicSharingEnabled: true,
         isEmbeddingEnabled: true,

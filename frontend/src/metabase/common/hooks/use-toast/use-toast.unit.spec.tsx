@@ -36,7 +36,7 @@ const setup = async () => {
 
 describe("useToast hook", () => {
   it("should send a toast", async () => {
-    setup();
+    await setup();
 
     const sendButton = screen.getByText("Send Toast");
     await userEvent.click(sendButton);
@@ -44,7 +44,7 @@ describe("useToast hook", () => {
   });
 
   it("should remove a toast", async () => {
-    setup();
+    await setup();
 
     const sendButton = screen.getByText("Send Toast");
     await userEvent.click(sendButton);
