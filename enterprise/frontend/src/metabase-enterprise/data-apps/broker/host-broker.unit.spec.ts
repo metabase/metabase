@@ -1,8 +1,21 @@
+import {
+  MessageChannel as NodeMessageChannel,
+  MessagePort as NodeMessagePort,
+} from "node:worker_threads";
+
 import fetchMock from "fetch-mock";
 
 import { setBasename } from "metabase/utils/basename";
+import {
+  DATA_APP_BROKER_INIT,
+  DATA_APP_BROKER_READY,
+} from "metabase-enterprise/data-apps/constants";
 
-import { handleBrokerRequest, safeRequestHeaders } from "./host-broker";
+import {
+  handleBrokerRequest,
+  installHostBroker,
+  safeRequestHeaders,
+} from "./host-broker";
 import type {
   BrokerHttpResponse,
   BrokerRequestMessage,
@@ -245,5 +258,128 @@ describe("handleBrokerRequest", () => {
     const [call] = fetchMock.callHistory.calls();
 
     expect(call?.request?.signal.aborted).toBe(true);
+  });
+
+  it("reports a request the browser can't build as a network error, as fetch does", async () => {
+    const res = await handleBrokerRequest(
+      request({ method: "GET", body: encode("a GET can't have a body") }),
+    );
+
+    expect(res).toEqual({
+      id: 1,
+      networkError: expect.stringContaining("TypeError"),
+    });
+    expect(fetchMock.callHistory.called()).toBe(false);
+  });
+});
+
+describe("installHostBroker", () => {
+  const FRAME_ORIGIN = "https://apps.example.com";
+
+  let iframe: HTMLIFrameElement;
+  let frameWindow: Window;
+  let teardown: () => void;
+  const postToFrame = jest.fn<void, [unknown, string, Transferable[]]>();
+  const openPorts: MessagePort[] = [];
+
+  // jsdom has no `MessageChannel`; Node's carries messages the same way.
+  beforeAll(() => {
+    Object.defineProperties(globalThis, {
+      MessageChannel: { value: NodeMessageChannel, configurable: true },
+      MessagePort: { value: NodeMessagePort, configurable: true },
+    });
+  });
+
+  afterAll(() => {
+    Reflect.deleteProperty(globalThis, "MessageChannel");
+    Reflect.deleteProperty(globalThis, "MessagePort");
+  });
+
+  beforeEach(() => {
+    fetchMock.get("path:/api/health", { status: 200, body: "ok" });
+    iframe = document.createElement("iframe");
+    document.body.append(iframe);
+    if (!iframe.contentWindow) {
+      throw new Error("an attached iframe has a window");
+    }
+    frameWindow = iframe.contentWindow;
+    Object.defineProperty(frameWindow, "postMessage", { value: postToFrame });
+    teardown = installHostBroker(iframe, FRAME_ORIGIN);
+  });
+
+  afterEach(() => {
+    teardown();
+    openPorts.splice(0).forEach((port) => port.close());
+    postToFrame.mockReset();
+    iframe.remove();
+    fetchMock.removeRoutes();
+    fetchMock.clearHistory();
+  });
+
+  function sendReady({
+    origin = FRAME_ORIGIN,
+    source = frameWindow,
+    type = DATA_APP_BROKER_READY,
+  }: { origin?: string; source?: Window; type?: string } = {}) {
+    const event = new MessageEvent("message", { data: { type }, origin });
+    Object.defineProperty(event, "source", { value: source });
+    window.dispatchEvent(event);
+  }
+
+  /** The port the host handed to the frame with its `index`th INIT message. */
+  function handedPort(index = 0): MessagePort {
+    const [message, targetOrigin, transfer] = postToFrame.mock.calls[index];
+    expect(message).toEqual({ type: DATA_APP_BROKER_INIT });
+    expect(targetOrigin).toBe(FRAME_ORIGIN);
+    const [port] = transfer;
+    if (!(port instanceof MessagePort)) {
+      throw new Error("expected the host to transfer a MessagePort");
+    }
+    openPorts.push(port);
+    return port;
+  }
+
+  /** Whether a request sent on `port` gets an answer within a short wait. */
+  async function isRelayed(port: MessagePort): Promise<boolean> {
+    const answered = new Promise<boolean>((resolve) => {
+      port.onmessage = () => resolve(true);
+      setTimeout(() => resolve(false), 200);
+    });
+    port.postMessage(request({ url: "/api/health" }));
+    return answered;
+  }
+
+  it("hands its own frame a port when the frame's document is ready, and relays requests on it", async () => {
+    sendReady();
+
+    expect(postToFrame).toHaveBeenCalledTimes(1);
+    expect(await isRelayed(handedPort())).toBe(true);
+  });
+
+  it("ignores a ready message from another origin, from another window, or of another type", () => {
+    sendReady({ origin: "https://evil.example.com" });
+    sendReady({ source: window });
+    sendReady({ type: "metabase.data-app.ready" });
+
+    expect(postToFrame).not.toHaveBeenCalled();
+  });
+
+  it("stops relaying when it is torn down", async () => {
+    sendReady();
+    const port = handedPort();
+    teardown();
+
+    expect(await isRelayed(port)).toBe(false);
+    expect(fetchMock.callHistory.called()).toBe(false);
+  });
+
+  it("stops relaying on the old port when the frame asks again, as a reloaded frame does", async () => {
+    sendReady();
+    const oldPort = handedPort();
+    sendReady();
+    const newPort = handedPort(1);
+
+    expect(await isRelayed(oldPort)).toBe(false);
+    expect(await isRelayed(newPort)).toBe(true);
   });
 });

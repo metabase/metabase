@@ -89,6 +89,35 @@ export function isBrokerPortMessage(
   );
 }
 
+/** True when `value` is a well-formed response or network-error message. */
+export function isBrokerResponseMessage(
+  value: unknown,
+): value is BrokerResponseMessage {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    !("id" in value) ||
+    typeof value.id !== "number"
+  ) {
+    return false;
+  }
+
+  if ("networkError" in value) {
+    return typeof value.networkError === "string";
+  }
+
+  return (
+    "status" in value &&
+    typeof value.status === "number" &&
+    "statusText" in value &&
+    typeof value.statusText === "string" &&
+    "headers" in value &&
+    isStringRecord(value.headers) &&
+    "body" in value &&
+    (value.body === null || value.body instanceof ArrayBuffer)
+  );
+}
+
 /**
  * The broker relays only `/api` paths. Outside `/api`, routes such as HTML pages and
  * static files have no endpoint scope check, so the session would reach them unconfined.
