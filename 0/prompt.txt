@@ -1,0 +1,1 @@
+what artifacts are created by default.cy.snap.js?
