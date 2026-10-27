@@ -1,0 +1,42 @@
+## MySQL, MariaDB, and H2 index a foreign key's column themselves; Postgres doesn't. On MySQL a second index
+## would take over the constraint and refuse to be dropped on rollback, so the index is Postgres-only.
+##
+## The index changeSet first shipped as v65.2026-10-06T00:00:00 in migrations/065/, but the column it indexes ships
+## in 64. The first changeSet retires that row. The index is guarded because an instance may have it already: from the
+## retired changeSet, or from 065/20261022_data_app_unique_resource_collection, which runs before this file on 65.
+## DATABASECHANGELOG is unquoted on purpose: it folds to the table's actual case on postgres (lowercase) and h2
+## (uppercase), and matches it exactly on mysql/mariadb.
+
+databaseChangeLog:
+  - changeSet:
+      id: dyc49r
+      author: johnswanson
+      comment: Retire the misnumbered v65 changelog row for the data_app.resource_collection_id index
+      changes:
+        - sql:
+            sql: >-
+              DELETE FROM DATABASECHANGELOG WHERE id = 'v65.2026-10-06T00:00:00'
+      rollback: []
+
+  - changeSet:
+      id: p8k2nw
+      author: timofei
+      comment: Index data apps by their resource collection (PostgreSQL), where no index exists yet
+      dbms: postgresql
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: data_app
+                indexName: idx_data_app_resource_collection_id
+      changes:
+        - createIndex:
+            tableName: data_app
+            indexName: idx_data_app_resource_collection_id
+            columns:
+              - column:
+                  name: resource_collection_id
+      rollback:
+        - dropIndex:
+            tableName: data_app
+            indexName: idx_data_app_resource_collection_id
