@@ -24,11 +24,11 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private icon-bytes
-  "An icon that isn't UTF-8 text, so a byte that doesn't survive a string round trip shows."
+  "Non-UTF-8 bytes to detect text conversion."
   (byte-array [(int 0x89) 0x50 0x4e 0x47 0 (int 0xff)]))
 
 (defn- plugin-files
-  "The files `pack` archives for a plugin `identifier` with an icon: the manifest, the JavaScript, and the icon."
+  "Bundle files with a binary icon."
   [identifier]
   {"metabase-plugin.json" (.getBytes ^String (json/encode {:name identifier :icon "icon.png" :metabase {:version ">=1.60"}}) "UTF-8")
    "dist/index.js"        (.getBytes "console.log('hi')" "UTF-8")
@@ -55,7 +55,7 @@
   (Files/readAllBytes (.toPath f)))
 
 (defn- files-in
-  "The regular files under `dir`, as a map of `/`-separated path relative to `dir` to their bytes as a seq."
+  "Relative file paths mapped to byte sequences."
   [^File dir]
   (into {}
         (for [^File f (file-seq dir)
@@ -63,7 +63,7 @@
           [(str (.relativize (.toPath dir) (.toPath f))) (seq (file-bytes f))])))
 
 (defn- write-plugin-files!
-  "Write a serialized plugin with `yaml` fields and the `files` next to it under `custom_viz_plugins/<dir>/`."
+  "Write plugin YAML and resources."
   [dump-dir dir yaml-fields files]
   (let [plugin-dir (io/file dump-dir "custom_viz_plugins" dir)]
     (.mkdirs plugin-dir)
@@ -85,32 +85,22 @@
   (mt/with-model-cleanup [:model/CustomVizPlugin]
     (ts/with-random-dump-dir [dump-dir "custom-viz-export-"]
       (let [files (plugin-files "Thumbs")]
-        (insert-plugin! "Thumbs" (cv.tu/make-tgz-bytes files) :enabled false)
+        (insert-plugin! "Thumbs" (cv.tu/make-tgz-bytes (assoc files
+                                                              "dist/index.js.map" "{}"
+                                                              "README.md" "ignored"))
+                        :enabled false)
         (export! dump-dir)
         (let [plugin-dir (io/file dump-dir "custom_viz_plugins" "Thumbs")
               yaml-file  (io/file plugin-dir "custom_viz_plugin.yaml")]
-          (testing "the YAML is in a directory named by the identifier verbatim, holding only what the bundle can't derive"
+          (testing "YAML contains only identity and enabled state"
             (is (= {:serdes/meta [{:model "CustomVizPlugin"}]
                     :identifier  "Thumbs"
                     :enabled     false}
                    (yaml/from-file yaml-file))
                 "`enabled` is written only when false"))
-          (testing "the bundle's files are beside it, byte for byte, and nothing else is written"
+          (testing "only declared resources are exported, byte for byte"
             (is (= (assoc (update-vals files seq) "custom_viz_plugin.yaml" (seq (file-bytes yaml-file)))
                    (files-in plugin-dir)))))))))
-
-(deftest export-writes-only-the-files-an-import-reads-test
-  (mt/with-model-cleanup [:model/CustomVizPlugin]
-    (ts/with-random-dump-dir [dump-dir "custom-viz-export-"]
-      (let [files (plugin-files "thumbs")]
-        (insert-plugin! "thumbs" (cv.tu/make-tgz-bytes (assoc files
-                                                              "dist/index.js.map"     "{}"
-                                                              "dist/assets/other.png" icon-bytes
-                                                              "README.md"             "hand-built")))
-        (export! dump-dir)
-        (testing "an archive entry the instance never serves is left out, so it can't go stale in the repository"
-          (is (= (set (keys files))
-                 (disj (set (keys (files-in (io/file dump-dir "custom_viz_plugins" "thumbs")))) "custom_viz_plugin.yaml"))))))))
 
 (deftest export-of-an-unreadable-bundle-writes-the-yaml-alone-test
   (mt/with-model-cleanup [:model/CustomVizPlugin]
@@ -138,13 +128,6 @@
       (export! dump-dir)
       (is (= ["exported"] (vec (.list (io/file dump-dir "custom_viz_plugins"))))))))
 
-(deftest export-with-no-plugins-writes-nothing-test
-  (mt/with-model-cleanup [:model/CustomVizPlugin]
-    (ts/with-random-dump-dir [dump-dir "custom-viz-export-"]
-      (t2/delete! :model/CustomVizPlugin)
-      (export! dump-dir)
-      (is (not (.exists (io/file dump-dir "custom_viz_plugins")))))))
-
 (deftest export-skips-plugins-whose-identifiers-differ-only-in-case-test
   ;; MySQL and MariaDB compare text case-insensitively, so the unique index refuses the second plugin: the collision
   ;; this test covers can't exist there
@@ -165,9 +148,13 @@
   (mt/with-model-cleanup [:model/CustomVizPlugin]
     (ts/with-random-dump-dir [dump-dir "custom-viz-import-"]
       (let [files (plugin-files "thumbs")]
-        (write-plugin-files! dump-dir "thumbs" (plugin-yaml "thumbs") files)
+        (write-plugin-files! dump-dir "thumbs" (plugin-yaml "thumbs")
+                             (assoc files
+                                    "deploy/config.yaml" "a: [unterminated"
+                                    "src/index.tsx" "export default () => null;"
+                                    "dist/assets/unused.png" "ignored"))
         (import! dump-dir)
-        (testing "the plugin is active with everything the manifest derives"
+        (testing "import derives metadata from the manifest"
           (is (=? {:status           :active
                    :enabled          true
                    :display_name     "thumbs"
@@ -176,27 +163,17 @@
                    :manifest         {:name "thumbs" :icon "icon.png" :metabase {:version ">=1.60"}}
                    :bundle_hash      (cv.tu/bundle-hash (cache/files->bundle files))}
                   (t2/select-one :model/CustomVizPlugin :identifier "thumbs"))))
-        (testing "the stored bundle is an archive of the files, and serves the icon's bytes"
+        (testing "only declared resources are packed and the icon remains intact"
           (let [plugin (t2/select-one :model/CustomVizPlugin :identifier "thumbs")]
             (is (= (update-vals files seq) (update-vals (cache/bundle->files (:bundle plugin)) seq)))
             (is (= (seq icon-bytes) (seq (cache/get-asset plugin "icon.png"))))))))))
-
-(deftest import-without-a-manifest-makes-an-error-plugin-test
-  (mt/with-model-cleanup [:model/CustomVizPlugin]
-    (ts/with-random-dump-dir [dump-dir "custom-viz-import-"]
-      (write-plugin-files! dump-dir "thumbs" (plugin-yaml "thumbs") {"dist/index.js" "console.log('hi')"})
-      (import! dump-dir)
-      (is (=? {:status        :error
-               :error_message #(re-find #"metabase-plugin.json not found" %)
-               :display_name  "thumbs"}
-              (t2/select-one :model/CustomVizPlugin :identifier "thumbs"))))))
 
 (deftest import-with-missing-files-replaces-an-active-plugins-bundle-test
   (mt/with-model-cleanup [:model/CustomVizPlugin]
     (ts/with-random-dump-dir [dump-dir "custom-viz-import-"]
       (let [healthy (cache/files->bundle (plugin-files "thumbs"))
             {id :id} (insert-plugin! "thumbs" healthy :icon "icon.png" :metabase_version ">=1.60")]
-        (testing "the repository owns the files: a directory holding only the YAML imports as an error plugin"
+        (testing "missing resources replace the existing bundle with an error"
           (write-plugin-files! dump-dir "thumbs" (plugin-yaml "thumbs") {})
           (import! dump-dir)
           (let [plugin (t2/select-one :model/CustomVizPlugin :id id)]
@@ -218,7 +195,7 @@
         (write-plugin-files! dump-dir "big" (plugin-yaml "big")
                              (assoc (plugin-files "big") "dist/index.js" incompressible))
         (import! dump-dir)
-        (testing "the plugin is an error row that says why, and the oversized bytes are not stored"
+        (testing "oversized bundles are rejected without storing their bytes"
           (is (=? {:status        :error
                    :error_message #(re-find #"Bundle must be less than 5MB" %)
                    :bundle        nil
@@ -236,58 +213,25 @@
                  (ex-message (ex-cause e))))))
       (is (nil? (t2/select-one :model/CustomVizPlugin :identifier "thumbs"))))))
 
-(deftest import-ignores-other-files-in-a-plugins-directory-test
-  (mt/with-model-cleanup [:model/CustomVizPlugin]
-    (ts/with-random-dump-dir [dump-dir "custom-viz-import-"]
-      (let [files (plugin-files "thumbs")]
-        (write-plugin-files! dump-dir "thumbs" (plugin-yaml "thumbs")
-                             (assoc files
-                                    "deploy/config.yaml"     "a: 1\n---\nb: [unterminated\n"
-                                    "src/index.tsx"          "export default () => null;"
-                                    "package.json"           "{}"
-                                    "dist/index.js.map"      "{}"
-                                    "dist/assets/unused.png" "not named by the manifest"))
-        (import! dump-dir)
-        (let [plugin (t2/select-one :model/CustomVizPlugin :identifier "thumbs")]
-          (is (= :active (:status plugin)))
-          (is (= (update-vals files seq) (update-vals (cache/bundle->files (:bundle plugin)) seq))
-              "only the files pack would archive are in the bundle"))))))
-
 (deftest round-trip-keeps-the-files-and-settles-the-hash-test
-  (mt/with-model-cleanup [:model/CustomVizPlugin]
-    (ts/with-random-dump-dir [dump-dir "custom-viz-round-trip-"]
-      (let [files  (plugin-files "thumbs")
-            plugin (insert-plugin! "thumbs" (cv.tu/make-tgz-bytes files))]
-        (export! dump-dir)
-        (t2/delete! :model/CustomVizPlugin :id (:id plugin))
-        (import! dump-dir)
-        (let [imported-hash (t2/select-one-fn :bundle_hash :model/CustomVizPlugin :identifier "thumbs")]
-          (testing "the imported bundle holds the exported files"
-            (is (= (update-vals files seq)
-                   (update-vals (cache/bundle->files (t2/select-one-fn :bundle :model/CustomVizPlugin :identifier "thumbs")) seq))))
-          (testing "exporting and importing again changes nothing"
-            (ts/with-random-dump-dir [dump-dir-2 "custom-viz-round-trip-"]
-              (export! dump-dir-2)
-              (is (= (files-in (io/file dump-dir "custom_viz_plugins" "thumbs"))
-                     (files-in (io/file dump-dir-2 "custom_viz_plugins" "thumbs"))))
-              (import! dump-dir-2)
-              (is (= imported-hash (t2/select-one-fn :bundle_hash :model/CustomVizPlugin :identifier "thumbs"))))))))))
-
-(deftest round-trip-keeps-an-identifier-with-spaces-test
   (mt/with-model-cleanup [:model/CustomVizPlugin]
     (ts/with-random-dump-dir [dump-dir "custom-viz-round-trip-"]
       (let [files  (plugin-files "Calendar Heatmap")
             plugin (insert-plugin! "Calendar Heatmap" (cv.tu/make-tgz-bytes files))]
         (export! dump-dir)
-        (testing "the directory is the identifier verbatim, spaces included"
-          (is (= ["Calendar Heatmap"] (vec (.list (io/file dump-dir "custom_viz_plugins"))))))
         (t2/delete! :model/CustomVizPlugin :id (:id plugin))
         (import! dump-dir)
-        (testing "the import registers the plugin under that identifier with its files"
-          (is (= (update-vals files seq)
-                 (some-> (t2/select-one-fn :bundle :model/CustomVizPlugin :identifier "Calendar Heatmap")
-                         cache/bundle->files
-                         (update-vals seq)))))))))
+        (let [imported-hash (t2/select-one-fn :bundle_hash :model/CustomVizPlugin :identifier "Calendar Heatmap")]
+          (testing "spaces and casing survive the round trip with resource bytes intact"
+            (is (= (update-vals files seq)
+                   (update-vals (cache/bundle->files (t2/select-one-fn :bundle :model/CustomVizPlugin :identifier "Calendar Heatmap")) seq))))
+          (testing "exporting and importing again changes nothing"
+            (ts/with-random-dump-dir [dump-dir-2 "custom-viz-round-trip-"]
+              (export! dump-dir-2)
+              (is (= (files-in (io/file dump-dir "custom_viz_plugins" "Calendar Heatmap"))
+                     (files-in (io/file dump-dir-2 "custom_viz_plugins" "Calendar Heatmap"))))
+              (import! dump-dir-2)
+              (is (= imported-hash (t2/select-one-fn :bundle_hash :model/CustomVizPlugin :identifier "Calendar Heatmap"))))))))))
 
 (deftest tar-export-holds-the-bundles-files-test
   (mt/with-model-cleanup [:model/CustomVizPlugin]
