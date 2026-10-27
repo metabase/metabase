@@ -71,7 +71,7 @@ describe("QuestionSources", () => {
     const card = createMockCard({
       name: "Question",
     });
-    setup({ card });
+    await setup({ card });
     const databaseLink = await screen.findByRole("link", {
       name: /Sample Database/i,
     });

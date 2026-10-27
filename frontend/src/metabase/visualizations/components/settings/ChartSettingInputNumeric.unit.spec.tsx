@@ -214,24 +214,19 @@ describe("ChartSettingInputNumber", () => {
     await type({ input, value: "asdf" });
     expect(input).toHaveDisplayValue("");
     expect(onChange).not.toHaveBeenCalled();
-
-    // Inputs with `e` that are not valid scientific notation
-    type({ input, value: "e123" });
-    expect(input).toHaveDisplayValue("");
-    expect(onChange).not.toHaveBeenCalled();
-
-    type({ input, value: "e123e" });
-    expect(input).toHaveDisplayValue("");
-    expect(onChange).not.toHaveBeenCalled();
-
-    type({ input, value: "1e23e" });
-    expect(input).toHaveDisplayValue("");
-    expect(onChange).not.toHaveBeenCalled();
-
-    type({ input, value: "e1e23e" });
-    expect(input).toHaveDisplayValue("");
-    expect(onChange).not.toHaveBeenCalled();
   });
+
+  it.each(["e123", "e123e", "1e23e", "e1e23e"])(
+    "marks %s, which is not valid scientific notation, as invalid",
+    async (value) => {
+      const { input, onChange } = setup();
+
+      await type({ input, value });
+      expect(input).toHaveDisplayValue(value);
+      expect(input).toHaveAttribute("aria-invalid", "true");
+      expect(onChange).toHaveBeenLastCalledWith(undefined);
+    },
+  );
 
   it("renders the `value` prop on load", () => {
     const { input } = setup({ value: 123 });

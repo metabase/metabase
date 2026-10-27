@@ -43,7 +43,10 @@ describe("library", () => {
       collectionItems: [LIBRARY_DATA_COLLECTION, LIBRARY_METRICS_COLLECTION],
     });
 
-    setup({}, { tokenFeatures: createMockTokenFeatures({ library: true }) });
+    await setup(
+      {},
+      { tokenFeatures: createMockTokenFeatures({ library: true }) },
+    );
 
     expect(await screen.findByText("metrics")).toBeInTheDocument();
     expect(await screen.findByText("data")).toBeInTheDocument();
@@ -62,7 +65,7 @@ describe("library", () => {
       ],
     });
 
-    setup(
+    await setup(
       { models: ["dataset", "metric"] },
       { tokenFeatures: createMockTokenFeatures({ library: true }) },
     );
@@ -90,7 +93,7 @@ describe("library", () => {
       ],
     });
 
-    setup(
+    await setup(
       { models: ["dataset", "metric"] },
       { tokenFeatures: createMockTokenFeatures({ library: true }) },
     );
@@ -105,7 +108,7 @@ describe("library", () => {
       collectionItems: [LIBRARY_DATA_COLLECTION, LIBRARY_METRICS_COLLECTION],
     });
 
-    setup(
+    await setup(
       { shouldShowLibrary: false },
       { tokenFeatures: createMockTokenFeatures({ library: true }) },
     );

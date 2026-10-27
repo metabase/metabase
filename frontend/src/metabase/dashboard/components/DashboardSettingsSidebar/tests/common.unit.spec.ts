@@ -10,8 +10,8 @@ jest.mock("metabase/common/utils/dashboard", () => ({
 }));
 
 describe("DashboardSettingsSidebar", () => {
-  it("should render the component", () => {
-    setup();
+  it("should render the component", async () => {
+    await setup();
 
     expect(screen.getByText("Dashboard settings")).toBeInTheDocument();
     expect(screen.getByTestId("sidesheet")).toBeInTheDocument();
