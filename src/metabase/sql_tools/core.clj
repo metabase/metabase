@@ -254,8 +254,9 @@
 (mu/defn read-only-select-problem :- [:maybe [:map [:reason :keyword] [:detail [:maybe :string]]]]
   "Why `sql` is not a read-only select ([[read-only-select?]]), or nil when it is one.
   The `:reason` is one of `:multiple-statements`, `:not-a-select`, `:writes-or-locks`, `:statement-word`,
-  `:session-function`, `:sql-executing-function`, `:executable-comment`, `:bare-dash-comment`, `:backslash-quote`,
-  `:unicode-identifier`, `:large-literal-list`, `:too-long` and `:unparseable`.
+  `:session-function`, `:sql-executing-function`, `:dynamic-function-call`, `:executable-comment`,
+  `:bare-dash-comment`, `:backslash-quote`, `:unicode-identifier`, `:large-literal-list`, `:too-long` and
+  `:unparseable`.
   For `:statement-word`, `:detail` is the word, and for `:session-function` and `:sql-executing-function` it is the
   function's name."
   [driver :- :keyword

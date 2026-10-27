@@ -453,6 +453,21 @@
       :postgres  "SELECT * FROM generate_series(1, 10) g"
       :starburst "SELECT query FROM system.runtime.queries")))
 
+(deftest ^:parallel read-only-select?-dynamic-function-call-test
+  (testing "a SELECT that calls a function named through Snowflake's IDENTIFIER is not read-only, whatever it names"
+    (are [driver sql] (false? (sql-tools/read-only-select? driver sql))
+      :snowflake "SELECT IDENTIFIER('SYSTEM$CANCEL_QUERY')('01b2')"
+      :snowflake "SELECT IDENTIFIER('SYSTEM$ABORT_SESSION')()"
+      :snowflake "SELECT * FROM TABLE(IDENTIFIER('TO_QUERY')('SELECT seq.NEXTVAL'))"
+      :snowflake "SELECT * FROM TABLE(IDENTIFIER('GETNEXTVAL')(seq))"
+      :snowflake "SELECT a FROM t WHERE b IN (SELECT IDENTIFIER($fn)(1))"
+      :snowflake "SELECT IDENTIFIER('my_udf')(a) FROM t"))
+  (testing "IDENTIFIER used as a table or column name is still read-only"
+    (are [driver sql] (true? (sql-tools/read-only-select? driver sql))
+      :snowflake "SELECT * FROM IDENTIFIER('db.schema.t')"
+      :snowflake "SELECT * FROM IDENTIFIER($t)"
+      :snowflake "SELECT IDENTIFIER('a') FROM t WHERE IDENTIFIER('b') = 1")))
+
 (deftest ^:parallel read-only-select?-hidden-sql-test
   (testing "SQL the database would run and the parser reads as something else is not read-only"
     (are [driver sql] (false? (sql-tools/read-only-select? driver sql))
@@ -495,6 +510,7 @@
       :mysql     :session-function    "get_lock"         "SELECT GET_LOCK('x', 10)"
       :postgres  :sql-executing-function "query_to_xml"  "SELECT query_to_xml('SELECT pg_advisory_lock(1)', true, false, '')"
       :starburst :sql-executing-function "system.query"  "SELECT * FROM TABLE(system.query(query => 'SELECT 1'))"
+      :snowflake :dynamic-function-call nil              "SELECT IDENTIFIER('f')(1)"
       :postgres  :unparseable         nil                "SELECT ("
       :sqlserver :statement-word      "EXEC"             "SELECT 1 FROM t exec('DROP TABLE x')"
       :mysql     :executable-comment  nil                "SELECT * FROM t /*! FOR UPDATE */"
