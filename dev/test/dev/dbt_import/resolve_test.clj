@@ -66,10 +66,12 @@
   (let [resolved (resolve/resolve-manifest config (flexanalytics-ir))]
     (is (mr/validate ::resolved/manifest resolved))
     (is (= "dbt metrics" (-> resolved :collection :name)))
-    (testing "all 9 metrics resolve"
+    (testing "the 9 simple metrics resolve; the advanced ones the parse stage reported are carried over (until QRES-5 lands)"
       (is (= ["customer_count" "order_count" "price" "product_count" "quantity" "row_count" "sales" "sales_to_target" "target"]
              (map (comp :name :metric) (:metrics resolved))))
-      (is (= [] (:unsupported resolved))))
+      (is (= ["cancelled_order_share" "cumulative_sales" "customer_reorder_rate" "sales_minus_target" "sales_mtd"
+              "sales_pct_of_target" "sales_to_target_ratio_2" "sales_trailing_7d" "sales_vs_prior_week"]
+             (map :name (:unsupported resolved)))))
     (let [stage (fn [metric-name] (-> (emit/dataset-query (resolved-metric-named resolved metric-name)) :stages first))]
       (testing "sales is a sum over its column, typed from the project"
         (is (= {:lib/type     :mbql.stage/mbql
@@ -346,8 +348,6 @@
         "(sales - quantity) * 2" [:* {} [:- {} sales quantity] 2]
         "sales * -1"             [:* {} sales -1]
         "sales * 1.5"            [:* {} sales 1.5]))
-    (testing "CASE WHEN"
-      (are [expr clause] (= [:sum {} clause] (aggregation-of-expr expr))
     (testing "dividing by NULLIF(x, 0) is plain division: Metabase's / already returns NULL for a zero divisor"
       (are [expr clause] (= [:sum {} clause] (aggregation-of-expr expr))
         "sales / nullif(quantity, 0)"     [:/ {} sales quantity]
@@ -359,6 +359,8 @@
           "sales / nullif(quantity, 1)"
           "sales / nullif(quantity, '0')"
           "nullif(sales, 0) / quantity")))
+    (testing "CASE WHEN"
+      (are [expr clause] (= [:sum {} clause] (aggregation-of-expr expr))
         "case when is_returned then sales else 0 end"          [:case {} [[[:= {} is-returned true] sales]] 0]
         "case when status = 'Cancelled' then 1 else 0 end"     [:case {} [[[:= {} status "Cancelled"] 1]] 0]
         "case when status = 'a' then 1 when status = 'b' then 2 end" [:case {} [[[:= {} status "a"] 1] [[:= {} status "b"] 2]]]
