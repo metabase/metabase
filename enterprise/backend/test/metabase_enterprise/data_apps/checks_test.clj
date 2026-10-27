@@ -564,6 +564,25 @@
                         (set (filter #{action-id elsewhere-id} (map :id (mt/user-http-request :crowberto :get 200 "action"))))))
                  (is (=? {:id elsewhere-id} (mt/user-http-request :crowberto :get 200 (format "action/%d" elsewhere-id))))))))))))))
 
+(deftest app-without-collection-uses-no-action-test
+  (mt/with-actions-test-data-and-actions-enabled
+    (do-with-app-collection
+     (fn [_collection-id]
+       (mt/with-temp [:model/DataApp    app                          {:name "wasps"}
+                      :model/Collection {elsewhere-collection-id :id} {:namespace :data-actions}]
+         (do-with-rename-action!
+          elsewhere-collection-id
+          (fn [elsewhere-id]
+            (t2/delete! :model/Collection (:resource_collection_id app))
+            (testing "an app without a collection lists no action"
+              (is (= [] (mt/user-http-request :crowberto :get 200 "action" (as-app "wasps")))))
+            (testing "and reads or runs none"
+              (is (= (action-error elsewhere-id)
+                     (mt/user-http-request :crowberto :get 400 (format "action/%d" elsewhere-id) (as-app "wasps"))))
+              (is (= (action-error elsewhere-id)
+                     (mt/user-http-request :crowberto :post 400 (format "action/%d/execute" elsewhere-id) (as-app "wasps")
+                                           {:parameters {}})))))))))))
+
 (deftest without-data-apps-feature-test
   (testing "without the data-apps feature a data app's queries are not checked"
     (mt/with-premium-features #{}
