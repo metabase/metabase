@@ -60,7 +60,7 @@ describe("QuestionInfoSidebar > enterprise", () => {
 
     describe("for admins", () => {
       it("should show tabs for Overview, History, Relationships, and Insights", async () => {
-        await setup({
+        setup({
           user: { is_superuser: true },
           settings: createMockSettings({
             "token-features": createMockTokenFeatures({

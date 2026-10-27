@@ -64,7 +64,7 @@ describe("QuestionInfoSidebar", () => {
   describe("tabs", () => {
     describe("for non-admins", () => {
       it("should show tabs for Overview, History, Relationships", async () => {
-        await setup({});
+        setup({});
         const tabs = await screen.findAllByRole("tab");
         expect(tabs).toHaveLength(3);
         expect(tabs.map((tab) => tab.textContent)).toEqual([
@@ -77,7 +77,7 @@ describe("QuestionInfoSidebar", () => {
 
     describe("for admins", () => {
       it("should show tabs for Overview, Relationships, History, and Insights", async () => {
-        await setup({
+        setup({
           user: { is_superuser: true },
           settings: createMockSettings({
             "token-features": createMockTokenFeatures({
@@ -104,7 +104,7 @@ describe("QuestionInfoSidebar", () => {
   });
 
   describe("question details", () => {
-    it("should show last edited", async () => {
+    it("should show last edited", () => {
       const card = createMockCard({
         name: "Question",
         "last-edit-info": {
@@ -115,12 +115,12 @@ describe("QuestionInfoSidebar", () => {
           id: 19,
         },
       });
-      await setup({ card });
+      setup({ card });
       expect(screen.getByText("April 11, 2024")).toBeInTheDocument();
       expect(screen.getByText("by Ash Ketchum")).toBeInTheDocument();
     });
 
-    it("should show creation information", async () => {
+    it("should show creation information", () => {
       const card = createMockCard({
         name: "Question",
         creator: createMockUserInfo({
@@ -132,29 +132,29 @@ describe("QuestionInfoSidebar", () => {
         }),
         created_at: "2024-04-13T00:00:00Z",
       });
-      await setup({ card });
+      setup({ card });
       expect(screen.getByText("April 13, 2024")).toBeInTheDocument();
       expect(screen.getByText("by Ash Ketchum")).toBeInTheDocument();
     });
 
-    it("should show save location", async () => {
+    it("should show save location", () => {
       const card = createMockCard({
         name: "Question",
         collection: createMockCollection({ name: "My Big Collection" }),
       });
-      await setup({ card });
+      setup({ card });
 
       expect(screen.getByText("My Big Collection")).toBeInTheDocument();
     });
 
-    it("should show correct link for root collection", async () => {
+    it("should show correct link for root collection", () => {
       const card = createMockCard({
         name: "Question",
         // @ts-expect-error - ye olde null root collection bugbear
         collection: createMockCollection({ id: null, name: "Our analytics" }),
         collection_id: null,
       });
-      await setup({ card });
+      setup({ card });
 
       expect(screen.getByText("Our analytics")).toHaveAttribute(
         "href",
@@ -162,46 +162,46 @@ describe("QuestionInfoSidebar", () => {
       );
     });
 
-    it("should show source information", async () => {
+    it("should show source information", () => {
       const card = createMockCard({
         name: "Question",
       });
-      await setup({ card });
+      setup({ card });
 
       expect(screen.getByText("Sample Database")).toBeInTheDocument();
       expect(screen.getByText("/")).toBeInTheDocument();
       expect(screen.getByText("Products")).toBeInTheDocument();
     });
 
-    it("should not show entity id", async () => {
+    it("should not show entity id", () => {
       const card = createMockCard({
         name: "Question",
         // Unjustified type cast. FIXME
         entity_id: "jenny8675309" as BaseEntityId,
       });
-      await setup({ card });
+      setup({ card });
 
       expect(screen.queryByText("Entity ID")).not.toBeInTheDocument();
     });
 
-    it("should show if a public link is enabled", async () => {
+    it("should show if a public link is enabled", () => {
       const card = createMockCard({
         name: "Question",
         public_uuid: "watch-me-please",
       });
-      await setup({ card });
+      setup({ card });
 
       expect(screen.getByLabelText("globe icon")).toBeInTheDocument();
       expect(screen.getByText("Shared publicly")).toBeInTheDocument();
       expect(screen.getByLabelText("link icon")).toBeInTheDocument();
     });
 
-    it("should show if a embedding is enabled", async () => {
+    it("should show if a embedding is enabled", () => {
       const card = createMockCard({
         name: "Question",
         enable_embedding: true,
       });
-      await setup({ card });
+      setup({ card });
 
       expect(screen.getByLabelText("embed icon")).toBeInTheDocument();
       expect(screen.getByText("Embedded")).toBeInTheDocument();
