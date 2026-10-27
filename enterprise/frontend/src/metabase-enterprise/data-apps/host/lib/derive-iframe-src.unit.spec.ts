@@ -1,5 +1,4 @@
 import { setBasename } from "metabase/utils/basename";
-import { DATA_APP_IFRAME_LOCALE_HASH_KEY } from "metabase-enterprise/data-apps/constants";
 
 import { deriveIframeSrc } from "./derive-iframe-src";
 
@@ -25,26 +24,11 @@ describe("deriveIframeSrc", () => {
   );
 
   describe("cross-origin (MB_ISOLATED_ORIGIN set)", () => {
-    it("serves from the isolated origin and carries the host origin in the broker hash", () => {
+    it("serves from the isolated origin, adding nothing to the app's own URL", () => {
       window.history.replaceState({}, "", "/apps/sales/orders/42");
       expect(deriveIframeSrc("sales", "https://apps.example.com")).toBe(
-        "https://apps.example.com/embed/apps/sales/orders/42#__mb_broker=" +
-          encodeURIComponent(window.location.origin),
+        "https://apps.example.com/embed/apps/sales/orders/42",
       );
-    });
-
-    it("passes the user's locale, which the isolated origin can't learn without a signed-in user", () => {
-      window.MetabaseLocales = { user: "de", site: "en" };
-      window.history.replaceState({}, "", "/apps/sales");
-      try {
-        const src = new URL(
-          deriveIframeSrc("sales", "https://apps.example.com"),
-        );
-        const hash = new URLSearchParams(src.hash.slice(1));
-        expect(hash.get(DATA_APP_IFRAME_LOCALE_HASH_KEY)).toBe("de");
-      } finally {
-        delete window.MetabaseLocales;
-      }
     });
 
     it("stays same-origin without an isolated origin", () => {
@@ -57,8 +41,7 @@ describe("deriveIframeSrc", () => {
       window.history.replaceState({}, "", "/analytics/apps/sales");
       try {
         expect(deriveIframeSrc("sales", "https://apps.example.com")).toBe(
-          "https://apps.example.com/analytics/embed/apps/sales#__mb_broker=" +
-            encodeURIComponent(window.location.origin),
+          "https://apps.example.com/analytics/embed/apps/sales",
         );
       } finally {
         setBasename("");
