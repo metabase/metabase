@@ -128,6 +128,7 @@ export function DataViewCanvas({
             query={query}
             display="bar"
             onPick={question.apply}
+            onLegacyDrill={(nextQuery) => question.apply(nextQuery)}
             legendWrap={
               LegendWrap && hasSeries && isAggregated
                 ? (frame) => (

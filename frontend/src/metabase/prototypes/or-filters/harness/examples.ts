@@ -806,3 +806,105 @@ export function withCategoryMonthDrilled(
     cleared,
   );
 }
+
+/**
+ * The states the non-filter drills produce. Distribution on `Total` is the
+ * same shape as `withCountByBinnedTotal` (count by the auto-binned column),
+ * so it reuses that one.
+ */
+
+/** sort on the Total header: all order-bys replaced with `Total` descending. */
+export function withSortDrilled(
+  query: Lib.Query,
+  stageIndex: number,
+): Lib.Query {
+  const cleared = clearFilters(query, stageIndex);
+  const total = Lib.orderableColumns(cleared, stageIndex).find(
+    (column) =>
+      Lib.displayInfo(cleared, stageIndex, column).displayName === "Total",
+  );
+  if (!total) {
+    return query;
+  }
+  return Lib.orderBy(cleared, stageIndex, total, "desc");
+}
+
+/** summarize-column (Sum) on the Total header: one aggregation, no breakout. */
+export function withSumOfTotal(
+  query: Lib.Query,
+  stageIndex: number,
+): Lib.Query {
+  const cleared = clearFilters(query, stageIndex);
+  const sum = findAggregationOperator(cleared, stageIndex, "sum");
+  const total = sum
+    ? findOperatorColumn(cleared, stageIndex, sum, "Total")
+    : undefined;
+  if (!sum || !total) {
+    return query;
+  }
+  return Lib.aggregate(cleared, stageIndex, Lib.aggregationClause(sum, total));
+}
+
+/** summarize-column-by-time on the Total header: `Sum of Total` by the first date column at its default unit. */
+export function withSumOfTotalByMonth(
+  query: Lib.Query,
+  stageIndex: number,
+): Lib.Query {
+  const summed = withSumOfTotal(query, stageIndex);
+  const createdAt = findBreakoutColumn(summed, stageIndex, "Created At");
+  if (!createdAt) {
+    return query;
+  }
+  const month = findTemporalBucket(summed, stageIndex, createdAt, "month");
+  return Lib.breakout(
+    summed,
+    stageIndex,
+    Lib.withTemporalBucket(createdAt, month),
+  );
+}
+
+/** column-extract on the Created At header → Month of year: a new string expression column. */
+export function withMonthExtracted(
+  query: Lib.Query,
+  stageIndex: number,
+): Lib.Query {
+  const cleared = clearFilters(query, stageIndex);
+  const createdAt = findColumn(cleared, stageIndex, "Created At");
+  const extraction = createdAt
+    ? Lib.columnExtractions(cleared, createdAt).find(
+        (candidate) =>
+          Lib.displayInfo(cleared, stageIndex, candidate).tag ===
+          "month-of-year",
+      )
+    : undefined;
+  if (!extraction) {
+    return query;
+  }
+  return Lib.extract(cleared, stageIndex, extraction);
+}
+
+/** combine-columns on the extracted Month of year header, joined to Quantity with a space. */
+export function withMonthCombined(
+  query: Lib.Query,
+  stageIndex: number,
+): Lib.Query {
+  const extracted = withMonthExtracted(query, stageIndex);
+  const columns = Lib.expressionableColumns(extracted, stageIndex);
+  const findExpressionable = (displayName: string) =>
+    columns.find(
+      (column) =>
+        Lib.displayInfo(extracted, stageIndex, column).displayName ===
+        displayName,
+    );
+  const month = findExpressionable("Month of year");
+  const quantity = findExpressionable("Quantity");
+  if (!month || !quantity) {
+    return query;
+  }
+  return Lib.expression(
+    extracted,
+    stageIndex,
+    "Combined Month of year",
+    Lib.expressionClause("concat", [month, " ", quantity]),
+  );
+}

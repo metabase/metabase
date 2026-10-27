@@ -21,7 +21,7 @@ import type {
 } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
-import { FILTER_DRILLS_CLICK_MODE } from "../../harness/drillMode";
+import { ALL_DRILLS_CLICK_MODE } from "../../harness/drillMode";
 
 import {
   type DrillAction,
@@ -150,7 +150,7 @@ export function QuestionChart({
           <Visualization
             queryBuilderMode="dataset"
             rawSeries={rawSeries}
-            mode={FILTER_DRILLS_CLICK_MODE}
+            mode={ALL_DRILLS_CLICK_MODE}
             handleVisualizationClick={
               hasNewMenu && isAggregated ? handleClick : undefined
             }

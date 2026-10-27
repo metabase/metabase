@@ -73,7 +73,12 @@ export function StackedCanvas({ query, onChange, heading }: FilterCanvasProps) {
           </Stack>
         </Box>
         <Box p="lg">
-          <QuestionChart query={query} display="bar" onPick={question.apply} />
+          <QuestionChart
+            query={query}
+            display="bar"
+            onPick={question.apply}
+            onLegacyDrill={(nextQuery) => question.apply(nextQuery)}
+          />
         </Box>
       </QuestionShell>
     </LlmContext.Provider>

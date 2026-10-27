@@ -14,7 +14,7 @@ import {
 } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
-import { FILTER_DRILLS_CLICK_MODE } from "./drillMode";
+import { ALL_DRILLS_CLICK_MODE } from "./drillMode";
 
 type QueryResultsProps = {
   query: Lib.Query;
@@ -91,7 +91,7 @@ export function QueryResults({
           <Visualization
             queryBuilderMode="dataset"
             rawSeries={rawSeries}
-            mode={FILTER_DRILLS_CLICK_MODE}
+            mode={ALL_DRILLS_CLICK_MODE}
             onChangeCardAndRun={({ nextCard }) =>
               onChange(
                 Lib.fromJsQuery(metadataProvider, nextCard.dataset_query),

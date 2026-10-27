@@ -419,6 +419,7 @@ function BarWithHandles({
         pickQuery={query}
         display="bar"
         onPick={onPick}
+        onLegacyDrill={onChange}
       />
       <Box
         ref={overlayRef}
@@ -572,6 +573,7 @@ function TableWithHeaderMenu({ query, handles, onChange, onPick }: ChartProps) {
         query={query}
         display="table"
         onPick={onPick}
+        onLegacyDrill={onChange}
         onHeaderClick={(column, element) => {
           const isMeasure = column.source === "aggregation";
           setMenu(

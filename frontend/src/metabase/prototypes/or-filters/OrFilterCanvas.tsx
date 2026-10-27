@@ -43,8 +43,13 @@ import {
   withFilteredCountByCategoryByMonth,
   withFkFilterDrilled,
   withFourLevelsExample,
+  withMonthCombined,
+  withMonthExtracted,
   withPivotDrilled,
   withRawRows,
+  withSortDrilled,
+  withSumOfTotal,
+  withSumOfTotalByMonth,
   withTwoGroupsExample,
   withTwoStagesExample,
   withTwoSummariesExample,
@@ -102,8 +107,8 @@ const SYNTHETIC_SHAPE_EXAMPLES: Example[] = [
 type DrillExample = {
   /** The unfiltered query shape on which the drill appears; the drill is performed in the results. */
   start: Example;
-  /** The same query after the drill, built directly so it loads without a click. */
-  drilled: Example;
+  /** The same query after the drill, built directly so it loads without a click; absent when the drill opens another view instead. */
+  drilled?: Example;
 };
 
 /** One starting point and one drilled state per drill in `drills.md`. */
@@ -265,6 +270,132 @@ const DRILL_EXAMPLES: DrillExample[] = [
   },
 ];
 
+/**
+ * The drills that change the query's shape or open another view, reached from
+ * the column headers. Distribution on Total lands on the same shape as the
+ * "Zoom in: bins" start, so that example is reused.
+ */
+const OTHER_DRILL_EXAMPLES: DrillExample[] = [
+  {
+    start: {
+      get label() {
+        return t`Distribution`;
+      },
+      load: withRawRows,
+      hint: t`Orders as a table. Click the Total header → "Distribution": the stage is replaced with Count by Total in auto bins, drawn as a bar chart.`,
+    },
+    drilled: {
+      get label() {
+        return t`Count by Total`;
+      },
+      load: withCountByBinnedTotal,
+      display: "bar",
+      hint: t`After "Distribution" on the Total header: Count by auto-binned Total, no filter.`,
+    },
+  },
+  {
+    start: {
+      get label() {
+        return t`Sort`;
+      },
+      load: withRawRows,
+      hint: t`Click a header → the ↑ ↓ buttons: every order-by is replaced with one on that column.`,
+    },
+    drilled: {
+      get label() {
+        return t`Total ↓`;
+      },
+      load: withSortDrilled,
+      hint: t`After sort descending on the Total header: one order-by, nothing else changes.`,
+    },
+  },
+  {
+    start: {
+      get label() {
+        return t`Sum / Avg / Distinct`;
+      },
+      load: withRawRows,
+      hint: t`Click a numeric header → "Sum", "Avg" or "Distinct values": one aggregation on the stage, no breakout.`,
+    },
+    drilled: {
+      get label() {
+        return t`Sum of Total`;
+      },
+      load: withSumOfTotal,
+      display: "scalar",
+      hint: t`After "Sum" on the Total header: a single number.`,
+    },
+  },
+  {
+    start: {
+      get label() {
+        return t`Sum over time`;
+      },
+      load: withRawRows,
+      hint: t`Click a numeric header → "Sum over time": Sum of the column by the first date column at its default unit.`,
+    },
+    drilled: {
+      get label() {
+        return t`Sum of Total by Month`;
+      },
+      load: withSumOfTotalByMonth,
+      display: "line",
+      hint: t`After "Sum over time" on the Total header: Sum of Total by Created At: Month.`,
+    },
+  },
+  {
+    start: {
+      get label() {
+        return t`Extract`;
+      },
+      load: withRawRows,
+      hint: t`Click the Created At header → "Extract part of column" → "Month of year": a new expression column, the query otherwise unchanged.`,
+    },
+    drilled: {
+      get label() {
+        return t`Month of year`;
+      },
+      load: withMonthExtracted,
+      hint: t`After "Extract part of column" on Created At: a Month of year expression column at the end of the table.`,
+    },
+  },
+  {
+    start: {
+      get label() {
+        return t`Combine`;
+      },
+      load: withMonthExtracted,
+      hint: t`Click the Month of year header → "Combine columns" → add Quantity: a concat expression. Orders has no text column of its own, so the extracted month is the starting point.`,
+    },
+    drilled: {
+      get label() {
+        return t`Month + Quantity`;
+      },
+      load: withMonthCombined,
+      hint: t`After "Combine columns" on Month of year with Quantity: one more expression column.`,
+    },
+  },
+  {
+    start: {
+      get label() {
+        return t`View details`;
+      },
+      load: withRawRows,
+      hint: t`Click a Product ID or User ID cell → "View details": a new query on the target table with ID = value. On an ID cell the real app navigates to the object detail view; here that drill does nothing, and the multi-PK variant never applies to Orders.`,
+    },
+  },
+  {
+    start: {
+      get label() {
+        return t`X-ray`;
+      },
+      load: withCountByCategory,
+      display: "bar",
+      hint: t`Click a bar → "Automatic insights…" → "X-ray" or "Compare to the rest": both navigate to an auto dashboard and leave the prototype. No query change.`,
+    },
+  },
+];
+
 type ExampleButtonProps = {
   example: Example;
   onLoad: (example: Example) => void;
@@ -293,23 +424,32 @@ function ExampleButton({ example, onLoad, leftSection }: ExampleButtonProps) {
 }
 
 type DrillExamplePairsProps = {
+  label: string;
   examples: DrillExample[];
   onLoad: (example: Example) => void;
 };
 
 /** One connected pair per drill, starting point then result, wrapping like a row of pills. */
-function DrillExamplePairs({ examples, onLoad }: DrillExamplePairsProps) {
+function DrillExamplePairs({
+  label,
+  examples,
+  onLoad,
+}: DrillExamplePairsProps) {
   return (
     <Group gap="sm" align="center">
-      <Text fw="bold" c="text-secondary" miw="6.5rem">{t`Drill-throughs`}</Text>
+      <Text fw="bold" c="text-secondary" miw="6.5rem">
+        {label}
+      </Text>
       {examples.map(({ start, drilled }) => (
         <Button.Group key={start.label}>
           <ExampleButton example={start} onLoad={onLoad} />
-          <ExampleButton
-            example={drilled}
-            onLoad={onLoad}
-            leftSection={<Icon name="arrow_right" size={12} />}
-          />
+          {drilled && (
+            <ExampleButton
+              example={drilled}
+              onLoad={onLoad}
+              leftSection={<Icon name="arrow_right" size={12} />}
+            />
+          )}
         </Button.Group>
       ))}
     </Group>
@@ -458,7 +598,13 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
                   </Button>
                 </ExampleRow>
                 <DrillExamplePairs
+                  label={t`Drill-throughs`}
                   examples={DRILL_EXAMPLES}
+                  onLoad={loadExample}
+                />
+                <DrillExamplePairs
+                  label={t`Other drills`}
+                  examples={OTHER_DRILL_EXAMPLES}
                   onLoad={loadExample}
                 />
               </Stack>
