@@ -326,7 +326,6 @@ describe("installHostBroker", () => {
     window.dispatchEvent(event);
   }
 
-  /** The port the host handed to the frame with its `index`th INIT message. */
   function handedPort(index = 0): MessagePort {
     const [message, targetOrigin, transfer] = postToFrame.mock.calls[index];
     expect(message).toEqual({ type: DATA_APP_BROKER_INIT });
@@ -339,7 +338,6 @@ describe("installHostBroker", () => {
     return port;
   }
 
-  /** Whether a request sent on `port` gets an answer within a short wait. */
   async function isRelayed(port: MessagePort): Promise<boolean> {
     const answered = new Promise<boolean>((resolve) => {
       port.onmessage = () => resolve(true);

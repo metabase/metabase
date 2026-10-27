@@ -89,7 +89,6 @@ export function isBrokerPortMessage(
   );
 }
 
-/** True when `value` is a well-formed response or network-error message. */
 export function isBrokerResponseMessage(
   value: unknown,
 ): value is BrokerResponseMessage {
