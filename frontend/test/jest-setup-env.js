@@ -39,6 +39,14 @@ console.error = (...args) => {
 
   if (isFailingReactWarning) {
     reactWarnings.push(format(...args));
+    const limit = Error.stackTraceLimit;
+    Error.stackTraceLimit = 80;
+    const stack = new Error().stack;
+    Error.stackTraceLimit = limit;
+    require("fs").appendFileSync(
+      `${process.cwd()}/act-stacks.txt`,
+      `=== phase=${globalThis.__probePhase} ${expect.getState().currentTestName} :: ${format(...args).match(/An update to ([^ ]+)/)?.[1]}\n${stack.split("\n").slice(9, 70).join("\n")}\n`,
+    );
   }
 };
 
@@ -87,6 +95,7 @@ Object.assign(navigator, {
 });
 
 beforeEach(() => {
+  globalThis.__probePhase = "body";
   fetchMock.mockGlobal();
   // Always mock the error reporting endpoint — it's fire-and-forget
   // and should never affect test behavior
@@ -94,6 +103,7 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
+  globalThis.__probePhase = "afterEach";
   // Cleanup React components FIRST to trigger any unmount effects
   cleanup();
 
