@@ -8,6 +8,17 @@
 
 (set! *warn-on-reflection* true)
 
+(deftest ^:parallel name-uuid-test
+  (testing "the same string always gives the same UUID, and it is the UTF-8 name-based UUID"
+    ;; the Slack bot stores these as conversation ids, so the value must not change
+    (is (= "720781b4-e776-360f-8af0-e2edcb806d34" (u/name-uuid "slack:T123:C456:1700000000.000100")))
+    (is (= "fba7bb3c-2c33-3958-a1d2-5facb63908ad" (u/name-uuid "日本 ✓")))
+    (is (= (u/name-uuid "same") (u/name-uuid "same"))))
+  (testing "different strings give different UUIDs"
+    (is (not= (u/name-uuid "a") (u/name-uuid "b"))))
+  (testing "it is a UUID string"
+    (is (uuid? (parse-uuid (u/name-uuid "anything"))))))
+
 (deftest ^:parallel host-up?-test
   (testing "host-up?"
     (are [s expected] (= expected

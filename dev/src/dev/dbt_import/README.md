@@ -93,8 +93,32 @@ Functions, casts and anything else are reported as unsupported, naming the const
 In a filter, `Dimension('<entity>__<dimension>')` resolves to one of the metric's own columns when the entity is the
 semantic model's primary entity, and `TimeDimension(..., '<grain>')` additionally buckets it by the matching Metabase
 temporal unit; `metric_time` is the measure's `agg_time_dimension` and `Entity('<name>')` is that entity's column. A
-dimension reached through any other entity lives on another semantic model and is reported as needing a join
-(QRES-4); `Metric(...)` references are reported as QRES-5.
+dimension reached through a foreign entity is on the semantic model that entity is primary for, and resolves to that
+model's column joined implicitly through the entity's column (see "Entities and dimensions"); `Metric(...)` references
+are reported as QRES-5.
+
+## Entities and dimensions
+
+Each metric card is written with a curated dimension set (`dimensions` and `dimension_mappings`), so it can be broken
+out in the UI as soon as it is imported:
+
+- Every dimension of the metric's own semantic model whose `expr` is a column becomes a dimension of the metric's
+  table. A time dimension's `time_granularity` is its default temporal unit.
+- Every foreign entity of the model joins to the semantic model that has an entity of the same name as its primary
+  entity. That model's dimensions become dimensions of the metric too, reached by an implicit join: the mapping's
+  target names the joined column with `:source-field` set to the entity's column on the metric's table, the same way
+  Metabase represents a column reached through a foreign key. The instance has to know that foreign key, through sync
+  or a Field edit, for the breakout to run. No explicit join clause is written to the query.
+- The measure's `agg_time_dimension` (the model default or the measure's own) is the metric's default dimension.
+
+Dimension ids are derived from the metric's dbt unique ID and the dimension's reference, so a re-run writes the same
+ids and a re-import updates the dimensions in place. Groups are named after the semantic model's label, or its table.
+
+A dimension mapping targets a column, never SQL, so a dimension whose `expr` is SQL (`case when ...`) cannot be a
+curated dimension; neither can the dimensions behind a foreign entity whose join column is SQL on either side, or
+whose entity no semantic model, or more than one, is primary for. These are listed per metric under
+`:unsupported-dimensions` in the report rather than dropped. A foreign entity no model is primary for is just a key
+and reports nothing.
 
 Pipeline: `parse` (manifest -> IR) -> `resolve` (IR + config -> Lib queries against a metadata provider built from the
 manifest, entity ids) -> `emit` (serdes YAML, with serdes' own MBQL export turning the provider's ids back into

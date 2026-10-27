@@ -9,10 +9,8 @@
    [metabase.lib-metric.metadata.provider :as lib-metric.provider]
    [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
-   [metabase.util.performance :as perf])
-  (:import (java.util UUID)))
-
-(set! *warn-on-reflection* true)
+   [metabase.util :as u]
+   [metabase.util.performance :as perf]))
 
 (defn enrich-columns-with-has-field-values
   "Batch-fetch `has_field_values` from Field and assoc `:has-field-values` onto each column."
@@ -79,11 +77,7 @@
    instance-local, so two instances derive different ids for the same logical dimension. Nothing depends on them
    agreeing: `dimensions` and `dimension_mappings` are serialized and imported as a unit."
   ^String [owner-key column-name target]
-  (-> [owner-key column-name (lib-metric.dimension/field-ref->key target)]
-      pr-str
-      (.getBytes "UTF-8")
-      UUID/nameUUIDFromBytes
-      str))
+  (u/name-uuid (pr-str [owner-key column-name (lib-metric.dimension/field-ref->key target)])))
 
 (defn- column->computed-pair
   "Convert a column to a dimension/mapping pair. The dimension id is derived from `owner-key` and the mapping
@@ -150,7 +144,7 @@
    make every sync look like a change and rewrite the row — including on the read paths that sync
    first."
   ^String [type-str display-name]
-  (str (UUID/nameUUIDFromBytes (.getBytes (str type-str "/" display-name) "UTF-8"))))
+  (u/name-uuid (str type-str "/" display-name)))
 
 (defn compute-dimension-pairs
   "Compute dimension/mapping pairs from visible columns.

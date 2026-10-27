@@ -13,7 +13,8 @@
     Base64$Decoder
     Base64$Encoder
     Locale
-    PriorityQueue)
+    PriorityQueue
+    UUID)
    (java.util.concurrent Executors ExecutorService TimeoutException)))
 
 (set! *warn-on-reflection* true)
@@ -220,6 +221,13 @@
   "Converts a string into UTF-8 bytes"
   ^bytes [^String input]
   (.getBytes input StandardCharsets/UTF_8))
+
+(defn name-uuid
+  "The name-based (version 3) UUID of the string `s`, as a string. The same `s` always gives the same UUID, so this is
+  for an id that has to be derived from an identity rather than generated, like the id of a dimension computed from
+  its column; `random-uuid` is for everything else. `s` is hashed as UTF-8 whatever the platform charset."
+  ^String [^String s]
+  (str (UUID/nameUUIDFromBytes (string-to-bytes s))))
 
 (defn encode-base64
   "Encodes the UTF-8 encoding of the string `input` to a Base64 string."

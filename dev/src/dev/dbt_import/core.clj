@@ -10,13 +10,15 @@
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::report
-  "What a run converted, with the file each metric was written to, and what it could not convert, with the reason."
+  "What a run converted, with the file each metric was written to and the dimensions it could not give the metric,
+  and what it could not convert, with the reason."
   [:map
    [:out-dir     :string]
    [:converted   [:sequential [:map
-                               [:name :string]
-                               [:entity-id ::resolved/entity-id]
-                               [:path :string]]]]
+                               [:name                   :string]
+                               [:entity-id              ::resolved/entity-id]
+                               [:path                   :string]
+                               [:unsupported-dimensions [:sequential ::resolved/unsupported-dimension]]]]]
    [:unsupported [:sequential [:map
                                [:name :string]
                                [:reason :string]]]]])
@@ -36,9 +38,10 @@
     {:out-dir     out-dir
      :converted   (vec (for [{:keys [path metric]} files
                              :when metric]
-                         {:name      (-> metric :metric :name)
-                          :entity-id (:entity-id metric)
-                          :path      path}))
+                         {:name                   (-> metric :metric :name)
+                          :entity-id              (:entity-id metric)
+                          :path                   path
+                          :unsupported-dimensions (:unsupported-dimensions metric)}))
      :unsupported (mapv #(select-keys % [:name :reason]) (:unsupported resolved))}))
 
 (comment

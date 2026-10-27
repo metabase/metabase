@@ -3,6 +3,7 @@
   emit stage."
   (:require
    [dev.dbt-import.schemas.ir :as ir]
+   [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -36,14 +37,24 @@
   "A 21-character NanoID, as used for `entity_id`."
   [:re #"^[A-Za-z0-9_-]{21}$"])
 
-(mr/def ::metric
-  "An IR metric bound to Metabase: the Lib query that computes it, built against the [[dev.dbt-import.metadata]]
-  provider for its database, which is what turns the query's ids back into names when it is written out."
+(mr/def ::unsupported-dimension
+  "A dbt dimension of a converted metric that could not become one of its curated dimensions, and why."
   [:map
-   [:metric            ::ir/metric]
-   [:entity-id         ::entity-id]
-   [:metadata-provider ::lib.schema.metadata/metadata-provider]
-   [:query             ::lib.schema/query]])
+   [:name   :string]
+   [:reason :string]])
+
+(mr/def ::metric
+  "An IR metric bound to Metabase: the Lib query that computes it and its curated dimensions and mappings, built
+  against the [[dev.dbt-import.metadata]] provider for its database, which is what turns their ids back into names
+  when they are written out. `unsupported-dimensions` lists the dbt dimensions that could not be curated dimensions."
+  [:map
+   [:metric                 ::ir/metric]
+   [:entity-id              ::entity-id]
+   [:metadata-provider      ::lib.schema.metadata/metadata-provider]
+   [:query                  ::lib.schema/query]
+   [:dimensions             ::lib-metric.schema/persisted-dimensions]
+   [:dimension-mappings     [:sequential ::lib-metric.schema/dimension-mapping]]
+   [:unsupported-dimensions [:sequential ::unsupported-dimension]]])
 
 (mr/def ::collection
   "The collection the metrics are written into."
