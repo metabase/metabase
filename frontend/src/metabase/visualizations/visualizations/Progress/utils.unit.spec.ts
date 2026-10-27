@@ -16,7 +16,6 @@ import {
   calculateProgressMetrics,
   extractProgressValue,
   findProgressColumn,
-  getForeignGoalRefs,
   getGoalValue,
   getProgressColors,
   getProgressMessage,
@@ -116,11 +115,9 @@ describe("getGoalValue", () => {
     expect(getGoalValue("total", { ...data, rows: rowsWithNull })).toBe(0);
   });
 
-  it("should handle Infinity in columns", () => {
+  it("should return 0 for Infinity in columns", () => {
     const rowsWithInfinity: RowValues[] = [[10, "Infinity", "test", 25.0]];
-    expect(getGoalValue("total", { ...data, rows: rowsWithInfinity })).toBe(
-      Infinity,
-    );
+    expect(getGoalValue("total", { ...data, rows: rowsWithInfinity })).toBe(0);
   });
 
   it("should return 0 when no goal is set", () => {
@@ -139,15 +136,6 @@ describe("getGoalValue", () => {
 
   it("should return 0 for a reference to another entity that is unanswered", () => {
     expect(getGoalValue(GOAL_REF, data)).toBe(0);
-  });
-});
-
-describe("getForeignGoalRefs", () => {
-  it("should only list a reference to another entity", () => {
-    expect(getForeignGoalRefs(GOAL_REF)).toEqual([GOAL_REF]);
-    expect(getForeignGoalRefs("count")).toEqual([]);
-    expect(getForeignGoalRefs(50)).toEqual([]);
-    expect(getForeignGoalRefs(undefined)).toEqual([]);
   });
 });
 

@@ -2,10 +2,16 @@ import { useMounted } from "@mantine/hooks";
 import cx from "classnames";
 import * as d3 from "d3";
 import { useCallback, useEffect, useRef } from "react";
+import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
+import { Box } from "metabase/ui";
 import { formatValue } from "metabase/value-formatting";
 import { GoalResolvingState } from "metabase/visualizations/components/GoalResolvingState";
+import {
+  GOAL_WARNING_ICON_SIZE,
+  GoalWarningIcon,
+} from "metabase/visualizations/components/GoalWarning";
 import { useResolvedGoalData } from "metabase/visualizations/hooks/use-resolved-goal-data";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import { getGoalSegmentBounds, resolveGoalSegments } from "metabase/viz-core";
@@ -30,18 +36,25 @@ import {
 } from "./constants";
 import { GAUGE_CHART_DEFINITION } from "./definition";
 import { isGaugeRange } from "./types";
-import { getSegmentsRange, getValue, radians } from "./utils";
+import {
+  getGaugeWarningValues,
+  getSegmentsRange,
+  getValue,
+  radians,
+} from "./utils";
 
 function GaugeComponent({
   className,
   isSettings,
   height: heightProp,
+  isQueryBuilder,
   series: [{ card, data }],
   settings,
   visualizationIsClickable,
   width,
-  onVisualizationClick,
   onHoverChange,
+  onOpenChartSettings,
+  onVisualizationClick,
 }: VisualizationProps) {
   const { rows, cols } = data;
   const labelRef = useRef<SVGTextElement>(null);
@@ -78,6 +91,16 @@ function GaugeComponent({
   const gaugeRange = settings["gauge.range"];
   const range: number[] =
     getSegmentsRange(segments) ?? (isGaugeRange(gaugeRange) ? gaugeRange : []);
+  const warningValues =
+    isQueryBuilder && goalData.status === "resolved" && isGaugeRange(range)
+      ? getGaugeWarningValues(goalData.results, range)
+      : [];
+
+  const handleGoalWarningClick = () => {
+    return onOpenChartSettings?.({
+      initialChartSettings: { section: t`Ranges` },
+    });
+  };
 
   // value to angle in radians, clamped
   const angle = d3
@@ -115,6 +138,15 @@ function GaugeComponent({
 
   // expand the width to fill available space so that labels don't overflow as often
   const expandWidthFactor = width / svgWidth;
+  const svgLeft =
+    (width - svgWidth) / 2 -
+    // shift to the left the
+    (svgWidth * expandWidthFactor - svgWidth) / 2;
+  const svgTop = (height - svgHeight) / 2;
+  // pixels per viewBox unit
+  const svgScale = svgWidth / viewBoxWidth;
+  const arcCenterX = (viewBoxWidth * expandWidthFactor) / 2;
+  const arcCenterY = 50;
   const columnSettings = column && settings.column && settings.column(column);
 
   const updateLabelSize = useCallback(() => {
@@ -158,21 +190,14 @@ function GaugeComponent({
         style={{
           width: svgWidth * expandWidthFactor,
           height: svgHeight,
-          top: (height - svgHeight) / 2,
-          left:
-            (width - svgWidth) / 2 -
-            // shift to the left the
-            (svgWidth * expandWidthFactor - svgWidth) / 2,
+          top: svgTop,
+          left: svgLeft,
         }}
       >
         <svg
           viewBox={`0 0 ${viewBoxWidth * expandWidthFactor} ${viewBoxHeight}`}
         >
-          <g
-            transform={`translate(${
-              (viewBoxWidth * expandWidthFactor) / 2
-            },50)`}
-          >
+          <g transform={`translate(${arcCenterX},${arcCenterY})`}>
             {/* BACKGROUND ARC */}
             <GaugeArc
               start={angle(range[0])}
@@ -249,6 +274,30 @@ function GaugeComponent({
           </g>
         </svg>
       </div>
+      {onOpenChartSettings &&
+        warningValues.map((value) => {
+          // labels grow outward from the label radius, so the icon's inner edge sits there too
+          const [x, y] = valuePosition(
+            value,
+            OUTER_RADIUS * LABEL_OFFSET_PERCENT +
+              GOAL_WARNING_ICON_SIZE / 2 / svgScale,
+          );
+
+          return (
+            <Box
+              key={value}
+              pos="absolute"
+              left={svgLeft + (arcCenterX + x) * svgScale}
+              top={svgTop + (arcCenterY + y) * svgScale}
+              style={{ transform: "translate(-50%, -50%)" }}
+            >
+              <GoalWarningIcon
+                source="color-ranges"
+                onClick={handleGoalWarningClick}
+              />
+            </Box>
+          );
+        })}
     </div>
   );
 }

@@ -8,10 +8,10 @@ import CS from "metabase/css/core/index.css";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
-import { hasUnresolvedGoalReferences } from "metabase/viz-core";
 import {
   type GetSensibleVisualizationsProps,
   getSensibleVisualizations,
+  hasUnresolvedGoalReferences,
 } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
