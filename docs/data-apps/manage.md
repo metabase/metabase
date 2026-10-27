@@ -9,7 +9,7 @@ _Data Studio > Data apps_
 
 {% include plans-blockquote.html feature="Data apps" is_plural=true %}
 
-Only admins can manage data apps. People in the [Data Analysts](../people-and-groups/managing.md#data-analysts) group can open Data Studio, but they don't see the **Data apps** tab.
+Only admins can manage data apps.
 
 1. Click the **grid** icon in the upper right and select **Data studio**.
 2. In the left sidebar, under **Library**, click **Data apps**.
@@ -31,7 +31,7 @@ Click an app in the list to see its details. Each app has four tabs:
 
 ![Data app Overview tab](./images/data-apps-overview-tab.png)
 
-If your Metabase has the [dependency graph](../data-modeling/tools/graph.md), each question and action also has a **Dependencies** tab. You can also [see the whole app in the dependency graph](../data-modeling/tools/graph.md#data-apps-in-the-dependency-graph).
+Each question and action also has a **Dependencies** tab. You can also [see the whole app in the dependency graph](../data-modeling/tools/graph.md#data-apps-in-the-dependency-graph).
 
 To see the questions and actions that your apps run, who runs them, and what fails, check out [Data app analytics](../monitor/data-app-analytics.md) in Monitor.
 
@@ -41,8 +41,6 @@ New apps start live. To change an app's status:
 
 1. In the list of data apps, click the **three dots** on the app's row.
 2. Select **Make draft** (or **Make live**), and confirm.
-
-With the CLI, run `mb data-app set-enabled <slug> false` to make an app a draft, or `true` to make it live.
 
 Nobody can open a draft at its address, not even admins. Admins can preview a draft on its **Overview** tab.
 
@@ -54,26 +52,20 @@ On the app's **Permissions** tab:
 2. Search for one or more groups, and select them.
 3. Click **Add**.
 
-You can add any group except **Administrators** and [tenant](../embedding/tenants.md) groups. People in tenants can't open data apps. If an app has no groups, only admins can open it.
+You can add any group except [tenant](../embedding/tenants.md) groups. People in tenants can't open data apps. If an app has no groups, only admins can open it.
 
 ### Check that groups can see the app's data
 
-Adding a group to an app lets people in that group open the app, and gives the group read access to the app's collection. It doesn't change their [data permissions](../permissions/data.md). If the **Data access** column says **Missing N tables**, people in that group don't have [Can view](../permissions/data.md#can-view-data-permission) access to some of the tables that the app's questions and actions read. The check counts the group's own access and the access everyone gets from All Users, but not access that people get from their other groups. The check also doesn't look at [row and column security](../permissions/row-and-column-security.md): a group with row and column security can show **All tables**, but people in that group can't run the app's actions on that database.
+Adding a group to an app lets people in that group open the app, and gives the group read access to the app's collection. Adding a group doesn't change their [data permissions](../permissions/data.md). If the **Data access** column says **Missing N tables**, people in that group don't have [Can view](../permissions/data.md#can-view-data-permission) access to some of the tables that the app's questions and actions read. The check counts the group's own access, and All Users access, but not access that people get from their other groups. The check also doesn't look at [row and column security](../permissions/row-and-column-security.md): a group with row and column security can show **All tables**, but people in that group can't run the app's actions on that database.
 
 ![Data app Permissions tab](./images/data-apps-permissions-tab.png)
 
-The check uses the [dependency graph](../data-modeling/tools/graph.md). Without the graph, the **Data access** column shows **All tables** for every group, even when a group can't see the tables. Since the graph updates in the background, a warning can also lag behind your latest edits.
+The check uses the [dependency graph](../data-modeling/tools/graph.md). Since the graph updates in the background, a warning can also lag behind your latest edits.
 
 To fix the group's access:
 
 1. Click the group's row. A sidebar opens with the group's **Missing tables**.
 2. Click a table, and select **Change permissions** to open that table's data permissions.
-
-## How people open data apps
-
-People in an app's groups can open a live app at its address, `/apps/<slug>`. People can also open an app from the **Data apps** section of the left navigation sidebar, which lists the live apps they can open.
-
-People can also find an app by searching for its name or description. Clicking the result opens the app. Search shows people only the live apps in their groups. Admins see every app, drafts included, but a draft doesn't open from search.
 
 ## Delete a data app
 
