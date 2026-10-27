@@ -58,9 +58,3 @@ export { ViewHeading } from "./components/view/ViewSection";
 export const loadQueryBuilder = () => import("./containers/QueryBuilder");
 export const loadMetabotQueryBuilder = () =>
   import("./components/MetabotQueryBuilder/MetabotQueryBuilder");
-// Throwaway design prototypes: delete each with its `prototypes/<name>` directory (and
-// `prototypes/shared` with the last one) once a variant ships.
-export const loadSummarizeSidebarPrototype = () =>
-  import("./prototypes/summarize-sidebar");
-export const loadAiExpressionsPrototype = () =>
-  import("./prototypes/ai-expressions");
