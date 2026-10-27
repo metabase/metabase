@@ -58,7 +58,7 @@ jobs:
         env:
           chunks: ${{ inputs.chunks }}
           E2E_SPEC_PATHS_FILE: ${{ steps.selection.outputs.paths-file }}
-          E2E_TARGET_RUNNER_MINUTES: 8
+          E2E_TARGET_RUNNER_MINUTES: ${{ vars.E2E_TARGET_RUNNER_MINUTES || 8 }}
         with:
           script: | # js
             const { buildMatrix } = require('${{ github.workspace }}/.github/scripts/build-e2e-matrix.js');
