@@ -311,8 +311,8 @@
                                           ;; lists them itself.
                                           (into ["'self'"] data-app-connect-hosts)
                                           (parse-allowed-iframe-hosts (server.settings/allowed-iframe-hosts)))
-                                  ;; Both branches allow the isolated origin: the top page `/apps/<slug>` takes the
-                                  ;; per-app branch and frames it.
+                                  ;; The top page `/apps/<slug>`, which frames the isolated origin, takes the per-app
+                                  ;; branch.
                                   isolated-origin (conj isolated-origin))
                   :font-src     (into (cond-> always-allowed-resource-hosts
                                         config/is-dev? (conj frontend-address))
