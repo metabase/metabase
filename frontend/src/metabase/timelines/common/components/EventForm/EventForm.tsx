@@ -137,7 +137,10 @@ const EventForm = ({
                       .set("minute", timePart.minute());
                     setFieldValue("timestamp", newDate.toISOString());
                   } else {
-                    setFieldValue("timestamp", dayjs(date).toISOString());
+                    setFieldValue(
+                      "timestamp",
+                      parseTimestamp(date).toISOString(),
+                    );
                   }
                 }}
               />
