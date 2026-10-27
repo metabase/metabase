@@ -192,6 +192,7 @@
             (sync/sync-database! (u/the-id router-db) {:scan :schema})
             (let [router-id (u/the-id router-db)
                   table-id  (t2/select-one-pk :model/Table :db_id router-id :name "acct")]
+              (t2/update! :model/Database router-id {:settings {:database-enable-table-editing true}})
               (mt/with-temp [:model/DatabaseRouter _ {:database_id router-id :user_attribute "db_name"}]
                 (mt/user-http-request :crowberto :post 200 "ee/action-v2/execute-bulk"
                                       {:action :data-grid.row/create

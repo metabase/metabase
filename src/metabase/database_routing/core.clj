@@ -1,8 +1,9 @@
 (ns metabase.database-routing.core
   "The OSS namespace for database routing."
   (:require
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]))
+   [metabase.premium-features.core :refer [defenterprise-schema]]))
 
 (defenterprise-schema routed-database :- [:maybe ::lib.schema.metadata/database]
   "The Lib metadata of the destination Database that the current user's connections to the Lib metadata `database` go
@@ -11,7 +12,7 @@
   [_database :- ::lib.schema.metadata/database]
   nil)
 
-(defenterprise-schema check-user-not-routed :- :nil
+(defenterprise-schema check-not-routed-to-destination :- :nil
   "Throws a 403 when the current user's connections to the Lib metadata `database` of a Database go to a routing
   destination, for work that only ever targets the router itself, such as transforms and uploads; OSS has no database
   routing, so it does nothing."
@@ -19,11 +20,11 @@
   [_database :- ::lib.schema.metadata/database]
   nil)
 
-(defenterprise do-with-anonymous-router-access
+(defenterprise-schema do-with-anonymous-router-access :- :any
   "Calls `thunk` with no current user, letting it reach a router itself; outside it, work with no user is refused on a
   router. OSS has no routers, so there is nothing to allow."
   metabase-enterprise.database-routing.common
-  [thunk]
+  [thunk :- fn?]
   (thunk))
 
 (defmacro with-anonymous-router-access
@@ -39,10 +40,10 @@
   [_db :- ::lib.schema.metadata/database]
   nil)
 
-(defenterprise delete-associated-database-router!
-  "OSS version, does nothing"
+(defenterprise-schema delete-associated-database-router! :- :any
+  "Deletes the Database Router of the Database with `db-id`; OSS has no routers, so it does nothing."
   metabase-enterprise.database-routing.models
-  [_db-id]
+  [_db-id :- ::lib.schema.id/database]
   nil)
 
 (defenterprise-schema db-routing-enabled? :- :boolean

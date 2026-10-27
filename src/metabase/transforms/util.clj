@@ -42,7 +42,7 @@
   a transform only ever writes to the router itself, whose output table every user of the router shares."
   [transform]
   (when api/*current-user-id*
-    (some-> (transforms-base.i/target-db-id transform) driver.u/lib-database database-routing/check-user-not-routed)))
+    (some-> (transforms-base.i/target-db-id transform) driver.u/lib-database database-routing/check-not-routed-to-destination)))
 
 (defn check-feature-enabled
   "Checking whether we have proper feature flags for using a given transform."

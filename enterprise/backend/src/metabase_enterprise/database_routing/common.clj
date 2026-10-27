@@ -13,10 +13,10 @@
   "Whether work with no current user may reach a router itself; see [[do-with-anonymous-router-access]]."
   false)
 
-(defenterprise do-with-anonymous-router-access
+(defenterprise-schema do-with-anonymous-router-access :- :any
   "Enterprise version. Calls `thunk` with no current user, letting it reach a router itself."
   :feature :none
-  [thunk]
+  [thunk :- fn?]
   (binding [api/*current-user-id*      nil
             *anonymous-router-access?* true]
     (thunk)))
@@ -87,7 +87,7 @@
       (premium-features/assert-has-feature :database-routing (tru "Database Routing"))
       (driver.u/lib-database destination-id))))
 
-(defenterprise-schema check-user-not-routed :- :nil
+(defenterprise-schema check-not-routed-to-destination :- :nil
   "Enterprise version. Throws a 403 when the current user's connections to the Lib metadata `database` of a Database
   go to a routing destination, even while the `:database-routing` feature is unavailable."
   :feature :none

@@ -637,7 +637,7 @@
                      (throw (ex-info (tru "The uploads database does not exist.")
                                      {:status-code 422})))]
     (check-can-create-upload database schema-name)
-    (database-routing/check-user-not-routed (driver.u/lib-database (:id database)))
+    (database-routing/check-not-routed-to-destination (driver.u/lib-database (:id database)))
     (check-filetype filename file)
     (api/create-check :model/Card {:collection_id collection-id})
     (try
@@ -953,7 +953,7 @@
         driver     (driver.u/database->driver database)
         table-name (table-identifier table)]
     (check-can-delete table database)
-    (database-routing/check-user-not-routed (driver.u/lib-database (:id database)))
+    (database-routing/check-not-routed-to-destination (driver.u/lib-database (:id database)))
     ;; Attempt to delete the underlying data from the customer database.
     ;; We perform this before marking the table as inactive in the app db so that even if it false, the table is still
     ;; visible to administrators, and the operation is easy to retry again later.
@@ -995,7 +995,7 @@
         database (table/database table)
         replace? (= :metabase.upload/replace action)]
     (check-can-update database table)
-    (database-routing/check-user-not-routed (driver.u/lib-database (:id database)))
+    (database-routing/check-not-routed-to-destination (driver.u/lib-database (:id database)))
     (check-filetype filename file)
     (update-with-csv! database table filename file :replace-rows? replace?)))
 
