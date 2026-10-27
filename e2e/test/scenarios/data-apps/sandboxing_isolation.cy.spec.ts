@@ -3,8 +3,6 @@ const { H } = cy;
 const APP_NAME = "isolation";
 const APP_DISPLAY_NAME = "Isolation";
 
-type IsolationTestEnv = { instanceUrl: string };
-
 describe("scenarios > data apps > sandbox isolation", () => {
   beforeEach(() => {
     H.restore();
@@ -12,11 +10,15 @@ describe("scenarios > data apps > sandbox isolation", () => {
     H.activateToken("bleeding-edge");
   });
 
-  const setup = () => {
-    const instanceUrl = Cypress.config("baseUrl") ?? "";
-    const testEnv: IsolationTestEnv = { instanceUrl };
+  const createIsolationDataApp = (allowedHosts: string[] = []) =>
+    H.createDataApp({
+      name: APP_NAME,
+      display_name: APP_DISPLAY_NAME,
+      allowed_hosts: allowedHosts,
+    }).then(H.uploadDataAppBundle);
 
-    H.mockDataApp(APP_NAME, { displayName: APP_DISPLAY_NAME, testEnv });
+  const setup = () => {
+    createIsolationDataApp();
     H.openDataApp(APP_NAME);
     H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
       cy.findByTestId("isolation-result", { timeout: 30000 }).should(
@@ -174,10 +176,7 @@ describe("scenarios > data apps > sandbox isolation", () => {
    * the guard's own message instead, and open the app again for each probe.
    */
   it("gates host-React iframes: about:blank, Metabase itself and srcdoc", () => {
-    const instanceUrl = Cypress.config("baseUrl") ?? "";
-    const testEnv: IsolationTestEnv = { instanceUrl };
-
-    H.mockDataApp(APP_NAME, { displayName: APP_DISPLAY_NAME, testEnv });
+    createIsolationDataApp();
 
     ["react-about-blank", "react-src", "react-srcdoc"].forEach((probeId) => {
       cy.log(probeId);
@@ -223,11 +222,7 @@ describe("scenarios > data apps > sandbox isolation", () => {
       });
     }).as("allowedHostRedirect");
 
-    H.mockDataApp(APP_NAME, {
-      displayName: APP_DISPLAY_NAME,
-      testEnv: { instanceUrl },
-      allowedHosts: ["http://localhost:4444"],
-    });
+    createIsolationDataApp(["http://localhost:4444"]);
     H.openDataApp(APP_NAME);
     H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
       cy.findByTestId("isolation-result", { timeout: 30000 }).should(

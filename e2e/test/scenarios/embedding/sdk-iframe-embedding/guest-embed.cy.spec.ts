@@ -25,62 +25,66 @@ function guestEmbedSuite() {
     });
   });
 
-  it("shows an error for a component without guest embed support, and shows and downloads a static question", () => {
-    cy.log("component without guest embed support shows an error");
-    H.loadSdkIframeEmbedTestPage({
-      metabaseConfig: { isGuest: true },
-      elements: [
-        {
-          component: "metabase-browser",
-          attributes: {},
-        },
-      ],
-    }).within(() => {
-      cy.findByText("This component does not support guest embeds").should(
-        "be.visible",
-      );
-    });
-
-    cy.log("static question shows and downloads as CSV");
-    cy.get("@questionId").then(async (questionId) => {
-      const token = await getSignedJwtForResource({
-        // Unjustified type cast. FIXME
-        resourceId: questionId as unknown as number,
-        resourceType: "question",
-      });
-
-      const frame = H.loadSdkIframeEmbedTestPage({
+  it(
+    "shows an error for a component without guest embed support, and shows and downloads a static question",
+    { tags: "@prerelease" },
+    () => {
+      cy.log("component without guest embed support shows an error");
+      H.loadSdkIframeEmbedTestPage({
         metabaseConfig: { isGuest: true },
         elements: [
           {
-            component: "metabase-question",
-            attributes: {
-              token,
-              "with-downloads": true,
-            },
+            component: "metabase-browser",
+            attributes: {},
           },
         ],
+      }).within(() => {
+        cy.findByText("This component does not support guest embeds").should(
+          "be.visible",
+        );
       });
 
-      cy.wait("@getCardQuery");
+      cy.log("static question shows and downloads as CSV");
+      cy.get("@questionId").then(async (questionId) => {
+        const token = await getSignedJwtForResource({
+          // Unjustified type cast. FIXME
+          resourceId: questionId as unknown as number,
+          resourceType: "question",
+        });
 
-      frame.within(() => {
-        cy.findByText("Product ID").should("be.visible");
-        cy.findByText("Max of Quantity").should("be.visible");
+        const frame = H.loadSdkIframeEmbedTestPage({
+          metabaseConfig: { isGuest: true },
+          elements: [
+            {
+              component: "metabase-question",
+              attributes: {
+                token,
+                "with-downloads": true,
+              },
+            },
+          ],
+        });
 
-        H.downloadAndAssert({
-          isDashboard: false,
-          isEmbed: true,
-          enableFormatting: true,
-          assertStatusCode: 200,
-          waitForDismiss: false,
-          fileType: "csv",
-          downloadUrl: "/api/embed/card/*/query/csv*",
-          downloadMethod: "GET",
+        cy.wait("@getCardQuery");
+
+        frame.within(() => {
+          cy.findByText("Product ID").should("be.visible");
+          cy.findByText("Max of Quantity").should("be.visible");
+
+          H.downloadAndAssert({
+            isDashboard: false,
+            isEmbed: true,
+            enableFormatting: true,
+            assertStatusCode: 200,
+            waitForDismiss: false,
+            fileType: "csv",
+            downloadUrl: "/api/embed/card/*/query/csv*",
+            downloadMethod: "GET",
+          });
         });
       });
-    });
-  });
+    },
+  );
 }
 
 describe(

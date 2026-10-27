@@ -1,5 +1,7 @@
 import { USERS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 
+import { createAddTeamAction } from "./helpers";
+
 const { H } = cy;
 
 const TEST_TABLE = "scoreboard_actions";
@@ -19,7 +21,7 @@ describe(
   () => {
     const removeTestFiles = () =>
       cy.task("removeDataAppPaths", {
-        paths: [`${APP_ROOT()}/actions`, `${APP_ROOT()}/collections`],
+        paths: [`${APP_ROOT()}/collections`],
       });
 
     beforeEach(() => {
@@ -39,8 +41,8 @@ describe(
     });
 
     /**
-     * Publishes the app, creates an action in its collection, and declares it
-     * by its entity ID, as the app's typed schema does.
+     * Publishes the app, creates an action in its collection, and uploads the
+     * app's bundle built against its typed schema.
      */
     const publishApp = () => {
       H.writeDataAppResources(APP_ROOT(), {
@@ -51,27 +53,22 @@ describe(
       });
 
       return H.publishDataApp(APP_ROOT(), APP_SLUG).then((app) =>
-        H.createDataAppScoreboardAction({
-          collectionId: app.resource_collection_id,
-        }).then((action) => {
-          H.declareDataAppActions(APP_ROOT(), [
-            { exportName: "CreateScore", actionEntityId: action.entity_id },
-          ]);
-
-          return cy.wrap({ app, action }, { log: false });
-        }),
+        createAddTeamAction(app.resource_collection_id).then((action) =>
+          H.uploadDataAppBundle(app).then(() =>
+            cy.wrap({ app, action }, { log: false }),
+          ),
+        ),
       );
     };
 
     it("executes the action in the app's collection for a member of the app's group", () => {
       publishApp().then(({ app, action }) => {
-        H.assignTestGroupToDataApp(app.name).then((groupId) => {
+        H.assignTestGroupToDataApp(app).then((groupId) => {
           H.addUserToGroup(groupId, USERS.normal.email);
         });
 
         cy.signInAsNormalUser();
         cy.intercept("POST", "/api/action/*/execute").as("execute");
-        H.mockDataApp(APP_SLUG, { displayName: APP_DISPLAY_NAME });
         cy.visit(`/apps/${APP_SLUG}`);
 
         H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
