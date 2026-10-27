@@ -137,12 +137,12 @@ function ScalarComponent(
   const tooltipContent = getTooltipContent(segments, formatOptions);
 
   const hasGoalWarning = isQueryBuilder && hasGoalErrors && onOpenChartSettings;
-  const handleGoalWarningClick = hasGoalWarning
-    ? () =>
-        onOpenChartSettings({
-          initialChartSettings: { section: t`Conditional colors` },
-        })
-    : undefined;
+  const handleGoalWarningClick = () => {
+    return onOpenChartSettings?.({
+      initialChartSettings: { section: t`Conditional colors` },
+    });
+  };
+
   // reserved on both sides so the value stays centered
   const goalWarningWidthPx = hasGoalWarning
     ? GOAL_WARNING_ICON_SIZE + GOAL_WARNING_GAP_PX
@@ -227,7 +227,7 @@ function ScalarComponent(
             </Stack>
           </Tooltip>
         </ScalarValueContainer>
-        {handleGoalWarningClick && (
+        {hasGoalWarning && (
           <Box pos="absolute" top={0} right={0}>
             <GoalWarningIcon
               source="color-ranges"

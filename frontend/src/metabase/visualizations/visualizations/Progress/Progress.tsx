@@ -89,6 +89,13 @@ function ProgressComponent(props: VisualizationProps) {
     }
   };
 
+  const hasGoalWarning = isQueryBuilder && hasGoalErrors && onOpenChartSettings;
+  const handleGoalWarningClick = () => {
+    return onOpenChartSettings?.({
+      initialChartSettings: { section: t`Display` },
+    });
+  };
+
   const cardHeight = props?.gridSize?.height;
 
   const update = useCallback(() => {
@@ -225,15 +232,8 @@ function ProgressComponent(props: VisualizationProps) {
         <div className={CS.mt1}>
           <span className={CS.floatLeft}>0</span>
           <Flex className={CS.floatRight} align="center" gap="xs">
-            {isQueryBuilder && hasGoalErrors && onOpenChartSettings && (
-              <GoalWarningIcon
-                source="goal"
-                onClick={() =>
-                  onOpenChartSettings({
-                    initialChartSettings: { section: t`Display` },
-                  })
-                }
-              />
+            {hasGoalWarning && (
+              <GoalWarningIcon source="goal" onClick={handleGoalWarningClick} />
             )}
             {hasValidGoal
               ? t`Goal ${formatValue(goal, columnSettings)}`

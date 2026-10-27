@@ -96,6 +96,12 @@ function GaugeComponent({
       ? getGaugeWarningValues(goalData.results, range)
       : [];
 
+  const handleGoalWarningClick = () => {
+    return onOpenChartSettings?.({
+      initialChartSettings: { section: t`Ranges` },
+    });
+  };
+
   // value to angle in radians, clamped
   const angle = d3
     .scaleLinear()
@@ -287,11 +293,7 @@ function GaugeComponent({
             >
               <GoalWarningIcon
                 source="color-ranges"
-                onClick={() =>
-                  onOpenChartSettings({
-                    initialChartSettings: { section: t`Ranges` },
-                  })
-                }
+                onClick={handleGoalWarningClick}
               />
             </Box>
           );
