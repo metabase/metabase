@@ -29,14 +29,21 @@ const ISOLATED_HOSTNAME = new URL(ISOLATED_ORIGIN).hostname;
 
 const appIframe = () => cy.get(`iframe[title="${APP_DISPLAY_NAME}"]`);
 
-/** Waits for a request the page made for the app, and checks it went out as the page's own. */
-const assertBrokered = (alias: string) =>
-  cy.wait(alias).then(({ request }) => {
-    expect(request.headers["x-metabase-client"], "client").to.eq("data-app");
-    expect(request.headers["sec-fetch-site"], "fetch site").to.eq(
-      "same-origin",
-    );
-  });
+/** Checks that a request the page made for the app went out as the page's own. */
+const expectBrokered = ({ request }: Interception) => {
+  expect(request.headers["x-metabase-client"], "client").to.eq("data-app");
+  expect(request.headers["sec-fetch-site"], "fetch site").to.eq("same-origin");
+};
+
+const assertBrokered = (alias: string) => cy.wait(alias).then(expectBrokered);
+
+/** The isolated origin's app document CSP header, which must be there for its contents to mean anything. */
+const documentPolicy = (response: Cypress.Response<unknown>): string => {
+  const policy = response.headers["content-security-policy"];
+  expect(policy, "the app document's CSP").to.be.a("string");
+  expect(policy).to.match(/connect-src[^;]*\*/);
+  return String(policy);
+};
 
 describe("scenarios > data apps > isolated origin", () => {
   let isolatedOriginApiRequests: string[] = [];
@@ -148,7 +155,7 @@ describe("scenarios > data apps > isolated origin", () => {
       .should("eq", APP_NAME);
   });
 
-  it("shows the app in the user's locale, which the isolated origin can't learn without a session", () => {
+  it("passes the user's locale to the app, which the isolated origin can't learn without a session", () => {
     cy.request<{ id: number }>("GET", "/api/user/current").then(
       ({ body: { id } }) => {
         cy.request("PUT", `/api/user/${id}`, { locale: "de" });
@@ -366,17 +373,16 @@ describe("scenarios > data apps > isolated origin", () => {
         .should("match", /^\d+$/);
     });
 
-    cy.get("@brokeredQuery.all").then((queriesBefore) => {
+    assertBrokered("@brokeredQuery");
+    cy.get<Interception[]>("@brokeredQuery.all").then((queriesBefore) => {
       H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
         cy.findByTestId("query-refetch").click();
       });
 
-      cy.get("@brokeredQuery.all").should(
-        "have.length",
-        queriesBefore.length + 1,
-      );
+      cy.get<Interception[]>("@brokeredQuery.all")
+        .should("have.length", queriesBefore.length + 1)
+        .then((queries) => expectBrokered(queries[queries.length - 1]));
     });
-    assertBrokered("@brokeredQuery");
   });
 
   it("downloads a question's results through the page", () => {
@@ -529,7 +535,7 @@ describe("scenarios > data apps > isolated origin", () => {
         });
       });
 
-    it("draws a built-in region map from the isolated origin's static files", () => {
+    it("draws a built-in region map", () => {
       createStatesMap("us_states");
 
       visitAppRoute("download-question");
@@ -642,9 +648,7 @@ describe("scenarios > data apps > isolated origin", () => {
     });
 
     cy.request(`${ISOLATED_ORIGIN}/embed/apps/${APP_NAME}`).then((response) => {
-      expect(
-        String(response.headers["content-security-policy"]),
-      ).not.to.contain(ALLOWED_ORIGIN);
+      expect(documentPolicy(response)).not.to.contain(ALLOWED_ORIGIN);
     });
 
     H.openDataApp(APP_NAME);
@@ -677,7 +681,7 @@ describe("scenarios > data apps > isolated origin", () => {
     cy.get("@unlisted.all").should("have.length", 0);
   });
 
-  it("doesn't run an app for a user without access, though the isolated origin serves its document to anyone", () => {
+  it("doesn't run an app for a user without access: the page's request for its bundle is refused", () => {
     H.mockDataApp(APP_NAME, {
       displayName: APP_DISPLAY_NAME,
       testEnv: TEST_ENV,
@@ -702,7 +706,7 @@ describe("scenarios > data apps > isolated origin", () => {
     cy.get("iframe").should("not.exist");
   });
 
-  it("previews a draft in Data Studio with its allowed hosts, which the isolated origin keeps from anonymous requests", () => {
+  it("previews a disabled app in Data Studio with its allowed hosts, which the anonymous app document leaves out", () => {
     const ALLOWED_ORIGIN = "https://allowed.data-app.test";
     const ALLOWED_URL = `${ALLOWED_ORIGIN}/ping`;
 
@@ -725,9 +729,7 @@ describe("scenarios > data apps > isolated origin", () => {
     cy.request("PUT", `/api/ee/apps/${APP_NAME}`, { enabled: false });
 
     cy.request(`${ISOLATED_ORIGIN}/embed/apps/${APP_NAME}`).then((response) => {
-      expect(
-        String(response.headers["content-security-policy"]),
-      ).not.to.contain(ALLOWED_ORIGIN);
+      expect(documentPolicy(response)).not.to.contain(ALLOWED_ORIGIN);
     });
 
     cy.visit(`/data-studio/apps/${APP_NAME}`);
