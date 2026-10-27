@@ -69,6 +69,12 @@
   [document-id :- [:maybe ms/PositiveInt]]
   (t2/select-one [:model/Document :id :document :content_type] :id document-id))
 
+(mu/defn archivable-entity
+  "The id and archived flag of the Card, Dashboard or Document with `id`, or nil."
+  [model :- [:enum :model/Card :model/Dashboard :model/Document]
+   id    :- ms/PositiveInt]
+  (t2/select-one [model :id :archived] :id id))
+
 ;;; ----------------------------------------------------- Timelines ----------------------------------------------------
 
 (mu/defn active-timeline-ids
