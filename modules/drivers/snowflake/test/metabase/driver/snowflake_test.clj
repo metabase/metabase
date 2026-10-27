@@ -32,6 +32,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
+   [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.compile :as qp.compile]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
@@ -336,17 +337,70 @@
                        :wif-token    (fake-jwt {:sub "s"})))]
       (is (not (contains? spec :password-expiry-timestamp))))))
 
-(deftest ^:parallel connection-details->spec-wif-cloud-providers-test
-  (testing "WIF AWS/AZURE/GCP set no client-side credential fields"
-    (doseq [provider ["AWS" "AZURE" "GCP"]]
-      (testing provider
-        (let [spec (sql-jdbc.conn/connection-details->spec
-                    :snowflake
-                    (assoc wif-base-details :wif-provider provider))]
-          (is (= "WORKLOAD_IDENTITY" (:authenticator spec)))
-          (is (= provider (:workloadIdentityProvider spec)))
-          (is (not (contains? spec :token)))
-          (is (not (contains? spec :token_file_path))))))))
+(deftest connection-details->spec-wif-cloud-providers-test
+  (testing "WIF AWS/AZURE/GCP set no client-side credential fields (self-hosted only -- Metabase Cloud rejects these)"
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly false)]
+      (doseq [provider ["AWS" "AZURE" "GCP"]]
+        (testing provider
+          (let [spec (sql-jdbc.conn/connection-details->spec
+                      :snowflake
+                      (assoc wif-base-details :wif-provider provider))]
+            (is (= "WORKLOAD_IDENTITY" (:authenticator spec)))
+            (is (= provider (:workloadIdentityProvider spec)))
+            (is (not (contains? spec :token)))
+            (is (not (contains? spec :token_file_path)))))))))
+
+(deftest connection-details->spec-wif-hosted-rejects-ambient-providers-test
+  (testing "On Metabase Cloud, ambnient WIF providers (e.g., AWS, AZURE, GCP) are not allowed."
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
+      (doseq [provider ["AWS" "AZURE" "GCP"]]
+        (testing provider
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"not available on Metabase Cloud"
+               (sql-jdbc.conn/connection-details->spec
+                :snowflake
+                (assoc wif-base-details :wif-provider provider))))))))
+  (testing "WIF OIDC with an explicit token is still allowed on Metabase Cloud."
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
+      (let [spec (sql-jdbc.conn/connection-details->spec
+                  :snowflake
+                  (assoc wif-base-details :wif-provider "OIDC" :wif-token "eyJhbGciOi.jwt.sig"))]
+        (is (= "WORKLOAD_IDENTITY" (:authenticator spec)))
+        (is (= "OIDC" (:workloadIdentityProvider spec)))
+        (is (= "eyJhbGciOi.jwt.sig" (:token spec))))))
+  (testing (str "A missing wif-provider on Metabase Cloud is rejected too to prevent the Snowflake JDBC driver "
+                "from using ambient providers.")
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
+      (doseq [[label details] [["nil"   (dissoc wif-base-details :wif-provider)]
+                               ["blank" (assoc wif-base-details :wif-provider "")]]]
+        (testing label
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"required on Metabase Cloud"
+               (sql-jdbc.conn/connection-details->spec :snowflake details)))))))
+  (testing "Off Metabase Cloud, ambient WIF providers continue to work."
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly false)]
+      (doseq [provider ["AWS" "AZURE" "GCP"]]
+        (testing provider
+          (let [spec (sql-jdbc.conn/connection-details->spec
+                      :snowflake
+                      (assoc wif-base-details :wif-provider provider))]
+            (is (= "WORKLOAD_IDENTITY" (:authenticator spec)))
+            (is (= provider (:workloadIdentityProvider spec)))))))))
+
+(deftest wif-provider-options-hidden-when-hosted-test
+  (let [wif-provider-values
+        (fn [] (->> (:details-fields (:snowflake (driver.u/available-drivers-info)))
+                    (m/find-first #(= "wif-provider" (:name %)))
+                    :options
+                    (mapv :value)))]
+    (testing "On Metabase Cloud, the ambient options are stripped from the wif-provider select."
+      (mt/with-premium-features #{:hosting}
+        (is (= ["OIDC"] (wif-provider-values)))))
+    (testing "Off Metabase Cloud, every provider is offered."
+      (mt/with-premium-features #{}
+        (is (= ["OIDC" "AWS" "AZURE" "GCP"] (wif-provider-values)))))))
 
 (deftest ^:parallel connection-details->spec-wif-strips-legacy-creds-test
   (testing "under WIF, stray password and private-key fields do not leak into the JDBC spec"

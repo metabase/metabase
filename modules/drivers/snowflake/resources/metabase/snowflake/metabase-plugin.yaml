@@ -38,9 +38,9 @@ driver:
       required: true
       options:
         - {name: "OpenID Connect (JWT)", value: "OIDC"}
-        - {name: "AWS",                  value: "AWS"}
-        - {name: "Azure",                value: "AZURE"}
-        - {name: "Google Cloud",         value: "GCP"}
+        - {name: "AWS",                  value: "AWS",   hidden-when-hosted: true}
+        - {name: "Azure",                value: "AZURE", hidden-when-hosted: true}
+        - {name: "Google Cloud",         value: "GCP",   hidden-when-hosted: true}
       visible-if:
         auth-mode: wif
     - name: wif-token
