@@ -49,10 +49,19 @@
      (map (partial pulse-card dashboard-id) dashcards)
      [(make-slack-channel schedule channel)]
      (-> dashboard
-         (select-keys [:collection_id :collection_position :name :parameters])
-         (assoc :dashboard_id  dashboard-id
-                :creator_id    api/*current-user-id*
-                :skip_if_empty false)))))
+         (select-keys [:name :parameters])
+         ;; Send no collection. The Pulse model takes a subscription's collection from its dashboard
+         ;; (see `before-insert` in metabase.pulse.models.pulse). A non-nil `collection_id` makes the
+         ;; create check demand write access to that collection. View access to the dashboard is
+         ;; enough to subscribe to it: https://github.com/metabase/metabase/pull/17722
+         ;; The dashboard's pin position is not the subscription's, so send none.
+         ;; A non-nil position makes `create-pulse-with-perm-checks!` shift every pinned item in the
+         ;; collection at or after that position.
+         (assoc :dashboard_id        dashboard-id
+                :collection_id       nil
+                :collection_position nil
+                :creator_id          api/*current-user-id*
+                :skip_if_empty       false)))))
 
 (defn- dashboard-for-subscription [dashboard-id]
   (let [dashboard (tools/with-entity {:kind :dashboard :id dashboard-id}
