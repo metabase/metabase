@@ -181,8 +181,9 @@
   (merged into the node's columns; `::remove` drops one) and finally `:edit`, a fn over the whole manifest."
   [{im-overrides :input-measure, :keys [measure measures metric type-params columns edit]}]
   (let [im      (input-measure im-overrides)
-        metric' (merge (base-metric) metric)
-        metric' (assoc metric' :type_params (merge (base-type-params im) (:type_params metric') type-params))]
+        metric' (as-> (base-metric) $metric
+                  (merge $metric metric)
+                  (assoc $metric :type_params (merge (base-type-params im) (:type_params $metric) type-params)))]
     (cond-> {:metadata        {:dbt_schema_version "https://schemas.getdbt.com/dbt/manifest/v12.json"
                                :dbt_version        "1.12.6"
                                :project_name       "p"
