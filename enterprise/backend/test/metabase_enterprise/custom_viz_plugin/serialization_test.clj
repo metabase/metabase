@@ -19,18 +19,24 @@
    [toucan2.core :as t2])
   (:import
    (java.io ByteArrayOutputStream File)
-   (java.nio.file Files)))
+   (java.nio.file Files)
+   (java.util Random)))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private icon-bytes
   "Non-UTF-8 bytes to detect text conversion."
-  (byte-array [(int 0x89) 0x50 0x4e 0x47 0 (int 0xff)]))
+  (byte-array [0x89 0x50 0x4e 0x47 0 0xff]))
+
+(defn- manifest
+  "The manifest of plugin `identifier`, naming the icon in [[plugin-files]]."
+  [identifier]
+  {:name identifier :icon "icon.png" :metabase {:version ">=1.60"}})
 
 (defn- plugin-files
   "Bundle files with a binary icon."
   [identifier]
-  {"metabase-plugin.json" (.getBytes ^String (json/encode {:name identifier :icon "icon.png" :metabase {:version ">=1.60"}}) "UTF-8")
+  {"metabase-plugin.json" (.getBytes ^String (json/encode (manifest identifier)) "UTF-8")
    "dist/index.js"        (.getBytes "{}" "UTF-8")
    "dist/assets/icon.png" icon-bytes})
 
@@ -62,8 +68,13 @@
               :when (.isFile f)]
           [(str (.relativize (.toPath dir) (.toPath f))) (seq (file-bytes f))])))
 
+(defn- stored-files
+  "The files of the bundle stored for plugin `identifier`, mapped to byte sequences."
+  [identifier]
+  (update-vals (cache/bundle->files (t2/select-one-fn :bundle :model/CustomVizPlugin :identifier identifier)) seq))
+
 (defn- write-plugin-files!
-  "Write plugin YAML and resources."
+  "Write plugin YAML and resources. Each file's content is a byte array or a string."
   [dump-dir dir yaml-fields files]
   (let [plugin-dir (io/file dump-dir "custom_viz_plugins" dir)]
     (.mkdirs plugin-dir)
@@ -71,9 +82,7 @@
     (doseq [[path content] files
             :let [f (io/file plugin-dir ^String path)]]
       (io/make-parents f)
-      (if (bytes? content)
-        (io/copy content f)
-        (spit f content)))))
+      (io/copy content f))))
 
 (defn- plugin-yaml [identifier & {:as extra}]
   (merge {:serdes/meta [{:model "CustomVizPlugin"}]
@@ -160,13 +169,13 @@
                    :display_name     "thumbs"
                    :icon             "icon.png"
                    :metabase_version ">=1.60"
-                   :manifest         {:name "thumbs" :icon "icon.png" :metabase {:version ">=1.60"}}
+                   :manifest         (manifest "thumbs")
                    :bundle_hash      (cv.tu/bundle-hash (cache/files->bundle files))}
                   (t2/select-one :model/CustomVizPlugin :identifier "thumbs"))))
         (testing "only declared resources are packed and the icon remains intact"
-          (let [plugin (t2/select-one :model/CustomVizPlugin :identifier "thumbs")]
-            (is (= (update-vals files seq) (update-vals (cache/bundle->files (:bundle plugin)) seq)))
-            (is (= (seq icon-bytes) (seq (cache/get-asset plugin "icon.png"))))))))))
+          (is (= (update-vals files seq) (stored-files "thumbs")))
+          (is (= (seq icon-bytes)
+                 (seq (cache/get-asset (t2/select-one :model/CustomVizPlugin :identifier "thumbs") "icon.png")))))))))
 
 (deftest import-with-missing-files-replaces-an-active-plugins-bundle-test
   (mt/with-model-cleanup [:model/CustomVizPlugin]
@@ -190,8 +199,8 @@
 (deftest import-refuses-a-bundle-over-the-upload-limit-test
   (mt/with-model-cleanup [:model/CustomVizPlugin]
     (ts/with-random-dump-dir [dump-dir "custom-viz-import-"]
-      (let [incompressible (doto (byte-array (inc cache/max-bundle-bytes))
-                             (->> (.nextBytes (java.util.Random. 1))))]
+      (let [incompressible (byte-array (inc cache/max-bundle-bytes))]
+        (.nextBytes (Random. 1) incompressible)
         (write-plugin-files! dump-dir "big" (plugin-yaml "big")
                              (assoc (plugin-files "big") "dist/index.js" incompressible))
         (import! dump-dir)
@@ -223,8 +232,7 @@
         (import! dump-dir)
         (let [imported-hash (t2/select-one-fn :bundle_hash :model/CustomVizPlugin :identifier "Calendar Heatmap")]
           (testing "spaces and casing survive the round trip with resource bytes intact"
-            (is (= (update-vals files seq)
-                   (update-vals (cache/bundle->files (t2/select-one-fn :bundle :model/CustomVizPlugin :identifier "Calendar Heatmap")) seq))))
+            (is (= (update-vals files seq) (stored-files "Calendar Heatmap"))))
           (testing "exporting and importing again changes nothing"
             (ts/with-random-dump-dir [dump-dir-2 "custom-viz-round-trip-"]
               (export! dump-dir-2)
