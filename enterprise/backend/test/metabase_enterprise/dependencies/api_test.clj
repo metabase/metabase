@@ -5,6 +5,8 @@
    [metabase-enterprise.data-apps.test-util :as data-apps.tu]
    [metabase-enterprise.dependencies.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.api :as deps.api]
+   [metabase-enterprise.dependencies.calculation :as deps.calculation]
+   [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.hooks :as deps.hooks]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.collections.models.collection :as collection]
@@ -3140,6 +3142,22 @@
              (mt/user-http-request :rasta :get 403 "ee/dependencies/backfill-status")))
       (is (=? {:complete boolean?}
               (mt/user-http-request :crowberto :get 200 "ee/dependencies/backfill-status"))))))
+
+(deftest ^:synchronized backfill-status-failed-test
+  (testing "GET /api/ee/dependencies/backfill-status lists an entity the job gave up on, which `complete` doesn't count"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Card {card-id :id} (basic-card "Broken" :venues)]
+        (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
+          (mt/with-dynamic-fn-redefs [deps.calculation/calculate-deps (fn [& _] (throw (ex-info "boom" {})))]
+            (deps.test/synchronously-run-dependency-job!))
+          (let [{:keys [complete failed]} (mt/user-http-request :crowberto :get 200 "ee/dependencies/backfill-status")]
+            (is (true? complete))
+            (is (some #{{:type "card" :id card-id}} failed)))
+          (testing "a write gives the entity fresh attempts, so it is no longer failed"
+            (dependencies.db/mark-dependency-statuses-stale! {:card #{card-id}})
+            (deps.test/synchronously-run-dependency-job!)
+            (is (not (some #{{:type "card" :id card-id}}
+                           (:failed (mt/user-http-request :crowberto :get 200 "ee/dependencies/backfill-status")))))))))))
 
 (defn- data-app-card
   "A question on venues in the data app resource collection with `collection-id`."
