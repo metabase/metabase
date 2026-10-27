@@ -41,7 +41,8 @@
                                                           {:where_sql_template "{{ Dimension('fact_sales_key__amount') }} > 0"}]}}})))))
 
 (deftest ^:parallel files-test
-  (let [files (emit/files config (flexanalytics-resolved))]
+  (let [resolved (flexanalytics-resolved)
+        files    (emit/files config resolved)]
     (is (= ["collections/main/dbt_metrics.yaml"
             "collections/main/dbt_metrics/customer_count.yaml"
             "collections/main/dbt_metrics/order_count.yaml"
@@ -55,7 +56,11 @@
            (map :path files)))
     (is (= [{:model "Collection"}]
            (map #(select-keys % [:model]) (-> files first :entity :serdes/meta))))
-    (is (every? #(= "Card" (-> % :entity :serdes/meta last :model)) (rest files)))))
+    (is (every? #(= "Card" (-> % :entity :serdes/meta last :model)) (rest files)))
+    (testing "the ratio, derived, cumulative and conversion metrics are reported, not written, until QRES-5 lands"
+      (is (= #{"cancelled_order_share" "cumulative_sales" "customer_reorder_rate" "sales_minus_target" "sales_mtd"
+               "sales_pct_of_target" "sales_to_target_ratio_2" "sales_trailing_7d" "sales_vs_prior_week"}
+             (set (map :name (:unsupported resolved))))))))
 
 (defn- temp-dir []
   (str (Files/createTempDirectory "dbt-import-test" (make-array FileAttribute 0))))

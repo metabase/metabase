@@ -1,0 +1,91 @@
+# Metrics the converter's fixture adds to the flexanalytics/dbt-business-intelligence project, which defines only
+# simple metrics. One per metric type that composes other metrics (ratio, derived, cumulative) and one conversion
+# metric, so the fixture exercises every row of QRES-5's mapping table with shapes dbt itself wrote.
+#
+# `dev.dbt-import.fixture/regenerate!` splices this list into the project's `models/semantic_models.yml` under
+# `metrics:`, runs `dbt parse` and trims the result into `flexanalytics_manifest.json`. Indentation matches that
+# file's list entries.
+#
+# `sales_to_target` (the project's own metric) averages a per-row `sales / target`; `sales_to_target_ratio_2` is the
+# correct form, kept alongside it so the fixture has both.
+  - name: sales_to_target_ratio_2
+    label: Sales to Target Ratio 2
+    type: ratio
+    description: sum(sales) / sum(target), the correct form of sales_to_target
+    type_params:
+      numerator: sales
+      denominator: target
+  - name: cancelled_order_share
+    label: Cancelled Order Share
+    type: ratio
+    description: Share of orders that were cancelled
+    type_params:
+      numerator:
+        name: order_count
+        alias: cancelled_orders
+        filter: "{{ Dimension('order__order_status_dim') }} = 'Cancelled'"
+      denominator: order_count
+  - name: sales_minus_target
+    label: Sales Minus Target
+    type: derived
+    description: How far sales are above or below target
+    type_params:
+      expr: sales - target
+      metrics:
+        - name: sales
+        - name: target
+  - name: sales_pct_of_target
+    label: Sales Pct of Target
+    type: derived
+    description: Sales as a percentage of target, using aliases
+    type_params:
+      expr: sales_amt / target_amt * 100
+      metrics:
+        - name: sales
+          alias: sales_amt
+        - name: target
+          alias: target_amt
+  - name: sales_vs_prior_week
+    label: Sales vs Prior Week
+    type: derived
+    description: Sales compared with the same metric a week earlier (offset_window)
+    type_params:
+      expr: sales - sales_prior_week
+      metrics:
+        - name: sales
+        - name: sales
+          alias: sales_prior_week
+          offset_window: 7 days
+  - name: cumulative_sales
+    label: Cumulative Sales
+    type: cumulative
+    description: Running total of sales over all time
+    type_params:
+      measure: sales
+  - name: sales_trailing_7d
+    label: Sales Trailing 7 Days
+    type: cumulative
+    description: Sales over a trailing 7-day window
+    type_params:
+      measure: sales
+      cumulative_type_params:
+        window: 7 days
+  - name: sales_mtd
+    label: Sales Month to Date
+    type: cumulative
+    description: Sales accumulated since the start of the month
+    type_params:
+      measure: sales
+      cumulative_type_params:
+        grain_to_date: month
+  - name: customer_reorder_rate
+    label: Customer Reorder Rate
+    type: conversion
+    description: Share of customers who place another order within 30 days (out of scope, reported as unsupported)
+    type_params:
+      conversion_type_params:
+        entity: customer
+        calculation: conversion_rate
+        base_measure: order_count
+        conversion_measure: order_count
+        window: 30 days

@@ -4,7 +4,7 @@
   "dbt_version": "1.12.6",
   "project_name": "dbt_business_intelligence",
   "adapter_type": "postgres",
-  "generated_at": "2026-10-22T20:03:55.111587Z"
+  "generated_at": "2026-10-27T19:56:17.296741Z"
  },
  "nodes": {
   "model.dbt_business_intelligence.stg_customer": {
@@ -776,7 +776,7 @@
      "version": null
     }
    ],
-   "created_at": 1792699437.1050887,
+   "created_at": 1793130979.345071,
    "config": {
     "enabled": true,
     "group": null,
@@ -836,7 +836,7 @@
      "version": null
     }
    ],
-   "created_at": 1792699437.1082518,
+   "created_at": 1793130979.3479795,
    "config": {
     "enabled": true,
     "group": null,
@@ -925,7 +925,7 @@
      "version": null
     }
    ],
-   "created_at": 1792699437.1101224,
+   "created_at": 1793130979.3499272,
    "config": {
     "enabled": true,
     "group": null,
@@ -1014,7 +1014,7 @@
      "version": null
     }
    ],
-   "created_at": 1792699437.1118422,
+   "created_at": 1793130979.3516517,
    "config": {
     "enabled": true,
     "group": null,
@@ -1088,7 +1088,7 @@
    },
    "refs": [],
    "metrics": [],
-   "created_at": 1792699437.0610428,
+   "created_at": 1793130979.286208,
    "group": null,
    "meta": {
     "format": {
@@ -1100,6 +1100,717 @@
      "Sales Coverage Ratio"
     ]
    },
+   "tags": []
+  },
+  "metric.dbt_business_intelligence.sales_to_target_ratio_2": {
+   "name": "sales_to_target_ratio_2",
+   "resource_type": "metric",
+   "package_name": "dbt_business_intelligence",
+   "path": "semantic_models.yml",
+   "original_file_path": "models/semantic_models.yml",
+   "unique_id": "metric.dbt_business_intelligence.sales_to_target_ratio_2",
+   "fqn": [
+    "dbt_business_intelligence",
+    "sales_to_target_ratio_2"
+   ],
+   "description": "sum(sales) / sum(target), the correct form of sales_to_target",
+   "label": "Sales to Target Ratio 2",
+   "type": "ratio",
+   "type_params": {
+    "measure": null,
+    "input_measures": [
+     {
+      "name": "sales",
+      "filter": null,
+      "alias": null,
+      "join_to_timespine": false,
+      "fill_nulls_with": null
+     },
+     {
+      "name": "target",
+      "filter": null,
+      "alias": null,
+      "join_to_timespine": false,
+      "fill_nulls_with": null
+     }
+    ],
+    "numerator": {
+     "name": "sales",
+     "filter": null,
+     "alias": null,
+     "offset_window": null,
+     "offset_to_grain": null
+    },
+    "denominator": {
+     "name": "target",
+     "filter": null,
+     "alias": null,
+     "offset_window": null,
+     "offset_to_grain": null
+    },
+    "expr": null,
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [],
+    "conversion_type_params": null,
+    "cumulative_type_params": null,
+    "metric_aggregation_params": null,
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": null
+   },
+   "filter": null,
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "metric.dbt_business_intelligence.sales",
+     "metric.dbt_business_intelligence.target"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1793130979.288618,
+   "group": null,
+   "meta": {},
+   "tags": []
+  },
+  "metric.dbt_business_intelligence.cancelled_order_share": {
+   "name": "cancelled_order_share",
+   "resource_type": "metric",
+   "package_name": "dbt_business_intelligence",
+   "path": "semantic_models.yml",
+   "original_file_path": "models/semantic_models.yml",
+   "unique_id": "metric.dbt_business_intelligence.cancelled_order_share",
+   "fqn": [
+    "dbt_business_intelligence",
+    "cancelled_order_share"
+   ],
+   "description": "Share of orders that were cancelled",
+   "label": "Cancelled Order Share",
+   "type": "ratio",
+   "type_params": {
+    "measure": null,
+    "input_measures": [
+     {
+      "name": "order_count",
+      "filter": null,
+      "alias": null,
+      "join_to_timespine": false,
+      "fill_nulls_with": null
+     }
+    ],
+    "numerator": {
+     "name": "order_count",
+     "filter": {
+      "where_filters": [
+       {
+        "where_sql_template": "{{ Dimension('order__order_status_dim') }} = 'Cancelled'"
+       }
+      ]
+     },
+     "alias": "cancelled_orders",
+     "offset_window": null,
+     "offset_to_grain": null
+    },
+    "denominator": {
+     "name": "order_count",
+     "filter": null,
+     "alias": null,
+     "offset_window": null,
+     "offset_to_grain": null
+    },
+    "expr": null,
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [],
+    "conversion_type_params": null,
+    "cumulative_type_params": null,
+    "metric_aggregation_params": null,
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": null
+   },
+   "filter": null,
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "metric.dbt_business_intelligence.order_count"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1793130979.2898767,
+   "group": null,
+   "meta": {},
+   "tags": []
+  },
+  "metric.dbt_business_intelligence.sales_minus_target": {
+   "name": "sales_minus_target",
+   "resource_type": "metric",
+   "package_name": "dbt_business_intelligence",
+   "path": "semantic_models.yml",
+   "original_file_path": "models/semantic_models.yml",
+   "unique_id": "metric.dbt_business_intelligence.sales_minus_target",
+   "fqn": [
+    "dbt_business_intelligence",
+    "sales_minus_target"
+   ],
+   "description": "How far sales are above or below target",
+   "label": "Sales Minus Target",
+   "type": "derived",
+   "type_params": {
+    "measure": null,
+    "input_measures": [
+     {
+      "name": "sales",
+      "filter": null,
+      "alias": null,
+      "join_to_timespine": false,
+      "fill_nulls_with": null
+     },
+     {
+      "name": "target",
+      "filter": null,
+      "alias": null,
+      "join_to_timespine": false,
+      "fill_nulls_with": null
+     }
+    ],
+    "numerator": null,
+    "denominator": null,
+    "expr": "sales - target",
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [
+     {
+      "name": "sales",
+      "filter": null,
+      "alias": null,
+      "offset_window": null,
+      "offset_to_grain": null
+     },
+     {
+      "name": "target",
+      "filter": null,
+      "alias": null,
+      "offset_window": null,
+      "offset_to_grain": null
+     }
+    ],
+    "conversion_type_params": null,
+    "cumulative_type_params": null,
+    "metric_aggregation_params": null,
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": null
+   },
+   "filter": null,
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "metric.dbt_business_intelligence.sales",
+     "metric.dbt_business_intelligence.target"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1793130979.2909083,
+   "group": null,
+   "meta": {},
+   "tags": []
+  },
+  "metric.dbt_business_intelligence.sales_pct_of_target": {
+   "name": "sales_pct_of_target",
+   "resource_type": "metric",
+   "package_name": "dbt_business_intelligence",
+   "path": "semantic_models.yml",
+   "original_file_path": "models/semantic_models.yml",
+   "unique_id": "metric.dbt_business_intelligence.sales_pct_of_target",
+   "fqn": [
+    "dbt_business_intelligence",
+    "sales_pct_of_target"
+   ],
+   "description": "Sales as a percentage of target, using aliases",
+   "label": "Sales Pct of Target",
+   "type": "derived",
+   "type_params": {
+    "measure": null,
+    "input_measures": [
+     {
+      "name": "sales",
+      "filter": null,
+      "alias": null,
+      "join_to_timespine": false,
+      "fill_nulls_with": null
+     },
+     {
+      "name": "target",
+      "filter": null,
+      "alias": null,
+      "join_to_timespine": false,
+      "fill_nulls_with": null
+     }
+    ],
+    "numerator": null,
+    "denominator": null,
+    "expr": "sales_amt / target_amt * 100",
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [
+     {
+      "name": "sales",
+      "filter": null,
+      "alias": "sales_amt",
+      "offset_window": null,
+      "offset_to_grain": null
+     },
+     {
+      "name": "target",
+      "filter": null,
+      "alias": "target_amt",
+      "offset_window": null,
+      "offset_to_grain": null
+     }
+    ],
+    "conversion_type_params": null,
+    "cumulative_type_params": null,
+    "metric_aggregation_params": null,
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": null
+   },
+   "filter": null,
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "metric.dbt_business_intelligence.sales",
+     "metric.dbt_business_intelligence.target"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1793130979.2921336,
+   "group": null,
+   "meta": {},
+   "tags": []
+  },
+  "metric.dbt_business_intelligence.sales_vs_prior_week": {
+   "name": "sales_vs_prior_week",
+   "resource_type": "metric",
+   "package_name": "dbt_business_intelligence",
+   "path": "semantic_models.yml",
+   "original_file_path": "models/semantic_models.yml",
+   "unique_id": "metric.dbt_business_intelligence.sales_vs_prior_week",
+   "fqn": [
+    "dbt_business_intelligence",
+    "sales_vs_prior_week"
+   ],
+   "description": "Sales compared with the same metric a week earlier (offset_window)",
+   "label": "Sales vs Prior Week",
+   "type": "derived",
+   "type_params": {
+    "measure": null,
+    "input_measures": [
+     {
+      "name": "sales",
+      "filter": null,
+      "alias": null,
+      "join_to_timespine": false,
+      "fill_nulls_with": null
+     }
+    ],
+    "numerator": null,
+    "denominator": null,
+    "expr": "sales - sales_prior_week",
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [
+     {
+      "name": "sales",
+      "filter": null,
+      "alias": null,
+      "offset_window": null,
+      "offset_to_grain": null
+     },
+     {
+      "name": "sales",
+      "filter": null,
+      "alias": "sales_prior_week",
+      "offset_window": {
+       "count": 7,
+       "granularity": "day"
+      },
+      "offset_to_grain": null
+     }
+    ],
+    "conversion_type_params": null,
+    "cumulative_type_params": null,
+    "metric_aggregation_params": null,
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": null
+   },
+   "filter": null,
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "metric.dbt_business_intelligence.sales"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1793130979.2932706,
+   "group": null,
+   "meta": {},
+   "tags": []
+  },
+  "metric.dbt_business_intelligence.cumulative_sales": {
+   "name": "cumulative_sales",
+   "resource_type": "metric",
+   "package_name": "dbt_business_intelligence",
+   "path": "semantic_models.yml",
+   "original_file_path": "models/semantic_models.yml",
+   "unique_id": "metric.dbt_business_intelligence.cumulative_sales",
+   "fqn": [
+    "dbt_business_intelligence",
+    "cumulative_sales"
+   ],
+   "description": "Running total of sales over all time",
+   "label": "Cumulative Sales",
+   "type": "cumulative",
+   "type_params": {
+    "measure": {
+     "name": "sales",
+     "filter": null,
+     "alias": null,
+     "join_to_timespine": false,
+     "fill_nulls_with": null
+    },
+    "input_measures": [
+     {
+      "name": "sales",
+      "filter": null,
+      "alias": null,
+      "join_to_timespine": false,
+      "fill_nulls_with": null
+     }
+    ],
+    "numerator": null,
+    "denominator": null,
+    "expr": null,
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [],
+    "conversion_type_params": null,
+    "cumulative_type_params": {
+     "window": null,
+     "grain_to_date": null,
+     "period_agg": "first",
+     "metric": null
+    },
+    "metric_aggregation_params": null,
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": null
+   },
+   "filter": null,
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "semantic_model.dbt_business_intelligence.fact_sales"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1793130979.2940757,
+   "group": null,
+   "meta": {},
+   "tags": []
+  },
+  "metric.dbt_business_intelligence.sales_trailing_7d": {
+   "name": "sales_trailing_7d",
+   "resource_type": "metric",
+   "package_name": "dbt_business_intelligence",
+   "path": "semantic_models.yml",
+   "original_file_path": "models/semantic_models.yml",
+   "unique_id": "metric.dbt_business_intelligence.sales_trailing_7d",
+   "fqn": [
+    "dbt_business_intelligence",
+    "sales_trailing_7d"
+   ],
+   "description": "Sales over a trailing 7-day window",
+   "label": "Sales Trailing 7 Days",
+   "type": "cumulative",
+   "type_params": {
+    "measure": {
+     "name": "sales",
+     "filter": null,
+     "alias": null,
+     "join_to_timespine": false,
+     "fill_nulls_with": null
+    },
+    "input_measures": [
+     {
+      "name": "sales",
+      "filter": null,
+      "alias": null,
+      "join_to_timespine": false,
+      "fill_nulls_with": null
+     }
+    ],
+    "numerator": null,
+    "denominator": null,
+    "expr": null,
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [],
+    "conversion_type_params": null,
+    "cumulative_type_params": {
+     "window": {
+      "count": 7,
+      "granularity": "day"
+     },
+     "grain_to_date": null,
+     "period_agg": "first",
+     "metric": null
+    },
+    "metric_aggregation_params": null,
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": null
+   },
+   "filter": null,
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "semantic_model.dbt_business_intelligence.fact_sales"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1793130979.2960448,
+   "group": null,
+   "meta": {},
+   "tags": []
+  },
+  "metric.dbt_business_intelligence.sales_mtd": {
+   "name": "sales_mtd",
+   "resource_type": "metric",
+   "package_name": "dbt_business_intelligence",
+   "path": "semantic_models.yml",
+   "original_file_path": "models/semantic_models.yml",
+   "unique_id": "metric.dbt_business_intelligence.sales_mtd",
+   "fqn": [
+    "dbt_business_intelligence",
+    "sales_mtd"
+   ],
+   "description": "Sales accumulated since the start of the month",
+   "label": "Sales Month to Date",
+   "type": "cumulative",
+   "type_params": {
+    "measure": {
+     "name": "sales",
+     "filter": null,
+     "alias": null,
+     "join_to_timespine": false,
+     "fill_nulls_with": null
+    },
+    "input_measures": [
+     {
+      "name": "sales",
+      "filter": null,
+      "alias": null,
+      "join_to_timespine": false,
+      "fill_nulls_with": null
+     }
+    ],
+    "numerator": null,
+    "denominator": null,
+    "expr": null,
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [],
+    "conversion_type_params": null,
+    "cumulative_type_params": {
+     "window": null,
+     "grain_to_date": "month",
+     "period_agg": "first",
+     "metric": null
+    },
+    "metric_aggregation_params": null,
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": null
+   },
+   "filter": null,
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "semantic_model.dbt_business_intelligence.fact_sales"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1793130979.2968404,
+   "group": null,
+   "meta": {},
+   "tags": []
+  },
+  "metric.dbt_business_intelligence.customer_reorder_rate": {
+   "name": "customer_reorder_rate",
+   "resource_type": "metric",
+   "package_name": "dbt_business_intelligence",
+   "path": "semantic_models.yml",
+   "original_file_path": "models/semantic_models.yml",
+   "unique_id": "metric.dbt_business_intelligence.customer_reorder_rate",
+   "fqn": [
+    "dbt_business_intelligence",
+    "customer_reorder_rate"
+   ],
+   "description": "Share of customers who place another order within 30 days (out of scope, reported as unsupported)",
+   "label": "Customer Reorder Rate",
+   "type": "conversion",
+   "type_params": {
+    "measure": null,
+    "input_measures": [
+     {
+      "name": "order_count",
+      "filter": null,
+      "alias": null,
+      "join_to_timespine": false,
+      "fill_nulls_with": null
+     }
+    ],
+    "numerator": null,
+    "denominator": null,
+    "expr": null,
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [],
+    "conversion_type_params": {
+     "entity": "customer",
+     "base_measure": {
+      "name": "order_count",
+      "filter": null,
+      "alias": null,
+      "join_to_timespine": false,
+      "fill_nulls_with": null
+     },
+     "conversion_measure": {
+      "name": "order_count",
+      "filter": null,
+      "alias": null,
+      "join_to_timespine": false,
+      "fill_nulls_with": null
+     },
+     "base_metric": null,
+     "conversion_metric": null,
+     "calculation": "conversion_rate",
+     "window": {
+      "count": 30,
+      "granularity": "day"
+     },
+     "constant_properties": null
+    },
+    "cumulative_type_params": null,
+    "metric_aggregation_params": null,
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": null
+   },
+   "filter": null,
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "semantic_model.dbt_business_intelligence.fact_sales"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1793130979.299933,
+   "group": null,
+   "meta": {},
    "tags": []
   },
   "metric.dbt_business_intelligence.price": {
@@ -1167,7 +1878,7 @@
    },
    "refs": [],
    "metrics": [],
-   "created_at": 1792699437.1066873,
+   "created_at": 1793130979.3458908,
    "group": null,
    "meta": {},
    "tags": []
@@ -1237,7 +1948,7 @@
    },
    "refs": [],
    "metrics": [],
-   "created_at": 1792699437.1068473,
+   "created_at": 1793130979.346045,
    "group": null,
    "meta": {},
    "tags": []
@@ -1307,7 +2018,7 @@
    },
    "refs": [],
    "metrics": [],
-   "created_at": 1792699437.1069796,
+   "created_at": 1793130979.3461733,
    "group": null,
    "meta": {},
    "tags": []
@@ -1377,7 +2088,7 @@
    },
    "refs": [],
    "metrics": [],
-   "created_at": 1792699437.1070983,
+   "created_at": 1793130979.346327,
    "group": null,
    "meta": {},
    "tags": []
@@ -1447,7 +2158,7 @@
    },
    "refs": [],
    "metrics": [],
-   "created_at": 1792699437.1072166,
+   "created_at": 1793130979.3469486,
    "group": null,
    "meta": {},
    "tags": []
@@ -1517,7 +2228,7 @@
    },
    "refs": [],
    "metrics": [],
-   "created_at": 1792699437.1073265,
+   "created_at": 1793130979.347084,
    "group": null,
    "meta": {},
    "tags": []
@@ -1587,7 +2298,7 @@
    },
    "refs": [],
    "metrics": [],
-   "created_at": 1792699437.107434,
+   "created_at": 1793130979.3471997,
    "group": null,
    "meta": {},
    "tags": []
@@ -1657,7 +2368,7 @@
    },
    "refs": [],
    "metrics": [],
-   "created_at": 1792699437.1075394,
+   "created_at": 1793130979.3473084,
    "group": null,
    "meta": {},
    "tags": []

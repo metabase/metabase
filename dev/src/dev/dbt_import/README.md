@@ -81,6 +81,26 @@ MB_DB_CONNECTION_URI=... clojure -M:run:ee import /path/to/serdes-out -e
 
 Then open each metric in the UI, run it, and compare the number against a hand-written SQL query.
 
+## The test fixture
+
+`dev/resources/dbt_import/flexanalytics_manifest.json` is the project's manifest trimmed to the sections the converter
+reads, plus the metrics in `flexanalytics_extra_metrics.yml`: the project only defines simple metrics, so that file
+adds one of each type that composes other metrics (ratio, derived, cumulative) and a conversion metric, in the shape
+dbt itself writes. `sales_to_target_ratio_2` is the correct ratio form of the project's `sales_to_target`, which
+averages a per-row `sales / target`; both are kept. Regenerate the fixture after changing either file or the clone,
+from a REPL at the repo root:
+
+```clojure
+(dev.dbt-import.fixture/regenerate!)                                                   ; ~/dbt-business-intelligence
+(dev.dbt-import.fixture/regenerate! {:project "/path/to/dbt-business-intelligence"})
+```
+
+It copies the clone to a scratch directory, splices the extra metrics into `models/semantic_models.yml`, runs
+`dbt parse` there (through `uvx` unless `dbt` is on PATH, with the `profiles.yml` above) and writes the trimmed result
+in the format dbt writes, so a regeneration's diff is only what changed. The clone is not modified. To run the extra
+metrics in a dev instance (QRES-2), paste them into the clone's `semantic_models.yml` under `metrics:` and `dbt parse`
+it the same way.
+
 ## Filters and SQL expressions
 
 A measure's `expr` may be SQL rather than a column, and a metric or measure may carry a `filter` of Jinja-wrapped
@@ -96,7 +116,40 @@ semantic model's primary entity, and `TimeDimension(..., '<grain>')` additionall
 temporal unit; `metric_time` is the measure's `agg_time_dimension` and `Entity('<name>')` is that entity's column. A
 dimension reached through a foreign entity is on the semantic model that entity is primary for, and resolves to that
 model's column joined implicitly through the entity's column (see "Entities and dimensions"); `Metric(...)` references
-are reported as QRES-5.
+are reported (see "Advanced metric types").
+
+## Advanced metric types
+
+Metrics that compose other metrics (QRES-5) are always top-level `metrics:` entries. They convert as follows; the
+metrics they refer to are written before them.
+
+| dbt | Metabase |
+| -- | -- |
+| `ratio` of `numerator` to `denominator` | one metric card whose aggregation divides `[:metric ...]` references to the input metrics' cards |
+| `derived` with `expr` over `metrics` | the same arithmetic over `[:metric ...]` references, aliases resolved; `x / nullif(y, 0)` is `x / y` |
+| an input (`numerator`, `denominator`, `metrics[]`) with its own `filter` | inlined as `sum-where`, `count-where` or `distinct-where` over the input's measure, with the input's own filters and the reference's combined, so the metric stays one card; an input whose aggregation has no filtered form (`average`, `min`, `max`, `median`, `percentile`) is reported |
+| `cumulative` with no window over a `sum` or a row count | `cum-sum` / `cum-count`; the metric's filters apply as on a simple metric |
+| `conversion` | out of scope, reported |
+
+Not converted, and reported with the reason, because a Metabase metric is a scalar aggregation with no breakout of
+its own and MBQL has no clause for them:
+
+- `cumulative` with `window` (a trailing window, `7 days`): MBQL has no rolling-window aggregation. Running total minus
+  the running total seven rows back would nest window functions, which SQL does not allow.
+- `cumulative` with `grain_to_date` (`month` to date): a running total that resets at each grain. The query processor
+  does partition a cumulative aggregation by every breakout except the finest temporal one, so a user who breaks out
+  by month *and* day gets month-to-date, but a metric definition cannot require that breakout, and under a day breakout
+  alone a plain `cum-sum` would be the all-time running total.
+- `cumulative` over anything but a sum or row count: SQL does not allow `DISTINCT` in a window function, and MBQL has
+  no running average, min, max or percentile.
+- `derived` inputs with `offset_window` (period over period) or `offset_to_grain`: MBQL's `offset` is relative to the
+  rows of the result, so its meaning changes with the breakout grain the user picks, while dbt's offset is a fixed span
+  of time; `offset_to_grain` (the value at the start of the grain) has no MBQL equivalent at all. Metric definitions
+  (`metabase.lib-metric`) also only allow arithmetic over `[:metric ...]` and `[:measure ...]` leaves.
+- `conversion`: a per-entity funnel (a base event followed by a conversion event within a window) is a self-join with a
+  time condition, nothing a metric expresses.
+- a filter template that references `Metric(...)`: a condition on a metric's value is a HAVING, which a metric has no
+  place for.
 
 ## Entities and dimensions
 
