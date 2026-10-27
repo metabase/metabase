@@ -35,26 +35,24 @@
   (t2/select-one :model/CustomVizPlugin :identifier identifier))
 
 (mu/defn plugin-identifier-ignoring-case :- [:maybe :string]
-  "The identifier of the CustomVizPlugin whose identifier equals `identifier` ignoring case, or nil."
+  "Find a plugin's identifier ignoring case, or nil."
   [identifier :- :string]
   (t2/select-one-fn :identifier :model/CustomVizPlugin {:where [:= [:lower :identifier] (u/lower-case-en identifier)]}))
 
 (defn- with-bundles-where
-  "The `:where` selecting the CustomVizPlugin rows that have a bundle, whose `filter-column` is one of `filter-ids`
-  (every such row when `filter-column` is nil)."
+  "Build the filter for plugins with stored bundles."
   [filter-column filter-ids]
   (cond-> [:not= :bundle_hash nil]
     filter-column (vector :and [:in filter-column filter-ids])))
 
 (mu/defn plugin-identifiers-with-bundles :- [:sequential :string]
-  "The identifiers of the CustomVizPlugin rows [[reducible-plugins-with-bundles]] would reduce over."
+  "Identifiers of plugins with stored bundles."
   [filter-column :- [:maybe :keyword]
    filter-ids    :- [:maybe [:sequential [:maybe [:or :int :string]]]]]
   (vec (t2/select-fn-vec :identifier :model/CustomVizPlugin {:where (with-bundles-where filter-column filter-ids)})))
 
 (mu/defn reducible-plugins-with-bundles
-  "A reducible of the CustomVizPlugin rows that have a bundle, bundle included, whose `filter-column` is one of
-  `filter-ids` (every such row when `filter-column` is nil), ordered ascending by `order-columns`."
+  "A reducible of plugins with stored bundles, including bundle bytes."
   [filter-column :- [:maybe :keyword]
    filter-ids    :- [:maybe [:sequential [:maybe [:or :int :string]]]]
    order-columns :- [:maybe [:sequential :keyword]]]

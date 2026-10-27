@@ -46,23 +46,17 @@
   (some-> (mr/explain ManifestFieldTypes manifest) me/humanize))
 
 (defn identifier-error
-  "Why `identifier` can't name a plugin on this instance, or nil. `:` separates the parts of
-   `custom:<identifier>:<setting id>` viz-settings keys, so an identifier containing it could read another plugin's
-   settings. This is the only rule serving enforces: a plugin installed before a stricter rule existed keeps working."
+  "Reject colons to prevent viz-settings key collisions. Serving enforces only this rule for legacy compatibility."
   [identifier]
   (when (and (string? identifier) (str/includes? identifier ":"))
     (format "Plugin identifier \"%s\" must not contain \":\"" identifier)))
 
 (def ^:private directory-name-pattern
-  "The identifiers the representation format accepts: an identifier names the plugin's directory in a repository, so
-   letters, digits, spaces, `.`, `_` and `-`, starting with a letter or digit and not ending with a space. The same
-   pattern is the `identifier` schema in `@metabase/representations`."
+  "Directory-safe names, matching the identifier schema in `@metabase/representations`."
   #"[A-Za-z0-9](?:[A-Za-z0-9 ._-]*[A-Za-z0-9._-])?")
 
 (defn directory-name-error
-  "Why `identifier` can't name a plugin's directory in a repository, or nil. Stricter than `identifier-error`, which
-   it includes: it guards registration and export, never serving, so a stored identifier it refuses is skipped on
-   export rather than hidden from viewers."
+  "Validate directory names for registration and export; serving legacy plugins is unaffected."
   [identifier]
   (or (identifier-error identifier)
       (when (and (string? identifier) (not (re-matches directory-name-pattern identifier)))
