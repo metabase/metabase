@@ -4,35 +4,7 @@ import { t } from "ttag";
 import { Link } from "metabase/router";
 import { Anchor, Code, List, Paper, Stack, Text, Title } from "metabase/ui";
 
-import S from "./DrillsDocs.module.css";
-
-type DocTableProps = {
-  columns: string[];
-  rows: ReactNode[][];
-};
-
-function DocTable({ columns, rows }: DocTableProps) {
-  return (
-    <table className={S.table}>
-      <thead>
-        <tr>
-          {columns.map((column) => (
-            <th key={column}>{column}</th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((cells, rowIndex) => (
-          <tr key={rowIndex}>
-            {cells.map((cell, cellIndex) => (
-              <td key={cellIndex}>{cell}</td>
-            ))}
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
+import { DocTable } from "../harness/DocTable";
 
 type SectionProps = {
   title: string;
@@ -186,151 +158,12 @@ const SHAPE_CHANGING_DRILLS: ReactNode[][] = [
   ],
 ];
 
-const OTHER_HARNESS_EXAMPLES: ReactNode[][] = [
-  [
-    "Distribution",
-    "raw Orders table",
-    <>
-      distribution on the Total header → <Code>Count</Code> by auto-binned
-      Total, drawn as a bar chart
-    </>,
-  ],
-  [
-    "Sort",
-    "raw Orders table",
-    <>
-      sort on a header → one order-by, <Code>Total</Code> descending
-    </>,
-  ],
-  [
-    "Sum / Avg / Distinct",
-    "raw Orders table",
-    <>
-      summarize-column on the Total header → <Code>Sum of Total</Code>, a single
-      number
-    </>,
-  ],
-  [
-    "Sum over time",
-    "raw Orders table",
-    <>
-      summarize-column-by-time on the Total header → <Code>Sum of Total</Code>{" "}
-      by <Code>Created At: Month</Code>
-    </>,
-  ],
-  [
-    "Extract",
-    "raw Orders table",
-    <>
-      column-extract on the Created At header → a <Code>Month of year</Code>{" "}
-      expression column
-    </>,
-  ],
-  [
-    "Combine",
-    "Orders with the Month of year expression",
-    <>
-      combine-columns on the Month of year header → a <Code>concat</Code>{" "}
-      expression with Quantity; Orders has no text column of its own
-    </>,
-  ],
-  [
-    "View details",
-    "raw Orders table",
-    <>
-      fk-details on a Product ID / User ID cell → a new query on the target
-      table with <Code>ID = value</Code>; zoom on an ID cell navigates in the
-      real app and does nothing here; pk needs a multi-PK table. No pre-built
-      state.
-    </>,
-  ],
-  [
-    "X-ray",
-    "Count by Product → Category (bar)",
-    "automatic-insights → X-ray / Compare to the rest, both leave the prototype for an auto dashboard. No pre-built state.",
-  ],
-];
-
 const PIVOT_AVAILABILITY: ReactNode[][] = [
   ["none", "category, location, time"],
   ["one date, optionally plus one category", "category, location"],
   ["one address", "category, time"],
   ["one or two categories", "category, time"],
   ["anything else (numeric bins, lat-lon bins, free text)", "none"],
-];
-
-const HARNESS_EXAMPLES: ReactNode[][] = [
-  [
-    "Quick filter, FK filter",
-    "raw Orders table",
-    "quick-filter on a cell; fk-filter on Product ID / User ID; column-filter on a header",
-  ],
-  [
-    "See these Orders",
-    "Count by Product → Category (bar)",
-    <>
-      underlying-records → <Code>Category = Gizmo</Code>; Break out by… also
-      offered
-    </>,
-  ],
-  [
-    "See these Orders (count where)",
-    "Count where Discount is not empty, by Category (bar)",
-    <>
-      underlying-records → <Code>Category = Doohickey</Code> and{" "}
-      <Code>Discount is not empty</Code>, two pills in one click
-    </>,
-  ],
-  [
-    "Category × Month",
-    "Count by Product → Category by Created At: Month (bar)",
-    <>
-      underlying-records → <Code>Created At: Month = Apr 2028</Code> and{" "}
-      <Code>Category = Doohickey</Code>, one filter per breakout dimension, one
-      of them a bucketed date; Break out by… writes the same two and swaps the
-      breakouts
-    </>,
-  ],
-  [
-    "Zoom in: time",
-    "Count by Created At: Month (line)",
-    <>
-      zoom-in.timeseries → <Code>Created At is Jul 1–31, 2027</Code>, breakout
-      becomes week
-    </>,
-  ],
-  [
-    "Zoom in: bins",
-    "Count by Total, auto-binned (bar)",
-    <>
-      zoom-in.binning → <Code>Total &gt;= 40</Code> and{" "}
-      <Code>Total &lt; 60</Code>, bins narrow
-    </>,
-  ],
-  [
-    "Zoom in: map",
-    "Count by User → State (region map)",
-    <>
-      zoom-in.geographic → <Code>State is TX</Code>, result becomes a lat/lon
-      grid map
-    </>,
-  ],
-  [
-    "Break out by…",
-    "Count by User → Source (bar)",
-    <>
-      pivot → Category / Time → column list → <Code>Source is Affiliate</Code>,
-      breakout swapped
-    </>,
-  ],
-  [
-    "Filter on Count",
-    "Count by Product → Category (table)",
-    <>
-      quick-filter on a Count cell → <Code>Count &gt; 4939</Code> on the stage
-      after the summary (Σ pill)
-    </>,
-  ],
 ];
 
 /**
@@ -347,40 +180,15 @@ export function DrillsDocs() {
           {t`A drill is a click on the results that narrows the question to what was clicked. Every filter-producing drill ends in a single appended clause, implicitly AND-ed with the rest of the stage; no drill knows about OR. That is why the directions here always AND a drilled filter against the whole existing expression, wrapping a top-level "or" in parentheses first.`}
         </Text>
         <Text c="text-secondary">
+          {t`Every direction's canvas has a "Drill-throughs" table: one row per drill, whether it writes a filter, a button for the unfiltered query it appears on, buttons for what it produces, and where to click to trigger it for real.`}{" "}
+          <Anchor component={Link} to="/prototypes/expression-bar-unified">
+            {t`Open the one-bar direction`}
+          </Anchor>
+        </Text>
+        <Text c="text-secondary">
           {t`The prototype results run the real click-actions pipeline with every drill the query builder offers. Cell clicks lead with the filter-writing drills: quick-filter, fk-filter, column-filter, underlying-records, the three zoom-ins and pivot. Column headers add the ten that change the query's shape or open another view: object detail (pk, zoom, fk-details), distribution, sort, summarize-column, summarize-column-by-time, column-extract, combine-columns and automatic-insights.`}
         </Text>
       </Stack>
-
-      <Section
-        title={t`Try them in the harness`}
-        intro={
-          <>
-            {t`Each direction's canvas has a "Drill-throughs" example row: one unfiltered starting point per drill, and under each a button that loads the state the drill produces. Load a starting point, click the chart, apply the drill, and compare with the pre-built state.`}{" "}
-            <Anchor component={Link} to="/prototypes/expression-bar-unified">
-              {t`Open the one-bar direction`}
-            </Anchor>
-          </>
-        }
-      >
-        <DocTable
-          columns={[
-            t`Example`,
-            t`Starting query`,
-            t`Drill → what lands in the bar`,
-          ]}
-          rows={HARNESS_EXAMPLES}
-        />
-      </Section>
-
-      <Section
-        title={t`Other drills in the harness`}
-        intro={t`The second example row loads a starting point for every drill that does not write a filter. Where the drill changes the query, a button beside it loads the result.`}
-      >
-        <DocTable
-          columns={[t`Example`, t`Starting query`, t`Drill → result`]}
-          rows={OTHER_HARNESS_EXAMPLES}
-        />
-      </Section>
 
       <Section
         title={t`Drills that filter on source-table data`}

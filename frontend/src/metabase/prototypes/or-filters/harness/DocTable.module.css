@@ -22,3 +22,9 @@
   white-space: nowrap;
   font-weight: bold;
 }
+
+.table .groupHeading {
+  padding-top: 1rem;
+  color: var(--mb-color-text-primary);
+  border-bottom-width: 2px;
+}

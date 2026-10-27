@@ -908,3 +908,41 @@ export function withMonthCombined(
     Lib.expressionClause("concat", [month, " ", quantity]),
   );
 }
+
+/** quick-filter on a Total cell → ">": `Total > 100`. */
+export function withQuickFilterDrilled(
+  query: Lib.Query,
+  stageIndex: number,
+): Lib.Query {
+  const cleared = clearFilters(query, stageIndex);
+  const total = findColumn(cleared, stageIndex, "Total");
+  if (!total) {
+    return query;
+  }
+  return Lib.filter(
+    cleared,
+    stageIndex,
+    Lib.numberFilterClause({ operator: ">", column: total, values: [100] }),
+  );
+}
+
+/** column-filter on the Total header → filter picker: `Total between 50 and 100`. */
+export function withColumnFilterDrilled(
+  query: Lib.Query,
+  stageIndex: number,
+): Lib.Query {
+  const cleared = clearFilters(query, stageIndex);
+  const total = findColumn(cleared, stageIndex, "Total");
+  if (!total) {
+    return query;
+  }
+  return Lib.filter(
+    cleared,
+    stageIndex,
+    Lib.numberFilterClause({
+      operator: "between",
+      column: total,
+      values: [50, 100],
+    }),
+  );
+}
