@@ -113,7 +113,8 @@ export const BreakoutMenu = ({
             </Button>
           </Tooltip>
         </Menu.Target>
-        <Menu.Dropdown p={0}>
+        {/* Menus overflow visibly, for submenus; the picker needs to scroll. */}
+        <Menu.Dropdown p={0} style={{ overflowY: "auto" }}>
           {usersTable !== undefined ? (
             <UsersTablePicker
               usersTable={usersTable}
