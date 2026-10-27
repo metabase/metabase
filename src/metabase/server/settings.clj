@@ -81,12 +81,17 @@ x.com")
       (nil? origin)
       "it is not an http(s) URL like https://example-isolated.com"
 
+      ;; Without it, a value on the main host's name and another port would put the whole instance under the isolated
+      ;; origin's rules.
+      (str/blank? site-url)
+      "no site URL is set, and only the site URL may show a data app"
+
       ;; The session cookie is host-only, so it reaches every port of the main host.
-      (and site-url (= (u.http/host-name origin) (u.http/host-name site-url)))
+      (= (u.http/host-name origin) (u.http/host-name site-url))
       "it has the site URL's host name, and a different port isn't enough"
 
       ;; An https page can't frame an http one.
-      (and site-url (str/starts-with? site-url "https:") (str/starts-with? origin "http:"))
+      (and (str/starts-with? site-url "https:") (str/starts-with? origin "http:"))
       "it uses http while the site URL uses https")))
 
 (defonce ^:private last-invalid-isolated-origin (atom nil))
@@ -116,13 +121,13 @@ x.com")
   serves content there that must stay apart from the session. Data apps run on it, and every request they make to
   Metabase goes through the page that shows them. The address must meet these requirements:
 
+  - A site URL is set. Only pages at the site URL can show content from this address.
   - Its host name differs from the site URL's host name. A different port isn't enough.
   - It uses https when the site URL does.
-  - A site URL is set. Only pages at the site URL can show content from this address.
   - A reverse proxy in front of Metabase passes the original host name (`Host` or `X-Forwarded-Host`).
   - If Metabase runs under a path, both addresses serve it under that path.
 
-  If the value breaks one of the first two requirements, Metabase turns data apps off until you fix it. A separate
+  If the value breaks one of the first three requirements, Metabase turns data apps off until you fix it. A separate
   domain (such as `example-isolated.com` rather than `isolated.example.com`) isolates best while the session cookie's
   `SameSite` is `lax` or `strict`.")
 

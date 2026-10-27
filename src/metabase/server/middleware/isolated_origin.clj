@@ -3,8 +3,9 @@
   [[metabase.server.settings/isolated-origin]]). The session cookie is host-only, so it never reaches the isolated
   origin, and the app makes no instance requests of its own there: the top page's broker makes them.
 
-  On the main host, redirects the app document (`/embed/apps/*`) to the isolated origin, and refuses every request
-  whose `Origin` is the isolated origin. On the isolated origin, serves the app document and
+  On the main host, redirects the app document (`/embed/apps/*`) to the isolated origin, refuses every request whose
+  `Origin` is the isolated origin, and runs a same-site write that hides its `Origin` without the session cookie. On
+  the isolated origin, serves the app document and
   [[isolated-origin-allowed-uri?]], sends `/apps/*` links back to the main host, and answers 404 to everything else,
   which includes login, SSO and the API. Static assets, probes and the middleware's own refusals on the isolated
   origin get [[inert-csp]]; its refusals and redirects are not cached. When the setting is set but unusable, refuses
@@ -16,7 +17,6 @@
    [metabase.system.core :as system]
    [metabase.util :as u]
    [metabase.util.http :as u.http]
-   [metabase.util.log :as log]
    [ring.util.response :as response]))
 
 (set! *warn-on-reflection* true)
@@ -62,18 +62,6 @@
   (cond-> path
     (not (str/blank? query-string)) (str "?" query-string)))
 
-(defonce ^:private warned-missing-site-url? (atom false))
-
-(defn- warn-once-if-missing-site-url!
-  "The app document's `frame-ancestors` comes from the site URL. Without one it is `'self'`, the main app can't frame
-   the document, and data apps fail to load."
-  []
-  (when (and (str/blank? (system/site-url))
-             (compare-and-set! warned-missing-site-url? false true))
-    (log/error (str "MB_ISOLATED_ORIGIN is set but the site URL is not. Only the site URL may frame a data app, so "
-                    "data apps will not load. Set MB_SITE_URL to the main app's URL, including its path if it has "
-                    "one."))))
-
 (defn- isolated-origin-response [handler {:keys [uri request-method] :as request} respond raise]
   (let [request (assoc request ::isolated-origin? true)]
     (cond
@@ -81,7 +69,7 @@
       (handler request respond raise)
 
       ;; A link into an app page (`DataAppLink`) resolves against the app document's host.
-      (and (= :get request-method) (str/starts-with? uri "/apps/") (not (str/blank? (system/site-url))))
+      (and (= :get request-method) (str/starts-with? uri "/apps/"))
       (respond (redirect (with-query-string (str (system/site-url) uri) request)))
 
       (isolated-origin-allowed-uri? request)
@@ -94,6 +82,23 @@
       :else
       (respond (refusal 404 "Not found.")))))
 
+(defn- same-site-write-with-hidden-origin?
+  "A write whose `Origin` the browser hid (a no-cors request with `referrerPolicy: \"no-referrer\"` sends `null`), from
+  another origin of the same site, to which the browser still sends the session cookie."
+  [{:keys [headers request-method]}]
+  (and (not (#{:get :head :options} request-method))
+       (= "null" (get headers "origin"))
+       (= "same-site" (get headers "sec-fetch-site"))))
+
+(defn- without-session-cookies [request]
+  (update-in request [:headers "cookie"]
+             (fn [header]
+               (some->> (str/split header #";")
+                        (remove #(#{request/metabase-session-cookie request/metabase-embedded-session-cookie}
+                                  (first (str/split (str/trim %) #"=" 2))))
+                        (map str/trim)
+                        (str/join "; ")))))
+
 (defn- main-host-response [handler {:keys [headers uri] :as request} respond raise isolated-origin]
   (cond
     ;; The app document sends no requests to the main host; the top page sends them for it. A request with its
@@ -104,6 +109,12 @@
     (request/data-app? request)
     (respond (redirect (with-query-string (str isolated-origin (system/site-path) uri) request)))
 
+    ;; Such a write may be app code on a same-site isolated origin, so it runs without the session. It isn't refused:
+    ;; an identity provider on the same site that hides its origin posts its SAML response the same way, and needs no
+    ;; session.
+    (same-site-write-with-hidden-origin? request)
+    (handler (without-session-cookies request) respond raise)
+
     :else
     (handler request respond raise)))
 
@@ -112,11 +123,9 @@
   [handler]
   (fn [request respond raise]
     (if-let [isolated-origin (server.settings/isolated-origin)]
-      (do
-        (warn-once-if-missing-site-url!)
-        (if (on-isolated-origin? request isolated-origin)
-          (isolated-origin-response handler request respond raise)
-          (main-host-response handler request respond raise isolated-origin)))
+      (if (on-isolated-origin? request isolated-origin)
+        (isolated-origin-response handler request respond raise)
+        (main-host-response handler request respond raise isolated-origin))
       (if (and (request/data-app? request)
                (server.settings/isolated-origin-misconfigured?))
         (respond (refusal 503 "Data apps are unavailable: MB_ISOLATED_ORIGIN is set to a value that can't be used."))
