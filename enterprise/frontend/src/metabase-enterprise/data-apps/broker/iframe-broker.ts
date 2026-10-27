@@ -11,8 +11,8 @@ import {
   type BrokerCancelMessage,
   type BrokerRequestMessage,
   type BrokerResponseMessage,
-  getBrokerableApiPath,
   isBrokerResponseMessage,
+  isInstanceApiUrl,
 } from "./protocol";
 
 const LOCALE_PATTERN = /^[a-z]{2,3}(?:[-_][A-Za-z0-9]{2,8})*$/;
@@ -154,6 +154,18 @@ function untilAborted<T>(
   });
 }
 
+/**
+ * What `fetch` answers `redirect: "manual"` with when the server redirects. Script can't
+ * construct an opaque-redirect response, so this one only looks like it.
+ */
+const opaqueRedirectResponse = (url: string): Response =>
+  Object.defineProperties(new Response(null), {
+    type: { value: "opaqueredirect" },
+    status: { value: 0 },
+    ok: { value: false },
+    url: { value: url },
+  });
+
 async function brokeredFetch(
   request: Request,
   signal: AbortSignal | null,
@@ -169,10 +181,11 @@ async function brokeredFetch(
     url: request.url,
     headers: Object.fromEntries(request.headers.entries()),
     body,
+    redirect: request.redirect,
   };
   const answer = defer<BrokerResponseMessage>();
   pending.set(id, answer.resolve);
-  port.postMessage(message);
+  port.postMessage(message, body ? [body] : []);
 
   const response = await untilAborted(answer.promise, signal, () => {
     const cancel: BrokerCancelMessage = { type: "cancel", id };
@@ -181,6 +194,10 @@ async function brokeredFetch(
 
   if ("networkError" in response) {
     throw new TypeError(response.networkError);
+  }
+
+  if ("opaqueRedirect" in response) {
+    return opaqueRedirectResponse(request.url);
   }
 
   return new Response(response.body, {
@@ -213,11 +230,7 @@ export function installDataAppFetchBroker(): void {
       return nativeFetch(input, init);
     }
 
-    const isInstanceApi =
-      url.origin === window.location.origin &&
-      getBrokerableApiPath(url) !== null;
-
-    if (!isInstanceApi) {
+    if (!isInstanceApiUrl(url)) {
       return nativeFetch(input, init);
     }
 

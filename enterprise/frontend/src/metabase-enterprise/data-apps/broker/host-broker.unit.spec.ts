@@ -43,12 +43,16 @@ const request = (
   url: "/api/health",
   headers: {},
   body: null,
+  redirect: "follow",
   ...overrides,
 });
 
 function httpResponse(message: BrokerResponseMessage): BrokerHttpResponse {
   if ("networkError" in message) {
     throw new Error(`expected an HTTP response, got ${message.networkError}`);
+  }
+  if ("opaqueRedirect" in message) {
+    throw new Error("expected an HTTP response, got an opaque redirect");
   }
   return message;
 }
@@ -229,6 +233,75 @@ describe("handleBrokerRequest", () => {
     expect(bytes(await call?.request?.arrayBuffer())).toEqual(BINARY);
   });
 
+  it("forwards the app's redirect mode", async () => {
+    fetchMock.get("path:/api/user/current", { status: 200, body: {} });
+
+    await handleBrokerRequest(
+      request({ url: "/api/user/current", redirect: "error" }),
+    );
+
+    const [call] = fetchMock.callHistory.calls();
+
+    expect(call?.request?.redirect).toBe("error");
+  });
+
+  it("follows a redirect within the instance API", async () => {
+    fetchMock.get("path:/api/card/1/query", {
+      status: 200,
+      body: { rows: [] },
+      redirectUrl: `${window.location.origin}/api/card/2/query`,
+    });
+
+    const res = httpResponse(
+      await handleBrokerRequest(request({ url: "/api/card/1/query" })),
+    );
+
+    expect(res.status).toBe(200);
+  });
+
+  it.each([
+    ["a page outside the API", `${window.location.origin}/auth/login`],
+    ["another origin", "https://evil.example.com/api/user/current"],
+  ])(
+    "reports a redirect to %s as a network error, so the app can't read what the session fetched there",
+    async (_, redirectUrl) => {
+      fetchMock.get("path:/api/user/current", {
+        status: 200,
+        body: "secret",
+        redirectUrl,
+      });
+
+      const res = await handleBrokerRequest(
+        request({ url: "/api/user/current" }),
+      );
+
+      expect(res).toEqual({
+        id: 1,
+        networkError: expect.stringContaining("redirect"),
+      });
+    },
+  );
+
+  it("answers an opaque redirect when the app asked for manual redirects", async () => {
+    // Neither Jest's fetch nor fetch-mock stops at a redirect, so this is what a browser's
+    // fetch resolves to then.
+    const fetchSpy = jest.spyOn(globalThis, "fetch").mockResolvedValue(
+      Object.defineProperty(new Response(null), "type", {
+        value: "opaqueredirect",
+      }),
+    );
+
+    try {
+      const res = await handleBrokerRequest(
+        request({ url: "/api/user/current", redirect: "manual" }),
+      );
+
+      expect(res).toEqual({ id: 1, opaqueRedirect: true });
+    } finally {
+      fetchSpy.mockRestore();
+    }
+  });
+
   it("reports a failed request as a network error, not as an HTTP status", async () => {
     fetchMock.get("path:/api/user/current", {
       throws: new TypeError("Failed to fetch"),
@@ -376,6 +449,28 @@ describe("installHostBroker", () => {
     sendReady({ type: DATA_APP_READY_MESSAGE_TYPE });
 
     expect(postToFrame).not.toHaveBeenCalled();
+  });
+
+  it("hands response bodies to the frame instead of copying them", async () => {
+    const postMessage = jest.spyOn(NodeMessagePort.prototype, "postMessage");
+
+    try {
+      sendReady();
+      const framePort = handedPort();
+      expect(await isRelayed(framePort)).toBe(true);
+
+      const [hostCall, ...otherHostCalls] = postMessage.mock.calls.filter(
+        (_, index) => postMessage.mock.contexts[index] !== framePort,
+      );
+      const response: unknown = hostCall?.[0];
+      const transfer = hostCall?.[1] ?? [];
+
+      expect(otherHostCalls).toEqual([]);
+      expect(transfer).toHaveLength(1);
+      expect(response).toEqual(expect.objectContaining({ body: transfer[0] }));
+    } finally {
+      postMessage.mockRestore();
+    }
   });
 
   it("stops relaying when it is torn down", async () => {
