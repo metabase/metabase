@@ -651,6 +651,17 @@
            (testing "a request that is not a data app's still lists every table"
              (is (< 1 (count (tables (mt/id) {})))))))))))
 
+(deftest database-endpoints-without-published-tables-test
+  (do-with-app-collection
+   (fn [_collection-id]
+     (data-apps.tu/do-with-library!
+      (fn [_library]
+        (testing "with no published table, a data app sees no database"
+          (is (= [] (:data (mt/user-http-request :crowberto :get 200 "database?include=tables" as-data-app)))))
+        (testing "and is refused the database by its ID"
+          (is (= (format "A data app can read only databases with tables published to the Library, not the database %d." (mt/id))
+                 (mt/user-http-request :crowberto :get 400 (format "database/%d" (mt/id)) as-data-app)))))))))
+
 (deftest without-data-apps-feature-test
   (testing "without the data-apps feature a data app's queries are not checked"
     (mt/with-premium-features #{}
