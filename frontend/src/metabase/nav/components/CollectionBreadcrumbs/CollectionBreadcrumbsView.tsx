@@ -81,6 +81,14 @@ const CrumbContent = ({ crumb, showTooltip }: CrumbContentProps) =>
 
 type TrailItem = { key: string; node: ReactNode };
 
+const toTrailItem = (
+  crumb: BreadcrumbCrumb,
+  showTooltip: boolean,
+): TrailItem => ({
+  key: getCrumbKey(crumb),
+  node: <CrumbContent crumb={crumb} showTooltip={showTooltip} />,
+});
+
 export const CollectionBreadcrumbsView = ({
   path,
   terminal,
@@ -90,14 +98,9 @@ export const CollectionBreadcrumbsView = ({
 
   const isCollapsed = path.length > 2 && !isExpanded;
 
-  const toTrailItem = (crumb: BreadcrumbCrumb): TrailItem => ({
-    key: getCrumbKey(crumb),
-    node: <CrumbContent crumb={crumb} showTooltip={truncateLongestFirst} />,
-  });
-
   const pathItems: TrailItem[] = isCollapsed
     ? [
-        toTrailItem(path[0]),
+        toTrailItem(path[0], truncateLongestFirst),
         {
           key: "expand",
           node: (
@@ -110,11 +113,13 @@ export const CollectionBreadcrumbsView = ({
             </ActionIcon>
           ),
         },
-        toTrailItem(path[path.length - 1]),
+        toTrailItem(path[path.length - 1], truncateLongestFirst),
       ]
-    : path.map(toTrailItem);
+    : path.map((crumb) => toTrailItem(crumb, truncateLongestFirst));
 
-  const items = terminal ? [...pathItems, toTrailItem(terminal)] : pathItems;
+  const items = terminal
+    ? [...pathItems, toTrailItem(terminal, truncateLongestFirst)]
+    : pathItems;
 
   return (
     <Flex
