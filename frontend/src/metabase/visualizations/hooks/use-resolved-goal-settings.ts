@@ -15,9 +15,9 @@ import {
 } from "./use-resolved-goal-data";
 
 /**
- * Resolves `graph.goal_value` to a number so the chart model only ever sees
- * numbers. A goal that can't resolve hides the goal line and is reported in
- * `errors`. Returns the given settings untouched when there is nothing to resolve.
+ * Resolves `graph.goal_value` to a number for the chart model. A goal that
+ * can't resolve turns off `graph.show_goal` and is reported in `errors`.
+ * Returns the given settings untouched when there is nothing to resolve.
  */
 export function useResolvedGoalSettings(
   card: Pick<Card, "display" | "dataset_query">,
