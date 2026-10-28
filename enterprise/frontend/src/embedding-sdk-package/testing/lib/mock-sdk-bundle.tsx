@@ -8,7 +8,6 @@ import type {
   FormatDateOptions,
   FormatDateRangeOptions,
 } from "embedding-sdk-bundle/lib/format-date-range";
-import type { FunctionSchema } from "embedding-sdk-bundle/types/schema";
 import type { MetabaseEmbeddingSdkBundleExports } from "embedding-sdk-bundle/types/sdk-bundle";
 import type { LoginStatus } from "embedding-sdk-bundle/types/user";
 
@@ -22,21 +21,16 @@ const APPLICATION_NAME = "Metabase";
 const AVAILABLE_FONTS: string[] = [];
 const LOGIN_STATUS: LoginStatus = { status: "success" };
 
-const MOCK_SCHEMA: FunctionSchema = { input: [] };
-
 type ChildrenProps = { children?: ReactNode };
 
 const EmptyOutput = () => <></>;
 
 const ChildrenOutput = ({ children }: ChildrenProps) => <>{children}</>;
 
-const createMockComponent = () =>
-  Object.assign(() => <></>, { schema: MOCK_SCHEMA });
-
-const createMockLayoutComponent = () =>
-  Object.assign(({ children }: ChildrenProps) => <>{children}</>, {
-    schema: MOCK_SCHEMA,
-  });
+const createLayoutOutput = () => {
+  const LayoutOutput = ({ children }: ChildrenProps) => <>{children}</>;
+  return LayoutOutput;
+};
 
 const STATIC_QUESTION_SUBCOMPONENTS = {
   Filter: EmptyOutput,
@@ -101,23 +95,23 @@ const formatDateRange = (
     .join(separator);
 
 export const MOCK_SDK_BUNDLE: MetabaseEmbeddingSdkBundleExports = {
-  CollectionBrowser: createMockComponent(),
-  CreateDashboardModal: createMockComponent(),
-  CreateQuestion: createMockComponent(),
+  CollectionBrowser: EmptyOutput,
+  CreateDashboardModal: EmptyOutput,
+  CreateQuestion: EmptyOutput,
   DateRangeCalendar: EmptyOutput,
   DateRangePopover: ChildrenOutput,
-  EditableDashboard: createMockComponent(),
-  InteractiveDashboard: createMockComponent(),
+  EditableDashboard: EmptyOutput,
+  InteractiveDashboard: EmptyOutput,
   InteractiveQuestion: Object.assign(
-    createMockLayoutComponent(),
+    createLayoutOutput(),
     INTERACTIVE_QUESTION_SUBCOMPONENTS,
   ),
   ComponentProvider: memo(ChildrenOutput),
   MetabotQuestion: EmptyOutput,
-  SdkDebugInfo: createMockComponent(),
-  StaticDashboard: createMockComponent(),
+  SdkDebugInfo: EmptyOutput,
+  StaticDashboard: EmptyOutput,
   StaticQuestion: Object.assign(
-    createMockLayoutComponent(),
+    createLayoutOutput(),
     STATIC_QUESTION_SUBCOMPONENTS,
   ),
   MetabotSubscriber: () => null,
