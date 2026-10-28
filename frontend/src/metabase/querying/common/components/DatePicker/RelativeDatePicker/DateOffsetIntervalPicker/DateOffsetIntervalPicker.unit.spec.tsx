@@ -313,6 +313,25 @@ describe("DateOffsetIntervalPicker", () => {
         ).not.toBeInTheDocument();
       });
 
+      it.each<[DatePickerUnit, string[]]>([
+        ["day", ["days", "weeks", "months", "quarters", "years"]],
+        ["quarter", ["quarters", "years"]],
+      ])(
+        "should list offset units in order for a %s unit",
+        async (unit, offsetUnits) => {
+          await setup({ value: { ...defaultValue, unit } });
+
+          await userEvent.click(
+            screen.getByRole("textbox", { name: "Starting from unit" }),
+          );
+
+          const suffix = direction === "past" ? "ago" : "from now";
+          expect(
+            screen.getAllByRole("option").map((option) => option.textContent),
+          ).toEqual(offsetUnits.map((offsetUnit) => `${offsetUnit} ${suffix}`));
+        },
+      );
+
       it("should display the actual date range", async () => {
         await setup({
           value: defaultValue,
