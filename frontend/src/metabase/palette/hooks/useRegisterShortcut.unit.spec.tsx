@@ -1,15 +1,18 @@
 import userEvent from "@testing-library/user-event";
-import { type KBarQuery, useKBar } from "kbar";
+import { type ActionImpl, type KBarQuery, useKBar } from "kbar";
 import type { DependencyList } from "react";
 
 import { renderWithProviders, screen } from "__support__/ui";
 
 import type { KeyboardShortcutId } from "../shortcuts";
 
+import { trackKeyboardShortcutPerformed } from "./analytics";
 import {
   type RegisterShortcutProps,
   useRegisterShortcut,
 } from "./useRegisterShortcut";
+
+jest.mock("./analytics");
 
 type HarnessProps = {
   shortcutsToRegister: RegisterShortcutProps[];
@@ -23,13 +26,15 @@ const Harness = ({ shortcutsToRegister, deps }: HarnessProps) => {
 
 type ProbeProps = {
   onQuery: (query: KBarQuery) => void;
+  onActions: (actions: Record<string, ActionImpl>) => void;
 };
 
 // Renders before `Harness`, so `onQuery` sees the kbar query before any
 // effect registers an action.
-const ActionNames = ({ onQuery }: ProbeProps) => {
+const ActionNames = ({ onQuery, onActions }: ProbeProps) => {
   const { query, actions } = useKBar((state) => ({ actions: state.actions }));
   onQuery(query);
+  onActions(actions);
 
   return (
     <ul>
@@ -49,10 +54,16 @@ const setup = async ({ shortcutsToRegister, deps }: SetupOpts) => {
   const onQuery = (query: KBarQuery) => {
     registerActions ??= jest.spyOn(query, "registerActions");
   };
+  const registeredActions = new Map<string, ActionImpl>();
+  const onActions = (actions: Record<string, ActionImpl>) => {
+    Object.values(actions).forEach((action) =>
+      registeredActions.set(action.id, action),
+    );
+  };
 
   const ui = (props: HarnessProps) => (
     <>
-      <ActionNames onQuery={onQuery} />
+      <ActionNames onQuery={onQuery} onActions={onActions} />
       <Harness {...props} />
     </>
   );
@@ -66,6 +77,7 @@ const setup = async ({ shortcutsToRegister, deps }: SetupOpts) => {
   return {
     rerender: (props: HarnessProps) => rerender(ui(props)),
     getRegisterActions: () => registerActions,
+    getRegisteredAction: (id: string) => registeredActions.get(id),
   };
 };
 
@@ -82,6 +94,7 @@ const pressToggleNavbarKey = () => userEvent.keyboard("[[");
 
 describe("useRegisterShortcut", () => {
   afterEach(() => {
+    jest.clearAllMocks();
     jest.restoreAllMocks();
   });
 
@@ -163,6 +176,36 @@ describe("useRegisterShortcut", () => {
 
     expect(lastPerform).toHaveBeenCalledTimes(1);
     expect(firstPerform).not.toHaveBeenCalled();
+  });
+
+  it("tracks a shortcut that runs from the keyboard", async () => {
+    const perform = mockPerform();
+    await setup({ shortcutsToRegister: [toggleNavbar(perform)] });
+
+    await pressToggleNavbarKey();
+
+    expect(perform).toHaveBeenCalledTimes(1);
+    expect(trackKeyboardShortcutPerformed).toHaveBeenCalledTimes(1);
+    expect(trackKeyboardShortcutPerformed).toHaveBeenCalledWith(
+      "toggle-navbar",
+    );
+  });
+
+  it("does not track a key press when the latest render dropped the id", async () => {
+    const perform = mockPerform();
+    const { rerender, getRegisteredAction } = await setup({
+      shortcutsToRegister: [toggleNavbar(perform)],
+    });
+    // kbar can still hold this action after a render drops its id, until the
+    // effect cleanup unregisters it.
+    const staleAction = getRegisteredAction("toggle-navbar");
+    expect(staleAction).toBeDefined();
+
+    rerender({ shortcutsToRegister: [] });
+    staleAction?.command?.perform(new KeyboardEvent("keydown"));
+
+    expect(perform).not.toHaveBeenCalled();
+    expect(trackKeyboardShortcutPerformed).not.toHaveBeenCalled();
   });
 
   it("registers nothing without a kbar provider", () => {

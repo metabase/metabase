@@ -60,16 +60,8 @@ export const useRegisterShortcut = (
 
   // kbar keeps the last action of a repeated id, so the last entry wins here too.
   // https://github.com/timc1/kbar/blob/v0.1.0-beta.45/src/action/ActionInterface.ts
-  const performLatest = (
-    id: KeyboardShortcutId,
-    action: ActionImpl,
-    event?: KeyboardEvent,
-  ) => {
-    const shortcut = latestShortcuts.current.findLast(
-      (candidate) => candidate.id === id,
-    );
-    shortcut?.perform(action, event);
-  };
+  const findLatest = (id: KeyboardShortcutId) =>
+    latestShortcuts.current.findLast((candidate) => candidate.id === id);
 
   const actions = ctx.query
     ? shortcutsToRegister.map(({ id, perform: _perform, ...rest }) => {
@@ -85,7 +77,11 @@ export const useRegisterShortcut = (
           ...shortcutDef,
           id,
           perform: (action: ActionImpl, event?: KeyboardEvent) => {
-            performLatest(id, action, event);
+            const shortcut = findLatest(id);
+            if (shortcut === undefined) {
+              return;
+            }
+            shortcut.perform(action, event);
             if (event) {
               trackKeyboardShortcutPerformed(id);
             }
