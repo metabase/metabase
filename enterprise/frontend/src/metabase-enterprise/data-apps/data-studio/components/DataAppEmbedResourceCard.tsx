@@ -20,13 +20,17 @@ export const DataAppEmbedResourceCard = ({
   } = useListDataAppsQuery();
 
   useEffect(() => {
-    const firstApp = apps[0];
+    if (isFetching || isError) {
+      return;
+    }
+
+    const fallbackPath = apps[0]?.name ?? "";
     const hasSelectedApp = apps.some((app) => app.name === value);
 
-    if (firstApp && !hasSelectedApp) {
-      onChange(firstApp.name);
+    if (!hasSelectedApp && value !== fallbackPath) {
+      onChange(fallbackPath);
     }
-  }, [apps, value, onChange]);
+  }, [apps, value, onChange, isFetching, isError]);
 
   return (
     <Card p="lg">
