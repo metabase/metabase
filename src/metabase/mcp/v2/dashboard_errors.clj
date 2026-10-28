@@ -1,8 +1,8 @@
 (ns metabase.mcp.v2.dashboard-errors
   "MCP's wording for the dashboard op compiler's errors.
-   [[metabase.metabot.toolkit.dashboard-ops]] throws an error code and the values behind it; this
-   namespace turns them into the teaching errors `dashboard_write` returns, including pointers to
-   MCP tools such as `learn` and `get_content`."
+   The compiler in [[metabase.metabot.toolkit.dashboard-ops]] throws an error code and the values behind it.
+   This namespace turns them into the teaching errors `dashboard_write` returns, with pointers to MCP tools such as
+   `learn` and `get_content`."
   (:require
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.message :as message]
@@ -12,8 +12,8 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private details
-  "For each error code in [[dashboard-ops/errors]], a function of the error data returning the message
-   that explains it, without the op prefix."
+  "For each error code in [[dashboard-ops/errors]], a function of the error data returning the message that explains it.
+   The message has no op prefix."
   {:missing-op
    (fn [_] (message/raw "missing `op` — see the tool description for the supported list."))
 
@@ -139,8 +139,9 @@
                   skills/wire-target-grammar))})
 
 (defn- op-message
-  "`detail` attributed to the op at `idx` (0-based, as sent): `op <idx> (<op-name>): <detail>`, or
-   `op <idx>: <detail>` when `op-name` is nil. `op-name` is caller-sent, so it renders quoted."
+  "The message `detail` attributed to the op at `idx` (0-based, as sent): `op <idx> (<op-name>): <detail>`.
+   Without an `op-name` it is `op <idx>: <detail>`.
+   The op name comes from the caller, so it renders quoted."
   [idx op-name detail]
   (if (nil? op-name)
     (message/msg ["op %d: %s"] idx detail)

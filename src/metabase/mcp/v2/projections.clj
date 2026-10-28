@@ -276,6 +276,7 @@
              {:id                   param-id
               :name                 (:name param)
               :type                 (:type param)
+              ;; Echoed so an agent can see the default and value source it just wrote.
               :default              (:default param)
               :required             (:required param)
               :values_source_type   (:values_source_type param)
