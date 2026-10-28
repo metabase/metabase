@@ -5,6 +5,7 @@
    [malli.json-schema :as mjs]
    [metabase.api-scope.core :as api-scope]
    [metabase.app-db.core :as mdb]
+   [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -175,6 +176,19 @@
           (testing "the destination points at the dashboard"
             (is (= {:type "dashboard" :id (:id dash)}
                    (get-in result [:data-parts 0 :data :destination])))))))))
+
+(deftest save-to-library-dashboard-test
+  (mt/with-premium-features #{:library}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-model-cleanup [:model/Card]
+        (mt/with-temp [:model/Collection coll {:type collection/library-dashboards-collection-type}
+                       :model/Dashboard  dash {:name "Library ops" :collection_id (:id coll)}]
+          (let [result (save! {:target_type "dashboard" :dashboard_id (:id dash)})
+                card   (t2/select-one :model/Card :id (get-in result [:structured-output :card-id]))]
+            (testing "the chart becomes a question of the Library dashboard, so it is Library content"
+              (is (= (:id dash) (:dashboard_id card)))
+              (is (= (:id coll) (:collection_id card)))
+              (is (t2/exists? :model/DashboardCard :dashboard_id (:id dash) :card_id (:id card))))))))))
 
 (deftest save-seeded-chart-display-test
   (mt/with-current-user (mt/user->id :crowberto)

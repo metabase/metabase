@@ -23,6 +23,7 @@
   assert-remote-syncable
   has-remote-synced-collection?
   check-for-remote-sync-update
+  check-library-dashboard-cards
   check-non-remote-synced-dependencies
   check-remote-synced-dependents
   create-library-collection!

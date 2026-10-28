@@ -8,6 +8,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
+   [metabase.config.core :as config]
    [metabase.dashboards.write :as dashboards.write]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
@@ -507,3 +508,17 @@
                                            (wire {:method "update" :id (:id dash)
                                                   :ops [{:op "add_card" :id -1 :card_id (:id card)
                                                          :series [9999999]}]}))))))))
+
+(deftest library-dashboard-rejects-non-library-card-test
+  (testing "a Library dashboard refuses a card outside the Library, naming it, and the atomic save writes nothing"
+    (when config/ee-available?
+      (mt/with-premium-features #{:library}
+        (mt/with-temp [:model/Collection coll {:type collection/library-dashboards-collection-type}
+                       :model/Dashboard  dash {:name "Library sales" :collection_id (:id coll)}
+                       :model/Card       card {:name "Revenue"}]
+          (is (re-find (re-pattern (str "Card IDs not in the Library: " (:id card) "\\. "
+                                        "Use a metric from the Library, or create a new question on this dashboard instead\\."))
+                       (tool-error (call-tool! :crowberto v2.tu/all-scopes "dashboard_write"
+                                               (wire {:method "update" :id (:id dash)
+                                                      :ops [{:op "add_card" :id -1 :card_id (:id card)}]})))))
+          (is (empty? (t2/select :model/DashboardCard :dashboard_id (:id dash)))))))))

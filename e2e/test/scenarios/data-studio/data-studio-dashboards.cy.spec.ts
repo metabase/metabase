@@ -13,17 +13,18 @@ const dashboardHeader = () => cy.findByTestId("dashboard-pane-header");
 
 function createLibraryDashboard() {
   H.createLibrary().then(({ dashboardsCollectionId }) => {
-    H.createQuestionAndDashboard({
-      questionDetails: {
+    H.createDashboard({
+      name: DASHBOARD_NAME,
+      collection_id: dashboardsCollectionId,
+    }).then(({ body: dashboard }) => {
+      cy.wrap(dashboard.id).as("dashboardId");
+      // only library cards may sit on a library dashboard, and a dashboard
+      // question lives in the dashboard's own (library) collection
+      H.createQuestion({
         name: QUESTION_NAME,
+        dashboard_id: dashboard.id,
         query: { "source-table": ORDERS_ID, aggregation: [["count"]] },
-      },
-      dashboardDetails: {
-        name: DASHBOARD_NAME,
-        collection_id: dashboardsCollectionId,
-      },
-    }).then(({ body: dashcard }) => {
-      cy.wrap(dashcard.dashboard_id).as("dashboardId");
+      });
     });
   });
 }
