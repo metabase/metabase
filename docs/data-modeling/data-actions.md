@@ -22,7 +22,7 @@ If you [sync the Library](./semantic-layer/library.md#versioning-the-library) wi
 
 ## Create a data action
 
-Only admins can create data actions. The **New** button only shows up if an admin has [turned on data actions](./models/actions/introduction.md#enabling-actions-for-a-database) for at least one database.
+Only admins can create data actions. Data actions only work on PostgreSQL and MySQL databases. The **New** button only shows up if an admin has [turned on data actions](./models/actions/introduction.md#enabling-actions-for-a-database) for at least one of these databases.
 
 You can create a data action in two ways:
 

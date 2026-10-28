@@ -26,7 +26,7 @@ Write SQL to create new actions.
 
 ## [Data actions](../../data-actions.md)
 
-Create actions for admins to run in Data Studio, or to share as public forms.
+Create actions that you can run in Data Studio, or share as public forms.
 
 ## [Actions on dashboards](../../../dashboards/actions.md)
 
