@@ -53,13 +53,18 @@ const ANSWERED = createMockReferencedEntitiesResults({
 const FAILED = createMockFailedReferencedEntitiesResults();
 
 type SetupOpts = {
+  display: VisualizationDisplay;
+  referencedEntities?: DatasetData["referenced_entities"];
   onUpdateGoalWarning?: OnUpdateGoalWarning;
 };
 
-async function setup(
-  rawSeries: RawSeries,
-  { onUpdateGoalWarning }: SetupOpts = {},
-) {
+async function setup({
+  display,
+  referencedEntities,
+  onUpdateGoalWarning,
+}: SetupOpts) {
+  const rawSeries = createSeries(display, referencedEntities);
+
   jest.useFakeTimers();
   renderWithProviders(
     <Visualization
@@ -81,7 +86,7 @@ describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
     });
 
     it("draws the goal line at the value answered by the dataset", async () => {
-      await setup(createSeries(display, ANSWERED));
+      await setup({ display, referencedEntities: ANSWERED });
 
       expect(queryEChartsGoalLine()).toBeInTheDocument();
       // the goal is far above every data point, so it stretches the y-axis up to it
@@ -101,7 +106,7 @@ describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
         },
       );
 
-      await setup(createSeries(display));
+      await setup({ display });
 
       expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
       expect(queryEChartsGoalLine()).not.toBeInTheDocument();
@@ -119,7 +124,7 @@ describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
     it("draws no goal line when fetching the reference fails", async () => {
       setupCardDataset({ status: 500 });
 
-      await setup(createSeries(display));
+      await setup({ display });
 
       expect(await screen.findByText("Jan")).toBeInTheDocument();
       expect(queryEChartsGoalLine()).not.toBeInTheDocument();
@@ -127,7 +132,7 @@ describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
     });
 
     it("draws no goal line when the dataset reports the reference as failed", async () => {
-      await setup(createSeries(display, FAILED));
+      await setup({ display, referencedEntities: FAILED });
 
       expect(screen.getByText("Jan")).toBeInTheDocument();
       expect(queryEChartsGoalLine()).not.toBeInTheDocument();
@@ -138,7 +143,7 @@ describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
     it("reports a goal warning when the reference cannot be resolved", async () => {
       const onUpdateGoalWarning = jest.fn<void, [boolean]>();
 
-      await setup(createSeries(display, FAILED), { onUpdateGoalWarning });
+      await setup({ display, referencedEntities: FAILED, onUpdateGoalWarning });
 
       expect(onUpdateGoalWarning).toHaveBeenLastCalledWith(true);
     });
@@ -146,7 +151,11 @@ describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
     it("reports no goal warning when the reference resolves", async () => {
       const onUpdateGoalWarning = jest.fn<void, [boolean]>();
 
-      await setup(createSeries(display, ANSWERED), { onUpdateGoalWarning });
+      await setup({
+        display,
+        referencedEntities: ANSWERED,
+        onUpdateGoalWarning,
+      });
 
       expect(onUpdateGoalWarning).toHaveBeenLastCalledWith(false);
     });

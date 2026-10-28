@@ -45,13 +45,16 @@ const ANSWERED = createMockReferencedEntitiesResults({
 const FAILED = createMockFailedReferencedEntitiesResults();
 
 type SetupOpts = {
+  referencedEntities?: DatasetData["referenced_entities"];
   onUpdateGoalWarning?: OnUpdateGoalWarning;
 };
 
-async function setup(
-  rawSeries: RawSeries,
-  { onUpdateGoalWarning }: SetupOpts = {},
-) {
+async function setup({
+  referencedEntities,
+  onUpdateGoalWarning,
+}: SetupOpts = {}) {
+  const rawSeries = createSeries(referencedEntities);
+
   jest.useFakeTimers();
   renderWithProviders(
     <Visualization
@@ -71,7 +74,7 @@ describe("box plot dynamic goal", () => {
   });
 
   it("draws the goal line at the value answered by the dataset", async () => {
-    await setup(createSeries(ANSWERED));
+    await setup({ referencedEntities: ANSWERED });
 
     expect(queryEChartsGoalLine()).toBeInTheDocument();
     // the goal is far above every data point, so it stretches the y-axis up to it
@@ -91,7 +94,7 @@ describe("box plot dynamic goal", () => {
       },
     );
 
-    await setup(createSeries());
+    await setup();
 
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
     expect(queryEChartsGoalLine()).not.toBeInTheDocument();
@@ -109,7 +112,7 @@ describe("box plot dynamic goal", () => {
   it("draws no goal line when fetching the reference fails", async () => {
     setupCardDataset({ status: 500 });
 
-    await setup(createSeries());
+    await setup();
 
     expect(await screen.findByText("Gadget")).toBeInTheDocument();
     expect(queryEChartsGoalLine()).not.toBeInTheDocument();
@@ -117,7 +120,7 @@ describe("box plot dynamic goal", () => {
   });
 
   it("draws no goal line when the dataset reports the reference as failed", async () => {
-    await setup(createSeries(FAILED));
+    await setup({ referencedEntities: FAILED });
 
     expect(screen.getByText("Gadget")).toBeInTheDocument();
     expect(queryEChartsGoalLine()).not.toBeInTheDocument();
@@ -128,7 +131,7 @@ describe("box plot dynamic goal", () => {
   it("reports a goal warning when the reference cannot be resolved", async () => {
     const onUpdateGoalWarning = jest.fn<void, [boolean]>();
 
-    await setup(createSeries(FAILED), { onUpdateGoalWarning });
+    await setup({ referencedEntities: FAILED, onUpdateGoalWarning });
 
     expect(onUpdateGoalWarning).toHaveBeenLastCalledWith(true);
   });
@@ -136,7 +139,7 @@ describe("box plot dynamic goal", () => {
   it("reports no goal warning when the reference resolves", async () => {
     const onUpdateGoalWarning = jest.fn<void, [boolean]>();
 
-    await setup(createSeries(ANSWERED), { onUpdateGoalWarning });
+    await setup({ referencedEntities: ANSWERED, onUpdateGoalWarning });
 
     expect(onUpdateGoalWarning).toHaveBeenLastCalledWith(false);
   });
