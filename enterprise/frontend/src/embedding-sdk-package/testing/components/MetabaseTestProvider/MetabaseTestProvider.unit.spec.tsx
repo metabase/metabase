@@ -2,7 +2,6 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { StrictMode, useState } from "react";
 
-import type { MetabaseDashboard } from "embedding-sdk-bundle/types/dashboard";
 import { CreateDashboardModal } from "embedding-sdk-package/components/public/CreateDashboardModal";
 import { InteractiveQuestion } from "embedding-sdk-package/components/public/InteractiveQuestion";
 import { StaticQuestion } from "embedding-sdk-package/components/public/StaticQuestion";
@@ -17,7 +16,8 @@ import { useDateFormatter } from "embedding-sdk-package/hooks/public/use-date-fo
 import { useMetabaseAuthStatus } from "embedding-sdk-package/hooks/public/use-metabase-auth-status";
 import { useMetabaseQuery } from "embedding-sdk-package/hooks/public/use-metabase-query";
 import { defineQuery } from "embedding-sdk-package/hooks/public/use-metabase-query/define-query";
-import { createMockUser } from "metabase-types/api/mocks";
+import { createMockDashboard } from "embedding-sdk-package/testing/lib/public/dashboard";
+import { createMockUser } from "embedding-sdk-package/testing/lib/public/user";
 
 import {
   MetabaseTestProvider,
@@ -79,21 +79,7 @@ const ORDERS_QUERY = defineQuery({
   source: { type: "card", entityId: "ordersQuestionEntity" },
 });
 
-const CREATED_DASHBOARD: MetabaseDashboard = {
-  id: 7,
-  entity_id: "createdDashboardEntity",
-  created_at: "2024-01-01T00:00:00Z",
-  updated_at: "2024-01-01T00:00:00Z",
-  name: "Q3 revenue",
-  description: null,
-  "last-edit-info": {
-    id: 1,
-    email: "ada@example.com",
-    first_name: "Ada",
-    last_name: "Lovelace",
-    timestamp: "2024-01-01T00:00:00Z",
-  },
-};
+const CREATED_DASHBOARD = createMockDashboard({ name: "Q3 revenue" });
 
 describe("MetabaseTestProvider", () => {
   it("renders SDK components as their children", async () => {

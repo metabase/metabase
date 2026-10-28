@@ -13,13 +13,15 @@ import type {
   InteractiveDashboardProps,
   StaticDashboardProps,
 } from "embedding-sdk-bundle/components/public/dashboard";
-import type { LoginStatus } from "embedding-sdk-bundle/types/user";
+import type {
+  LoginStatus,
+  MetabaseUser,
+} from "embedding-sdk-bundle/types/user";
 import { createMockSdkBundle } from "embedding-sdk-package/testing/lib/private/bundle";
 import {
   acquireMockSdk,
   installMockSdk,
 } from "embedding-sdk-package/testing/lib/private/install";
-import type { User } from "metabase-types/api";
 
 export type MetabaseTestOptions = {
   CollectionBrowser?: ComponentType<CollectionBrowserProps>;
@@ -33,7 +35,7 @@ export type MetabaseTestOptions = {
   MetabotQuestion?: ComponentType<MetabotQuestionProps>;
   StaticDashboard?: ComponentType<StaticDashboardProps>;
   StaticQuestion?: ComponentType<StaticQuestionProps>;
-  user?: User | null;
+  user?: MetabaseUser | null;
   loginStatus?: LoginStatus;
   applicationName?: string;
   availableFonts?: string[];
