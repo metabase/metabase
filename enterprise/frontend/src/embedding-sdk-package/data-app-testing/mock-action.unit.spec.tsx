@@ -1,0 +1,112 @@
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { useState } from "react";
+
+import { useDataAppAction } from "embedding-sdk-package/hooks/public/use-action";
+import { defineAction } from "embedding-sdk-package/hooks/public/use-action/define-action";
+import { MetabaseTestProvider } from "embedding-sdk-package/testing/components/MetabaseTestProvider";
+
+import { mockAction, mockActionError } from "./mock-action";
+
+const REFUND_ORDER = defineAction({
+  action: {
+    kind: "action",
+    id: "refundOrderEntity",
+    name: "Refund order",
+    type: "query",
+    parameters: [
+      { slug: "id", displayName: "ID", jsType: "number", required: true },
+      { slug: "reason", displayName: "Reason", jsType: "string" },
+    ],
+  },
+});
+
+type RefundButtonProps = {
+  parameters: { id: number; reason?: string };
+};
+
+const RefundButton = ({ parameters }: RefundButtonProps) => {
+  const { execute, result, error } = useDataAppAction(REFUND_ORDER);
+  const [thrownMessage, setThrownMessage] = useState("");
+
+  const handleClick = () =>
+    execute(parameters).catch((thrown: unknown) =>
+      setThrownMessage(thrown instanceof Error ? thrown.message : ""),
+    );
+
+  return (
+    <div>
+      <button onClick={handleClick}>Refund</button>
+      {result && <p>Refunded {result["rows-affected"]} order</p>}
+      {error && <p>{error.data.message}</p>}
+      {error?.data.errors?.reason && <p>{error.data.errors.reason}</p>}
+      {thrownMessage && <p>{thrownMessage}</p>}
+    </div>
+  );
+};
+
+type SetupOpts = {
+  parameters?: RefundButtonProps["parameters"];
+};
+
+const setup = async ({ parameters = { id: 1 } }: SetupOpts = {}) => {
+  render(
+    <MetabaseTestProvider>
+      <RefundButton parameters={parameters} />
+    </MetabaseTestProvider>,
+  );
+
+  await userEvent.click(await screen.findByRole("button", { name: "Refund" }));
+};
+
+describe("mockAction", () => {
+  it("resolves action with mocked result and records parameters", async () => {
+    const refund = mockAction(REFUND_ORDER, { "rows-affected": 1 });
+
+    await setup({ parameters: { id: 7, reason: "Damaged" } });
+
+    expect(await screen.findByText("Refunded 1 order")).toBeInTheDocument();
+    expect(refund.calls()).toEqual([
+      { parameters: { id: 7, reason: "Damaged" } },
+    ]);
+    expect(refund.lastCall()).toEqual({
+      parameters: { id: 7, reason: "Damaged" },
+    });
+  });
+
+  it("rejects action that has no mock", async () => {
+    await setup();
+
+    expect(
+      await screen.findByText(/No mock for action "Refund order"/),
+    ).toBeInTheDocument();
+  });
+
+  it("rejects parameters that do not match action", async () => {
+    const refund = mockAction(REFUND_ORDER, { "rows-affected": 1 });
+
+    // @ts-expect-error `id` is a number; the mock checks it at runtime too
+    await setup({ parameters: { id: "7" } });
+
+    expect(
+      await screen.findByText(/"id" must be a number value/),
+    ).toBeInTheDocument();
+    expect(refund.calls()).toHaveLength(0);
+  });
+});
+
+describe("mockActionError", () => {
+  it("rejects action with mocked error and field errors", async () => {
+    const refund = mockActionError(REFUND_ORDER, {
+      status: 400,
+      message: "Refund failed",
+      errors: { reason: "Reason is required" },
+    });
+
+    await setup();
+
+    expect(await screen.findByText("Refund failed")).toBeInTheDocument();
+    expect(screen.getByText("Reason is required")).toBeInTheDocument();
+    expect(refund.lastCall()).toEqual({ parameters: { id: 1 } });
+  });
+});
