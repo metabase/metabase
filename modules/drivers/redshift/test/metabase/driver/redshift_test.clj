@@ -572,6 +572,7 @@
                                          ["double" :type/Float]
                                          ["decimal(2, 10)" :type/Decimal]
                                          ["binary" :type/Binary]
+                                         [:varbyte :type/Binary]
                                          ["date" :type/Date]
                                          ["time" nil]
                                          ["timestamp" :type/DateTime]
