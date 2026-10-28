@@ -81,7 +81,9 @@
     (queries/delete-all-parameter-cards-for-parameterized-object! "dashboard" dashboard-id)
     (dashboards.db/delete-dashboard-revisions! dashboard-id)
     ;; delete through Toucan rather than the FK cascade so the PulseChannel hook removes the SendPulse triggers
-    (dashboards.db/delete-pulses-for-dashboard! dashboard-id)))
+    (dashboards.db/delete-pulses-for-dashboard! dashboard-id)
+    ;; and so the Card hooks run for the Cards saved in this Dashboard, including the checks that refuse deleting one
+    (dashboards.db/delete-cards-for-dashboard! dashboard-id)))
 
 (t2/define-before-insert :model/Dashboard
   [dashboard]

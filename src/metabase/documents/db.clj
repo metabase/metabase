@@ -73,6 +73,11 @@
   [id :- ms/PositiveInt]
   (t2/delete! :model/Document :id id))
 
+(mu/defn delete-cards-for-document!
+  "Delete the Cards saved in the Document with `document-id`, returning the number deleted."
+  [document-id :- ms/PositiveInt]
+  (t2/delete! :model/Card :document_id document-id))
+
 (mu/defn document-public-uuid
   "The public uuid of the Document with `id`, or nil."
   [id :- ms/PositiveInt]

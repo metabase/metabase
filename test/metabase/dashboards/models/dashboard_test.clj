@@ -176,6 +176,21 @@
          (is (nil? (t2/select-one :model/Pulse pulse-id)))
          (is (= #{} (pulse-channel-test/send-pulse-triggers pulse-id))))))))
 
+(deftest delete-dashboard-runs-card-delete-hooks-test
+  (testing "hard deleting a Dashboard deletes the Cards saved in it through the model, so their delete hooks run"
+    (mt/with-temp [:model/Dashboard dashboard {}
+                   :model/Card      card      {:dashboard_id (:id dashboard)}
+                   :model/Card      other     {}
+                   :model/Revision  _         {:model "Card", :model_id (:id card), :user_id (mt/user->id :crowberto), :object {}}
+                   :model/Revision  _         {:model "Card", :model_id (:id other), :user_id (mt/user->id :crowberto), :object {}}]
+      (t2/delete! :model/Dashboard (:id dashboard))
+      (is (not (t2/exists? :model/Card :id (:id card))))
+      (testing "the Card's revisions are deleted by its delete hook"
+        (is (not (t2/exists? :model/Revision :model "Card" :model_id (:id card)))))
+      (testing "other Cards are untouched"
+        (is (t2/exists? :model/Card :id (:id other)))
+        (is (t2/exists? :model/Revision :model "Card" :model_id (:id other)))))))
+
 (deftest delete-collection-deletes-trashed-dashboard-subscriptions-test
   (testing "hard deleting a Collection holding a directly trashed Dashboard deletes its Pulse and SendPulse triggers"
     (do-with-dashboard-subscription!

@@ -910,3 +910,18 @@
                   is a serdes path, so any guard that expects a raw integer skips the node and leaves
                   the path in place"
           (is (= card-id (get-in imported [:content 0 :attrs "id"]))))))))
+
+(deftest delete-document-runs-card-delete-hooks-test
+  (testing "hard deleting a Document deletes the Cards saved in it through the model, so their delete hooks run"
+    (mt/with-temp [:model/Document document {:archived true}
+                   :model/Card     card     {:document_id (:id document)}
+                   :model/Card     other    {}
+                   :model/Revision _        {:model "Card", :model_id (:id card), :user_id (mt/user->id :crowberto), :object {}}
+                   :model/Revision _        {:model "Card", :model_id (:id other), :user_id (mt/user->id :crowberto), :object {}}]
+      (t2/delete! :model/Document (:id document))
+      (is (not (t2/exists? :model/Card :id (:id card))))
+      (testing "the Card's revisions are deleted by its delete hook"
+        (is (not (t2/exists? :model/Revision :model "Card" :model_id (:id card)))))
+      (testing "other Cards are untouched"
+        (is (t2/exists? :model/Card :id (:id other)))
+        (is (t2/exists? :model/Revision :model "Card" :model_id (:id other)))))))

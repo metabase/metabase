@@ -41,6 +41,11 @@
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/delete! :model/Revision :model "Dashboard" :model_id dashboard-id))
 
+(mu/defn delete-cards-for-dashboard!
+  "Delete the Cards saved in the Dashboard with `dashboard-id`, returning the number deleted."
+  [dashboard-id :- ::lib.schema.id/dashboard]
+  (t2/delete! :model/Card :dashboard_id dashboard-id))
+
 (mu/defn delete-pulses-for-dashboard!
   "Delete the Pulses of the Dashboard with `dashboard-id`, returning the number deleted."
   [dashboard-id :- ::lib.schema.id/dashboard]
