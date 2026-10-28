@@ -546,7 +546,7 @@ const GROUPS: DrillGroup[] = [
   },
   {
     get label() {
-      return t`Changes the query's shape or opens another view`;
+      return t`Writes no filter`;
     },
     rows: OTHER_DRILLS,
   },
