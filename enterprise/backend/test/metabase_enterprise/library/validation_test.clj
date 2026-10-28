@@ -309,3 +309,20 @@
         (testing "Cannot move a Metrics subcollection into a vanilla collection"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot move a semantic layer collection outside the semantic layer"
                                 (t2/update! :model/Collection (:id metrics-sub) {:location vanilla-location}))))))))
+
+(deftest library-subcollection-cannot-move-to-the-root-test
+  (mt/with-premium-features #{:library}
+    (mt/with-temp [:model/Collection library-root   {:name "Library" :type collection/library-collection-type}
+                   :model/Collection metrics-root   {:name     "Metrics" :type collection/library-metrics-collection-type
+                                                     :location (str "/" (:id library-root) "/")}
+                   :model/Collection dashboards-root {:name     "Dashboards" :type collection/library-dashboards-collection-type
+                                                      :location (str "/" (:id library-root) "/")}
+                   :model/Collection metrics-sub    {:name     "Metrics Sub" :type collection/library-metrics-collection-type
+                                                     :location (str "/" (:id library-root) "/" (:id metrics-root) "/")}
+                   :model/Collection dashboards-sub {:name     "Dashboards Sub" :type collection/library-dashboards-collection-type
+                                                     :location (str "/" (:id library-root) "/" (:id dashboards-root) "/")}]
+      (doseq [sub [metrics-sub dashboards-sub]]
+        (testing (str (:name sub) " can't move to the root collection")
+          (is (= "Cannot move a semantic layer collection outside the semantic layer"
+                 (:message (mt/user-http-request :crowberto :put 500 (str "collection/" (:id sub)) {:parent_id nil}))))
+          (is (= (:location sub) (t2/select-one-fn :location :model/Collection (:id sub)))))))))

@@ -57,7 +57,9 @@
       (throw (ex-info "Cannot update properties on a semantic layer collection" {})))
     (when (and (collection/is-library-collection? (:id collection))
                (contains? change-keys :location)
-               (when-let [parent-id (collection/location-path->parent-id (:location collection))]
-                 (not= (:type collection) (library.db/collection-type parent-id))))
+               ;; a nil parent is the root collection, outside the Library
+               (not= (:type collection)
+                     (some-> (collection/location-path->parent-id (:location collection))
+                             library.db/collection-type)))
       (throw (ex-info "Cannot move a semantic layer collection outside the semantic layer" {}))))
   true)
