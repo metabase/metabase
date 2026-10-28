@@ -445,6 +445,29 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     });
   });
 
+  it('should show the Models title without a back link in the staged picker when `entityTypes` = ["model"]', () => {
+    cy.signOut();
+    mockAuthProviderAndJwtSignIn();
+
+    mountSdkContent(
+      <div style={{ display: "flex", padding: "20px" }}>
+        <InteractiveQuestion
+          questionId="new"
+          dataPicker="staged"
+          entityTypes={["model"]}
+        />
+      </div>,
+    );
+
+    getSdkRoot().findByText("Pick your starting data").should("be.visible");
+
+    H.popover().within(() => {
+      cy.findByText("Orders Model").should("be.visible");
+      cy.findByTestId("saved-entity-title").should("have.text", "Models");
+      cy.findByTestId("saved-entity-back-navigation").should("not.exist");
+    });
+  });
+
   [
     {
       targetCollectionId: "personal",

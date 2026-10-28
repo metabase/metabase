@@ -494,6 +494,38 @@ describe("DataSourceSelector", () => {
       expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
     });
 
+    it('should show the Models title without a back link when reopened on a model and `entityTypes` = ["model"]', async () => {
+      const model = createMockCard({
+        id: 140,
+        name: "Orders model",
+        type: "model",
+      });
+      setupCardEndpoints(model);
+      setupTableQueryMetadataEndpoint(
+        createMockTable({
+          id: getQuestionVirtualTableId(model.id),
+          db_id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        }),
+      );
+
+      setup({
+        ...setupOpts,
+        entityTypes: ["model"],
+        selectedTable: {
+          id: getQuestionVirtualTableId(model.id),
+          databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        },
+      });
+
+      expect(await screen.findByText("Our analytics")).toBeInTheDocument();
+      expect(screen.getByTestId("saved-entity-title")).toHaveTextContent(
+        "Models",
+      );
+      expect(
+        screen.queryByTestId("saved-entity-back-navigation"),
+      ).not.toBeInTheDocument();
+    });
+
     it("should open the models, never the saved questions, when reopened on a model that is still loading", async () => {
       const model = createMockCard({
         id: 140,
@@ -616,6 +648,21 @@ describe("DataSourceSelector", () => {
       expect(await screen.findByText("Our analytics")).toBeInTheDocument();
       expect(screen.getByText("Models")).toBeInTheDocument();
       expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
+    });
+
+    it('should show the Models title without a back link when `entityTypes` = ["model"]', async () => {
+      setup({
+        ...setupOpts,
+        entityTypes: ["model"],
+      });
+
+      expect(await screen.findByText("Our analytics")).toBeInTheDocument();
+      expect(screen.getByTestId("saved-entity-title")).toHaveTextContent(
+        "Models",
+      );
+      expect(
+        screen.queryByTestId("saved-entity-back-navigation"),
+      ).not.toBeInTheDocument();
     });
   });
 
