@@ -4252,6 +4252,9 @@
       (doseq [column-name ["Self__TOTAL" "TOTAL_2"]]
         (is (= (typed (join-ref "Outer" column-name) "type/Float")
                (filtered (join-ref "Outer" column-name))))))
+    (testing "a quoted desired alias is unquoted and typed"
+      (is (= (typed (join-ref "Outer" "Self__TOTAL") "type/Float")
+             (filtered (join-ref "Outer" "\"Self__TOTAL\"")))))
     (testing "a ref the LLM typed itself by the desired alias is accepted"
       (is (= "type/Number" (base-type (filtered (typed (join-ref "Outer" "Self__TOTAL") "type/Number"))))))
     (testing "a name the join doesn't return is still reported"
