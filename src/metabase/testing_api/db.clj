@@ -77,8 +77,8 @@
   (t2/delete! :model/MetabotConversation {:where [:in :id conversation-ids]}))
 
 (mu/defn insert-metabot-conversation!
-  "Insert the MetabotConversation `row`."
-  [row :- ::metabot.schema/metabot-conversation.update]
+  "Insert the MetabotConversation `row`. A conversation carries its own id: the app DB does not mint one."
+  [row :- ::metabot.schema/metabot-conversation]
   (t2/insert! :model/MetabotConversation row))
 
 (mu/defn insert-metabot-message!
