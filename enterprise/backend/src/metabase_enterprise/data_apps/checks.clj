@@ -19,7 +19,6 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
