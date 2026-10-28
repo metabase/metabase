@@ -111,6 +111,24 @@
     (testing "no result_metadata: the instance infers it on import"
       (is (not (contains? (read-yaml "collections/main/dbt_metrics/sales.yaml") :result_metadata))))))
 
+(deftest write-clears-previous-run-test
+  (let [out-dir   (temp-dir)
+        write!    (fn [labels]
+                    (emit/write! out-dir (emit/files config (tu/resolve-manifest-map (tu/metrics-manifest labels)))))
+        card-file (fn [file-name] (io/file out-dir "collections/main/dbt_metrics" file-name))
+        other     (io/file out-dir "collections/main/other_collection/card.yaml")]
+    (write! ["Sales" "Quantity"])
+    (io/make-parents other)
+    (spit other "name: Other")
+    (write! ["Sales"])
+    (testing "a metric removed from the project does not survive as a file"
+      (is (not (.exists (card-file "quantity.yaml")))))
+    (testing "the metrics still in the project, and the collection, are written"
+      (is (.exists (card-file "sales.yaml")))
+      (is (.exists (io/file out-dir "collections/main/dbt_metrics.yaml"))))
+    (testing "files outside the collection are left alone"
+      (is (.exists other)))))
+
 (def ^:private sum-sales [:sum {} (fld "sales" :type/Float)])
 
 (deftest ^:parallel fill-nulls-with-test

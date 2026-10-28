@@ -85,7 +85,11 @@ warehouse fails there.
 every metric that could not be converted with the reason ("Limitations" below collects every reason). Nothing is
 silently dropped, and one bad metric does not stop the run: an unexpected exception while resolving a metric is logged
 with its stack and reported like any other unsupported metric, naming the exception. Entity IDs are derived from the
-dbt metric's unique ID, so re-running and re-importing updates the existing cards instead of duplicating them.
+dbt metric's unique ID, so re-running and re-importing updates the existing cards instead of duplicating them. A
+re-run first deletes what the previous run wrote for the collection (`collections/main/<collection>.yaml` and
+`collections/main/<collection>/`), so a metric renamed or removed from the project since then does not survive as a
+stale file: import never deletes, so a stale card file would come back as a card. Anything else under `:out-dir` is
+left alone.
 
 The output is a serdes tree, `collections/main/<collection>.yaml` plus one card per metric under
 `collections/main/<collection>/`, in the same format `export` produces. Import it into the instance from QRES-2:
