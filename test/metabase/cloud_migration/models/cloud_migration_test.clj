@@ -137,7 +137,18 @@
     (doseq [args [{} {:changes {}} {:rows [{:id 1}]}]]
       (is (not (#'cloud-migration/update-exempted? :report_card args)))))
   (testing "A full exception permits inserts and deletes"
-    (is (#'cloud-migration/update-exempted? :login_history {}))))
+    (is (#'cloud-migration/update-exempted? :login_history {})))
+  (testing "FieldValues allow only the last_used_at touch"
+    (is (#'cloud-migration/update-exempted? :metabase_fieldvalues {:changes {:last_used_at nil :updated_at nil}}))
+    (is (not (#'cloud-migration/update-exempted? :metabase_fieldvalues {:changes {:values []}})))))
+
+(deftest read-only-field-values-test
+  (testing "Reading cached filter values works in read-only mode"
+    (let [url (format "field/%d/values" (mt/id :categories :name))]
+      (mt/user-http-request :crowberto :get 200 url)
+      (mt/with-temporary-setting-values [read-only-mode true]
+        (is (=? {:values seq}
+                (mt/user-http-request :crowberto :get 200 url)))))))
 
 (deftest ^:synchronized store-url-test
   (testing "When not dev"
