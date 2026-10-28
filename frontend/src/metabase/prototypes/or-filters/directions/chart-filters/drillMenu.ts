@@ -245,19 +245,19 @@ const PIVOT_TYPES: Record<
   time: { icon: "calendar", title: () => t`Time` },
 };
 
-function pivotAction(rowsQuery: Lib.Query, drill: Lib.DrillThru): DrillAction {
+function pivotAction(query: Lib.Query, drill: Lib.DrillThru): DrillAction {
   const { pivotTypes, stageIndex } = Lib.pivotDrillDetails(drill);
   const byType = pivotTypes.map((pivotType) => ({
     id: `pivot-${pivotType}`,
     ...PIVOT_TYPES[pivotType],
     title: PIVOT_TYPES[pivotType].title(),
     children: Lib.pivotColumnsForType(drill, pivotType).map((column) => {
-      const info = Lib.displayInfo(rowsQuery, stageIndex, column);
+      const info = Lib.displayInfo(query, stageIndex, column);
       return {
         id: `pivot-${pivotType}-${info.longDisplayName}`,
         icon: PIVOT_TYPES[pivotType].icon,
         title: info.displayName,
-        apply: () => Lib.drillThru(rowsQuery, -1, undefined, drill, column),
+        apply: () => Lib.drillThru(query, -1, undefined, drill, column),
       };
     }),
   }));
@@ -303,12 +303,12 @@ function copyValueAction(value: string): DrillAction {
 
 /** Today's popover, in its order, without the `=` `≠` `<` `>` buttons. */
 function currentActions(
-  rowsQuery: Lib.Query,
+  query: Lib.Query,
   drills: Lib.DrillThru[],
 ): DrillAction[] {
   const actions = drills.flatMap((drill): DrillAction[] => {
-    const info = Lib.displayInfo(rowsQuery, -1, drill);
-    const apply = () => Lib.drillThru(rowsQuery, -1, undefined, drill);
+    const info = Lib.displayInfo(query, -1, drill);
+    const apply = () => Lib.drillThru(query, -1, undefined, drill);
     switch (info.type) {
       case "drill-thru/underlying-records":
         return [
@@ -331,7 +331,7 @@ function currentActions(
       case "drill-thru/zoom-in.geographic":
         return [{ id: info.type, icon: "zoom_in", title: t`Zoom in`, apply }];
       case "drill-thru/pivot":
-        return [pivotAction(rowsQuery, drill)];
+        return [pivotAction(query, drill)];
       default:
         return [];
     }
@@ -362,8 +362,11 @@ export function getDrillMenu({
   markNoun,
 }: GetDrillMenuOpts): DrillMenuModel | undefined {
   const rowsQuery = rowsOnly(query);
+  // The click comes from the full query's results, so the drills must see the
+  // full query too: that is how lib traces a summary-stage column back to the
+  // breakout it came from. Each drill then lands on the rows stage itself.
   const drills = Lib.availableDrillThrus(
-    rowsQuery,
+    query,
     -1,
     undefined,
     clicked.column,
@@ -373,7 +376,7 @@ export function getDrillMenu({
   );
   const underlying = drills.find(
     (drill) =>
-      Lib.displayInfo(rowsQuery, -1, drill).type ===
+      Lib.displayInfo(query, -1, drill).type ===
       "drill-thru/underlying-records",
   );
 
@@ -386,15 +389,24 @@ export function getDrillMenu({
 
   const options: DrillOption[] = [];
   if (underlying) {
-    const drilled = Lib.drillThru(rowsQuery, -1, undefined, underlying);
+    const drilled = Lib.drillThru(query, -1, undefined, underlying);
     const newFilters = Lib.filters(drilled, ROWS_STAGE).slice(
       Lib.filters(rowsQuery, ROWS_STAGE).length,
     );
     options.push(...rowOptions(query, drilled, newFilters, header));
   }
 
+  // After a summary stage (a threshold, a sort) the chart's columns no longer
+  // come from an aggregation, so match them to the summary's by name.
+  const measureNames = new Set(
+    Lib.returnedColumns(rowsQuery, ROWS_STAGE)
+      .map((column) => Lib.displayInfo(rowsQuery, ROWS_STAGE, column))
+      .filter((info) => info.isAggregation)
+      .map((info) => info.name),
+  );
   const isMeasure =
-    clicked.column?.source === "aggregation" &&
+    (clicked.column?.source === "aggregation" ||
+      measureNames.has(clicked.column?.name ?? "")) &&
     typeof clicked.value === "number";
   const formattedMeasure =
     isMeasure && clicked.column
@@ -423,7 +435,7 @@ export function getDrillMenu({
       ? formatPlain(clicked.value, clicked.column)
       : undefined);
   const actions = [
-    ...currentActions(rowsQuery, drills),
+    ...currentActions(query, drills),
     AUTOMATIC_INSIGHTS,
     ...(clickedValue ? [copyValueAction(clickedValue)] : []),
   ];

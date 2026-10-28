@@ -6,16 +6,29 @@ import type { FilterDirection } from "../types";
 
 import { DataViewCanvas } from "./chart-filters/DataViewCanvas";
 import { DrillMenuCanvas } from "./chart-filters/DrillMenuCanvas";
-import { LegendFilterWrap, LegendFilters } from "./chart-filters/LegendFilters";
+import {
+  AxisTitleFilter,
+  LegendFilterWrap,
+  LegendFilters,
+} from "./chart-filters/LegendFilters";
 import { StackedCanvas } from "./chart-filters/StackedCanvas";
 import { ChartHandlesCanvas } from "./chart-handles/ChartHandlesCanvas";
 import { ExpressionBarDataZone } from "./expression-bar-rows/DataZone";
+import {
+  type ExpressionBarProps,
+  ExpressionBar as RowsExpressionBar,
+} from "./expression-bar-rows/ExpressionBar";
+import { SummarizeBar } from "./expression-bar-rows/SummarizeBar";
 import { ExpressionBarNotebook as UnifiedExpressionBarNotebook } from "./expression-bar-unified/ExpressionBarNotebook";
 import {
   ExpressionBarSplitPrototype,
   ExpressionBarSummaryMenuPrototype,
   ExpressionBarUnifiedPrototype,
 } from "./expression-bar-unified/ExpressionBarPrototype";
+
+/** The chill-mode rows bar, flush inside a notebook Filter cell. */
+const NotebookRowsBar = (props: ExpressionBarProps) =>
+  createElement(RowsExpressionBar, { ...props, isInNotebook: true });
 
 /** Iteration 3: the expression bar with the stages folded into one stream. */
 export const ITERATION_3_DIRECTIONS: FilterDirection[] = [
@@ -25,7 +38,7 @@ export const ITERATION_3_DIRECTIONS: FilterDirection[] = [
       return t`Aggregation filters from the legend`;
     },
     get description() {
-      return t`"Aggregation filters with \"show if\" pills" without the "Show if…" and "+" beside the legend: the legend is the way in. Each measure in it is a pill, outlined on hover with a "Click to filter" tooltip; clicking it opens the number filter for that measure right there. Once filtered, the legend reads the condition: "Count ≥ 3", the name bold and the value regular, with × to remove it.`;
+      return t`"Aggregation filters with \"show if\" pills" without the "Show if…" and "+" beside the legend: the legend is the way in. Each measure in it is a pill, outlined on hover with a "Click to filter" tooltip; clicking it opens the number filter for that measure right there. Y-axis titles are pills too, with or without a legend, one per axis when two measures split them. Once filtered, the legend reads the condition: "Count ≥ 3", the name bold and the value regular, with × to remove it. One measure without series has no legend until it's filtered: then a legend of just that condition appears. Clicking a bar offers "Filter…" too.`;
     },
     Component: ExpressionBarSplitPrototype,
     Canvas: (props) =>
@@ -34,6 +47,14 @@ export const ITERATION_3_DIRECTIONS: FilterDirection[] = [
         DataZone: ExpressionBarDataZone,
         Legend: LegendFilters,
         LegendWrap: LegendFilterWrap,
+        AxisTitle: AxisTitleFilter,
+      }),
+    NotebookCanvas: (props) =>
+      createElement(UnifiedExpressionBarNotebook, {
+        ...props,
+        FilterBar: NotebookRowsBar,
+        SummarizeBar,
+        appliesOnVisualize: true,
       }),
     initialExample: REALISTIC_EXAMPLES[0],
   },
@@ -76,6 +97,7 @@ export const ITERATION_3_DIRECTIONS: FilterDirection[] = [
     Component: ExpressionBarSplitPrototype,
     Canvas: DrillMenuCanvas,
     initialExample: REALISTIC_EXAMPLES[0],
+    draft: true,
   },
   {
     id: "expression-bar-unified",

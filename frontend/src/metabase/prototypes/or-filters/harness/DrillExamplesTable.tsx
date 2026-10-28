@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Code, Group, Stack, Text } from "metabase/ui";
+import { Code, Group, Stack, Text, Tooltip } from "metabase/ui";
 
 import type { Example } from "../types";
 
@@ -18,9 +18,12 @@ import {
   withCountFilterDrilled,
   withCountWhereByCategory,
   withCountWhereDrilled,
+  withCountWhereOrByCategory,
+  withCountWhereOrDrilled,
   withFkFilterDrilled,
   withMonthCombined,
   withMonthExtracted,
+  withOrExample,
   withPivotDrilled,
   withQuickFilterDrilled,
   withRawRows,
@@ -33,20 +36,27 @@ import {
   withZoomTimeDrilled,
 } from "./examples";
 
+type FilterTarget = "rows" | "summary" | "none";
+
 type DrillRow = {
   /** The drill's type in `metabase.lib.drill-thru`, e.g. `fk-filter`. */
   drill: string;
   /** Distinguishes rows that exercise the same drill on different shapes. */
   variant?: string;
-  writesFilter: boolean;
-  /** Index into `FOOTNOTES`, for the two drills whose filter is not on this query. */
-  footnote?: number;
+  /** Where the drill's filter lands; `none` when it writes no filter. */
+  filter: FilterTarget;
+  /** What the drill does to the query, in a few words. */
+  queryChange: string;
   /** The unfiltered query the drill appears on; absent when no shape on Orders offers it. */
   start?: Example;
   /** The queries the drill produces; empty when it opens another view instead. */
   results: Example[];
   /** What to click in the results, then which popover item. */
   howToOpen: string;
+  /** Set once the drill was tried from the "+ OR" start: whether it landed correctly next to the OR. */
+  worksWithOr?: boolean;
+  /** Why it breaks, when `worksWithOr` is false. */
+  orFailure?: string;
 };
 
 type DrillGroup = {
@@ -69,6 +79,23 @@ const COUNT_BY_CATEGORY: Example = {
   display: "bar",
 };
 
+/** Explicitly a table, so the chart-based directions show cells and headers to click. */
+const COUNT_BY_CATEGORY_TABLE: Example = {
+  get label() {
+    return t`Count by Category`;
+  },
+  load: withCountByCategory,
+  display: "table",
+};
+
+const COUNT_FILTERED_TABLE: Example = {
+  get label() {
+    return t`Count > 4939`;
+  },
+  load: withCountFilterDrilled,
+  display: "table",
+};
+
 const MONTH_EXTRACTED: Example = {
   get label() {
     return t`Month of year`;
@@ -79,7 +106,10 @@ const MONTH_EXTRACTED: Example = {
 const FILTER_DRILLS: DrillRow[] = [
   {
     drill: "quick-filter",
-    writesFilter: true,
+    filter: "rows",
+    get queryChange() {
+      return t`Adds one filter on the clicked value`;
+    },
     start: RAW_ROWS,
     results: [
       {
@@ -92,34 +122,30 @@ const FILTER_DRILLS: DrillRow[] = [
     get howToOpen() {
       return t`Click a Total cell → ">"`;
     },
+    worksWithOr: true,
   },
   {
     drill: "quick-filter",
     get variant() {
       return t`on an aggregation`;
     },
-    writesFilter: true,
-    start: {
-      get label() {
-        return t`Count by Category`;
-      },
-      load: withCountByCategory,
+    filter: "summary",
+    get queryChange() {
+      return t`Adds the filter on the stage after the summary`;
     },
-    results: [
-      {
-        get label() {
-          return t`Count > 4939`;
-        },
-        load: withCountFilterDrilled,
-      },
-    ],
+    start: COUNT_BY_CATEGORY_TABLE,
+    results: [COUNT_FILTERED_TABLE],
     get howToOpen() {
       return t`Click the Gadget Count cell → ">"; lands on the stage after the summary`;
     },
+    worksWithOr: true,
   },
   {
     drill: "fk-filter",
-    writesFilter: true,
+    filter: "rows",
+    get queryChange() {
+      return t`Adds FK = value`;
+    },
     start: RAW_ROWS,
     results: [
       {
@@ -132,10 +158,14 @@ const FILTER_DRILLS: DrillRow[] = [
     get howToOpen() {
       return t`Click a Product ID cell → "View this Product's Orders"`;
     },
+    worksWithOr: true,
   },
   {
     drill: "column-filter",
-    writesFilter: true,
+    filter: "rows",
+    get queryChange() {
+      return t`Adds the filter picked in the widget`;
+    },
     start: RAW_ROWS,
     results: [
       {
@@ -148,10 +178,30 @@ const FILTER_DRILLS: DrillRow[] = [
     get howToOpen() {
       return t`Click the Total header → "Filter by this column"`;
     },
+    worksWithOr: true,
+  },
+  {
+    drill: "column-filter",
+    get variant() {
+      return t`on an aggregation`;
+    },
+    filter: "summary",
+    get queryChange() {
+      return t`Adds the picked filter on the stage after the summary`;
+    },
+    start: COUNT_BY_CATEGORY_TABLE,
+    results: [COUNT_FILTERED_TABLE],
+    get howToOpen() {
+      return t`Click the Count header → "Filter by this column"`;
+    },
+    worksWithOr: true,
   },
   {
     drill: "underlying-records",
-    writesFilter: true,
+    filter: "rows",
+    get queryChange() {
+      return t`Drops the summary, adds one filter per breakout value`;
+    },
     start: COUNT_BY_CATEGORY,
     results: [
       {
@@ -164,13 +214,17 @@ const FILTER_DRILLS: DrillRow[] = [
     get howToOpen() {
       return t`Click the Gizmo bar → "See these Orders"`;
     },
+    worksWithOr: true,
   },
   {
     drill: "underlying-records",
     get variant() {
       return t`count-where`;
     },
-    writesFilter: true,
+    filter: "rows",
+    get queryChange() {
+      return t`Drops the summary, adds the breakout value and the aggregation's own condition`;
+    },
     start: {
       get label() {
         return t`Count where Discount by Category`;
@@ -189,13 +243,46 @@ const FILTER_DRILLS: DrillRow[] = [
     get howToOpen() {
       return t`Click the Doohickey bar → "See these Orders"; the aggregation's own condition comes along`;
     },
+    worksWithOr: true,
+  },
+  {
+    drill: "underlying-records",
+    get variant() {
+      return t`count-where with an OR`;
+    },
+    filter: "rows",
+    get queryChange() {
+      return t`Drops the summary, adds the breakout value and the aggregation's OR condition as a group`;
+    },
+    start: {
+      get label() {
+        return t`Count where (Discount or Quantity) by Category`;
+      },
+      load: withCountWhereOrByCategory,
+      display: "bar",
+    },
+    results: [
+      {
+        get label() {
+          return t`Gizmo, (Discount not empty or Quantity > 3)`;
+        },
+        load: withCountWhereOrDrilled,
+      },
+    ],
+    get howToOpen() {
+      return t`Click the Gizmo bar → "See these Orders"; the drill writes an OR group the user never typed`;
+    },
+    worksWithOr: true,
   },
   {
     drill: "underlying-records",
     get variant() {
       return t`two breakouts`;
     },
-    writesFilter: true,
+    filter: "rows",
+    get queryChange() {
+      return t`Drops the summary, adds one filter per breakout value, the date one bucketed`;
+    },
     start: {
       get label() {
         return t`Count by Category by Month`;
@@ -214,10 +301,14 @@ const FILTER_DRILLS: DrillRow[] = [
     get howToOpen() {
       return t`Click a bar → "See these Orders"; one filter per breakout, the date one bucketed by month`;
     },
+    worksWithOr: true,
   },
   {
     drill: "zoom-in.timeseries",
-    writesFilter: true,
+    filter: "rows",
+    get queryChange() {
+      return t`Adds a filter on the clicked bucket, breaks out again at the finer unit`;
+    },
     start: {
       get label() {
         return t`Count by Month`;
@@ -237,10 +328,14 @@ const FILTER_DRILLS: DrillRow[] = [
     get howToOpen() {
       return t`Click a point → "See this month by week"`;
     },
+    worksWithOr: true,
   },
   {
     drill: "zoom-in.binning",
-    writesFilter: true,
+    filter: "rows",
+    get queryChange() {
+      return t`Adds a >= / < range on the column, narrows the bins`;
+    },
     start: {
       get label() {
         return t`Count by Total`;
@@ -260,10 +355,17 @@ const FILTER_DRILLS: DrillRow[] = [
     get howToOpen() {
       return t`Click the 40–60 bar → "Zoom in"`;
     },
+    worksWithOr: false,
+    get orFailure() {
+      return t`Pre-existing query-processor bug, not caused by the drill or by GUI ORs: it is reachable today with a custom-expression filter like [Total] > 100 OR [Tax] > 2 on a binned breakout. The drill only removes top-level range filters on the column, so a range left inside the OR stays; binning then reads both the old and the new range as bounds, they don't overlap, the bin width comes out negative and the query fails. Fix: make the bounds extractor read only top-level AND-ed clauses.`;
+    },
   },
   {
     drill: "zoom-in.geographic",
-    writesFilter: true,
+    filter: "rows",
+    get queryChange() {
+      return t`Adds a filter on the region, swaps the breakout to lat/lon bins`;
+    },
     start: {
       get label() {
         return t`Count by State`;
@@ -283,10 +385,14 @@ const FILTER_DRILLS: DrillRow[] = [
     get howToOpen() {
       return t`Click Texas → "Zoom in: State"`;
     },
+    worksWithOr: true,
   },
   {
     drill: "pivot",
-    writesFilter: true,
+    filter: "rows",
+    get queryChange() {
+      return t`Adds = per breakout value, swaps the breakout for the chosen column`;
+    },
     start: {
       get label() {
         return t`Count by Source`;
@@ -306,13 +412,50 @@ const FILTER_DRILLS: DrillRow[] = [
     get howToOpen() {
       return t`Click the Affiliate bar → "Break out by…" → Product → Category`;
     },
+    worksWithOr: true,
+  },
+  {
+    drill: "pk",
+    get variant() {
+      return t`multi-PK tables only`;
+    },
+    filter: "rows",
+    get queryChange() {
+      return t`Adds PK = value filters, then opens object detail`;
+    },
+    results: [],
+    get howToOpen() {
+      return t`Only on tables with several primary keys; never offered on Orders`;
+    },
+  },
+  {
+    drill: "fk-details",
+    get variant() {
+      return t`on a new query`;
+    },
+    filter: "rows",
+    get queryChange() {
+      return t`Replaces the query with one on the target table, ID = value`;
+    },
+    start: RAW_ROWS,
+    results: [],
+    get howToOpen() {
+      return t`Click a Product ID cell → "View details"; the bar shows ID = 14 on Products`;
+    },
+    worksWithOr: false,
+    get orFailure() {
+      return t`Pre-existing bug, reachable today with a custom-expression OR filter. The drill scans the old query's filters for "= other FK" clauses to carry over to the new table, and reads each one by taking its first argument as a column. For an OR group the first argument is another filter, not a column, so the lookup throws "Unknown type of ref" and nothing loads. Fix: skip every filter that is not a plain "=" before reading its parts.`;
+    },
   },
 ];
 
 const OTHER_DRILLS: DrillRow[] = [
   {
     drill: "distribution",
-    writesFilter: false,
+    filter: "none",
+    get queryChange() {
+      return t`Replaces the summary with Count by the column`;
+    },
     start: RAW_ROWS,
     results: [
       {
@@ -326,10 +469,14 @@ const OTHER_DRILLS: DrillRow[] = [
     get howToOpen() {
       return t`Click the Total header → "Distribution"`;
     },
+    worksWithOr: true,
   },
   {
     drill: "sort",
-    writesFilter: false,
+    filter: "none",
+    get queryChange() {
+      return t`Replaces every order-by with one on the column`;
+    },
     start: RAW_ROWS,
     results: [
       {
@@ -342,10 +489,14 @@ const OTHER_DRILLS: DrillRow[] = [
     get howToOpen() {
       return t`Click the Total header → ↓`;
     },
+    worksWithOr: true,
   },
   {
     drill: "summarize-column",
-    writesFilter: false,
+    filter: "none",
+    get queryChange() {
+      return t`Adds an aggregation`;
+    },
     start: RAW_ROWS,
     results: [
       {
@@ -359,10 +510,14 @@ const OTHER_DRILLS: DrillRow[] = [
     get howToOpen() {
       return t`Click the Total header → "Sum" (also Avg, Distinct values)`;
     },
+    worksWithOr: true,
   },
   {
     drill: "summarize-column-by-time",
-    writesFilter: false,
+    filter: "none",
+    get queryChange() {
+      return t`Adds an aggregation and a date breakout`;
+    },
     start: RAW_ROWS,
     results: [
       {
@@ -379,16 +534,23 @@ const OTHER_DRILLS: DrillRow[] = [
   },
   {
     drill: "column-extract",
-    writesFilter: false,
+    filter: "none",
+    get queryChange() {
+      return t`Adds an expression column`;
+    },
     start: RAW_ROWS,
     results: [MONTH_EXTRACTED],
     get howToOpen() {
       return t`Click the Created At header → "Extract part of column" → "Month of year"`;
     },
+    worksWithOr: true,
   },
   {
     drill: "combine-columns",
-    writesFilter: false,
+    filter: "none",
+    get queryChange() {
+      return t`Adds a concat expression column`;
+    },
     start: MONTH_EXTRACTED,
     results: [
       {
@@ -401,65 +563,105 @@ const OTHER_DRILLS: DrillRow[] = [
     get howToOpen() {
       return t`Click the Month of year header → "Combine columns" → add Quantity; Orders has no text column of its own`;
     },
-  },
-  {
-    drill: "pk",
-    writesFilter: false,
-    footnote: 1,
-    results: [],
-    get howToOpen() {
-      return t`Only on tables with several primary keys; never offered on Orders`;
-    },
+    worksWithOr: true,
   },
   {
     drill: "zoom",
-    writesFilter: false,
-    start: RAW_ROWS,
-    results: [],
-    get howToOpen() {
-      return t`Click an ID cell → "View details"; navigates to object detail in the real app, does nothing here`;
+    filter: "none",
+    get queryChange() {
+      return t`No change; navigates to object detail`;
     },
-  },
-  {
-    drill: "fk-details",
-    writesFilter: false,
-    footnote: 2,
-    start: RAW_ROWS,
     results: [],
     get howToOpen() {
-      return t`Click a Product ID cell → "View details"; loads Products with ID = 14`;
+      return t`Not reachable here: an ID cell has no popover at all, since quick filters skip primary keys and the real app's "View details" is a page navigation the harness does not wire up`;
     },
   },
   {
     drill: "automatic-insights",
-    writesFilter: false,
+    filter: "none",
+    get queryChange() {
+      return t`No change; navigates to an X-ray dashboard`;
+    },
     start: COUNT_BY_CATEGORY,
     results: [],
     get howToOpen() {
       return t`Click a bar → "Automatic insights…" → "X-ray"; leaves the prototype for an auto dashboard`;
     },
+    worksWithOr: true,
   },
 ];
 
 const GROUPS: DrillGroup[] = [
   {
     get label() {
-      return t`Writes a filter on this query`;
+      return t`Writes a filter`;
     },
     rows: FILTER_DRILLS,
   },
   {
     get label() {
-      return t`Changes the query's shape or opens another view`;
+      return t`Writes no filter`;
     },
     rows: OTHER_DRILLS,
   },
 ];
 
-const FOOTNOTES = [
-  t`pk writes "PK = value", but only on tables with several primary keys.`,
-  t`fk-details writes "ID = value" on a new query on the target table.`,
-];
+const SUMMARY_MARK = (
+  <Text component="span" fw="bold" c="core-summarize" ml="xs">
+    Σ
+  </Text>
+);
+
+type OrCheckMarkProps = Pick<DrillRow, "worksWithOr" | "orFailure">;
+
+function OrCheckMark({ worksWithOr, orFailure }: OrCheckMarkProps) {
+  if (worksWithOr === undefined) {
+    return (
+      <Text component="span" c="text-secondary">
+        —
+      </Text>
+    );
+  }
+  if (worksWithOr) {
+    return (
+      <Text
+        component="span"
+        title={t`Tried from the + OR start; lands AND-ed next to the OR`}
+      >
+        ✅
+      </Text>
+    );
+  }
+  return (
+    <Tooltip label={orFailure} multiline maw="24rem">
+      <Text component="span">🟠</Text>
+    </Tooltip>
+  );
+}
+
+function FilterMark({ target }: { target: FilterTarget }) {
+  switch (target) {
+    case "rows":
+      return <>✅</>;
+    case "summary":
+      return <>✅{SUMMARY_MARK}</>;
+    case "none":
+      return <>⛔</>;
+  }
+}
+
+/** The same starting point with `Total > 100 or Tax > 2` on the rows, to see the drill land next to an OR. */
+function withOrStart(start: Example): Example {
+  return {
+    ...start,
+    get label() {
+      return t`${start.label} + OR`;
+    },
+    load: (query, stageIndex) =>
+      withOrExample(start.load(query, stageIndex), stageIndex),
+    hint: t`Same shape, with (Total > 100 or Tax > 2) already on the rows`,
+  };
+}
 
 type DrillExamplesTableProps = {
   onLoad: (example: Example) => void;
@@ -478,6 +680,8 @@ export function DrillExamplesTable({ onLoad }: DrillExamplesTableProps) {
           <tr>
             <th>{t`Drill`}</th>
             <th>{t`Filter`}</th>
+            <th>{t`Query change`}</th>
+            <th>{t`With OR`}</th>
             <th>{t`Start`}</th>
             <th>{t`Result`}</th>
             <th>{t`How to open`}</th>
@@ -486,7 +690,7 @@ export function DrillExamplesTable({ onLoad }: DrillExamplesTableProps) {
         {GROUPS.map((group) => (
           <tbody key={group.label}>
             <tr>
-              <th colSpan={5} className={S.groupHeading}>
+              <th colSpan={7} className={S.groupHeading}>
                 {group.label}
               </th>
             </tr>
@@ -501,12 +705,26 @@ export function DrillExamplesTable({ onLoad }: DrillExamplesTableProps) {
                   )}
                 </td>
                 <td>
-                  {row.writesFilter ? "✅" : "⛔"}
-                  {row.footnote && <sup>{row.footnote}</sup>}
+                  <FilterMark target={row.filter} />
+                </td>
+                <td>
+                  <Text size="sm">{row.queryChange}</Text>
+                </td>
+                <td>
+                  <OrCheckMark
+                    worksWithOr={row.worksWithOr}
+                    orFailure={row.orFailure}
+                  />
                 </td>
                 <td>
                   {row.start ? (
-                    <ExampleButton example={row.start} onLoad={onLoad} />
+                    <Group gap="xs">
+                      <ExampleButton example={row.start} onLoad={onLoad} />
+                      <ExampleButton
+                        example={withOrStart(row.start)}
+                        onLoad={onLoad}
+                      />
+                    </Group>
                   ) : (
                     "—"
                   )}
@@ -536,11 +754,20 @@ export function DrillExamplesTable({ onLoad }: DrillExamplesTableProps) {
           </tbody>
         ))}
       </table>
-      {FOOTNOTES.map((note, index) => (
-        <Text key={index} size="xs" c="text-secondary">
-          <sup>{index + 1}</sup> {note}
+      <Group gap="xs">
+        <Text size="xs" c="text-secondary">{t`✅ filter on the rows`}</Text>
+        <Text size="xs" c="text-secondary">
+          <FilterMark target="summary" />{" "}
+          {t`filter on the stage after the summary`}
         </Text>
-      ))}
+        <Text size="xs" c="text-secondary">{t`⛔ no filter`}</Text>
+        <Text size="xs" c="text-secondary">
+          {t`+ OR: the same start with (Total > 100 or Tax > 2) on the rows`}
+        </Text>
+        <Text size="xs" c="text-secondary">
+          {t`With OR ✅: tried from the + OR start, the drill lands AND-ed next to the OR; 🟠 breaks on a pre-existing bug, hover for why; — not tried yet`}
+        </Text>
+      </Group>
     </Stack>
   );
 }

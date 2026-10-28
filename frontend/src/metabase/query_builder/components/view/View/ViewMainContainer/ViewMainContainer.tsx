@@ -7,6 +7,7 @@ import CS from "metabase/css/core/index.css";
 import { FixSqlQueryButton } from "metabase/metabot/components/FixSqlQueryButton";
 import { HasResultsAlertPrompt } from "metabase/notifications/HasResultsAlertPrompt";
 import { SyncedParametersList } from "metabase/parameters/components/SyncedParametersList";
+import { IntegrationLegendFilters } from "metabase/prototypes/IntegrationLegendFilters";
 import { Mode } from "metabase/querying/click-actions/Mode";
 import { getQueryMode } from "metabase/querying/click-actions/lib/modes";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
@@ -14,6 +15,7 @@ import type { SelectionRange } from "metabase/querying/editor/types";
 import { TimeseriesChrome } from "metabase/querying/filters/components/TimeseriesChrome";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { QueryBuilderMode, QueryModalType } from "metabase/redux/store";
+import { useSetting } from "metabase/settings";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -32,6 +34,7 @@ import { useVisualizationResultQBProps } from "../../../../hooks";
 import { getLastRunCard } from "../../../../store/selectors";
 import { ObjectDetailSidesheet } from "../../../ObjectDetailSidesheet";
 import { useColumnFormulaBar } from "../../ColumnFormulaBar";
+import { readsSlowTable } from "../../FilterAutoApply/utils";
 import { ViewFooter } from "../../ViewFooter";
 import { ViewNativeQueryEditor } from "../ViewNativeQueryEditor";
 
@@ -111,6 +114,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
   } = props;
 
   const visualizationResultProps = useVisualizationResultQBProps();
+  const prototypeData = useSetting("prototype-data");
   const dispatch = useDispatch();
   const lastRunCard = useSelector(getLastRunCard);
   // Prototype: puts back the question of the result, like the browser back
@@ -130,7 +134,9 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
   const columnFormula = useColumnFormulaBar({
     question,
     onQuestionChange: (nextQuestion) =>
-      updateQuestion(nextQuestion, { run: true }),
+      updateQuestion(nextQuestion, {
+        run: !readsSlowTable(nextQuestion.query(), prototypeData),
+      }),
   });
   const { isNative, isEditable } = Lib.queryDisplayInfo(question.query());
   const onAddColumn = !isNative && isEditable ? columnFormula.open : undefined;
@@ -170,6 +176,16 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
         />
       )}
 
+      {!isNative && isEditable && !props.readOnly && (
+        <IntegrationLegendFilters
+          query={question.query()}
+          onChange={(nextQuery) =>
+            updateQuestion(question.setQuery(nextQuery), {
+              run: !readsSlowTable(nextQuery, prototypeData),
+            })
+          }
+        />
+      )}
       <DebouncedFrame
         className={ViewMainContainerS.StyledDebouncedFrame}
         enabled={!isLiveResizable}

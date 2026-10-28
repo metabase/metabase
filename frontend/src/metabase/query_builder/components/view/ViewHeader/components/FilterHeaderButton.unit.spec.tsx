@@ -75,30 +75,28 @@ describe("FilterHeaderButton", () => {
 
   it("should render filter count when a query has filters", () => {
     setup({ question: QUESTION_WITH_FILTERS });
-    expect(screen.getByTestId("filters-visibility-control")).toHaveTextContent(
-      "1",
-    );
+    expect(screen.getByTestId("question-filter-header")).toHaveTextContent("1");
   });
 
   it("should not render filter count when a query has 0 filters", () => {
     setup({ question: QUESTION_WITHOUT_FILTERS });
-    expect(
-      screen.queryByTestId("filters-visibility-control"),
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("question-filter-header")).toHaveTextContent(
+      /^Filter$/,
+    );
   });
 
-  it("should populate true data-expanded property", () => {
+  it("should report expanded filters", () => {
     setup({ question: QUESTION_WITH_FILTERS, isExpanded: true });
-    expect(screen.getByTestId("filters-visibility-control")).toHaveAttribute(
-      "data-expanded",
+    expect(screen.getByTestId("question-filter-header")).toHaveAttribute(
+      "aria-expanded",
       "true",
     );
   });
 
-  it("should populate false data-expanded property", () => {
+  it("should report collapsed filters", () => {
     setup({ question: QUESTION_WITH_FILTERS, isExpanded: false });
-    expect(screen.getByTestId("filters-visibility-control")).toHaveAttribute(
-      "data-expanded",
+    expect(screen.getByTestId("question-filter-header")).toHaveAttribute(
+      "aria-expanded",
       "false",
     );
   });

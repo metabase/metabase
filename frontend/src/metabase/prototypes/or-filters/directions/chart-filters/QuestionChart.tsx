@@ -1,22 +1,39 @@
 import {
+  Fragment,
   type ReactNode,
   type RefObject,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useMetadataProviderUnfiltered } from "metabase/metadata-store";
-import { Box, Group, Icon, Loader, Menu, Text } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Divider,
+  Group,
+  Icon,
+  Loader,
+  Menu,
+  Popover,
+  PopoverBackButton,
+  Stack,
+  Text,
+} from "metabase/ui";
+import C from "metabase/visualizations/components/ClickActions/ClickActionControl.module.css";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import type {
   CardDisplayType,
   DatasetColumn,
+  IconName,
   RawSeries,
 } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
@@ -39,6 +56,8 @@ type QuestionChartProps = {
   display: CardDisplayType;
   /** `false` shows today's drill-through popover instead of the new menu. */
   hasNewMenu?: boolean;
+  /** "nested" folds the filters behind one "Filter" entry; "flat" lists them under the drills. */
+  menuLayout?: "nested" | "flat";
   onPick: (query: Lib.Query, target: DrillOptionTarget) => void;
   /** Today's popover produced a new query. */
   onLegacyDrill?: (query: Lib.Query) => void;
@@ -50,6 +69,11 @@ type QuestionChartProps = {
   legendAccessory?: ReactNode;
   /** Drawn around the whole legend row; a `[data-legend-lead]` inside it pushes the items along. */
   legendWrap?: (frame: LegendFrame) => ReactNode;
+  /**
+   * Drawn in place of each y-axis title that names a measure, which it hides.
+   * One measure gets a title even when split into series.
+   */
+  yAxisTitle?: (frame: AxisTitleFrame) => ReactNode;
 };
 
 type OpenMenu = { model: DrillMenuModel; x: number; y: number };
@@ -63,12 +87,14 @@ export function QuestionChart({
   query,
   display,
   hasNewMenu = true,
+  menuLayout = "nested",
   onPick,
   onLegacyDrill,
   pickQuery = query,
   onHeaderClick,
   legendAccessory,
   legendWrap,
+  yAxisTitle,
 }: QuestionChartProps) {
   const metadataProvider = useMetadataProviderUnfiltered(Lib.databaseID(query));
   const jsQuery = useMemo(() => Lib.toJsQuery(query), [query]);
@@ -76,17 +102,24 @@ export function QuestionChart({
   const [menu, setMenu] = useState<OpenMenu>();
   const containerRef = useRef<HTMLDivElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const measureNames = useMemo(() => getMeasureNames(query), [query]);
+  const axisTitles = useYAxisTitles(
+    containerRef,
+    yAxisTitle != null ? measureNames : undefined,
+  );
   const legendEnd = useLegendEnd(
     containerRef,
     legendAccessory != null || legendWrap != null,
     legendWrap != null ? wrapRef : undefined,
   );
 
+  const MenuComponent = menuLayout === "flat" ? DrillMenu : NestedDrillMenu;
   const isAggregated = Lib.aggregations(query, 0).length > 0;
-  const effectiveDisplay = isAggregated ? display : "table";
+  const effectiveDisplay = getEffectiveDisplay(query, display);
   const groupCount = result.data?.data?.rows.length ?? 0;
   const markNoun = effectiveDisplay === "line" ? t`points` : t`bars`;
 
+  const hasYAxisTitles = yAxisTitle != null;
   const rawSeries: RawSeries | undefined = useMemo(() => {
     if (!result.data?.data || result.data.data.cols.length === 0) {
       return undefined;
@@ -96,12 +129,16 @@ export function QuestionChart({
         card: createMockCard({
           dataset_query: jsQuery,
           display: effectiveDisplay,
-          visualization_settings: {},
+          visualization_settings:
+            // The app only titles an axis with one series on it.
+            hasYAxisTitles && measureNames.length === 1
+              ? { "graph.y_axis.title_text": measureNames[0] }
+              : {},
         }),
         data: result.data.data,
       },
     ];
-  }, [result.data, jsQuery, effectiveDisplay]);
+  }, [result.data, jsQuery, effectiveDisplay, hasYAxisTitles, measureNames]);
 
   const handleClick = (clicked: Lib.ClickObject | null) => {
     if (
@@ -181,6 +218,18 @@ export function QuestionChart({
             })}
           </Box>
         )}
+        {yAxisTitle &&
+          axisTitles.map((axisTitle) => (
+            <Box
+              key={axisTitle.text}
+              pos="absolute"
+              left={axisTitle.centerX}
+              top={axisTitle.centerY}
+              style={{ transform: "translate(-50%, -50%)", zIndex: 1 }}
+            >
+              {yAxisTitle(axisTitle)}
+            </Box>
+          ))}
         {legendAccessory && legendEnd && (
           <Box
             pos="absolute"
@@ -192,7 +241,7 @@ export function QuestionChart({
           </Box>
         )}
         {menu && (
-          <DrillMenu
+          <MenuComponent
             menu={menu}
             query={query}
             markNoun={markNoun}
@@ -214,6 +263,98 @@ export function QuestionChart({
 
 const LEGEND_ACCESSORY_GAP = 12;
 const LEGEND_WRAP_PADDING = 10;
+
+export type AxisTitleFrame = {
+  /** The measure the axis plots, as titled. */
+  text: string;
+  centerX: number;
+  centerY: number;
+  fontSize: string;
+};
+
+/** The display names of the measures the chart plots. */
+function getMeasureNames(query: Lib.Query): string[] {
+  const stages = Array.from({ length: Lib.stageCount(query) }, (_, i) => i);
+  const stage = stages
+    .filter((stage) => Lib.aggregations(query, stage).length > 0)
+    .at(-1);
+  if (stage == null) {
+    return [];
+  }
+  return Lib.returnedColumns(query, stage)
+    .map((column) => Lib.displayInfo(query, stage, column))
+    .filter((info) => info.isAggregation)
+    .map((info) => info.displayName);
+}
+
+/** The y-axis titles: labels turned a quarter that name a measure. */
+function findYAxisTitles(
+  container: HTMLElement,
+  measureNames: string[],
+): SVGTextElement[] {
+  return Array.from(container.querySelectorAll("svg text")).filter(
+    (text): text is SVGTextElement => {
+      if (
+        !(text instanceof SVGTextElement) ||
+        !measureNames.includes(text.textContent?.trim() ?? "")
+      ) {
+        return false;
+      }
+      const matrix = text.transform.baseVal.consolidate()?.matrix;
+      return matrix != null && Math.abs(matrix.a) < 0.01;
+    },
+  );
+}
+
+/**
+ * Where the chart's y-axis titles sit, relative to the container, kept up to
+ * date as the chart re-renders. The titles themselves are hidden so a
+ * component can take their place.
+ */
+function useYAxisTitles(
+  containerRef: RefObject<HTMLDivElement | null>,
+  measureNames: string[] | undefined,
+): AxisTitleFrame[] {
+  const [frames, setFrames] = useState<AxisTitleFrame[]>([]);
+
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    if (!container || !measureNames) {
+      setFrames([]);
+      return;
+    }
+    const update = () => {
+      const containerRect = container.getBoundingClientRect();
+      const nextFrames = findYAxisTitles(container, measureNames).map(
+        (title) => {
+          title.style.visibility = "hidden";
+          const rect = title.getBoundingClientRect();
+          return {
+            text: title.textContent?.trim() ?? "",
+            centerX: Math.round(
+              rect.left - containerRect.left + rect.width / 2,
+            ),
+            centerY: Math.round(rect.top - containerRect.top + rect.height / 2),
+            fontSize: getComputedStyle(title).fontSize,
+          };
+        },
+      );
+      setFrames((previous) =>
+        _.isEqual(previous, nextFrames) ? previous : nextFrames,
+      );
+    };
+    update();
+    const observer = new MutationObserver(update);
+    observer.observe(container, { childList: true, subtree: true });
+    window.addEventListener("resize", update);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, [containerRef, measureNames]);
+
+  return frames;
+}
 
 export type LegendFrame = { width: number; row: HTMLElement };
 
@@ -394,6 +535,218 @@ function DrillMenu({
         })}
       </Menu.Dropdown>
     </Menu>
+  );
+}
+
+/**
+ * Rows render as a table whatever was asked for, and a summary with nothing
+ * to break out by (a lone "Sum of Total") as a scalar, since a bar or line
+ * has no axis to draw it on.
+ */
+function getEffectiveDisplay(
+  query: Lib.Query,
+  display: CardDisplayType,
+): CardDisplayType {
+  if (Lib.aggregations(query, 0).length === 0) {
+    return "table";
+  }
+  if (Lib.breakouts(query, 0).length === 0) {
+    return "scalar";
+  }
+  return display;
+}
+
+/** Today's column picker under "Break out by…" is this wide. */
+const SUBMENU_MIN_WIDTH = 300;
+
+/** A submenu that replaces the main list, like today's popover. */
+type NestedView = { kind: "action"; action: DrillAction } | { kind: "filter" };
+
+/**
+ * Today's drill-through popover: same layout and type, submenus replace the
+ * list behind a back button. Every filter sits behind one "Filter" entry
+ * under "Break out by…".
+ */
+function NestedDrillMenu({ menu, onClose, onPick, onAction }: DrillMenuProps) {
+  const [views, setViews] = useState<NestedView[]>([]);
+  const view = views.at(-1);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  const openView = (next: NestedView) => setViews([...views, next]);
+  const goBack = () => setViews(views.slice(0, -1));
+
+  const handleAction = (action: DrillAction) => {
+    if (action.children) {
+      openView({ kind: "action", action });
+    } else if (action.apply) {
+      onAction(action.apply());
+    } else if (action.onSelect) {
+      action.onSelect();
+      onClose();
+    }
+  };
+
+  return (
+    <Popover
+      opened
+      onChange={(opened) => !opened && onClose()}
+      position="bottom-start"
+      offset={8}
+    >
+      <Popover.Target>
+        <Box pos="fixed" left={menu.x} top={menu.y} w={1} h={1} />
+      </Popover.Target>
+      <Popover.Dropdown mah="65vh" style={{ overflowX: "hidden" }}>
+        <Stack
+          gap="sm"
+          px="xl"
+          py="lg"
+          fw={700}
+          miw={view ? SUBMENU_MIN_WIDTH : undefined}
+        >
+          {view && (
+            <PopoverBackButton mb="sm" onClick={goBack}>
+              {view.kind === "filter" ? t`Filter…` : view.action.title}
+            </PopoverBackButton>
+          )}
+          {view == null && (
+            <NestedMainView
+              model={menu.model}
+              onAction={handleAction}
+              onFilter={() => openView({ kind: "filter" })}
+            />
+          )}
+          {view?.kind === "filter" && (
+            <NestedFilterView options={menu.model.options} onPick={onPick} />
+          )}
+          {view?.kind === "action" && (
+            <>
+              {view.action.children?.map((child) => (
+                <NestedMenuButton
+                  key={child.id}
+                  icon={child.icon}
+                  onClick={() => handleAction(child)}
+                >
+                  {child.title}
+                </NestedMenuButton>
+              ))}
+            </>
+          )}
+        </Stack>
+      </Popover.Dropdown>
+    </Popover>
+  );
+}
+
+type NestedMainViewProps = {
+  model: DrillMenuModel;
+  onAction: (action: DrillAction) => void;
+  onFilter: () => void;
+};
+
+function NestedMainView({ model, onAction, onFilter }: NestedMainViewProps) {
+  const filterIndex =
+    model.actions.findIndex((action) => action.id === "pivot") + 1;
+  const hasFilter = model.options.length > 0;
+  return (
+    <>
+      {model.actions.map((action, index) => (
+        <Fragment key={action.id}>
+          {hasFilter && index === filterIndex && (
+            <NestedMenuButton icon="filter" onClick={onFilter}>
+              {t`Filter…`}
+            </NestedMenuButton>
+          )}
+          <NestedMenuButton icon={action.icon} onClick={() => onAction(action)}>
+            {action.title}
+          </NestedMenuButton>
+        </Fragment>
+      ))}
+    </>
+  );
+}
+
+type NestedFilterViewProps = {
+  options: DrillOption[];
+  onPick: (option: DrillOption) => void;
+};
+
+/** Row filters, then a divider, then the summary's thresholds. */
+function NestedFilterView({ options, onPick }: NestedFilterViewProps) {
+  const groups = OPTION_SECTIONS.map(({ target }) =>
+    options.filter((option) => option.target === target),
+  ).filter((group) => group.length > 0);
+
+  return (
+    <>
+      {groups.map((group, index) => (
+        <Fragment key={group[0].target}>
+          {index > 0 && <Divider mx="-xl" my="xs" />}
+          {group.map((option) => (
+            <NestedMenuButton
+              key={option.id}
+              title={option.detail}
+              onClick={() => onPick(option)}
+            >
+              {option.title}
+            </NestedMenuButton>
+          ))}
+        </Fragment>
+      ))}
+    </>
+  );
+}
+
+type NestedMenuButtonProps = {
+  icon?: IconName;
+  title?: string;
+  children: ReactNode;
+  onClick: () => void;
+  onMouseEnter?: () => void;
+  onFocus?: () => void;
+};
+
+/** The "horizontal" button of today's popover. */
+function NestedMenuButton({
+  icon,
+  title,
+  children,
+  onClick,
+  onMouseEnter,
+  onFocus,
+}: NestedMenuButtonProps) {
+  return (
+    <Button
+      p="0.5rem"
+      mx="-0.5rem"
+      variant="subtle"
+      color="neutral"
+      classNames={{
+        root: C.horizontalButton,
+        label: C.label,
+        inner: C.inner,
+      }}
+      leftSection={
+        icon ? (
+          <Icon className={C.clickActionButtonIcon} name={icon} m={0} />
+        ) : null
+      }
+      title={title}
+      onClick={onClick}
+      onMouseEnter={onMouseEnter}
+      onFocus={onFocus}
+    >
+      {children}
+    </Button>
   );
 }
 

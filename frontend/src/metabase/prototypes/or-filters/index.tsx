@@ -6,6 +6,7 @@ import { OrFilterCanvas } from "./OrFilterCanvas";
 import { FILTER_DIRECTIONS } from "./directions";
 import { ITERATION_2_DIRECTIONS } from "./directions/iteration2";
 import { ITERATION_3_DIRECTIONS } from "./directions/iteration3";
+import { ITERATION_4_DIRECTIONS } from "./directions/iteration4";
 import { DrillsDocs } from "./docs/DrillsDocs";
 import type { FilterDirection } from "./types";
 
@@ -46,4 +47,5 @@ export const OR_FILTER_PROTOTYPES: PrototypeDefinition[] = [
   ...FILTER_DIRECTIONS.map((direction) => toPrototype(direction, 1)),
   ...ITERATION_2_DIRECTIONS.map((direction) => toPrototype(direction, 2)),
   ...ITERATION_3_DIRECTIONS.map((direction) => toPrototype(direction, 3)),
+  ...ITERATION_4_DIRECTIONS.map((direction) => toPrototype(direction, 4)),
 ];

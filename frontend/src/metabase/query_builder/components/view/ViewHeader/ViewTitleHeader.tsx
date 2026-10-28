@@ -4,16 +4,20 @@ import { useCallback, useEffect, useState } from "react";
 import { usePrevious } from "react-use";
 
 import { useToggle } from "metabase/common/hooks/use-toggle";
+import { INTEGRATED_OR_FILTERS, usePrototypeSetting } from "metabase/prototype";
+import { IntegrationFilters } from "metabase/prototypes/IntegrationFilters";
 import type {
   DatasetEditorTab,
   QueryBuilderMode,
   QueryModalType,
 } from "metabase/redux/store";
+import { useSetting } from "metabase/settings";
 import { Box, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
 
+import { readsSlowTable } from "../FilterAutoApply/utils";
 import { FormulaBarSlotTarget } from "../FormulaBar";
 import { ViewSection } from "../ViewSection";
 
@@ -134,6 +138,8 @@ export function ViewTitleHeader({
   const previousQuestion = usePrevious(question);
 
   const query = question.query();
+  const [useOrFilters] = usePrototypeSetting(INTEGRATED_OR_FILTERS);
+  const prototypeData = useSetting("prototype-data");
   const previousQuery = usePrevious(query);
   const { isNative } = Lib.queryDisplayInfo(query);
 
@@ -232,17 +238,29 @@ export function ViewTitleHeader({
         {KeyboardFilterRow.shouldRender({
           question,
           queryBuilderMode,
-        }) && (
-          <KeyboardFilterRow
-            expanded={areFiltersExpanded}
-            question={question}
-            isDirty={isDirty}
-            draftKey={draftFilterKey}
-            onAddDraft={addDraftFilter}
-            onRemoveDraft={removeDraftFilter}
-            updateQuestion={updateQuestion}
-          />
-        )}
+        }) &&
+          (useOrFilters ? (
+            areFiltersExpanded && (
+              <IntegrationFilters
+                query={query}
+                onChange={(nextQuery) => {
+                  updateQuestion(question.setQuery(nextQuery), {
+                    run: !readsSlowTable(nextQuery, prototypeData),
+                  });
+                }}
+              />
+            )
+          ) : (
+            <KeyboardFilterRow
+              expanded={areFiltersExpanded}
+              question={question}
+              isDirty={isDirty}
+              draftKey={draftFilterKey}
+              onAddDraft={addDraftFilter}
+              onRemoveDraft={removeDraftFilter}
+              updateQuestion={updateQuestion}
+            />
+          ))}
         <FormulaBarSlotTarget className={ViewTitleHeaderS.FormulaBarSlot} />
       </Box>
     </>

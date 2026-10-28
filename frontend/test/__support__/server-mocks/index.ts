@@ -45,6 +45,7 @@ export * from "./performance";
 export * from "./permissions";
 export * from "./premium-features";
 export * from "./public";
+export * from "./prototype";
 export * from "./pulse";
 export * from "./remote-sync";
 export * from "./replacement";

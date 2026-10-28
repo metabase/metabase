@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { Stack, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import { ExpressionBar } from "./or-filters/directions/expression-bar-2/ExpressionBar";
+import { ExpressionBar } from "./or-filters/directions/expression-bar-rows/ExpressionBar";
 
 interface IntegrationFiltersProps {
   query: Lib.Query;
@@ -38,7 +38,6 @@ export function IntegrationFilters({
               query={editableQuery}
               stageIndex={stageIndex}
               onChange={(nextQuery) => onChange(Lib.dropEmptyStages(nextQuery))}
-              hasInlineActions
             />
           </Stack>
         ),

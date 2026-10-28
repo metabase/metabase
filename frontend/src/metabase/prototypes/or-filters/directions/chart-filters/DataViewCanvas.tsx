@@ -11,6 +11,7 @@ import {
 import { t } from "ttag";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
+import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
 import { FilterPickerBody } from "metabase/querying/filters/components/FilterPicker/FilterPickerBody";
 import {
   ActionIcon,
@@ -30,11 +31,16 @@ import * as Lib from "metabase-lib";
 
 import { toFilterClause } from "../../harness/clauses";
 import type { FilterCanvasProps } from "../../types";
+import { ExpressionBar as RowsExpressionBar } from "../expression-bar-rows/ExpressionBar";
 import BarS from "../expression-bar-rows/ExpressionBar.module.css";
 import { ExpressionBar } from "../expression-bar-unified/ExpressionBar";
 
 import S from "./ChartFilters.module.css";
-import { type LegendFrame, QuestionChart } from "./QuestionChart";
+import {
+  type AxisTitleFrame,
+  type LegendFrame,
+  QuestionChart,
+} from "./QuestionChart";
 import {
   LandedFlash,
   QuestionShell,
@@ -56,15 +62,22 @@ export function DataViewCanvas({
   query,
   onChange,
   heading,
+  display = "bar",
   DataZone = SourceDataZone,
   Legend,
   LegendWrap,
+  AxisTitle,
+  hasThresholdsBesideLegend = true,
 }: FilterCanvasProps & {
   DataZone?: ComponentType<FilterCanvasProps>;
   /** Replaces the chart's legend and the thresholds beside it. */
-  Legend?: ComponentType<FilterCanvasProps>;
+  Legend?: ComponentType<FilterCanvasProps & { isFilteredOnly?: boolean }>;
   /** Wraps the chart's own legend when it shows series rather than measures. */
   LegendWrap?: ComponentType<FilterCanvasProps & { frame: LegendFrame }>;
+  /** Replaces each y-axis title that names a measure. */
+  AxisTitle?: ComponentType<FilterCanvasProps & { frame: AxisTitleFrame }>;
+  /** Off when the Data zone carries the summary's filters itself. */
+  hasThresholdsBesideLegend?: boolean;
 }) {
   const question = useQuestionHistory(query, onChange);
   const [hasLlm, setHasLlm] = useState(true);
@@ -72,6 +85,10 @@ export function DataViewCanvas({
   // A second breakout splits the chart into series: the legend shows those, and
   // the measures lead it.
   const hasSeries = Lib.breakouts(query, ROWS_STAGE).length > 1;
+  // Axis titles are a way in, legend or not. Like the app, one measure without
+  // series has no legend, but its condition still reads in one: a legend of
+  // just the filtered measure.
+  const isLegendFilteredOnly = Lib.aggregations(query, ROWS_STAGE).length === 1;
   const isLegendReplaced = Legend != null && !hasSeries;
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInset = useFirstFilterInset(
@@ -116,19 +133,34 @@ export function DataViewCanvas({
           pl={chartInset}
           className={cx(isLegendReplaced && S.hidesNativeLegend)}
         >
-          {isLegendReplaced && isAggregated && (
+          {Legend && isLegendReplaced && isAggregated && (
             <Box pos="relative">
               {question.landed === "summary" && (
                 <LandedFlash landedKey={question.landedKey} />
               )}
-              <Legend query={query} onChange={onChange} />
+              <Legend
+                query={query}
+                onChange={onChange}
+                isFilteredOnly={isLegendFilteredOnly}
+              />
             </Box>
           )}
           <QuestionChart
             query={query}
-            display="bar"
+            display={display}
             onPick={question.apply}
             onLegacyDrill={(nextQuery) => question.apply(nextQuery)}
+            yAxisTitle={
+              AxisTitle && isAggregated
+                ? (frame) => (
+                    <AxisTitle
+                      query={query}
+                      onChange={onChange}
+                      frame={frame}
+                    />
+                  )
+                : undefined
+            }
             legendWrap={
               LegendWrap && hasSeries && isAggregated
                 ? (frame) => (
@@ -143,6 +175,7 @@ export function DataViewCanvas({
             legendAccessory={
               isCompact &&
               isAggregated &&
+              hasThresholdsBesideLegend &&
               !Legend && (
                 <Box pos="relative">
                   {question.landed === "summary" && (
@@ -332,6 +365,97 @@ function ViewZone({ query, onChange }: FilterCanvasProps) {
         <Text c="text-secondary">{t`· top ${limit}`}</Text>
       )}
     </Group>
+  );
+}
+
+/**
+ * The rows bar with the summary's filters at its end, after an "and": the
+ * same filter pills, a shade darker. It only breaks into rows for nested groups.
+ */
+export function SummaryInBarDataZone({ query, onChange }: FilterCanvasProps) {
+  const isAggregated = Lib.aggregations(query, ROWS_STAGE).length > 0;
+  return (
+    <RowsExpressionBar
+      query={query}
+      stageIndex={ROWS_STAGE}
+      onChange={onChange}
+      rowsFromNesting={2}
+      hasRoundOps
+      trailing={
+        isAggregated && <SummaryFilterPills query={query} onChange={onChange} />
+      }
+    />
+  );
+}
+
+function SummaryFilterPills({ query, onChange }: FilterCanvasProps) {
+  const thresholds =
+    Lib.stageCount(query) > SUMMARY_STAGE
+      ? Lib.filters(query, SUMMARY_STAGE)
+      : [];
+  const hasRowFilters = Lib.filters(query, ROWS_STAGE).length > 0;
+  const handleChange = (nextQuery: Lib.Query) =>
+    onChange(Lib.dropEmptyStages(nextQuery));
+
+  return (
+    <>
+      {thresholds.map((filter, index) => (
+        <Group key={index} gap={4} wrap="nowrap">
+          {(index > 0 || hasRowFilters) && (
+            <span className={BarS.op}>{t`and`}</span>
+          )}
+          <SummaryFilterPill
+            query={query}
+            filter={filter}
+            onChange={handleChange}
+          />
+        </Group>
+      ))}
+    </>
+  );
+}
+
+/** A summary filter as a darker filter pill; clicking it opens the number filter. */
+function SummaryFilterPill({ query, filter, onChange }: CompactThresholdProps) {
+  const [isOpened, setIsOpened] = useState(false);
+  const column = Lib.numberFilterParts(query, SUMMARY_STAGE, filter)?.column;
+
+  return (
+    <Popover opened={isOpened} position="bottom-start" onChange={setIsOpened}>
+      <Popover.Target>
+        <Box component="span" className={cx(BarS.pill, S.summaryPill)}>
+          <FilterPill
+            onClick={() => setIsOpened(!isOpened)}
+            onRemoveClick={() =>
+              onChange(Lib.removeClause(query, SUMMARY_STAGE, filter))
+            }
+          >
+            {Lib.displayInfo(query, SUMMARY_STAGE, filter).displayName}
+          </FilterPill>
+        </Box>
+      </Popover.Target>
+      <Popover.Dropdown>
+        {column && (
+          <FilterPickerBody
+            query={query}
+            stageIndex={SUMMARY_STAGE}
+            column={column}
+            filter={filter}
+            onChange={(clause) => {
+              onChange(
+                Lib.replaceClause(
+                  query,
+                  SUMMARY_STAGE,
+                  filter,
+                  toFilterClause(query, SUMMARY_STAGE, clause),
+                ),
+              );
+              setIsOpened(false);
+            }}
+          />
+        )}
+      </Popover.Dropdown>
+    </Popover>
   );
 }
 

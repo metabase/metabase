@@ -6,7 +6,6 @@ import {
   type ReactNode,
   useCallback,
   useContext,
-  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -166,8 +165,9 @@ export function ExpressionBar({
   }, []);
 
   // External query changes (examples, drills, other frames) drop the draft
-  // and briefly highlight what arrived.
-  useEffect(() => {
+  // and briefly highlight what arrived. A layout effect, so the stale draft is
+  // never painted against the new query.
+  useLayoutEffect(() => {
     const previous = previousCommittedRef.current;
     previousCommittedRef.current = committedTokens;
 
