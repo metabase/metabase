@@ -4,7 +4,7 @@ import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import { SdkLoadingState } from "embedding-sdk-shared/types/sdk-loading";
 
 import { MOCK_SDK_BUNDLE } from "./mock-sdk-bundle";
-import { clearMockSdkHandlers } from "./mock-sdk-handlers";
+import { resetMockSdkRegistry } from "./mock-sdk-registry";
 
 type MockSdkStore = {
   getState: () => undefined;
@@ -50,7 +50,7 @@ const uninstallMockSdk = () => {
   }
 
   delete win.METABASE_EMBEDDING_SDK_BUNDLE;
-  clearMockSdkHandlers();
+  resetMockSdkRegistry();
   getPropsStore().cleanup();
 };
 

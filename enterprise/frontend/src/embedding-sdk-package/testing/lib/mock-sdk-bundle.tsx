@@ -12,7 +12,7 @@ import type { FunctionSchema } from "embedding-sdk-bundle/types/schema";
 import type { MetabaseEmbeddingSdkBundleExports } from "embedding-sdk-bundle/types/sdk-bundle";
 import type { LoginStatus } from "embedding-sdk-bundle/types/user";
 
-import { getMockSdkHandlers } from "./mock-sdk-handlers";
+import { getMockSdkRegistry } from "./mock-sdk-registry";
 
 const DEFAULT_DATE_FORMAT = "MMMM D, YYYY";
 const DEFAULT_DATE_RANGE_SEPARATOR = "–";
@@ -131,7 +131,7 @@ export const MOCK_SDK_BUNDLE: MetabaseEmbeddingSdkBundleExports = {
   resolveDatasetQuery:
     (store) =>
     (...args) => {
-      const handler = getMockSdkHandlers().resolveDatasetQuery;
+      const handler = getMockSdkRegistry().handlers.resolveDatasetQuery;
       return handler
         ? handler(store)(...args)
         : rejectWithNoMock("resolveDatasetQuery");
@@ -139,7 +139,7 @@ export const MOCK_SDK_BUNDLE: MetabaseEmbeddingSdkBundleExports = {
   queryDataset:
     (store) =>
     (...args) => {
-      const handler = getMockSdkHandlers().queryDataset;
+      const handler = getMockSdkRegistry().handlers.queryDataset;
       return handler
         ? handler(store)(...args)
         : rejectWithNoMock("queryDataset");
@@ -147,7 +147,7 @@ export const MOCK_SDK_BUNDLE: MetabaseEmbeddingSdkBundleExports = {
   queryQuestion:
     (store) =>
     (...args) => {
-      const handler = getMockSdkHandlers().queryQuestion;
+      const handler = getMockSdkRegistry().handlers.queryQuestion;
       return handler
         ? handler(store)(...args)
         : rejectWithNoMock("queryQuestion");
@@ -155,7 +155,7 @@ export const MOCK_SDK_BUNDLE: MetabaseEmbeddingSdkBundleExports = {
   createDashboard:
     (store) =>
     (...args) => {
-      const handler = getMockSdkHandlers().createDashboard;
+      const handler = getMockSdkRegistry().handlers.createDashboard;
       return handler
         ? handler(store)(...args)
         : rejectWithNoMock("createDashboard");
@@ -163,7 +163,7 @@ export const MOCK_SDK_BUNDLE: MetabaseEmbeddingSdkBundleExports = {
   executeAction:
     (store) =>
     (...args) => {
-      const handler = getMockSdkHandlers().executeAction;
+      const handler = getMockSdkRegistry().handlers.executeAction;
       return handler
         ? handler(store)(...args)
         : rejectWithNoMock("executeAction");
