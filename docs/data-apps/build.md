@@ -17,18 +17,18 @@ A data app runs with the permissions of the person who opens it, so people see o
 
 ## How data apps work
 
-You build and maintain data apps with an AI agent locally with a development Metabase connected to your data warehouse. Check the app's code and bundle into your Remote Sync repository. Pull the changes into production, and then set up permissions.
+You build and change data apps on your computer, with an AI coding agent and a development Metabase. Then you commit the app to your Remote Sync repository, pull the app into your production Metabase, and choose who can open the app.
 
-Your agent does most of the work, but here's an overview of the end-to-end process.
+Your agent does most of the work, but here's an overview of the end-to-end process:
 
-1. Clone your [Remote Sync](../installation-and-operation/remote-sync.md) repository and create a new branch.
-2. Describe the app to an AI coding agent, like Claude Code or Codex, on your computer. "Create a Metabase data app to add, update, and delete products from the products table."
-3. The agent uses the [Metabase CLI](../installation-and-operation/metabase-cli.md) to create the app on your Metabase. The agent saves the questions and actions that the app runs to the [app's collection](#what-a-data-app-can-read-and-write).
+1. On your development Metabase, create a [Remote Sync](../installation-and-operation/remote-sync.md) branch for the app, and clone your Remote Sync repository to your computer.
+2. Describe the app to an AI coding agent, like Claude Code or Codex, on your computer. For example: "Create a Metabase data app to add, update, and delete products from the products table."
+3. The agent uses the [Metabase CLI](../installation-and-operation/metabase-cli.md) to create the app on your development Metabase. The agent saves the questions and actions that the app runs to the [app's collection](#what-a-data-app-can-read-and-write).
 4. The agent writes the app's code in your local clone of your Remote Sync repository. While the agent works, you [preview the app](#preview-the-app-on-your-computer) in your browser.
-5. The agent builds the app and uploads it to your Metabase. People open the app on your Metabase at `/apps/<slug>`.
-6. Commit your changes to your Remote Sync repository so that you (and other admins) can edit the app later.
-7. Pull the changes into your production Metabase.
-8. [Choose which groups can open the app](./manage.md#choose-who-can-open-an-app). People see only the data that their permissions let them see.
+5. The agent builds the app and uploads it to your development Metabase. Admins can open the app there at `/apps/<slug>`.
+6. Push the app from your development Metabase to your branch, and commit the app's source code to the same branch.
+7. Merge the branch, and pull the changes into your production Metabase.
+8. On your production Metabase, [choose which groups can open the app](./manage.md#choose-who-can-open-an-app).
 
 ## Requirements for data apps
 
@@ -37,9 +37,9 @@ Your agent does most of the work, but here's an overview of the end-to-end proce
 - An AI coding agent, like Claude Code or Codex.
 - The [Metabase CLI](../installation-and-operation/metabase-cli.md) (`mb`).
 - Node.js 22.12 or later on your computer.
-- A [semantic layer](../data-modeling/semantic-layer/library.md) with the [published tables](../data-modeling/semantic-layer/published-tables.md) and metrics that your apps will read. Your agent can do this for you when it's building the app, but ideally you only create data apps based on trusted data.
-- [Remote Sync](../installation-and-operation/remote-sync.md), to keep the source code, bundle, and collection for the data apps.
-- A development instance of Metabase, connected to your data warehouse, for you to build the app with.
+- A development Metabase, connected to your data warehouse, where you build and change your apps.
+- [Remote Sync](../installation-and-operation/remote-sync.md), to ship your apps from your development Metabase to production. Your Remote Sync repository also keeps each app's source code.
+- A [semantic layer](../data-modeling/semantic-layer/library.md) with the [published tables](../data-modeling/semantic-layer/published-tables.md) and metrics that your apps read. Your agent can publish tables and create metrics while it builds an app. But for apps that people rely on, use tables and metrics that you trust.
 - [Actions enabled](../data-modeling/models/actions/introduction.md#enabling-actions-for-a-database) on the databases that your apps write to, if your apps write data.
 
 ## What a data app can read and write
@@ -54,24 +54,19 @@ An app runs only the items in its own collection, and the collection can hold on
 
 Only admins can edit an app's collection. You can't move the app's collection, move it to the trash, or make it official.
 
-## Set up your agent
+## Build the app with your agent
 
-1. [Install the Metabase CLI](../installation-and-operation/metabase-cli.md#install-the-cli), and [log the CLI in](../installation-and-operation/metabase-cli.md#authenticate-the-cli) as an admin to the Metabase where you build the app.
-2. Install the [metabase-cli skill](../installation-and-operation/metabase-cli.md#the-metabase-cli-skill) for your agent.
+1. [Install the Metabase CLI](../installation-and-operation/metabase-cli.md#install-the-cli), and [log the CLI in](../installation-and-operation/metabase-cli.md#authenticate-the-cli) as an admin to your development Metabase.
+2. Install the [metabase-cli skill](../installation-and-operation/metabase-cli.md#the-metabase-cli-skill) for your agent. The CLI comes with its own skills for building data apps, and the metabase-cli skill tells your agent to load them.
+3. On your development Metabase, [create a Remote Sync branch](../installation-and-operation/remote-sync.md#creating-a-branch) for the app.
+4. Start your agent in a local clone of your Remote Sync repository, so that the app's source code goes in the repository with the app. See [what syncs with a data app](#what-syncs-with-a-data-app).
+5. Ask your agent to create a Metabase data app, and follow its instructions. For example:
 
-The Metabase CLI comes with its own skills for building data apps.
+   ```text
+   Create a Metabase data app that lets people look up product info, and add, edit, or remove products. Make it look cool.
+   ```
 
-## Ask your agent to build the app
-
-Start your agent in a local clone of your Remote Sync repository, so that the [app's source code goes in your Metabase's repository](#keep-an-apps-source-code-in-your-repository).
-
-Ask your agent to create a Metabase data app, and follow its instructions. For example:
-
-```text
-Create a Metabase data app that lets people look up product info, and add, edit, or remove products. Make it look cool.
-```
-
-The agent creates the app on your development Metabase, adds the questions and actions that the app needs to the app's collection, and writes the app's code in the app's directory. Then the agent builds the app, and uploads the app's bundle (the built app, up to 10 MiB) to Metabase. The agent will give you the app's address, `/apps/<slug>`.
+The agent creates the app on your development Metabase, adds the questions and actions that the app needs to the app's collection, and writes the app's code in `data_apps/<slug>/`. Then the agent builds the app, and uploads the app's bundle (the built app, up to 10 MiB) to your development Metabase. The agent gives you the app's address, `/apps/<slug>`.
 
 To build and preview the app, the agent runs commands on your computer, like `mb` (the Metabase CLI), `npm run build`, and `npm run dev`. Your agent might ask for your permission before it runs these commands.
 
@@ -79,91 +74,60 @@ A new app starts live: it opens at its address. Admins can open the app right aw
 
 ## Preview the app on your computer
 
-> **The preview changes your data:** The local preview runs the app's actions against your database. Use test data when you try out adds, edits, or deletes.
+> **The preview changes real data:** The preview runs the app's actions against the database that your development Metabase connects to. If that's your production data warehouse, the adds, edits, and deletes that you try out in the preview change your production data. Try out actions on rows that you add for testing.
 
-The agent starts a preview of the app at a `localhost` address on your computer. The preview runs on your computer, but it gets its data from the Metabase where you build the app. Open the preview in your browser, and keep the tab open while the agent works: the agent reads the app's errors from the open preview. To start the preview again later, ask your agent.
+The agent starts a preview of the app at a `localhost` address on your computer. The preview runs on your computer, but it gets its data from your development Metabase. Open the preview in your browser, and keep the tab open while the agent works: the agent reads the app's errors from the open preview. To start the preview again later, ask your agent.
 
-The preview needs an admin [API key](../people-and-groups/api-keys.md). The agent creates the key on your Metabase, writes it into a `.env.local` file that Git ignores, and deletes the key when it's done. Since the preview uses an admin key, it shows what an admin can see, not what the app's viewers can see.
+The preview needs an admin [API key](../people-and-groups/api-keys.md). The agent creates the key on your development Metabase, writes it into a `.env.local` file that Git ignores, and deletes the key when it's done. Since the preview uses an admin key, it shows what an admin can see, not what the app's viewers can see.
 
 If your agent can't create the key, for example because its permission settings block it, [create an API key](../people-and-groups/api-keys.md#create-an-api-key) in the **Administrators** group yourself. Then put it in a `.env.local` file in the app's directory, next to `package.json`:
 
 ```text
-DATA_APP_MB_URL=<the URL of the Metabase where you build the app>
+DATA_APP_MB_URL=<your development Metabase URL>
 DATA_APP_MB_API_KEY=<your API key>
 ```
 
 Delete the key when you no longer need the preview.
 
-## Editing a data app
-
-To change an app:
-
-1. Check out a new branch in your development Metabase.
-2. Start your agent in a local clone of your Remote Sync repository, and check out that same branch.
-3. Ask for the change. The agent updates the code, builds the app again, and uploads the new version to the Metabase where you build the app.
-4. From your Metabase, push the changes to a remote branch.
-5. Stash your local changes.
-6. Pull the remote changes from Metabase (this will include the app bundle, and any updated questions).
-7. Apply your stashed changes (the source code). Push up to your branch.
-8. Create a pull request with the changes: bundle, Metabase artifacts, and source code.
-9. Merge the pull request.
-10. If your production Metabase isn't set up to auto-pull from your main branch, pull the changes manually.
-
-If you allow your agent to use Git and manage commits, the agent can handle this git-wrangling for you.
-
-Metabase keeps only the latest bundle for each app, so it has no version history for the app. To go back to an earlier version, ask your agent to build the app from an earlier version of the source code, and upload it again.
-
-### Keep the app's source code
-
-Metabase stores only the app's bundle, not its source code. The agent needs the source code to change the app, so keep the app's directory where the people who change the app can get to it:
-
-- If you use Remote Sync, keep the source code in your Remote Sync repository, next to the app's manifest and bundle. See [Keep an app's source code in your repository](#keep-an-apps-source-code-in-your-repository).
-- If you don't use Remote Sync, keep the app's directory in a Git repository.
-
-### Edit an app from another computer
-
-Anyone with an admin account can change the app from their own computer:
-
-1. Get the app's source code, for example by cloning the repository.
-2. [Set up your agent](#set-up-your-agent), and log the Metabase CLI in to the Metabase where you build the app.
-3. Start your agent in the app's directory, and ask for the change.
-
-Git doesn't keep the app's packages (`node_modules/`) or the preview's API key (`.env.local`), so each computer has its own. The agent installs the packages and creates a new API key for the preview.
-
-Each app has only one bundle, and each upload replaces it. If two people change the same app at the same time, the last upload wins: an upload from an older copy of the source code removes the changes in the newer bundle. So before you ask for a change, get the latest source code, and after the change, commit the source code, so that the next person starts from your version.
-
 ## Ship the app to production with Remote Sync
 
-When [Remote Sync](../installation-and-operation/remote-sync.md) is on, it always syncs your data apps, so an app ships to production like the rest of your synced content:
+When [Remote Sync](../installation-and-operation/remote-sync.md) is on, it always syncs your data apps, so an app ships to production like the rest of your synced content. Use the same steps for a new app and for each change to an app:
 
-1. On your development Metabase (in Read-write mode), [push your changes](../installation-and-operation/remote-sync.md#pushing-changes-to-git).
-2. On your production Metabase (in Read-only mode), [pull the changes](../installation-and-operation/remote-sync.md#pulling-changes-from-git). If your production Metabase uses [auto-sync](../installation-and-operation/remote-sync.md#pulling-changes-automatically), it pulls the changes on its own within five minutes.
-3. On your production Metabase, [add the groups](./manage.md#choose-who-can-open-an-app) that can open the app.
+1. On your development Metabase (in Read-write mode), [push your changes](../installation-and-operation/remote-sync.md#pushing-changes-to-git) to your branch. The push adds the app's manifest, bundle, and collection to the branch.
+2. In your local clone, switch to the branch, and pull it.
+3. Commit the app's directory, `data_apps/<slug>/`, and push the commit. The commit adds the app's source code to the branch.
+4. On your development Metabase, [pull the changes](../installation-and-operation/remote-sync.md#pulling-changes-from-git). If you skip this step, the next push from Metabase has a conflict.
+5. Merge your branch into the branch that your production Metabase pulls from, for example with a [pull request](../installation-and-operation/remote-sync.md#step-4-create-a-pull-request).
+6. On your production Metabase (in Read-only mode), [pull the changes](../installation-and-operation/remote-sync.md#pulling-changes-from-git). If your production Metabase uses [auto-sync](../installation-and-operation/remote-sync.md#pulling-changes-automatically), it pulls the changes on its own within five minutes.
+7. The first time that you ship an app, [add the groups](./manage.md#choose-who-can-open-an-app) that can open the app on your production Metabase.
 
-Remote Sync doesn't sync an app's group access. Groups that you add to the app on your development Metabase don't carry over to production, so each Metabase keeps its own group access. Until you add groups on your production Metabase, only admins can open the app there.
+If you let your agent use Git, the agent can do these steps for you.
 
-Remote Sync also doesn't sync an app's [status](./manage.md#make-an-app-live-or-a-draft) (live or draft). The first pull creates the app on your production Metabase as live. Later pulls keep the app's status on production, so you can make the app a draft on production without changing it on development.
+Remote Sync doesn't sync an app's group access or its [status](./manage.md#make-an-app-live-or-a-draft) (live or draft), so each Metabase keeps its own. The first pull creates the app on your production Metabase as live, and only admins can open it until you add groups there. Later pulls keep the app's status on production, so you can make the app a draft on production without changing it on development.
 
-Your production Metabase also needs the published tables and metrics that the app reads. A pull doesn't check for them, so [sync your Library](../installation-and-operation/remote-sync.md#you-choose-what-to-sync) too. If your app uses actions, [enable actions](../data-modeling/models/actions/introduction.md#enabling-actions-for-a-database) on the production databases that the app writes to.
+Your production Metabase also needs the published tables and metrics that the app reads. A pull doesn't check for them, so add your [Library](../installation-and-operation/remote-sync.md#you-choose-what-to-sync), which holds your semantic layer, to Remote Sync too. If your app uses actions, [enable actions](../data-modeling/models/actions/introduction.md#enabling-actions-for-a-database) on the production databases that the app writes to.
 
 ### What syncs with a data app
 
-Remote Sync syncs the app's manifest, its bundle, and its collection with its questions and actions. In your repository:
+Remote Sync syncs the app's manifest, its bundle, and its collection with its questions and actions. Remote Sync doesn't sync the app's source code: pushes from Metabase don't change the source code, and pulls ignore it. You commit the source code yourself. In your repository:
 
 - `data_apps/<slug>/data_app.yaml` is the app's manifest.
-- `data_apps/<slug>/` also holds the app's bundle.
+- `data_apps/<slug>/dist/index.js` is the app's bundle.
+- The rest of `data_apps/<slug>/` is the app's source code.
 - `collections/data_apps/` holds the app's collection.
 
-### Keep an app's source code in your repository
+When your agent builds the app, it writes the bundle to `build/index.js` and uploads it to your development Metabase. When Metabase pushes the app, it writes the uploaded bundle to `dist/index.js`. So the template's `.gitignore` keeps `build/` out of your repository, together with `node_modules/` and `.env.local`. Don't edit the manifest or the bundle by hand.
 
-When you start your agent in a local clone of your Remote Sync repository, the app's directory is `data_apps/<slug>/`. Pushes from Metabase don't change your source code, and pulls ignore it. Don't edit the manifest or the bundle by hand. The template's `.gitignore` keeps `node_modules/`, `build/`, and `.env.local` out of your repository.
+## Change a data app
 
-Metabase doesn't commit the source code for you. To commit the source code:
+1. On your development Metabase, [create a Remote Sync branch](../installation-and-operation/remote-sync.md#creating-a-branch) for the change.
+2. In your local clone of your Remote Sync repository, pull the latest source code, so that you start from the latest version of the app.
+3. Start your agent in the clone, and ask for the change. The agent updates the code, builds the app again, and uploads the new version to your development Metabase.
+4. [Ship the change to production](#ship-the-app-to-production-with-remote-sync).
 
-1. On your development Metabase, [push your changes](../installation-and-operation/remote-sync.md#pushing-changes-to-git), so that the repository has the app's latest bundle.
-2. In your local clone, pull the branch that Metabase pushed to.
-3. Commit the app's directory, `data_apps/<slug>/`, and push the commit.
-4. On your development Metabase, [pull the changes](../installation-and-operation/remote-sync.md#pulling-changes-from-git). If you skip this step, Metabase's next push has a conflict.
+Each app has only one bundle, and each upload replaces it, so Metabase has no version history for an app. If two people change the same app at the same time, the last upload wins: an upload from an older copy of the source code removes the changes in the newer bundle. To go back to an earlier version, ask your agent to build the app from an earlier commit of the source code, and upload it again.
+
+Any admin can change an app from their own computer. Clone your Remote Sync repository, do steps 1 and 2 of [Build the app with your agent](#build-the-app-with-your-agent), and start your agent in the clone. Git doesn't keep the app's packages (`node_modules/`) or the preview's API key (`.env.local`), so the agent installs the packages and creates a new API key on each computer.
 
 ## Let an app fetch data from other sites
 
@@ -178,6 +142,8 @@ The list replaces the app's allowed hosts, so include every origin that the app 
 The app can then get data from the site with `fetch`. The app can also show the site's images, embed the site's pages, and submit forms to the site. An origin that starts with `*.`, like `https://*.example.com`, matches subdomains, but not the domain itself.
 
 ## Have fun
+
+Ask your agent for any style you like.
 
 ![A data app styled like a retro black-and-white desktop app, with a File menu and a table of products](./images/data-app-retro.png)
 
