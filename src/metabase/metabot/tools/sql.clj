@@ -61,8 +61,8 @@
                              :mode "rewrite"
                              :value sql}))
 
-(tools/defrecoverable no-native-permission!
-  "The user may not write SQL against the query's database, but can build the question in the notebook."
+(tools/defrecoverable no-native-permission-with-notebook-fallback!
+  "The user may not write SQL against the target database, and the notebook builder is offered this turn."
   {:payload [:map {:closed true}]}
   [_]
   {:message  "You do not have permission to write SQL against this database."
@@ -71,18 +71,18 @@
                           " this database again.")}]})
 
 (defn- with-notebook-fallback
-  "Call `thunk`. When it refuses SQL on a database and the notebook builder is available this turn,
-  rethrow the refusal as [[no-native-permission!]], so the agent builds the question there instead
-  of ending the turn. The SQL tools are offered to a user who may write SQL on any database, so the
-  agent can still pick one where they may not. Without the notebook builder the refusal ends the
-  turn."
+  "Call `thunk`, rethrowing its native-query refusal as [[no-native-permission-with-notebook-fallback!]]
+  when the notebook builder is offered this turn.
+  Without the notebook builder the refusal still ends the turn."
   [ctx thunk]
+  ;; A user who may write SQL on any database gets the SQL tools, so the agent can pick a database where they may not.
+  ;; The recoverable error lets it try the notebook builder instead of ending the turn.
   (try
     (thunk)
     (catch clojure.lang.ExceptionInfo e
       (if (and (= ::sql.common/no-native-permission (get-in (ex-data e) [tools.error/error-key :code]))
                (contains? (:tool-names ctx) "construct_notebook_query"))
-        (tools.error/throw-recoverable! ::no-native-permission {} {:cause e})
+        (tools.error/throw-recoverable! ::no-native-permission-with-notebook-fallback {} {:cause e})
         (throw e)))))
 
 (defn- query-viz-part
