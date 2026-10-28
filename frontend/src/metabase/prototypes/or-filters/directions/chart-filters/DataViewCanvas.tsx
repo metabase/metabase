@@ -70,7 +70,7 @@ export function DataViewCanvas({
   Legend?: ComponentType<FilterCanvasProps & { isFilteredOnly?: boolean }>;
   /** Wraps the chart's own legend when it shows series rather than measures. */
   LegendWrap?: ComponentType<FilterCanvasProps & { frame: LegendFrame }>;
-  /** Replaces the y-axis title while one measure is plotted. */
+  /** Replaces each y-axis title that names a measure. */
   AxisTitle?: ComponentType<FilterCanvasProps & { frame: AxisTitleFrame }>;
 }) {
   const question = useQuestionHistory(query, onChange);
@@ -79,18 +79,11 @@ export function DataViewCanvas({
   // A second breakout splits the chart into series: the legend shows those, and
   // the measures lead it.
   const hasSeries = Lib.breakouts(query, ROWS_STAGE).length > 1;
-  // Like the app, one measure without series has no legend: its axis title
-  // takes over.
-  const hasAxisTitle =
-    AxisTitle != null &&
-    !hasSeries &&
-    Lib.aggregations(query, ROWS_STAGE).length === 1;
-  const [isAxisTitleShown, setIsAxisTitleShown] = useState(true);
-  // With axis titles turned off, the legend comes back, but only to show a
-  // condition: an unfiltered measure stays without one, as in the app.
-  const isLegendFallback = hasAxisTitle && !isAxisTitleShown;
-  const isLegendReplaced =
-    Legend != null && !hasSeries && (!hasAxisTitle || isLegendFallback);
+  // Axis titles are a way in, legend or not. Like the app, one measure without
+  // series has no legend, but its condition still reads in one: a legend of
+  // just the filtered measure.
+  const isLegendFilteredOnly = Lib.aggregations(query, ROWS_STAGE).length === 1;
+  const isLegendReplaced = Legend != null && !hasSeries;
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInset = useFirstFilterInset(
     chartRef,
@@ -134,7 +127,7 @@ export function DataViewCanvas({
           pl={chartInset}
           className={cx(isLegendReplaced && S.hidesNativeLegend)}
         >
-          {isLegendReplaced && isAggregated && (
+          {Legend && isLegendReplaced && isAggregated && (
             <Box pos="relative">
               {question.landed === "summary" && (
                 <LandedFlash landedKey={question.landedKey} />
@@ -142,7 +135,7 @@ export function DataViewCanvas({
               <Legend
                 query={query}
                 onChange={onChange}
-                isFilteredOnly={isLegendFallback}
+                isFilteredOnly={isLegendFilteredOnly}
               />
             </Box>
           )}
@@ -151,9 +144,8 @@ export function DataViewCanvas({
             display="bar"
             onPick={question.apply}
             onLegacyDrill={(nextQuery) => question.apply(nextQuery)}
-            onYAxisTitleChange={setIsAxisTitleShown}
             yAxisTitle={
-              AxisTitle && hasAxisTitle
+              AxisTitle && isAggregated
                 ? (frame) => (
                     <AxisTitle
                       query={query}

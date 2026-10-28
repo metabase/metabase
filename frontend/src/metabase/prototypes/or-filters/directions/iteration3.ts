@@ -29,7 +29,7 @@ export const ITERATION_3_DIRECTIONS: FilterDirection[] = [
       return t`Aggregation filters from the legend`;
     },
     get description() {
-      return t`"Aggregation filters with \"show if\" pills" without the "Show if…" and "+" beside the legend: the legend is the way in. Each measure in it is a pill, outlined on hover with a "Click to filter" tooltip; clicking it opens the number filter for that measure right there. Once filtered, the legend reads the condition: "Count ≥ 3", the name bold and the value regular, with × to remove it. Like the app, one measure without series has no legend: the y-axis title is the pill instead. Clicking a bar offers "Filter…" too.`;
+      return t`"Aggregation filters with \"show if\" pills" without the "Show if…" and "+" beside the legend: the legend is the way in. Each measure in it is a pill, outlined on hover with a "Click to filter" tooltip; clicking it opens the number filter for that measure right there. Y-axis titles are pills too, with or without a legend, one per axis when two measures split them. Once filtered, the legend reads the condition: "Count ≥ 3", the name bold and the value regular, with × to remove it. One measure without series has no legend until it's filtered: then a legend of just that condition appears. Clicking a bar offers "Filter…" too.`;
     },
     Component: ExpressionBarSplitPrototype,
     Canvas: (props) =>

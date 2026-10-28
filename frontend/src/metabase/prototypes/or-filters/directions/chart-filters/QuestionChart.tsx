@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
@@ -68,10 +69,11 @@ type QuestionChartProps = {
   legendAccessory?: ReactNode;
   /** Drawn around the whole legend row; a `[data-legend-lead]` inside it pushes the items along. */
   legendWrap?: (frame: LegendFrame) => ReactNode;
-  /** Drawn in place of the y-axis title, which it hides. */
+  /**
+   * Drawn in place of each y-axis title that names a measure, which it hides.
+   * One measure gets a title even when split into series.
+   */
   yAxisTitle?: (frame: AxisTitleFrame) => ReactNode;
-  /** Whether the chart shows a y-axis title for `yAxisTitle` to replace. */
-  onYAxisTitleChange?: (hasTitle: boolean) => void;
 };
 
 type OpenMenu = { model: DrillMenuModel; x: number; y: number };
@@ -93,7 +95,6 @@ export function QuestionChart({
   legendAccessory,
   legendWrap,
   yAxisTitle,
-  onYAxisTitleChange,
 }: QuestionChartProps) {
   const metadataProvider = useMetadataProviderUnfiltered(Lib.databaseID(query));
   const jsQuery = useMemo(() => Lib.toJsQuery(query), [query]);
@@ -101,11 +102,11 @@ export function QuestionChart({
   const [menu, setMenu] = useState<OpenMenu>();
   const containerRef = useRef<HTMLDivElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
-  const axisTitle = useYAxisTitle(containerRef, yAxisTitle != null);
-  const hasAxisTitle = axisTitle != null;
-  useEffect(() => {
-    onYAxisTitleChange?.(hasAxisTitle);
-  }, [hasAxisTitle, onYAxisTitleChange]);
+  const measureNames = useMemo(() => getMeasureNames(query), [query]);
+  const axisTitles = useYAxisTitles(
+    containerRef,
+    yAxisTitle != null ? measureNames : undefined,
+  );
   const legendEnd = useLegendEnd(
     containerRef,
     legendAccessory != null || legendWrap != null,
@@ -118,6 +119,7 @@ export function QuestionChart({
   const groupCount = result.data?.data?.rows.length ?? 0;
   const markNoun = effectiveDisplay === "line" ? t`points` : t`bars`;
 
+  const hasYAxisTitles = yAxisTitle != null;
   const rawSeries: RawSeries | undefined = useMemo(() => {
     if (!result.data?.data || result.data.data.cols.length === 0) {
       return undefined;
@@ -127,12 +129,16 @@ export function QuestionChart({
         card: createMockCard({
           dataset_query: jsQuery,
           display: effectiveDisplay,
-          visualization_settings: {},
+          visualization_settings:
+            // The app only titles an axis with one series on it.
+            hasYAxisTitles && measureNames.length === 1
+              ? { "graph.y_axis.title_text": measureNames[0] }
+              : {},
         }),
         data: result.data.data,
       },
     ];
-  }, [result.data, jsQuery, effectiveDisplay]);
+  }, [result.data, jsQuery, effectiveDisplay, hasYAxisTitles, measureNames]);
 
   const handleClick = (clicked: Lib.ClickObject | null) => {
     if (
@@ -212,16 +218,18 @@ export function QuestionChart({
             })}
           </Box>
         )}
-        {yAxisTitle && axisTitle && (
-          <Box
-            pos="absolute"
-            left={axisTitle.centerX}
-            top={axisTitle.centerY}
-            style={{ transform: "translate(-50%, -50%)", zIndex: 1 }}
-          >
-            {yAxisTitle(axisTitle)}
-          </Box>
-        )}
+        {yAxisTitle &&
+          axisTitles.map((axisTitle) => (
+            <Box
+              key={axisTitle.text}
+              pos="absolute"
+              left={axisTitle.centerX}
+              top={axisTitle.centerY}
+              style={{ transform: "translate(-50%, -50%)", zIndex: 1 }}
+            >
+              {yAxisTitle(axisTitle)}
+            </Box>
+          ))}
         {legendAccessory && legendEnd && (
           <Box
             pos="absolute"
@@ -257,66 +265,82 @@ const LEGEND_ACCESSORY_GAP = 12;
 const LEGEND_WRAP_PADDING = 10;
 
 export type AxisTitleFrame = {
+  /** The measure the axis plots, as titled. */
+  text: string;
   centerX: number;
   centerY: number;
   fontSize: string;
 };
 
-/** The y-axis title's text: the leftmost label turned a quarter. */
-function findYAxisTitle(container: HTMLElement): SVGTextElement | undefined {
-  const rotated = Array.from(container.querySelectorAll("svg text")).filter(
+/** The display names of the measures the chart plots. */
+function getMeasureNames(query: Lib.Query): string[] {
+  const stages = Array.from({ length: Lib.stageCount(query) }, (_, i) => i);
+  const stage = stages
+    .filter((stage) => Lib.aggregations(query, stage).length > 0)
+    .at(-1);
+  if (stage == null) {
+    return [];
+  }
+  return Lib.returnedColumns(query, stage)
+    .map((column) => Lib.displayInfo(query, stage, column))
+    .filter((info) => info.isAggregation)
+    .map((info) => info.displayName);
+}
+
+/** The y-axis titles: labels turned a quarter that name a measure. */
+function findYAxisTitles(
+  container: HTMLElement,
+  measureNames: string[],
+): SVGTextElement[] {
+  return Array.from(container.querySelectorAll("svg text")).filter(
     (text): text is SVGTextElement => {
-      if (!(text instanceof SVGTextElement) || !text.textContent?.trim()) {
+      if (
+        !(text instanceof SVGTextElement) ||
+        !measureNames.includes(text.textContent?.trim() ?? "")
+      ) {
         return false;
       }
       const matrix = text.transform.baseVal.consolidate()?.matrix;
       return matrix != null && Math.abs(matrix.a) < 0.01;
     },
   );
-  return rotated.sort(
-    (a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left,
-  )[0];
 }
 
 /**
- * Where the chart's y-axis title sits, relative to the container, kept up to
- * date as the chart re-renders. The title itself is hidden so a component can
- * take its place.
+ * Where the chart's y-axis titles sit, relative to the container, kept up to
+ * date as the chart re-renders. The titles themselves are hidden so a
+ * component can take their place.
  */
-function useYAxisTitle(
+function useYAxisTitles(
   containerRef: RefObject<HTMLDivElement>,
-  isEnabled: boolean,
-): AxisTitleFrame | undefined {
-  const [frame, setFrame] = useState<AxisTitleFrame>();
+  measureNames: string[] | undefined,
+): AxisTitleFrame[] {
+  const [frames, setFrames] = useState<AxisTitleFrame[]>([]);
 
   useLayoutEffect(() => {
     const container = containerRef.current;
-    if (!container || !isEnabled) {
-      setFrame(undefined);
+    if (!container || !measureNames) {
+      setFrames([]);
       return;
     }
     const update = () => {
-      const title = findYAxisTitle(container);
-      if (!title) {
-        setFrame(undefined);
-        return;
-      }
-      title.style.visibility = "hidden";
       const containerRect = container.getBoundingClientRect();
-      const rect = title.getBoundingClientRect();
-      const centerX = Math.round(
-        rect.left - containerRect.left + rect.width / 2,
+      const nextFrames = findYAxisTitles(container, measureNames).map(
+        (title) => {
+          title.style.visibility = "hidden";
+          const rect = title.getBoundingClientRect();
+          return {
+            text: title.textContent?.trim() ?? "",
+            centerX: Math.round(
+              rect.left - containerRect.left + rect.width / 2,
+            ),
+            centerY: Math.round(rect.top - containerRect.top + rect.height / 2),
+            fontSize: getComputedStyle(title).fontSize,
+          };
+        },
       );
-      const centerY = Math.round(
-        rect.top - containerRect.top + rect.height / 2,
-      );
-      const fontSize = getComputedStyle(title).fontSize;
-      setFrame((previous) =>
-        previous?.centerX === centerX &&
-        previous.centerY === centerY &&
-        previous.fontSize === fontSize
-          ? previous
-          : { centerX, centerY, fontSize },
+      setFrames((previous) =>
+        _.isEqual(previous, nextFrames) ? previous : nextFrames,
       );
     };
     update();
@@ -327,9 +351,9 @@ function useYAxisTitle(
       observer.disconnect();
       window.removeEventListener("resize", update);
     };
-  }, [containerRef, isEnabled]);
+  }, [containerRef, measureNames]);
 
-  return frame;
+  return frames;
 }
 
 export type LegendFrame = { width: number; row: HTMLElement };

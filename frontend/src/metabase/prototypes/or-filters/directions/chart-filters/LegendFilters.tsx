@@ -40,7 +40,7 @@ export function LegendFilters({
   onChange,
   isFilteredOnly,
 }: FilterCanvasProps & {
-  /** Only the measures with a condition: the legend stands in for a hidden axis title. */
+  /** Only the measures with a condition: a legend the app wouldn't show, kept for the conditions. */
   isFilteredOnly?: boolean;
 }) {
   const summaryQuery = toSummaryQuery(query);
@@ -80,8 +80,8 @@ export function LegendFilters({
 type AxisTitleFilterProps = FilterCanvasProps & { frame: AxisTitleFrame };
 
 /**
- * The y-axis title as the pill: with one measure the chart has no legend, so
- * the axis that plots it is the way in. Filtered, it reads "Count ≥ 3".
+ * A y-axis title as the pill for the measure it names, legend or not. It
+ * never reads the condition: that's in the legend.
  */
 export function AxisTitleFilter({
   query,
@@ -89,7 +89,11 @@ export function AxisTitleFilter({
   frame,
 }: AxisTitleFilterProps) {
   const summaryQuery = toSummaryQuery(query);
-  const measure = getMeasures(summaryQuery)[0];
+  const measure = getMeasures(summaryQuery).find(
+    (measure) =>
+      Lib.displayInfo(summaryQuery, getSummaryStage(summaryQuery), measure)
+        .displayName === frame.text,
+  );
   if (!measure) {
     return null;
   }
@@ -130,7 +134,7 @@ function LegendPill({
     measure,
   );
   const filters = getMeasureFilters(summaryQuery, measure);
-  const filter = filters[0];
+  const isFiltered = filters.length > 0;
   const condition = describeConditions(summaryQuery, filters);
 
   return (
@@ -161,13 +165,13 @@ function LegendPill({
                 <Text size="xs" fz={fontSize} fw="bold" c="inherit">
                   {measureInfo.displayName}
                 </Text>
-                {condition && (
+                {condition && !isVertical && (
                   <Text size="xs" fz={fontSize} c="inherit">
                     {condition}
                   </Text>
                 )}
               </Group>
-              {filter && (
+              {isFiltered && !isVertical && (
                 <Icon
                   name="close"
                   size={10}
