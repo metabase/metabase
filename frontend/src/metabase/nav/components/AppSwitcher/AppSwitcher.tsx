@@ -184,6 +184,24 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
         </Menu.Item>,
       );
     }
+    // DSN-737 throwaway prototyping canvas; branch never merges
+    items.push(
+      <Menu.Item
+        key="prototypes-link"
+        component={ForwardRefLink}
+        to="/prototypes"
+        leftSection={
+          <Icon
+            name="palette"
+            {...(currentApp === "prototypes"
+              ? CURRENT_APP_ICON_OVERRIDES
+              : null)}
+          />
+        }
+      >
+        {t`Prototypes`}
+      </Menu.Item>,
+    );
 
     return (
       <>
