@@ -5,6 +5,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metrics.core :as metrics]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
 
@@ -118,6 +119,10 @@
   "The `:data_access_token` column of a ExplorationQuery, decoded."
   ::exploration-thread.data-access-token)
 
+(mr/def ::exploration-query.resolved-source-ids
+  "The `:resolved_source_ids` column of an ExplorationQuery, decoded."
+  ::exploration-thread.resolved-source-ids)
+
 (mr/def ::exploration-query
   "A ExplorationQuery as selected from the app DB: every column of `:exploration_query`."
   [:merge
@@ -148,7 +153,16 @@
    [:entity_id              {:optional true} [:maybe :string]]
    [:created_at             {:optional true} [:maybe ms/TemporalInstant]]
    [:updated_at             {:optional true} [:maybe ms/TemporalInstant]]
-   [:data_access_token      {:optional true} [:maybe ::exploration-query.data-access-token]]])
+   [:data_access_token      {:optional true} [:maybe ::exploration-query.data-access-token]]
+   [:resolved_source_ids    {:optional true} [:maybe ::exploration-query.resolved-source-ids]]])
+
+(mr/def ::exploration-query.update.stamped-together
+  "An ExplorationQuery update with its `dataset_query`, `data_access_token` and `resolved_source_ids` all or none."
+  [:fn {:error/message "dataset_query, data_access_token and resolved_source_ids go together or not at all"}
+   (fn [changes]
+     (let [ks [:dataset_query :data_access_token :resolved_source_ids]]
+       (or (not-any? #(contains? changes %) ks)
+           (every? #(contains? changes %) ks))))])
 
 (mr/def ::exploration-query-result.chart-stats
   "The `:chart_stats` column of a ExplorationQueryResult, decoded."
@@ -230,6 +244,10 @@
   "The `:data_access_token` column of a ExplorationThread, decoded."
   DataAccessToken)
 
+(mr/def ::exploration-thread.resolved-source-ids
+  "The `:resolved_source_ids` column of a ExplorationThread, decoded."
+  query-perms/ResolvedSourceIds)
+
 (mr/def ::exploration-thread
   "A ExplorationThread as selected from the app DB: every column of `:exploration_thread`."
   [:merge
@@ -254,7 +272,8 @@
    [:query_plan_started_at {:optional true} [:maybe ms/TemporalInstant]]
    [:query_plan_transcript {:optional true} [:maybe ::exploration-thread.query-plan-transcript]]
    [:canceled_at           {:optional true} [:maybe ms/TemporalInstant]]
-   [:data_access_token     {:optional true} [:maybe ::exploration-thread.data-access-token]]])
+   [:data_access_token     {:optional true} [:maybe ::exploration-thread.data-access-token]]
+   [:resolved_source_ids   {:optional true} [:maybe ::exploration-thread.resolved-source-ids]]])
 
 (mr/def ::exploration-thread-timeline
   "A ExplorationThreadTimeline as selected from the app DB: every column of `:exploration_thread_timeline`."

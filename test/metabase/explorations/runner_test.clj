@@ -15,7 +15,11 @@
    [metabase.metabot.self.claude]
    [metabase.metabot.usage]
    [metabase.permissions.core :as perms]
+   [metabase.queries.core :as queries]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.core :as qp]
+   [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
    [toucan2.core :as t2])
@@ -76,6 +80,14 @@
   [eq-id]
   (eqr/stored-results eq-id))
 
+(defn- preprocess-count
+  "Calls `thunk`, returning `[result number-of-preprocesses]`."
+  [thunk]
+  (let [calls (atom 0)
+        orig  (dynamic-redefs/original-fn #'qp.preprocess/preprocess)]
+    (dynamic-redefs/with-dynamic-fn-redefs [qp.preprocess/preprocess (fn [& args] (swap! calls inc) (apply orig args))]
+      [(thunk) @calls])))
+
 (deftest run-one-iteration-happy-path-test
   (testing "A pending row gets executed, the linked stored_result holds result_data, and status flips to done"
     (mt/with-temp [:model/User u {:email "happy@example.com"}
@@ -99,6 +111,26 @@
         (is (pos? (count (:result_data sr))))
         (is (= 1 (:row_count sr))
             "the QP's top-level :row_count (1 row for an unbucketed count) is persisted on the snapshot")))))
+
+(deftest run-one-iteration-stores-resolved-source-ids-on-the-stored-result-test
+  (let [venues-count (fn []
+                       (lib/->legacy-MBQL
+                        (let [mp (mt/metadata-provider)]
+                          (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                              (lib/aggregate (lib/count))))))]
+    (mt/with-temp [:model/User u {:email "sr-resolved-source-ids@example.com"}
+                   :model/Card card {:type :metric :creator_id (:id u) :dataset_query (venues-count)}]
+      (let [thread (temp-thread! (:id u))
+            row    (pending-query! (:id thread) (:id card) (venues-count))
+            _      (drain-until-terminal! (:id row))
+            sr     (stored-result-for (:id row))]
+        (testing "the stored result carries the resolved source ids its token was computed over"
+          (is (= {:table-ids #{(mt/id :venues)} :table-query-ids #{(mt/id :venues)}}
+                 (dissoc (:resolved_source_ids sr) :query-digest))))
+        (testing "the cached-result gate uses them rather than preprocessing the stored query"
+          (is (= [true 0]
+                 (request/with-current-user (mt/user->id :rasta)
+                   (preprocess-count #(queries/viewer-can-view-cached-result? sr))))))))))
 
 (deftest run-one-iteration-records-stored-result-use-test
   (testing "Running a query records a stored_result_use row tying the snapshot to the exploration"
@@ -381,6 +413,67 @@
           (runner/run-query! (:id row)))
         (is (= (:id u) @seen)
             "discovery must run as the exploration's creator, not with no user bound")))))
+
+(deftest finalize-row-stores-the-resolved-source-ids-test
+  (testing "finalizing a deferred row stores the resolved source ids its lens stamp was computed over beside the stamp"
+    (mt/with-temp [:model/User u {:email "resolved-source-ids@example.com"}
+                   :model/Card card {:type :metric
+                                     :creator_id (:id u)
+                                     :dataset_query (lib/->legacy-MBQL
+                                                     (let [mp (mt/metadata-provider)]
+                                                       (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                           (lib/aggregate (lib/count)))))}]
+      (let [thread (temp-thread! (:id u))
+            row    (deferred-query! (:id thread) (:id card))]
+        (with-redefs [qp.context/build-row-context (constantly {::stub true})
+                      qp.variants/dataset-query    (fn [_variant _ctx]
+                                                     (let [mp (mt/metadata-provider)]
+                                                       (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                                                           (lib/aggregate (lib/count)))))
+                      qp.variants/query-name       (constantly "stub name")]
+          (runner/run-query! (:id row)))
+        (is (= {:table-ids       #{(mt/id :checkins)}
+                :table-query-ids #{(mt/id :checkins)}}
+               (-> (t2/select-one-fn :resolved_source_ids :model/ExplorationQuery :id (:id row))
+                   (dissoc :query-digest))))))))
+
+(deftest stored-resolved-source-ids-stand-in-only-for-their-own-query-test
+  (mt/with-temp [:model/User u {:email "resolved-source-ids-digest@example.com"}
+                 :model/Card card {:type :metric
+                                   :creator_id (:id u)
+                                   :dataset_query (lib/->legacy-MBQL
+                                                   (let [mp (mt/metadata-provider)]
+                                                     (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                         (lib/aggregate (lib/count)))))}]
+    (let [thread (temp-thread! (:id u))
+          row    (deferred-query! (:id thread) (:id card))
+          stored {:table-ids #{(mt/id :checkins)} :table-query-ids #{(mt/id :checkins)}}
+          resolve-reloaded (fn []
+                             (let [reloaded (t2/select-one :model/ExplorationQuery :id (:id row))]
+                               (preprocess-count
+                                #(query-perms/query->resolved-source-ids (:dataset_query reloaded)
+                                                                         (:resolved_source_ids reloaded)))))]
+      (with-redefs [qp.context/build-row-context (constantly {::stub true})
+                    qp.variants/dataset-query    (fn [_variant _ctx]
+                                                   (let [mp (mt/metadata-provider)]
+                                                     (-> (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                                                         (lib/aggregate (lib/count)))))
+                    qp.variants/query-name       (constantly "stub name")]
+        (runner/run-query! (:id row)))
+      (testing "the stored value is used for the query it was stamped from, as it reads back from the app DB"
+        (is (= [stored 0] (resolve-reloaded))))
+      (testing "once the row's query changes, the query is resolved live"
+        (t2/update! :model/ExplorationQuery (:id row)
+                    {:dataset_query (lib/->legacy-MBQL
+                                     (let [mp (mt/metadata-provider)]
+                                       (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                           (lib/aggregate (lib/count)))))})
+        (let [[resolved preprocesses] (resolve-reloaded)]
+          (is (= #{(mt/id :venues)} (:table-ids resolved)))
+          (is (pos? preprocesses))))
+      (testing "a stored value without a digest is not used"
+        (t2/update! :model/ExplorationQuery (:id row) {:resolved_source_ids stored})
+        (is (= #{(mt/id :venues)} (:table-ids (first (resolve-reloaded)))))))))
 
 (defn- store-fake-result!
   [query-id qp-result]

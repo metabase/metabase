@@ -6,13 +6,17 @@
   (:require
    [clojure.test :refer :all]
    [metabase.documents.core :as documents]
+   [metabase.documents.models.document :as m.document]
+   [metabase.explorations.db :as explorations.db]
    [metabase.explorations.derived-perms :as derived-perms]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.data-access-token :as data-access-token]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.queries.core :as queries]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
@@ -275,7 +279,7 @@
                      (let [thread (thread-with-snapshots! (specs n))
                            calls  (atom 0)]
                        (dynamic-redefs/with-dynamic-fn-redefs
-                         [queries/viewer-can-view-cached-result? (fn [_] (swap! calls inc) true)]
+                         [queries/viewer-can-view-cached-result? (fn [& _] (swap! calls inc) true)]
                          (request/with-current-user (mt/user->id :rasta)
                            (derived-perms/thread-ids-with-visible-derived-data [thread])))
                        @calls))]
@@ -283,10 +287,25 @@
       (is (= 1 (verdicts 25))
           "one verdict for the group — before batching, 25 charts cost 25 of them"))))
 
+(deftest groups-sharing-a-table-read-its-sandbox-once-test
+  (testing "charts over one table land in different groups when their lenses differ, and each group's verdict
+            computes the viewer's lens over that table. The batch shares those reads, so the table's sandbox is
+            read once however many groups there are"
+    (let [venues (mt/id :venues)
+          thread (thread-with-snapshots! (for [token [{} {:sandbox {venues "d-a"}} {:sandbox {venues "d-b"}}]]
+                                           {:creator-id (mt/user->id :lucky) :table :venues :token token}))
+          reads  (atom 0)]
+      (dynamic-redefs/with-dynamic-fn-redefs
+        [data-access-token/sandbox-token-for-table (fn [table-id]
+                                                     (when (= venues table-id) (swap! reads inc))
+                                                     nil)]
+        (is (false? (visible? thread :rasta)) "the sandboxed creators' charts block an unsandboxed viewer"))
+      (is (= 1 @reads)))))
+
 (deftest verdict-cost-grows-only-with-distinct-chart-shapes-test
   (testing "grouping cannot be free: [[visibility-key]] resolves each chart's query, because the
-            lens half of the verdict compares *resolved* tables and two charts can share a raw
-            footprint while reading different ones. That resolution is per chart and mostly metadata
+            lens half of the verdict compares *resolved* tables and two charts can share raw
+            source ids while reading different ones. That resolution is per chart and mostly metadata
             reads, so cost grows — but it must stay far below re-running the verdict itself, which
             would be ~13 queries a chart (~325 for 25)."
     (let [specs   (fn [n] (repeat n {:creator-id (mt/user->id :lucky) :table :venues :token {}}))
@@ -300,6 +319,30 @@
           large   (measure 25)]
       (is (< large (* 2 small))
           (format "resolution must stay cheap (2 charts: %d queries, 25 charts: %d)" small large)))))
+
+(deftest stored-resolved-source-ids-key-the-verdict-only-for-their-own-query-test
+  (let [thread   (thread-with-snapshots! [{:creator-id (mt/user->id :lucky) :table :venues :token {}}])
+        q-id     (t2/select-one-pk :model/ExplorationQuery :exploration_thread_id thread)
+        stamp!   (fn [stamped-from]
+                   (t2/update! :model/ExplorationQuery q-id
+                               {:resolved_source_ids (query-perms/stamped-resolved-source-ids
+                                                      (count-query stamped-from)
+                                                      {:table-ids #{(mt/id stamped-from)}})}))
+        resolves (fn []
+                   (let [calls (atom 0)
+                         orig  (dynamic-redefs/original-fn #'query-perms/query->resolved-source-ids)]
+                     (dynamic-redefs/with-dynamic-fn-redefs
+                       [queries/viewer-can-view-cached-result? (constantly true)
+                        query-perms/query->resolved-source-ids (fn [& args] (swap! calls inc) (apply orig args))]
+                       (request/with-current-user (mt/user->id :rasta)
+                         (derived-perms/thread-ids-with-visible-derived-data [thread])))
+                     @calls))]
+    (testing "a value stamped from the row's own query stands in for resolving it"
+      (stamp! :venues)
+      (is (zero? (resolves))))
+    (testing "a value stamped from another query is ignored, and the row's query is resolved live"
+      (stamp! :checkins)
+      (is (= 1 (resolves))))))
 
 ;;; --------------------------------- Summary-document content gate ---------------------------------
 
@@ -324,6 +367,27 @@
     (mt/with-temp [:model/Document {doc-id :id} {:creator_id (mt/user->id :lucky)}]
       (is (true? (boolean (doc-content-visible? (t2/select-one :model/Document :id doc-id) :rasta))))
       (is (true? (boolean (doc-content-visible? (t2/select-one [:model/Document :id :name] :id doc-id) :rasta)))))))
+
+(deftest superuser-skips-content-gate-test
+  (testing "a superuser passes the content gate without it loading anything to adjudicate"
+    (let [thread  (thread-with-snapshots! [{:creator-id (mt/user->id :lucky) :table :venues :token nil}])
+          expl    (t2/select-one-fn :exploration_id :model/ExplorationThread :id thread)
+          loads   (atom 0)
+          counted (fn [f] (fn [& args] (swap! loads inc) (apply f args)))]
+      (mt/with-temp [:model/Document {doc-id :id} {:exploration_id expl :creator_id (mt/user->id :lucky)}]
+        (let [document (t2/select-one :model/Document :id doc-id)]
+          (dynamic-redefs/with-dynamic-fn-redefs
+            [explorations.db/thread-ids-for-exploration
+             (counted (dynamic-redefs/original-fn #'explorations.db/thread-ids-for-exploration))
+             explorations.db/lens-stamped-queries
+             (counted (dynamic-redefs/original-fn #'explorations.db/lens-stamped-queries))]
+            (testing "the gate denies everyone else here"
+              (is (false? (visible? thread :rasta)))
+              (is (false? (boolean (doc-content-visible? document :rasta))))
+              (reset! loads 0))
+            (is (true? (visible? thread :crowberto)))
+            (is (true? (boolean (doc-content-visible? document :crowberto))))
+            (is (zero? @loads))))))))
 
 ;;; --------------------------- Cards scoped to a gated Summary document ---------------------------
 
@@ -416,9 +480,8 @@
 
 (deftest content-gate-verdict-is-memoized-within-a-scope-test
   (testing "every Card in a Summary document shares one document, and therefore one verdict. Without
-            memoization each card re-runs the whole rollup — ~20 app-DB queries apiece — so a
-            document's cards cost N times what one costs. Bulk read paths scope the cache
-            themselves; see the callers of `with-content-gate-cache`."
+            memoization each card re-runs the whole rollup — ~20 app-DB queries apiece. Bulk read
+            paths scope the cache themselves; see the callers of `with-content-gate-cache`."
     (let [thread  (thread-with-snapshots! (repeat 5 {:creator-id (mt/user->id :lucky)
                                                      :table :venues :token {}}))
           expl-id (t2/select-one-fn :exploration_id :model/ExplorationThread :id thread)]
@@ -435,14 +498,16 @@
                                                         :display "table" :visualization_settings {}
                                                         :collection_id coll-id :document_id doc-id})))]
           (request/with-current-user (mt/user->id :rasta)
+            ;; Count calls to the registered gate rather than app-DB queries: each Card still reads
+            ;; its own document and snapshots, and the rollup's cost differs between editions.
             (let [cards (t2/select :model/Card :id [:in card-ids])
-                  measure (fn [instances]
-                            (documents/with-content-gate-cache
-                              (t2/with-call-count [call-count]
-                                (doseq [card instances] (mi/can-read? card))
-                                (call-count))))
-                  one (measure [(first cards)])
-                  ten (measure cards)]
-              (is (< ten (* 2 one))
-                  (format "one verdict should serve every card (1 card: %d queries, 10 cards: %d)"
-                          one ten)))))))))
+                  gate  @#'m.document/doc-content-visibility-fn
+                  orig  @gate
+                  calls (atom 0)]
+              (try
+                (reset! gate (fn [doc] (swap! calls inc) (orig doc)))
+                (documents/with-content-gate-cache
+                  (is (every? mi/can-read? cards)))
+                (is (= 1 @calls) "one verdict should serve every card")
+                (finally
+                  (reset! gate orig))))))))))

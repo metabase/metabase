@@ -2262,7 +2262,7 @@
 
   query-permissions
   {:team "UX West"
-   :api  #{metabase.query-permissions.core}
+   :api  #{metabase.query-permissions.core metabase.query-permissions.schema}
    :uses #{api
            lib
            lib.be

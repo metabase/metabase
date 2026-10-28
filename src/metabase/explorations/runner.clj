@@ -84,13 +84,13 @@
      (result-fn))))
 
 (defn- compute-data-access-token
-  "The creator's effective-data-access token for `dataset-query` — the sandbox/impersonation/routing
-  fingerprint the query is computed under, stored on the `StoredResult` and on the
-  `ExplorationQuery` itself, and compared against a viewer's token to gate reads. Must be called
-  inside the creator's `with-current-user` (+ routing-on) binding."
-  [dataset-query db-id]
+  "The creator's effective-data-access token for a query over Database `db-id` with `resolved-source-ids` (its
+  [[query-perms/query->resolved-source-ids]]) — the sandbox/impersonation/routing fingerprint the query is computed
+  under, stored on the `StoredResult` and on the `ExplorationQuery` itself, and compared against a viewer's token
+  to gate reads. Must be called inside the creator's `with-current-user` (+ routing-on) binding."
+  [db-id resolved-source-ids]
   (perms/data-access-token {:database-id db-id
-                            :table-ids   (query-perms/query->resolved-source-table-ids dataset-query)}))
+                            :table-ids   (:table-ids resolved-source-ids)}))
 
 (defn- finalize-row!
   "If `row` carries a nil `:dataset_query` (planner deferred the MBQL build),
@@ -113,9 +113,15 @@
         (when (nil? dq)
           (throw (ex-info "Could not build dataset_query for row (discovery returned no values?)"
                           {:row-id (:id row) :variant variant})))
-        (let [token (compute-data-access-token dq (:database_id row))]
-          (explorations.db/update-query! (:id row) {:dataset_query dq :name nm :data_access_token token})
-          (assoc row :dataset_query dq :name nm :data_access_token token))))))
+        (let [resolved-source-ids (query-perms/query->resolved-source-ids dq)
+              stamp               {:dataset_query       dq
+                                   :name                nm
+                                   :data_access_token   (compute-data-access-token (:database_id row)
+                                                                                   resolved-source-ids)
+                                   :resolved_source_ids (query-perms/stamped-resolved-source-ids dq
+                                                                                                 resolved-source-ids)}]
+          (explorations.db/update-query! (:id row) stamp)
+          (merge row stamp))))))
 
 (defn- safe-chart-config
   "Best-effort `qp-result->chart-config`. Returns nil on failure (>2 cols,
@@ -294,37 +300,40 @@
   lens is captured as a `:data_access_token` so non-creator readers can be gated against it."
   [row creator-id]
   (let [db-id        (:database_id row)
-        qp-result    (qp.variants/pin-other-last
-                      (:query_type row)
-                      (qp/process-query
-                       (qp/userland-query-with-default-constraints
-                        (:dataset_query row)
-                        {:context :exploration})))
-        token        (compute-data-access-token (:dataset_query row) db-id)
-        chart-config (safe-chart-config row qp-result)
-        stats        (safe-deep-stats row chart-config)]
-    {:creator-id creator-id
-     :db-id      db-id
-     :bytes      (serialize-result qp-result)
-     :row-count  (:row_count qp-result)
-     :token      token
-     :stats      stats
-     :score      (safe-score row chart-config stats)
-     :ctx        (safe-score+describe row chart-config stats creator-id)}))
+        qp-result           (qp.variants/pin-other-last
+                             (:query_type row)
+                             (qp/process-query
+                              (qp/userland-query-with-default-constraints
+                               (:dataset_query row)
+                               {:context :exploration})))
+        resolved-source-ids (query-perms/query->resolved-source-ids (:dataset_query row) (:resolved_source_ids row))
+        token               (compute-data-access-token db-id resolved-source-ids)
+        chart-config        (safe-chart-config row qp-result)
+        stats               (safe-deep-stats row chart-config)]
+    {:creator-id          creator-id
+     :db-id               db-id
+     :bytes               (serialize-result qp-result)
+     :row-count           (:row_count qp-result)
+     :token               token
+     :resolved-source-ids (query-perms/stamped-resolved-source-ids (:dataset_query row) resolved-source-ids)
+     :stats               stats
+     :score               (safe-score row chart-config stats)
+     :ctx                 (safe-score+describe row chart-config stats creator-id)}))
 
 (defn- persist-query-result!
   "Write what [[compute-query-result]] produced and flip the query to `done` transactionally.
 
   Returns false when a peer delivery already persisted this query."
-  [row ^OffsetDateTime started {:keys [creator-id db-id bytes row-count token stats score ctx]}]
+  [row ^OffsetDateTime started {:keys [creator-id db-id bytes row-count token resolved-source-ids stats score ctx]}]
   (try
     (t2/with-transaction [_conn]
-      (let [sr-id (explorations.db/insert-stored-result! {:result_data       bytes
-                                                          :creator_id        creator-id
-                                                          :database_id       db-id
-                                                          :dataset_query     (:dataset_query row)
-                                                          :row_count         row-count
-                                                          :data_access_token token})]
+      (let [sr-id (explorations.db/insert-stored-result! {:result_data         bytes
+                                                          :creator_id          creator-id
+                                                          :database_id         db-id
+                                                          :dataset_query       (:dataset_query row)
+                                                          :row_count           row-count
+                                                          :data_access_token   token
+                                                          :resolved_source_ids resolved-source-ids})]
         (explorations.db/insert-query-result!
          {:exploration_query_id             (:id row)
           :stored_result_id                 sr-id

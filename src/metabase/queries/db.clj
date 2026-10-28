@@ -139,6 +139,11 @@
              :type :metric
              {:order-by [[:name :asc]]}))
 
+(mu/defn document-collection-and-exploration
+  "The Document with `document-id` narrowed to `:id`, `:collection_id` and `:exploration_id`, or nil."
+  [document-id :- ms/PositiveInt]
+  (t2/select-one [:model/Document :id :collection_id :exploration_id] :id document-id))
+
 (mu/defn document-card-ids
   "The IDs of the Cards that belong to the Document with `document-id`."
   [document-id :- ms/PositiveInt]
@@ -560,10 +565,15 @@
   (t2/insert! :model/StoredResultUse {:stored_result_id stored-result-id
                                       :card_id          card-id}))
 
-(mu/defn stored-results-for-card
-  "The StoredResults used by the Card with `card-id`."
+(mu/defn stored-result-gate-inputs-for-card
+  "The StoredResults used by the Card with `card-id`, narrowed to the columns the cached-result gate reads."
   [card-id :- ::lib.schema.id/card]
-  (t2/select :model/StoredResult
+  (t2/select [:model/StoredResult
+              :id
+              :database_id
+              :dataset_query
+              :data_access_token
+              :resolved_source_ids]
              :id [:in ^:allow-subquery {:select [:stored_result_id]
                                         :from   [:stored_result_use]
                                         :where  [:= :card_id card-id]}]))

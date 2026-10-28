@@ -5,6 +5,8 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.collections.models.collection :as collection]
+   [metabase.documents.api.document :as api.document]
+   [metabase.documents.models.document :as m.document]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.documents.test-util :as documents.test-util]
    [metabase.events.core :as events]
@@ -124,6 +126,22 @@
       (testing "should return 404 for non-existent document"
         (mt/user-http-request :crowberto
                               :get 404 "document/99999")))))
+
+(deftest get-document-runs-content-gate-once-test
+  (testing "one GET /api/document/:id adjudicates the document's content once"
+    (mt/with-temp [:model/Collection {coll-id :id}     {}
+                   :model/Document   {document-id :id} {:name          "Test Document"
+                                                        :collection_id coll-id
+                                                        :document      (documents.test-util/text->prose-mirror-ast "Doc 1")}]
+      (let [gate  @#'m.document/doc-content-visibility-fn
+            orig  @gate
+            calls (atom 0)]
+        (try
+          (reset! gate (fn [_doc] (swap! calls inc) true))
+          (mt/user-http-request :rasta :get 200 (format "document/%s" document-id))
+          (is (= 1 @calls))
+          (finally
+            (reset! gate orig)))))))
 
 (defn- recent-view
   "The RecentViews row, if any, for `user-id` viewing document `document-id`. Document reads record a recent
@@ -2879,3 +2897,28 @@
                                                 :collection_id coll-id
                                                 :document      (card-embed-ast mbql-card-id)})]
               (is (t2/exists? :model/Card :document_id (:id result))))))))))
+
+(defn- embedded-card-ids [ast]
+  (->> (tree-seq map? :content ast)
+       (filter #(= prose-mirror/card-embed-type (:type %)))
+       (map #(get-in % [:attrs "id"]))))
+
+(deftest add-card-to-document-test
+  (mt/with-temp [:model/Document {document-id :id} {:name           "Test Document"
+                                                    :document       (documents.test-util/text->prose-mirror-ast "Doc")
+                                                    :is_placeholder true}
+                 :model/Card     {card-1 :id}      {:document_id document-id}
+                 :model/Card     {card-2 :id}      {:document_id document-id}]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (testing "add-card-to-document! returns the hydrated document"
+        (let [result (api.document/add-card-to-document! document-id card-1 nil)]
+          (is (=? {:id document-id :is_placeholder false :can_write true :creator map?} result))
+          (is (= [card-1] (embedded-card-ids (:document result))))))
+      (testing "add-card-to-document-row! returns the plain row, without hydrating it"
+        (let [result (api.document/add-card-to-document-row! document-id card-2 nil
+                                                             :extra-attrs {"chart_href" "/x"})]
+          (is (=? {:id document-id :is_placeholder false} result))
+          (is (not-any? #(contains? result %) [:can_write :creator]))
+          (is (= [card-1 card-2]
+                 (embedded-card-ids (:document result))
+                 (embedded-card-ids (t2/select-one-fn :document :model/Document :id document-id)))))))))
