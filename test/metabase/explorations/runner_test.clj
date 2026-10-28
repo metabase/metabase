@@ -296,7 +296,7 @@
                                    (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)) (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id)))))))
             llm-calls (atom 0)]
         (mt/with-dynamic-fn-redefs [metabase.metabot.usage/check-usage-limits!
-                                    (fn [] "you've hit your AI usage limit")
+                                    (fn [& _] "you've hit your AI usage limit")
                                     metabase.metabot.self.claude/claude
                                     (fn [& _] (swap! llm-calls inc) [])]
           (drain-until-terminal! (:id row))

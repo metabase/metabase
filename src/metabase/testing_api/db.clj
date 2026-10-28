@@ -97,8 +97,9 @@
    tenant-id :- ms/PositiveInt]
   (t2/update! :model/User user-id {:tenant_id tenant-id}))
 
-(mu/defn delete-ai-usage-logs-for-user-and-source!
-  "Delete the AiUsageLog rows of the User with `user-id` from `source`, returning the number deleted."
-  [user-id :- ::lib.schema.id/user
-   source  :- :string]
-  (t2/delete! :model/AiUsageLog :user_id user-id :source source))
+(mu/defn delete-ai-usage-logs-for-user-and-conversation!
+  "Delete the AiUsageLog rows of the User with `user-id` in the conversation `conversation-id`, returning the number
+  deleted."
+  [user-id         :- ::lib.schema.id/user
+   conversation-id :- :string]
+  (t2/delete! :model/AiUsageLog :user_id user-id :conversation_id conversation-id))
