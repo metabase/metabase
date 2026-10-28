@@ -1,9 +1,11 @@
 (ns metabase-enterprise.library.validation
   (:require
    [clojure.set :as set]
+   [clojure.string :as str]
    [metabase-enterprise.library.db :as library.db]
    [metabase.collections.models.collection :as collection]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
 
 (def ^:private library-collection-content-specs
@@ -43,6 +45,29 @@
           (throw (ex-info error-message {:status-code 400}))))
       (when (and (= content-type :table) (not= collection-type collection/library-data-collection-type))
         (throw (ex-info "Tables can only be added to 'Data' collections" {:status-code 400})))))
+  true)
+
+(defn- check-library-dashboard-card-ids
+  [dashboard-id card-ids]
+  (when-let [violations (not-empty (library.db/non-library-card-ids card-ids))]
+    (when-let [rejected (seq (sort (set/difference violations
+                                                   (library.db/dashboard-referenced-card-ids dashboard-id violations))))]
+      (throw (ex-info (tru "Only questions from the Library can be added to a Library dashboard. Card IDs not in the Library: {0}. Use a metric from the Library, or create a new question on this dashboard instead."
+                           (str/join ", " rejected))
+                      {:status-code 400
+                       :card-ids    (vec rejected)})))))
+
+(defenterprise check-library-dashboard-cards
+  "Throws if the Dashboard `dashboard-id` is in a Library dashboards collection and `card-ids` includes a Card outside
+  every Library collection that the Dashboard does not already reference."
+  metabase-enterprise.library.validation
+  :feature :library
+  [dashboard-id card-ids]
+  (let [card-ids (set (remove nil? card-ids))]
+    (when (and dashboard-id
+               (seq card-ids)
+               (library.db/library-dashboard? dashboard-id))
+      (check-library-dashboard-card-ids dashboard-id card-ids)))
   true)
 
 (defenterprise check-library-update

@@ -23,6 +23,46 @@
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/exists? :model/Dashboard :collection_id [:in collection-ids]))
 
+(mu/defn non-library-card-ids
+  "The ids among `card-ids` of Cards that are outside every Library Collection."
+  [card-ids :- [:set {:min 1} ::lib.schema.id/card]]
+  (t2/select-pks-set :model/Card
+                     {:where [:and
+                              [:in :id [:auto/param (vec card-ids)]]
+                              [:or
+                               [:= :collection_id nil]
+                               [:not-in :collection_id ^:allow-subquery {:select [:id]
+                                                                         :from   [:collection]
+                                                                         :where  [:in :type (vec collection/library-collection-types)]}]]]}))
+
+(def ^:private library-dashboard-ids-subquery
+  ^:allow-subquery {:select [:d.id]
+                    :from   [[:report_dashboard :d]]
+                    :join   [[:collection :c] [:= :c.id :d.collection_id]]
+                    :where  [:= :c.type collection/library-dashboards-collection-type]})
+
+(mu/defn library-dashboard?
+  "Whether the Dashboard with `dashboard-id` is in a Library dashboards Collection."
+  [dashboard-id :- ::lib.schema.id/dashboard]
+  (t2/exists? :model/Dashboard {:where [:and
+                                        [:= :id [:auto/param dashboard-id]]
+                                        [:in :id library-dashboard-ids-subquery]]}))
+
+(mu/defn dashboard-referenced-card-ids
+  "The ids among `card-ids` that the Dashboard with `dashboard-id` already references, as a DashboardCard's Card or as
+  a series."
+  [dashboard-id :- ::lib.schema.id/dashboard
+   card-ids     :- [:set {:min 1} ::lib.schema.id/card]]
+  (into (t2/select-fn-set :card_id :model/DashboardCard
+                          :dashboard_id dashboard-id
+                          :card_id [:in (vec card-ids)])
+        (t2/select-fn-set :card_id :model/DashboardCardSeries
+                          :card_id [:in (vec card-ids)]
+                          {:where [:in :dashboardcard_id
+                                   ^:allow-subquery {:select [:id]
+                                                     :from   [(t2/table-name :model/DashboardCard)]
+                                                     :where  [:= :dashboard_id dashboard-id]}]})))
+
 (mu/defn library-collections
   "The readable Library Collections, ordered by name."
   []

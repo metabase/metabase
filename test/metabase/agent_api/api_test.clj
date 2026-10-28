@@ -14,6 +14,7 @@
    [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
    [metabase.api.macros.scope :as api.scope]
    [metabase.collections.models.collection :as collection]
+   [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.db :as lib-be.db]
    [metabase.lib.core :as lib]
@@ -2367,3 +2368,33 @@
                 "stages[0].filters[1]: should be a vector, "
                 "clause must be [operator-string, options-map, \u2026args]. Fix the named paths.")
            (:message response)))))
+
+(deftest library-dashboard-cards-test
+  (when config/ee-available?
+    (mt/with-premium-features #{:library}
+      (mt/with-temp [:model/Collection {library-coll :id} {:name "Library Dashboards" :type collection/library-dashboards-collection-type}
+                     :model/Collection {metrics-coll :id} {:name "Library Metrics" :type collection/library-metrics-collection-type}
+                     :model/Card       {regular-id :id}   {:name "Regular" :dataset_query (orders-count-query) :display :table}
+                     :model/Card       {metric-id :id}    {:name "Library metric" :type :metric :collection_id metrics-coll
+                                                           :dataset_query (orders-count-query) :display :table}
+                     :model/Dashboard  {dash-id :id}      {:name "Library dash" :collection_id library-coll}]
+        (let [msg (str "Only questions from the Library can be added to a Library dashboard. "
+                       "Card IDs not in the Library: " regular-id ". "
+                       "Use a metric from the Library, or create a new question on this dashboard instead.")]
+          (testing "create rejects a non-library question and persists nothing"
+            (is (= msg (mt/user-http-request :crowberto :post 400 "agent/v1/dashboard"
+                                             {:name "Rejected" :collection_id library-coll :question_ids [metric-id regular-id]})))
+            (is (not (t2/exists? :model/Dashboard :name "Rejected"))))
+          (testing "create accepts a library metric"
+            (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/dashboard"
+                                             {:name "Accepted" :collection_id library-coll :question_ids [metric-id]})]
+              (is (= #{metric-id} (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id (:id resp))))))
+          (testing "update rejects adding a non-library question"
+            (is (str/ends-with? (mt/user-http-request :crowberto :put 400 (str "agent/v1/dashboard/" dash-id)
+                                                      {:dashcards [{:action "add" :card_id regular-id}]})
+                                msg))
+            (is (zero? (t2/count :model/DashboardCard :dashboard_id dash-id))))
+          (testing "update accepts adding a library metric"
+            (mt/user-http-request :crowberto :put 200 (str "agent/v1/dashboard/" dash-id)
+                                  {:dashcards [{:action "add" :card_id metric-id}]})
+            (is (= #{metric-id} (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id dash-id)))))))))

@@ -511,6 +511,10 @@ Request:
 When `question_ids` is provided, cards are auto-positioned on the grid based
 on each card's display type.
 
+A dashboard in the Library's Dashboards collection only accepts questions from
+the Library (such as Library metrics); any other `question_ids` return a 400
+that names the rejected card ids.
+
 Response:
 
 ```json
@@ -545,6 +549,10 @@ Dashcard mutations go under `dashcards` and are applied in order:
 The add actions also take an optional `tab_id` (a tab on this dashboard);
 omitted, new cards land on the dashboard's first tab. The response `tabs`
 lists the dashboard's tabs in display order.
+
+On a dashboard in the Library's Dashboards collection, `add` only accepts
+questions from the Library (such as Library metrics) and returns a 400 naming
+the rejected card ids otherwise.
 
 New cards are auto-placed into the first free grid slot, scanning
 left-to-right then top-to-bottom, so two half-width cards can end up side by

@@ -638,6 +638,12 @@
   [_collection]
   true)
 
+(defenterprise check-library-dashboard-cards
+  "Checks that the cards with `card-ids` may appear on the dashboard `dashboard-id`. The OSS implementation is a no-op."
+  metabase-enterprise.library.validation
+  [_dashboard-id _card-ids]
+  true)
+
 ;; This function is defined later after children-location is available
 
 (def ^:private CollectionWithLocationOrRoot

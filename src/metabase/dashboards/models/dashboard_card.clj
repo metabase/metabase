@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [medley.core :as m]
+   [metabase.collections.core :as collections]
    [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.core :as lib]
@@ -61,8 +62,14 @@
       validate-link-card-entity-id
       validate-click-behavior-target-ids))
 
+(defn- check-library-dashboard-card
+  [{:keys [dashboard_id card_id]}]
+  (when-not mi/*deserializing?*
+    (collections/check-library-dashboard-cards dashboard_id [card_id])))
+
 (t2/define-before-insert :model/DashboardCard
   [dashcard]
+  (check-library-dashboard-card dashcard)
   (-> (merge {:parameter_mappings     []
               :visualization_settings {}
               :inline_parameters      []}
@@ -71,6 +78,8 @@
 
 (t2/define-before-update :model/DashboardCard
   [dashcard]
+  (when (contains? (t2/changes dashcard) :card_id)
+    (check-library-dashboard-card dashcard))
   (validate-dashcard-on-write dashcard))
 
 ;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids
