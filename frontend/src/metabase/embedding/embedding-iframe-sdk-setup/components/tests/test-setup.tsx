@@ -35,6 +35,7 @@ export const setup = (options?: {
   showModularEmbedTerms?: boolean;
   showStaticEmbedTerms?: boolean;
   jwtReady?: boolean;
+  dataAppsEnabled?: boolean;
   initialState?: SdkIframeEmbedSetupModalInitialState;
   hasEmailSetup?: boolean;
   metabotEnabled?: boolean;
@@ -58,6 +59,7 @@ export const setup = (options?: {
 
   const tokenFeatures = createMockTokenFeatures({
     embedding_simple: options?.modularEmbeddingEnabled ?? false,
+    "data-apps": options?.dataAppsEnabled ?? false,
   });
   const settingValues = createMockSettings({
     "token-features": tokenFeatures,

@@ -42,12 +42,15 @@ export function useSdkIframeEmbedNavigation({
 > & {
   defaultStep: SdkIframeEmbedSetupStep;
 }) {
-  const handleNext = () => {
-    const currentIndex = EMBED_STEPS.findIndex(
-      (step) => step.id === currentStep,
-    );
+  const steps =
+    experience === "app"
+      ? EMBED_STEPS.filter((step) => step.id !== "select-embed-options")
+      : EMBED_STEPS;
 
-    const nextStep = EMBED_STEPS[currentIndex + 1];
+  const handleNext = () => {
+    const currentIndex = steps.findIndex((step) => step.id === currentStep);
+
+    const nextStep = steps[currentIndex + 1];
 
     match(currentStep)
       .with("select-embed-experience", () => {
@@ -89,27 +92,23 @@ export function useSdkIframeEmbedNavigation({
   };
 
   const handleBack = () => {
-    const currentIndex = EMBED_STEPS.findIndex(
-      (step) => step.id === currentStep,
-    );
+    const currentIndex = steps.findIndex((step) => step.id === currentStep);
 
-    const prevStep = EMBED_STEPS[currentIndex - 1];
+    const prevStep = steps[currentIndex - 1];
 
     if (prevStep) {
       setCurrentStep(prevStep.id);
     }
   };
 
-  const currentIndex = EMBED_STEPS.findIndex((step) => step.id === currentStep);
+  const currentIndex = steps.findIndex((step) => step.id === currentStep);
 
   const isFirstStep = currentStep === defaultStep;
-  const isLastStep = currentIndex === EMBED_STEPS.length - 1;
+  const isLastStep = currentIndex === steps.length - 1;
 
-  const defaultStepIndex = EMBED_STEPS.findIndex(
-    ({ id }) => id === defaultStep,
-  );
+  const defaultStepIndex = steps.findIndex(({ id }) => id === defaultStep);
 
-  const canGoNext = currentIndex < EMBED_STEPS.length - 1;
+  const canGoNext = currentIndex < steps.length - 1;
   const canGoBack = currentIndex > defaultStepIndex;
 
   return {

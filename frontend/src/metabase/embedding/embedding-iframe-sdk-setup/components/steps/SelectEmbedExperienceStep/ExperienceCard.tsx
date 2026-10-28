@@ -1,8 +1,9 @@
 import { t } from "ttag";
 
+import { useHasTokenFeature } from "metabase/common/hooks";
 import type { SdkIframeEmbedSetupExperience } from "metabase/embedding/types";
 import { useMetabotEnabledEmbeddingAware } from "metabase/metabot/hooks";
-import { Card, Flex, Radio, Stack, Text } from "metabase/ui";
+import { Alert, Card, Flex, Radio, Stack, Text } from "metabase/ui";
 
 import { getEmbedExperiences } from "../../../constants";
 import { useSdkIframeEmbedSetupContext } from "../../../context";
@@ -19,6 +20,7 @@ export const ExperienceCard = () => {
   } = useSdkIframeEmbedSetupContext();
 
   const isGuestEmbed = !!settings.isGuest;
+  const isDataAppsAvailable = useHasTokenFeature("data-apps");
   const isMetabotAvailable = useMetabotEnabledEmbeddingAware({
     forceEmbedding: true,
   });
@@ -27,6 +29,7 @@ export const ExperienceCard = () => {
 
   const experiences = getEmbedExperiences({
     isMetabotAvailable,
+    isDataAppsAvailable,
   });
 
   const showSsoNotConfiguredWarning =
@@ -61,14 +64,21 @@ export const ExperienceCard = () => {
                 description={experience.description}
                 disabled={
                   (!experience.supportsOss && !isSimpleEmbedFeatureAvailable) ||
-                  (!experience.supportsGuestEmbed && isGuestEmbed)
+                  (!experience.supportsGuestEmbed &&
+                    isGuestEmbed &&
+                    experience.value !== "app")
                 }
               />
             ))}
           </Stack>
         </Radio.Group>
 
-        {showSsoNotConfiguredWarning && <SetupSsoAlert />}
+        {showSsoNotConfiguredWarning &&
+          (experience === "app" ? (
+            <Alert color="warning">{t`Configure JWT or SAML single sign-on to embed a data app.`}</Alert>
+          ) : (
+            <SetupSsoAlert />
+          ))}
       </Stack>
     </Card>
   );
