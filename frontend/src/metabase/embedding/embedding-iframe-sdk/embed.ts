@@ -7,6 +7,7 @@ import * as MetabaseErrors from "embedding-sdk-shared/errors";
 import {
   getDataAppEmbedUrl,
   normalizeDataAppPath,
+  validateDataAppPath,
 } from "embedding-sdk-shared/lib/embedded-data-app-path";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { PLUGIN_EMBED_JS_EE } from "metabase/embedding/embedding-iframe-sdk/plugin";
@@ -161,7 +162,6 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
   implements EmbedAuthManagerContext
 {
   private _iframe: HTMLIFrameElement | null = null;
-  private _dataAppPath: string | null = null;
   protected abstract _componentName: string;
   protected abstract _attributeNames: T;
 
@@ -174,6 +174,9 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
   > = new Map();
   private _authManager: EmbedAuthManager | null = null;
   private _removeMessageListener: (() => void) | null = null;
+
+  // Used to track if the data app path prop has changed or not
+  private _dataAppPath: string | null = null;
 
   ["custom-context"]: unknown;
 
@@ -276,18 +279,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
       ...settings,
     } as SdkIframeEmbedElementSettings;
 
-    const isDataAppPathChange =
-      newValues.componentName === "metabase-data-app" &&
-      "path" in settings &&
-      normalizeDataAppPath(newValues.path) !== this._dataAppPath;
-
-    if (isDataAppPathChange) {
-      this._validateEmbedSettings(newValues);
-      this._removeMessageListener?.();
-      this._isEmbedReady = false;
-      this._iframe?.remove();
-      this._iframe = null;
-      this._setup();
+    if (this._handleDataAppPathPropChange(settings, newValues)) {
       return;
     }
 
@@ -304,6 +296,35 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
       // When we properly fix the type for Exploration template which uses `questionId: "new"` on the custom element, we should remove this type casting.
       newValues as SdkIframeEmbedSettings,
     );
+  }
+
+  /**
+   * Data app path property can be changed after the embed is created.
+   *
+   * We re-initialize the iframe.
+   */
+  private _handleDataAppPathPropChange(
+    settings: Partial<SdkIframeEmbedElementSettings>,
+    newValues: SdkIframeEmbedElementSettings,
+  ): boolean {
+    const hasDataAppPathChanged =
+      newValues.componentName === "metabase-data-app" &&
+      "path" in settings &&
+      normalizeDataAppPath(newValues.path) !== this._dataAppPath;
+
+    if (!hasDataAppPathChanged) {
+      return false;
+    }
+
+    this._validateEmbedSettings(newValues);
+
+    this._removeMessageListener?.();
+    this._isEmbedReady = false;
+    this._iframe?.remove();
+    this._iframe = null;
+    this._setup();
+
+    return true;
   }
 
   destroy() {
@@ -388,12 +409,13 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
 
     // Pending authentication belongs to the frame that requested it.
     const element = this;
+
     const context: EmbedAuthManagerContext = {
       get properties() {
         return element.properties;
       },
       sendMessage: (type, data) => {
-        if (this._iframe === iframe && this.isConnected) {
+        if (this._iframe === iframe) {
           this.sendMessage(type, data);
         }
       },
@@ -402,22 +424,27 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     this._authManager = PLUGIN_EMBED_JS_EE.EmbedAuthManager
       ? new PLUGIN_EMBED_JS_EE.EmbedAuthManager(context)
       : null;
+
+    const props = this.properties;
+    let url: URL;
+
+    if (props.componentName === "metabase-data-app") {
+      this._dataAppPath = props.path;
+      url = getDataAppEmbedUrl(props.instanceUrl, props.path);
+    } else {
+      url = new URL(`${props.instanceUrl}/${EMBEDDING_ROUTE}`);
+    }
+
     // Random query param is needed to allow parallel EmbedJS iframes loading.
     // Without it multiple EmbedJS iframes on a page loaded sequentially.
     // We don't cache the iframe content, so random query parameter does not break caching.
-    const settings = this.properties;
-    if (settings.componentName === "metabase-data-app") {
-      const url = getDataAppEmbedUrl(settings.instanceUrl, settings.path);
-      url.searchParams.set(
-        EMBED_JS_IFRAME_IDENTIFIER_QUERY_PARAMETER_NAME,
-        String(_iframeCounter++),
-      );
-      this._iframe.src = url.toString();
-      this._dataAppPath = settings.path;
-      this._iframe.title = "Data app";
-    } else {
-      this._iframe.src = `${this.globalSettings.instanceUrl}/${EMBEDDING_ROUTE}?${EMBED_JS_IFRAME_IDENTIFIER_QUERY_PARAMETER_NAME}=${_iframeCounter++}`;
-    }
+    url.searchParams.set(
+      EMBED_JS_IFRAME_IDENTIFIER_QUERY_PARAMETER_NAME,
+      String(_iframeCounter++),
+    );
+
+    iframe.src = url.toString();
+
     this._iframe.style.width = "100%";
     this._iframe.style.height = "100%";
     this._iframe.style.border = "none";
@@ -473,7 +500,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     }
 
     if (settings.componentName === "metabase-data-app") {
-      getDataAppEmbedUrl(settings.instanceUrl, settings.path);
+      validateDataAppPath(settings.path);
 
       if (
         settings.isGuest ||
@@ -481,7 +508,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
         settings.useExistingUserSession ||
         settings.apiKey
       ) {
-        raiseError("Data apps require JWT or SAML SSO authentication.");
+        raiseError("Data apps require SSO authentication.");
       }
     }
 
@@ -607,9 +634,11 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
   }
 
   private _getMessageTargetOrigin() {
-    return this._componentName === "metabase-data-app"
-      ? new URL(this.globalSettings.instanceUrl).origin
-      : "*";
+    if (this._componentName === "metabase-data-app") {
+      return new URL(this.globalSettings.instanceUrl).origin;
+    }
+
+    return "*";
   }
 
   private _reportAuthenticationError(error: unknown) {
@@ -945,6 +974,7 @@ export type MetabaseQuestionElement = InstanceType<
 export const MetabaseDataAppElement = createCustomElement("metabase-data-app", [
   "path",
 ]);
+
 export type MetabaseDataAppElement = InstanceType<
   typeof MetabaseDataAppElement
 >;

@@ -3,6 +3,7 @@ import {
   getEmbeddedAppNameFromPath,
   isEmbeddedDataAppPath,
   normalizeDataAppPath,
+  validateDataAppPath,
 } from "./embedded-data-app-path";
 
 describe("embedded data app route", () => {
@@ -56,15 +57,24 @@ describe("data app embed URL", () => {
     expect(url.href).toBe(
       "https://metabase.example.com/mb/embed/embedded-apps/sales/orders?active=true#details",
     );
+
     expect(normalizeDataAppPath("///sales/orders")).toBe("sales/orders");
+  });
+});
+
+describe("data app path validation", () => {
+  it("accepts leading slashes, nested routes, query parameters and hashes", () => {
+    expect(() =>
+      validateDataAppPath("///sales/orders?active=true#details"),
+    ).not.toThrow();
   });
 
   it.each(["sales/../other", "sales/%2fother", "sales/%"])(
     "rejects unsafe paths: %s",
     (path) => {
-      expect(() =>
-        getDataAppEmbedUrl("https://metabase.example.com", path),
-      ).toThrow("A valid data app path must be provided.");
+      expect(() => validateDataAppPath(path)).toThrow(
+        "A valid data app path must be provided.",
+      );
     },
   );
 });

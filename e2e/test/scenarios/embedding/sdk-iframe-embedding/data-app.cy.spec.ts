@@ -7,7 +7,7 @@ import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types
 
 const { H } = cy;
 
-const APP_FRAME = 'iframe[title="Data app"]';
+const APP_FRAME = "iframe[data-metabase-embed]";
 
 describe("scenarios > embedding > data app web component (DAT-14)", () => {
   beforeEach(() => {

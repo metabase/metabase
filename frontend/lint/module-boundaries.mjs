@@ -325,6 +325,7 @@ const elements = [
   ),
   ...[
     "enterprise/frontend/src/metabase-enterprise/embedding_iframe_sdk/auth-manager/AuthManager.ts",
+    "enterprise/frontend/src/metabase-enterprise/embedding_iframe_sdk/auth-manager/data-app-auth.unit.spec.ts",
     "enterprise/frontend/src/metabase-enterprise/embedding_iframe_sdk/handle-link.ts",
     "enterprise/frontend/src/metabase-enterprise/embedding_iframe_sdk/sdk-iframe-embedding-script-ee-plugins.ts",
     "enterprise/frontend/src/metabase-enterprise/sdk-iframe-embedding-plugins.ts",

@@ -49,13 +49,15 @@ const hasUnsafeCharacters = (path: string): boolean =>
 export const normalizeDataAppPath = (path: string): string =>
   path.replace(/^\/+/, "");
 
-/** Build the runtime URL without discarding an instance's installation subpath. */
-export function getDataAppEmbedUrl(instanceUrl: string, path: string): URL {
+/** Reject invalid app names and unsafe routes. */
+export function validateDataAppPath(path: string): void {
   if (!getEmbeddedAppNameFromPath(path)) {
     throw new Error("A valid data app path must be provided.");
   }
+}
 
-  return new URL(
+/** Build the runtime URL from a validated path. */
+export const getDataAppEmbedUrl = (instanceUrl: string, path: string): URL =>
+  new URL(
     `${instanceUrl.replace(/\/+$/, "")}${EMBEDDED_DATA_APP_PREFIX}/${normalizeDataAppPath(path)}`,
   );
-}

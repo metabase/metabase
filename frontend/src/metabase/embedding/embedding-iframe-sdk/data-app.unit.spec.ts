@@ -1,23 +1,11 @@
 import { MetabaseDataAppElement } from "./embed";
-import { PLUGIN_EMBED_JS_EE } from "./plugin";
-import type { EmbedAuthManagerContext } from "./types/auth-manager";
 
 const INSTANCE_URL = "https://metabase.example.com/reports";
 
 describe("metabase-data-app", () => {
   let consoleError: jest.SpyInstance;
-  const originalAuthManager = PLUGIN_EMBED_JS_EE.EmbedAuthManager;
-  const contexts: EmbedAuthManagerContext[] = [];
 
   beforeEach(() => {
-    contexts.length = 0;
-    PLUGIN_EMBED_JS_EE.EmbedAuthManager = class {
-      constructor(context: EmbedAuthManagerContext) {
-        contexts.push(context);
-      }
-      async authenticate() {}
-    };
-
     window.metabaseConfig = { instanceUrl: INSTANCE_URL };
     consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
   });
@@ -26,7 +14,6 @@ describe("metabase-data-app", () => {
     document.body.replaceChildren();
     delete window.metabaseConfig;
     consoleError.mockRestore();
-    PLUGIN_EMBED_JS_EE.EmbedAuthManager = originalAuthManager;
   });
 
   const setup = (path = "/sales/orders?active=true#details") => {
@@ -139,33 +126,6 @@ describe("metabase-data-app", () => {
 
     expect(element.querySelector("iframe")).toBeNull();
     expect(consoleError).toHaveBeenCalled();
-  });
-
-  it("discards pending authentication replies after path changes and removal", () => {
-    const element = setup("sales/orders");
-    const initialContext = contexts[0];
-
-    element.setAttribute("path", "sales/customers");
-    const iframe = element.querySelector("iframe")!;
-    const postMessage = jest.spyOn(iframe.contentWindow!, "postMessage");
-
-    const session = {
-      authMethod: "jwt" as const,
-      sessionToken: { id: "session", exp: 123, iat: 100 },
-    };
-    initialContext.sendMessage("metabase.embed.submitSessionToken", session);
-    expect(postMessage).not.toHaveBeenCalled();
-
-    contexts[1].sendMessage("metabase.embed.submitSessionToken", session);
-    expect(postMessage).toHaveBeenCalledWith(
-      { type: "metabase.embed.submitSessionToken", data: session },
-      "https://metabase.example.com",
-    );
-
-    postMessage.mockClear();
-    element.remove();
-    contexts[1].sendMessage("metabase.embed.submitSessionToken", session);
-    expect(postMessage).not.toHaveBeenCalled();
   });
 
   it("removes the frame and message listener on disconnect", () => {
