@@ -2948,7 +2948,10 @@
               (into [] (#'self/report-tool-usage-xf (assoc snowplow-tracking-opts :profile-id :nlq :iteration 2)
                                                     #{"failer"})
                     [part])
-              (let [events (snowplow-test/pop-event-data-and-user-id!)]
+              ;; The collector may also hold a `new_instance_created` from the first read of a setting in
+              ;; this JVM, so filter for the tool events as the other Snowplow tests do.
+              (let [events (filter #(= "agent_used_tool" (get-in % [:data "event"]))
+                                   (snowplow-test/pop-event-data-and-user-id!))]
                 (is (=? [{:data {"event"         "agent_used_tool"
                                  "profile"       "nlq"
                                  "result"        "error"
