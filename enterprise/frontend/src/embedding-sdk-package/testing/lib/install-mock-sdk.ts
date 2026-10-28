@@ -4,6 +4,7 @@ import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import { SdkLoadingState } from "embedding-sdk-shared/types/sdk-loading";
 
 import { MOCK_SDK_BUNDLE } from "./mock-sdk-bundle";
+import { clearMockSdkHandlers } from "./mock-sdk-handlers";
 
 type MockSdkStore = {
   getState: () => undefined;
@@ -39,13 +40,26 @@ export const installMockSdk = () => {
   });
 };
 
-export const uninstallMockSdk = () => {
+let mountedProviderCount = 0;
+
+const uninstallMockSdk = () => {
   const win = getWindow();
 
-  if (!win) {
+  if (!win || mountedProviderCount > 0) {
     return;
   }
 
   delete win.METABASE_EMBEDDING_SDK_BUNDLE;
+  clearMockSdkHandlers();
   getPropsStore().cleanup();
+};
+
+export const acquireMockSdk = () => {
+  mountedProviderCount += 1;
+  installMockSdk();
+
+  return () => {
+    mountedProviderCount -= 1;
+    queueMicrotask(uninstallMockSdk);
+  };
 };

@@ -1,4 +1,5 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import { StrictMode } from "react";
 
 import { InteractiveQuestion } from "embedding-sdk-package/components/public/InteractiveQuestion";
 import { StaticQuestion } from "embedding-sdk-package/components/public/StaticQuestion";
@@ -11,6 +12,8 @@ import { useDateFormatter } from "embedding-sdk-package/hooks/public/use-date-fo
 import { useMetabaseAuthStatus } from "embedding-sdk-package/hooks/public/use-metabase-auth-status";
 import { useMetabaseQuery } from "embedding-sdk-package/hooks/public/use-metabase-query";
 import { defineQuery } from "embedding-sdk-package/hooks/public/use-metabase-query/define-query";
+
+import { getMockSdkHandlers } from "../../lib/mock-sdk-handlers";
 
 import { MetabaseTestProvider } from "./MetabaseTestProvider";
 
@@ -107,7 +110,24 @@ describe("MetabaseTestProvider", () => {
     ).toBeInTheDocument();
   });
 
-  it("removes mock SDK on unmount", () => {
+  it("keeps mocks registered before render through strict mode effect replay", async () => {
+    getMockSdkHandlers().resolveDatasetQuery = () => () =>
+      Promise.reject(new Error("Answered by registered mock"));
+
+    render(
+      <StrictMode>
+        <MetabaseTestProvider>
+          <OrdersQueryError />
+        </MetabaseTestProvider>
+      </StrictMode>,
+    );
+
+    expect(
+      await screen.findByText("Answered by registered mock"),
+    ).toBeInTheDocument();
+  });
+
+  it("removes mock SDK on unmount", async () => {
     const { unmount } = render(
       <MetabaseTestProvider>
         <StaticQuestion questionId={1} />
@@ -118,6 +138,8 @@ describe("MetabaseTestProvider", () => {
 
     unmount();
 
-    expect(window.METABASE_EMBEDDING_SDK_BUNDLE).toBeUndefined();
+    await waitFor(() =>
+      expect(window.METABASE_EMBEDDING_SDK_BUNDLE).toBeUndefined(),
+    );
   });
 });

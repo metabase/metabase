@@ -12,6 +12,8 @@ import type { FunctionSchema } from "embedding-sdk-bundle/types/schema";
 import type { MetabaseEmbeddingSdkBundleExports } from "embedding-sdk-bundle/types/sdk-bundle";
 import type { LoginStatus } from "embedding-sdk-bundle/types/user";
 
+import { getMockSdkHandlers } from "./mock-sdk-handlers";
+
 const DEFAULT_DATE_FORMAT = "MMMM D, YYYY";
 const DEFAULT_DATE_RANGE_SEPARATOR = "–";
 
@@ -75,7 +77,7 @@ const createNoMockError = (bundleFunctionName: string) =>
     `No mock for ${bundleFunctionName}. Mock the data this component requests before rendering it.`,
   );
 
-const rejectWithNoMock = (bundleFunctionName: string) => () => () =>
+const rejectWithNoMock = (bundleFunctionName: string) =>
   Promise.reject(createNoMockError(bundleFunctionName));
 
 const isValidDate = (value: string | null | undefined): value is string =>
@@ -126,11 +128,46 @@ export const MOCK_SDK_BUNDLE: MetabaseEmbeddingSdkBundleExports = {
       "MetabaseTestProvider does not support MetabaseProvider. Render the component under test without it.",
     );
   },
-  resolveDatasetQuery: rejectWithNoMock("resolveDatasetQuery"),
-  queryDataset: rejectWithNoMock("queryDataset"),
-  queryQuestion: rejectWithNoMock("queryQuestion"),
-  createDashboard: rejectWithNoMock("createDashboard"),
-  executeAction: rejectWithNoMock("executeAction"),
+  resolveDatasetQuery:
+    (store) =>
+    (...args) => {
+      const handler = getMockSdkHandlers().resolveDatasetQuery;
+      return handler
+        ? handler(store)(...args)
+        : rejectWithNoMock("resolveDatasetQuery");
+    },
+  queryDataset:
+    (store) =>
+    (...args) => {
+      const handler = getMockSdkHandlers().queryDataset;
+      return handler
+        ? handler(store)(...args)
+        : rejectWithNoMock("queryDataset");
+    },
+  queryQuestion:
+    (store) =>
+    (...args) => {
+      const handler = getMockSdkHandlers().queryQuestion;
+      return handler
+        ? handler(store)(...args)
+        : rejectWithNoMock("queryQuestion");
+    },
+  createDashboard:
+    (store) =>
+    (...args) => {
+      const handler = getMockSdkHandlers().createDashboard;
+      return handler
+        ? handler(store)(...args)
+        : rejectWithNoMock("createDashboard");
+    },
+  executeAction:
+    (store) =>
+    (...args) => {
+      const handler = getMockSdkHandlers().executeAction;
+      return handler
+        ? handler(store)(...args)
+        : rejectWithNoMock("executeAction");
+    },
   getApplicationName: () => APPLICATION_NAME,
   getAvailableFonts: () => AVAILABLE_FONTS,
   getLoginStatus: () => LOGIN_STATUS,
