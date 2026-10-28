@@ -736,7 +736,7 @@
     (apply-op state op)
     (catch clojure.lang.ExceptionInfo e
       (throw (if-let [data (error-data e)]
-               (ex-info (ex-message e) (assoc data :op-index idx :op (:op op)))
+               (ex-info (ex-message e) (assoc data :op-index idx :op (:op op)) e)
                e)))))
 
 (defn compile-ops

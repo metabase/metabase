@@ -79,9 +79,8 @@
      nil
      (catch clojure.lang.ExceptionInfo e
        (let [{code ::dashboard-ops/error :as data} (dashboard-ops/error-data e)]
-         (is (= (cond-> (conj (get dashboard-ops/errors code) ::dashboard-ops/error)
-                  (not= :cards-without-tab code) (conj :op-index :op))
-                (set (keys data)))
+         (is (= (get dashboard-ops/errors code)
+                (set (keys (dissoc data ::dashboard-ops/error :op-index :op))))
              "the error data matches its declaration in `errors`")
          data)))))
 
