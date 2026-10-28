@@ -1,3 +1,5 @@
+// @ts-expect-error There is no type definition
+import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryContext, StoryFn } from "@storybook/react";
 import { screen, userEvent, within } from "@storybook/test";
 import { HttpResponse, http } from "msw";
@@ -339,11 +341,18 @@ export const NumberCardFilterListExpanded = {
     ]),
   ),
   play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
-    const canvas = within(canvasElement);
-    await userEvent.click(
-      await canvas.findByTestId("show-filter-parameter-button"),
-    );
-    await screen.findByRole("menuitem", { name: /Vendor/ });
+    // Loki only waits for network idle, so hold the snapshot until the
+    // interaction has finished rendering.
+    const asyncCallback = createAsyncCallback();
+    try {
+      const canvas = within(canvasElement);
+      await userEvent.click(
+        await canvas.findByTestId("show-filter-parameter-button"),
+      );
+      await screen.findByRole("menuitem", { name: /Vendor/ });
+    } finally {
+      asyncCallback();
+    }
   },
 };
 
@@ -362,13 +371,18 @@ export const NumberCardFilterWidgetExpanded = {
     ]),
   ),
   play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
-    const canvas = within(canvasElement);
-    await userEvent.click(
-      await canvas.findByTestId("show-filter-parameter-button"),
-    );
-    await userEvent.click(
-      await screen.findByRole("menuitem", { name: /Vendor/ }),
-    );
-    await screen.findByPlaceholderText("Enter some text");
+    const asyncCallback = createAsyncCallback();
+    try {
+      const canvas = within(canvasElement);
+      await userEvent.click(
+        await canvas.findByTestId("show-filter-parameter-button"),
+      );
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: /Vendor/ }),
+      );
+      await screen.findByPlaceholderText("Enter some text");
+    } finally {
+      asyncCallback();
+    }
   },
 };
