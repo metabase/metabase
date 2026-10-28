@@ -9,7 +9,7 @@ export function useReportGoalWarning(
   useEffect(() => {
     onUpdateGoalWarning?.(hasGoalWarning);
 
-    // an unmounted chart, e.g. after switching the display, warns no more
+    // clear the warning when the chart unmounts, e.g. after a display switch
     return () => onUpdateGoalWarning?.(false);
   }, [hasGoalWarning, onUpdateGoalWarning]);
 }
