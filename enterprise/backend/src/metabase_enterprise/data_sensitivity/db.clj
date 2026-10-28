@@ -259,7 +259,8 @@
                                           [:in :id field-ids]
                                           [:= :active true]
                                           [:in :table_id ^:allow-subquery {:select [:id]
-                                                                           :from   [:metabase_table]
+                                                                           :from   [(warehouse-schema-overlay/table-query
+                                                                                     {:user-settings? false})]
                                                                            :where  [:= :active true]}]]})
                       :can_write))
     {}))
