@@ -22,11 +22,11 @@
                                    :proposed_value "type/Email"}
                                   overrides)))
 
-(defn- statuses
-  "A map of proposal id to its status, or `:deleted` when the row is gone."
+(defn- row-states
+  "A map of proposal id to `:kept`, or `:deleted` when the row is gone."
   [ids]
   (into (zipmap ids (repeat :deleted))
-        (map (juxt :id :status))
+        (map (juxt :id (constantly :kept)))
         (t2/select :model/MetadataGenerationProposal :id [:in ids])))
 
 (defn- effective [field-id]
@@ -80,8 +80,8 @@
          (is (= (assoc nothing :written 3)
                 (apply! {:accept [sem ds desc]})))
          (testing "only the accepted proposals are written, and their rows are deleted"
-           (is (= {sem :deleted ds :deleted desc :deleted pending :pending other :pending}
-                  (statuses [sem ds desc pending other]))))
+           (is (= {sem :deleted ds :deleted desc :deleted pending :kept other :kept}
+                  (row-states [sem ds desc pending other]))))
          (testing "the values land in the AI columns and readers see them"
            (is (=? {:ai_semantic_type :type/Email :semantic_type nil :semantic_type_set false}
                    (settings a-text)))
@@ -107,8 +107,8 @@
                                  :proposed_value "Left alone.")]
          (is (= (assoc nothing :written 3)
                 (apply! {:accept [sem ds] :edits {edited "type/Score"}})))
-         (is (= {sem :deleted ds :deleted edited :deleted left :pending}
-                (statuses [sem ds edited left])))
+         (is (= {sem :deleted ds :deleted edited :deleted left :kept}
+                (row-states [sem ds edited left])))
          (testing "the accepted proposals are written as AI values"
            (is (=? {:ai_semantic_type :type/Email} (settings a-text)))
            (is (=? {:ai_data_sensitivity :PII :ai_description nil} (settings a-plain)))))))))
@@ -130,8 +130,8 @@
            (is (= (assoc nothing :rejected 3)
                   (apply! {:reject_all true :database_id db})))
            (testing "every pending proposal of active fields of the database is deleted, human-set ones too"
-             (is (= {human :deleted ds :deleted b-sem :deleted inactive :pending other :pending}
-                    (statuses [human ds b-sem inactive other]))))
+             (is (= {human :deleted ds :deleted b-sem :deleted inactive :kept other :kept}
+                    (row-states [human ds b-sem inactive other]))))
            (testing "a rejection writes nothing"
              (is (=? {:semantic_type :type/Name :ai_semantic_type nil} (settings a-text)))
              (is (nil? (settings a-plain))))
@@ -154,15 +154,15 @@
            (mt/user-http-request :crowberto :post 400 url {:reject_all true :database_id db :accept [sem]})
            (mt/user-http-request :crowberto :post 400 url
                                  {:reject_all true :database_id db :edits {sem "type/Score"}})
-           (is (= {sem :pending ds :pending} (statuses [sem ds]))))
+           (is (= {sem :kept ds :kept} (row-states [sem ds]))))
          (testing "a refused edit is a 400 and writes nothing"
            (mt/user-http-request :crowberto :post 400 url
                                  {:accept [ds] :edits {sem "type/Email"}})
-           (is (= {sem :pending ds :pending} (statuses [sem ds])))
+           (is (= {sem :kept ds :kept} (row-states [sem ds])))
            (is (nil? (settings a-plain))))
          (testing "ids that name no proposal are ignored"
            (is (= nothing (apply! {:accept [Integer/MAX_VALUE] :edits {(dec Integer/MAX_VALUE) "type/Score"}})))
-           (is (= {sem :pending ds :pending} (statuses [sem ds])))))))))
+           (is (= {sem :kept ds :kept} (row-states [sem ds])))))))))
 
 (deftest apply-skips-changed-proposals-test
   (mt/with-premium-features #{:data-sensitivity}
@@ -186,8 +186,8 @@
                                            edited   "type/Quantity"
                                            gone     "type/Email"}})))
          (testing "a changed proposal is not written"
-           (is (= {replaced :pending same :deleted edited :pending}
-                  (statuses [replaced same edited])))
+           (is (= {replaced :kept same :deleted edited :kept}
+                  (row-states [replaced same edited])))
            (is (nil? (settings a-text)))
            (is (nil? (settings a-int))))
          (testing "a proposal without a seen value is written"
@@ -206,7 +206,7 @@
                                :proposed_value "A plain text field.")
              ds   (suggestion! run-id a a-int :attribute :data_sensitivity :proposed_value "PII")]
          (is (=? {:written 3} (apply! {:accept [sem desc ds]})))
-         (is (= {sem :deleted desc :deleted ds :deleted} (statuses [sem desc ds])))
+         (is (= {sem :deleted desc :deleted ds :deleted} (row-states [sem desc ds])))
          (testing "an accepted proposal replaces an earlier AI value"
            (is (=? {:data_sensitivity :PII} (effective a-int))))
          (testing "the person's value is cleared and readers see the AI value"
@@ -215,6 +215,17 @@
                    (settings a-plain)))
            (is (=? {:semantic_type :type/Email} (effective a-text)))
            (is (=? {:description "A plain text field."} (effective a-plain)))))))))
+
+(deftest apply-over-unflagged-human-data-sensitivity-test
+  (mt/with-premium-features #{:data-sensitivity}
+    (do-with-run
+     (fn [run-id {:keys [a a-plain]}]
+       (t2/insert! :model/FieldUserSettings {:field_id a-plain :data_sensitivity :PII :data_sensitivity_set false})
+       (let [ds (suggestion! run-id a a-plain :attribute :data_sensitivity :proposed_value "PHI")]
+         (is (=? {:written 1} (apply! {:accept [ds]})))
+         (testing "an accepted AI value replaces a human data_sensitivity without its flag for readers"
+           (is (=? {:data_sensitivity nil :data_sensitivity_set false :ai_data_sensitivity :PHI} (settings a-plain)))
+           (is (=? {:data_sensitivity :PHI} (effective a-plain)))))))))
 
 (deftest apply-category-leaves-has-field-values-test
   (mt/with-premium-features #{:data-sensitivity}
@@ -241,7 +252,7 @@
                              :reason "field_not_found"}]}
                 (apply! {:accept [key-field misfit missing]})))
          (testing "failed proposals stay pending and write nothing"
-           (is (= #{:pending} (set (vals (statuses [key-field misfit missing])))))
+           (is (= #{:kept} (set (vals (row-states [key-field misfit missing])))))
            (is (nil? (settings a-fk)))))))))
 
 (deftest apply-skips-fields-of-inactive-tables-test
@@ -255,7 +266,26 @@
                 (apply! {:accept [desc]})))
          (testing "a field of an inactive table gets no AI value and its proposal stays pending"
            (is (nil? (:ai_description (settings b-text))))
-           (is (= {desc :pending} (statuses [desc])))))))))
+           (is (= {desc :kept} (row-states [desc])))))))))
+
+(deftest apply-skips-hidden-fields-and-tables-test
+  (mt/with-premium-features #{:data-sensitivity}
+    (do-with-run
+     (fn [run-id {:keys [a b a-text a-plain a-int b-text]}]
+       (let [hidden    (suggestion! run-id a a-text :attribute :description :proposed_value "Hidden.")
+             sensitive (suggestion! run-id a a-plain :attribute :description :proposed_value "Sensitive.")
+             in-hidden (suggestion! run-id b b-text :attribute :description :proposed_value "In a hidden table.")
+             visible   (suggestion! run-id a a-int :attribute :description :proposed_value "Visible.")]
+         (t2/update! :model/Field a-text {:visibility_type :hidden})
+         (t2/update! :model/Field a-plain {:visibility_type :sensitive})
+         (t2/update! :model/Table b {:visibility_type :hidden})
+         (is (=? {:written 1 :failed 3} (apply! {:accept [hidden sensitive in-hidden visible]})))
+         (testing "a field that is hidden or sensitive, or in a hidden table, gets no AI value"
+           (is (nil? (:ai_description (settings a-text))))
+           (is (nil? (:ai_description (settings a-plain))))
+           (is (nil? (:ai_description (settings b-text)))))
+         (testing "a visible field gets its AI value"
+           (is (=? {:ai_description "Visible."} (settings a-int)))))))))
 
 (deftest apply-counts-written-proposals-when-an-event-handler-fails-test
   (mt/with-premium-features #{:data-sensitivity}
@@ -266,7 +296,7 @@
            (testing "a proposal whose table transaction committed counts as written"
              (is (= (assoc nothing :written 1)
                     (apply! {:accept [desc]})))))
-         (is (= {desc :deleted} (statuses [desc])))
+         (is (= {desc :deleted} (row-states [desc])))
          (is (=? {:ai_description "AI text"} (settings a-plain))))))))
 
 (deftest apply-keeps-a-proposal-a-run-changes-during-apply-test
@@ -274,20 +304,20 @@
     (do-with-run
      (fn [run-id {:keys [a a-plain]}]
        (let [desc   (suggestion! run-id a a-plain :attribute :description :proposed_value "v1")
-             orig   db/active-fields-by-id
+             orig   db/visible-fields-by-id
              upsert (promise)]
-         (mt/with-dynamic-fn-redefs [db/active-fields-by-id (fn [ids]
-                                                              (when-not (realized? upsert)
-                                                                (deliver upsert
-                                                                         (future
-                                                                           (t2/update! :model/MetadataGenerationProposal desc
-                                                                                       {:proposed_value "v2" :status :pending})))
-                                                                (deref @upsert 2000 nil))
-                                                              (orig ids))]
+         (mt/with-dynamic-fn-redefs [db/visible-fields-by-id (fn [ids]
+                                                               (when-not (realized? upsert)
+                                                                 (deliver upsert
+                                                                          (future
+                                                                            (t2/update! :model/MetadataGenerationProposal desc
+                                                                                        {:proposed_value "v2"})))
+                                                                 (deref @upsert 2000 nil))
+                                                               (orig ids))]
            (apply! {:accept [desc] :proposed_values {desc "v1"}}))
          @@upsert
          (testing "a value a run upserts after the staleness check is not lost"
-           (is (=? {:proposed_value "v2" :status :pending}
+           (is (=? {:proposed_value "v2"}
                    (t2/select-one :model/MetadataGenerationProposal :id desc)))
            (is (nil? (:ai_description (settings a-plain))))))))))
 
@@ -340,7 +370,7 @@
            (apply-edit! desc 400 "A field. <a href=\"/login\">Verify</a>")
            (apply-edit! desc 400 "A field. Run `DROP TABLE users`."))
          (testing "a refused value leaves the proposal as it was"
-           (is (= {sem :pending ds :pending desc :pending} (statuses [sem ds desc]))))
+           (is (= {sem :kept ds :kept desc :kept} (row-states [sem ds desc]))))
          (testing "a valid value is normalized and written"
            (is (=? {:written 1} (apply-edit! desc 200 "  A counter.  ")))
            (is (=? {:description "A counter." :description_set true} (settings a-plain)))))))))
@@ -363,7 +393,7 @@
                                   ds    "BIZ_CONF"
                                   desc  "The plain text."
                                   human "type/Title"}})))
-         (is (= {sem :deleted ds :deleted desc :deleted human :deleted} (statuses [sem ds desc human])))
+         (is (= {sem :deleted ds :deleted desc :deleted human :deleted} (row-states [sem ds desc human])))
          (testing "edited values land in the human layer with their set flags, not in the AI columns"
            (is (=? {:semantic_type :type/Score :semantic_type_set true :ai_semantic_type nil} (settings a-int)))
            (is (=? {:data_sensitivity :BIZ_CONF :data_sensitivity_set true :ai_data_sensitivity nil

@@ -24,7 +24,8 @@
 
 (def field-ai-columns
   "The user-settable Field columns that can have an accepted AI value, mapped to the `metabase_field_user_settings`
-  column that holds it. Users see the human value when its flag is set, else the AI value, else the Field's."
+  column that holds it. Users see the human value when its flag is set, else the AI value, else the Field's. A
+  non-NULL human `data_sensitivity` with its flag false, a row written by an old node, also counts as set."
   {:semantic_type    :ai_semantic_type
    :description      :ai_description
    :data_sensitivity :ai_data_sensitivity})

@@ -8,7 +8,9 @@
   `canceling` on the run row, so a cancel from any node reaches the worker, and interrupts the worker when it runs on
   this node. The worker reads the status between tables and every [[poll-ms]] while it waits on chunk calls, cancels
   the chunks in flight, and writes `canceled`. A usage limit ends the run with status `usage_limit`. A table that
-  fails is recorded on the run and the run continues. The run records the tables it finished in `done_table_ids`.
+  fails is recorded on the run and the run continues. The worker reads each table again before its packet: a table
+  hidden or removed since the run started is not sent and is recorded as failed with error code `table_not_visible`.
+  The run records the tables it finished in `done_table_ids`.
   When a run ends before its last table (cancel, usage limit, an unexpected failure, or the reaper), the tables of its
   scope that it did not finish go to `table_errors` with error code `not_processed`, so [[retry-failed!]] covers them.
 
@@ -84,11 +86,15 @@
   {"claude-haiku-4-5"  {:input 1.00 :output 5.00 :cache_write 1.25 :cache_read 0.10}
    "claude-sonnet-4-6" {:input 3.00 :output 15.00 :cache_write 3.75 :cache_read 0.30}})
 
+(defn- model-price
+  "The [[price-per-million-tokens]] entry of `model`, or nil when it has none."
+  [model]
+  (some (fn [[k v]] (when (and model (str/includes? model k)) v)) price-per-million-tokens))
+
 (defn- call-cost
   "USD cost of `usage` on `model`, or nil when `model` has no price. `:input_tokens` includes both cache buckets."
   [model {:keys [input_tokens output_tokens cache_read_tokens cache_creation_tokens]}]
-  (when-let [{:keys [input output cache_write cache_read]}
-             (some (fn [[k v]] (when (and model (str/includes? model k)) v)) price-per-million-tokens)]
+  (when-let [{:keys [input output cache_write cache_read]} (model-price model)]
     (/ (+ (* (- input_tokens cache_read_tokens cache_creation_tokens) input)
           (* cache_creation_tokens cache_write)
           (* cache_read_tokens cache_read)
@@ -139,9 +145,10 @@
       :schemas  (when-let [missing (seq (remove (set (map :schema tables)) schemas))]
                   (throw (core/bad-request (tru "No active, visible tables in schemas: {0}." (str/join ", " missing)))))
       :tables   (when-let [missing (seq (remove (set (map :id tables)) table_ids))]
-                  (throw (core/bad-request (tru "Not active, visible tables of this database: {0}." (str/join ", " missing))))))
+                  (throw (core/bad-request (tru "These tables are not active, visible tables of this database: {0}."
+                                                (str/join ", " missing))))))
     (when (empty? tables)
-      (throw (core/bad-request (tru "The database has no active, visible tables to classify."))))
+      (throw (core/bad-request (tru "The database has no active, visible tables."))))
     tables))
 
 (defn- parse-request
@@ -367,14 +374,17 @@
               timer   (u/start-timer)
               outcome (try
                         (check-stop! ctx)
-                        (let [{:keys [packet classification slow-calls]} (classify-table ctx database table packet-opts)]
-                          {:usage       (:usage classification)
-                           :model       (:model classification)
-                           :slow-calls  slow-calls
-                           :proposals   {:table_id   (:id table)
-                                         :attributes attributes
-                                         :proposals  (table-proposals run-id attributes packet
-                                                                      (:fields classification))}})
+                        (if-let [current (db/visible-table (:id table))]
+                          (let [{:keys [packet classification slow-calls]}
+                                (classify-table ctx database current packet-opts)]
+                            {:usage       (:usage classification)
+                             :model       (:model classification)
+                             :slow-calls  slow-calls
+                             :proposals   {:table_id   (:id table)
+                                           :attributes attributes
+                                           :proposals  (table-proposals run-id attributes packet
+                                                                        (:fields classification))}})
+                          {:not-visible true})
                         (catch Exception e
                           (cond
                             (stop-reason e)         {:end [:stopped (stop-reason e)]}
@@ -385,12 +395,22 @@
           (if (:end outcome)
             (assoc (add-spent state @spent) :end (:end outcome) :remaining remaining)
             (let [e     (:error outcome)
-                  state (if e
+                  state (cond
+                          e
                           (-> (add-spent state @spent)
                               (add-table-time elapsed)
                               (update :failed inc)
                               (update :errors conj (table-error table (or (ex-message e) (str (class e))) (error-code e)
                                                                 elapsed)))
+
+                          (:not-visible outcome)
+                          (-> state
+                              (update :failed inc)
+                              (update :errors conj (table-error table
+                                                                (tru "The table was hidden or removed during the run.")
+                                                                "table_not_visible")))
+
+                          :else
                           (-> state
                               (add-table-time elapsed)
                               (update :done inc)
@@ -398,7 +418,9 @@
                               (update :slow-calls (fnil + 0) (:slow-calls outcome))
                               (update :usage add-usage (:model outcome) (:usage outcome))))]
               (when e
-                (log/warnf e "Metadata generation run %d failed for table %d" run-id (:id table)))
+                ;; Not the throwable: the ex-data of a model error can hold model output that quotes warehouse values.
+                (log/warnf "Metadata generation run %d failed for table %d: %s (%s)"
+                           run-id (:id table) (or (ex-message e) (class e)) (error-code e)))
               (if (db/record-table! run-id (progress state) (:proposals outcome))
                 (recur state more)
                 (assoc state :end [:stopped :gone] :remaining more)))))))))
@@ -430,7 +452,9 @@
   write. An unexpected failure fails the run, unless the run was canceled."
   [{:keys [run-id stop] :as ctx} database tables]
   (try
-    (if (pos? (db/update-run-with-status! run-id :pending {:status :running :started_at (OffsetDateTime/now) :last_heartbeat (OffsetDateTime/now)}))
+    (if (pos? (db/update-run-with-status! run-id :pending {:status         :running
+                                                           :started_at     (OffsetDateTime/now)
+                                                           :last_heartbeat (OffsetDateTime/now)}))
       (let [state (run-tables! ctx database tables)]
         (Thread/interrupted)
         (finish! run-id state))
@@ -440,9 +464,10 @@
       (Thread/interrupted)
       (let [canceled? (= :canceled @stop)
             errors    (u/ignore-exceptions
-                        (with-unprocessed-errors (db/run run-id) (if canceled?
-                                                                   (tru "The run was canceled.")
-                                                                   (tru "The run failed before it processed the table."))))]
+                        (with-unprocessed-errors (db/run run-id)
+                          (if canceled?
+                            (tru "The run was canceled.")
+                            (tru "The run failed before it processed the table."))))]
         (when-not canceled?
           (log/errorf e "Metadata generation run %d failed" run-id))
         (u/ignore-exceptions
@@ -486,28 +511,40 @@
    #{:description}                                  {:tokens 245 :cost_usd 0.00054}
    #{:data_sensitivity :semantic_type :description} {:tokens 324 :cost_usd 0.00070}})
 
+(def ^:private bench-model "claude-haiku-4-5")
+
+(defn- price-ratio
+  "The price of `model` divided by the price of the [[per-field-cost]] bench model, or nil when `model` has no price.
+  The input price sets the ratio: the input and output prices of each listed model have the same ratio to Haiku 4.5."
+  [model]
+  (when-let [{:keys [input]} (model-price model)]
+    (/ input (:input (model-price bench-model)))))
+
 (mr/def ::estimate
   [:map {:closed true}
    [:table_count        ms/IntGreaterThanOrEqualToZero]
    [:field_count        ms/IntGreaterThanOrEqualToZero]
    [:total_tokens       ms/IntGreaterThanOrEqualToZero]
-   [:cost_usd           number?]
+   [:model              [:maybe :string]]
+   [:cost_usd           [:maybe number?]]
    [:unavailable_reason [:maybe :keyword]]])
 
 (mu/defn estimate :- ::estimate
-  "The size of a run that [[start-run!]] would start for `request`: tables, fields, and about how many tokens and USD
-  it uses. `:unavailable_reason` is why a start would fail now, or nil. Throws a 400 for the same scope errors as
-  [[start-run!]]."
+  "The size of a run that [[start-run!]] would start for `request`: tables, fields, the model, and about how many tokens
+  and USD it uses. `:cost_usd` is nil when the model has no price. `:unavailable_reason` is why a start would fail now,
+  or nil. Throws a 400 for the same scope errors as [[start-run!]]."
   [database :- (ms/InstanceOf :model/Database)
    request  :- ::start-request]
   (let [{:keys [attributes tables]} (parse-request (:id database) request)
         field-count (db/active-field-count (mapv :id tables))
         ratio       (or (per-field-cost (set attributes))
-                        (per-field-cost (set run/attributes)))]
+                        (per-field-cost (set run/attributes)))
+        model       (llm/default-model)]
     {:table_count        (count tables)
      :field_count        field-count
      :total_tokens       (* field-count (:tokens ratio))
-     :cost_usd           (* field-count (:cost_usd ratio))
+     :model              model
+     :cost_usd           (some->> (price-ratio model) (* field-count (:cost_usd ratio)))
      :unavailable_reason (core/unavailable-reason)}))
 
 ;;; Public API
@@ -519,7 +556,8 @@
 (mu/defn start-run! :- (ms/InstanceOf :model/MetadataGenerationRun)
   "Start a run over the active, visible tables of `database` that the request names: all of them, those in `:schemas`,
   or `:table_ids`. `:attributes` defaults to [[llm/default-attributes]]. Returns the new run. Throws a 409 when a run is
-  active for the database, and a 400 when Metabot cannot run or the scope holds no active, visible table. The run executes as `creator-id`."
+  active for the database, and a 400 when Metabot cannot run or the scope holds no active, visible table. The run
+  executes as `creator-id`."
   [database   :- (ms/InstanceOf :model/Database)
    request    :- ::start-request
    creator-id :- ms/PositiveInt]
@@ -528,7 +566,7 @@
     (when (db/active-run database-id)
       (throw (conflict database-id)))
     (when-let [reason (core/unavailable-reason)]
-      (throw (ex-info (tru "AI metadata generation is not available.")
+      (throw (ex-info (tru "Field metadata generation is not available.")
                       {:status-code 400 :reason reason :error-code reason})))
     (let [run (try
                 (db/insert-run! {:database_id    database-id
@@ -552,8 +590,9 @@
   (when-let [run (db/run run-id)]
     (when-not (run/active-statuses (:status run))
       (throw (ex-info (tru "The run has already ended.") {:status-code 409})))
-    (if (pos? (db/update-run-with-status! run-id :pending
-                                          (canceled-changes start-state (tables-in-scope (:database_id run) (:scope run)))))
+    (if (pos? (db/update-run-with-status!
+               run-id :pending
+               (canceled-changes start-state (tables-in-scope (:database_id run) (:scope run)))))
       (when-let [{:keys [future]} (get @local-runs run-id)]
         (swap! local-runs dissoc run-id)
         (some-> ^Future future (.cancel false)))
@@ -605,8 +644,10 @@
                                    :terminal {:status    "failed"
                                               :ended_at  :%now
                                               :is_active nil
-                                              :message   (tru "The run stopped sending heartbeats for {0} minutes; its node probably stopped."
-                                                              stale-minutes)}})]
+                                              :message
+                                              (tru (str "The run stopped sending heartbeats for {0} minutes; "
+                                                        "its node probably stopped.")
+                                                   stale-minutes)}})]
     (doseq [{run-id :id} reaped]
       (try
         (when-let [run (db/run run-id)]

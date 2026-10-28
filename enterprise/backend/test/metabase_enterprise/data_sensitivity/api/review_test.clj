@@ -90,8 +90,7 @@
     (do-with-proposals!
      (fn [db-id {:keys [a b]} {:keys [a1-sem a1-ds a2-human b1-sem c1-sem]}]
        (testing "pending proposals in table and field order, with the reasoning and the current value and its layer"
-         (is (=? [{:id a1-ds    :field_name "a1" :attribute "data_sensitivity" :source "none" :current_value nil
-                   :status "pending"}
+         (is (=? [{:id a1-ds    :field_name "a1" :attribute "data_sensitivity" :source "none" :current_value nil}
                   {:id a1-sem   :field_name "a1" :attribute "semantic_type" :source "deterministic"
                    :current_value "type/Category" :proposed_value "type/Email" :confidence "high"
                    :reasoning "Values look like email addresses."}
@@ -120,3 +119,23 @@
          (is (= [a1-ds a1-sem]
                 (map :id (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/proposals"
                                                :database-id db-id :table-id a)))))))))
+
+(deftest hidden-field-and-table-proposals-test
+  (mt/with-premium-features #{:data-sensitivity}
+    (do-with-proposals!
+     (fn [db-id {:keys [b c]} {:keys [a1-sem a2-human]}]
+       (t2/update! :model/Field (t2/select-one-fn :field_id :model/MetadataGenerationProposal :id a1-sem)
+                   {:visibility_type :hidden})
+       (t2/update! :model/Field (t2/select-one-fn :field_id :model/MetadataGenerationProposal :id a2-human)
+                   {:visibility_type :sensitive})
+       (t2/update! :model/Table b {:visibility_type :hidden})
+       (testing "proposals of hidden and sensitive fields and of hidden tables are not listed"
+         (is (= [] (map :id (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/proposals"
+                                                  :database-id db-id :schema "S")))))
+       (testing "proposals of hidden and sensitive fields and of hidden tables are not counted"
+         (is (= [c] (map :table_id (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/proposals/tables"
+                                                         :database-id db-id)))))
+       (testing "a visible field keeps its proposals"
+         (is (=? [{:table_id c :pending 1}]
+                 (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/proposals/tables"
+                                       :database-id db-id :schema "T"))))))))

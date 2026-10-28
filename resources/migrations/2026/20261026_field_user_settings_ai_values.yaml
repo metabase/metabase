@@ -44,7 +44,7 @@ databaseChangeLog:
               - column:
                   name: ai_data_sensitivity
                   type: varchar(32)
-                  remarks: "Accepted AI data_sensitivity. Overrides metabase_field.data_sensitivity unless data_sensitivity_set."
+                  remarks: "Accepted AI data_sensitivity. Overrides metabase_field.data_sensitivity unless data_sensitivity_set. A non-NULL data_sensitivity with data_sensitivity_set false, a row written by an old node, also counts as set."
                   constraints:
                     nullable: true
 

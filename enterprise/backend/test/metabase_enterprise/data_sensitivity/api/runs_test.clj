@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-sensitivity.test-util :as ds.tu]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.test :as mt]
    [toucan2.core :as t2])
   (:import
@@ -118,14 +119,24 @@
        (ds.tu/do-with-llm!
         (ds.tu/canned-llm (constantly {}))
         (fn []
-          (testing "the whole database with the default attributes"
-            (is (=? {:table_count        4
-                     :field_count        4
-                     :total_tokens       (* 4 281)
-                     :cost_usd           #(< 0.002 % 0.003)
-                     :unavailable_reason nil}
-                    (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/runs/estimate"
-                                          :database-id (:id db)))))
+          (testing "the whole database with the default attributes on a model with no price"
+            (is (= {:table_count        4
+                    :field_count        4
+                    :total_tokens       (* 4 281)
+                    :model              "test/mini"
+                    :cost_usd           nil
+                    :unavailable_reason nil}
+                   (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/runs/estimate"
+                                         :database-id (:id db)))))
+          (testing "the cost follows the price of the mini model"
+            (mt/with-dynamic-fn-redefs [metabot.settings/llm-mini-model (constantly "anthropic/claude-haiku-4-5")]
+              (is (=? {:model "anthropic/claude-haiku-4-5" :total_tokens (* 4 281) :cost_usd #(< 0.002 % 0.003)}
+                      (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/runs/estimate"
+                                            :database-id (:id db)))))
+            (mt/with-dynamic-fn-redefs [metabot.settings/llm-mini-model (constantly "anthropic/claude-sonnet-4-6")]
+              (is (=? {:model "anthropic/claude-sonnet-4-6" :total_tokens (* 4 281) :cost_usd #(< 0.006 % 0.008)}
+                      (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/runs/estimate"
+                                            :database-id (:id db))))))
           (testing "a schema and an attribute set"
             (is (=? {:table_count 2 :field_count 2 :total_tokens (* 2 253)}
                     (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/runs/estimate"

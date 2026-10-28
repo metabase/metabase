@@ -5,7 +5,9 @@ import cx from "classnames";
 import {
   type KeyboardEvent,
   type ReactNode,
+  createContext,
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -794,23 +796,20 @@ function TableReview({
     () => getBulkDecidable(proposals ?? []),
     [proposals],
   );
-  const columns = useMemo(
-    () =>
-      getColumns({
-        tableCheckbox,
-        bulkProposals,
-        isGrouped,
-        selection,
-        edits,
-        select,
-        edit,
-        detailFieldId,
-        onToggleFieldDetails,
-      }),
+  const cellState = useMemo(
+    () => ({
+      tableCheckbox,
+      bulkProposals,
+      selection,
+      edits,
+      select,
+      edit,
+      detailFieldId,
+      onToggleFieldDetails,
+    }),
     [
       tableCheckbox,
       bulkProposals,
-      isGrouped,
       selection,
       edits,
       select,
@@ -819,6 +818,7 @@ function TableReview({
       onToggleFieldDetails,
     ],
   );
+  const columns = useMemo(() => getColumns(isGrouped), [isGrouped]);
   const instance = useTreeTableInstance<ProposalNode>({
     data: rows,
     columns,
@@ -865,25 +865,27 @@ function TableReview({
           </Box>
         )}
         {proposals != null && (
-          <TreeTable
-            instance={instance}
-            hierarchical={false}
-            classNames={{
-              root: S.proposals,
-              row: S.proposalRow,
-              rowActive: S.proposalRowActive,
-              cell: S.proposalCell,
-            }}
-            ariaLabel={t`Suggestions of ${getTableLabel(table)}`}
-            getRowProps={getRowProps}
-            emptyState={
-              <Text c="text-secondary" p="md">
-                {query
-                  ? t`No suggestions match.`
-                  : t`No suggestions for this table.`}
-              </Text>
-            }
-          />
+          <CellStateContext.Provider value={cellState}>
+            <TreeTable
+              instance={instance}
+              hierarchical={false}
+              classNames={{
+                root: S.proposals,
+                row: S.proposalRow,
+                rowActive: S.proposalRowActive,
+                cell: S.proposalCell,
+              }}
+              ariaLabel={t`Suggestions of ${getTableLabel(table)}`}
+              getRowProps={getRowProps}
+              emptyState={
+                <Text c="text-secondary" p="md">
+                  {query
+                    ? t`No suggestions match.`
+                    : t`No suggestions for this table.`}
+                </Text>
+              }
+            />
+          </CellStateContext.Provider>
         )}
       </Card>
     </Stack>
@@ -1030,11 +1032,15 @@ function getRowProps(row: Row<ProposalNode>): Record<string, unknown> {
   };
 }
 
-type ColumnOptions = {
+/**
+ * The state that the cells read. TreeTable renders each `cell` function as a component, so new column
+ * definitions remount every cell, and a remount loses the focus. The columns therefore stay the same and
+ * the cells read the state from this context.
+ */
+type CellState = {
   tableCheckbox: TableCheckboxState;
   /** The proposals that the table checkbox ticks and unticks. */
   bulkProposals: MetadataGenerationProposal[];
-  isGrouped: boolean;
   selection: ProposalSelection;
   edits: ProposalEdits;
   select: ReviewDraftState["select"];
@@ -1042,6 +1048,16 @@ type ColumnOptions = {
   detailFieldId: FieldId | null;
   onToggleFieldDetails: (fieldId: FieldId) => void;
 };
+
+const CellStateContext = createContext<CellState | null>(null);
+
+function useCellState(): CellState {
+  const state = useContext(CellStateContext);
+  if (state == null) {
+    throw new Error("useCellState needs a CellStateContext provider");
+  }
+  return state;
+}
 
 type ProposalCell = (proposal: MetadataGenerationProposal) => ReactNode;
 
@@ -1051,17 +1067,7 @@ function proposalCell(render: ProposalCell) {
     row.original.kind === "proposal" ? render(row.original.proposal) : null;
 }
 
-function getColumns({
-  tableCheckbox,
-  bulkProposals,
-  isGrouped,
-  selection,
-  edits,
-  select,
-  edit,
-  detailFieldId,
-  onToggleFieldDetails,
-}: ColumnOptions): TreeTableColumnDef<ProposalNode>[] {
+function getColumns(isGrouped: boolean): TreeTableColumnDef<ProposalNode>[] {
   const fieldColumn: TreeTableColumnDef<ProposalNode> = {
     id: "field",
     header: t`Field`,
@@ -1079,21 +1085,7 @@ function getColumns({
   return [
     {
       id: "accept",
-      header: () => (
-        <Tooltip
-          label={t`Select or clear every suggestion in this table, except those that replace a value a person set.`}
-        >
-          <Box component="span" display="inline-flex">
-            <Checkbox
-              aria-label={t`Accept the suggestions of this table`}
-              checked={tableCheckbox.checked}
-              indeterminate={tableCheckbox.indeterminate}
-              disabled={tableCheckbox.disabled}
-              onChange={() => select(bulkProposals, !tableCheckbox.checked)}
-            />
-          </Box>
-        </Tooltip>
-      ),
+      header: () => <AcceptAllHeader />,
       width: 48,
       cell: ({ row }) => {
         const node = row.original;
@@ -1105,13 +1097,7 @@ function getColumns({
             </Text>
           );
         }
-        return (
-          <AcceptCell
-            proposal={node.proposal}
-            isChecked={selection.has(node.proposal.id)}
-            select={select}
-          />
-        );
+        return <AcceptCell proposal={node.proposal} />;
       },
     },
     ...(isGrouped ? [] : [fieldColumn]),
@@ -1140,7 +1126,7 @@ function getColumns({
       minWidth: 440,
       cell: proposalCell((proposal) => (
         <Stack gap={4} align="flex-start" py="xs">
-          <ProposedValue proposal={proposal} edits={edits} edit={edit} />
+          <ProposedValue proposal={proposal} />
         </Stack>
       )),
     },
@@ -1172,34 +1158,60 @@ function getColumns({
       id: "details",
       header: "",
       width: 64,
-      cell: proposalCell((proposal) => {
-        const isDetailOpen = proposal.field_id === detailFieldId;
-        return (
-          <Tooltip
-            label={isDetailOpen ? t`Hide field details` : t`Field details`}
-          >
-            <ActionIcon
-              aria-label={t`Field details of ${getFieldLabel(proposal)}`}
-              aria-pressed={isDetailOpen}
-              selected={isDetailOpen}
-              onClick={() => onToggleFieldDetails(proposal.field_id)}
-            >
-              <Icon name="info" />
-            </ActionIcon>
-          </Tooltip>
-        );
-      }),
+      cell: proposalCell((proposal) => (
+        <FieldDetailsToggle proposal={proposal} />
+      )),
     },
   ];
 }
 
+function FieldDetailsToggle({
+  proposal,
+}: {
+  proposal: MetadataGenerationProposal;
+}) {
+  const { detailFieldId, onToggleFieldDetails } = useCellState();
+  const isDetailOpen = proposal.field_id === detailFieldId;
+  return (
+    <Tooltip label={isDetailOpen ? t`Hide field details` : t`Field details`}>
+      <ActionIcon
+        aria-label={t`Field details of ${getFieldLabel(proposal)}`}
+        aria-pressed={isDetailOpen}
+        selected={isDetailOpen}
+        onClick={() => onToggleFieldDetails(proposal.field_id)}
+      >
+        <Icon name="info" />
+      </ActionIcon>
+    </Tooltip>
+  );
+}
+
+function AcceptAllHeader() {
+  const { tableCheckbox, bulkProposals, select } = useCellState();
+  return (
+    <Tooltip
+      label={t`Select or clear all suggestions, except those that replace a value a person set.`}
+    >
+      <Box component="span" display="inline-flex">
+        <Checkbox
+          aria-label={t`Accept all suggestions`}
+          checked={tableCheckbox.checked}
+          indeterminate={tableCheckbox.indeterminate}
+          disabled={tableCheckbox.disabled}
+          onChange={() => select(bulkProposals, !tableCheckbox.checked)}
+        />
+      </Box>
+    </Tooltip>
+  );
+}
+
 type AcceptCellProps = {
   proposal: MetadataGenerationProposal;
-  isChecked: boolean;
-  select: ReviewDraftState["select"];
 };
 
-function AcceptCell({ proposal, isChecked, select }: AcceptCellProps) {
+function AcceptCell({ proposal }: AcceptCellProps) {
+  const { selection, select } = useCellState();
+  const isChecked = selection.has(proposal.id);
   const attributeLabel = getAttributeLabel(proposal.attribute);
   const fieldLabel = getFieldLabel(proposal);
 
@@ -1236,11 +1248,10 @@ function CurrentValue({ proposal }: { proposal: MetadataGenerationProposal }) {
 
 type ProposedValueProps = {
   proposal: MetadataGenerationProposal;
-  edits: ProposalEdits;
-  edit: ReviewDraftState["edit"];
 };
 
-function ProposedValue({ proposal, edits, edit }: ProposedValueProps) {
+function ProposedValue({ proposal }: ProposedValueProps) {
+  const { edits, edit } = useCellState();
   const { attribute, proposed_value } = proposal;
   const value = getProposalValue(proposal, edits);
   const isEdited = isProposalEdited(proposal, edits);

@@ -21,13 +21,29 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database :id database-id))
 
+(defn- column
+  "Column `k`, qualified with `alias` when it is given."
+  [alias k]
+  (if alias (keyword (name alias) (name k)) k))
+
+(defn- visible-table-where
+  "The condition on a Table, as users see it, that generation, review and apply share: active, with no
+  `visibility_type`. `alias` is the alias of the table in the query, if any."
+  [& [alias]]
+  [:and [:= (column alias :active) true] [:= (column alias :visibility_type) nil]])
+
+(defn- visible-field-where
+  "The condition on a Field, as users see it, that generation, review and apply share: active, with a
+  `visibility_type` that is not retired, sensitive or hidden. `alias` is the alias of the field in the query, if any."
+  [& [alias]]
+  [:and [:= (column alias :active) true] [:not-in (column alias :visibility_type) ["retired" "sensitive" "hidden"]]])
+
 (defn- active-fields-where
   "The `:where` of [[active-fields]] over the tables that `table-condition` selects."
   [table-condition]
   [:and
    table-condition
-   [:= :active true]
-   [:not-in :visibility_type ["retired" "sensitive" "hidden"]]
+   (visible-field-where)
    [:= :nfc_path nil]
    [:= :parent_id nil]])
 
@@ -57,11 +73,27 @@
     (into {} (map (juxt :field_id identity)) (t2/select :model/FieldUserSettings :field_id [:in field-ids]))
     {}))
 
-(mu/defn field-names-and-tables
-  "The id, name, and table id of the Fields with `field-ids`."
+(defn- active-tables-where
+  "The `:where` of [[active-tables]] over the tables that `table-condition` selects."
+  [table-condition]
+  [:and table-condition (visible-table-where)])
+
+(mu/defn fk-target-names
+  "The id, name, table name and table schema of the Fields with `field-ids` that [[active-fields]] could return, in
+  tables that [[active-tables]] could return. Other ids have no row."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :name :table_id] :id [:in field-ids]
-             {:from [(warehouse-schema-overlay/field-query)]}))
+  (let [fields (t2/select [:model/Field :id :name :table_id]
+                          {:from  [(warehouse-schema-overlay/field-query)]
+                           :where (active-fields-where [:in :id field-ids])})
+        tables (when (seq fields)
+                 (into {} (map (juxt :id identity))
+                       (t2/select [:model/Table :id :name :schema]
+                                  {:from  [(warehouse-schema-overlay/table-query)]
+                                   :where (active-tables-where [:in :id (into #{} (map :table_id) fields)])})))]
+    (into [] (keep (fn [{:keys [id name table_id]}]
+                     (when-let [table (get tables table_id)]
+                       {:id id :name name :table_name (:name table) :table_schema (:schema table)})))
+          fields)))
 
 (mu/defn tables-by-id
   "A map of table id to the id, name, and schema of the Tables with `table-ids`."
@@ -69,13 +101,19 @@
   (into {} (map (juxt :id identity)) (t2/select [:model/Table :id :name :schema] :id [:in table-ids]
                                                 {:from [(warehouse-schema-overlay/table-query)]})))
 
+(mu/defn visible-table
+  "The Table with `table-id` when [[active-tables]] could return it, or nil."
+  [table-id :- ::lib.schema.id/table]
+  (t2/select-one :model/Table {:from  [(warehouse-schema-overlay/table-query)]
+                               :where (active-tables-where [:= :id table-id])}))
+
 (mu/defn active-tables
   "The active Tables of `database-id` with no `visibility_type` as users see it, as sync selects them, ordered by
   schema then name."
   [database-id :- ::lib.schema.id/database]
   (t2/select :model/Table
              {:from     [(warehouse-schema-overlay/table-query)]
-              :where    [:and [:= :db_id database-id] [:= :active true] [:= :visibility_type nil]]
+              :where    (active-tables-where [:= :db_id database-id])
               :order-by [[:schema :asc] [:name :asc]]}))
 
 ;;; Metadata generation runs
@@ -177,7 +215,7 @@
   keep a proposal that no longer fits the field."
   :feature :none
   [field-id]
-  (t2/delete! :model/MetadataGenerationProposal :field_id field-id :attribute :semantic_type :status :pending))
+  (t2/delete! :model/MetadataGenerationProposal :field_id field-id :attribute :semantic_type))
 
 ;;; Review
 
@@ -190,19 +228,21 @@
    [:table_ids   {:optional true} [:maybe [:sequential ::lib.schema.id/table]]]])
 
 (defn- pending-in-scope
-  "The `:from`, `:join` and `:where` of a query over the pending proposals in `scope` of active fields of active
-  tables, with the proposal table aliased `p`, the Table `t` and the Field `f`."
+  "The `:from`, `:join` and `:where` of a query over the pending proposals in `scope` of the fields and tables that
+  generation selects, with the proposal table aliased `p`, the Table `t` and the Field `f`."
   [{:keys [database_id schema table_ids]}]
   {:from  [[:metadata_generation_proposal :p]]
    :join  [(warehouse-schema-overlay/table-query {:alias :t}) [:= :t.id :p.table_id]
            (warehouse-schema-overlay/field-query {:alias :f}) [:= :f.id :p.field_id]]
-   :where (cond-> [:and [:= :p.status "pending"] [:= :t.active true] [:= :f.active true]]
+   :where (cond-> [:and
+                   (visible-table-where :t)
+                   (visible-field-where :f)]
             database_id     (conj [:= :t.db_id database_id])
             schema          (conj [:= :t.schema schema])
             (seq table_ids) (conj [:in :p.table_id table_ids]))})
 
 (mu/defn pending-proposals :- [:sequential (ms/InstanceOf :model/MetadataGenerationProposal)]
-  "The pending proposals in `scope` of active fields of active tables, with the field's `field_name`,
+  "The pending proposals in `scope` of visible fields of visible tables, with the field's `field_name`,
   `field_display_name`, `field_base_type` and `field_effective_type`, ordered by schema, table name, field position,
   field id and attribute."
   [scope :- ::scope]
@@ -218,8 +258,8 @@
                                                 [:table_id  ms/PositiveInt]
                                                 [:field_id  ms/PositiveInt]
                                                 [:attribute ::run/attribute]]]
-  "The id, table, field and attribute of the pending proposals in `scope` of active fields of active tables, ordered
-  by id."
+  "The id, table, field and attribute of the pending proposals in `scope` of visible fields of visible tables,
+  ordered by id."
   [scope :- ::scope]
   (t2/select :model/MetadataGenerationProposal
              (assoc (pending-in-scope scope)
@@ -233,21 +273,21 @@
     (t2/select :model/MetadataGenerationProposal :id [:in ids] {:order-by [[:id :asc]]})
     []))
 
-(mu/defn lock-proposals :- [:map-of ms/PositiveInt [:map [:proposed_value [:maybe :string]] [:status ::proposal/status]]]
-  "A map of proposal id to the `proposed_value` and `status` of the proposals with `ids`, with their rows locked
-  until the current transaction ends."
+(mu/defn lock-proposals :- [:map-of ms/PositiveInt [:maybe :string]]
+  "A map of proposal id to the `proposed_value` of the proposals with `ids`, with their rows locked until the current
+  transaction ends."
   [ids :- [:sequential ms/PositiveInt]]
   (if (seq ids)
     (into {}
-          (map (juxt :id #(select-keys % [:proposed_value :status])))
-          (t2/select [:model/MetadataGenerationProposal :id :proposed_value :status]
+          (map (juxt :id :proposed_value))
+          (t2/select [:model/MetadataGenerationProposal :id :proposed_value]
                      {:where [:in :id ids] :for [:update]}))
     {}))
 
 ;;; Apply
 
-(mu/defn active-fields-by-id :- [:map-of ::lib.schema.id/field (ms/InstanceOf :model/Field)]
-  "A map of field id to the active Field of an active Table, with the values readers see and `:can_write` hydrated,
+(mu/defn visible-fields-by-id :- [:map-of ::lib.schema.id/field (ms/InstanceOf :model/Field)]
+  "A map of field id to the visible Field of a visible Table, with the values readers see and `:can_write` hydrated,
   for `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (if (seq field-ids)
@@ -257,10 +297,11 @@
                                  {:from  [(warehouse-schema-overlay/field-query)]
                                   :where [:and
                                           [:in :id field-ids]
-                                          [:= :active true]
-                                          [:in :table_id ^:allow-subquery {:select [:id]
-                                                                           :from   [:metabase_table]
-                                                                           :where  [:= :active true]}]]})
+                                          (visible-field-where)
+                                          [:in :table_id ^:allow-subquery
+                                           {:select [:id]
+                                            :from   [(warehouse-schema-overlay/table-query)]
+                                            :where  (visible-table-where)}]]})
                       :can_write))
     {}))
 

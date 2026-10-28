@@ -89,9 +89,8 @@
                           {:table_id       (:id table)
                            :attribute      attribute
                            :proposed_value proposed
-                           :confidence     :medium
-                           :status         :pending}))
-                   (set (map #(select-keys % [:table_id :attribute :proposed_value :confidence :status])
+                           :confidence     :medium}))
+                   (set (map #(select-keys % [:table_id :attribute :proposed_value :confidence])
                              (suggestions (:id run))))))
             (is (every? (fn [table]
                           (= [[nil nil]] (t2/select-fn-vec (juxt :data_sensitivity :semantic_type)
@@ -209,12 +208,12 @@
                (is (str/includes? user "- ds_human (type/Text, VARCHAR; description: \"Written by a person\" [human-set])"))))))))))
 
 (defn- table-proposals
-  "The proposals of `table-id` as a map of [field name, attribute] to [proposed value, status, last run id]."
+  "The proposals of `table-id` as a map of [field name, attribute] to [proposed value, last run id]."
   [table-id]
   (into {}
         (map (fn [p]
                [[(t2/select-one-fn :name :model/Field :id (:field_id p)) (:attribute p)]
-                [(:proposed_value p) (:status p) (:last_run_id p)]]))
+                [(:proposed_value p) (:last_run_id p)]]))
         (t2/select :model/MetadataGenerationProposal :table_id table-id)))
 
 (deftest runs-upsert-proposals-test
@@ -234,10 +233,10 @@
        (fn []
          (let [run-1 (:id (start! db {:attributes [:data_sensitivity]}))]
            (wait-ended run-1)
-           (is (= {["ds_a" :data_sensitivity] ["PII" :pending run-1]
-                   ["ds_b" :data_sensitivity] ["PII" :pending run-1]
-                   ["ds_c" :data_sensitivity] ["PII" :pending run-1]
-                   ["ds_d" :data_sensitivity] ["PII" :pending run-1]}
+           (is (= {["ds_a" :data_sensitivity] ["PII" run-1]
+                   ["ds_b" :data_sensitivity] ["PII" run-1]
+                   ["ds_c" :data_sensitivity] ["PII" run-1]
+                   ["ds_d" :data_sensitivity] ["PII" run-1]}
                   (table-proposals (:id table))))
            (reset! entries {"ds_a" {:data_sensitivity "PHI"}
                             "ds_b" {:data_sensitivity "PHI"}
@@ -246,16 +245,16 @@
            (let [run-2 (:id (start! db {:attributes [:data_sensitivity]}))]
              (wait-ended run-2)
              (testing "a second run replaces the proposals, and deletes those it no longer makes"
-               (is (= {["ds_a" :data_sensitivity] ["PHI" :pending run-2]
-                       ["ds_b" :data_sensitivity] ["PHI" :pending run-2]}
+               (is (= {["ds_a" :data_sensitivity] ["PHI" run-2]
+                       ["ds_b" :data_sensitivity] ["PHI" run-2]}
                       (table-proposals (:id table))))))
            (testing "a run of other attributes leaves the proposals of the run's attributes alone"
              (reset! entries {"ds_a" {:data_sensitivity "PII" :semantic_type "type/Email"}})
              (let [run-3 (:id (start! db {:attributes [:semantic_type]}))]
                (wait-ended run-3)
-               (is (=? {["ds_a" :data_sensitivity] ["PHI" :pending some?]
-                        ["ds_b" :data_sensitivity] ["PHI" :pending some?]
-                        ["ds_a" :semantic_type]    ["type/Email" :pending run-3]}
+               (is (=? {["ds_a" :data_sensitivity] ["PHI" some?]
+                        ["ds_b" :data_sensitivity] ["PHI" some?]
+                        ["ds_a" :semantic_type]    ["type/Email" run-3]}
                        (table-proposals (:id table))))))))))))
 
 (deftest record-table-keeps-proposal-of-concurrently-applied-row-test
@@ -267,8 +266,7 @@
                                                          :attributes [:description] :total_tables 1
                                                          :status :running}
                    :model/MetadataGenerationProposal old {:table_id (:id table) :field_id (:id field)
-                                                          :attribute :description :proposed_value "old"
-                                                          :status :pending}]
+                                                          :attribute :description :proposed_value "old"}]
       (let [select (mt/original-fn #'t2/select)]
         (mt/with-dynamic-fn-redefs [t2/select (fn [model & args]
                                                 (let [result (apply select model args)]
@@ -286,7 +284,7 @@
                                                          :proposed_value "new"
                                                          :confidence     :high
                                                          :reasoning      "r"}]})))))
-      (is (= {["ds_a" :description] ["new" :pending (:id run)]}
+      (is (= {["ds_a" :description] ["new" (:id run)]}
              (table-proposals (:id table)))))))
 
 (deftest table-scoped-run-keeps-other-tables-test
@@ -303,10 +301,10 @@
             (let [run-2 (:id (start! db {:attributes [:data_sensitivity] :table_ids [(:id table-1)]}))]
               (wait-ended run-2)
               (testing "the run replaces the proposals of its table"
-                (is (= {["ds_00_field" :data_sensitivity] ["PHI" :pending run-2]}
+                (is (= {["ds_00_field" :data_sensitivity] ["PHI" run-2]}
                        (table-proposals (:id table-1)))))
               (testing "the proposals of other tables do not change"
-                (is (= {["ds_01_field" :data_sensitivity] ["PII" :pending run-1]}
+                (is (= {["ds_01_field" :data_sensitivity] ["PII" run-1]}
                        (table-proposals (:id table-2)))))))))))))
 
 (deftest failed-table-keeps-proposals-test
@@ -325,7 +323,7 @@
             (reset! fail? true)
             (is (=? {:failed_tables 1} (wait-ended (:id (start! db {:attributes [:data_sensitivity]})))))
             (testing "a table that fails keeps its proposals"
-              (is (= {["ds_00_field" :data_sensitivity] ["PII" :pending run-1]}
+              (is (= {["ds_00_field" :data_sensitivity] ["PII" run-1]}
                      (table-proposals (:id table))))))))))))
 
 (deftest cancel-via-run-row-test
@@ -458,6 +456,33 @@
           (testing "a run that names a hidden table is a 400"
             (is (= 400 (:status-code (try (start! db {:table_ids [(:id t1)]})
                                           (catch clojure.lang.ExceptionInfo e (ex-data e)))))))))))))
+
+(deftest table-hidden-during-run-not-sent-test
+  (testing "a table hidden after the run starts and before the worker reaches it is not sent to the model"
+    (do-with-temp-tables
+     2
+     (fn [db [t0 t1]]
+       (let [prompts (atom [])
+             started (CountDownLatch. 1)
+             release (promise)]
+         (ds.tu/do-with-llm!
+          (fn [& [_model messages :as args]]
+            (swap! prompts conj (table-name-in-message messages))
+            (when (= (:name t0) (table-name-in-message messages))
+              (.countDown started)
+              (deref release 10000 nil))
+            (apply (ds.tu/canned-llm (constantly {:data_sensitivity "PII"})) args))
+          (fn []
+            (let [run (start! db {:attributes [:data_sensitivity]})]
+              (is (.await started 10 TimeUnit/SECONDS))
+              (t2/update! :model/Table (:id t1) {:visibility_type :hidden})
+              (deliver release true)
+              (is (=? {:status       :succeeded
+                       :done_tables  1
+                       :table_errors [{:table_id (:id t1) :error_code "table_not_visible"}]}
+                      (wait-ended (:id run))))
+              (is (= [(:name t0)] @prompts))
+              (is (= #{(:id t0)} (set (map :table_id (suggestions (:id run))))))))))))))
 
 (deftest failed-table-usage-test
   (testing "the usage of the chunks that finished in a table that failed counts in the run's usage"

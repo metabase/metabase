@@ -201,7 +201,7 @@ databaseChangeLog:
       changes:
         - createTable:
             tableName: metadata_generation_proposal
-            remarks: The pending or rejected value that the AI proposes for one attribute of one field; one row per field and attribute
+            remarks: The pending value that the AI proposes for one attribute of one field; one row per field and attribute; apply and reject delete the row
             columns:
               - column:
                   name: id
@@ -261,13 +261,6 @@ databaseChangeLog:
                   remarks: The model's short reason for the proposal
                   constraints:
                     nullable: true
-              - column:
-                  name: status
-                  type: varchar(16)
-                  remarks: pending; apply and reject delete the row
-                  defaultValue: pending
-                  constraints:
-                    nullable: false
               - column:
                   name: created_at
                   type: ${timestamp_type}

@@ -3,12 +3,16 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-sensitivity.context :as context]
+   [metabase-enterprise.data-sensitivity.llm :as llm]
+   [metabase-enterprise.database-routing.test-util :as routing.tu]
    [metabase-enterprise.impersonation.util-test :as impersonation.util-test]
    [metabase-enterprise.sandbox.test-util :as met]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
+   [metabase.driver.settings :as driver.settings]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
 
@@ -146,6 +150,33 @@
                                              (t2/select-one-fn :name :model/Field :id (mt/id :people :id))]))]
     (is (= expected (:fk_target (field-by-name packet (t2/select-one-fn :name :model/Field :id (mt/id :orders :user_id))))))
     (is (nil? (:fk_target (field-by-name packet (t2/select-one-fn :name :model/Field :id (mt/id :orders :total))))))))
+
+(deftest fk-target-not-shown-for-hidden-targets-test
+  (let [orders     #(t2/select-one :model/Table :id (mt/id :orders))
+        names-in?  (fn [packet marker]
+                     (or (str/includes? (pr-str packet) marker)
+                         (str/includes? (llm/user-message packet (:fields packet) #{:data_sensitivity}) marker)))]
+    (testing "the packet and the user message do not name a hidden table that a foreign key points to"
+      (mt/with-temp-vals-in-db :model/Table (mt/id :people) {:visibility_type "hidden" :name "PEOPLE_HIDDEN_MARKER"}
+        (let [packet (schema-only-packet (orders))]
+          (is (some? (field-by-name packet (t2/select-one-fn :name :model/Field :id (mt/id :orders :user_id)))))
+          (is (not (names-in? packet "PEOPLE_HIDDEN_MARKER"))))))
+    (mt/with-temp [:model/Field {sensitive-id :id} {:table_id (mt/id :people) :name "sensitive_target_marker"
+                                                    :base_type :type/Integer :visibility_type :sensitive}
+                   :model/Field {retired-id :id}   {:table_id (mt/id :people) :name "retired_target_marker"
+                                                    :base_type :type/Integer :visibility_type :retired}
+                   :model/Field _                  {:table_id (mt/id :orders) :name "fk_to_sensitive"
+                                                    :base_type :type/Integer :semantic_type :type/FK
+                                                    :fk_target_field_id sensitive-id}
+                   :model/Field _                  {:table_id (mt/id :orders) :name "fk_to_retired"
+                                                    :base_type :type/Integer :semantic_type :type/FK
+                                                    :fk_target_field_id retired-id}]
+      (let [packet (schema-only-packet (orders))]
+        (testing "the packet and the user message do not name a sensitive or retired field that a foreign key points to"
+          (is (some? (field-by-name packet "fk_to_sensitive")))
+          (is (some? (field-by-name packet "fk_to_retired")))
+          (is (not (names-in? packet "sensitive_target_marker")))
+          (is (not (names-in? packet "retired_target_marker"))))))))
 
 (deftest fingerprint-summary-test
   (let [summary #'context/fingerprint-summary]
@@ -324,3 +355,16 @@
         (is (= "this database uses database routing" (get-in result [:packet :sample :error])))))
     (testing "a superuser on a routed database gets values"
       (is (values-sent? (:packet (mt/with-current-user (mt/user->id :crowberto) (current-user-packet!))))))))
+
+(deftest routed-database-superuser-samples-router-test
+  (mt/with-premium-features #{:database-routing}
+    (binding [driver.settings/*allow-testing-h2-connections* true]
+      (routing.tu/with-routing-setup! [router-db [[dest-1 "destination-db-1"]]]
+        (mt/with-temp [:model/DatabaseRouter _ {:database_id (u/the-id router-db) :user_attribute "db_name"}]
+          (routing.tu/execute-statement! router-db "INSERT INTO \"my_database_name\" (str) VALUES ('router-marker')")
+          (routing.tu/execute-statement! dest-1 "INSERT INTO \"my_database_name\" (str) VALUES ('destination-marker')")
+          (met/with-user-attributes! :crowberto {"db_name" "destination-db-1"}
+            (testing "a superuser whose routing attribute names a destination gets the router's rows in the packet"
+              (let [packet (table-packet (t2/select-one :model/Table :db_id (u/the-id router-db)))]
+                (is (nil? (get-in packet [:sample :error])))
+                (is (= [["router-marker"]] (mapv :sample_values (:fields packet))))))))))))

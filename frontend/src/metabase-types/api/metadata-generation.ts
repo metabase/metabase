@@ -86,7 +86,8 @@ export type MetadataGenerationEstimate = {
   table_count: number;
   field_count: number;
   total_tokens: number;
-  cost_usd: number;
+  model: string | null;
+  cost_usd: number | null;
   unavailable_reason: MetadataGenerationUnavailableReason | string | null;
 };
 

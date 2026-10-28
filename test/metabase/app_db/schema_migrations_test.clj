@@ -4145,10 +4145,10 @@
             proposal-a    (insert-proposal! field-a "data_sensitivity")
             proposal-b    (insert-proposal! field-b "data_sensitivity")
             proposal      #(t2/select-one :metadata_generation_proposal :id %)]
-        (testing "defaults: zero table counts on a run, pending status on a proposal"
+        (testing "defaults: zero table counts on a run, timestamps on a proposal"
           (is (=? {:total_tables 0 :done_tables 0 :failed_tables 0 :created_at some? :updated_at some?}
                   (t2/select-one :metadata_generation_run :id run-id)))
-          (is (=? {:status "pending" :created_at some?} (proposal proposal-a))))
+          (is (=? {:created_at some? :updated_at some?} (proposal proposal-a))))
         (testing "a database has at most one active run; ended runs (is_active NULL) do not count"
           (is (thrown? Exception (insert-run! "pending" true)))
           (is (pos-int? (insert-run! "succeeded" nil)))
