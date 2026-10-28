@@ -29,7 +29,7 @@ export interface DataAppProps {
   height?: CSSProperties["height"];
 }
 
-/** Embed an existing data app by iframe. */
+/** Embed a data app using provider SSO, or a local API key for development. */
 export const DataApp = (props: DataAppProps) => (
   <PublicComponentWrapper height={props.height} width={props.width}>
     <DataAppInner {...props} />
@@ -71,7 +71,7 @@ function DataAppInner({ path, ...props }: DataAppProps) {
   }, [instanceUrl, path, id]);
 
   if (authConfig?.isGuest) {
-    return <SdkError message="Data app embeds require SSO authentication." />;
+    return <SdkError message="Guest embeds are not supported for data apps." />;
   }
 
   if (authConfig?.apiKey && !getIsLocalhost()) {

@@ -39,8 +39,7 @@ export function DataAppEmbed() {
   const [metabaseProviderProps, setMetabaseProviderProps] =
     useState<DataAppMetabaseProviderProps>({});
 
-  // Auth is done on the modular embedding host app, not here.
-  // DataAppEmbed does not do SSO, so we don't need the full auth config.
+  // The host supplies SSO sessions; local keys authenticate through this provider.
   const authConfig = useMemo<MetabaseAuthConfig>(() => {
     const metabaseInstanceUrl = getCurrentMetabaseInstanceUrl();
 
@@ -88,7 +87,7 @@ export function DataAppEmbed() {
 
   if (embedSettings.useExistingUserSession) {
     return (
-      <SdkIframeError message="Embedded data apps require SSO authentication." />
+      <SdkIframeError message="Existing-session embeds are not supported for data apps." />
     );
   }
 
