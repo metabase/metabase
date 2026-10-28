@@ -83,42 +83,50 @@
              "the error data matches its declaration in `errors`")
          data)))))
 
+(deftest ^:parallel autoplace-with-no-free-slot-test
+  (testing "a tab with no free slot within autoplace's search is an error, not a card placed off the grid"
+    (is (=? {::dashboard-ops/error :no-free-space, :tab-id nil, :op "add_card"}
+            (op-error (dash-with [{:id 7 :card_id 9 :row 0 :col 0 :size_x 24 :size_y 1100}])
+                      [{:op "add_card" :id -1 :card_id 42}])))))
+
 (deftest ^:parallel duplicate-temp-id-is-rejected-test
   (testing "GHY-4147: reusing a temp id inside one batch is an error naming the op index"
-    (is (= {::dashboard-ops/error :duplicate-new-id :id -1 :op-index 1 :op "add_card"}
+    (is (= {::dashboard-ops/error :duplicate-new-id
+            :id                   -1
+            :op-index             1
+            :op                   "add_card"}
            (op-error empty-dash
                      [{:op "add_card" :id -1 :card_id 42}
                       {:op "add_card" :id -1 :card_id 43}])))))
 
 (deftest ^:parallel positive-temp-id-is-rejected-test
   (testing "GHY-4147: a new dashcard's id must be negative — positives would silently target a real row"
-    (is (= {::dashboard-ops/error :invalid-new-id :id 5 :op-index 0 :op "add_card"}
-           (op-error empty-dash [{:op "add_card" :id 5 :card_id 42}])))))
+    (is (=? {::dashboard-ops/error :invalid-new-id, :id 5}
+            (op-error empty-dash [{:op "add_card" :id 5 :card_id 42}])))))
 
 (deftest ^:parallel unknown-op-is-rejected-test
   (testing "GHY-4147: an unrecognized op names the index and the op"
-    (is (= {::dashboard-ops/error :unknown-op :op-index 0 :op "frobnicate"}
-           (op-error empty-dash [{:op "frobnicate"}])))))
+    (is (=? {::dashboard-ops/error :unknown-op, :op "frobnicate"}
+            (op-error empty-dash [{:op "frobnicate"}])))))
 
 (deftest ^:parallel missing-op-or-id-test
   (testing "GHY-4544: an op sent without its `op` or a referenced id has its own error"
-    (is (= {::dashboard-ops/error :missing-op :op-index 0 :op nil}
-           (op-error empty-dash [{:id -1}])))
-    (is (=? {::dashboard-ops/error :missing-dashcard-id :op "remove"}
+    (is (=? {::dashboard-ops/error :missing-op, :op nil}
+            (op-error empty-dash [{:id -1}])))
+    (is (=? {::dashboard-ops/error :missing-dashcard-id, :op "remove"}
             (op-error empty-dash [{:op "remove"}])))
-    (is (=? {::dashboard-ops/error :missing-tab-id :op "remove_tab"}
+    (is (=? {::dashboard-ops/error :missing-tab-id, :op "remove_tab"}
             (op-error empty-dash [{:op "remove_tab"}])))
-    (is (=? {::dashboard-ops/error :missing-parameter-id :op "remove_parameter"}
+    (is (=? {::dashboard-ops/error :missing-parameter-id, :op "remove_parameter"}
             (op-error empty-dash [{:op "remove_parameter"}])))))
 
 (deftest ^:parallel out-of-range-index-test
   (testing "move_tab and move_parameter report an index past the end with the count it must stay within"
-    (is (= {::dashboard-ops/error :tab-index-out-of-range :index 3 :tab-count 1 :op-index 0 :op "move_tab"}
-           (op-error (assoc empty-dash :tabs [{:id 1 :name "A"}]) [{:op "move_tab" :tab_id 1 :index 3}])))
-    (is (= {::dashboard-ops/error :parameter-index-out-of-range :index 4 :parameter-count 1
-            :op-index 0 :op "move_parameter"}
-           (op-error (assoc empty-dash :parameters [{:id "p1"}])
-                     [{:op "move_parameter" :parameter_id "p1" :index 4}])))))
+    (is (=? {::dashboard-ops/error :tab-index-out-of-range, :index 3, :tab-count 1}
+            (op-error (assoc empty-dash :tabs [{:id 1 :name "A"}]) [{:op "move_tab" :tab_id 1 :index 3}])))
+    (is (=? {::dashboard-ops/error :parameter-index-out-of-range, :index 4, :parameter-count 1}
+            (op-error (assoc empty-dash :parameters [{:id "p1"}])
+                      [{:op "move_parameter" :parameter_id "p1" :index 4}])))))
 
 (deftest ^:parallel move-parameter-needs-a-destination-test
   (testing "move_parameter with neither index nor dashcard_id says what to pass"
@@ -128,7 +136,7 @@
 
 (deftest ^:parallel update-parameter-set-and-cleared-test
   (testing "update_parameter refuses a property it is asked to both set and clear"
-    (is (=? {::dashboard-ops/error :set-and-cleared :field "default"}
+    (is (=? {::dashboard-ops/error :set-and-cleared, :field "default"}
             (op-error (assoc empty-dash :parameters [{:id "p1"}])
                       [{:op "update_parameter" :parameter_id "p1" :default 1 :clear ["default"]}])))))
 
@@ -171,12 +179,12 @@
 
 (deftest add-link-requires-exactly-one-target-test
   (testing "GHY-4147: add_link with neither url nor entity, or both, is an error"
-    (is (= {::dashboard-ops/error :link-needs-url-or-entity :op-index 0 :op "add_link"}
-           (op-error empty-dash [{:op "add_link" :id -1}])))
-    (is (= {::dashboard-ops/error :link-needs-url-or-entity :op-index 0 :op "add_link"}
-           (op-error empty-dash
-                     [{:op "add_link" :id -1 :url "https://example.com"
-                       :entity {:type "dashboard" :id 12}}])))))
+    (is (=? {::dashboard-ops/error :link-needs-url-or-entity}
+            (op-error empty-dash [{:op "add_link" :id -1}])))
+    (is (=? {::dashboard-ops/error :link-needs-url-or-entity}
+            (op-error empty-dash
+                      [{:op "add_link" :id -1 :url "https://example.com"
+                        :entity {:type "dashboard" :id 12}}])))))
 
 (deftest add-iframe-test
   (testing "GHY-4147: add_iframe stores the src in visualization settings"
@@ -228,8 +236,8 @@
 
 (deftest duplicate-card-unknown-dashcard-test
   (testing "GHY-4147: duplicate_card on a missing dashcard names the op index"
-    (is (= {::dashboard-ops/error :unknown-dashcard :dashcard-id 999 :op-index 0 :op "duplicate_card"}
-           (op-error empty-dash [{:op "duplicate_card" :id -1 :dashcard_id 999}])))))
+    (is (=? {::dashboard-ops/error :unknown-dashcard, :dashcard-id 999}
+            (op-error empty-dash [{:op "duplicate_card" :id -1 :dashcard_id 999}])))))
 
 (deftest duplicate-card-does-not-remap-visualizer-source-ids-test
   (testing "GHY-4147: duplicate_card does not remap visualizer columnValuesMapping sourceIds —
@@ -362,19 +370,18 @@
 (deftest patch-dashcard-rejects-layout-keys-test
   (testing "GHY-4147: layout and identity keys in a patch are rejected, naming the op that owns them"
     (doseq [[k use-op] {:row "move" :size_x "resize" :card_id "replace_card"}]
-      (is (= {::dashboard-ops/error :unpatchable-key :key (name k) :use-op use-op
-              :op-index 0 :op "patch_dashcard"}
-             (op-error (dash-with [a-dashcard])
-                       [{:op "patch_dashcard" :dashcard_id 7 :patch {k 0}}]))))))
+      (is (=? {::dashboard-ops/error :unpatchable-key, :key (name k), :use-op use-op}
+              (op-error (dash-with [a-dashcard])
+                        [{:op "patch_dashcard" :dashcard_id 7 :patch {k 0}}]))))))
 
 (deftest patch-dashcard-rejects-unknown-keys-test
   (testing "GHY-4147: a patch key that is neither a layout key nor a content column is rejected —
             on a new dashcard it would otherwise reach the insert as a raw DB error"
-    (is (= {::dashboard-ops/error :unknown-patch-key :key "nonsense" :op-index 0 :op "patch_dashcard"}
-           (op-error (dash-with [a-dashcard])
-                     [{:op "patch_dashcard" :dashcard_id 7 :patch {:nonsense "x"}}])))
+    (is (=? {::dashboard-ops/error :unknown-patch-key, :key "nonsense"}
+            (op-error (dash-with [a-dashcard])
+                      [{:op "patch_dashcard" :dashcard_id 7 :patch {:nonsense "x"}}])))
     (testing "including on a card added in the same batch"
-      (is (=? {::dashboard-ops/error :unknown-patch-key :key "bogus" :op-index 1}
+      (is (=? {::dashboard-ops/error :unknown-patch-key, :key "bogus", :op-index 1}
               (op-error empty-dash
                         [{:op "add_card" :id -1 :card_id 42}
                          {:op "patch_dashcard" :dashcard_id -1 :patch {:bogus 1}}]))))))
@@ -460,7 +467,7 @@
 
 (deftest tab-coverage-is-enforced-test
   (testing "GHY-4147: with two or more tabs present, a dashcard with no tab is rejected with a clear message"
-    (is (= {::dashboard-ops/error :cards-without-tab :dashcard-ids [-3]}
+    (is (= {::dashboard-ops/error :cards-without-tab, :dashcard-ids [-3]}
            (op-error empty-dash
                      [{:op "add_tab" :id -1 :name "Q3"}
                       {:op "add_tab" :id -2 :name "Q4"}
@@ -476,8 +483,8 @@
 
 (deftest unknown-tab-is-rejected-test
   (testing "GHY-4147: referencing a tab that does not exist names the op index"
-    (is (= {::dashboard-ops/error :unknown-tab :tab-id 99 :op-index 0 :op "rename_tab"}
-           (op-error empty-dash [{:op "rename_tab" :tab_id 99 :name "x"}])))))
+    (is (=? {::dashboard-ops/error :unknown-tab, :tab-id 99}
+            (op-error empty-dash [{:op "rename_tab" :tab_id 99 :name "x"}])))))
 
 (def ^:private one-tab-dash
   {:id 1 :dashcards [] :tabs [{:id 5 :name "A"}] :parameters []})
@@ -486,25 +493,25 @@
   (testing "GHY-4147: `tab` naming a tab that belongs to a different dashboard is an error
             naming the op index — a dashcard on a foreign tab renders nowhere and cannot be repaired
             in the editor"
-    (is (= {::dashboard-ops/error :unknown-tab :tab-id 77 :op-index 0 :op "add_card"}
-           (op-error one-tab-dash [{:op "add_card" :id -1 :card_id 42 :tab 77}]))))
+    (is (=? {::dashboard-ops/error :unknown-tab, :tab-id 77}
+            (op-error one-tab-dash [{:op "add_card" :id -1 :card_id 42 :tab 77}]))))
   (testing "GHY-4147: a tab id that exists nowhere teaches the same way instead of failing opaquely later"
-    (is (= {::dashboard-ops/error :unknown-tab :tab-id 999 :op-index 1 :op "add_card"}
-           (op-error one-tab-dash
-                     [{:op "add_card" :id -1 :card_id 42 :tab 5}
-                      {:op "add_card" :id -2 :card_id 42 :tab 999}])))))
+    (is (=? {::dashboard-ops/error :unknown-tab, :tab-id 999, :op-index 1}
+            (op-error one-tab-dash
+                      [{:op "add_card" :id -1 :card_id 42 :tab 5}
+                       {:op "add_card" :id -2 :card_id 42 :tab 999}])))))
 
 (deftest virtual-dashcard-rejects-a-tab-not-on-this-dashboard-test
   (testing "GHY-4147: the virtual add ops validate `tab` the same way add_card does"
-    (is (= {::dashboard-ops/error :unknown-tab :tab-id 77 :op-index 0 :op "add_text"}
-           (op-error one-tab-dash [{:op "add_text" :id -1 :markdown "hi" :tab 77}])))))
+    (is (=? {::dashboard-ops/error :unknown-tab, :tab-id 77, :op "add_text"}
+            (op-error one-tab-dash [{:op "add_text" :id -1 :markdown "hi" :tab 77}])))))
 
 (deftest duplicate-card-rejects-a-tab-not-on-this-dashboard-test
   (testing "GHY-4147: duplicate_card's optional `tab` is validated too"
-    (is (= {::dashboard-ops/error :unknown-tab :tab-id 77 :op-index 0 :op "duplicate_card"}
-           (op-error (assoc one-tab-dash :dashcards [{:id 7 :card_id 9 :dashboard_tab_id 5
-                                                      :row 0 :col 0 :size_x 4 :size_y 4}])
-                     [{:op "duplicate_card" :id -1 :dashcard_id 7 :tab 77}])))))
+    (is (=? {::dashboard-ops/error :unknown-tab, :tab-id 77, :op "duplicate_card"}
+            (op-error (assoc one-tab-dash :dashcards [{:id 7 :card_id 9 :dashboard_tab_id 5
+                                                       :row 0 :col 0 :size_x 4 :size_y 4}])
+                      [{:op "duplicate_card" :id -1 :dashcard_id 7 :tab 77}])))))
 
 (def ^:private a-card
   "Minimal stand-in for a hydrated card; mapping-targets is stubbed in these tests, so only the
@@ -539,9 +546,9 @@
 
 (deftest add-parameter-rejects-duplicate-id-test
   (testing "GHY-4147: reusing an existing parameter id is an error"
-    (is (= {::dashboard-ops/error :parameter-exists :parameter-id "p1" :op-index 0 :op "add_parameter"}
-           (op-error (assoc empty-dash :parameters [{:id "p1" :name "X" :type "string/="}])
-                     [{:op "add_parameter" :parameter_id "p1" :name "Y" :type "string/="}])))))
+    (is (=? {::dashboard-ops/error :parameter-exists, :parameter-id "p1"}
+            (op-error (assoc empty-dash :parameters [{:id "p1" :name "X" :type "string/="}])
+                      [{:op "add_parameter" :parameter_id "p1" :name "Y" :type "string/="}])))))
 
 (deftest update-parameter-merges-test
   (testing "GHY-4147: update_parameter merges into the existing parameter, re-slugging on a rename"
@@ -595,8 +602,8 @@
             same both/neither case"
     (let [current {:id 1 :tabs [] :parameters [{:id "p1"} {:id "p2"}]
                    :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4}]}]
-      (is (= {::dashboard-ops/error :conflicting-parameter-destinations :op-index 0 :op "move_parameter"}
-             (op-error current [{:op "move_parameter" :parameter_id "p1" :index 0 :dashcard_id 7}]))))))
+      (is (=? {::dashboard-ops/error :conflicting-parameter-destinations}
+              (op-error current [{:op "move_parameter" :parameter_id "p1" :index 0 :dashcard_id 7}]))))))
 
 (deftest move-parameter-onto-a-card-test
   (testing "GHY-4147: move_parameter with a dashcard_id makes it an inline filter on that card"
@@ -687,20 +694,22 @@
   (testing "GHY-4147: a field the card does not expose is an error naming the op"
     (let [current {:id 1 :tabs [] :parameters [{:id "p1" :name "Cat" :type "string/="}]
                    :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4 :parameter_mappings []}]}]
-      (is (= {::dashboard-ops/error :field-not-exposed :dashcard-id 7 :field-id 55 :parameter-id "p1"
-              :op-index 0 :op "wire_parameter"}
-             (dynamic-redefs/with-dynamic-fn-redefs [mapping-targets/target-for-field (constantly nil)]
-               (op-error current
-                         [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}]
-                         {9 a-card})))))))
+      (is (=? {::dashboard-ops/error :field-not-exposed
+               :dashcard-id          7
+               :field-id             55
+               :parameter-id         "p1"}
+              (dynamic-redefs/with-dynamic-fn-redefs [mapping-targets/target-for-field (constantly nil)]
+                (op-error current
+                          [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}]
+                          {9 a-card})))))))
 
 (deftest wire-parameter-unknown-parameter-test
   (testing "GHY-4147: wiring a parameter that does not exist names the op index"
-    (is (= {::dashboard-ops/error :unknown-parameter :parameter-id "nope" :op-index 0 :op "wire_parameter"}
-           (op-error {:id 1 :tabs [] :parameters []
-                      :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4 :parameter_mappings []}]}
-                     [{:op "wire_parameter" :parameter_id "nope" :dashcard_id 7 :target_field 55}]
-                     {9 a-card})))))
+    (is (=? {::dashboard-ops/error :unknown-parameter, :parameter-id "nope"}
+            (op-error {:id 1 :tabs [] :parameters []
+                       :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4 :parameter_mappings []}]}
+                      [{:op "wire_parameter" :parameter_id "nope" :dashcard_id 7 :target_field 55}]
+                      {9 a-card})))))
 
 (deftest autowire-maps-every-compatible-card-test
   (testing "GHY-4147: autowire wires every card that exposes a compatible target, skipping those that don't"
@@ -785,17 +794,22 @@
 
 (deftest wire-parameter-target-tag-rejections-test
   (testing "a tag that does not exist on the card is an error naming the tags that do"
-    (is (=? {::dashboard-ops/error :unknown-template-tag :card-id 9 :tag "nope" :tags #(some #{"cat"} %)}
+    (is (=? {::dashboard-ops/error :unknown-template-tag
+             :card-id              9
+             :tag                  "nope"
+             :tags                 #(some #{"cat"} %)}
             (wire-native-error {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_tag "nope"}))))
   (testing "a snippet-reference tag cannot back a parameter"
-    (is (=? {::dashboard-ops/error :unwireable-tag :tag "snippet: base" :tag-type "snippet"
-             :wireable-tags #(some #{"cat"} %)}
+    (is (=? {::dashboard-ops/error :unwireable-tag
+             :tag                  "snippet: base"
+             :tag-type             "snippet"
+             :wireable-tags        #(some #{"cat"} %)}
             (wire-native-error {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_tag "snippet: base"}))))
   (testing "a dashcard with no card behind it has nothing to wire"
-    (is (= {::dashboard-ops/error :no-card-behind-dashcard :dashcard-id 7 :op-index 0 :op "wire_parameter"}
-           (op-error (assoc native-current :dashcards [{:id 7 :row 0 :col 0 :size_x 4 :size_y 4
-                                                        :visualization_settings {:virtual_card {:display "text"}}}])
-                     [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_tag "cat"}])))))
+    (is (=? {::dashboard-ops/error :no-card-behind-dashcard, :dashcard-id 7}
+            (op-error (assoc native-current :dashcards [{:id 7 :row 0 :col 0 :size_x 4 :size_y 4
+                                                         :visualization_settings {:virtual_card {:display "text"}}}])
+                      [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_tag "cat"}])))))
 
 (deftest wire-parameter-raw-target-coerced-and-validated-test
   (testing "a raw target arrives as JSON strings, is keywordized, and saves when it resolves"
@@ -803,12 +817,14 @@
            (wire-native {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7
                          :target ["dimension" ["template-tag" "cat"]]}))))
   (testing "a raw target whose kind does not match the tag is rejected, on validate_only and save alike"
-    (is (= {::dashboard-ops/error :unresolved-target :target [:variable [:template-tag "cat"]] :card-id 9
-            :parameter-id "p1" :op-index 0 :op "wire_parameter"}
-           (wire-native-error {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7
-                               :target ["variable" ["template-tag" "cat"]]}))))
+    (is (=? {::dashboard-ops/error :unresolved-target
+             :target               [:variable [:template-tag "cat"]]
+             :card-id              9
+             :parameter-id         "p1"}
+            (wire-native-error {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7
+                                :target ["variable" ["template-tag" "cat"]]}))))
   (testing "a raw target naming a nonexistent tag is rejected"
-    (is (=? {::dashboard-ops/error :unresolved-target :target [:dimension [:template-tag "ghost"]]}
+    (is (=? {::dashboard-ops/error :unresolved-target, :target [:dimension [:template-tag "ghost"]]}
             (wire-native-error {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7
                                 :target ["dimension" ["template-tag" "ghost"]]})))))
 
@@ -837,12 +853,14 @@
         (is (= [[:text-tag "region"]]
                (mapv :target (:parameter_mappings (first dashcards)))))))
     (testing "a name absent from the card's text is an error listing its placeholders"
-      (is (= {::dashboard-ops/error :unknown-text-tag :target [:text-tag "ghost"] :dashcard-id 7
-              :placeholders ["period" "region"] :op-index 0 :op "wire_parameter"}
-             (op-error current
-                       [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target ["text-tag" "ghost"]}]))))
+      (is (=? {::dashboard-ops/error :unknown-text-tag
+               :target               [:text-tag "ghost"]
+               :dashcard-id          7
+               :placeholders         ["period" "region"]}
+              (op-error current
+                        [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target ["text-tag" "ghost"]}]))))
     (testing "a text-tag target on a card-backed dashcard is rejected — it carries no text of its own"
-      (is (=? {::dashboard-ops/error :unknown-text-tag :placeholders []}
+      (is (=? {::dashboard-ops/error :unknown-text-tag, :placeholders []}
               (op-error native-current
                         [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target ["text-tag" "region"]}]
                         {9 native-card}))))))
