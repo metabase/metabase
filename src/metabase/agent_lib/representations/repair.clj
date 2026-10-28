@@ -3454,16 +3454,16 @@
        a saved question / model (`source-card:`), using the card's resolved returned columns.
        Must run *before* Pass 5: a `source-card` stage's own bare-name field refs need
        `base-type` before that stage can be mini-resolved as part of a later stage's prefix.
+    4.7. infer `base-type` / `effective-type` on join-alias string field references from the
+       referenced join's own resolved returned columns, and raise an `:agent-error?` for a
+       join-alias ref naming a column its join doesn't return. Runs before Pass 5 so a stage
+       carrying such a ref can still be mini-resolved as a prefix.
     5. infer `base-type` / `effective-type` on cross-stage field references
        (`[\"field\" {} \"<column-name>\"]` in a non-first stage), by mini-resolving the
        prefix of stages and reading the returned columns' metadata. When the prefix includes
        a `source-card` stage, this relies on Pass 4.5 having already typed that stage's own
        field refs - otherwise the prefix fails to resolve/schema-validate and the mini-resolve
        silently no-ops (BOT-1604).
-    4.7. infer `base-type` / `effective-type` on join-alias string field references from the
-       referenced join's own resolved returned columns, and raise an `:agent-error?` for a
-       join-alias ref naming a column its join doesn't return. Runs before Pass 5 so a stage
-       carrying such a ref can still be mini-resolved as a prefix.
     5.7. assert that every string-named cross-stage / source-card field ref resolved to a real
        column (i.e. Pass 4.5 / 5 stamped its `base-type`). A ref that matched nothing is the
        LLM naming a column that doesn't exist (often a display label); raise an `:agent-error?`
