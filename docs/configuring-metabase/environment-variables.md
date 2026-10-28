@@ -1950,6 +1950,13 @@ Whether to show Metabot illustrations in the UI.
 
 Signing secret for verifying requests from the Metabot Slack app.
 
+### `MB_METABOT_SQL_EXECUTION_ENABLED`
+
+- Type: boolean
+- Default: `true`
+
+Whether Metabot can also run SQL queries it wrote, for questions a notebook query can't express. Applies only when Metabot can run queries, and only on databases where the user may write SQL.
+
 ### `MB_MFA_CHALLENGE_SIGNING_KEY`
 
 - Type: string
