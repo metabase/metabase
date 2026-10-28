@@ -16,8 +16,10 @@ import { useDateFormatter } from "embedding-sdk-package/hooks/public/use-date-fo
 import { useMetabaseAuthStatus } from "embedding-sdk-package/hooks/public/use-metabase-auth-status";
 import { useMetabaseQuery } from "embedding-sdk-package/hooks/public/use-metabase-query";
 import { defineQuery } from "embedding-sdk-package/hooks/public/use-metabase-query/define-query";
-import { createMockDashboard } from "embedding-sdk-package/testing/lib/public/dashboard";
-import { createMockUser } from "embedding-sdk-package/testing/lib/public/user";
+import {
+  createMockDashboard,
+  createMockUser,
+} from "embedding-sdk-package/testing/lib/public/mocks";
 
 import {
   MetabaseTestProvider,
