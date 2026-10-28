@@ -1,3 +1,14 @@
+/* Pulls the title row up so the crumbs sit tight above the title */
+.HeaderBreadcrumbs {
+  padding-top: 1rem;
+  margin-bottom: -0.5rem;
+
+  @container dashboard-header (max-width: 40rem) {
+    padding-inline: 1rem;
+    margin-bottom: 0.5rem;
+  }
+}
+
 .EditWarning {
   align-items: center;
   padding-top: 0.5rem;

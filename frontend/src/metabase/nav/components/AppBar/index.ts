@@ -1,1 +1,2 @@
-export { AppBar } from "./AppBar";
+export { AppBarLogo } from "./AppBarLogo";
+export { AppBarToggle } from "./AppBarToggle";

@@ -64,6 +64,7 @@ function MainNavbarInner({
   questionId,
   collectionId,
   dashboard,
+  header,
   openNavbar,
   closeNavbar,
   ...props
@@ -118,24 +119,28 @@ function MainNavbarInner({
       data-testid="main-navbar-root"
       data-element-id="navbar-root"
     >
-      <Flex
-        component="nav"
-        className={S.nav}
-        direction="column"
-        pt="sm"
-        h="100%"
-      >
-        <MainNavbarContainer
-          isOpen={isOpen}
-          location={location}
-          params={params}
-          selectedItems={selectedItems}
-          openNavbar={openNavbar}
-          closeNavbar={closeNavbar}
-          onChangeLocation={navigate}
-          {...props}
-        />
-        <NavbarPromoSlot />
+      <Flex direction="column" h="100%">
+        {header}
+        <Flex
+          component="nav"
+          className={S.nav}
+          direction="column"
+          pt="sm"
+          flex="1"
+          mih={0}
+        >
+          <MainNavbarContainer
+            isOpen={isOpen}
+            location={location}
+            params={params}
+            selectedItems={selectedItems}
+            openNavbar={openNavbar}
+            closeNavbar={closeNavbar}
+            onChangeLocation={navigate}
+            {...props}
+          />
+          <NavbarPromoSlot />
+        </Flex>
       </Flex>
     </Sidebar>
   );

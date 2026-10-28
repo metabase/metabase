@@ -5,12 +5,15 @@ import { getUser } from "metabase/current-user";
 import { getDashboard } from "metabase/dashboard/shell-selectors";
 import { AdminNavbar } from "metabase/nav/components/AdminNavbar";
 import { MainNavbar } from "metabase/nav/containers/MainNavbar";
-import { connect } from "metabase/redux";
+import { connect, useSelector } from "metabase/redux";
 import type { AdminPath, State, StoreDashboard } from "metabase/redux/store";
 import { useLocation, useParams } from "metabase/router";
 import { getAdminPaths } from "metabase/selectors/admin";
 import { getIsNavbarOpen } from "metabase/selectors/app";
 import type { User } from "metabase-types/api";
+
+import { NavbarHeader } from "./NavbarHeader";
+import { getIsAppBarVisible } from "./selectors";
 
 type NavbarProps = {
   isOpen: boolean;
@@ -37,6 +40,9 @@ function NavbarInner({ isOpen, user, adminPaths, dashboard }: NavbarProps) {
     () => location.pathname.startsWith("/admin/"),
     [location.pathname],
   );
+  const isAppBarVisible = useSelector((state) =>
+    getIsAppBarVisible(state, { location }),
+  );
 
   if (!user) {
     return null;
@@ -50,6 +56,7 @@ function NavbarInner({ isOpen, user, adminPaths, dashboard }: NavbarProps) {
       location={location}
       params={params}
       dashboard={dashboard}
+      header={isAppBarVisible && <NavbarHeader isNavBarOpen={isOpen} />}
     />
   );
 }

@@ -10,6 +10,7 @@ import {
 import { explorationApi } from "metabase/api/exploration";
 import { getListCommentsQuery } from "metabase/comments/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { PageBreadcrumbs } from "metabase/common/components/PageBreadcrumbs";
 import { useToast } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
 import { useLocation, useNavigate, useParams } from "metabase/router";
@@ -596,6 +597,7 @@ function ExplorationPageForId({ view }: ExplorationPageProps) {
         pt="1rem"
         data-test-id="exploration-page"
       >
+        <PageBreadcrumbs />
         <ExplorationTitle
           exploration={exploration}
           isSidebarOpen={isSidebarOpen}

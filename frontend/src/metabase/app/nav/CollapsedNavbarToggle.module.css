@@ -1,0 +1,11 @@
+/* Matches the toggle's spot in the sidebar header: same inline padding, top edge flush */
+.toggle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 4;
+
+  @media print {
+    display: none;
+  }
+}

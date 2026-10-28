@@ -6,8 +6,9 @@ import {
   isLibraryCollection,
   isTrashedCollection,
 } from "metabase/common/collections/utils";
+import { PageBreadcrumbs } from "metabase/common/components/PageBreadcrumbs";
 import { PLUGIN_AUDIT } from "metabase/plugins";
-import { Flex } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 import type { Collection, UpdateCollectionRequest } from "metabase-types/api";
 
 import { CollectionMenu } from "../CollectionMenu";
@@ -68,59 +69,60 @@ export const CollectionHeader = ({
   const showCollectionMenu = !isInstanceAnalytics && !isSemanticLayer;
 
   return (
-    <Flex
-      justify="space-between"
-      direction={{ base: "column", sm: "row" }}
-      align={{ base: "stretch", sm: "center" }}
-      mb="xxl"
-      pt={{ base: "xxs", sm: "sm" }}
-    >
-      <CollectionCaption
-        collection={collection}
-        onUpdateCollection={handleUpdateCollection}
-      />
-      {!isTrash && !isSemanticLayer && (
-        <Flex
-          className={S.actions}
-          mt="sm"
-          gap="sm"
-          data-testid="collection-menu"
-        >
-          {showNewButton && <CollectionNewButton />}
-          {showUploadButton && (
-            <CollectionUpload
+    <Box mb="xxl" pt={{ base: "xxs", sm: "sm" }}>
+      <PageBreadcrumbs mb="xs" />
+      <Flex
+        justify="space-between"
+        direction={{ base: "column", sm: "row" }}
+        align={{ base: "stretch", sm: "center" }}
+      >
+        <CollectionCaption
+          collection={collection}
+          onUpdateCollection={handleUpdateCollection}
+        />
+        {!isTrash && !isSemanticLayer && (
+          <Flex
+            className={S.actions}
+            mt="sm"
+            gap="sm"
+            data-testid="collection-menu"
+          >
+            {showNewButton && <CollectionNewButton />}
+            {showUploadButton && (
+              <CollectionUpload
+                collection={collection}
+                uploadsEnabled={uploadsEnabled}
+                isAdmin={isAdmin}
+                onSaveFile={onSaveFile}
+              />
+            )}
+            {showTimelinesButton && (
+              <CollectionTimeline collection={collection} />
+            )}
+            {showExportButton && <PLUGIN_AUDIT.CollectionExportAnalytics />}
+            {isInstanceAnalytics && (
+              <CollectionPermissions collection={collection} />
+            )}
+            <CollectionBookmark
               collection={collection}
-              uploadsEnabled={uploadsEnabled}
-              isAdmin={isAdmin}
-              onSaveFile={onSaveFile}
+              isBookmarked={isBookmarked}
+              onCreateBookmark={onCreateBookmark}
+              onDeleteBookmark={onDeleteBookmark}
             />
-          )}
-          {showTimelinesButton && (
-            <CollectionTimeline collection={collection} />
-          )}
-          {showExportButton && <PLUGIN_AUDIT.CollectionExportAnalytics />}
-          {isInstanceAnalytics && (
-            <CollectionPermissions collection={collection} />
-          )}
-          <CollectionBookmark
-            collection={collection}
-            isBookmarked={isBookmarked}
-            onCreateBookmark={onCreateBookmark}
-            onDeleteBookmark={onDeleteBookmark}
-          />
-          <CollectionInfoSidebarToggle
-            collection={collection}
-            onUpdateCollection={handleUpdateCollection}
-          />
-          {showCollectionMenu && (
-            <CollectionMenu
+            <CollectionInfoSidebarToggle
               collection={collection}
-              isAdmin={isAdmin}
               onUpdateCollection={handleUpdateCollection}
             />
-          )}
-        </Flex>
-      )}
-    </Flex>
+            {showCollectionMenu && (
+              <CollectionMenu
+                collection={collection}
+                isAdmin={isAdmin}
+                onUpdateCollection={handleUpdateCollection}
+              />
+            )}
+          </Flex>
+        )}
+      </Flex>
+    </Box>
   );
 };

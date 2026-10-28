@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
-import { AppBarContainer } from "metabase/app/nav/AppBar";
+import { AppBreadcrumbs } from "metabase/app/nav/AppBreadcrumbs";
+import { CollapsedNavbarToggle } from "metabase/app/nav/CollapsedNavbarToggle";
 import { Navbar } from "metabase/app/nav/Navbar";
 import {
   getIsAdminApp,
@@ -20,6 +21,7 @@ import {
   NotFound,
   Unauthorized,
 } from "metabase/common/components/ErrorPages";
+import { PageBreadcrumbsContext } from "metabase/common/components/PageBreadcrumbs";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { ContentViewportContext } from "metabase/common/context/ContentViewportContext";
 import CS from "metabase/css/core/index.css";
@@ -29,7 +31,7 @@ import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import type { AppErrorDescriptor } from "metabase/redux/store";
 import { Outlet, useLocation } from "metabase/router";
-import { getErrorPage } from "metabase/selectors/app";
+import { getErrorPage, getIsNavbarOpen } from "metabase/selectors/app";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { useGetSettingsQuery, useTokenRefresh } from "metabase/settings";
 import { StatusListing } from "metabase/status/components/StatusListing";
@@ -91,6 +93,9 @@ export function App() {
   const isNavBarEnabled = useSelector((state) =>
     getIsNavBarEnabled(state, routerProps),
   );
+  const isNavbarOpen = useSelector(getIsNavbarOpen);
+  const isCollapsedNavbarToggleVisible =
+    isAppBarVisible && isNavBarEnabled && !isAdminApp && !isNavbarOpen;
 
   const onError = (error: unknown) => dispatch(setErrorPage(error));
   const { pathname } = location;
@@ -117,14 +122,18 @@ export function App() {
           <KeyboardTriggeredErrorModal />
           <AppContainer className={CS.spread}>
             <AppBanner />
-            {isAppBarVisible && <AppBarContainer />}
             <AppContentContainer isAdminApp={isAdminApp}>
+              {isCollapsedNavbarToggleVisible && <CollapsedNavbarToggle />}
               {isNavBarEnabled && <Navbar />}
               <AppContent ref={setViewportElement}>
                 <ContentViewportContext.Provider
                   value={viewportElement ?? null}
                 >
-                  {errorPage ? getErrorComponent(errorPage) : <Outlet />}
+                  <PageBreadcrumbsContext.Provider
+                    value={isAppBarVisible ? <AppBreadcrumbs /> : null}
+                  >
+                    {errorPage ? getErrorComponent(errorPage) : <Outlet />}
+                  </PageBreadcrumbsContext.Provider>
                 </ContentViewportContext.Provider>
               </AppContent>
               <UndoListing />

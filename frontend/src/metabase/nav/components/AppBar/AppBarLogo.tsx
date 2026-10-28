@@ -1,4 +1,3 @@
-import cx from "classnames";
 import type { JSX, MouseEvent } from "react";
 
 import { Link } from "metabase/common/components/Link";
@@ -8,19 +7,13 @@ import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepa
 import S from "./AppBar.module.css";
 
 export interface AppBarLogoProps {
-  isSmallAppBar?: boolean;
   isLogoVisible?: boolean;
   isNavBarEnabled?: boolean;
-  isGitSyncVisible?: boolean;
-  onLogoClick?: () => void;
 }
 
 export function AppBarLogo({
   isLogoVisible,
-  isSmallAppBar,
   isNavBarEnabled,
-  isGitSyncVisible,
-  onLogoClick,
 }: AppBarLogoProps): JSX.Element | null {
   const isAtHomepageDashboard = useIsAtHomepageDashboard();
 
@@ -34,16 +27,12 @@ export function AppBarLogo({
     if (isAtHomepageDashboard) {
       event.preventDefault();
     }
-    onLogoClick?.();
   };
 
   return (
     <Link
       to="/"
-      className={cx(S.logoLink, {
-        [S.logoLinkSpaced]: !isSmallAppBar && !isGitSyncVisible,
-        [S.logoLinkSpacedGitSync]: !isSmallAppBar && isGitSyncVisible,
-      })}
+      className={S.logoLink}
       onClick={handleClick}
       disabled={!isNavBarEnabled}
       data-testid="main-logo-link"

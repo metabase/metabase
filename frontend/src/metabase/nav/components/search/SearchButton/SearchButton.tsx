@@ -2,64 +2,22 @@ import { VisualState, useKBar } from "kbar";
 import { useCallback } from "react";
 import { t } from "ttag";
 
-import { useIsSmallScreen } from "metabase/common/hooks/use-is-small-screen";
-import { getSearchTextFromLocation } from "metabase/common/search";
-import { useLocation } from "metabase/router";
-import { ActionIcon, Button, type ButtonProps, Flex, Icon } from "metabase/ui";
+import { ActionIcon, type ActionIconProps, Icon, Tooltip } from "metabase/ui";
 import { METAKEY } from "metabase/utils/browser";
 
-import S from "./SearchButton.module.css";
-
-export const SearchButton = (props: ButtonProps) => {
-  const location = useLocation();
+export const SearchButton = (props: ActionIconProps) => {
   const kbar = useKBar();
   const { setVisualState } = kbar.query;
-  const searchText = getSearchTextFromLocation(location);
 
   const handleClick = useCallback(() => {
     setVisualState(VisualState.showing);
   }, [setVisualState]);
 
-  const isSmallScreen = useIsSmallScreen();
-
-  if (isSmallScreen) {
-    return (
-      <ActionIcon
-        variant="subtle"
-        size="sm"
-        onClick={handleClick}
-        aria-label="Search"
-      >
+  return (
+    <Tooltip label={t`Search (${METAKEY}+K)`}>
+      <ActionIcon onClick={handleClick} aria-label={t`Search`} {...props}>
         <Icon name="search" />
       </ActionIcon>
-    );
-  }
-
-  return (
-    <Button
-      w="240px"
-      c={searchText ? "text-primary" : "text-disabled"}
-      leftSection={<Icon name="search" c="text-primary" />}
-      onClick={handleClick}
-      styles={{
-        inner: {
-          width: "100%",
-        },
-        label: {
-          display: "inline-flex",
-          justifyContent: "space-between",
-          width: "100%",
-        },
-      }}
-      className={S.searchTextButton}
-      aria-label="Search"
-      {...props}
-    >
-      <span>{searchText || t`Search...`}</span>
-      <Flex gap="xxs">
-        <span className={S.shortcutText}>{METAKEY}</span>
-        <span className={S.shortcutText}>{t`K`}</span>
-      </Flex>
-    </Button>
+    </Tooltip>
   );
 };

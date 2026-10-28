@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
 import { EditBar } from "metabase/common/components/EditBar";
 import { LastEditInfoLabel } from "metabase/common/components/LastEditInfoLabel";
+import { PageBreadcrumbs } from "metabase/common/components/PageBreadcrumbs";
 import { SIDEBAR_WIDTH } from "metabase/common/components/Sidebar";
 import CS from "metabase/css/core/index.css";
 import {
@@ -121,6 +122,13 @@ export function DashboardHeaderView({
           } as React.CSSProperties
         }
       >
+        {isDashboardHeaderVisible && titled && (
+          <FullWidthContainer className={cx(CS.wrapper, S.HeaderRow)}>
+            <FixedWidthContainer isFixedWidth={dashboard?.width === "fixed"}>
+              <PageBreadcrumbs className={S.HeaderBreadcrumbs} />
+            </FixedWidthContainer>
+          </FullWidthContainer>
+        )}
         {isDashboardHeaderVisible && (
           <FullWidthContainer
             className={cx(CS.wrapper, S.HeaderRow)}

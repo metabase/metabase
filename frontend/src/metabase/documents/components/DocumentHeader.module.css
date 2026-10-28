@@ -1,13 +1,16 @@
-.documentHeader {
-  align-items: flex-start;
-  gap: var(--mantine-spacing-lg);
-  justify-content: space-between;
+.documentHeaderContainer {
   margin-bottom: var(--mantine-spacing-lg);
   margin-inline: auto;
   margin-top: var(--mantine-spacing-xxl);
   max-width: 56.25rem;
-  padding-top: var(--mantine-spacing-xxl);
+  padding-top: var(--mantine-spacing-md);
   width: 100%;
+}
+
+.documentHeader {
+  align-items: flex-start;
+  gap: var(--mantine-spacing-lg);
+  justify-content: space-between;
 }
 
 .titleInput {
@@ -28,7 +31,7 @@
 }
 
 @media print {
-  .documentHeader {
+  .documentHeaderContainer {
     max-width: none;
     margin-inline: 0;
   }
