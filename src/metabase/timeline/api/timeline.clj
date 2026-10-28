@@ -79,7 +79,7 @@
                                             [:id ms/PositiveInt]]
    {:keys [include archived start end]} :- [:map {:closed true}
                                             [:include  {:optional true}  ::include]
-                                            [:archived {:default :false} ms/BooleanValue]
+                                            [:archived {:default false}  ms/BooleanValue]
                                             [:start    {:optional true}  ms/TemporalString]
                                             [:end      {:optional true}  ms/TemporalString]]]
   (let [archived? archived

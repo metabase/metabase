@@ -320,7 +320,7 @@
           template-type (:channel_type (channel.db/channel-template template-id))]
       (when (not= channel-type template-type)
         (throw (ex-info "Channel type and template type mismatch"
-                        {:status        400
+                        {:status-code   400
                          :channel-type  channel-type
                          :template-type template-type}))))))
 
