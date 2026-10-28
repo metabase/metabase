@@ -34,7 +34,9 @@
    [metabase.metabot.tools.recovery-hints :as v1-hints]
    [metabase.metabot.tools.resources :as resources]
    [metabase.metabot.tools.runtime :as tools.runtime]
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.slackbot-query :as slackbot-query]
+   [metabase.metabot.tools.test-util :as tools.tu]
    [metabase.metabot.tools.util :as metabot.tools.util]
    [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as serdes.resolve]
@@ -2886,6 +2888,141 @@
               (is (not (contains? (get-in query [:stages 0 :breakout 0 1]) :source-field)))
               (is (= [[0 67] [1 3443]]
                      (take 2 (mt/rows (qp/process-query query))))))))))))
+
+(defn- rendered-dimension-reference
+  "The Reference cell that the metric dimensions table shows the LLM for `dim`, decoded from JSON."
+  [dim]
+  (let [row (last (str/split-lines (llm-shape/format-metric-dimensions-table [dim])))]
+    (some-> (re-find #"\|\s*([^|]*?)\s*\|\s*$" row) second not-empty json/decode)))
+
+(defn- group-by-sql
+  "The compiled SQL of `query` from its GROUP BY clause on."
+  [query]
+  (let [sql (:query (qp/compile query))]
+    (subs sql (str/index-of sql "GROUP BY"))))
+
+(deftest joined-copy-metric-dimension-breakout-executes-test
+  (testing "the Reference listed for a renamed joined copy groups by that copy"
+    (mt/with-temp [:model/Card {card-id :id, card-eid :entity_id}
+                   {:name "Venues with peer" :type :question :dataset_query (tools.tu/venues-self-join-query)}
+                   :model/Card {metric-id :id, metric-eid :entity_id}
+                   {:name "Venue count" :type :metric :dataset_query (card-count-query card-id)}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [dims      (:queryable-dimensions (:structured-output (entity-details/get-metric-details
+                                                                    {:metric-id          metric-id
+                                                                     :with-field-values? false})))
+              run       (fn [reference]
+                          (try
+                            (-> (construct/execute-representations-query
+                                 (query-data
+                                  {"lib/type" "mbql/query"
+                                   "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                                "source-card" card-eid
+                                                "breakout"    [["field" {} reference]]
+                                                "aggregation" [["metric" {} metric-eid]]}]}))
+                                (get-in [:structured-output :query]))
+                            (catch clojure.lang.ExceptionInfo e
+                              (ex-message e))))
+              reference (rendered-dimension-reference (m/find-first #(= "Peer → Name" (:display_name %)) dims))
+              result    (run reference)]
+          (testing "the Reference is the copy's output name"
+            (is (= "NAME_2" reference)))
+          (testing "the query builds and groups by the joined copy"
+            (is (map? result) (str "query failed: " result))
+            (when (map? result)
+              (is (str/includes? (group-by-sql result) "Peer__NAME"))
+              (is (seq (mt/rows (qp/process-query result))))))
+          (testing "the Reference of the first copy groups by the first copy, not the joined copy"
+            (let [first-copy (m/find-first #(= (mt/id :venues :name) (:field_id %)) dims)
+                  result     (run (rendered-dimension-reference first-copy))]
+              (is (map? result) (str "query failed: " result))
+              (when (map? result)
+                (is (str/includes? (group-by-sql result) "\"__mb_source\".\"NAME\""))
+                (is (not (str/includes? (group-by-sql result) "Peer__NAME")))
+                (is (seq (mt/rows (qp/process-query result))))))))))))
+
+(defn- rendered-dimension-source-table
+  "The Source table cell that the metric dimensions table shows the LLM for `dim`."
+  [dim]
+  (let [row (last (str/split-lines (llm-shape/format-metric-dimensions-table [dim])))]
+    (str/trim (nth (str/split row #"\|") 4))))
+
+(defn- reference->field-clause
+  "The field clause that the LLM builds from a rendered Reference: a full clause as it is, a path or a name wrapped."
+  [reference]
+  (if (and (vector? reference) (= "field" (first reference)))
+    reference
+    ["field" {} reference]))
+
+(deftest duplicate-fk-metric-dimension-rows-execute-test
+  (testing "a table reached through two FK columns of a card gives two distinct rows, each with a working Reference"
+    (mt/with-temp [:model/Card {card-id :id, card-eid :entity_id}
+                   {:name "Venues with peer" :type :question :dataset_query (tools.tu/venues-self-join-query)}
+                   :model/Card {metric-id :id, metric-eid :entity_id}
+                   {:name "Venue count" :type :metric :dataset_query (card-count-query card-id)}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
+              dims    (->> (entity-details/get-metric-details {:metric-id          metric-id
+                                                               :with-field-values? false})
+                           :structured-output
+                           :queryable-dimensions
+                           (filter #(= [db-name "PUBLIC" "CATEGORIES" "NAME"] (:portable_fk %))))
+              run     (fn [dim]
+                        (try
+                          (-> (construct/execute-representations-query
+                               (query-data
+                                {"lib/type" "mbql/query"
+                                 "stages"   [{"lib/type"    "mbql.stage/mbql"
+                                              "source-card" card-eid
+                                              "breakout"    [(reference->field-clause
+                                                              (rendered-dimension-reference dim))]
+                                              "aggregation" [["metric" {} metric-eid]]}]}))
+                              (get-in [:structured-output :query]))
+                          (catch clojure.lang.ExceptionInfo e
+                            (ex-message e))))]
+          (testing "both rows stay"
+            (is (= 2 (count dims))))
+          (testing "each row names the FK column it comes through"
+            (is (= #{"PUBLIC.CATEGORIES (via Category)" "PUBLIC.CATEGORIES (via Peer → Category)"}
+                   (into #{} (map rendered-dimension-source-table) dims))))
+          (testing "each Reference runs and joins through its own FK column"
+            (let [results (map run dims)]
+              (is (every? map? results) (str "query failed: " (pr-str (remove map? results))))
+              (when (every? map? results)
+                (is (= #{"\"__mb_source\".\"CATEGORY_ID\"" "\"__mb_source\".\"Peer__CATEGORY_ID\""}
+                       (into #{}
+                             (map #(second (re-find #"ON (\"__mb_source\"\.\"[^\"]+\") =" (:query (qp/compile %)))))
+                             results)))
+                (is (every? #(seq (mt/rows (qp/process-query %))) results))))))))))
+
+(deftest multi-stage-metric-over-model-breakout-executes-test
+  (testing "every dimension listed for a multi-stage metric over a model works on the base table it must be used on"
+    (mt/with-temp [:model/Card {model-id :id}
+                   {:name "Orders model" :type :model
+                    :dataset_query (tools.tu/orders-model-query)}
+                   :model/Card {metric-id :id, metric-eid :entity_id}
+                   {:name "Order count" :type :metric
+                    :dataset_query (-> (card-query model-id) lib/append-stage (lib/aggregate (lib/count)))}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
+              dims    (:queryable-dimensions (:structured-output (entity-details/get-metric-details
+                                                                  {:metric-id          metric-id
+                                                                   :with-field-values? false})))
+              run     (fn [dim]
+                        (try
+                          (construct/execute-representations-query
+                           (query-data
+                            {"lib/type" "mbql/query"
+                             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                          "source-table" [db-name "PUBLIC" "ORDERS"]
+                                          "breakout"     [(reference->field-clause
+                                                           (rendered-dimension-reference dim))]
+                                          "aggregation"  [["metric" {} metric-eid]]}]}))
+                          nil
+                          (catch clojure.lang.ExceptionInfo e
+                            [(:display_name dim) (ex-message e)])))]
+          (is (seq dims))
+          (is (empty? (keep run dims))))))))
 
 (deftest table-based-metric-breakout-on-a-related-table-column-test
   (testing "a table-based metric broken out by a column one foreign key away runs on the metric's table"

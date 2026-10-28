@@ -54,23 +54,33 @@
              (lib/display-name query)
              lib/display-name-without-id)))
 
+(defn- table-portable-path
+  "Return the portable path `[db-name, schema-or-null, table-name]` of the table with `table-id`.
+
+    (table-portable-path query venues-id) ;=> [\"test-data (h2)\" \"PUBLIC\" \"VENUES\"]
+
+  Returns nil when the database or the table has no name."
+  [query table-id]
+  (let [table (lib.metadata/table query table-id)
+        db    (lib.metadata/database query)]
+    (when (and (:name db) (:name table))
+      [(:name db) (:schema table) (:name table)])))
+
 (defn- column-portable-fk
   "Build the portable FK path `[db-name, schema-or-null, table-name, field-name …]` for a column
   that has a real numeric `:id`. Returns nil for expression / aggregation columns that don't
   correspond to a database field."
   [query column]
   (when (and (:id column) (:table-id column))
-    (let [table (lib.metadata/table query (:table-id column))
-          db    (lib.metadata/database query)
-          ;; walk the `:parent-id` chain in case this is a JSON-unfolded nested field
+    (let [;; walk the `:parent-id` chain in case this is a JSON-unfolded nested field
           chain (loop [acc [(:name column)]
                        pid (:parent-id column)]
                   (if pid
                     (let [parent (lib.metadata/field query pid)]
                       (recur (cons (:name parent) acc) (:parent-id parent)))
                     acc))]
-      (when (and (:name db) (:name table))
-        (into [(:name db) (:schema table) (:name table)] chain)))))
+      (some-> (table-portable-path query (:table-id column))
+              (into chain)))))
 
 (defn- fk-target-portable-fk
   "If `column` is an FK (has a non-nil `:fk-target-field-id`), return the portable FK path of
@@ -88,6 +98,16 @@
       (:lib/desired-column-alias column)
       (:lib/source-column-alias column)))
 
+(defn- renamed-field-column?
+  "Return true when `column` is a database field whose output name differs from the field's own name.
+
+  A card over VENUES joined to VENUES returns the joined copy of `NAME` as `NAME_2`, with the `:id` of `NAME`:
+  that copy is renamed. A portable FK path for it names no real column, and the physical path names the first copy."
+  [query column]
+  (boolean
+   (when-let [field (some->> (:id column) (lib.metadata/field query))]
+     (not= (:name column) (:name field)))))
+
 (defn ->result-column
   "Return tool result column for `column` of `query`.
   Uses the real field `:id` when available, falling back to column name for
@@ -96,15 +116,21 @@
   Also includes a `:portable_fk` key with the portable foreign-key path
   `[db-name, schema, table-name, field-name …]` when the column maps to a real database field.
   The representations-format notebook query tool expects fields to be referenced by this path
-  rather than by numeric id."
+  rather than by numeric id.
+
+  A renamed copy of a field, like the joined copy `NAME_2` of `NAME` on a card stage, has no `:portable_fk`; its
+  `:field_id` is its output name."
   [query column]
   (let [base-type         (some-> (:base-type column) u/qualified-name)
         effective-type    (some-> (:effective-type column) u/qualified-name)
         semantic-type     (some-> (:semantic-type column) u/qualified-name)
         coercion-strategy (some-> (:coercion-strategy column) u/qualified-name)
-        field-id          (column-field-id column)
-        portable-fk       (try (column-portable-fk query column)
-                               (catch Exception _ nil))
+        renamed?          (try (renamed-field-column? query column)
+                               (catch Exception _ false))
+        field-id          (if renamed? (:name column) (column-field-id column))
+        portable-fk       (when-not renamed?
+                            (try (column-portable-fk query column)
+                                 (catch Exception _ nil)))
         fk-target-fk      (try (fk-target-portable-fk query column)
                                (catch Exception _ nil))]
     (-> {:field_id field-id
@@ -126,16 +152,131 @@
 (defn find-column-by-field-id
   "Find a column by its emitted field ID, returning nil if no column matches.
 
-  Accepts physical field IDs as integers or numeric strings, and aliases for virtual columns."
-  [field-id columns]
-  (when (some? field-id)
-    (let [numeric-id (cond
-                       (int? field-id) field-id
-                       (string? field-id) (parse-long field-id))]
-      (or (m/find-first #(= (column-field-id %) field-id) columns)
-          (when numeric-id
-            (m/find-first #(= (:id %) numeric-id) columns))
-          (m/find-first #(= (column-field-id %) (str field-id)) columns)))))
+    (find-column-by-field-id 48 columns)                  ;=> the column with field ID 48
+    (find-column-by-field-id card-query \"NAME_2\" columns) ;=> the renamed copy with output name NAME_2
+
+  Accepts physical field IDs as integers or numeric strings, and aliases for virtual columns. With `query`, it also
+  accepts the output name of a renamed field copy of `query`, like `\"NAME_2\"`. A numeric ID shared by a field and
+  its copy finds the first of them."
+  ([field-id columns]
+   (when (some? field-id)
+     (let [numeric-id (cond
+                        (int? field-id) field-id
+                        (string? field-id) (parse-long field-id))]
+       (or (m/find-first #(= (column-field-id %) field-id) columns)
+           (when numeric-id
+             (m/find-first #(= (:id %) numeric-id) columns))
+           (m/find-first #(= (column-field-id %) (str field-id)) columns)))))
+  ([query field-id columns]
+   (or (find-column-by-field-id field-id columns)
+       (when (string? field-id)
+         (m/find-first #(and (= (:name %) field-id) (renamed-field-column? query %)) columns)))))
+
+(defn- renamed-column-source-table
+  "Return the portable path of the table of a renamed field copy, or nil for any other column.
+
+    (renamed-column-source-table query name-2-column) ;=> [\"test-data (h2)\" \"PUBLIC\" \"VENUES\"]"
+  [query column]
+  (try
+    (when (renamed-field-column? query column)
+      (table-portable-path query (:table-id column)))
+    (catch Exception _ nil)))
+
+(defn- fk-path
+  "Return the FK column that an implicitly joined `column` comes through, as `[fk-field-id fk-field-name]`.
+
+    (fk-path categories-name-via-peer) ;=> [49 \"Peer__CATEGORY_ID\"]
+
+  A card over VENUES joined to VENUES returns `CATEGORY_ID` twice, with one field id. Only the name distinguishes the
+  CATEGORIES columns reached through each copy."
+  [column]
+  ((juxt :fk-field-id :fk-field-name) column))
+
+(defn- multi-fk-table-ids
+  "Return the ids of the tables that `columns` reach through more than one FK column.
+
+    (multi-fk-table-ids venues-with-peer-columns) ;=> #{categories-id}"
+  [columns]
+  (->> (filter :fk-field-id columns)
+       (group-by :table-id)
+       (keep (fn [[table-id cols]]
+               (when (< 1 (count (into #{} (map fk-path) cols)))
+                 table-id)))
+       set))
+
+(defn- fk-column-label
+  "Return the label of the FK column of `columns` that implicitly joined `column` comes through, without \"ID\".
+
+    (fk-column-label query columns categories-name-via-peer) ;=> \"Peer → Category\""
+  [query columns column]
+  (let [[fk-id fk-name] (fk-path column)]
+    (some->> columns
+             (m/find-first #(and (= fk-id (:id %))
+                                 (= fk-name (:lib/source-column-alias %))))
+             (lib/display-name query)
+             lib/display-name-without-id)))
+
+(defn- multi-fk-field-clause
+  "Return the field clause that reaches `column` through its own FK column, with `source-field` and
+  `source-field-name`.
+
+    (multi-fk-field-clause query categories-name-via-peer)
+    ;=> [\"field\"
+    ;    {\"source-field\" [\"test-data (h2)\" \"PUBLIC\" \"VENUES\" \"CATEGORY_ID\"]
+    ;     \"source-field-name\" \"Peer__CATEGORY_ID\"}
+    ;    [\"test-data (h2)\" \"PUBLIC\" \"CATEGORIES\" \"NAME\"]]
+
+  Returns nil when a portable path cannot be built."
+  [query column]
+  (let [source-field (column-portable-fk query (lib.metadata/field query (:fk-field-id column)))
+        target       (column-portable-fk query column)]
+    (when (and source-field target)
+      ["field" {"source-field" source-field "source-field-name" (:fk-field-name column)} target])))
+
+(defn- multi-fk-dimension
+  "Return the `:table_reference` and `:reference` that distinguish `column` from the same column through another FK.
+
+    (multi-fk-dimension query columns categories-name-via-peer)
+    ;=> {:table_reference \"Peer → Category\", :reference [\"field\" {...} [...]]}"
+  [query columns column]
+  (try
+    (m/assoc-some {}
+                  :table_reference (fk-column-label query columns column)
+                  :reference       (multi-fk-field-clause query column))
+    (catch Exception _ nil)))
+
+(defn- multi-fk-row
+  "Add the [[multi-fk-dimension]] of `column` to its dimension `row`. Without a `:reference`, drop the portable FK.
+
+    (multi-fk-row query columns column {:portable_fk [db \"PUBLIC\" \"CATEGORIES\" \"NAME\"] ...})
+    ;=> {:reference [\"field\" {...} [...]], :table_reference \"Peer → Category\", ...}
+    ;   or, when no clause can be built: {:source_table [db \"PUBLIC\" \"CATEGORIES\"], ...}"
+  [query columns column row]
+  (let [row (merge row (multi-fk-dimension query columns column))]
+    (if (:reference row)
+      row
+      ;; The bare portable FK cannot distinguish the FK columns on a card stage, so it fails as ambiguous.
+      (-> (dissoc row :portable_fk)
+          (m/assoc-some :source_table (some->> (:portable_fk row) (take 3) vec))))))
+
+(defn metric-dimensions
+  "Return the dimension rows of a metric for `columns` of its query `query`.
+
+    (metric-dimensions query columns) ;=> [{:field_id 48 :portable_fk [...] ...} {:field_id \"NAME_2\" ...} ...]
+
+  Each row is a [[->result-column]]. A renamed field copy also gets `:source_table`, the portable path of its table.
+  On a stage over a card, a column that the card reaches through more than one FK column gets the label of its own FK
+  column as `:table_reference`, and a `:reference` field clause that joins through that FK column. When that clause
+  cannot be built, the row has no reference: it keeps only its table, as `:source_table`."
+  [query columns]
+  (let [multi-fk-ids (when (lib/primary-source-card-id query)
+                       (multi-fk-table-ids columns))]
+    (mapv (fn [column]
+            (-> (->result-column query column)
+                (m/assoc-some :source_table (renamed-column-source-table query column))
+                (cond->> (and (:fk-field-id column) (contains? multi-fk-ids (:table-id column)))
+                  (multi-fk-row query columns column))))
+          columns)))
 
 (defn schedule->schedule-map
   "Convert a tool schedule map to the schedule-map format used by cron and pulse channels.
@@ -258,15 +399,6 @@
           (log/debug e "Can't walk the card's definition; treating its tables as unknown")
           nil)))))
 
-(defn metric-query
-  "Return a query based on the metric with ID `metric-id`.
-
-  Throws an agent error that names the card's type when the card is a question or model."
-  [metric-id]
-  (when-let [card (get-card metric-id :metric)]
-    (let [mp (lib-be/application-database-metadata-provider (:database_id card))]
-      (lib/query mp (lib.metadata/metric mp metric-id)))))
-
 (defn table-query
   "Return a query based on the table with ID `table-id`."
   [table-id]
@@ -364,6 +496,65 @@
                                               (lib-be/application-database-metadata-provider
                                                (:database definition))))))
           :bare-table-only? (> (count stages) 1)})))))
+
+(defn- table-breakouts
+  "Return the stage 0 breakouts of `definition` that a query on table `table-query` can also break out by.
+
+    (table-breakouts orders-model-metric-query orders-query) ;=> [created-at-column-with-day-bucket]
+
+  A breakout matches a column of the table by field `:id` and FK field id, and keeps its temporal bucket. A breakout
+  on a column that only the card has, like an expression, is dropped."
+  [definition table-query]
+  (let [table-columns (into {}
+                            (map (juxt (juxt :id :fk-field-id) identity))
+                            (lib/breakoutable-columns table-query))
+        ;; A card column from an implicit join keeps its FK as `:lib/original-fk-field-id`.
+        column-key    (juxt :id (some-fn :fk-field-id :lib/original-fk-field-id))]
+    (keep (fn [[clause column]]
+            (when-let [table-column (get table-columns (column-key column))]
+              (lib/with-temporal-bucket table-column (lib/temporal-bucket clause))))
+          (map vector (lib/breakouts definition 0) (lib/breakouts-metadata definition 0)))))
+
+(defn- table-metric-query
+  "Return a query on table `table-id` that aggregates `metric-card`.
+
+    (table-metric-query mp orders-model-metric orders-id) ;=> {:stages [{:source-table orders-id ...}]}
+
+  It keeps the stage 0 breakouts of the metric's definition that work on the table, as [[table-breakouts]] says."
+  [mp metric-card table-id]
+  (let [query (lib/query mp (lib.metadata/table mp table-id))]
+    (-> (reduce lib/breakout query (table-breakouts (lib/query mp (:dataset-query metric-card)) query))
+        (lib/aggregate (lib.metadata/metric mp (:id metric-card))))))
+
+(defn metric-dimension-query
+  "Return the query whose columns are the dimensions of `metric-card`, framed on the source that `required` names.
+
+    (metric-dimension-query mp orders-model-metric {:kind :table, :table-id orders-id, :bare-table-only? true})
+    ;=> a query on ORDERS with the metric as its aggregation
+
+  A multi-stage metric whose definition starts from a card works only on a bare stage on that card's table, so its
+  dimensions are the table's. Other metrics, and a metric whose card chain has no table, get lib's metric query.
+  `required` comes from [[metric-required-source]]."
+  [mp metric-card required]
+  (let [metric-query (lib/query mp metric-card)]
+    (if (and (:bare-table-only? required)
+             (:table-id required)
+             (lib/primary-source-card-id metric-query))
+      (table-metric-query mp metric-card (:table-id required))
+      metric-query)))
+
+(defn metric-query
+  "Return the query whose columns are the dimensions of the metric with ID `metric-id`.
+
+    (metric-query 12) ;=> a query on ORDERS with the metric as its aggregation
+
+  See [[metric-dimension-query]]. Throws an agent error that names the card's type when the card is a question or
+  model."
+  [metric-id]
+  (when-let [card (get-card metric-id :metric)]
+    (let [mp     (lib-be/application-database-metadata-provider (:database_id card))
+          metric (lib.metadata/metric mp metric-id)]
+      (metric-dimension-query mp metric (metric-required-source mp metric)))))
 
 (defn metric-compatible-with-stage?
   "Return whether `required` permits a metric on the stage's source.
