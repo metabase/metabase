@@ -7,7 +7,6 @@
   (:require
    [clojure.string :as str]
    [metabase.driver :as driver]
-   [metabase.driver.motherduck-test.util :as motherduck-test.util]
    [metabase.driver.sql-jdbc.connection-test :as connection-test]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.describe-table-test :as describe-table-test]
@@ -17,7 +16,7 @@
    [metabase.test.data.interface :as tx]
    ;; Load the inherited test extensions, including the row-xform method used below.
    [metabase.test.data.postgres]
-   [metabase.test.data.sql :as sql.tx :refer [qualify-and-quote]]
+   [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc.execute :as execute]
    [metabase.test.data.sql-jdbc.load-data :as load-data]
    [metabase.test.data.sql-jdbc.spec :as spec]
@@ -46,14 +45,13 @@
 ;; The inherited query uses public, but DuckDB's default schema is main.
 (defmethod tx/agg-venues-by-category-id :motherduck
   [_driver]
-  "select category_id, array_agg(name)
-   from main.venues
-   group by category_id
-   order by 1 asc
-   limit 2;")
+  (str "SELECT category_id, array_agg(name) FROM main.venues"
+       " GROUP BY category_id"
+       " ORDER BY 1 ASC"
+       " LIMIT 2;"))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                              Connection details                                                 |
+;;; |                                              Connection details                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; Concurrent CI jobs share one MotherDuck account. Prefix each run's database names with
@@ -66,7 +64,7 @@
     (sql.tu.unique-prefix/unique-prefix database-name)))
 
 ;; Use the same endpoint and credentials for test setup and driver queries. MB_MOTHERDUCK_TEST_*
-;; variables override the defaults; the token comes from MB_MOTHERDUCK_TEST_TOKEN or MOTHERDUCK_TOKEN.
+;; variables override the defaults; MB_MOTHERDUCK_TEST_TOKEN is required.
 ;;
 ;; The endpoint requires an existing database even for CREATE DATABASE and DROP DATABASE. Connect
 ;; the :server context to my_db, or MB_MOTHERDUCK_TEST_SERVER_DBNAME, so setup and cleanup can run
@@ -78,36 +76,40 @@
 (defmethod tx/dbdef->connection-details :motherduck
   [_driver context {:keys [database-name]}]
   {:host     (tx/db-test-env-var :motherduck :host "pg.us-east-1-aws.motherduck.com")
-   :port     (tx/db-test-env-var :motherduck :port 5432)
+   :port     (parse-long (tx/db-test-env-var :motherduck :port "5432"))
    :user     (tx/db-test-env-var :motherduck :user "metabase")
-   :password (motherduck-test.util/motherduck-token)
+   :password (tx/db-test-env-var-or-throw :motherduck :token)
    :ssl      true
-   :dbname   (if (and database-name (not= context :server))
+   :dbname   (if (and database-name
+                      (not= context :server))
                (qualified-db-name database-name)
                (server-dbname))})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                              DDL / type dialect                                                 |
+;;; |                                              DDL / type dialect                                                |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(doseq [[base-type db-type] {:type/BigInteger     "BIGINT"
-                             :type/Boolean        "BOOL"
-                             :type/Date           "DATE"
-                             :type/DateTime       "TIMESTAMP"
-                             :type/DateTimeWithTZ "TIMESTAMPTZ"
-                             :type/Decimal        "DECIMAL"
-                             :type/Float          "DOUBLE"
-                             :type/Integer        "INTEGER"
-                             :type/Text           "STRING"
-                             :type/Time           "TIME"
+(doseq [[base-type db-type] {:type/BigInteger          "BIGINT"
+                             :type/Boolean             "BOOL"
+                             :type/Date                "DATE"
+                             :type/DateTime            "TIMESTAMP"
+                             :type/DateTimeWithTZ      "TIMESTAMPTZ"
+                             :type/Decimal             "DECIMAL"
+                             :type/Float               "DOUBLE"
+                             :type/Integer             "INTEGER"
+                             :type/Text                "STRING"
+                             :type/Time                "TIME"
                              ;; The endpoint reports TIMETZ as JDBC Types.TIME, so the reader returns
                              ;; LocalTime and loses the offset. Map these types to TIME so the test
                              ;; framework does not claim that the driver preserves time zone offsets.
+                             ;; FIXME: TIMETZ needs upstream fixing. (bshepherdson, 2026-10-28)
                              :type/TimeWithTZ          "TIME"
                              :type/TimeWithLocalTZ     "TIME"
                              :type/TimeWithZoneOffset  "TIME"
-                             :type/UUID           "UUID"}]
-  (defmethod sql.tx/field-base-type->sql-type [:motherduck base-type] [_ _] db-type))
+                             :type/UUID                "UUID"}]
+  (defmethod sql.tx/field-base-type->sql-type [:motherduck base-type]
+    [_driver _type]
+    db-type))
 
 ;; DuckDB has no SERIAL type. Use INTEGER and let row-xform generate the IDs.
 (defmethod sql.tx/pk-sql-type :motherduck [_] "INTEGER")
@@ -117,13 +119,15 @@
 
 (defmethod sql.tx/create-db-sql :motherduck
   [driver {:keys [database-name]}]
-  (format "CREATE DATABASE IF NOT EXISTS %s;" (qualify-and-quote driver (qualified-db-name database-name))))
+  (format "CREATE DATABASE IF NOT EXISTS %s;"
+          (sql.tx/qualify-and-quote driver (qualified-db-name database-name))))
 
 ;; The inherited method uses a Postgres DO block to terminate other connections. DuckDB does not
 ;; support that block. The :server connection uses a different database, so DROP can run directly.
 (defmethod ddl/drop-db-ddl-statements :motherduck
   [driver {:keys [database-name]} & _]
-  [(format "DROP DATABASE IF EXISTS %s CASCADE;" (qualify-and-quote driver (qualified-db-name database-name)))])
+  [(format "DROP DATABASE IF EXISTS %s CASCADE;"
+           (sql.tx/qualify-and-quote driver (qualified-db-name database-name)))])
 
 ;; DuckDB can't add a foreign key with ALTER TABLE, so declare foreign keys in CREATE TABLE instead
 ;; (below) and skip the loader's separate step.
@@ -137,16 +141,19 @@
 (defn- inline-fk-sql
   "FOREIGN KEY clause for `fielddef` in `table-name`, referencing the target table's primary key.
 
-  Skip self-references: DuckDB checks a row's foreign keys before inserting the row, and runs
-  UPDATE as a delete plus an insert, so no row can ever reference itself. The
-  test-data-self-referencing-user dataset needs exactly that."
+  Skip self-references: DuckDB checks a row's foreign keys before inserting the row, and runs UPDATE as a delete plus
+  an insert, so no row can ever reference itself. The `test-data-self-referencing-user` dataset needs exactly that."
   [driver dbdef table-name {:keys [field-name], :as fielddef}]
   (let [target (fk-target fielddef)
-        pks    (some->> (sql.tx/get-tabledef dbdef target) :field-definitions sql.tx/fielddefs->pk-field-names)]
-    (when (and target (not= target table-name) (= 1 (count pks)))
+        pks    (some->> (sql.tx/get-tabledef dbdef target)
+                        :field-definitions
+                        sql.tx/fielddefs->pk-field-names)]
+    (when (and target
+               (not= target table-name)
+               (= 1 (count pks)))
       (format "FOREIGN KEY (%s) REFERENCES %s (%s)"
               (sql.tx/format-and-quote-field-name driver field-name)
-              (qualify-and-quote driver (:database-name dbdef) target)
+              (sql.tx/qualify-and-quote driver (:database-name dbdef) target)
               (sql.tx/format-and-quote-field-name driver (first pks))))))
 
 (defmethod sql.tx/create-table-sql :motherduck
@@ -157,7 +164,9 @@
       sql
       ;; The inherited statement ends its column list with the PRIMARY KEY clause.
       (let [pk-clause (re-find #", PRIMARY KEY \([^)]*\)" sql)]
-        (assert pk-clause (format "Expected a PRIMARY KEY clause in CREATE TABLE for %s.%s" database-name table-name))
+        (assert pk-clause (format "Expected a PRIMARY KEY clause in CREATE TABLE for %s.%s"
+                                  database-name
+                                  table-name))
         (str/replace-first sql pk-clause (str pk-clause ", " (str/join ", " fks)))))))
 
 (defn- parents-first
@@ -165,17 +174,22 @@
   Tables must be created this way because a FOREIGN KEY clause needs its target to exist, and loaded this way
   because DuckDB checks foreign keys on insert."
   [tabledefs]
-  (let [names (set (map :table-name tabledefs))
+  (let [names (into #{} (map :table-name) tabledefs)
         deps  (fn [{:keys [table-name field-definitions]}]
-                (into #{} (comp (keep fk-target) (filter names) (remove #{table-name})) field-definitions))]
-    (loop [done #{}, ordered [], remaining tabledefs]
+                (into #{} (comp (keep fk-target)
+                                (filter names)
+                                (remove #{table-name}))
+                      field-definitions))]
+    (loop [done      #{}
+           ordered   []
+           remaining tabledefs]
       (if (empty? remaining)
         ordered
         (let [ready (filter #(every? done (deps %)) remaining)]
           (when (empty? ready)
             (throw (ex-info "Foreign keys between test tables form a cycle; DuckDB can't load them"
                             {:tables (map :table-name remaining)})))
-          (recur (into done (map :table-name ready))
+          (recur (into done (map :table-name) ready)
                  (into ordered ready)
                  (remove (set ready) remaining)))))))
 
@@ -203,10 +217,10 @@
 (defmethod execute/execute-sql! :motherduck
   [driver ^Connection conn sql]
   (execute/default-execute-sql!
-   driver conn sql
-   :execute! (fn [^Connection conn ^String sql]
-               (with-open [stmt (.createStatement conn)]
-                 (.execute stmt sql)))))
+   driver conn sql :execute!
+   (fn [^Connection conn ^String sql]
+     (with-open [stmt (.createStatement conn)]
+       (.execute stmt sql)))))
 
 (defmethod load-data/do-insert! :motherduck
   [driver ^Connection conn table-identifier rows]
@@ -224,7 +238,8 @@
           (.execute stmt))
         (catch Throwable e
           (throw (ex-info (format "INSERT FAILED: %s" (ex-message e))
-                          {:driver driver, :sql sql}
+                          {:driver driver
+                           :sql    sql}
                           e)))))))
 
 ;; Reuse the SQL-JDBC view builders with the execution method above, which accepts result sets.
@@ -233,21 +248,26 @@
   (sql-jdbc.execute/do-with-connection-with-options
    driver (driver.u/ensure-lib-database database) {:write? true}
    (fn [conn]
-     (execute/execute-sql! driver conn (first (sql.tx/create-view-of-table-sql driver database view-name table-name options))))))
+     (->> (sql.tx/create-view-of-table-sql driver database view-name table-name options)
+          first
+          (execute/execute-sql! driver conn)))))
 
 (defmethod tx/drop-view! :motherduck
   [driver database view-name options]
   (sql-jdbc.execute/do-with-connection-with-options
    driver (driver.u/ensure-lib-database database) {:write? true}
    (fn [conn]
-     (execute/execute-sql! driver conn (first (sql.tx/drop-view-sql driver database view-name options))))))
+     (->> (sql.tx/drop-view-sql driver database view-name options)
+          first
+          (execute/execute-sql! driver conn)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                      create / load / cleanup lifecycle                                          |
+;;; |                                      create / load / cleanup lifecycle                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defonce ^:private ^{:doc "Names of test databases created or reused by this run. Cleanup drops only
-  databases registered here, including datasets left by earlier runs."}
+(defonce ^{:private true
+           :doc "Names of test databases created or reused by this run. Cleanup drops only
+                 databases registered here, including datasets left by earlier runs."}
   created-databases
   (atom #{}))
 
@@ -306,7 +326,9 @@
 (defn- account
   "Label for the MotherDuck account under sweep, used as the `:server` key in the nightly report."
   []
-  (format "%s/%s" (tx/db-test-env-var :motherduck :host "pg.us-east-1-aws.motherduck.com") (server-dbname)))
+  (format "%s/%s"
+          (tx/db-test-env-var :motherduck :host "pg.us-east-1-aws.motherduck.com")
+          (server-dbname)))
 
 (defn- do-with-server-connection [f]
   (sql-jdbc.execute/do-with-connection-with-options
@@ -325,17 +347,22 @@
     (when-not dry-run?
       (with-open [stmt (.createStatement conn)]
         (.execute stmt (format "DROP DATABASE IF EXISTS \"%s\" CASCADE;" db-name))))
-    {:server (account) :name db-name :status :deleted}
+    {:server (account)
+     :name   db-name
+     :status :deleted}
     (catch Exception e
-      {:server (account) :name db-name :status :failed :error (ex-message e)})))
+      {:server (account)
+       :name   db-name
+       :status :failed
+       :error  (ex-message e)})))
 
 (defmethod tx/gc-orphans! :motherduck
   [_driver {:keys [hours dry-run?]}]
   (do-with-server-connection
    (fn [conn]
-     (->> (temp-database-names conn)
-          (filter (partial sql.tu.unique-prefix/old-temp-dataset? hours))
-          (mapv (partial drop-orphan conn dry-run?))))))
+     (into [] (comp (filter #(sql.tu.unique-prefix/old-temp-dataset? hours %))
+                    (map #(drop-orphan conn dry-run? %)))
+           (temp-database-names conn)))))
 
 (defmethod tx/count-datasets :motherduck
   [_driver]

@@ -1,19 +1,19 @@
 (ns metabase.driver.motherduck
   "MotherDuck driver that connects to the MotherDuck Postgres endpoint to run DuckDB SQL.
 
-  Inherit the Postgres JDBC connection, query execution, and compatible SQL generation. Override
-  the methods where DuckDB SQL or the MotherDuck Postgres endpoint differs from Postgres.
+  Inherit the Postgres JDBC connection, query execution, and compatible SQL generation. Override the methods where
+  DuckDB SQL or the MotherDuck Postgres endpoint differs from Postgres.
 
-  Prefer DuckDB's `duckdb_*()` metadata functions for table discovery and primary keys. DuckDB's
-  Postgres catalogs are compatibility views over these functions. Querying the functions directly
-  avoids catalog joins and dependence on the structure of those views. Scope each query to
-  `current_database()` because a connection can access multiple databases."
+  Prefer DuckDB's `duckdb_*()` metadata functions for table discovery and primary keys. DuckDB's Postgres catalogs are
+  compatibility views over these functions. Querying the functions directly avoids catalog joins and dependence on the
+  structure of those views. Scope each query to `current_database()` because a connection can access multiple
+  databases."
   (:require
    [clojure.string :as str]
    [honey.sql :as sql]
    [metabase.driver :as driver]
    ;; Register the parent before registering :motherduck.
-   metabase.driver.postgres
+   [metabase.driver.postgres]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -33,15 +33,15 @@
 (driver/register! :motherduck, :parent :postgres)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                  Connection                                                     |
+;;; |                                                  Connection                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod sql-jdbc.conn/connection-details->spec :motherduck
   [_driver details]
-  ;; The MotherDuck Postgres endpoint requires TLS. `require` encrypts the connection without verifying
+  ;; The MotherDuck Postgres endpoint requires TLS. `:sslmode "require"` encrypts the connection without verifying
   ;; the server certificate or hostname. Set it explicitly so the connection does not inherit another SSL mode.
-  ;; The startup option enables Metabase compatibility, including Postgres-style array serialization
-  ;; and command tags for CREATE TABLE and INSERT.
+  ;; The startup option enables Metabase compatibility, including Postgres-style array serialization and command tags
+  ;; for CREATE TABLE and INSERT.
   (-> (sql-jdbc.conn/connection-details->spec :postgres (assoc details :ssl true))
       (assoc :sslmode "require"
              :options "--compatibility-mode=metabase")))
@@ -50,7 +50,9 @@
 ;; so `driver/table-exists?` returns false for a missing table instead of propagating the exception.
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :motherduck
   [_driver e]
-  (boolean (re-find #"(?i)catalog error.*does not exist" (or (.getMessage ^java.sql.SQLException e) ""))))
+  (boolean (re-find #"(?i)catalog error.*does not exist"
+                    (or (.getMessage ^java.sql.SQLException e)
+                        ""))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Feature flags                                                      |
@@ -79,13 +81,14 @@
                  :index/fetch
                  :index/standalone-create
                  ;; DuckDB uses RE2, which does not support lookahead or lookbehind assertions.
+                 ;; This disables some fancy MBQL expressions, like extracting email domains and URL hostnames.
                  :regex/lookaheads-and-lookbehinds]]
   (defmethod driver/database-supports? [:motherduck feature]
     [_driver _feature _db]
     false))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                             Metadata / sync                                                     |
+;;; |                                             Metadata / sync                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def ^:private describe-database-tables-sql
@@ -136,10 +139,10 @@
   [driver ^Connection conn _db-name-or-nil table]
   (with-open [stmt (sql-jdbc.sync.common/prepare-statement driver conn table-pks-sql [(:schema table) (:name table)])
               rs   (.executeQuery stmt)]
-    (loop [pks []]
+    (loop [pks (transient [])]
       (if (.next rs)
-        (recur (conj pks (.getString rs 1)))
-        pks))))
+        (recur (conj! pks (.getString rs 1)))
+        (persistent! pks)))))
 
 ;; The inherited query reads pg_constraint, matching key columns with ANY(conkey). Read
 ;; duckdb_constraints() instead. Its column lists are ordered, and unnesting both in one SELECT
@@ -158,13 +161,15 @@
                :where    [:and
                           [:= :database_name [:current_database]]
                           [:= :constraint_type [:inline "FOREIGN KEY"]]
-                          (when schema-names [:in :schema_name schema-names])
-                          (when table-names [:in :table_name table-names])]
+                          (when (seq schema-names)
+                            [:in :schema_name schema-names])
+                          (when (seq table-names)
+                            [:in :table_name table-names])]
                :order-by [:fk-table-schema :fk-table-name]}
               :dialect (sql.qp/quote-style driver)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                              Query processing                                                   |
+;;; |                                              Query processing                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; Give string parameters an explicit type so the endpoint can determine result types at prepare
@@ -174,11 +179,14 @@
   [_driver s]
   (h2x/cast :text s))
 
-;; Metabase escapes LIKE patterns with backslashes. Postgres treats backslash as the default
-;; escape character, but DuckDB requires an explicit ESCAPE clause.
+;; The default `:sql` behaviour for escaping LIKE patterns is to use backslashes with an explicit `ESCAPE` clause.
+;; However, Postgres has backslashes built in and so it inherits from the shared
+;; `:metabase.driver.sql.query-processor.like-escape-char-built-in/like-escape-char-built-in` pseudo-driver.
+;; A child driver like `:motherduck` can't remove that parent from `:postgres`, so we have to explicitly override
+;; the escaping of LIKE patterns here. Delegates to the core `:sql` behaviour to stick close to the baseline.
 (defmethod sql.qp/transform-literal-like-pattern-honeysql :motherduck
-  [_driver like-rhs-honeysql]
-  [:escape like-rhs-honeysql [:inline "\\"]])
+  [driver like-rhs-honeysql]
+  ((get-method sql.qp/transform-literal-like-pattern-honeysql :sql) driver like-rhs-honeysql))
 
 ;; DuckDB reads nested JSON with json_extract_string rather than the Postgres #>> operator.
 ;; Both return unquoted scalar text and JSON text for objects and arrays. Inline the JSONPath
@@ -186,29 +194,34 @@
 (def ^:private json-cast-types
   "Cast types for unfolded JSON fields that differ from the inherited Postgres types.
 
-  DuckDB defaults DECIMAL to DECIMAL(18,3), which rounds JSON numbers to three decimal places.
-  Use DOUBLE to preserve the precision of the floating-point values parsed by Jackson."
+  DuckDB defaults `DECIMAL` to `DECIMAL(18,3)`, which rounds JSON numbers to three decimal places.
+  Use `DOUBLE` to preserve the precision of the floating-point values parsed by Jackson."
   {"decimal" "double"})
 
 (defmethod sql.qp/json-query :motherduck
-  [_driver unwrapped-identifier nfc-field]
+  [_driver unwrapped-identifier {:keys [database-type nfc-path] :as nfc-field}]
   {:pre [(h2x/identifier? unwrapped-identifier)]}
-  (let [field-type (:database-type nfc-field)
-        nfc-path   (:nfc-path nfc-field)
-        json-path  (apply str "$" (for [k (rest nfc-path)]
-                                    (format ".\"%s\"" (if (number? k) k (name k)))))]
-    (h2x/cast (get json-cast-types field-type field-type)
+  (let [json-path (apply str "$" (for [k (rest nfc-path)
+                                       :let [tag (if (number? k)
+                                                   k
+                                                   (name k))]]
+                                   (format ".\"%s\"" tag)))]
+    (h2x/cast (get json-cast-types database-type database-type)
               [:json_extract_string
                (sql.qp.u/nfc-field->parent-identifier unwrapped-identifier nfc-field)
                [:inline json-path]])))
 
 (defn- capturing-group-count
   "Count the capturing groups in regex `pattern`. Java's syntax covers the RE2 syntax DuckDB accepts, except
-  RE2's `(?P<name>...)` named groups, which are rewritten to Java's `(?<name>...)` first. Return 0 when the
-  pattern still doesn't compile in Java; DuckDB reports any real syntax error when the query runs."
+  RE2's `(?P<name>...)` named groups, which are rewritten to Java's `(?<name>...)` first.
+
+  Return 0 when the pattern still doesn't compile in Java; DuckDB reports any real syntax error when the query runs."
   [pattern]
   (try
-    (.groupCount (.matcher (java.util.regex.Pattern/compile (str/replace pattern "(?P<" "(?<")) ""))
+    (-> (str/replace pattern "(?P<" "(?<")
+        java.util.regex.Pattern/compile
+        (.matcher "")
+        (.groupCount))
     (catch java.util.regex.PatternSyntaxException _
       0)))
 
@@ -219,7 +232,10 @@
   [driver [_ _opts arg pattern]]
   (let [arg-hsql     (sql.qp/->honeysql driver arg)
         pattern-hsql (sql.qp/->honeysql driver pattern)
-        group        (if (and (string? pattern) (pos? (capturing-group-count pattern))) 1 0)]
+        group        (if (and (string? pattern)
+                              (pos? (capturing-group-count pattern)))
+                       1
+                       0)]
     [:case
      [:regexp_matches arg-hsql pattern-hsql]
      [:regexp_extract arg-hsql pattern-hsql [:inline group]]]))
@@ -230,7 +246,7 @@
   [_driver _coercion-strategy expr]
   (h2x/cast "timestamptz" [:strptime expr (h2x/literal "%Y%m%d%H%M%S")]))
 
-;; DuckDB's decode converts UTF-8 bytes to text, like Postgres convert_from(expr, 'UTF8').
+;; DuckDB's `decode` converts UTF-8 bytes to text, like Postgres convert_from(expr, 'UTF8').
 ;; Delegate the parsed text to the driver's string coercion method.
 (defmethod sql.qp/cast-temporal-byte [:motherduck :Coercion/YYYYMMDDHHMMSSBytes->Temporal]
   [driver _coercion-strategy expr]
@@ -264,13 +280,13 @@
                          (h2x/is-of-type? expr "timestamp with time zone"))
         _            (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
         expr         [:timezone (h2x/literal target-timezone)
-                      (if-not timestamptz?
-                        [:timezone (h2x/literal source-timezone) (h2x/->pg-timestamp expr)]
-                        expr)]]
+                      (if timestamptz?
+                        expr
+                        [:timezone (h2x/literal source-timezone) (h2x/->pg-timestamp expr)])]]
     (h2x/with-database-type-info expr "timestamp")))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                          Driver-managed table DDL                                                |
+;;; |                                          Driver-managed table DDL                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; The endpoint returns a result set for DROP TABLE, even in Metabase compatibility mode.

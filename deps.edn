@@ -529,6 +529,7 @@
     "modules/drivers/druid-jdbc/test"
     "modules/drivers/hive-like/test"
     "modules/drivers/mongo/test"
+    "modules/drivers/motherduck/test"
     "modules/drivers/oracle/test"
     "modules/drivers/presto-jdbc/test"
     "modules/drivers/redshift/test"
@@ -536,9 +537,7 @@
     "modules/drivers/sparksql/test"
     "modules/drivers/sqlserver/test"
     "modules/drivers/starburst/test"
-    "modules/drivers/vertica/test"
-    "modules/drivers/motherduck/test"
-    ]}
+    "modules/drivers/vertica/test"]}
 
 ;;; Linters
 
