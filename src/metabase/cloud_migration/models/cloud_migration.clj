@@ -53,7 +53,12 @@
                 ;; new cards or update other fields.
                 :model/Card #{:id :last_used_at :updated_at}
                 ;; Reading filter values stamps last_used_at so sync knows the values are in use.
-                :model/FieldValues #{:last_used_at :updated_at}}
+                :model/FieldValues #{:last_used_at :updated_at}
+                ;; OAuth clients such as MCP need to exchange codes and refresh tokens.
+                :model/OAuthClientEvent :all
+                :model/OAuthAuthorizationCode :all
+                :model/OAuthAccessToken :all
+                :model/OAuthRefreshToken :all}
                ;; These exceptions use table name instead of model name because you can actually bypass the model
                ;; and write toucan2 functions that interact with table directly.
                t2/table-name))
