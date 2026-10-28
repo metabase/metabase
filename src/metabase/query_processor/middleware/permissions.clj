@@ -29,6 +29,11 @@
   metabase-enterprise.advanced-permissions.models.permissions.block-permissions
   [_query])
 
+(defenterprise check-sandboxes-applied
+  "OSS implementation always returns `nil` because sandboxing is an EE-only feature."
+  metabase-enterprise.sandbox.query-processor.middleware.sandboxing
+  [_query])
+
 (defn- throw-inactive-table-error
   [{db-id :id db-name :name} {table-id :id table-name :name schema :schema}]
   ;; We don't cache perms for inactive tables, so we need to manually bypass the cache here
@@ -88,6 +93,8 @@
           ;; On EE, check block permissions up front for all queries. If block perms are in place, reject all native queries
           ;; (unless overridden by `gtap-perms`) and any queries that touch blocked tables/DBs
           (check-block-permissions outer-query)
+          ;; On EE, make sure every Table with an enforced Sandbox is read through that Sandbox
+          (check-sandboxes-applied outer-query)
           (cond
             ;; if card-id is bound this means that this is not an ad hoc query and we can just
             ;; check that the user has permission to read this card

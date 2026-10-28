@@ -56,11 +56,24 @@
                                              #_attribute-name ::lib.schema.common/non-blank-string
                                              #_target         ::lib.schema.parameter/target]]]])
 
+(defn- field-ref-ids
+  "IDs of every Field that a `:field` ref in `x` names by ID."
+  [x]
+  (into #{} (match/match-many x [:field (_opts :guard map?) (id :guard pos-int?)] id)))
+
+(mu/defn- field-ref-table-ids :- [:maybe [:set ::lib.schema.id/table]]
+  "IDs of the Tables of the Fields that `query` names by ID. A ref can name a Field of a Table that is not a source of
+  the query; [[check-field-refs]] must still see that Table's Sandbox."
+  [query :- ::lib.schema/query]
+  (when-let [field-ids (not-empty (field-ref-ids (:stages query)))]
+    (into #{} (keep :table-id) (lib.metadata/bulk-metadata query :metadata/column field-ids))))
+
 (mu/defn- query->all-table-ids :- [:maybe [:set ::lib.schema.id/table]]
   [query :- ::lib.schema/query]
-  (u/prog1 (lib/all-source-table-ids query)
-    (when (seq <>)
-      (lib.metadata/bulk-metadata-or-throw query :metadata/table <>))))
+  (let [source-table-ids (u/prog1 (lib/all-source-table-ids query)
+                           (when (seq <>)
+                             (lib.metadata/bulk-metadata-or-throw query :metadata/table <>)))]
+    (not-empty (into (set source-table-ids) (field-ref-table-ids query)))))
 
 (mu/defn assert-one-sandbox-per-table
   "Make sure all referenced Tables have at most one Sandbox."
@@ -347,24 +360,21 @@
                                   (lib.metadata/fields sandbox-query original-table-id)))]
     (into direct-ids name-resolved-ids)))
 
-(defn- filter-stage-fields-to-sandbox
-  "When wrapping a sandbox subquery with a stage that carries a `:fields` clause from before the swap, drop any
-  field-id refs the sandbox no longer exposes (e.g., a native GTAP that omits a column). Field refs by string name
-  refer to the previous stage's output and are preserved. See #73339."
-  [stage sandbox-field-ids]
-  (m/update-existing stage :fields
-                     (fn [fields]
-                       (filterv (fn [field-ref]
-                                  (let [[tag _opts id-or-name] field-ref]
-                                    (or (not= tag :field)
-                                        (not (integer? id-or-name))
-                                        (contains? sandbox-field-ids id-or-name))))
-                                fields))))
+(defn- sandbox-hidden-field-ids
+  "Sorted IDs of the Fields of `original-table-id` that the sandbox does not return."
+  [sandbox-query original-table-id]
+  (let [exposed (sandbox-exposed-field-ids sandbox-query original-table-id)]
+    (into []
+          (comp (map :id) (remove exposed))
+          (sort-by :id (lib.metadata/fields sandbox-query original-table-id)))))
 
-(mu/defn- apply-sandbox-to-stage :- [:and
-                                     [:sequential {:min 1} ::lib.schema/stage]
-                                     ::lib.schema.util/unique-uuids]
-  "Apply a Sandbox to a `stage`, returning a vector of replacement stages."
+(mu/defn- apply-sandbox-to-stage :- [:map
+                                     [:stages           [:and
+                                                         [:sequential {:min 1} ::lib.schema/stage]
+                                                         ::lib.schema.util/unique-uuids]]
+                                     [:hidden-field-ids [:sequential ::lib.schema.id/field]]]
+  "Apply a Sandbox to a `stage`. Returns the replacement `:stages`, and the `:hidden-field-ids` of the sandboxed Table
+  that the Sandbox does not return."
   [query                            :- ::lib.schema/query
    path                             :- ::lib.walk/path
    {:keys [source-table] :as stage} :- ::lib.schema/stage
@@ -397,18 +407,15 @@
                                 (empty? (->> (keys stage)
                                              (remove #{:source-table :fields})
                                              (remove qualified-keyword?))))
-        ;; #73339: an implicit-join sub-stage gets `:fields` populated by the post-implicit-joins
-        ;; `add-implicit-clauses` pass *from the original table's column set*, then we land here and swap
-        ;; `:source-table` for the sandbox subquery. Any field-id refs the sandbox doesn't expose (e.g., a column
-        ;; the native GTAP drops) would compile to `SELECT __mb_source.<dropped>` and fail at the DB. Filter them out.
+        ;; refs in the wrapper stage to columns the sandbox does not return (#73339) are dropped or refused by
+        ;; [[check-field-refs]], together with every other ref in the query
         wrapper-stage      (when-not skip-final-stage?
-                             (filter-stage-fields-to-sandbox
-                              (dissoc stage :source-table)
-                              (sandbox-exposed-field-ids sandbox-query source-table)))
+                             (dissoc stage :source-table))
         replacement-stages (cond-> new-source-stages
                              wrapper-stage (conj wrapper-stage))]
     (log/trace "Applied Sandbox: replaced stage with sandboxed stages")
-    replacement-stages))
+    {:stages           replacement-stages
+     :hidden-field-ids (sandbox-hidden-field-ids sandbox-query source-table)}))
 
 (mr/def ::query-with-details
   "A query that has been through [[apply-sandboxing]]. Carries [[metabase.lib.schema/sandboxing.details]] under the
@@ -470,30 +477,180 @@
    table-id->sandbox :- [:map-of ::lib.schema.id/table ::sandbox]]
   ;; replace stages that have `:source-table` key and a matching entry in `table-id->sandbox`, but do not have
   ;; `::sandbox?` key
-  (-> (lib.walk/walk-stages
-       query
-       (fn [query path stage]
-         (when (and (= (:lib/type stage) :mbql.stage/mbql)
-                    (:source-table stage)
-                    (not (::sandbox? stage)))
-           (when-let [sandbox (get table-id->sandbox (:source-table stage))]
-             ;; add a `::sandbox?` key to each replacement stage that has `:source-table?` so when we do a second pass after
-             ;; adding JOINs they don't get processed again
-             (mapv (fn [stage]
-                     (cond-> stage
-                       (:source-table stage) (assoc ::sandbox? true)))
-                   (apply-sandbox-to-stage query path stage sandbox))))))
-      (attach-sandbox-details table-id->sandbox)))
+  (let [hidden-field-ids (volatile! {})]
+    (-> (lib.walk/walk-stages
+         query
+         (fn [query path stage]
+           (when (and (= (:lib/type stage) :mbql.stage/mbql)
+                      (:source-table stage)
+                      (not (::sandbox? stage)))
+             (when-let [sandbox (get table-id->sandbox (:source-table stage))]
+               (let [{:keys [stages], hidden :hidden-field-ids} (apply-sandbox-to-stage query path stage sandbox)]
+                 (vswap! hidden-field-ids assoc (:source-table stage) hidden)
+                 ;; add a `::sandbox?` key to each replacement stage that has `:source-table?` so when we do a second
+                 ;; pass after adding JOINs they don't get processed again
+                 (mapv (fn [stage]
+                         (cond-> stage
+                           (:source-table stage) (assoc ::sandbox? true)))
+                       stages))))))
+        ;; kept on the query for [[check-field-refs]] in this pass and in later ones
+        (cond-> (seq @hidden-field-ids) (update ::hidden-field-ids merge @hidden-field-ids))
+        (attach-sandbox-details table-id->sandbox))))
 
 (mu/defn- expected-cols :- [:sequential ::mbql.s/legacy-column-metadata]
   [query :- ::lib.schema/query]
   (mapv lib/lib-metadata-column->legacy-metadata-column
         (lib.metadata.result-metadata/returned-columns query)))
 
+;;;; Field ref checks
+;;;
+;;; [[apply-sandboxes]] only swaps source Tables for Sandbox queries. Every other `:field` ref in the query still names
+;;; columns as if the original Tables were there. [[check-field-refs]] makes those refs agree with what the Sandboxes
+;;; return:
+;;;
+;;; * a ref to a column a Sandbox does not return is dropped from `:fields` (stage or join), the way a view would drop
+;;;   it, and refused anywhere else (filters, breakouts, aggregations, expressions, order-by, join conditions), since
+;;;   which rows come back would depend on the column's values;
+;;;
+;;; * a ref that reads a sandboxed Table's column without going through its Sandbox (a Field ID of a Table that is not
+;;;   in the query, a join alias that names no join) is refused;
+;;;
+;;; * a name ref keeps the column it named before the rewrite. It never falls back to a same-named column of another
+;;;   Table.
+;;;
+;;; Refs to other Tables, e.g. columns reached through an implicit join out of the sandboxed Table, are kept.
+
+(defn- stage-field-refs
+  "`[kind field-ref]` for every `:field` ref in `stage`, including the conditions and `:fields` of its joins (which
+  are resolved in this stage). `kind` is `:fields` for refs that only select a column, `:use` otherwise."
+  [stage]
+  (letfn [(refs [kind x]
+            (map (fn [field-ref] [kind field-ref])
+                 (match/match-many x [:field (_opts :guard map?) _id-or-name] &match)))]
+    (concat
+     (refs :fields (:fields stage))
+     (mapcat #(refs :use (get stage %)) [:filters :breakout :aggregation :expressions :order-by])
+     (mapcat (fn [join]
+               (concat (refs :use (:conditions join))
+                       (when (sequential? (:fields join))
+                         (refs :fields (:fields join)))))
+             (:joins stage)))))
+
+(defn- walk-unsandboxed-stage-refs
+  "Call `(f path kind field-ref)` for each ref of [[stage-field-refs]] in every MBQL stage of `query` that did not come
+  from a Sandbox."
+  [query f]
+  (lib.walk/walk-stages query
+                        (fn [_query path stage]
+                          (when (and (= (:lib/type stage) :mbql.stage/mbql)
+                                     (not (:query-permissions/sandboxed-table stage)))
+                            (doseq [[kind field-ref] (stage-field-refs stage)]
+                              (f path kind field-ref)))
+                          nil))
+  nil)
+
+(defn- query->hidden-field-ids
+  "Map of sandboxed Table ID => set of the IDs of its Fields that its Sandbox does not return, for every Sandbox
+  applied to `query` so far."
+  [query]
+  (update-vals (::hidden-field-ids query) set))
+
+(defn- resolve-field-ref
+  "Resolve `field-ref` at the stage at `path` of `query`, or return `nil` if it cannot be resolved."
+  [query path field-ref]
+  (try
+    (lib.walk/apply-f-for-stage-at-path lib/metadata query path field-ref)
+    (catch Throwable e
+      (log/debugf e "Failed to resolve %s" (pr-str field-ref))
+      nil)))
+
+(defn- name-ref-field-ids
+  "Map of `:lib/uuid` => Field ID for every name ref in `query` (outside Sandbox stages) that resolves to a Field."
+  [query]
+  (let [ids (volatile! {})]
+    (walk-unsandboxed-stage-refs query
+                                 (fn [path _kind [_tag opts id-or-name :as field-ref]]
+                                   (when (string? id-or-name)
+                                     (when-let [field-id (:id (resolve-field-ref query path field-ref))]
+                                       (vswap! ids assoc (:lib/uuid opts) field-id)))))
+    @ids))
+
+(defn- reads-around-sandbox?
+  "Whether `col`, resolved from `field-ref`, is read straight from its Table rather than from the Sandbox query or a
+  join that holds it: Lib could not resolve it from the query's sources and fell back to the Field's own metadata, or
+  the join alias in the ref names a join that does not hold the column."
+  [[_tag {ref-join-alias :join-alias} _id-or-name] col]
+  (boolean
+   (or (nil? col)
+       (:metabase.lib.field.resolution/fallback-metadata? col)
+       (= (:lib/source col) :source/table-defaults)
+       (and ref-join-alias
+            (#{:source/joins :source/implicitly-joinable} (:lib/source col))
+            (not= ref-join-alias (:lib/join-alias col))))))
+
+(defn- hidden-column-error []
+  (ex-info (tru "Your query references a column you do not have permission to use.")
+           {:type qp.error-type/missing-required-permissions}))
+
+(defn- unsandboxed-ref-error []
+  (ex-info (tru "Your query references a column of a sandboxed table that is not reached through its sandbox.")
+           {:type qp.error-type/invalid-query}))
+
+(defn- drop-field-refs
+  "Remove the refs with a `:lib/uuid` in `uuids` from the stage and join `:fields` of every non-Sandbox stage."
+  [query uuids]
+  (letfn [(keep-ref? [[tag opts]]
+            (not (and (= tag :field)
+                      (contains? uuids (:lib/uuid opts)))))
+          (drop-in-join [join]
+            (if (sequential? (:fields join))
+              (assoc join :fields (or (not-empty (filterv keep-ref? (:fields join))) :none))
+              join))]
+    (lib.walk/walk-stages query
+                          (fn [_query _path stage]
+                            (when (and (= (:lib/type stage) :mbql.stage/mbql)
+                                       (not (:query-permissions/sandboxed-table stage)))
+                              (-> stage
+                                  (u/assoc-dissoc :fields (some->> (:fields stage) (filterv keep-ref?) not-empty))
+                                  (m/update-existing :joins #(mapv drop-in-join %))))))))
+
+(mu/defn- check-field-refs :- ::lib.schema/query
+  "Drop or refuse the refs in `query` (which has been through [[apply-sandboxes]]) that disagree with the applied
+  Sandboxes; see the comment above. `original-query` is `query` before [[apply-sandboxes]]: name refs are resolved
+  there to learn which column they name, matched by `:lib/uuid`, which the rewrite keeps."
+  [query             :- ::lib.schema/query
+   original-query    :- ::lib.schema/query
+   table-id->sandbox :- [:map-of ::lib.schema.id/table ::sandbox]]
+  (let [hidden           (query->hidden-field-ids query)
+        sandboxed-tables (into (set (keys table-id->sandbox)) (keys hidden))
+        ;; resolving every name ref twice is only worth it when some column is hidden
+        name-ref->id     (if (seq hidden) (name-ref-field-ids original-query) {})
+        to-drop          (volatile! #{})]
+    (walk-unsandboxed-stage-refs
+     query
+     (fn [path kind [_tag opts id-or-name :as field-ref]]
+       (when-let [field-id (if (pos-int? id-or-name)
+                             id-or-name
+                             (get name-ref->id (:lib/uuid opts)))]
+         (when-let [table-id (:table-id (lib.metadata/field query field-id))]
+           (when (contains? sandboxed-tables table-id)
+             (if (contains? (get hidden table-id) field-id)
+               (if (= kind :fields)
+                 (vswap! to-drop conj (:lib/uuid opts))
+                 (throw (hidden-column-error)))
+               (let [col (resolve-field-ref query path field-ref)]
+                 (when (or (reads-around-sandbox? field-ref col)
+                           ;; a native Sandbox's columns can have no ID; then they match by name
+                           (and (:id col) (not= field-id (:id col))))
+                   (throw (unsandboxed-ref-error))))))))))
+    (cond-> query
+      (seq @to-drop) (drop-field-refs @to-drop))))
+
 (defn- sandboxed-query
   "Apply Sandboxes to `query` and return the updated version of `query`."
   [original-query table-id->sandbox]
-  (let [sandboxed-query (apply-sandboxes original-query table-id->sandbox)]
+  (let [sandboxed-query (-> (apply-sandboxes original-query table-id->sandbox)
+                            (check-field-refs original-query table-id->sandbox))]
     (if (= sandboxed-query original-query)
       original-query
       (assoc sandboxed-query ::original-metadata (expected-cols original-query)))))
@@ -515,6 +672,46 @@
   :feature :none
   [query]
   (apply-sandboxing* query))
+
+;;;; Permission check
+
+(defn- sandbox-stage? [x]
+  (and (map? x) (some? (:query-permissions/sandboxed-table x))))
+
+(defn- source-table-stage? [x]
+  (and (map? x) (pos-int? (:source-table x))))
+
+(defn- unsandboxed-source-table-ids*
+  [x]
+  (into #{}
+        cat
+        (match/match-many x
+          (_ :guard sandbox-stage?)
+          []
+
+          (m :guard source-table-stage?)
+          (cons (:source-table m) (unsandboxed-source-table-ids* (dissoc m :source-table))))))
+
+(defn- unsandboxed-source-table-ids
+  "IDs of the Tables that `query` (MBQL 5 or legacy) reads through a `:source-table` outside the stages that came from a
+  Sandbox. Only the query body is walked: keys like `:info` can hold copies of the query from before preprocessing."
+  [query]
+  (unsandboxed-source-table-ids* (if (:lib/type query)
+                                   (:stages query)
+                                   (:query query))))
+
+(defenterprise check-sandboxes-applied
+  "Called by the query permission check with the fully preprocessed query. Throws if the query reads a Table with an
+  enforced Sandbox through a stage that did not come from that Sandbox, i.e. if [[apply-sandboxing]] did not replace
+  it. Uses `:feature :none` so it still refuses when the `:sandboxes` feature is unavailable."
+  :feature :none
+  [query]
+  (when (and *current-user-id* (not api/*is-superuser?*))
+    (when-let [table-ids (not-empty (unsandboxed-source-table-ids query))]
+      (when (seq (sandbox.api.util/enforced-sandboxes-for-tables table-ids))
+        (throw (ex-info (tru "You do not have permissions to run this query.")
+                        {:type               qp.error-type/missing-required-permissions
+                         :permissions-error? true}))))))
 
 ;;;; Post-processing
 
