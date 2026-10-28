@@ -2,15 +2,16 @@
   "The v2 MCP `dashboard_write` tool: create and update dashboards, and apply an ordered list of
    editor operations.
 
-   An update applies its ops as one save. A create does not: it writes the dashboard row, then
-   applies the ops to it. The ops are compiled against a blank dashboard first so a malformed one
-   fails before anything is written, but per-field parameter-mapping permission checks run only on
-   the real save — so that second save can still fail and leave an empty dashboard behind. The tool
-   description says so, since the agent is the one that has to recover.
+   An update applies its ops as one save. A create writes the dashboard row, then applies the ops
+   to it in a second save, both in one transaction. The ops are compiled against a blank dashboard
+   first so a malformed one fails before anything is written; the transaction covers what that
+   cannot catch, such as per-field parameter-mapping permission checks, which run only on the real
+   save. Either way a failed call leaves nothing behind.
 
    A whole dashboard's JSON cannot survive a round trip through model context, so callers send
    *ops*. This namespace reads current state, hands it to the pure compiler in
-   [[metabase.mcp.v2.dashboard-ops]], and passes the compiled payload to the same domain fns the
+   [[metabase.metabot.toolkit.dashboard-ops]] through MCP's error wording in
+   [[metabase.mcp.v2.dashboard-errors]], and passes the compiled payload to the same domain fns the
    REST endpoints use ([[metabase.dashboards.write/create-dashboard!]] and
    [[metabase.dashboards.write/update-dashboard!]]) — so write permission enforcement,
    transactionality, and event publishing are inherited, never reimplemented."
@@ -20,7 +21,7 @@
    [metabase.lib.core :as lib]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
-   [metabase.mcp.v2.dashboard-ops :as dashboard-ops]
+   [metabase.mcp.v2.dashboard-errors :as dashboard-errors]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.redaction :as redaction]
@@ -71,7 +72,7 @@
   (doseq [[idx op] (map-indexed vector ops)
           card-id  (concat [(:card_id op)] (:series op) (:card_ids op))
           :when    (and card-id (not (contains? cards card-id)))]
-    (dashboard-ops/op-error! idx (:op op) (message/msg ["no card with id %s that you can read."] card-id))))
+    (dashboard-errors/op-error! idx (:op op) (message/msg ["no card with id %s that you can read."] card-id))))
 
 ;;; ------------------------------------------------ Response ------------------------------------------------------
 
@@ -388,8 +389,8 @@
     [:maybe [:sequential [:enum {:description "Update only: property names to unset (description, collection_position, cache_ttl). Needed because a null cannot say \"clear this\" — strict clients fill every unset property with null, so nulls are stripped at the boundary."}
                           "description" "collection_position" "cache_ttl"]]]]
    [:ops {:optional true}
-    [:maybe [:sequential {:description (str "Editor operations, applied in order. One atomic save on update; on "
-                                            "create the dashboard row is written before the ops are applied.")}
+    [:maybe [:sequential {:description (str "Editor operations, applied in order. The call saves them atomically, "
+                                            "together with the new dashboard on create.")}
              op-schema]]]])
 
 (def ^:private dashboard-write-entry
@@ -431,7 +432,7 @@
   (let [ops     (mapv compact-op ops)
         cards   (fetch-cards (referenced-card-ids dash ops))
         _       (check-cards-exist! ops cards)
-        payload (normalize-parameters (dashboard-ops/compile-ops dash ops cards))]
+        payload (normalize-parameters (dashboard-errors/compile-ops dash ops cards))]
     (validate-payload! (merge attrs payload))
     (if validate-only?
       (dry-run-row dash attrs payload cards)
@@ -444,12 +445,9 @@
   (merge {:id nil :dashcards [] :tabs [] :parameters []} attrs))
 
 (registry/deftool dashboard-write
-  "Create or update a dashboard and edit its layout with ordered ops. On update the ops are one atomic save —
-  nothing is written unless every op succeeds, so a failed call leaves the dashboard untouched and a retry
-  cannot double-add. Create is not atomic: the dashboard row is written first and the ops applied second, so a
-  failure on that second save leaves an empty dashboard behind (the ops are compiled beforehand, but per-field
-  parameter-mapping permission checks run only on the real save). Find it by name and finish it with method
-  \"update\" — calling create again leaves a second one.
+  "Create or update a dashboard and edit its layout with ordered ops. Each call is atomic — nothing is written
+  unless every op succeeds, so a failed call leaves the dashboard untouched (or, for create, creates nothing),
+  and a retry cannot double-add.
   method: \"create\" requires name; \"update\" requires id and accepts archived (true trashes,
   false restores — there is no hard delete). Give each new card or tab its own negative id (-1, -2, …); later
   ops in the same call reference it, and the server assigns real ids on save. Ops: add_card, add_text,
