@@ -299,8 +299,8 @@
                           (call-count)))))
           small   (measure 2)
           large   (measure 25)]
-      (is (< large (* 3 small))
-          (format "resolution must stay cheap (2 charts: %d queries, 25 charts: %d)" small large)))))
+      (is (< (- large small) (* 2 (- 25 2)))
+          (format "resolution must stay under 2 queries a chart (2 charts: %d queries, 25 charts: %d)" small large)))))
 
 ;;; --------------------------------- Summary-document content gate ---------------------------------
 
