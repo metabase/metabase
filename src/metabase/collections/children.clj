@@ -64,6 +64,25 @@
                                  (personal-ids first-parent-collection-id)))]
     (remove personal-descendant? collections)))
 
+(def CollectionType
+  "Collection types that the root/items endpoint can filter on"
+  [:enum "remote-synced"])
+
+(def ^:private FilterableCollectionType
+  "Collection types that [[collection-children]] and [[select-collections]] can filter on: remote-synced collections,
+  or those of a Library type."
+  (into [:enum "remote-synced"] (sort collection/library-collection-types)))
+
+(defn- collection-types-clause
+  "A HoneySQL clause that keeps the collections of one of `collection-types`, \"remote-synced\" meaning the
+  remote-synced ones, or nil when there are none."
+  [collection-types]
+  (when (seq collection-types)
+    (into [:or] (for [collection-type (sort collection-types)]
+                  (if (= collection-type "remote-synced")
+                    [:= :is_remote_synced true]
+                    [:= :type collection-type])))))
+
 (defn select-collections
   "Select collections based off certain parameters. If `shallow` is true, we select only the requested collection (or
   the root, if `collection-id` is `nil`) and its immediate children, to avoid reading the entire collection tree when it
@@ -77,8 +96,11 @@
   This will select only collections where `personal_owner_id` is not `nil`.
 
   To include library collections and their descendants, pass in `include-library?` as `true`.
-  By default, library-type collections are excluded. "
-  [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?]}]
+  By default, library-type collections are excluded.
+
+  To select only collections of some types, pass them as the set `collection-types`. "
+  [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?
+           collection-types]}]
   (cond->>
    (collections.db/collections-matching
     {:where [:and
@@ -94,6 +116,7 @@
                (location-from-collection-id-clause collection-id))
              (when personal-only
                [:!= :personal_owner_id nil])
+             (collection-types-clause collection-types)
              (when exclude-other-user-collections
                [:or [:= :personal_owner_id nil] [:= :personal_owner_id api/*current-user-id*]])
              (when-not include-library?
@@ -193,16 +216,12 @@
   [w]
   (when w (keyword (str/replace w #"_" "-"))))
 
-(def CollectionType
-  "Collection types that the root/items endpoint can filter on"
-  [:enum "remote-synced"])
-
 (def CollectionChildrenOptions
   "The `options` map accepted by [[collection-children]] and [[collection-filter-metadata]]."
   [:map {:closed true}
    [:show-dashboard-questions?     :boolean]
    [:show-exploration-documents?   {:optional true} [:maybe :boolean]]
-   [:collection-type {:optional true} [:maybe CollectionType]]
+   [:collection-types {:optional true} [:maybe [:set FilterableCollectionType]]]
    [:archived?                     :boolean]
    [:include-library?               {:optional true} [:maybe :boolean]]
    [:pinned-state {:optional true} [:maybe (into [:enum] (map keyword) valid-pinned-state-values)]]
@@ -714,16 +733,13 @@
    [:not= :namespace (u/qualified-name "snippets")]])
 
 (defn- collection-query
-  [collection {:keys [archived? collection-namespace pinned-state collection-type include-library?]}]
+  [collection {:keys [archived? collection-namespace pinned-state collection-types include-library?]}]
   (-> (assoc
        (collection/effective-children-query
         collection
         {:cte-name :visible_collection_ids}
         [:and
-         (when collection-type
-           (if (= collection-type "remote-synced")
-             [:= :is_remote_synced true]
-             [:= :type collection-type]))
+         (collection-types-clause collection-types)
          (when-not include-library?
            [:or [:= nil :type]
             [:not [:in :type (vec collection/library-collection-types)]]])

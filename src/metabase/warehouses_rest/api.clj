@@ -622,8 +622,8 @@
 
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
 
-(defn- autocomplete-tables [db-id like-pattern limit]
-  (warehouses-rest.db/autocomplete-tables db-id like-pattern limit))
+(defn- autocomplete-tables [db-id like-pattern limit published-only?]
+  (warehouses-rest.db/autocomplete-tables db-id like-pattern limit published-only?))
 
 (defn- autocomplete-cards
   "Returns cards that match the search string in the given database, ordered by id.
@@ -636,8 +636,8 @@
   [database-id search-card-slug include-dashboard-questions?]
   (warehouses-rest.db/autocomplete-cards database-id search-card-slug include-dashboard-questions?))
 
-(defn- autocomplete-fields [db-id like-pattern limit]
-  (warehouses-rest.db/autocomplete-fields db-id like-pattern limit))
+(defn- autocomplete-fields [db-id like-pattern limit published-only?]
+  (warehouses-rest.db/autocomplete-fields db-id like-pattern limit published-only?))
 
 (defn- autocomplete-results [tables fields limit]
   (let [tbl-count   (count tables)
@@ -655,11 +655,11 @@
 
 (defn- autocomplete-suggestions
   "`like-pattern` is a `LIKE` right-hand side (see [[h2x/like-substring]] and [[h2x/like-prefix]]) matched against
-  lowercased table and field names."
-  [db-id like-pattern]
+  lowercased table and field names; only published tables and their fields when `published-only?`."
+  [db-id like-pattern published-only?]
   (let [limit  50
-        tables (filter mi/can-read? (autocomplete-tables db-id like-pattern limit))
-        fields (readable-fields-only (autocomplete-fields db-id like-pattern limit))]
+        tables (filter mi/can-read? (autocomplete-tables db-id like-pattern limit published-only?))
+        fields (readable-fields-only (autocomplete-fields db-id like-pattern limit published-only?))]
     (autocomplete-results tables fields limit)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -684,23 +684,26 @@
                     [:id ms/PositiveInt]]
    {:keys [prefix substring]} :- [:map {:closed true}
                                   [:prefix    {:optional true} [:maybe ms/NonBlankString]]
-                                  [:substring {:optional true} [:maybe ms/NonBlankString]]]]
+                                  [:substring {:optional true} [:maybe ms/NonBlankString]]]
+   _body
+   request]
   (api/read-check (warehouses/get-database id))
   (when (and (str/blank? prefix) (str/blank? substring))
     (throw (ex-info (tru "Must include prefix or search") {:status-code 400})))
-  (try
-    {:status  200
-     ;; Presumably user will repeat same prefixes many times writing the query,
-     ;; so let them cache response to make autocomplete feel fast. 60 seconds
-     ;; is not enough to be a nuisance when schema or permissions change. Cache
-     ;; is user-specific since we're checking for permissions.
-     :headers {"Cache-Control" "public, max-age=60"
-               "Vary"          "Cookie"}
-     :body    (cond
-                substring (autocomplete-suggestions id (h2x/like-substring substring))
-                prefix    (autocomplete-suggestions id (h2x/like-prefix prefix)))}
-    (catch Throwable e
-      (log/warnf "Error with autocomplete: %s" (ex-message e)))))
+  (let [published-only? (some? (data-apps/request-data-app request))]
+    (try
+      {:status  200
+       ;; Presumably user will repeat same prefixes many times writing the query,
+       ;; so let them cache response to make autocomplete feel fast. 60 seconds
+       ;; is not enough to be a nuisance when schema or permissions change. Cache
+       ;; is user-specific since we're checking for permissions.
+       :headers {"Cache-Control" "public, max-age=60"
+                 "Vary"          "Cookie, X-Metabase-Client"}
+       :body    (cond
+                  substring (autocomplete-suggestions id (h2x/like-substring substring) published-only?)
+                  prefix    (autocomplete-suggestions id (h2x/like-prefix prefix) published-only?))}
+      (catch Throwable e
+        (log/warnf "Error with autocomplete: %s" (ex-message e))))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -721,14 +724,18 @@
                     [:id ms/PositiveInt]]
    {:keys [query include_dashboard_questions]} :- [:map {:closed true}
                                                    [:query                       ms/NonBlankString]
-                                                   [:include_dashboard_questions {:optional true} ms/BooleanValue]]]
+                                                   [:include_dashboard_questions {:optional true} ms/BooleanValue]]
+   _body
+   request]
   (api/read-check (warehouses/get-database id))
-  (try
-    (->> (autocomplete-cards id query include_dashboard_questions)
-         (filter mi/can-read?)
-         (map #(select-keys % [:id :name :type :collection_name])))
-    (catch Throwable e
-      (log/warnf "Error with autocomplete: %s" (ex-message e)))))
+  (if (some? (data-apps/request-data-app request))
+    []
+    (try
+      (->> (autocomplete-cards id query include_dashboard_questions)
+           (filter mi/can-read?)
+           (map #(select-keys % [:id :name :type :collection_name])))
+      (catch Throwable e
+        (log/warnf "Error with autocomplete: %s" (ex-message e))))))
 
 ;;; ------------------------------------------ GET /api/database/:id/fields ------------------------------------------
 

@@ -125,16 +125,20 @@
 (mu/defn autocomplete-tables
   "Up to `limit` id, Database id, schema, and name rows of the active, visible Tables of the Database with
   `database-id` whose lower-cased name matches the SQL LIKE `like-pattern` (a Honey SQL LIKE right-hand side, see
-  `metabase.util.honey-sql-2/like-substring`/`like-prefix`), in name order."
-  [database-id  :- ::lib.schema.id/database
-   like-pattern :- [:or :string vector?]
-   limit        :- ms/PositiveInt]
+  `metabase.util.honey-sql-2/like-substring`/`like-prefix`), in name order; only published Tables when
+  `published-only?`."
+  [database-id     :- ::lib.schema.id/database
+   like-pattern    :- [:or :string vector?]
+   limit           :- ms/PositiveInt
+   published-only? :- :boolean]
   (t2/select [:model/Table :id :db_id :schema :name]
              {:from [(warehouse-schema-overlay/table-query)]
               :where    [:and [:= :db_id database-id]
                          [:= :active true]
                          [:like :%lower.name like-pattern]
-                         [:= :visibility_type nil]]
+                         [:= :visibility_type nil]
+                         (when published-only?
+                           [:= :is_published true])]
               :order-by [[:%lower.name :asc]]
               :limit    limit}))
 
@@ -197,10 +201,12 @@
 (mu/defn autocomplete-fields
   "Up to `limit` name, type, id, and Table of the active, non-sensitive Fields of active Tables of the Database with
   `database-id` whose lower-cased name matches the SQL LIKE `like-pattern` (a Honey SQL LIKE right-hand side, see
-  `metabase.util.honey-sql-2/like-substring`/`like-prefix`), in field then table name order."
-  [database-id  :- ::lib.schema.id/database
-   like-pattern :- [:or :string vector?]
-   limit        :- ms/PositiveInt]
+  `metabase.util.honey-sql-2/like-substring`/`like-prefix`), in field then table name order; only Fields of
+  published Tables when `published-only?`."
+  [database-id     :- ::lib.schema.id/database
+   like-pattern    :- [:or :string vector?]
+   limit           :- ms/PositiveInt
+   published-only? :- :boolean]
   ;; NOTE: measuring showed that this query performance is improved ~4x when adding trgm index in pgsql and ~10x when
   ;; adding a index on `lower(metabase_field.name)` for ordering (trgm index having on impact on queries with index).
   ;; Pgsql now has an index on that (see migration `v49.2023-01-24T12:00:00`) as other dbms do not support indexes on
@@ -215,7 +221,9 @@
                            [[:lower :table.name] :asc]]
               ;; checking for table.active in join makes query faster when there are a lot of inactive tables
               :inner-join [(warehouse-schema-overlay/table-query {:alias :table}) [:and :table.active
-                                                                                   [:= :table.id :metabase_field.table_id]]]
+                                                                                   [:= :table.id :metabase_field.table_id]
+                                                                                   (when published-only?
+                                                                                     :table.is_published)]]
               :limit      limit}))
 
 (mu/defn table-ids-for-database
