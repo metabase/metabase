@@ -159,13 +159,18 @@
   "Reject a create or a move of a transform from `old` to `new` into a folder in the Trash, and a restore of a
   transform whose folder is in the Trash. `old` is nil for a create."
   [old new]
-  (when-let [folder-id (:collection_id new)]
-    (when (get (collections/collection-archived-flags [folder-id]) folder-id)
-      (api/check-400 (= folder-id (:collection_id old))
+  (let [folder-id (:collection_id new)
+        moved?    (not= folder-id (:collection_id old))
+        restored? (and (:archived old) (not (:archived new)))]
+    ;; read the folder last: an edit that neither moves nor restores the transform needs no query
+    (when (and folder-id
+               (or moved? restored?)
+               (get (collections/collection-archived-flags [folder-id]) folder-id))
+      (api/check-400 (not moved?)
                      (if old
                        (deferred-tru "You can''t move a transform into a folder that is in the trash.")
                        (deferred-tru "You can''t create a transform in a folder that is in the trash.")))
-      (api/check-400 (not (and (:archived old) (not (:archived new))))
+      (api/check-400 (not restored?)
                      (deferred-tru "Restore the folder first, or move the transform to another folder.")))))
 
 (defn create-transform!
