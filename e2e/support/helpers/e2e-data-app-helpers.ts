@@ -1,8 +1,10 @@
 import yaml from "js-yaml";
 
 import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import * as Urls from "metabase/urls/data-apps";
 import type {
+  Card,
   CreateDataAppRequest,
   DataApp,
   DataAppGroup,
@@ -11,7 +13,8 @@ import type {
   TableId,
 } from "metabase-types/api";
 
-import { createLibrary, publishTables, updateSetting } from "./api";
+import { createLibrary, createQuestion, publishTables, updateSetting } from "./api";
+import type { DataAppTestEnv } from "./data-app-test-env";
 import { getIframeBody } from "./e2e-embedding-helpers";
 import {
   LOCAL_GIT_PATH,
@@ -25,6 +28,54 @@ const DATA_APP_FIXTURES_PATH = "e2e/support/assets/data-apps";
 
 export const DATA_APP_NAME = "kitchen-sink";
 export const DATA_APP_DISPLAY_NAME = "Kitchen Sink";
+
+export type EmbeddedDataApp = DataApp & { questionId: number };
+
+/** Uploads a real bundle and a saved question owned by the app's collection. */
+export function createEmbeddedDataApp(): Cypress.Chainable<EmbeddedDataApp> {
+  const slug = "embedded-app";
+
+  cy.request<DataApp>("POST", "/api/ee/apps", {
+    name: slug,
+    display_name: "Embedded Orders",
+  })
+    .its("body")
+    .as("embeddedApp");
+
+  cy.get<DataApp>("@embeddedApp")
+    .then(({ resource_collection_id }) =>
+      createQuestion({
+        name: "Embedded order count",
+        collection_id: resource_collection_id,
+        query: {
+          "source-table": SAMPLE_DATABASE.ORDERS_ID,
+          aggregation: [["count"]],
+        },
+        display: "scalar",
+      }),
+    )
+    .its("body")
+    .as("embeddedAppQuestion");
+
+  cy.get<Card>("@embeddedAppQuestion").then(({ entity_id }) => {
+    const testEnv: DataAppTestEnv = {
+      scalarQuery: { source: { type: "card", entityId: entity_id } },
+      questionQuery: { source: { type: "card", entityId: entity_id } },
+    };
+
+    return cy.task<string>("buildDataApp", { appName: slug }).then((bundle) =>
+      cy.request("PUT", `/api/ee/apps/${slug}/bundle`, {
+        bundle: `globalThis.__METABASE_DATA_APP_TEST_ENV__ = ${JSON.stringify(testEnv)};\n${bundle}`,
+      }),
+    );
+  });
+
+  return cy
+    .get<Card>("@embeddedAppQuestion")
+    .then(({ id: questionId }) =>
+      cy.get<DataApp>("@embeddedApp").then((app) => ({ ...app, questionId })),
+    );
+}
 
 export const visitDataAppRoute = (route: string) => {
   installDataAppScopeGuard();
