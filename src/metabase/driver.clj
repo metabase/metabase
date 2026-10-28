@@ -1063,20 +1063,16 @@
     ;; emits the `pivot-grouping` column alongside the breakouts and aggregations.
     :native-pivot-tables
     ;;
-    ;; Does this database compile the stages of a multi-stage query to CTEs instead of nested subselects? Only
-    ;; true if the database accepts a `WITH` clause everywhere Metabase might put a compiled query, not just at the
-    ;; top level of a statement:
-    ;;
-    ;; * inside the parens of a `JOIN`, since a multi-stage join source compiles to `JOIN (WITH ... SELECT ...) AS j`
-    ;; * as the body of another CTE, since a native first stage compiles to `WITH __mb_stage_0 AS (<native SQL>) ...`
-    ;;   and that native SQL may itself start with `WITH`
-    ;; * inside a subquery, e.g. a card referenced from a native query via `{{#123}}` or a metadata probe
-    ;; * after `CREATE TABLE ... AS` and `INSERT INTO ...`, for transforms and persisted models
+    ;; Does this driver support compiling multi-stage queries to CTEs instead of nested subselects?
+    ;; The driver should support putting a CTE at the start of a statement, or after `CREATE TABLE`
+    ;; or `INSERT INTO`, or the driver should change these statements so they are valid
+    ;; (e.g. `driver/compile-insert :sqlserver`). See also `:stage-ctes/nested`.
     :stage-ctes
     ;;
-    ;; Does this database accept a `WITH` clause anywhere inside another query, e.g. in the body of a CTE or in a
-    ;; subquery? If not, and the query has a native stage with a `WITH` or is a card referenced from a native query,
-    ;; then the stages compile to nested subselects.
+    ;; Does this driver support CTEs inside another query, e.g. in the body of another CTE or in a subquery?
+    ;; This is necessary to compile queries with native stages that have their own CTEs, and native queries that
+    ;; reference a card with `{{#123}}`. If not, Metabase compiles these queries with nested subselects. By default,
+    ;; this has the same value as `:stage-ctes`.
     :stage-ctes/nested})
 
 (defmulti database-supports?

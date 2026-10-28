@@ -63,9 +63,9 @@
                               :native-parameters               true
                               :nested-queries                  true
                               :set-timezone                    true
+                              :stage-ctes                      true
                               :standard-deviation-aggregations true
-                              :test/jvm-timezone-setting       false
-                              :stage-ctes                      true}]
+                              :test/jvm-timezone-setting       false}]
   (defmethod driver/database-supports? [:databricks feature] [_driver _feature _db] supported?))
 
 (defmethod sql-jdbc.sync/database-type->base-type :databricks

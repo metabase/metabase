@@ -1140,6 +1140,7 @@
                               ;; tests expect the converted values.
                               :set-timezone                     true
                               :split-part                       true
+                              :stage-ctes                       true
                               ;; This driver reports inaccurate `:rows-affected` counts; the transforms layer
                               ;; falls back to a native `COUNT(*)` on the CTAS path.
                               ;; TODO: fix `execute-raw-queries!` to return accurate row counts for DDL
@@ -1147,8 +1148,7 @@
                               :transforms/accurate-rows-affected false
                               :transforms/python                true
                               :transforms/table                 true
-                              :transforms/testing               false
-                              :stage-ctes                       true}]
+                              :transforms/testing               false}]
   (defmethod driver/database-supports? [:bigquery-cloud-sdk feature] [_driver _feature _db] supported?))
 
 (defmethod driver/qualified-name-components :bigquery-cloud-sdk

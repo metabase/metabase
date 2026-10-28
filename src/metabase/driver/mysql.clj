@@ -303,7 +303,6 @@
 
 (defmethod driver/database-supports? [:mysql :stage-ctes]
   [_driver _feature db]
-  ;; MySQL before 8.0 has no CTEs. All supported MariaDB versions have them.
   (not (and (mysql? db)
             (some-> db :dbms-version :semantic-version first (< 8)))))
 

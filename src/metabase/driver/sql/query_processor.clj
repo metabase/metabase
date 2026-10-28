@@ -2311,7 +2311,6 @@
     (update (cte-body last-idx) :with #(into ctes %))))
 
 (defn- stages->honeysql*
-  "Compiles `stages` to CTEs if they have CTE names, else to subselects."
   [driver stages]
   (if (::cte-name (first stages))
     (stages->honeysql-ctes driver stages)
@@ -2327,8 +2326,7 @@
   (mapcat #(cons % (mapcat (comp all-stages :stages) (:joins %))) stages))
 
 (defn- hoist-ctes
-  "Moves the `WITH` clauses of nested queries, e.g. multi-stage join sources, to one `WITH` clause at the top. Inner
-  queries come first, so each CTE comes before the CTEs that use it."
+  "Moves the `WITH` clauses of nested queries, e.g. multi-stage join sources, to one `WITH` clause at the top."
   [hsql]
   (let [ctes (volatile! [])
         hsql (perf/postwalk (fn [form]
@@ -2354,9 +2352,7 @@
   (inc (reduce max -1 (keep native-sql-max-cte-number (all-stages stages)))))
 
 (defn- assign-cte-names*
-  "Gives each stage that compiles to a CTE a unique `::cte-name`, starting at `__mb_stage_<n>`. Join stages get their
-  names before the stage that joins them, so the names are in the same order as the CTEs after [[hoist-ctes]].
-  Returns `[stages next-n]`."
+  "Gives each stage that compiles to a CTE a unique `::cte-name`, starting at `__mb_stage_<n>`."
   [stages n]
   (let [last-idx (dec (count stages))]
     (reduce (fn [[stages n] [idx stage]]
@@ -2384,13 +2380,12 @@
        (boolean (re-find #"(?i)\bwith\b" (:native stage)))))
 
 (defn- use-stage-ctes?
-  "Whether to compile the stages of this query to CTEs. If nested CTEs are not supported, then we only use CTEs
-  if we can guarantee there is no native component to the query (i.e. not compiling a card reference like {{#123}}
-  and no native stages)."
   [driver stages query]
   (when-let [db (and (driver-api/initialized?) (driver-api/database (driver-api/metadata-provider)))]
     (and (driver/database-supports? driver :stage-ctes db)
          (or (driver/database-supports? driver :stage-ctes/nested db)
+             ;; If nested CTEs aren't supported, check that we don't have a card reference like {{#123}}
+             ;; and don't have a native stage with a CTE, otherwise we could end up with nested CTEs.
              (and (not (get-in query [:middleware :card-reference?]))
                   (not-any? native-stage-has-cte? (all-stages stages)))))))
 

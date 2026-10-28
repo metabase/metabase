@@ -56,9 +56,9 @@
                               :native-pivot-tables              true
                               :nested-fields                    false
                               :regex/lookaheads-and-lookbehinds false
+                              :stage-ctes                       true
                               :test/jvm-timezone-setting        false
-                              :uuid-type                        true
-                              :stage-ctes                       true}]
+                              :uuid-type                        true}]
   (defmethod driver/database-supports? [:athena feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:athena :schemas]

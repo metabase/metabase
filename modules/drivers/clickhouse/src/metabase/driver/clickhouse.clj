@@ -78,6 +78,7 @@
                               :schemas                          true
                               :set-timezone                     true
                               :split-part                       true
+                              :stage-ctes                       true
                               :standard-deviation-aggregations  true
                               :test/date-time-type              false
                               :test/jvm-timezone-setting        false
@@ -87,8 +88,7 @@
                               :transforms/testing               true
                               :upload-with-auto-pk              false
                               :window-functions/cumulative      (not driver-api/is-test?)
-                              :window-functions/offset          true
-                              :stage-ctes                       true}]
+                              :window-functions/offset          true}]
   (defmethod driver/database-supports? [:clickhouse feature] [_driver _feature _db] supported?))
 
 (defmethod driver/qualified-name-components :clickhouse

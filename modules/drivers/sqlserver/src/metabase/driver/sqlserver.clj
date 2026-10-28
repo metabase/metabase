@@ -73,8 +73,6 @@
                               :index/standalone-create                true
                               :now                                    true
                               :regex                                  false
-                              :stage-ctes                             true
-                              :stage-ctes/nested                      false
                               :test/jvm-timezone-setting              false
                               :metadata/table-existence-check         true
                               :native-pivot-tables                    true
@@ -86,7 +84,9 @@
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
                               :describe-is-generated                  true
-                              :table-privileges                       true}]
+                              :table-privileges                       true
+                              :stage-ctes                             true
+                              :stage-ctes/nested                      false}]
   (defmethod driver/database-supports? [:sqlserver feature] [_driver _feature _db] supported?))
 
 (defmethod driver/qualified-name-components :sqlserver

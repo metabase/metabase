@@ -96,13 +96,13 @@
                               :rename                         true
                               :schemas                        true
                               :split-part                     true
+                              :stage-ctes                     true
                               :transforms/index-ddl           true
                               :transforms/python              true
                               :transforms/table               true
                               :transforms/testing             true
                               :uploads                        true
-                              :uuid-type                      true
-                              :stage-ctes                     true}]
+                              :uuid-type                      true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:postgres :nested-field-columns]

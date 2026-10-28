@@ -129,6 +129,22 @@
   [_driver]
   "WITH n AS (SELECT 1 AS x FROM dual) SELECT x FROM n")
 
+(defmulti native-with-source-supported?
+  "Whether the database can run a query on a native question that starts with `WITH`. With subselects, the native SQL
+  goes inside a subquery."
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod native-with-source-supported? :default
+  [_driver]
+  true)
+
+;; SQL Server does not allow a `WITH` clause in a subquery or a CTE body
+(defmethod native-with-source-supported? :sqlserver
+  [_driver]
+  false)
+
 (deftest ^:parallel multi-stage-questions-test
   (mt/test-drivers (mt/normal-driver-select {:+features [:stage-ctes :nested-queries :left-join
                                                          :native-parameter-card-reference]})
@@ -172,8 +188,7 @@
                       ["1971-01-01T00:00:00Z" "2017-01-01T00:00:00Z" 20]]
                      (mt/formatted-rows [u.date/temporal-str->iso8601-str u.date/temporal-str->iso8601-str int]
                                         (qp/process-query query))))))))
-      ;; SQL Server does not allow a `WITH` clause in a subquery or a CTE body
-      (when-not (= driver/*driver* :sqlserver)
+      (when (native-with-source-supported? driver/*driver*)
         (testing "question on a native question that starts with WITH"
           (let [query (lib/query mp (lib.metadata/card mp 2))]
             (mt/with-native-query-testing-context query

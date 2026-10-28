@@ -52,9 +52,9 @@
                               :now                              true
                               :percentile-aggregations          false
                               :regex/lookaheads-and-lookbehinds false
+                              :stage-ctes                       true
                               :test/jvm-timezone-setting        false
-                              :uuid-type                        true
-                              :stage-ctes                       true}]
+                              :uuid-type                        true}]
   (defmethod driver/database-supports? [:vertica feature] [_driver _feature _db] supported?))
 
 (defmethod driver/db-start-of-week :vertica

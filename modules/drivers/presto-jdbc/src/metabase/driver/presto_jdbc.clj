@@ -70,8 +70,8 @@
                               :now                              true
                               :regex/lookaheads-and-lookbehinds false
                               :set-timezone                     true
-                              :standard-deviation-aggregations  true
-                              :stage-ctes                       true}]
+                              :stage-ctes                       true
+                              :standard-deviation-aggregations  true}]
   (defmethod driver/database-supports? [:presto-jdbc feature] [_driver _feature _db] supported?))
 
 ;;; Presto API helpers

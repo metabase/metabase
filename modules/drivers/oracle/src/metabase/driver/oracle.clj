@@ -95,7 +95,6 @@
 
 (defmethod driver/database-supports? [:oracle :stage-ctes/nested]
   [_driver _feature db]
-  ;; Oracle before 23 does not allow a WITH clause inside a CTE body.
   (boolean (some-> db :dbms-version :semantic-version first (>= 23))))
 
 (mr/def ::details
