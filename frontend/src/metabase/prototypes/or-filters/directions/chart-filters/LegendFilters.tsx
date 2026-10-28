@@ -22,9 +22,6 @@ import type { FilterCanvasProps } from "../../types";
 import S from "./ChartFilters.module.css";
 import type { LegendFrame } from "./QuestionChart";
 
-const ROWS_STAGE = 0;
-const SUMMARY_STAGE = 1;
-
 const OPERATOR_SYMBOLS: Record<string, string> = {
   "=": "=",
   "!=": "≠",
@@ -39,15 +36,16 @@ const OPERATOR_SYMBOLS: Record<string, string> = {
  * summary on it, and a filtered measure reads "Count ≥ 3".
  */
 export function LegendFilters({ query, onChange }: FilterCanvasProps) {
-  const summaryQuery =
-    Lib.stageCount(query) > SUMMARY_STAGE ? query : Lib.appendStage(query);
+  const summaryQuery = toSummaryQuery(query);
   const handleChange = (nextQuery: Lib.Query) =>
     onChange(Lib.dropEmptyStages(nextQuery));
 
   const measures = getMeasures(summaryQuery);
   // same keys and hashing the chart uses for its series colors
   const names = measures.map(
-    (measure) => Lib.displayInfo(summaryQuery, SUMMARY_STAGE, measure).name,
+    (measure) =>
+      Lib.displayInfo(summaryQuery, getSummaryStage(summaryQuery), measure)
+        .name,
   );
   const colors = getColorsForValues(names, null, undefined, names);
 
@@ -80,7 +78,11 @@ function LegendPill({
   onChange,
 }: LegendPillProps) {
   const [isOpened, setIsOpened] = useState(false);
-  const measureInfo = Lib.displayInfo(summaryQuery, SUMMARY_STAGE, measure);
+  const measureInfo = Lib.displayInfo(
+    summaryQuery,
+    getSummaryStage(summaryQuery),
+    measure,
+  );
   const filters = getMeasureFilters(summaryQuery, measure);
   const filter = filters[0];
   const condition = describeConditions(summaryQuery, filters);
@@ -155,8 +157,7 @@ export function LegendFilterWrap({
   const [isRowHovered, setIsRowHovered] = useState(false);
   const [isLeadHovered, setIsLeadHovered] = useState(false);
   const [measure, setMeasure] = useState<Lib.ColumnMetadata>();
-  const summaryQuery =
-    Lib.stageCount(query) > SUMMARY_STAGE ? query : Lib.appendStage(query);
+  const summaryQuery = toSummaryQuery(query);
   const measures = getMeasures(summaryQuery);
   const pickedMeasure =
     measure ?? (measures.length === 1 ? measures[0] : undefined);
@@ -231,8 +232,11 @@ export function LegendFilterWrap({
                     >
                       <Text size="xs" fw="bold" c="inherit">
                         {
-                          Lib.displayInfo(summaryQuery, SUMMARY_STAGE, measure)
-                            .displayName
+                          Lib.displayInfo(
+                            summaryQuery,
+                            getSummaryStage(summaryQuery),
+                            measure,
+                          ).displayName
                         }
                       </Text>
                       <Text size="xs" c="inherit">
@@ -266,8 +270,11 @@ export function LegendFilterWrap({
           // The series legend doesn't name the measure, so the popover does.
           <Text fw="bold" px="lg" pt="lg">
             {
-              Lib.displayInfo(summaryQuery, SUMMARY_STAGE, pickedMeasure)
-                .displayName
+              Lib.displayInfo(
+                summaryQuery,
+                getSummaryStage(summaryQuery),
+                pickedMeasure,
+              ).displayName
             }
           </Text>
         )}
@@ -291,8 +298,11 @@ export function LegendFilterWrap({
               >
                 <Text size="sm" c="inherit">
                   {
-                    Lib.displayInfo(summaryQuery, SUMMARY_STAGE, measure)
-                      .displayName
+                    Lib.displayInfo(
+                      summaryQuery,
+                      getSummaryStage(summaryQuery),
+                      measure,
+                    ).displayName
                   }
                 </Text>
               </UnstyledButton>
@@ -323,17 +333,30 @@ function MeasureFilterPicker({
   return (
     <FilterPickerBody
       query={summaryQuery}
-      stageIndex={SUMMARY_STAGE}
+      stageIndex={getSummaryStage(summaryQuery)}
       column={measure}
       filter={filter}
       isNew={!filter}
       onBack={onBack}
       onChange={(clause) => {
-        const nextClause = toFilterClause(summaryQuery, SUMMARY_STAGE, clause);
+        const nextClause = toFilterClause(
+          summaryQuery,
+          getSummaryStage(summaryQuery),
+          clause,
+        );
         onChange(
           filter
-            ? Lib.replaceClause(summaryQuery, SUMMARY_STAGE, filter, nextClause)
-            : Lib.filter(summaryQuery, SUMMARY_STAGE, nextClause),
+            ? Lib.replaceClause(
+                summaryQuery,
+                getSummaryStage(summaryQuery),
+                filter,
+                nextClause,
+              )
+            : Lib.filter(
+                summaryQuery,
+                getSummaryStage(summaryQuery),
+                nextClause,
+              ),
         );
       }}
     />
@@ -346,20 +369,23 @@ function getMeasureFilters(
 ): Lib.FilterClause[] {
   const measureName = Lib.displayInfo(
     summaryQuery,
-    SUMMARY_STAGE,
+    getSummaryStage(summaryQuery),
     measure,
   ).name;
-  return Lib.filters(summaryQuery, SUMMARY_STAGE).filter((filter) => {
-    const column = Lib.numberFilterParts(
-      summaryQuery,
-      SUMMARY_STAGE,
-      filter,
-    )?.column;
-    return (
-      column != null &&
-      Lib.displayInfo(summaryQuery, SUMMARY_STAGE, column).name === measureName
-    );
-  });
+  return Lib.filters(summaryQuery, getSummaryStage(summaryQuery)).filter(
+    (filter) => {
+      const column = Lib.numberFilterParts(
+        summaryQuery,
+        getSummaryStage(summaryQuery),
+        filter,
+      )?.column;
+      return (
+        column != null &&
+        Lib.displayInfo(summaryQuery, getSummaryStage(summaryQuery), column)
+          .name === measureName
+      );
+    },
+  );
 }
 
 function removeFilters(
@@ -367,18 +393,28 @@ function removeFilters(
   filters: Lib.FilterClause[],
 ): Lib.Query {
   return filters.reduce(
-    (query, filter) => Lib.removeClause(query, SUMMARY_STAGE, filter),
+    (query, filter) =>
+      Lib.removeClause(query, getSummaryStage(summaryQuery), filter),
     summaryQuery,
   );
 }
 
-function describeConditions(query: Lib.Query, filters: Lib.FilterClause[]) {
-  return filters.map((filter) => describeCondition(query, filter)).join(", ");
+function describeConditions(
+  summaryQuery: Lib.Query,
+  filters: Lib.FilterClause[],
+) {
+  return filters
+    .map((filter) => describeCondition(summaryQuery, filter))
+    .join(", ");
 }
 
 /** "≥ 3", "between 3 and 10": the condition without the measure's name. */
-function describeCondition(query: Lib.Query, filter: Lib.FilterClause) {
-  const parts = Lib.numberFilterParts(query, SUMMARY_STAGE, filter);
+function describeCondition(summaryQuery: Lib.Query, filter: Lib.FilterClause) {
+  const parts = Lib.numberFilterParts(
+    summaryQuery,
+    getSummaryStage(summaryQuery),
+    filter,
+  );
   if (!parts) {
     return "";
   }
@@ -396,15 +432,41 @@ function describeCondition(query: Lib.Query, filter: Lib.FilterClause) {
 }
 
 function getMeasures(summaryQuery: Lib.Query): Lib.ColumnMetadata[] {
+  const rowsStage = getRowsStage(summaryQuery);
   const aggregationNames = new Set(
-    Lib.returnedColumns(summaryQuery, ROWS_STAGE)
-      .map((column) => Lib.displayInfo(summaryQuery, ROWS_STAGE, column))
+    Lib.returnedColumns(summaryQuery, rowsStage)
+      .map((column) => Lib.displayInfo(summaryQuery, rowsStage, column))
       .filter((info) => info.isAggregation)
       .map((info) => info.name),
   );
-  return Lib.filterableColumns(summaryQuery, SUMMARY_STAGE).filter((column) =>
+  return Lib.filterableColumns(
+    summaryQuery,
+    getSummaryStage(summaryQuery),
+  ).filter((column) =>
     aggregationNames.has(
-      Lib.displayInfo(summaryQuery, SUMMARY_STAGE, column).name,
+      Lib.displayInfo(summaryQuery, getSummaryStage(summaryQuery), column).name,
     ),
   );
+}
+
+/**
+ * The chart plots the last summary, so the legend filters the stage after
+ * it: with two summaries, that's the second one's measures.
+ */
+function getRowsStage(query: Lib.Query): number {
+  const stages = Array.from({ length: Lib.stageCount(query) }, (_, i) => i);
+  const aggregating = stages.filter(
+    (stage) => Lib.aggregations(query, stage).length > 0,
+  );
+  return aggregating.at(-1) ?? 0;
+}
+
+function getSummaryStage(summaryQuery: Lib.Query): number {
+  return getRowsStage(summaryQuery) + 1;
+}
+
+function toSummaryQuery(query: Lib.Query): Lib.Query {
+  return Lib.stageCount(query) > getSummaryStage(query)
+    ? query
+    : Lib.appendStage(query);
 }
