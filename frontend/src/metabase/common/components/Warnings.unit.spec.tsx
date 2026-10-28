@@ -8,22 +8,22 @@ const WARNINGS = ["Data truncated to 2 rows.", "Some values are missing."];
 const NEGATIVE_COLOR = "var(--mantine-color-feedback-negative-text)";
 
 type SetupOpts = {
-  warnings?: string[];
-  severity?: "warning" | "error";
   isClickable?: boolean;
+  severity?: "warning" | "error";
+  warnings?: string[];
 };
 
 function setup({
-  warnings = WARNINGS,
-  severity,
   isClickable = false,
+  severity,
+  warnings = WARNINGS,
 }: SetupOpts = {}) {
   const onClick = jest.fn<void, []>();
 
   renderWithProviders(
     <Warnings
-      warnings={warnings}
       severity={severity}
+      warnings={warnings}
       onClick={isClickable ? onClick : undefined}
     />,
   );
@@ -62,7 +62,7 @@ describe("Warnings", () => {
   });
 
   it("describes a clickable icon with its warnings and calls back on click", async () => {
-    const { onClick } = setup({ warnings: [WARNINGS[0]], isClickable: true });
+    const { onClick } = setup({ isClickable: true, warnings: [WARNINGS[0]] });
 
     const button = screen.getByRole("button", { name: "Warnings" });
     expect(button).toHaveAccessibleDescription(WARNINGS[0]);

@@ -74,13 +74,13 @@ export function QueryVisualization(props: QueryVisualizationProps) {
       {!isObjectDetail && (
         <Warnings
           className={S.warnings}
+          severity={isGoalWarningShown ? "error" : "warning"}
+          size={18}
           warnings={
             isGoalWarningShown
               ? [getGoalWarningMessage("goal"), ...warnings]
               : warnings
           }
-          severity={isGoalWarningShown ? "error" : "warning"}
-          size={18}
           onClick={isGoalWarningShown ? handleGoalWarningClick : undefined}
         />
       )}
