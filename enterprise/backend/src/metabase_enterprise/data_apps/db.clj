@@ -186,12 +186,6 @@
                                                       [:= :report_card.type "metric"]
                                                       [:= :collection.type collection/library-metrics-collection-type]]})))
 
-(mu/defn library-collection?
-  "Whether the collection with `collection-id` is the Library or one of its collections."
-  [collection-id :- [:maybe ::lib.schema.id/collection]]
-  (and (some? collection-id)
-       (t2/exists? :model/Collection :id collection-id :type [:in collection/library-collection-types])))
-
 (mu/defn external-table-ids :- [:set ::lib.schema.id/table]
   "Among `table-ids`, those of no Table published to the Library."
   [table-ids :- [:set {:min 1} ::lib.schema.id/table]]

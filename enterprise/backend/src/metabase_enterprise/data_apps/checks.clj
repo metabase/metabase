@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase.api.common :as api]
+   [metabase.collections.core :as collections]
    [metabase.data-apps.core :as data-apps]
    [metabase.data-apps.schema :as data-apps.schema]
    [metabase.lib-be.schema :as lib-be.schema]
@@ -16,7 +17,8 @@
    [metabase.parameters.params :as params]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -75,11 +77,16 @@
                                   (format-ids external))))))
   nil)
 
+(defn- in-library?
+  "Whether `entity` is in the Library or one of its collections."
+  [entity]
+  (contains? collections/library-collection-types (-> entity (t2/hydrate :collection) :collection :type)))
+
 (defn- read-checked-app-card
   "The card with `card-id`, after a read check; throws a 400 unless it is in `data-app`'s collection or in the Library."
   [data-app card-id]
   (let [card (api/read-check :model/Card card-id)]
-    (when-not (or (in-app-collection? data-app card) (data-apps.db/library-collection? (:collection_id card)))
+    (when-not (or (in-app-collection? data-app card) (in-library? card))
       (throw (data-app-error (tru "A data app can use only the cards in its own collection and in the Library, not the card {0}."
                                   (str card-id)))))
     card))
