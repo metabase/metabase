@@ -56,6 +56,12 @@ export type ExpressionBarProps = {
   onChange: (query: Lib.Query) => void;
   /** Sits flush inside a notebook cell: no borders, no outer padding. */
   isInNotebook?: boolean;
+  /** Pills after the expression, outside it: the summary's own filters. */
+  trailing?: ReactNode;
+  /** How deep the parentheses must nest before editing lays them out as rows. */
+  rowsFromNesting?: number;
+  /** AND / OR as small bordered circles, closer to the pills. */
+  hasRoundOps?: boolean;
 };
 
 const INDENT_REM = 1.5;
@@ -76,6 +82,9 @@ export function ExpressionBar({
   stageIndex,
   onChange,
   isInNotebook = false,
+  trailing,
+  rowsFromNesting = 1,
+  hasRoundOps = false,
 }: ExpressionBarProps) {
   const committedTokens = useMemo(
     () => readTokens(query, stageIndex),
@@ -94,6 +103,7 @@ export function ExpressionBar({
   const shouldRefocusRef = useRef(false);
   const flashed = useFlashedLabels(query, stageIndex, committedTokens);
   const [hasFocus, setHasFocus] = useState(false);
+  const isPointerInBarRef = useRef(false);
   const [openPillCount, setOpenPillCount] = useState(0);
 
   // External query changes (drills, examples) reset the draft; our own
@@ -125,7 +135,15 @@ export function ExpressionBar({
   const errorPosition = parsed.ok ? undefined : parsed.position;
   const parenDepths = useMemo(() => getParenDepths(tokens), [tokens]);
   const isExpanded = hasFocus || isOpen || openPillCount > 0;
-  const hasGroups = tokens.some((token) => token.type === "paren");
+  const nesting = Math.max(
+    0,
+    ...tokens.map((token, index) =>
+      token.type === "paren" && token.side === "open"
+        ? parenDepths[index] + 1
+        : 0,
+    ),
+  );
+  const hasGroups = nesting >= rowsFromNesting;
   const rowStart = (index: number) => {
     const isOpenParen = (token?: Token) =>
       token?.type === "paren" && token.side === "open";
@@ -306,7 +324,10 @@ export function ExpressionBar({
       (!currentTarget.contains(target) ||
         target.closest(`button, input, .${S.pill}, [${SLOT_ATTR}]`) != null);
     if (!isOnControl) {
-      moveCaret(tokens.length);
+      moveCaret(
+        getSlotNearPoint(currentTarget, event.clientX, event.clientY) ??
+          tokens.length,
+      );
     }
   };
 
@@ -318,7 +339,8 @@ export function ExpressionBar({
       trapFocus={false}
       returnFocus={false}
       transitionProps={{ duration: 0 }}
-      onChange={(opened) => !opened && close()}
+      // A click elsewhere in the bar only moves the caret; the popover stays.
+      onChange={(opened) => !opened && !isPointerInBarRef.current && close()}
     >
       <Popover.Target>
         {draftColumn ? (
@@ -396,8 +418,21 @@ export function ExpressionBar({
           [S.barInvalid]: !parsed.ok,
           [S.barExpanded]: isExpanded && hasGroups,
           [S.barNotebook]: isInNotebook,
+          [S.barRoundOps]: hasRoundOps,
         })}
         onClick={handleBarClick}
+        onMouseDown={(event) => {
+          isPointerInBarRef.current = true;
+          window.addEventListener(
+            "mouseup",
+            () => (isPointerInBarRef.current = false),
+            { once: true },
+          );
+          // Keep focus in the bar, so it doesn't fold mid-click and move the click target.
+          if (!(event.target instanceof HTMLInputElement)) {
+            event.preventDefault();
+          }
+        }}
         onFocus={(event) => {
           // The Metabot menu is an aside; focusing it shouldn't unfold the bar.
           if (
@@ -454,6 +489,20 @@ export function ExpressionBar({
             />,
           ]),
           ...rowStart(tokens.length),
+          // Before the end slot, so a click past the last pill puts the caret after them.
+          ...(trailing
+            ? [
+                // Like the Metabot menu, focusing these shouldn't unfold the bar.
+                <Box
+                  key="trailing"
+                  component="span"
+                  className={S.trailing}
+                  onFocus={(event) => event.stopPropagation()}
+                >
+                  {trailing}
+                </Box>,
+              ]
+            : []),
           caretIndex === tokens.length ? (
             <CaretSlot key="caret" index={caretIndex}>
               {caretView}
@@ -555,6 +604,31 @@ function Gap({ index, onClick }: { index: number; onClick: () => void }) {
       }}
     />
   );
+}
+
+/** The caret position on the clicked row, nearest horizontally. */
+function getSlotNearPoint(
+  bar: HTMLElement,
+  x: number,
+  y: number,
+): number | undefined {
+  const slots = Array.from(
+    bar.querySelectorAll<HTMLElement>(`[${SLOT_ATTR}]`),
+  ).map((element) => ({
+    index: Number(element.getAttribute(SLOT_ATTR)),
+    rect: element.getBoundingClientRect(),
+  }));
+  if (slots.length === 0) {
+    return undefined;
+  }
+  const distanceY = (rect: DOMRect) => Math.abs(rect.top + rect.height / 2 - y);
+  const rowDistance = Math.min(...slots.map((slot) => distanceY(slot.rect)));
+  const row = slots.filter(
+    (slot) => distanceY(slot.rect) <= rowDistance + slot.rect.height / 2,
+  );
+  return row.reduce((best, slot) =>
+    Math.abs(slot.rect.left - x) < Math.abs(best.rect.left - x) ? slot : best,
+  ).index;
 }
 
 /** The caret position on the row above or below, nearest horizontally. */
