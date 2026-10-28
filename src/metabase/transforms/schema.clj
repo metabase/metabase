@@ -81,7 +81,8 @@
    [:database {:optional true} [:maybe :int]]
    [:type [:= "table"]]
    [:schema {:optional true} [:maybe ms/NonBlankString]]
-   [:name :string]])
+   [:name :string]
+   [:target-incremental-strategy {:optional true} [:maybe ::target-incremental-strategy]]])
 
 (mr/def ::table-incremental-target
   [:map {:closed true}

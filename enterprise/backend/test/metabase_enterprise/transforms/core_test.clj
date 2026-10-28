@@ -50,7 +50,9 @@
                                    :database (mt/id)}}
                          :model/Transform {python-id :id}
                          {:source {:type            "python"
-                                   :source-database (mt/id)}
+                                   :source-database (mt/id)
+                                   :source-tables   []
+                                   :body            "def transform():\n    pass"}
                           :target {:type     "table"
                                    :name     (str "test_python_" (random-uuid))
                                    :database (mt/id)}}]
