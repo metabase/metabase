@@ -159,7 +159,7 @@
    action-id :- ::lib.schema.id/action]
   (when-not (in-app-collection? data-app (api/read-check :model/Action action-id))
     (throw (data-app-error (tru "A data app can run only the actions in its own collection, not the action {0}."
-                                action-id))))
+                                (str action-id)))))
   nil)
 
 (defenterprise-schema data-app-actions :- [:sequential ::actions.schema/action]
