@@ -37,6 +37,7 @@
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
+   [metabase.query-processor.util.persisted-cache :as qp.persisted]
    [metabase.request.core :as request]
    [metabase.system.core :as system]
    [metabase.test :as mt]
@@ -2570,3 +2571,25 @@
         (is (=? {:status :completed, :data {:is_sandboxed true}} result))
         (is (seq (mt/cols result)))
         (is (every? nil? (vals (col-fingerprints result))))))))
+
+(deftest ^:synchronized card-id->underlying-query-persisted-card-test
+  (testing "The query of a sandbox Card that is a persisted Model is a valid query"
+    (let [mp (lib.tu/mock-metadata-provider
+              (mt/metadata-provider)
+              {:cards [{:id                 1
+                        :type               :model
+                        :database-id        (mt/id)
+                        :dataset-query      (lib/query (mt/metadata-provider)
+                                                       (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))
+                        :lib/persisted-info {:active     true
+                                             :state      "persisted"
+                                             :table-name "model_1_venues"
+                                             :definition {:table-name        "model_1_venues"
+                                                          :field-definitions []}
+                                             :query-hash "hash"}}]})]
+      (mt/with-dynamic-fn-redefs [qp.persisted/can-substitute? (constantly true)]
+        (let [query (sandboxing/card-id->underlying-query mp 1)]
+          (is (=? {:stages [{:source-table (mt/id :venues)}]} query))
+          (testing "persistence is never substituted into a sandbox, so the query does not ask for it"
+            (is (not (contains? query :persisted-info/native)))
+            (is (not-any? :persisted-info/native (:stages query)))))))))
