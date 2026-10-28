@@ -3865,11 +3865,12 @@ function createPythonLibrary(path: string, source: string) {
 }
 
 function runPythonScriptAndWaitForSuccess() {
+  cy.intercept("POST", "/api/ee/transforms-python/test-run").as(
+    "pythonTestRun",
+  );
   getQueryEditor().findByTestId("run-button").click();
-
-  getQueryEditor()
-    .findByTestId("loading-indicator", { timeout: 60000 })
-    .should("not.exist");
+  // The backend waits up to 60 s for the Python runner to finish a test run.
+  cy.wait("@pythonTestRun", { timeout: 60_000 });
 
   H.DataStudio.Transforms.pythonResults().should("be.visible");
 }
