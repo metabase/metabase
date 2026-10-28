@@ -245,3 +245,66 @@
   flex-basis: 100%;
   height: 0;
 }
+
+/* Inside a notebook cell: fills the cell, padding included, so any click in it places the caret. */
+.barNotebook {
+  flex: 1;
+  align-self: stretch;
+  margin: -14px;
+  padding: 14px;
+  border: none;
+  row-gap: 0.5rem;
+}
+
+.barNotebookRoot {
+  display: flex;
+  flex: 1;
+  align-self: stretch;
+}
+
+.barNotebook .pill {
+  border-radius: 6px;
+}
+
+.notebookPillClose {
+  margin-left: 0.5rem;
+  flex: 0 0 auto;
+  opacity: 0.6;
+}
+
+/* The Metabot icon stays out of the way until the cell is hovered or focused. */
+.barNotebook .metabot {
+  opacity: 0;
+  transition: opacity 120ms;
+}
+
+.barNotebook:hover .metabot,
+.barNotebook:focus-within .metabot,
+.barNotebook .metabot:has([aria-expanded="true"]) {
+  opacity: 1;
+}
+
+/* A Summarize cell: click anywhere in it for the caret. */
+.typedCell {
+  gap: 0.5rem;
+  min-height: 3.5rem;
+  cursor: text;
+}
+
+/* The pill being built takes the notebook pill's shape, still tinted while it is a draft. */
+.barNotebook .typingPill {
+  margin: 0;
+  padding: 10px;
+  border-width: 2px;
+  border-radius: 6px;
+  font-weight: bold;
+}
+
+.barNotebook .typingColumn {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--mb-color-core-filter);
+  font-size: inherit;
+  line-height: inherit;
+}

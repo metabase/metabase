@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { type ComponentType, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
@@ -26,6 +26,25 @@ import { ExpressionBar } from "./ExpressionBar";
 
 const RESULTS_STAGE_INDEX = 0;
 
+type FilterBarProps = {
+  query: Lib.Query;
+  stageIndex: number;
+  onChange: (query: Lib.Query) => void;
+};
+
+type ExpressionBarNotebookProps = FilterCanvasProps & {
+  /** Replaces the default expression bar in every Filter step. */
+  FilterBar?: ComponentType<FilterBarProps>;
+  /** Replaces the Summarize step's cells, which it draws itself. */
+  SummarizeBar?: ComponentType<FilterBarProps>;
+  /** Edits stay in the notebook until Visualize hands them to the page. */
+  appliesOnVisualize?: boolean;
+};
+
+function DefaultFilterBar(props: FilterBarProps) {
+  return <ExpressionBar {...props} actionsPlacement="inline" />;
+}
+
 /**
  * The full notebook (Data, Filter, Summarize, a Filter on the summary, Sort,
  * Row limit, Visualize) built from the real notebook steps, except that every
@@ -33,7 +52,18 @@ const RESULTS_STAGE_INDEX = 0;
  * separate steps here, so each bar edits one stage and needs no inline
  * summary segment.
  */
-export function ExpressionBarNotebook({ query, onChange }: FilterCanvasProps) {
+export function ExpressionBarNotebook({
+  query,
+  onChange,
+  FilterBar = DefaultFilterBar,
+  SummarizeBar,
+  appliesOnVisualize = false,
+}: ExpressionBarNotebookProps) {
+  const [draftQuery, setDraftQuery] = useState(query);
+  useEffect(() => setDraftQuery(query), [query]);
+  const notebookQuery = appliesOnVisualize ? draftQuery : query;
+  const changeNotebookQuery = appliesOnVisualize ? setDraftQuery : onChange;
+
   const buildQuestion = useQuestionFromOptsBuilder();
   const reportTimezone = useSetting("report-timezone-long");
   const [openSteps, setOpenSteps] = useState<OpenSteps>({});
@@ -41,8 +71,8 @@ export function ExpressionBarNotebook({ query, onChange }: FilterCanvasProps) {
   const [isVisualized, setIsVisualized] = useState(false);
 
   const question = useMemo(
-    () => buildQuestion({ dataset_query: Lib.toJsQuery(query) }),
-    [buildQuestion, query],
+    () => buildQuestion({ dataset_query: Lib.toJsQuery(notebookQuery) }),
+    [buildQuestion, notebookQuery],
   );
   const steps = useMemo(() => {
     const database = question.database();
@@ -56,7 +86,7 @@ export function ExpressionBarNotebook({ query, onChange }: FilterCanvasProps) {
     nextQuery: Lib.Query,
     step: INotebookStep,
   ) => {
-    onChange(Lib.dropEmptyStages(nextQuery));
+    changeNotebookQuery(Lib.dropEmptyStages(nextQuery));
     setOpenSteps((current) => ({ ...current, [step.id]: false }));
   };
 
@@ -73,29 +103,49 @@ export function ExpressionBarNotebook({ query, onChange }: FilterCanvasProps) {
             updateQuery: (nextQuery: Lib.Query) =>
               handleStepChange(nextQuery, step),
           };
-          return step.type === "filter" ? (
-            <ExpressionFilterStep key={step.id} {...stepProps} />
-          ) : (
-            <NotebookStep key={step.id} {...stepProps} />
-          );
+          if (step.type === "filter") {
+            return (
+              <ExpressionFilterStep
+                key={step.id}
+                {...stepProps}
+                FilterBar={FilterBar}
+              />
+            );
+          }
+          if (step.type === "summarize" && SummarizeBar) {
+            return (
+              <ExpressionFilterStep
+                key={step.id}
+                {...stepProps}
+                FilterBar={SummarizeBar}
+                hasOwnCell
+              />
+            );
+          }
+          return <NotebookStep key={step.id} {...stepProps} />;
         })}
         <Stack gap="xl" align="flex-start">
           <Button
             variant="filled"
             size="lg"
             miw={220}
-            onClick={() => setIsVisualized(true)}
+            onClick={() => {
+              if (appliesOnVisualize) {
+                onChange(draftQuery);
+              }
+              setIsVisualized(true);
+            }}
           >
             {t`Visualize`}
           </Button>
           {isVisualized && (
             <Box w="100%">
               <QueryResults
-                query={query}
+                query={notebookQuery}
                 stageIndex={RESULTS_STAGE_INDEX}
                 display={display}
                 onChange={(nextQuery, nextDisplay) => {
-                  onChange(nextQuery);
+                  changeNotebookQuery(nextQuery);
                   setDisplay(nextDisplay);
                 }}
               />
@@ -112,6 +162,8 @@ type ExpressionFilterStepProps = {
   isLastStep: boolean;
   openStep: (id: string) => void;
   updateQuery: (query: Lib.Query) => Promise<void>;
+  FilterBar: ComponentType<FilterBarProps>;
+  hasOwnCell?: boolean;
 };
 
 /**
@@ -123,6 +175,8 @@ function ExpressionFilterStep({
   isLastStep,
   openStep,
   updateQuery,
+  FilterBar,
+  hasOwnCell = false,
 }: ExpressionFilterStepProps) {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const { title, color } = getStepConfig(step.type);
@@ -135,6 +189,13 @@ function ExpressionFilterStep({
       (getStepConfig(a.type).priority ?? 0),
   );
   const canPreview = step.previewQuery != null;
+  const bar = (
+    <FilterBar
+      query={step.query}
+      stageIndex={step.stageIndex}
+      onChange={updateQuery}
+    />
+  );
 
   return (
     <Box mb="md" pb="md" data-testid={step.testID}>
@@ -148,14 +209,7 @@ function ExpressionFilterStep({
       </Box>
       <Flex align="center">
         <Box flex={`1 1 ${(11 / 12) * 100}%`} maw="75rem">
-          <NotebookCell color={color}>
-            <ExpressionBar
-              query={step.query}
-              stageIndex={step.stageIndex}
-              onChange={updateQuery}
-              actionsPlacement="inline"
-            />
-          </NotebookCell>
+          {hasOwnCell ? bar : <NotebookCell color={color}>{bar}</NotebookCell>}
         </Box>
         <Box flex={`1 1 ${(1 / 12) * 100}%`} ml="sm">
           {canPreview && !isPreviewOpen && (

@@ -14,12 +14,21 @@ import {
 import { StackedCanvas } from "./chart-filters/StackedCanvas";
 import { ChartHandlesCanvas } from "./chart-handles/ChartHandlesCanvas";
 import { ExpressionBarDataZone } from "./expression-bar-rows/DataZone";
+import {
+  type ExpressionBarProps,
+  ExpressionBar as RowsExpressionBar,
+} from "./expression-bar-rows/ExpressionBar";
+import { SummarizeBar } from "./expression-bar-rows/SummarizeBar";
 import { ExpressionBarNotebook as UnifiedExpressionBarNotebook } from "./expression-bar-unified/ExpressionBarNotebook";
 import {
   ExpressionBarSplitPrototype,
   ExpressionBarSummaryMenuPrototype,
   ExpressionBarUnifiedPrototype,
 } from "./expression-bar-unified/ExpressionBarPrototype";
+
+/** The chill-mode rows bar, flush inside a notebook Filter cell. */
+const NotebookRowsBar = (props: ExpressionBarProps) =>
+  createElement(RowsExpressionBar, { ...props, isInNotebook: true });
 
 /** Iteration 3: the expression bar with the stages folded into one stream. */
 export const ITERATION_3_DIRECTIONS: FilterDirection[] = [
@@ -40,7 +49,13 @@ export const ITERATION_3_DIRECTIONS: FilterDirection[] = [
         LegendWrap: LegendFilterWrap,
         AxisTitle: AxisTitleFilter,
       }),
-    NotebookCanvas: UnifiedExpressionBarNotebook,
+    NotebookCanvas: (props) =>
+      createElement(UnifiedExpressionBarNotebook, {
+        ...props,
+        FilterBar: NotebookRowsBar,
+        SummarizeBar,
+        appliesOnVisualize: true,
+      }),
     initialExample: REALISTIC_EXAMPLES[0],
   },
   {

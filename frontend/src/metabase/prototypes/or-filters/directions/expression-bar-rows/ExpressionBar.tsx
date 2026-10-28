@@ -15,6 +15,7 @@ import { t } from "ttag";
 import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
 import { FilterPickerBody } from "metabase/querying/filters/components/FilterPicker/FilterPickerBody";
+import { NotebookCellItem } from "metabase/querying/notebook/components/NotebookCell";
 import {
   ActionIcon,
   Box,
@@ -53,6 +54,8 @@ export type ExpressionBarProps = {
   query: Lib.Query;
   stageIndex: number;
   onChange: (query: Lib.Query) => void;
+  /** Sits flush inside a notebook cell: no borders, no outer padding. */
+  isInNotebook?: boolean;
 };
 
 const INDENT_REM = 1.5;
@@ -72,6 +75,7 @@ export function ExpressionBar({
   query,
   stageIndex,
   onChange,
+  isInNotebook = false,
 }: ExpressionBarProps) {
   const committedTokens = useMemo(
     () => readTokens(query, stageIndex),
@@ -92,10 +96,16 @@ export function ExpressionBar({
   const [hasFocus, setHasFocus] = useState(false);
   const [openPillCount, setOpenPillCount] = useState(0);
 
-  // External query changes (drills, examples) reset the draft.
+  // External query changes (drills, examples) reset the draft; our own
+  // notebook commits keep the caret where it is.
+  const isSelfCommitRef = useRef(false);
   useEffect(() => {
     setTokens(committedTokens);
-    setCaret(committedTokens.length);
+    if (isSelfCommitRef.current) {
+      isSelfCommitRef.current = false;
+    } else {
+      setCaret(committedTokens.length);
+    }
   }, [committedTokens]);
 
   const focusInput = () => {
@@ -181,6 +191,17 @@ export function ExpressionBar({
   const handlePickFilter = (filterable: Lib.Filterable) => {
     insert(filterToken(toFilterClause(query, stageIndex, filterable)));
   };
+
+  // The notebook has no Apply: every valid expression goes straight to its draft query.
+  const lastAutoCommitRef = useRef<Token[]>();
+  useEffect(() => {
+    const isNew = tokens !== lastAutoCommitRef.current;
+    if (isInNotebook && isDirty && parsed.ok && isNew) {
+      lastAutoCommitRef.current = tokens;
+      isSelfCommitRef.current = true;
+      onChange(writeTokens(query, stageIndex, tokens));
+    }
+  }, [isInNotebook, isDirty, parsed.ok, query, stageIndex, tokens, onChange]);
 
   const commit = () => {
     if (parsed.ok && isDirty) {
@@ -277,8 +298,14 @@ export function ExpressionBar({
     }
   };
 
+  // Anywhere in the bar that isn't a token or a control puts the caret at the end.
   const handleBarClick = (event: MouseEvent<HTMLDivElement>) => {
-    if (event.target === event.currentTarget) {
+    const { target, currentTarget } = event;
+    const isOnControl =
+      target instanceof Element &&
+      (!currentTarget.contains(target) ||
+        target.closest(`button, input, .${S.pill}, [${SLOT_ATTR}]`) != null);
+    if (!isOnControl) {
       moveCaret(tokens.length);
     }
   };
@@ -362,12 +389,13 @@ export function ExpressionBar({
   );
 
   return (
-    <Box>
+    <Box className={cx({ [S.barNotebookRoot]: isInNotebook })}>
       <Box
         ref={barRef}
         className={cx(S.bar, {
           [S.barInvalid]: !parsed.ok,
           [S.barExpanded]: isExpanded && hasGroups,
+          [S.barNotebook]: isInNotebook,
         })}
         onClick={handleBarClick}
         onFocus={(event) => {
@@ -405,6 +433,7 @@ export function ExpressionBar({
               query={query}
               stageIndex={stageIndex}
               token={token}
+              isInNotebook={isInNotebook}
               depth={parenDepths[index]}
               hasError={index === errorPosition}
               isFlashed={
@@ -446,7 +475,7 @@ export function ExpressionBar({
               {parsed.error}
             </Text>
           )}
-          {isDirty && (
+          {isDirty && !isInNotebook && (
             <Button
               size="compact-sm"
               variant="filled"
@@ -456,7 +485,9 @@ export function ExpressionBar({
               {t`Apply`}
             </Button>
           )}
-          <MetabotMenu />
+          <Box className={S.metabot}>
+            <MetabotMenu />
+          </Box>
         </Group>
       </Box>
     </Box>
@@ -490,12 +521,8 @@ function MetabotMenu() {
         </ActionIcon>
       </Menu.Target>
       <Menu.Dropdown {...markAttr}>
-        <Menu.Item leftSection={<Icon name="filter" />}>
-          {t`Generate filters`}
-        </Menu.Item>
-        <Menu.Item leftSection={<Icon name="document" />}>
-          {t`Summarize`}
-        </Menu.Item>
+        <Menu.Item>{t`Generate filters`}</Menu.Item>
+        <Menu.Item>{t`Summarize`}</Menu.Item>
       </Menu.Dropdown>
     </Menu>
   );
@@ -678,6 +705,7 @@ type TokenViewProps = {
   query: Lib.Query;
   stageIndex: number;
   token: Token;
+  isInNotebook: boolean;
   depth: number;
   hasError: boolean;
   isFlashed: boolean;
@@ -690,6 +718,7 @@ function TokenView({
   query,
   stageIndex,
   token,
+  isInNotebook,
   depth,
   hasError,
   isFlashed,
@@ -731,6 +760,7 @@ function TokenView({
       query={query}
       stageIndex={stageIndex}
       clause={token.clause}
+      isInNotebook={isInNotebook}
       className={cx(errorClass, { [S.flash]: isFlashed })}
       onReplace={(filterable) =>
         onReplace(filterToken(toFilterClause(query, stageIndex, filterable)))
@@ -745,6 +775,7 @@ type FilterTokenViewProps = {
   query: Lib.Query;
   stageIndex: number;
   clause: Lib.FilterClause;
+  isInNotebook: boolean;
   className?: string;
   onReplace: (filterable: Lib.Filterable) => void;
   onRemove: () => void;
@@ -755,6 +786,7 @@ function FilterTokenView({
   query,
   stageIndex,
   clause,
+  isInNotebook,
   className,
   onReplace,
   onRemove,
@@ -778,12 +810,29 @@ function FilterTokenView({
     >
       <Popover.Target>
         <Box component="span" className={cx(S.pill, className)}>
-          <FilterPill
-            onClick={() => setIsOpened((opened) => !opened)}
-            onRemoveClick={onRemove}
-          >
-            {getFilterLabel(query, stageIndex, clause)}
-          </FilterPill>
+          {isInNotebook ? (
+            <NotebookCellItem
+              color="core-filter"
+              onClick={() => setIsOpened((opened) => !opened)}
+            >
+              {getFilterLabel(query, stageIndex, clause)}
+              <Icon
+                className={S.notebookPillClose}
+                name="close"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onRemove();
+                }}
+              />
+            </NotebookCellItem>
+          ) : (
+            <FilterPill
+              onClick={() => setIsOpened((opened) => !opened)}
+              onRemoveClick={onRemove}
+            >
+              {getFilterLabel(query, stageIndex, clause)}
+            </FilterPill>
+          )}
         </Box>
       </Popover.Target>
       <Popover.Dropdown data-testid="filter-picker-dropdown">
