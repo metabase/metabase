@@ -6,7 +6,6 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
-   [metabase.models.humanization :as humanization]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.sync.analyze :as sync.analyze]
@@ -18,6 +17,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]
+   [metabase.warehouse-schema.settings :as warehouse-schema.settings]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp])
   (:import
@@ -87,9 +88,8 @@
 
 (mu/defn- add-extra-metadata!
   "Add extra metadata like Field base-type, etc."
-  [{:keys [table-definitions], :as _database-definition} :- [:map
-                                                             [:table-definitions {:optional true} [:maybe [:sequential :map]]]]
-   db                                                    :- :map]
+  [{:keys [table-definitions], :as _database-definition} :- tx/DatabaseDefinitionSchema
+   db                                                    :- :metabase.warehouses.schema/database]
   (doseq [{:keys [table-name], :as table-definition} table-definitions]
     (let [table (delay (or (tx/metabase-instance table-definition db)
                            (throw (Exception. (format "Table '%s' not loaded from definition:\n%s\nFound:\n%s"
@@ -157,7 +157,7 @@
                            (:native base-type)
 
                            (and (map? base-type) (contains? base-type :natives))
-                           (get-in base-type [:natives driver])
+                           (get-in base-type [:natives (u/qualified-name driver)])
 
                            :else
                            ;; Use fake-sync-database-type to get the type the database reports
@@ -177,7 +177,7 @@
                            (some? fk) :type/FK
                            :else      semantic-type)]
     {:name              field-name
-     :display_name      (humanization/name->human-readable-name :simple field-name)
+     :display_name      (warehouse-schema.humanization/name->human-readable-name :simple field-name)
      :database_type     database-type
      :base_type         actual-base-type
      :effective_type    (or effective-type actual-base-type)
@@ -199,7 +199,7 @@
         table-row      {:db_id               db-id
                         :name                sync-table-name
                         :schema              schema
-                        :display_name        (humanization/name->human-readable-name :simple table-name)
+                        :display_name        (warehouse-schema.humanization/name->human-readable-name :simple table-name)
                         :description         table-comment
                         :active              true
                         :visibility_type     nil
@@ -276,12 +276,12 @@
     ;; Only run fingerprinting for :full scan, matching the real sync behavior
     (when (= scan :full)
       (log/info "Running real fingerprinting for :full scan after fake sync")
-      (sync.analyze/analyze-db! db))))
+      (sync.analyze/analyze-db! (:id db)))))
 
 ;;; ----------------------------------------------- End Fake Sync -----------------------------------------------
 
 (defn- sync-newly-created-database! [driver {:keys [database-name], :as database-definition} connection-details db]
-  (assert (= (humanization/humanization-strategy) :simple)
+  (assert (= (warehouse-schema.settings/humanization-strategy) :simple)
           "Humanization strategy is not set to the default value of :simple! Metadata will be broken!")
   (try
     (u/with-timeout sync-timeout-ms
@@ -303,7 +303,7 @@
               ;; Redshift and BigQuery list tables from metadata that lags the tables themselves, so a table dropped by
               ;; a concurrent CI job can still appear in the listing and then 404 when sync reads it.
               (binding [sync-util/*log-exceptions-and-continue?* (contains? #{:redshift :bigquery-cloud-sdk} driver)]
-                (sync/sync-database! db {:scan scan}))
+                (sync/sync-database! (:id db) {:scan scan}))
               ;; add extra metadata for fields
               (try
                 (add-extra-metadata! database-definition db)
@@ -417,13 +417,12 @@
       (u/with-timeout create-database-timeout-ms
         ;; ALWAYS CREATE DATABASE AND LOAD DATA AS UTC! Unless you like broken tests.
         (test.tz/with-system-timezone-id! "UTC"
-          (tx/create-db! driver dbdef)))))
-  (tx/track-dataset driver dbdef))
+          (tx/create-db! driver dbdef))))))
 
 (mu/defn- create-and-sync-Database!
   "Add DB object to Metabase DB. Return an instance of `:model/Database`."
   [driver                                           :- :keyword
-   {:keys [database-name], :as database-definition} :- [:map [:database-name :string]]]
+   {:keys [database-name], :as database-definition} :- tx/DatabaseDefinitionSchema]
   (let [connection-details (tx/dbdef->connection-details driver :db database-definition)
         db                 (first (t2/insert-returning-instances! :model/Database
                                                                   (merge

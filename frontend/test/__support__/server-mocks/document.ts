@@ -12,6 +12,10 @@ export function setupDocumentEndpoints(doc: Document) {
   fetchMock.delete(`path:/api/document/${doc.id}`, {});
 }
 
+export function setupCreateDocumentEndpoint(doc: Document) {
+  fetchMock.post("path:/api/document", doc);
+}
+
 export function setupListPublicDocumentsEndpoint(
   publicDocuments: GetPublicDocument[],
 ) {

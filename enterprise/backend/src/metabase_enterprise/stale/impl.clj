@@ -1,5 +1,6 @@
 (ns metabase-enterprise.stale.impl
   (:require
+   [metabase-enterprise.stale.db :as stale.db]
    [metabase.staleness.core :as staleness]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
@@ -7,19 +8,20 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private FindStaleContentArgs
-  [:map
-   [:collection-ids [:set {:doc "The set of collection IDs to search for stale content."} [:maybe :int]]]
+  [:map {:closed true}
+   [:collection-ids [:or
+                     {:doc "Collection IDs to search: a set (a nil member means the root), or :all for instance-wide."}
+                     [:= :all]
+                     [:set [:maybe :int]]]]
    [:cutoff-date [:time/local-date {:doc "The cutoff date for stale content."}]]
    [:limit  [:maybe {:doc "The limit for pagination."} :int]]
    [:offset [:maybe {:doc "The offset for pagination."} :int]]
    [:sort-column  [:enum {:doc "The column to sort by."} :name :last_used_at]]
    [:sort-direction  [:enum {:doc "The direction to sort by."} :asc :desc]]
-   [:models {:optional true} [:set {:doc "The set of models to search for stale content."} :keyword]]])
-
-(defn- sort-column [column]
-  (case column
-    :name :%lower.name
-    :last_used_at :last_used_at))
+   [:models {:optional true} [:set {:doc "The set of models to search for stale content."} :keyword]]
+   [:include-columns {:optional true}
+    [:set {:doc "Extra union columns to return on each row (rows carry only :id and :model by default)."}
+     [:enum :name :last_used_at :collection_id]]]])
 
 (defn- queries [{:keys [models] :or {models #{:model/Card :model/Dashboard}} :as args}]
   ;; Ensure each model's namespace is loaded so its `find-stale-query` method is registered before we
@@ -28,20 +30,6 @@
   (when-let [unsupported (seq (remove #(get-method staleness/find-stale-query %) models))]
     (throw (ex-info (str "No staleness method registered for: " (vec unsupported)) {})))
   (map #(staleness/find-stale-query % args) models))
-
-(mu/defn ^:private rows-query [{:keys [limit offset] :as args} :- FindStaleContentArgs]
-  (cond-> {:select [:id :model]
-           :from [[^:allow-subquery {:union-all (queries args)} :dummy_alias]]
-           :order-by [[(sort-column (:sort-column args))
-                       (:sort-direction args)]]}
-    (some? limit) ;; limit
-    (assoc :limit limit)
-    (some? offset) ;; offset
-    (assoc :offset offset)))
-
-(mu/defn ^:private total-query [args :- FindStaleContentArgs]
-  {:select [[:%count.* :count]]
-   :from [[^:allow-subquery {:union-all (queries args)} :dummy_alias]]})
 
 (mu/defn find-candidates :- [:map
                              [:rows [:sequential [:map
@@ -52,8 +40,8 @@
 
   Arguments are defined by [[FindStaleContentArgs]]:
 
-  - `collection-ids`: the set of collection IDs to look for stale content in. Non-recursive, the exact set you pass in
-  will be searched
+  - `collection-ids`: the set of collection IDs to look for stale content in (a nil member means root-level
+  content), or `:all` to search the whole instance. Non-recursive, the exact set you pass in will be searched
 
   - `cutoff-date`: if something was last accessed before this date, it is 'stale'
 
@@ -63,17 +51,24 @@
 
   - `sort-direction`: `:asc` or `:desc`
 
+  - `include-columns`: extra union columns (`:name`, `:last_used_at`, `:collection_id`) to return on each
+  row; rows carry only `:id` and `:model` by default
+
   Returns a map containing two keys,
 
   - `:rows` (a collection of maps containing an `:id` and `:model` field, like `{:id 1 :model :model/Card}`), and
 
   - `:total` (the total count of stale elements that could be found if you iterated through all pages)
   "
-  [{:keys [collection-ids] :as args} :- FindStaleContentArgs]
-  (when (contains? collection-ids :root) (throw (ex-info "not implemented." {:collection-ids collection-ids})))
-  {:rows (into []
-               (comp
-                (map #(select-keys % [:id :model]))
-                (map (fn [v] (update v :model #(keyword "model" %)))))
-               (t2/query (rows-query args)))
-   :total (:count (t2/query-one (total-query args)))})
+  [{:keys [collection-ids limit offset sort-column sort-direction include-columns] :as args} :- FindStaleContentArgs]
+  (when (and (set? collection-ids) (contains? collection-ids :root))
+    (throw (ex-info "not implemented." {:collection-ids collection-ids})))
+  (let [union-queries (queries args)]
+    {:rows (into []
+                 (comp
+                  (map #(select-keys % (into [:id :model] include-columns)))
+                  (map (fn [v] (update v :model #(keyword "model" %)))))
+                 (stale.db/stale-content-rows union-queries
+                                              (into [:id :model] (sort include-columns))
+                                              sort-column sort-direction limit offset))
+     :total (stale.db/stale-content-count union-queries)}))

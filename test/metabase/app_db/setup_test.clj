@@ -1,15 +1,25 @@
-(ns metabase.app-db.setup-test
+(ns ^:mb/app-db-migrations-test metabase.app-db.setup-test
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.connection-pool-setup :as mdb.connection-pool-setup]
+   [metabase.app-db.core :as mdb]
    [metabase.app-db.data-source :as mdb.data-source]
+   [metabase.app-db.db :as mdb.db]
+   [metabase.app-db.encryption :as mdb.encryption]
    [metabase.app-db.liquibase :as liquibase]
+   [metabase.app-db.liquibase.versions :as versions]
+   [metabase.app-db.setting :as mdb.setting]
    [metabase.app-db.setup :as mdb.setup]
    [metabase.app-db.test-util :as mdb.test-util]
+   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.test :as mt]
+   [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
+   [metabase.util.encryption-test :as encryption-test]
    [toucan2.core :as t2])
   (:import
    (liquibase.changelog ChangeSet)))
@@ -100,8 +110,10 @@
         (is (= :done
                (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) {:create-sample-content? true})))
         (testing "migrations are executed in the order they are defined"
+          ;; the vNN.legacy-version-tracking marker is bookkeeping written by the migration run, not a changeset
           (is (= (mdb.test-util/all-liquibase-ids false driver/*driver* conn)
-                 (t2/select-pks-vec (liquibase/changelog-table-name conn) {:order-by [[:orderexecuted :asc]]}))))))))
+                 (remove #(re-find #"legacy-version-tracking$" %)
+                         (t2/select-pks-vec (liquibase/changelog-table-name conn) {:order-by [[:orderexecuted :asc]]})))))))))
 
 (deftest setup-db-no-auto-migrate-test
   (mt/test-drivers #{:h2 :mysql :postgres}
@@ -153,22 +165,147 @@
              (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source)))))))
 
 (deftest downgrade-detection-test
+  ;; Simulates an existing instance that predates version tracking: it has no databasechangelog_version table, so
+  ;; downgrade detection lazily backfills the recorded version from the changeset ids. A fresh DB is used per version
+  ;; because `update-to-changelog-id` runs migrations without the recording listener -- the backfill snapshots the
+  ;; state at first read, so reusing one DB across versions would not reflect later migrations.
   (mt/test-drivers #{:h2 :mysql :postgres}
-    (mt/with-temp-empty-app-db [conn driver/*driver*]
-      ;; migrate to v45
+    (doseq [version [45 46]]
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (update-to-changelog-id (format "v%d.00-001" version) conn)
+        ;; pretend this binary is v0.44 -- older than the v45/v46 the DB was migrated to, so it must be a downgrade
+        (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "v0.44.0")]
+          (is (thrown-with-msg?
+               Exception (re-pattern (format "You must run `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate down` from version %d." version))
+               (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source)))))))))
+
+(deftest downgrade-detection-recorded-version-test
+  (testing "downgrade detection goes off the recorded version of the last deployment; a synthetic (dev) version warns"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source))
+        (liquibase/with-liquibase [liquibase conn]
+          (let [db             (.getDatabase liquibase)
+                versions-table (versions/versions-table-name)
+                ;; an arbitrary released major to play "this binary's version" -- every recorded version below is
+                ;; fabricated relative to it (999 above it, the dev version further above), so its exact value is irrelevant
+                binary-major   64]
+            (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag (format "v0.%d.0" binary-major))]
+              (testing "a recorded development version blocks a real binary, pointing at the dev tooling"
+                (jdbc/execute! {:connection conn} [(format "UPDATE %s SET metabase_version = '%s'" versions-table versions/dev-version)])
+                (is (= versions/dev-version (versions/last-deployment-version conn db)))
+                (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo #"(?s)development build.*dev\.migrate"
+                     (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source)))))
+              (testing "a recorded real version newer than this binary is a genuine downgrade and blocks"
+                (jdbc/execute! {:connection conn} [(format "UPDATE %s SET metabase_version = 'x.999.0'" versions-table)])
+                (is (= "x.999.0" (versions/last-deployment-version conn db)))
+                (is (thrown-with-msg?
+                     Exception #"migrate down` from version 999"
+                     (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source)))))
+              (testing "does not throw when the recorded version is not newer than this binary"
+                (jdbc/execute! {:connection conn} [(format "UPDATE %s SET metabase_version = 'x.%d.0'" versions-table binary-major)])
+                (is (nil? (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source))))))))))))
+
+(deftest noop-boot-of-newer-binary-preserves-downgrade-test
+  (testing "a newer binary that boots without running any migrations must not block the previous binary from booting"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source))
+        (liquibase/with-liquibase [_liquibase conn]
+          (let [versions-table (versions/versions-table-name)
+                ;; an arbitrary released major playing the installing binary's version; the newer binaries below are
+                ;; fabricated relative to it, so its exact value is irrelevant
+                latest         64]
+            ;; make the recorded install version deterministic: this DB was installed by v0.<latest>
+            (jdbc/execute! {:connection conn}
+                           [(format "UPDATE %s SET metabase_version = 'x.%d.0'" versions-table latest)])
+            (testing "a no-op boot of the NEXT major is recorded as history, but does not move the schema's version"
+              (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag (format "v0.%d.0" (inc latest)))]
+                (is (nil? (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source))))
+                (mdb.setup/migrate! (mdb.connection/data-source) :up))
+              (is (= 1 (count (jdbc/query {:connection conn}
+                                          [(format "SELECT 1 FROM %s WHERE metabase_version LIKE 'x.%d.%%'"
+                                                   versions-table (inc latest))])))
+                  "the newer major's boot is captured in history"))
+            (testing "the previous binary still boots"
+              (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag (format "v0.%d.0" latest))]
+                (is (nil? (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source))))))
+            (testing "even a much newer boot row on the deployment cannot mask the version that ran it"
+              (let [last-dep (:deployment_id (first (jdbc/query {:connection conn}
+                                                                [(format "SELECT deployment_id FROM %s LIMIT 1" versions-table)])))]
+                (versions/record-deployment-version! conn last-dep (format "x.%d.0" (+ latest 2)) false))
+              (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag (format "v0.%d.0" latest))]
+                (is (nil? (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source)))
+                    "the stamp does not block the binary whose major actually ran the deployment")))))))))
+
+(deftest downgrade-check-creates-persistent-version-table-test
+  (testing "the version table lazily created during downgrade detection persists (committed) for other connections"
+    ;; This guards the in-memory \"already created\" tracking in ensure-databasechangelog-versions-table!: if the
+    ;; CREATE ran on a pooled, autocommit-off connection and were rolled back on close, a later connection that trusts
+    ;; the in-memory flag would skip creation and then fail. Most relevant on Postgres (transactional DDL).
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        ;; simulate an existing instance (has changesets, no version table yet)
+        (update-to-changelog-id "v45.00-001" conn)
+        ;; latest-available >> 45, so this does NOT throw; it lazily creates + backfills the version table
+        (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source))
+        (testing "version table exists and is populated when read from a separate connection"
+          (is (seq (jdbc/query {:datasource (mdb.connection/data-source)}
+                               [(format "SELECT deployment_id, metabase_version FROM %s"
+                                        (versions/versions-table-name))]))))))))
+
+(deftest migrations-sql-includes-version-tracking-test
+  (testing "the manual-upgrade SQL (`migrate print`) records the version bookkeeping"
+    ;; Regression: the version row and the vNN.legacy-version-tracking marker are written by the exec listener, which
+    ;; only runs when Metabase itself executes the migrations. A manual `migrate print` + apply-the-SQL upgrade left
+    ;; neither, silently disabling downgrade detection for both older binaries (which read the marker) and newer ones
+    ;; (which read databasechangelog_version).
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        ;; an existing pre-version-tracking install partway through history, with plenty of unrun changesets
+        (update-to-changelog-id "v45.00-001" conn)
+        (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "v0.64.0")]
+          (liquibase/with-liquibase [liquibase conn]
+            (let [sql (liquibase/migrations-sql liquibase)]
+              (testing "backfills the pre-upgrade version for the existing install"
+                (is (re-find #"(?i)INSERT (IGNORE )?INTO databasechangelog_version[^;]+x\.45\.0\.0" sql)))
+              (testing "records the upgrading version"
+                (is (re-find #"(?i)INSERT (IGNORE )?INTO databasechangelog_version[^;]+x\.64\.0" sql)))
+              (testing "ends with the marker older binaries read safely as the newest row (a versioned major's own ids
+                        give them its major, so it is the low position marker)"
+                (is (re-find #"v56\.legacy-version-tracking" sql)))
+              (testing "the version table is created by the printed SQL, not on the live database"
+                (is (re-find #"(?i)CREATE TABLE IF NOT EXISTS databasechangelog_version" sql))
+                (is (false? (versions/versions-table-exists? conn))
+                    "`migrate print` must not mutate the database"))))))))
+  (testing "a changeset that the printed SQL re-runs has its first run recorded before Liquibase's UPDATE moves it"
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (mt/with-temp-empty-app-db [conn driver/*driver*]
+        (with-redefs [config/mb-version-info   (assoc config/mb-version-info :tag "v0.66.0")
+                      liquibase/changelog-file "versionless-roc-run1.yaml"]
+          (mdb/migrate! (mdb/data-source) :up))
+        (with-redefs [config/mb-version-info   (assoc config/mb-version-info :tag "v0.66.1")
+                      liquibase/changelog-file "versionless-roc-run3.yaml"]
+          (liquibase/with-liquibase [liquibase conn]
+            (let [sql     (liquibase/migrations-sql liquibase)
+                  capture (some-> (re-find #"(?i)INSERT INTO databasechangelog_first_run[^;]+'roc_view'" sql) u/lower-case-en)
+                  update  (re-find #"(?i)UPDATE [^;]*databasechangelog[^;]+roc_view" sql)]
+              (is (some? capture))
+              (is (some? update) "sanity: Liquibase re-runs the view")
+              (is (< (str/index-of (u/lower-case-en sql) capture) (str/index-of sql update)))
+              (is (re-find #"(?i)CREATE TABLE IF NOT EXISTS databasechangelog_first_run" sql))))))))
+  (testing "a dev build's SQL records the dev version and a v9999 marker, like any other version"
+    (mt/with-temp-empty-app-db [conn :h2]
       (update-to-changelog-id "v45.00-001" conn)
-      ;; the latest changeSet in `000_legacy_migrations.yaml` is `v44.00-044`. We can simulate a downgrade to that
-      ;; version by telling Liquibase that's the migrations file.
-      (mt/with-dynamic-fn-redefs [liquibase/decide-liquibase-file (fn [& _args] "liquibase_legacy_migrations.yaml")]
-        (is (thrown-with-msg?
-             Exception #"You must run `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate down` from version 45."
-             (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source)))))
-      ;; check that the error correctly reports the version to run `downgrade` from
-      (update-to-changelog-id "v46.00-001" conn)
-      (mt/with-dynamic-fn-redefs [liquibase/decide-liquibase-file (fn [& _args] "liquibase_legacy_migrations.yaml")]
-        (is (thrown-with-msg?
-             Exception #"You must run `java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar migrate down` from version 46."
-             (#'mdb.setup/error-if-downgrade-required! (mdb.connection/data-source))))))))
+      (with-redefs [config/mb-version-info (assoc config/mb-version-info :tag "vLOCAL_DEV")]
+        (liquibase/with-liquibase [liquibase conn]
+          (let [sql (liquibase/migrations-sql liquibase)]
+            (is (re-find #"(?i)INSERT INTO databasechangelog_version" sql))
+            (is (re-find #"'x\.9999\.0\.0'" sql))
+            (is (re-find #"v9999\.legacy-version-tracking" sql))
+            (is (false? (versions/versions-table-exists? conn))
+                "computing the dev synthetic version on the print path must not create the table")))))))
 
 (deftest changesets-from-later-version-test
   (mt/test-drivers #{:h2 :mysql :postgres}
@@ -186,15 +323,33 @@
                                      VALUES (?, 'test', 'test.yaml', CURRENT_TIMESTAMP, ?, 'EXECUTED', 'fake')"
                                     table)
                             id (+ 99990 i)]))
+          ;; ... plus a version-less changeset applied by a later deployment: nothing in its id reveals its version,
+          ;; only its deployment's recorded ran-version does
+          (jdbc/execute! db-conn
+                         [(format "INSERT INTO %s (id, author, filename, dateexecuted, orderexecuted, exectype, md5sum, deployment_id)
+                                   VALUES ('zz_versionless_cs', 'test', 'migrations/2026/test.yaml', CURRENT_TIMESTAMP, 99993, 'EXECUTED', 'fake', 'futuredep')"
+                                  table)])
+          ;; ... plus an OLD changeset that merely re-ran (RERAN) under that later deployment (an edited runOnChange
+          ;; changeset): it is not "from" the later version and must not be listed
+          (jdbc/execute! db-conn
+                         [(format "INSERT INTO %s (id, author, filename, dateexecuted, orderexecuted, exectype, md5sum, deployment_id)
+                                   VALUES ('zz_reran_cs', 'test', 'migrations/2026/test.yaml', CURRENT_TIMESTAMP, 99994, 'RERAN', 'fake', 'futuredep')"
+                                  table)])
+          (versions/record-deployment-version! conn "futuredep" "x.999.1" true)
           (try
-            (let [later (liquibase/changesets-from-later-version conn (.getDatabase liquibase) 997 999)]
-              (testing "returns exactly the fake changeset IDs in execution order"
-                (is (= fake-ids later))))
+            (let [later (versions/changesets-from-later-version conn (.getDatabase liquibase) 997 999)]
+              (testing "returns the versioned AND version-less changeset IDs in execution order"
+                (is (= (conj fake-ids "zz_versionless_cs") later)))
+              (testing "re-run (RERAN) rows of the later deployment are not listed"
+                (is (not (some #{"zz_reran_cs"} later)))))
             (finally
               ;; Clean up fake rows
-              (doseq [id fake-ids]
+              (doseq [id (conj fake-ids "zz_versionless_cs" "zz_reran_cs")]
                 (jdbc/execute! db-conn
-                               [(format "DELETE FROM %s WHERE id = ?" table) id])))))))))
+                               [(format "DELETE FROM %s WHERE id = ?" table) id]))
+              (jdbc/execute! db-conn
+                             [(format "DELETE FROM %s WHERE deployment_id = 'futuredep'"
+                                      (versions/versions-table-name))]))))))))
 
 ;; `delete!` below is ok in a parallel test since it's not actually executing anything
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
@@ -226,3 +381,111 @@
                         {:delete [:field]
                          :from   [[:metabase_field :field]]
                          :where  [:= :field.id 0]}))))))
+
+(deftest setup-db-leaves-settings-alone-without-their-key-test
+  (testing "setup-db! fills in setting.details, except in an encryption state where the rows cannot be read"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? false)
+      (let [ciphertext (encryption-test/with-secret-key "ABCDEFGH12345678"
+                         (mdb/encrypt-db (mdb/db-type) (mdb/data-source) nil)
+                         (t2/insert! :model/Setting {:key "site-name", :value "Sad Can"})
+                         (t2/select-one-fn :value_with_aad :setting :key "site-name"))]
+        (is (encryption/possibly-encrypted-string? ciphertext))
+        (testing "with no key the state is :missing-key, and a repair would only wrap the ciphertext as a value"
+          (reset! (:status mdb.connection/*application-db*) ::not-set-up)
+          (mdb/setup-db! :create-sample-content? false :manage-encryption-state? false)
+          (is (= ciphertext (t2/select-one-fn :value_with_aad :setting :key "site-name"))))))))
+
+(deftest setup-db-warns-about-settings-from-an-older-version-test
+  (testing "a setting row written by a version without value_with_aad is reported once and then filled in"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? false)
+      (is (not (mdb.db/unmigrated-settings?)))
+      (t2/query {:insert-into :setting, :values [{:key "site-name", :value "Sad Can"}]})
+      (is (mdb.db/unmigrated-settings?))
+      (reset! (:status mdb.connection/*application-db*) ::not-set-up)
+      (mt/with-log-messages-for-level [messages :warn]
+        (mdb/setup-db! :create-sample-content? false)
+        (is (=? [{:level :warn, :message #"(?s)Some settings were saved by an older version of Metabase.*"}]
+                (filter #(re-find #"older version" (:message %)) (messages)))))
+      (is (not (mdb.db/unmigrated-settings?)))
+      (is (= "Sad Can" (t2/select-one-fn :value_with_aad :setting :key "site-name"))))))
+
+(deftest setup-fresh-db-with-legacy-encryption-disabled-test
+  (testing "with MB_DISABLE_LEGACY_STARTUP_ENCRYPTION and a key, a fresh database starts: nothing is legacy, so nothing is refused or warned about"
+    (mt/with-temp-env-var-value! [mb-disable-legacy-startup-encryption "true"]
+      (mt/with-temp-empty-app-db [_conn :h2]
+        (encryption-test/with-secret-key "ABCDEFGH12345678"
+          (is (mdb.encryption/legacy-startup-encryption-disabled?))
+          (mt/with-log-messages-for-level [messages :warn]
+            (is (= :done (mdb/setup-db! :create-sample-content? true)))
+            (mdb/encrypt-plaintext-columns!)
+            (is (empty? (filter #(re-find #"older version|legacy values" (:message %)) (messages)))))
+          (is (= :valid (mdb/encryption-check-status)))
+          (is (not (mdb.db/unmigrated-settings?)))
+          (is (= ["E-commerce Insights"] (t2/select-fn-vec :name :report_dashboard)) "sample content was created"))))))
+
+(deftest setup-db-refuses-settings-from-an-older-version-when-legacy-encryption-disabled-test
+  (testing "with MB_DISABLE_LEGACY_STARTUP_ENCRYPTION and a key, a setting row without value_with_aad refuses startup"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? false)
+      (encryption-test/with-secret-key "ABCDEFGH12345678"
+        (mdb/encrypt-db (mdb/db-type) (mdb/data-source) nil)
+        (t2/query {:insert-into :setting, :values [{:key "site-name", :value "Sad Can"}]})
+        (is (mdb.db/unmigrated-settings?))
+        (mt/with-temp-env-var-value! [mb-disable-legacy-startup-encryption "true"]
+          (reset! (:status mdb.connection/*application-db*) ::not-set-up)
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                #"Some settings were saved by an older version of Metabase .* MB_DISABLE_LEGACY_STARTUP_ENCRYPTION is set"
+                                (mdb/setup-db! :create-sample-content? false)))
+          (is (mdb.db/unmigrated-settings?) "nothing was converted"))
+        (testing "unset again, setup converts them"
+          (reset! (:status mdb.connection/*application-db*) ::not-set-up)
+          (is (= :done (mdb/setup-db! :create-sample-content? false)))
+          (is (not (mdb.db/unmigrated-settings?))))))
+    (testing "without a key there is nothing to encrypt, so the setting is converted with a warning as usual"
+      (mt/with-temp-empty-app-db [_conn :h2]
+        (mdb/setup-db! :create-sample-content? false)
+        (t2/query {:insert-into :setting, :values [{:key "site-name", :value "Sad Can"}]})
+        (is (mdb.db/unmigrated-settings?))
+        (mt/with-temp-env-var-value! [mb-disable-legacy-startup-encryption "true"]
+          (reset! (:status mdb.connection/*application-db*) ::not-set-up)
+          (is (= :done (mdb/setup-db! :create-sample-content? false)))
+          (is (not (mdb.db/unmigrated-settings?)))
+          (is (= "Sad Can" (t2/select-one-fn :value_with_aad :setting :key "site-name"))))))))
+
+(deftest migrate-settings-decides-by-decrypting-test
+  (testing "the value_with_aad backfill treats a value as encrypted only if it decrypts, and copes with one that encrypts to nothing"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? false)
+      (encryption-test/with-secret-key "ABCDEFGH12345678"
+        (mdb/encrypt-db (mdb/db-type) (mdb/data-source) nil)
+        (let [shaped (str (apply str (repeat 86 "a")) "==")]
+          (is (encryption/possibly-encrypted-string? shaped))
+          (t2/query {:insert-into :setting, :values [{:key "shaped", :value shaped}
+                                                     {:key "blank", :value (encryption/encrypt "")}]})
+          (reset! (:status mdb.connection/*application-db*) ::not-set-up)
+          (is (= :done (mdb/setup-db! :create-sample-content? false)))
+          (testing "a plaintext value that merely looks like ciphertext is a value, not skipped"
+            (is (= shaped (encryption/maybe-decrypt (t2/select-one-fn :value_with_aad :setting :key "shaped")
+                                                    {:aad (mdb.setting/setting-aad "shaped")}))))
+          (testing "an encrypted blank value has nothing to store, and is written as NULL rather than failing"
+            (is (nil? (t2/select-one-fn :value_with_aad :setting :key "blank")))))))))
+
+(deftest encryption-check-status-falls-back-to-value-test
+  (testing "the sentinel is read from `value`, whatever `value_with_aad` holds -- an older version rewrites only `value`"
+    (mt/with-temp-empty-app-db [_conn :h2]
+      (mdb/setup-db! :create-sample-content? false)
+      (encryption-test/with-secret-key "ABCDEFGH12345678"
+        (mdb/encrypt-db (mdb/db-type) (mdb/data-source) nil)
+        (is (= :valid (mdb/encryption-check-status)))
+        (testing "an authenticated value left under a key a rotation on an older version has since replaced"
+          (let [old-key (encryption/secret-key->hash "12345678ABCDEFGH")]
+            (t2/update! :setting :key "encryption-check"
+                        {:value_with_aad (encryption/encrypt (str (random-uuid))
+                                                             {:secret-key old-key
+                                                              :aad        (mdb.setting/setting-aad "encryption-check")})})
+            (is (= :valid (mdb/encryption-check-status)))))
+        (testing "the unencrypted marker an older version's remove-encryption writes to value alone"
+          (t2/update! :setting :key "encryption-check" {:value "unencrypted"})
+          (is (= :absent (mdb/encryption-check-status))))))))

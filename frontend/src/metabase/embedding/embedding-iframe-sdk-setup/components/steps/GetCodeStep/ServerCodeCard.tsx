@@ -21,9 +21,9 @@ export const ServerCodeCard = ({
   serverSnippetData,
   onCopy,
 }: ServerCodeCardProps) => (
-  <Card p="md">
+  <Card p="lg">
     <Flex align="baseline" justify="space-between">
-      <Text size="lg" fw="bold" mb="md">
+      <Text size="lg" fw="bold" mb="lg">
         {t`Server code`}
       </Text>
 

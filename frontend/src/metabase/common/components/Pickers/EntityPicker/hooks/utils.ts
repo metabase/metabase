@@ -5,9 +5,11 @@ import { PERSONAL_COLLECTIONS } from "metabase/common/collections/constants";
 import { allCollectionModels } from "metabase/common/components/Pickers/utils";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { DispatchFn } from "metabase/redux";
-import type { CollectionNamespace } from "metabase-types/api";
+import { mergeLazily } from "metabase/utils/merge-lazily";
+import type { CollectionNamespace, DataApp } from "metabase-types/api";
 
-import type { OmniPickerCollectionItem } from "../types";
+import { DATA_APPS_ROOT_ID } from "../constants";
+import type { OmniPickerCollectionItem, OmniPickerDataAppItem } from "../types";
 
 const getTransformsRootCollectionItem = ({
   namespace,
@@ -28,6 +30,20 @@ const getTransformsRootCollectionItem = ({
   return null;
 };
 
+export const getDataAppsRootItem = (): OmniPickerCollectionItem => ({
+  model: "collection",
+  id: DATA_APPS_ROOT_ID,
+  name: t`Data apps`,
+  location: "/",
+  can_write: false,
+});
+
+export const getDataAppItem = (dataApp: DataApp): OmniPickerDataAppItem => ({
+  model: "data-app",
+  id: dataApp.id,
+  name: dataApp.display_name,
+});
+
 export const getOurAnalytics = (): OmniPickerCollectionItem => ({
   model: "collection",
   id: "root",
@@ -38,14 +54,16 @@ export const getOurAnalytics = (): OmniPickerCollectionItem => ({
   namespace: null,
 });
 
-export const personalCollectionsRoot: OmniPickerCollectionItem = {
-  ...PERSONAL_COLLECTIONS,
-  can_write: false,
-  model: "collection",
-  location: "/",
-  here: ["collection"],
-  below: allCollectionModels,
-};
+export const personalCollectionsRoot: OmniPickerCollectionItem = mergeLazily(
+  PERSONAL_COLLECTIONS,
+  {
+    can_write: false,
+    model: "collection" as const,
+    location: "/",
+    here: ["collection" as const],
+    below: allCollectionModels,
+  },
+);
 
 export const getRootCollectionItem = async ({
   namespace,
@@ -85,6 +103,19 @@ export const getRootCollectionItem = async ({
       name: t`SQL Snippets`,
       here: ["collection", "snippet"],
       below: ["collection", "snippet"],
+    };
+  }
+
+  if (namespace === "data-actions") {
+    return {
+      model: "collection",
+      id: "root",
+      namespace: "data-actions",
+      location: "/",
+      can_write: canWrite,
+      name: t`Data actions`,
+      here: ["collection", "action"],
+      below: ["collection", "action"],
     };
   }
 

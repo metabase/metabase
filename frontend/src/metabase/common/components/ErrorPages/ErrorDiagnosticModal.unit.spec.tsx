@@ -4,8 +4,8 @@ import fetchMock from "fetch-mock";
 
 import { setupBugReportEndpoints } from "__support__/server-mocks/bug-report";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import {
   createMockCard,
   createMockDatasetData,

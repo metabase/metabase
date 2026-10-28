@@ -29,6 +29,7 @@ import {
   useCurrentSearchScope,
   useGetLastCollection,
 } from "../../hooks/use-current-search-scope";
+import { getDataAppsRootItem } from "../../hooks/utils";
 import { isSelectedItem, useGetEntityPickerIcon } from "../../utils";
 
 export const SearchResults = ({
@@ -57,7 +58,7 @@ export const SearchResults = ({
 
   if (isLoading) {
     return (
-      <Box h="100%" w="40rem" p="md">
+      <Box h="100%" w="40rem" p="lg">
         <DelayedSkeleton />
       </Box>
     );
@@ -75,7 +76,7 @@ export const SearchResults = ({
   return (
     <VirtualizedList
       Wrapper={({ children, ...props }) => (
-        <Box py="md" {...props}>
+        <Box py="lg" {...props}>
           {children}
         </Box>
       )}
@@ -88,7 +89,7 @@ export const SearchResults = ({
         return (
           <Box
             key={`${item.model}-${item.id}`}
-            pb="xs"
+            pb="xxs"
             px="sm"
             data-testid="result-item"
             data-model-type={item.model}
@@ -165,6 +166,10 @@ const getItemText = (item: OmniPickerItem) => {
     return "";
   }
 
+  if (item.model === "data-app") {
+    return getDataAppsRootItem().name;
+  }
+
   if (isMeasure(item)) {
     return item.table_display_name ?? item.table_name;
   }
@@ -210,7 +215,7 @@ const LocationInfo = ({
   }
 
   return (
-    <Flex gap="xs" align="center">
+    <Flex gap="xxs" align="center">
       {iconProps && <Icon {...iconProps} size={12} />}
       <Text
         size="sm"
@@ -253,10 +258,10 @@ export function SearchScopeSelector() {
     <Flex
       justify="space-between"
       align="center"
-      px="md"
+      px="lg"
       py="sm"
       bg="background_page-secondary"
-      mb="xs"
+      mb="xxs"
       data-testid="search-scope-selector"
     >
       <Text>{t`Where to search:`}</Text>

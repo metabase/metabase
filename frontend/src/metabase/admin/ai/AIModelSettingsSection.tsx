@@ -1,9 +1,11 @@
 import { t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
-import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { LlmModelPicker } from "metabase/metabot";
 import { useSetting } from "metabase/settings";
+import {
+  AdminSettingInput,
+  SettingsSection,
+} from "metabase/settings-components";
 import { Stack } from "metabase/ui";
 
 export function AIModelSettingsSection({ id }: { id?: string }) {
@@ -15,7 +17,7 @@ export function AIModelSettingsSection({ id }: { id?: string }) {
       title={t`Models`}
       description={t`Pick which model each AI feature runs on. Models come from the providers you've connected.`}
     >
-      <Stack gap="lg">
+      <Stack gap="xl">
         <LlmModelPicker
           settingKey="llm-metabot-provider"
           label={t`Default model`}

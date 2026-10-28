@@ -1,5 +1,9 @@
 import { useEffect } from "react";
 
+import {
+  isHostReactVersionSupported,
+  useLogUnsupportedReactVersion,
+} from "embedding-sdk-bundle/lib/host-react-version";
 import { useMetabaseProviderPropsStore } from "embedding-sdk-bundle/lib/provider-props-store";
 import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";
 import {
@@ -7,7 +11,7 @@ import {
   isSdkPackageCompatibleWithSdkBundle,
 } from "embedding-sdk-shared/lib/version-utils";
 
-export const useLogVersionInfo = () => {
+const useLogVersionInfoOnSupportedReact = () => {
   const {
     state: { props },
   } = useMetabaseProviderPropsStore();
@@ -52,3 +56,7 @@ export const useLogVersionInfo = () => {
     }
   }, [allowConsoleLog, sdkPackageVersion, sdkBundleVersion]);
 };
+
+export const useLogVersionInfo = isHostReactVersionSupported()
+  ? useLogVersionInfoOnSupportedReact
+  : useLogUnsupportedReactVersion;

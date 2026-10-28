@@ -3,10 +3,12 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { getActionDisplayType, isActionDashCard } from "metabase/actions/utils";
 import { getMetricSeriesWithDefaultDisplay } from "metabase/common/utils/card";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 import CS from "metabase/css/core/index.css";
 import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions/parameters";
-import { getDashboardClickActionMode } from "metabase/dashboard/click-behavior/mode";
+import { dashboardClickActionMode } from "metabase/dashboard/click-behavior/mode";
 import { useDashboardContext } from "metabase/dashboard/context";
 import { useClickBehaviorData } from "metabase/dashboard/hooks";
 import { useResponsiveParameterList } from "metabase/dashboard/hooks/use-responsive-parameter-list";
@@ -15,11 +17,16 @@ import {
   getDashcardData,
 } from "metabase/dashboard/selectors";
 import {
+  getIsDashCardTimelineEventsEnabled,
+  useDashCardTimelineEvents,
+  useReportDashCardTimelineEventsEnabled,
+} from "metabase/dashboard/timeline-events";
+import {
   getVirtualCardType,
   isDashcardAccessRestricted,
 } from "metabase/dashboard/utils";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
+import { useMetadataProvider } from "metabase/metadata-store";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { Path } from "metabase/router";
 import { useNavigate } from "metabase/router";
@@ -34,7 +41,7 @@ import type { LoadingViewProps } from "metabase/visualizations/components/Visual
 import {
   LEGEND_LABEL_FONT_SIZE,
   LEGEND_LABEL_FONT_WEIGHT,
-} from "metabase/visualizations/components/legend/LegendCaption";
+} from "metabase/visualizations/components/legend/constants";
 import type {
   CardSlownessStatus,
   ClickObject,
@@ -55,7 +62,6 @@ import {
   isCartesianChart,
 } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
 import type {
   Card,
@@ -84,11 +90,15 @@ import {
 import { CollapsibleDashboardParameterList } from "../CollapsibleDashboardParameterList";
 
 import { ClickBehaviorSidebarOverlay } from "./ClickBehaviorSidebarOverlay/ClickBehaviorSidebarOverlay";
+import { DashCardFilterMenu } from "./DashCardFilterMenu/DashCardFilterMenu";
 import { DashCardMenu } from "./DashCardMenu/DashCardMenu";
 import { DashCardParameterMapper } from "./DashCardParameterMapper/DashCardParameterMapper";
 import S from "./DashCardVisualization.module.css";
 import { getDashcardTokenId, getDashcardUuid } from "./dashcard-ids";
-import type { DashCardOnChangeCardAndRunHandler } from "./types";
+import type {
+  DashCardGetCardHref,
+  DashCardOnChangeCardAndRunHandler,
+} from "./types";
 import {
   getCardsFromSeries,
   getMissingColumnsFromVisualizationSettings,
@@ -123,8 +133,8 @@ interface DashCardVisualizationProps {
   dashcard: DashboardCard;
   series: DashCardSeries;
   question: Question | null;
-  metadata: Metadata;
   getHref?: () => string | undefined;
+  getCardHref?: DashCardGetCardHref;
 
   gridSize: {
     width: number;
@@ -160,12 +170,14 @@ interface DashCardVisualizationProps {
 // This is done to add the `getExtraDataForClick` prop.
 // We need that to pass relevant data along with the clicked object.
 
+const SCALAR_DISPLAYS = new Set<string>(["scalar", "smartscalar"]);
+
 export function DashCardVisualization({
   dashcard,
   series: rawSeries,
   question,
-  metadata,
   getHref,
+  getCardHref,
   gridSize,
   gridItemWidth,
   totalNumGridCols,
@@ -189,7 +201,7 @@ export function DashCardVisualization({
     cardTitled,
     dashboard,
     dashcardMenu,
-    getClickActionMode,
+    clickActionMode,
     isEditing = false,
     isFullscreen = false,
     isEditingParameter,
@@ -244,13 +256,18 @@ export function DashCardVisualization({
     }
   }, [dashcard, rawSeries]);
 
+  // The metric's own database, which is the only one this component resolves.
+  const metadataProvider = useMetadataProvider(
+    rawSeries?.[0]?.json_query?.database ?? null,
+  );
+
   const untranslatedSeries: DashCardSeries | VisualizerSeries = useMemo(() => {
     if (!dashcard || !rawSeries || rawSeries.length === 0) {
       return rawSeries;
     }
 
     if (!isVisualizerDashboardCard(dashcard)) {
-      return getMetricSeriesWithDefaultDisplay(rawSeries, metadata);
+      return getMetricSeriesWithDefaultDisplay(rawSeries, metadataProvider);
     }
 
     const visualizerEntity = dashcard.visualization_settings.visualization;
@@ -292,7 +309,7 @@ export function DashCardVisualization({
         name: dashcard.card.name,
         description: dashcard.card.description,
         display: display ?? DEFAULT_VISUALIZER_DISPLAY,
-        visualization_settings: settings,
+        visualization_settings: _.omit(settings, "click_behavior"),
         dataset_query: STRUCTURED_QUERY_TEMPLATE,
       },
       _.omit(dashcard.visualization_settings, "visualization"),
@@ -339,7 +356,7 @@ export function DashCardVisualization({
     }
 
     return series;
-  }, [rawSeries, dashcard, datasets, metadata]);
+  }, [rawSeries, dashcard, datasets, metadataProvider]);
 
   const series = PLUGIN_CONTENT_TRANSLATION.useTranslateSeries<
     DashCardSeriesItem | VisualizerSeriesItem
@@ -374,7 +391,7 @@ export function DashCardVisualization({
 
         return (
           <Flex align="center" justify="center" h="100%">
-            <Title className={S.VirtualDashCardOverlayText} order={4} p="md">
+            <Title className={S.VirtualDashCardOverlayText} order={4} p="lg">
               {placeholderText}
             </Title>
           </Flex>
@@ -435,6 +452,17 @@ export function DashCardVisualization({
     [onChangeCardAndRun, findCardById],
   );
 
+  const getNextCardHref = useMemo(() => {
+    if (!getCardHref) {
+      return;
+    }
+
+    return (nextCard: SeriesCard) => {
+      const previousCard = findCardById(nextCard.id);
+      return previousCard ? getCardHref({ nextCard, previousCard }) : undefined;
+    };
+  }, [getCardHref, findCardById]);
+
   const onOpenQuestion = useCallback(
     (cardId: CardId | null) => {
       const card = findCardById(cardId);
@@ -471,6 +499,9 @@ export function DashCardVisualization({
     return settings["card.title"] ?? series?.[0].card.name ?? "";
   }, [series]);
 
+  const display = series?.[0]?.card.display;
+  const isScalarCard = display != null && SCALAR_DISPLAYS.has(display);
+
   const fontFamily = useSelector((state) =>
     getSetting(state, "application-font"),
   );
@@ -486,6 +517,35 @@ export function DashCardVisualization({
       // Bigger buffer space to account for varying chart padding
       bufferSpace: 100,
     });
+
+  const {
+    isEnabled: isTimelineEventsEnabled,
+    timelineEvents,
+    timelineEventsVisibility,
+    selectedTimelineEventIds,
+    onOpenTimelines,
+    onSelectTimelineEvents,
+    onDeselectTimelineEvents,
+    onTimelineEventsShown,
+  } = useDashCardTimelineEvents(dashcard);
+  const isChartTimelineEventsEnabled = useSelector((state) =>
+    getIsDashCardTimelineEventsEnabled(state, dashcard.id),
+  );
+  const handleTimelineEventsEnabledChange =
+    useReportDashCardTimelineEventsEnabled(dashcard.id);
+  const withTimelineEvents =
+    isTimelineEventsEnabled && isChartTimelineEventsEnabled;
+
+  // A 403 means the viewer may not see the card's data, so its filters stay hidden too.
+  const hasViewAccess = useMemo(() => {
+    const cardId = dashcard.card_id ?? dashcard.card?.id;
+    const cardResult = cardId ? datasets?.[cardId] : undefined;
+    const errorStatus =
+      cardResult?.error && typeof cardResult.error === "object"
+        ? cardResult.error.status
+        : undefined;
+    return !cardResult || errorStatus !== 403;
+  }, [dashcard, datasets]);
 
   const actionButtons = useMemo(() => {
     const cardId = dashcard.card_id ?? dashcard.card?.id;
@@ -505,15 +565,13 @@ export function DashCardVisualization({
         result,
         canEdit: !isVisualizerCard,
         openUnderlyingQuestionItems,
+        withTimelineEvents,
       });
 
-    const errorStatus =
-      cardResult?.error && typeof cardResult.error === "object"
-        ? cardResult.error.status
-        : undefined;
-    const hasViewAccess = !cardResult || errorStatus !== 403;
-
-    const showInlineParams = inlineParameters.length > 0 && hasViewAccess;
+    // Number and Trend cards have no header row, so their filters render in
+    // the leading slot instead of here.
+    const showInlineParams =
+      inlineParameters.length > 0 && hasViewAccess && !isScalarCard;
 
     if (!showMenu && !showInlineParams) {
       return null;
@@ -538,6 +596,7 @@ export function DashCardVisualization({
             result={result}
             dashcard={dashcard}
             canEdit={!isVisualizerCard}
+            withTimelineEvents={withTimelineEvents}
             onEditVisualization={
               isVisualizerCard ? onEditVisualization : undefined
             }
@@ -553,6 +612,7 @@ export function DashCardVisualization({
     dashcardMenu,
     datasets,
     isEditing,
+    withTimelineEvents,
     inlineParameters,
     onChangeCardAndRun,
     onEditVisualization,
@@ -561,7 +621,17 @@ export function DashCardVisualization({
     titleMenuItems,
     shouldCollapseList,
     parameterListRef,
+    isScalarCard,
+    hasViewAccess,
   ]);
+
+  const cardLevelFilters = useMemo(() => {
+    if (!isScalarCard || inlineParameters.length === 0 || !hasViewAccess) {
+      return null;
+    }
+
+    return <DashCardFilterMenu parameters={inlineParameters} />;
+  }, [hasViewAccess, inlineParameters, isScalarCard]);
 
   const { getExtraDataForClick } = useClickBehaviorData({
     dashcardId: dashcard.id,
@@ -586,6 +656,15 @@ export function DashCardVisualization({
     <DashCardLoadingView {...loadingViewProps} display={question?.display()} />
   );
 
+  // An action button fills its borderless card and has its own rounded outline,
+  // so clipping it to the card's radius would cut its corners off.
+  const isActionButton =
+    isActionDashCard(dashcard) &&
+    getActionDisplayType(
+      dashcard.visualization_settings.actionDisplayType,
+      dashcard.action,
+    ) === "button";
+
   return (
     <div
       className={cx(S.VisualizationContainer, CS.flexFull, CS.fullHeight, {
@@ -597,7 +676,7 @@ export function DashCardVisualization({
         <Visualization
           className={cx(S.Visualization, CS.flexFull, {
             [CS.overflowAuto]: visualizationOverlay,
-            [CS.overflowHidden]: !visualizationOverlay,
+            [CS.overflowHidden]: !visualizationOverlay && !isActionButton,
           })}
           dashboard={dashboard ?? undefined}
           dashcard={dashcard}
@@ -608,9 +687,9 @@ export function DashCardVisualization({
               ? rawSeries
               : undefined
           }
-          metadata={metadata}
-          mode={getClickActionMode ?? getDashboardClickActionMode}
+          mode={clickActionMode ?? dashboardClickActionMode}
           getHref={getHref}
+          getCardHref={getNextCardHref}
           gridSize={gridSize}
           totalNumGridCols={totalNumGridCols}
           headerIcon={headerIcon}
@@ -628,6 +707,7 @@ export function DashCardVisualization({
           isEditingParameter={isEditingParameter}
           isMobile={isMobile}
           actionButtons={actionButtons}
+          cardLevelFilters={cardLevelFilters}
           replacementContent={visualizationOverlay}
           getExtraDataForClick={getExtraDataForClick}
           transformClickObject={transformClickObject}
@@ -640,9 +720,16 @@ export function DashCardVisualization({
           renderLoadingView={renderLoadingView}
           titleMenuItems={titleMenuItems}
           errorMessageOverride={visualizerErrMsg}
+          timelineEvents={timelineEvents}
+          timelineEventsVisibility={timelineEventsVisibility}
+          selectedTimelineEventIds={selectedTimelineEventIds}
+          onOpenTimelines={onOpenTimelines}
+          onSelectTimelineEvents={onSelectTimelineEvents}
+          onDeselectTimelineEvents={onDeselectTimelineEvents}
+          onTimelineEventsShown={onTimelineEventsShown}
+          onTimelineEventsEnabledChange={handleTimelineEventsEnabledChange}
           enableEntityNavigation={enableEntityNavigation}
           onSameOriginNavigation={onSameOriginNavigation}
-          autoAdjustSettings
         />
       </EmbeddingEntityContextProvider>
     </div>

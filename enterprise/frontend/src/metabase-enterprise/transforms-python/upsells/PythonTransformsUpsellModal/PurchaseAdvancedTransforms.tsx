@@ -68,7 +68,7 @@ export const PurchaseAdvancedTransforms = ({
 
   return (
     <>
-      <Stack gap="lg">
+      <Stack gap="xl">
         {perRunStr &&
           (freeUnitsStr ? (
             <Text fw="bold" lh="sm">
@@ -82,7 +82,7 @@ export const PurchaseAdvancedTransforms = ({
         <div>
           <Button
             variant="filled"
-            size="md"
+            size="lg"
             onClick={handleCloudPurchase}
             loading={isPurchasing}
             px="3rem"

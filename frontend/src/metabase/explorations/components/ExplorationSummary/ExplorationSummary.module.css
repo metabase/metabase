@@ -2,12 +2,11 @@
   height: 100%;
   width: 23rem;
   flex-shrink: 0;
-  background-color: var(--mb-color-background-secondary);
-  border-left: 1px solid var(--mb-color-border);
+  border-left: 1px solid var(--mb-color-border-neutral);
   overflow-y: auto;
 }
 
 .commentsSidebar {
   width: 23rem;
-  border-left: 1px solid var(--mb-color-border);
+  border-left: 1px solid var(--mb-color-border-neutral);
 }

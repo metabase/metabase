@@ -4,8 +4,8 @@
   justify-content: center;
   height: 1rem;
   min-height: 1rem;
-  padding: 0 var(--mantine-spacing-xs);
-  border-radius: var(--mantine-radius-xs);
+  padding: 0 var(--mantine-spacing-xxs);
+  border-radius: var(--mantine-radius-xxs);
   color: var(--mb-color-text-brand);
   font-size: 0.75rem;
   font-weight: 500;

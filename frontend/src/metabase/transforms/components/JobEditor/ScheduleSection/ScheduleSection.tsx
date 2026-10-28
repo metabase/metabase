@@ -51,13 +51,13 @@ export function ScheduleSection({
       label={t`Schedule`}
       description={t`Configure when this job should run.`}
     >
-      <Box px="xl" py="lg">
+      <Box px="xxl" py="xl">
         <Box display="contents" component="fieldset" disabled={readOnly}>
           <ScheduleWidget job={job} onChangeSchedule={onScheduleChange} />
         </Box>
       </Box>
       <Divider />
-      <Group px="xl" py="md" justify="space-between">
+      <Group px="xxl" py="lg" justify="space-between">
         <RunStatus
           run={job?.last_run ?? null}
           neverRunMessage={t`This job hasn’t been run before.`}

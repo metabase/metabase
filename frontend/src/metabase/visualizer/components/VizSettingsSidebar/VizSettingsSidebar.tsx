@@ -1,6 +1,6 @@
 import { forwardRef, useCallback, useMemo } from "react";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Center } from "metabase/ui";
 import { BaseChartSettings } from "metabase/visualizations/components/ChartSettings";

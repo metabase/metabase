@@ -3,6 +3,7 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.internal-stats.data-apps :as sut]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.core :as t2]))
 
 (defn- data-app!
@@ -11,6 +12,7 @@
   [& {:as extra}]
   (let [app-name (mt/random-name)]
     (t2/insert! :data_app (merge {:name         app-name
+                                  :entity_id    (u/generate-nano-id)
                                   :display_name "App"
                                   :bundle_path  "data_apps/app/index.js"
                                   :created_at   :%now
@@ -30,9 +32,6 @@
           (is (= 2 (- (:data-app-count (sut/data-app-stats)) before))))
         (testing "an app the admin disabled is out of service, so it doesn't count"
           (create! :enabled false)
-          (is (= 2 (- (:data-app-count (sut/data-app-stats)) before))))
-        (testing "an app that failed to sync is not served, so it doesn't count even when enabled"
-          (create! :sync_error "boom")
           (is (= 2 (- (:data-app-count (sut/data-app-stats)) before)))))
       (finally
         (t2/delete! :data_app :name [:in @app-names])))))

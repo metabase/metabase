@@ -4,11 +4,13 @@
    [java-time.api :as t]
    [metabase.config.core :as config]
    [metabase.connection-pool :as connection-pool]
+   [metabase.util.connection :as u.connection]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [potemkin :as p])
   (:import
-   (com.mchange.v2.c3p0 ConnectionCustomizer PoolBackedDataSource)))
+   (com.mchange.v2.c3p0 ConnectionCustomizer DataSources PoolBackedDataSource)))
 
 (set! *warn-on-reflection* true)
 
@@ -54,7 +56,7 @@
   ;; no-op
   )
 
-(p/deftype+ MetabaseConnectionCustomizer []
+(p/deftype+ AppDbConnectionCustomizer []
   ConnectionCustomizer
   (onAcquire [_this connection _identity-token]
     (on-acquire connection))
@@ -65,19 +67,7 @@
   (onDestroy [_this connection _identity-token]
     (on-destroy connection)))
 
-(defn- register-customizer!
-  "c3p0 allows for hooking into lifecycles with its interface
-  ConnectionCustomizer. https://www.mchange.com/projects/c3p0/apidocs/com/mchange/v2/c3p0/ConnectionCustomizer.html. But
-  Clojure defined code is in memory in a dynamic class loader not available to c3p0's use of Class/forName. Luckily it
-  looks up the instances in a cache which I pre-seed with out impl here. Issue for better access here:
-  https://github.com/swaldman/c3p0/issues/166"
-  [^Class klass]
-  (let [field (doto (.getDeclaredField com.mchange.v2.c3p0.C3P0Registry "classNamesToConnectionCustomizers")
-                (.setAccessible true))]
-    (.put ^java.util.HashMap (.get field com.mchange.v2.c3p0.C3P0Registry)
-          (.getName klass) (.newInstance klass))))
-
-(register-customizer! MetabaseConnectionCustomizer)
+(u.connection/register-c3p0-connection-customizer! AppDbConnectionCustomizer)
 
 (defn- application-db-connection-pool-props
   "Options for c3p0 connection pool for the application DB. These are set in code instead of the `c3p0.properties` file
@@ -104,7 +94,7 @@
    ;; https://www.mchange.com/projects/c3p0/#connectionCustomizerClassName
    ;;
    "connectionCustomizerClassName"
-   (.getName MetabaseConnectionCustomizer)
+   (.getName AppDbConnectionCustomizer)
    ;;
    ;; Number of seconds that Connections in excess of minPoolSize should be permitted to remain idle in the pool before
    ;; being culled. Intended for applications that wish to aggressively minimize the number of open Connections,
@@ -182,24 +172,55 @@
        ;; the first place."
        3600)})
 
+;; Wall-clock bound on how long we wait for a newly-built pool to hand out its first connection when priming it (see
+;; `connection-pool-data-source`). Chosen so a slow first connect (cold DNS, TLS handshake, cross-region
+;; latency) does not trip us into a false-positive rebuild.
+(def ^:private prime-timeout-ms 3000)
+
+(defn- prime-pool!
+  "Do a bounded-wall-clock `.getConnection()` on `pool` to detect the born-wedged c3p0 state described in
+  https://github.com/metabase/metabase/issues/81440 (HelperThreads idle in `Object.wait()`, no acquire task ever
+  dispatched). Returns true if the pool handed out a connection within `timeout-ms`, false otherwise."
+  [^javax.sql.DataSource pool ^long timeout-ms]
+  (let [fut (future (with-open [_ (.getConnection pool)] true))]
+    (try
+      (true? (deref fut timeout-ms false))
+      (catch Throwable _ false)
+      (finally (future-cancel fut)))))
+
 (mu/defn connection-pool-data-source :- (ms/InstanceOfClass PoolBackedDataSource)
   "Create a connection pool [[javax.sql.DataSource]] from an unpooled [[javax.sql.DataSource]] `data-source`. If
   `data-source` is already pooled, this will return `data-source` as-is, ignoring `props-overrides`.
   `props-overrides` (if provided) are merged over [[application-db-connection-pool-props]]."
-  (^PoolBackedDataSource [db-type data-source]
+  (^PoolBackedDataSource [db-type :- :keyword
+                          data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
    (connection-pool-data-source db-type data-source nil))
   (^PoolBackedDataSource [db-type :- :keyword
                           ^javax.sql.DataSource data-source :- (ms/InstanceOfClass javax.sql.DataSource)
-                          props-overrides :- [:maybe [:map-of :string :any]]]
+                          props-overrides :- [:maybe [:map-of :string [:or :string number? :boolean]]]]
    (if (instance? PoolBackedDataSource data-source)
      data-source
      (let [ds-name    (format "metabase-%s-app-db" (name db-type))
            pool-props (merge (application-db-connection-pool-props)
                              {"dataSourceName" ds-name}
-                             props-overrides)]
-       (com.mchange.v2.c3p0.DataSources/pooledDataSource
-        data-source
-        (connection-pool/map->properties pool-props))))))
+                             props-overrides)
+           build      (fn [] (DataSources/pooledDataSource
+                              data-source
+                              (connection-pool/map->properties pool-props)))
+           pool       (build)]
+       (if (prime-pool! pool prime-timeout-ms)
+         pool
+         ;; The pool did not respond to priming -- probably the c3p0 startup race in #81440. Destroy and try once
+         ;; more; if that also times out, log and hand the (possibly wedged) pool back so startup proceeds.
+         (do
+           (log/warnf "%s pool did not hand out a connection within %d ms; rebuilding (see #81440)"
+                      (get pool-props "dataSourceName") prime-timeout-ms)
+           (DataSources/destroy pool)
+           (let [pool' (build)]
+             (when-not (prime-pool! pool' prime-timeout-ms)
+               (log/warnf "%s pool still unresponsive after rebuild; startup continuing (see #81440)"
+                          (get pool-props "dataSourceName")))
+             pool')))))))
 
 (def ^:private default-quartz-max-pool-size 5)
 

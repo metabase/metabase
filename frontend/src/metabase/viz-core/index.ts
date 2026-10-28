@@ -16,6 +16,7 @@ export { extractSeriesDataKeyFromName } from "./echarts/boxplot/utils";
 export {
   GOAL_LINE_SERIES_ID,
   INDEX_KEY,
+  IS_FOLDED_ROW_DATA_KEY,
   IS_WATERFALL_TOTAL_DATA_KEY,
   OTHER_DATA_KEY,
   X_AXIS_DATA_KEY,
@@ -26,7 +27,13 @@ export {
   TIMELINE_BAND_HEIGHT,
   TIMELINE_EVENTS_BAND,
 } from "./echarts/cartesian/constants/style";
+export {
+  ROW_CHART_MIN_BAR_HEIGHT,
+  foldRowChartModel,
+  getChartModelAtHeight,
+} from "./echarts/cartesian/model/row-fold";
 export { getChartLayout } from "./echarts/cartesian/layout";
+export type { ChartLayoutInput } from "./echarts/cartesian/layout";
 export type {
   ChartBoundsCoords,
   ChartLayout,
@@ -56,6 +63,7 @@ export type {
   CartesianChartModel,
   ChartDataset,
   DataKey,
+  DateRange,
   Datum,
   DimensionModel,
   LegendItem,
@@ -67,17 +75,23 @@ export type {
 } from "./echarts/cartesian/model/types";
 export { getFormattingOptionsWithoutScaling } from "./echarts/cartesian/model/util";
 export { createAxisVisibilityOption } from "./echarts/cartesian/option/axis";
-export { GOAL_LINE_DASH } from "./echarts/cartesian/option/goal-line";
+export {
+  GOAL_LINE_DASH,
+  isGoalLineSeriesId,
+} from "./echarts/cartesian/option/goal-line";
 export {
   buildBrushMirrorGraphics,
   buildClearBrushMirrorGraphics,
   getCartesianChartOption,
   getTimelineSelectionSeries,
 } from "./echarts/cartesian/option";
-export { TREND_LINE_DASH } from "./echarts/cartesian/option/trend-line";
+export { TREND_LINE_WIDTH } from "./echarts/cartesian/option/trend-line";
 export { getScatterPlotModel } from "./echarts/cartesian/scatter/model";
 export { getScatterPlotOption } from "./echarts/cartesian/scatter/option";
-export { getTimelineEventsModel } from "./echarts/cartesian/timeline-events/model";
+export {
+  getTimelineEventsModel,
+  isTimelineEventInRange,
+} from "./echarts/cartesian/timeline-events/model";
 export { EMPTY_TIMELINE_SELECTION_SERIES } from "./echarts/cartesian/timeline-events/option";
 export type {
   TimelineEventCluster,
@@ -164,6 +178,11 @@ export {
   TREEMAP_HOVER_OVERLAY_FILL,
 } from "./echarts/graph/treemap/style";
 export { registerEChartsModules } from "./echarts";
+export {
+  DATA_VISIBILITY_ACTION,
+  DATA_VISIBILITY_EVENT,
+  isDataVisibilityResult,
+} from "./echarts/data-visibility";
 export { DIMENSIONS, OTHER_SLICE_KEY } from "./echarts/pie/constants";
 export { getPieChartFormatters } from "./echarts/pie/format";
 export type { PieChartFormatters } from "./echarts/pie/format";
@@ -193,12 +212,7 @@ export {
   usePieChartValuesColorsClasses,
   useSankeyChartColorsClasses,
 } from "./echarts/tooltip";
-export {
-  getPercent,
-  getSortedRows,
-  getTotalValue,
-  groupExcessiveTooltipRows,
-} from "./echarts/tooltip/utils";
+export { getPercent, getTotalValue } from "./echarts/tooltip/utils";
 export { isLineXBrushRange } from "./echarts/types";
 export type {
   EChartsSeriesBrushEndEvent,
@@ -217,7 +231,12 @@ export {
   getLegendTitles,
   HEAT_MAP_ZERO_COLOR,
 } from "./lib/choropleth";
+export { withColorName } from "./lib/color-name";
 export { getColorScale } from "./lib/color-scales";
+export {
+  getCustomVizSettingKeyPrefix,
+  isCustomVizSettingKey,
+} from "./lib/custom-viz/setting-keys";
 export { groupRawSeriesMetrics, sumMetric } from "./lib/dataset";
 export {
   ChartSettingsError,
@@ -259,6 +278,7 @@ export { computeMinimalBoundsCoordinates } from "./lib/mapping";
 export { computeChange, computeNumericDataInterval } from "./lib/numeric";
 export { getCanonicalRowKey } from "./lib/region-codes";
 export {
+  canDisplayTimelineEvents,
   canSavePng,
   getIconForVisualizationType,
   getMaxDimensionsSupported,
@@ -293,6 +313,7 @@ export {
   getSeriesWithDisplay,
   getVisualizerSeriesCardId,
   getVisualizerSeriesCardIndex,
+  isRowChartSeries,
   updateSeriesColor,
 } from "./lib/series";
 export {
@@ -310,7 +331,7 @@ export {
   NUMBER_COLUMN_SETTINGS,
   tableColumnSettings,
 } from "./lib/settings/column";
-export { getChartGoal, GRAPH_GOAL_SETTINGS } from "./lib/settings/goal";
+export { GRAPH_GOAL_SETTINGS } from "./lib/settings/goal";
 export {
   BOXPLOT_DATA_SETTINGS,
   BOXPLOT_SETTINGS,
@@ -327,13 +348,13 @@ export {
   STACKABLE_SETTINGS,
   TOOLTIP_SETTINGS,
 } from "./lib/settings/graph";
+export {
+  getLegendPositionSetting,
+  LEGEND_POSITION_SETTINGS,
+} from "./lib/settings/legend";
 export { nestedSettings } from "./lib/settings/nested";
 export { keyForSingleSeries } from "./lib/settings/series";
-export { getStackOffset } from "./lib/settings/stacking";
-export {
-  getTimelineEventSettings,
-  TIMELINE_EVENTS_SETTINGS,
-} from "./lib/settings/timelineEvents";
+export { TIMELINE_EVENTS_SETTINGS } from "./lib/settings/timelineEvents";
 export {
   extendCardWithDashcardSettings,
   mergeSettings,
@@ -344,6 +365,7 @@ export {
   fieldSetting,
   getDeduplicatedTableColumnSettings,
   getOptionFromColumn,
+  insertNewColumnSettings,
   metricSetting,
 } from "./lib/settings/utils";
 export {
@@ -354,6 +376,7 @@ export {
   validateStacking,
 } from "./lib/settings/validation";
 export {
+  adoptLegacyCustomVizSettings,
   getComputedSettingsForSeries,
   getPersistableDefaultSettingsForSeries,
   getStoredSettingsForSeries,
@@ -375,7 +398,7 @@ export {
 } from "./lib/table_format";
 export { truncateText } from "./lib/text";
 export { dimensionIsTimeseries } from "./lib/timeseries";
-export { formatValueForTooltipWithoutScaling } from "./lib/tooltip";
+export { getTimeseriesXAxis } from "./lib/timeseries-x-axis";
 export {
   computePreviousPeriodChange,
   findPreviousNonEmptyRowIndex,
@@ -400,24 +423,18 @@ export {
   unaggregatedDataWarningMap,
 } from "./lib/warnings";
 export { getSettingsWidgets, getSettingsWidgetsForSeries } from "./lib/widgets";
-export { RowChart } from "./shared/components/RowChart/RowChart";
-export type { RowChartProps } from "./shared/components/RowChart/RowChart";
-export { getStaticChartTheme } from "./shared/components/RowChart/theme";
-export type {
-  BarData,
-  RowChartTheme,
-  Series,
-} from "./shared/components/RowChart/types";
-export { getDashboardAdjustedSettings } from "./shared/settings-adjustments";
+export { getSizeAdjustedSettings } from "./shared/settings-adjustments";
 export {
   getDefaultDimensionFilter,
   getDefaultMetricFilter,
+  getIsXAxisLabelEnabledDefault,
+  getIsYAxisLabelEnabledDefault,
 } from "./shared/settings/cartesian-chart";
 export {
   getDefaultPercentVisibility,
   getDefaultPieColumns,
+  getDefaultLegendPosition,
   getDefaultShowLabels,
-  getDefaultShowLegend,
   getDefaultShowTotal,
   getDefaultSliceThreshold,
   getDefaultSortRows,
@@ -426,22 +443,9 @@ export {
   getPieSortRowsDimensionSetting,
   getValueFromDimensionKey,
 } from "./shared/settings/pie";
-export { SERIES_SETTING_KEY } from "./shared/settings/series";
+export { getSeriesColors, SERIES_SETTING_KEY } from "./shared/settings/series";
 export { getTreemapRows } from "./shared/settings/treemap";
-export type {
-  GroupedDataset,
-  GroupedDatum,
-  MetricDatum,
-  SeriesInfo,
-} from "./shared/types/data";
-export type { HoveredData } from "./shared/types/events";
-export type { ChartTicksFormatters } from "./shared/types/format";
-export type { ContinuousDomain, Range } from "./shared/types/scale";
-export { getGroupedDataset, getSeries, trimData } from "./shared/utils/data";
-export {
-  getLabelsMetricColumn,
-  getTwoDimensionalChartSeries,
-} from "./shared/utils/series";
+export { getSeries } from "./shared/utils/data";
 export { getSizeInPx } from "./shared/utils/size-in-px";
 export {
   getDefaultSize,
@@ -452,6 +456,7 @@ export {
 export {
   DEFAULT_VISUALIZATION_THEME,
   getVisualizationTheme,
+  getCartesianChartSize,
 } from "./shared/utils/theme";
 export type {
   PivotedDatasetColumn,
@@ -476,14 +481,16 @@ export type {
   HighlightedObject,
   HoveredDimension,
   HoveredObject,
-  StackedTooltipModel,
   TooltipRowModel,
 } from "./types/hover";
 export type {
+  CartesianChartSize,
+  Extent,
   Padding,
   RenderingContext,
   StaticVisualizationProps,
 } from "./types/rendering";
+export type { TimeseriesXAxis } from "./types/timeseries";
 export type {
   AggregationFunction,
   ChartSettingColorRangeProps,
@@ -491,6 +498,7 @@ export type {
   ChartSettingGoalInputProps,
   ChartSettingMaxCategoriesProps,
   ChartSettingOrderedItem,
+  ChartSettingSegmentedControlOption,
   ChartSettingSegmentedControlProps,
   ChartSettingSegmentsEditorProps,
   ChartSettingSeriesOrderItem,
@@ -498,6 +506,7 @@ export type {
   ChartSettingTableColumnsProps,
   ChartSettingWidgetProps,
   ComparisonMenuOption,
+  CustomVizSettingWidgetProps,
   DimensionsWidgetProps,
   EditWidgetData,
   SmartScalarComparisonWidgetProps,

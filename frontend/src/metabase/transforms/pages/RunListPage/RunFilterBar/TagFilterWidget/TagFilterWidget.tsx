@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { type FormEvent, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
+import { FilterFieldSet } from "metabase/transforms/components/FilterFieldSet";
 import {
   Box,
   Button,
@@ -17,7 +18,6 @@ import {
   FILTER_WIDGET_MAX_HEIGHT,
   FILTER_WIDGET_MIN_WIDTH,
 } from "../../../../constants";
-import { FilterFieldSet } from "../FilterFieldSet";
 
 type TagFilterWidgetProps = {
   label: string;
@@ -106,7 +106,7 @@ function TagFilterForm({
             value={tagIds.map(getTagIdValue)}
             onChange={handleChange}
           >
-            <Stack p="md">
+            <Stack p="lg">
               {tags.map((tag) => (
                 <Checkbox
                   key={tag.id}
@@ -118,10 +118,10 @@ function TagFilterForm({
           </Checkbox.Group>
         </Box>
       ) : (
-        <Box p="md" c="text-secondary" ta="center">{t`No tags found.`}</Box>
+        <Box p="lg" c="text-secondary" ta="center">{t`No tags found.`}</Box>
       )}
       <Divider />
-      <Group p="md" justify="end">
+      <Group p="lg" justify="end">
         <Button type="submit" variant="filled" disabled={!isValid}>
           {initialTagIds.length > 0 ? `Update filter` : `Add filter`}
         </Button>

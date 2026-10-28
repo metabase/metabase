@@ -3,7 +3,9 @@ import _ from "underscore";
 
 import { isNative } from "metabase/common/utils/card";
 import { dayjs } from "metabase/dayjs";
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import { selectQuestionFromCard } from "metabase/metadata-store";
+import type { State } from "metabase/redux/store";
+import { getNullDisplayValue } from "metabase/utils/constants";
 import { formatChangeWithSign, formatPercent } from "metabase/utils/formatting";
 import { getObjectKeys } from "metabase/utils/objects";
 import {
@@ -31,6 +33,7 @@ import {
   type EChartsTooltipModel,
   type EChartsTooltipRow,
   INDEX_KEY,
+  IS_FOLDED_ROW_DATA_KEY,
   IS_WATERFALL_TOTAL_DATA_KEY,
   OTHER_DATA_KEY,
   type SeriesModel,
@@ -59,8 +62,6 @@ import type {
   ClickObjectDimension,
 } from "metabase-lib";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isDate, isDateWithoutTime } from "metabase-lib/v1/types/utils/isa";
 import type {
@@ -149,10 +150,17 @@ export const getEventDimensions = (
       ? dimensionModel.columnByCardId[seriesModel.cardId]
       : dimensionModel.column;
 
-  const hasDimensionValue = sameCardDatumColumns.length > 0;
+  const hasDimensionValue = sameCardDatumColumns.includes(dimensionColumn);
   const dimensions: ClickObjectDimension[] = [];
 
-  if (hasDimensionValue) {
+  if (datum[IS_FOLDED_ROW_DATA_KEY]) {
+    dimensions.push({
+      column: dimensionColumn,
+      value: (chartModel.foldedDataset ?? []).map((foldedDatum) =>
+        normalizeDimensionValue(dimensionColumn, foldedDatum[X_AXIS_DATA_KEY]),
+      ),
+    });
+  } else if (hasDimensionValue) {
     dimensions.push({
       column: dimensionColumn,
       value: normalizeDimensionValue(dimensionColumn, datum[X_AXIS_DATA_KEY]),
@@ -223,7 +231,7 @@ const getEventColumnsData = (
       const displayValue =
         isBreakoutSeries(seriesModel) && seriesModel.breakoutColumn === col
           ? seriesModel.name
-          : (value ?? NULL_DISPLAY_VALUE);
+          : (value ?? getNullDisplayValue());
 
       return {
         key,
@@ -457,6 +465,10 @@ export const getTooltipModel = (
     return null;
   }
 
+  if (datum[IS_FOLDED_ROW_DATA_KEY]) {
+    return getFoldedRowTooltipModel(chartModel, settings, datum, hoveredSeries);
+  }
+
   const seriesStack = chartModel.stackModels.find((stackModel) =>
     stackModel.seriesKeys.includes(hoveredSeries.dataKey),
   );
@@ -491,6 +503,71 @@ export const getTooltipModel = (
     previousDatum,
     hoveredSeries,
   );
+};
+
+// The hovered series leads, as the tooltip's one full-emphasis value column.
+const getFoldedRowTooltipSeries = (
+  chartModel: BaseCartesianChartModel,
+  hoveredSeries: SeriesModel,
+): SeriesModel[] => [
+  hoveredSeries,
+  ...chartModel.seriesModels.filter(
+    (seriesModel) =>
+      seriesModel.visible && seriesModel.dataKey !== hoveredSeries.dataKey,
+  ),
+];
+
+const getFoldedRowTooltipModel = (
+  chartModel: BaseCartesianChartModel,
+  settings: ComputedVisualizationSettings,
+  datum: Datum,
+  hoveredSeries: SeriesModel,
+): EChartsTooltipModel => {
+  const tooltipSeries = getFoldedRowTooltipSeries(chartModel, hoveredSeries);
+  const formatSeriesValues = (seriesDatum: Datum) =>
+    tooltipSeries.map(({ dataKey, column }) =>
+      String(
+        formatValueForTooltip({
+          value: seriesDatum[dataKey],
+          column,
+          settings,
+          isAlreadyScaled: true,
+        }),
+      ),
+    );
+
+  const markerColorClass = getMarkerColorClass(hoveredSeries.color);
+
+  const seriesNamesRows: EChartsTooltipRow[] =
+    tooltipSeries.length > 1
+      ? [
+          {
+            name: "",
+            isSecondary: true,
+            values: tooltipSeries.map((seriesModel) => seriesModel.name),
+          },
+        ]
+      : [];
+
+  const categoryRows: EChartsTooltipRow[] = (
+    chartModel.foldedDataset ?? []
+  ).map((foldedDatum) => ({
+    name: String(
+      formatValueForTooltip({
+        value: foldedDatum[X_AXIS_DATA_KEY],
+        column: chartModel.dimensionModel.column,
+        settings,
+      }),
+    ),
+    markerColorClass,
+    values: formatSeriesValues(foldedDatum),
+  }));
+
+  return {
+    header: String(datum[X_AXIS_DATA_KEY]),
+    rows: [...seriesNamesRows, ...categoryRows],
+    footer: { name: t`Total`, values: formatSeriesValues(datum) },
+  };
 };
 
 const getSingleSeriesTooltipModel = (
@@ -881,13 +958,10 @@ export const getOtherSeriesTooltipModel = (
 
 export const getGoalLineHoverData = (
   settings: ComputedVisualizationSettings,
-  event: EChartsSeriesMouseEvent,
+  element: EventTarget | null,
   formatGoal?: AxisFormatter,
 ) => {
-  // Unjustified type cast. FIXME
-  const element = event.event.event.target as Element;
-
-  if (element?.nodeName !== "text") {
+  if (!(element instanceof Element)) {
     return null;
   }
 
@@ -927,6 +1001,13 @@ export const getSeriesClickData = (
   }
 
   const datum = chartModel.dataset[dataIndex];
+  // Binned drills filter to a single bin, not the folded row's set of bins.
+  const isFoldedBinnedRow =
+    datum[IS_FOLDED_ROW_DATA_KEY] &&
+    chartModel.dimensionModel.column.binning_info != null;
+  if (isFoldedBinnedRow) {
+    return null;
+  }
 
   const data = getEventColumnsData(chartModel, seriesModel, datum);
   const dimensions = getEventDimensions(
@@ -1064,8 +1145,8 @@ export const getBrushClickObject = (
 };
 
 export const getBrushData = (
+  state: State,
   rawSeries: RawSeries,
-  metadata: Metadata | undefined,
   chartModel: BaseCartesianChartModel,
   event: EChartsSeriesBrushEndEvent,
 ) => {
@@ -1081,7 +1162,7 @@ export const getBrushData = (
 
   const column = chartModel.dimensionModel.column;
   const card = rawSeries[0].card;
-  const question = new Question(card, metadata);
+  const question = selectQuestionFromCard(state, card);
   const query = question.query();
   const stageIndex = -1;
 

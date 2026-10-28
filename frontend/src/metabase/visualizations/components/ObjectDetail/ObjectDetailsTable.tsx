@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { MouseEvent } from "react";
+import type { JSX, MouseEvent } from "react";
 import { Fragment, useMemo } from "react";
 import { t } from "ttag";
 
@@ -142,7 +142,7 @@ export function DetailsTableCell({
             alt={value}
             maw="100%"
             mah="18rem"
-            my="md"
+            my="lg"
             mx="auto"
           />
         </div>

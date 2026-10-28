@@ -1,7 +1,9 @@
 (ns metabase.auth-identity.core
   "Public API for the auth_identity module. This namespace provides the interface for managing
   authentication identities for users."
+  (:refer-clojure :exclude [descendants isa?])
   (:require
+   [metabase.auth-identity.hierarchy :as auth-identity.hierarchy]
    [metabase.auth-identity.models.auth-identity :as auth-identity]
    [metabase.auth-identity.provider :as provider]
    [metabase.auth-identity.providers.emailed-secret :as emailed-secret]
@@ -29,8 +31,8 @@
 ;; ## Implementing a New Provider
 ;;
 ;; 1. Create a namespace for your provider (e.g., metabase.sso.providers.my-provider)
-;; 2. Declare hierarchy: (derive :provider/my-provider ::provider/provider)
-;; 3. For SSO providers: (derive :provider/my-provider ::provider/create-user-if-not-exists)
+;; 2. Declare hierarchy: (auth-identity/derive! :provider/my-provider ::provider/provider)
+;; 3. For SSO providers: (auth-identity/derive! :provider/my-provider ::provider/create-user-if-not-exists)
 ;; 4. Implement authenticate multimethod (required)
 ;; 5. Optionally implement validate for credential validation
 ;;
@@ -46,6 +48,11 @@
 ;; ==============================================================================
 
 (p/import-vars
+ [auth-identity.hierarchy
+  derive!
+  descendants
+  isa?
+  underive!]
  [provider
   validate
   authenticate

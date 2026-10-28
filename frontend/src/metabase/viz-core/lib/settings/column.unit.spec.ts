@@ -1,11 +1,17 @@
 import { checkNotNull } from "metabase/utils/types";
-import type { DatasetColumn, Series } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  Series,
+  VisualizationSettings,
+} from "metabase-types/api";
 import {
   createMockColumn,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
+import { registerSettingWidgets } from "../registry";
 import { getComputedSettings } from "../settings";
+import { getSettingsWidgets } from "../widgets";
 
 import {
   NUMBER_COLUMN_SETTINGS,
@@ -150,6 +156,50 @@ describe("column settings", () => {
       onChange(options[1].value);
       expect(onChangeSpy).toHaveBeenCalledWith(false);
     });
+
+    describe("widget visibility for currency columns", () => {
+      beforeAll(() => {
+        registerSettingWidgets({ select: () => null, radio: () => null });
+      });
+
+      function getWidgetHiddenById(storedSettings: VisualizationSettings = {}) {
+        const series = seriesWithColumn();
+        const column = series[0].data.cols[0];
+        const computedSettings = getComputedSettings(
+          NUMBER_COLUMN_SETTINGS,
+          column,
+          storedSettings,
+          { series },
+        );
+        const widgets = getSettingsWidgets(
+          NUMBER_COLUMN_SETTINGS,
+          storedSettings,
+          computedSettings,
+          column,
+          jest.fn(),
+          { series },
+        );
+        return Object.fromEntries(
+          widgets.map((widget) => [widget.id, widget.hidden]),
+        );
+      }
+
+      it("should not hide the number_style widget for a currency column", () => {
+        const hiddenById = getWidgetHiddenById();
+        expect(hiddenById.number_style).toBe(false);
+        expect(hiddenById.currency).toBe(false);
+        expect(hiddenById.currency_style).toBe(false);
+        expect(hiddenById.currency_in_header).toBe(false);
+      });
+
+      it("should hide the currency widgets when the percent style is selected", () => {
+        const hiddenById = getWidgetHiddenById({ number_style: "percent" });
+        expect(hiddenById.number_style).toBe(false);
+        expect(hiddenById.currency).toBe(true);
+        expect(hiddenById.currency_style).toBe(true);
+        expect(hiddenById.currency_in_header).toBe(true);
+      });
+    });
   });
 
   describe("table.columns", () => {
@@ -179,6 +229,138 @@ describe("column settings", () => {
       expect(computed["table.columns"]).toEqual([
         { name: "ID", enabled: true },
         { name: "QUANTITY_RENAMED", enabled: true },
+      ]);
+    });
+
+    it("should place new result columns in their query position instead of appending them (metabase#82476)", () => {
+      const series: Series = [
+        createMockSingleSeries(
+          {},
+          {
+            data: {
+              cols: [
+                createMockColumn({ name: "a" }),
+                createMockColumn({ name: "b" }),
+                createMockColumn({ name: "z" }),
+                createMockColumn({ name: "c" }),
+                createMockColumn({ name: "d" }),
+                createMockColumn({ name: "e" }),
+              ],
+            },
+          },
+        ),
+      ];
+
+      const computed = getComputedSettings(tableColumnSettings(), series, {
+        "table.columns": [
+          { name: "a", enabled: true },
+          { name: "b", enabled: true },
+          { name: "c", enabled: false },
+          { name: "d", enabled: true },
+          { name: "e", enabled: true },
+        ],
+      });
+
+      expect(computed["table.columns"]).toEqual([
+        { name: "a", enabled: true },
+        { name: "b", enabled: true },
+        { name: "z", enabled: true },
+        { name: "c", enabled: false },
+        { name: "d", enabled: true },
+        { name: "e", enabled: true },
+      ]);
+    });
+
+    it("should keep the user's column order and insert a new column after its preceding result column", () => {
+      const series: Series = [
+        createMockSingleSeries(
+          {},
+          {
+            data: {
+              cols: [
+                createMockColumn({ name: "a" }),
+                createMockColumn({ name: "b" }),
+                createMockColumn({ name: "z" }),
+                createMockColumn({ name: "c" }),
+                createMockColumn({ name: "d" }),
+              ],
+            },
+          },
+        ),
+      ];
+
+      const computed = getComputedSettings(tableColumnSettings(), series, {
+        "table.columns": [
+          { name: "d", enabled: true },
+          { name: "a", enabled: true },
+          { name: "b", enabled: true },
+          { name: "c", enabled: true },
+        ],
+      });
+
+      expect(computed["table.columns"]).toEqual([
+        { name: "d", enabled: true },
+        { name: "a", enabled: true },
+        { name: "b", enabled: true },
+        { name: "z", enabled: true },
+        { name: "c", enabled: true },
+      ]);
+    });
+
+    it("should place a new result column first when no column precedes it and keep adjacent new columns in query order", () => {
+      const series: Series = [
+        createMockSingleSeries(
+          {},
+          {
+            data: {
+              cols: [
+                createMockColumn({ name: "z" }),
+                createMockColumn({ name: "a" }),
+                createMockColumn({ name: "x" }),
+                createMockColumn({ name: "y" }),
+                createMockColumn({ name: "b" }),
+              ],
+            },
+          },
+        ),
+      ];
+
+      const computed = getComputedSettings(tableColumnSettings(), series, {
+        "table.columns": [
+          { name: "b", enabled: true },
+          { name: "a", enabled: false },
+        ],
+      });
+
+      expect(computed["table.columns"]).toEqual([
+        { name: "z", enabled: true },
+        { name: "b", enabled: true },
+        { name: "a", enabled: false },
+        { name: "x", enabled: true },
+        { name: "y", enabled: true },
+      ]);
+    });
+
+    it("should use the result column order when there are no saved column settings", () => {
+      const series: Series = [
+        createMockSingleSeries(
+          {},
+          {
+            data: {
+              cols: [
+                createMockColumn({ name: "b" }),
+                createMockColumn({ name: "a" }),
+              ],
+            },
+          },
+        ),
+      ];
+
+      const computed = getComputedSettings(tableColumnSettings(), series, {});
+
+      expect(computed["table.columns"]).toEqual([
+        { name: "b", enabled: true },
+        { name: "a", enabled: true },
       ]);
     });
   });

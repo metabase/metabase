@@ -1,11 +1,11 @@
 import { t } from "ttag";
 
+import { useSetting } from "metabase/settings";
 import {
+  AdminSettingInput,
   SettingsPageWrapper,
   SettingsSection,
-} from "metabase/admin/components/SettingsSection";
-import { AdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
-import { useSetting } from "metabase/settings";
+} from "metabase/settings-components";
 
 export function PythonRunnerSettingsPage() {
   const isHosted = useSetting("is-hosted?");

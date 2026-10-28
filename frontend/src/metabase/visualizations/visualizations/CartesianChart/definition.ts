@@ -1,5 +1,6 @@
 import _ from "underscore";
 
+import { mergeLazily } from "metabase/utils/merge-lazily";
 import {
   GRAPH_AXIS_SETTINGS,
   GRAPH_COLORS_SETTINGS,
@@ -7,6 +8,7 @@ import {
   GRAPH_DISPLAY_VALUES_SETTINGS,
   GRAPH_GOAL_SETTINGS,
   GRAPH_TREND_SETTINGS,
+  LEGEND_POSITION_SETTINGS,
   LEGEND_SETTINGS,
   LINE_SETTINGS,
   SERIES_SETTING_KEY,
@@ -106,23 +108,23 @@ export const getCartesianChartDefinition = <
   T extends Partial<VisualizationDefinition>,
 >(
   props: T,
-): T & CartesianChartAdditions => ({
-  ...cartesianChartAdditions,
-  ...props,
-});
+): T & CartesianChartAdditions =>
+  // mergeLazily cannot express an intersection with a generic parameter.
+  mergeLazily(cartesianChartAdditions, props) as T & CartesianChartAdditions;
 
 export const COMBO_CHARTS_SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions =
-  {
-    ...STACKABLE_SETTINGS,
-    ...SPLIT_PANELS_SETTINGS,
-    ...LINE_SETTINGS,
-    ...GRAPH_GOAL_SETTINGS,
-    ...GRAPH_TREND_SETTINGS,
-    ...GRAPH_COLORS_SETTINGS,
-    ...GRAPH_AXIS_SETTINGS,
-    ...GRAPH_DISPLAY_VALUES_SETTINGS,
-    ...GRAPH_DATA_SETTINGS,
-    ...TOOLTIP_SETTINGS,
-    ...LEGEND_SETTINGS,
-    ...TIMELINE_EVENTS_SETTINGS,
-  };
+  mergeLazily(
+    STACKABLE_SETTINGS,
+    SPLIT_PANELS_SETTINGS,
+    LINE_SETTINGS,
+    GRAPH_GOAL_SETTINGS,
+    GRAPH_TREND_SETTINGS,
+    GRAPH_COLORS_SETTINGS,
+    GRAPH_AXIS_SETTINGS,
+    GRAPH_DISPLAY_VALUES_SETTINGS,
+    LEGEND_POSITION_SETTINGS,
+    GRAPH_DATA_SETTINGS,
+    TOOLTIP_SETTINGS,
+    LEGEND_SETTINGS,
+    TIMELINE_EVENTS_SETTINGS,
+  );

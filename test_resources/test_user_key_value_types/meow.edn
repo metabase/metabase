@@ -1,4 +1,4 @@
-[:map
- [:value [:maybe [:map
+[:map {:closed true}
+ [:value [:maybe [:map {:closed true}
                   [:key1 {:default "default"} :string]
                   [:key2 :int]]]]]

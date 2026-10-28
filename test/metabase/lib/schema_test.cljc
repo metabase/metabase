@@ -109,10 +109,13 @@
        :fields       [[:aggregation {:lib/uuid (str (random-uuid))} bad-ref]]}
       [(str "Invalid :aggregation reference: no aggregation with uuid " bad-ref)]
 
-      ;; if we forget to remove legacy ag refs from some part of the query make sure we get a useful error message.
-      {:lib/type           :mbql.stage/mbql
-       :some-other-section {:field-ref [:aggregation 0]}}
-      ["Invalid :aggregation reference: [:aggregation 0]"]
+      ;; if we forget to remove legacy ag refs from some part of the query make sure we get a useful error message
+      ;; alongside whatever the slot they were left in says about them.
+      {:lib/type     :mbql.stage/mbql
+       :source-table 1
+       :fields       [[:aggregation 0]]}
+      {:fields      [["invalid tuple size 2, expected 3"]]
+       :malli/error ["Invalid :aggregation reference: [:aggregation 0]"]}
 
       ;; don't recurse into joins.
       {:lib/type     :mbql.stage/mbql
@@ -386,14 +389,12 @@
                       :id "aa000001-0000-0000-0000-000000000001"
                       :display-name "Minimum Total"
                       :default 50
-                      :required true
-                      :sectionid "number"}
+                      :required true}
                      {:type :date
                       :name "after_date"
                       :id "aa000002-0000-0000-0000-000000000002"
                       :display-name "After Date"
-                      :default "2024-01-01"
-                      :sectionid "date"}
+                      :default "2024-01-01"}
                      {:type :text
                       :name "user_id"
                       :id "aa000003-0000-0000-0000-000000000003"
@@ -403,8 +404,7 @@
                       :name "is_active"
                       :id "aa000004-0000-0000-0000-000000000004"
                       :display-name "Is Active"
-                      :default true
-                      :sectionid "boolean"}]}]})
+                      :default true}]}]})
 
 (deftest ^:parallel external-test
   ;; this one is not valid according to the internal schema because it

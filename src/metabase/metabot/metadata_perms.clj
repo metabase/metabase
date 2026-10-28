@@ -1,14 +1,15 @@
 (ns metabase.metabot.metadata-perms
   (:require
    [metabase.api.common :as api]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *cache*
   "Cache atom bound by [[with-cache]], or nil to read through to the app DB on every call."
   nil)
@@ -37,7 +38,7 @@
 (defn- table-rows
   [table-ids]
   (memoized :table-row table-ids
-            (fn [ids] (t2/select-fn->fn :id identity :model/Table :id [:in ids]))
+            metabot.db/tables-by-id
             nil))
 
 (defn- permitted-table-ids
@@ -127,6 +128,6 @@
   "Returns a `{field-id table-id}` map for the given `field-ids`."
   [field-ids]
   (->> (memoized :field-table field-ids
-                 (fn [ids] (t2/select-fn->fn :id :table_id [:model/Field :id :table_id] :id [:in ids]))
+                 metabot.db/field-table-ids
                  nil)
        (into {} (remove #(nil? (val %))))))

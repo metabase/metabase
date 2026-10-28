@@ -28,7 +28,7 @@ import {
   Flex,
   Group,
   Icon,
-  Loader,
+  Modal,
   Select,
   Stack,
   Text,
@@ -217,9 +217,7 @@ const StrategyFormBody = ({
         data-testid={`strategy-form-for-${targetModel}-${targetId}`}
       >
         {layout === "modal" && (
-          <Box pt="md">
-            <StrategySelectorHeading headingId={headingId} />
-          </Box>
+          <StrategySelectorHeading headingId={headingId} />
         )}
         <Box
           className={cx({
@@ -227,20 +225,21 @@ const StrategyFormBody = ({
             [PerformanceAppStyles.FormBoxSidebar]: layout === "sidebar",
             [S.modalBody]: layout === "modal",
           })}
+          pt={layout === "default" ? "xxxl" : undefined}
         >
           {shouldShowName && (
-            <Box lh="1rem" pt="md" c="text-secondary">
+            <Box lh="1rem" pt="lg" c="text-secondary">
               <Group gap="sm">
                 {targetModel === "database" && (
                   <FixedSizeIcon name="database" c="inherit" />
                 )}
-                <Text fw="bold" py="md">
+                <Text fw="bold" py="lg">
                   {targetName}
                 </Text>
               </Group>
             </Box>
           )}
-          <Stack maw="35rem" gap="xl">
+          <Stack maw="35rem" gap={layout === "modal" ? "xl" : "xxl"}>
             <StrategySelector
               targetId={targetId}
               model={targetModel}
@@ -288,8 +287,8 @@ const FormButtonsGroup = ({
 }) => {
   return (
     <Group
-      py="md"
-      gap="md"
+      py="lg"
+      gap="lg"
       justify={layout === "sidebar" ? "flex-end" : undefined}
       px={layout === "sidebar" ? 0 : "2.5rem"}
       pb={layout === "sidebar" ? 0 : undefined}
@@ -340,29 +339,23 @@ const FormButtons = ({
 
   if (layout === "modal") {
     return (
-      <Group
-        justify={canInvalidate ? "space-between" : "flex-end"}
-        wrap="nowrap"
-        mt="xl"
-        gap="md"
-      >
+      <Modal.Footer>
         {canInvalidate && (
-          <PLUGIN_CACHING.InvalidateNowButton
-            targetId={targetId}
-            targetModel={targetModel}
-            targetName={targetName}
-          />
+          <Box mr="auto">
+            <PLUGIN_CACHING.InvalidateNowButton
+              targetId={targetId}
+              targetModel={targetModel}
+              targetName={targetName}
+            />
+          </Box>
         )}
-        <Group gap="md" wrap="nowrap">
-          <Button onClick={onDiscard}>{buttonLabels.discard}</Button>
-          <FormSubmitButton
-            h="2.5rem"
-            label={buttonLabels.save}
-            variant="filled"
-            data-testid="strategy-form-submit-button"
-          />
-        </Group>
-      </Group>
+        <Button onClick={onDiscard}>{buttonLabels.discard}</Button>
+        <FormSubmitButton
+          label={buttonLabels.save}
+          variant="filled"
+          data-testid="strategy-form-submit-button"
+        />
+      </Modal.Footer>
     );
   }
 
@@ -408,7 +401,12 @@ const ScheduleStrategyFormFields = ({
 }) => {
   const { values, setFieldValue } = useFormikContext<ScheduleStrategy>();
   const { schedule: scheduleInCronFormat } = values;
-  const initialSchedule = cronToBuilderValue(scheduleInCronFormat);
+  // Schedule takes `value` as a useMemo dependency, so this has to keep its
+  // identity between renders for the same cron string.
+  const initialSchedule = useMemo(
+    () => cronToBuilderValue(scheduleInCronFormat),
+    [scheduleInCronFormat],
+  );
   const timezone = useSelector((state) =>
     getSetting(state, "report-timezone-short"),
   );
@@ -435,7 +433,7 @@ const ScheduleStrategyFormFields = ({
       {/* Not a StrategyFormField: its <label> would redirect title/subtitle
           clicks to the first Select inside Schedule. */}
       <Stack gap="sm">
-        <Stack gap="xs">
+        <Stack gap="xxs">
           <Text fw="bold" fz="md" lh="1.25rem">
             {t`Cache invalidation schedule`}
           </Text>
@@ -487,15 +485,12 @@ const SaveAndDiscardButtons = ({
         </Button>
       )}
       <FormSubmitButton
-        miw={layout === "sidebar" ? undefined : "10rem"}
-        h="2.5rem"
         label={buttonLabels.save}
         successLabel={
-          <Group gap="xs">
+          <Group gap="xxs">
             <Icon name="check" /> {t`Saved`}
           </Group>
         }
-        activeLabel={<Loader size="1rem" pos="relative" top={1} />}
         variant="filled"
         data-testid="strategy-form-submit-button"
       />
@@ -508,7 +503,7 @@ export const StrategySelectorHeading = ({
 }: {
   headingId: string;
 }) => (
-  <Stack gap="xs">
+  <Stack gap="xxs">
     <Text lh="1.25rem" fw="bold" fz="md" id={headingId}>
       {t`Cache invalidation policy`}
     </Text>
@@ -579,7 +574,7 @@ const StrategySelector = ({
             return option.label;
           }
           return (
-            <Stack gap="xs">
+            <Stack gap="xxs">
               <Text fw="bold">{getLabelString(strategy.label, model)}</Text>
               {strategy.description && (
                 <Text size="sm" c="text-secondary">
@@ -775,7 +770,7 @@ const StrategyFormField = ({
   return (
     <label>
       <Stack gap="sm">
-        <Stack gap="xs">
+        <Stack gap="xxs">
           <Text fw="bold" fz="md" lh="1.25rem">
             {title}
           </Text>

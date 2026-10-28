@@ -85,14 +85,20 @@ runs:
 
         git checkout ${{ github.sha }}
 
-    - name: Auto approve backport PR
+    # Approving takes a different token than the one that opened the PR: GitHub won't let a token
+    # approve its own pull request.
+    - name: Approve the backport PR
       if: ${{ steps.create_backport_pull_request.outputs.has-conflicts == 'false' }}
-      uses: juliangruber/approve-pull-request-action@68fcc9a5a73b5641cadf757cf99d73720dcb05d0 # v2.1.0
-      with:
-        github-token: ${{ inputs.github-token-2 }}
-        number: ${{ steps.create_backport_pull_request.outputs.backport_pr_number }}
+      run: gh pr review --approve "$PR_NUMBER"
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token-2 }}
+        PR_NUMBER: ${{ steps.create_backport_pull_request.outputs.backport_pr_number }}
 
-    - name: Enable Pull Request Automerge
+    # Merging, though, has to use `github-token` rather than the `GITHUB_TOKEN` that approves: GitHub
+    # starts no workflow run for a push made with `GITHUB_TOKEN`, so an auto-merge enabled with it
+    # lands the backport on the release branch with no CI at all.
+    - name: Merge the backport PR
       if: ${{ steps.create_backport_pull_request.outputs.has-conflicts == 'false' }}
       run: gh pr merge --squash --auto "$PR_NUMBER"
       shell: bash

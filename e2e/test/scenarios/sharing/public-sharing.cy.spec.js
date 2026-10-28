@@ -62,41 +62,96 @@ describe("scenarios > admin > settings > public sharing", () => {
     cy.intercept("GET", "/api/card/public").as("getPublicQuestions");
   });
 
-  it("should be able to toggle public sharing", () => {
-    cy.visit("/admin/settings/public-sharing");
-    cy.findByTestId("enable-public-sharing-setting").within(() => {
-      cy.findByText("Enabled").should("be.visible");
-      cy.findByLabelText("Enabled").click();
-      cy.findByText("Disabled").should("be.visible");
-    });
-  });
+  it("should list, open, and revoke public dashboards, questions, and actions, and toggle public sharing", () => {
+    cy.intercept("PUT", "/api/setting/enable-public-sharing").as(
+      "updatePublicSharing",
+    );
 
-  it("should see public dashboards", () => {
     const expectedDashboardName = "Public dashboard";
     const expectedDashboardSlug = "public-dashboard";
-    H.createQuestionAndDashboard({
-      dashboardDetails: {
-        name: expectedDashboardName,
-      },
-      questionDetails: {
-        name: "Question",
-        query: {
-          "source-table": ORDERS_ID,
-        },
+    const expectedQuestionName = "Public question";
+    const expectedQuestionSlug = "public-question";
+    const expectedActionName = "Public action";
+
+    H.setActionsEnabledForDB(SAMPLE_DB_ID);
+
+    H.createQuestion({
+      name: "Question",
+      query: {
+        "source-table": ORDERS_ID,
       },
     })
-      .then(({ body }) => {
-        const dashboardId = body.dashboard_id;
-        cy.wrap(dashboardId).as("dashboardId");
-        cy.request("POST", `/api/dashboard/${dashboardId}/public_link`, {});
+      .then(({ body: { id: card_id } }) =>
+        H.createDashboardWithTabs({
+          name: expectedDashboardName,
+          tabs: [
+            { id: 1, name: "Tab 1" },
+            { id: 2, name: "Tab 2" },
+          ],
+          dashcards: [
+            {
+              id: -1,
+              card_id,
+              dashboard_tab_id: 1,
+              row: 0,
+              col: 0,
+              size_x: 8,
+              size_y: 8,
+            },
+          ],
+        }),
+      )
+      .then((dashboard) => {
+        cy.wrap(dashboard.id).as("dashboardId");
+        cy.request("POST", `/api/dashboard/${dashboard.id}/public_link`, {});
       })
       .then((response) => {
         cy.wrap(response.body.uuid).as("dashboardUuid");
       });
 
-    cy.get("@dashboardId").then((dashboardId) =>
-      H.visitDashboardAndCreateTab({ dashboardId }),
-    );
+    H.createQuestion({
+      name: expectedQuestionName,
+      query: {
+        "source-table": ORDERS_ID,
+      },
+    })
+      .then(({ body }) => {
+        const questionId = body.id;
+        cy.wrap(questionId).as("questionId");
+        cy.request("POST", `/api/card/${questionId}/public_link`, {});
+      })
+      .then((response) => {
+        cy.wrap(response.body.uuid).as("questionUuid");
+      });
+
+    H.createQuestion({
+      name: "Model",
+      query: {
+        "source-table": ORDERS_ID,
+      },
+      type: "model",
+    }).then(({ body }) => {
+      const modelId = body.id;
+      cy.wrap(modelId).as("modelId");
+    });
+
+    cy.get("@modelId").then((modelId) => {
+      H.createAction({
+        ...DEFAULT_ACTION_DETAILS,
+        name: expectedActionName,
+        model_id: modelId,
+      }).then((action) => {
+        cy.wrap(action.id).as("actionId");
+      });
+    });
+
+    cy.get("@actionId")
+      .then((actionId) => {
+        cy.request("POST", `/api/action/${actionId}/public_link`, {});
+      })
+      .then(({ body }) => {
+        cy.wrap(body.uuid).as("actionUuid");
+      });
 
     cy.visit("/admin/settings/public-sharing");
     cy.wait([
@@ -111,6 +166,22 @@ describe("scenarios > admin > settings > public sharing", () => {
     cy.findByTestId("admin-layout-content")
       .findByText(expectedDashboardName)
       .should("be.visible");
+    cy.findByTestId("admin-layout-content")
+      .findByText("Shared questions")
+      .should("be.visible");
+    cy.findByTestId("admin-layout-content")
+      .findByText(expectedQuestionName)
+      .should("be.visible");
+    cy.findByTestId("admin-layout-content")
+      .findByText("Shared action forms")
+      .scrollIntoView()
+      .should("be.visible");
+    cy.findByTestId("admin-layout-content")
+      .findByText(expectedActionName)
+      .scrollIntoView()
+      .should("be.visible");
+
+    cy.log("public dashboard");
     cy.get("@dashboardUuid").then((dashboardUuid) => {
       cy.findByText(
         `${location.origin}/public/dashboard/${dashboardUuid}`,
@@ -136,48 +207,7 @@ describe("scenarios > admin > settings > public sharing", () => {
       cy.visit("/admin/settings/public-sharing");
     });
 
-    cy.button("Revoke link").click();
-    H.modal().within(() => {
-      cy.findByText("Disable this link?").should("be.visible");
-      cy.button("Yes").click();
-    });
-    cy.findByTestId("admin-layout-content")
-      .findByText("No dashboards have been publicly shared yet.")
-      .scrollIntoView()
-      .should("be.visible");
-  });
-
-  it("should see public questions", () => {
-    const expectedQuestionName = "Public question";
-    const expectedQuestionSlug = "public-question";
-    H.createQuestion({
-      name: expectedQuestionName,
-      query: {
-        "source-table": ORDERS_ID,
-      },
-    })
-      .then(({ body }) => {
-        const questionId = body.id;
-        cy.wrap(questionId).as("questionId");
-        cy.request("POST", `/api/card/${questionId}/public_link`, {});
-      })
-      .then((response) => {
-        cy.wrap(response.body.uuid).as("questionUuid");
-      });
-
-    cy.visit("/admin/settings/public-sharing");
-    cy.wait([
-      "@getPublicActions",
-      "@getPublicQuestions",
-      "@getPublicDashboards",
-    ]);
-
-    cy.findByTestId("admin-layout-content")
-      .findByText("Shared questions")
-      .should("be.visible");
-    cy.findByTestId("admin-layout-content")
-      .findByText(expectedQuestionName)
-      .should("be.visible");
+    cy.log("public question");
     cy.get("@questionUuid").then((questionUuid) => {
       cy.findByText(
         `${location.origin}/public/question/${questionUuid}`,
@@ -197,66 +227,7 @@ describe("scenarios > admin > settings > public sharing", () => {
       cy.visit("/admin/settings/public-sharing");
     });
 
-    cy.button("Revoke link").click();
-    H.modal().within(() => {
-      cy.findByText("Disable this link?").should("be.visible");
-      cy.button("Yes").click();
-    });
-    cy.findByTestId("admin-layout-content")
-      .findByText("No questions have been publicly shared yet.")
-      .scrollIntoView()
-      .should("be.visible");
-  });
-
-  it("should see public actions", () => {
-    H.setActionsEnabledForDB(SAMPLE_DB_ID);
-    const expectedActionName = "Public action";
-
-    H.createQuestion({
-      name: "Model",
-      query: {
-        "source-table": ORDERS_ID,
-      },
-      type: "model",
-    }).then(({ body }) => {
-      const modelId = body.id;
-      cy.wrap(modelId).as("modelId");
-    });
-
-    cy.get("@modelId").then((modelId) => {
-      H.createAction({
-        ...DEFAULT_ACTION_DETAILS,
-        name: expectedActionName,
-        model_id: modelId,
-      }).then(({ body }) => {
-        const actionId = body.id;
-        cy.wrap(actionId).as("actionId");
-      });
-    });
-
-    cy.get("@actionId")
-      .then((actionId) => {
-        cy.request("POST", `/api/action/${actionId}/public_link`, {});
-      })
-      .then(({ body }) => {
-        cy.wrap(body.uuid).as("actionUuid");
-      });
-
-    cy.visit("/admin/settings/public-sharing");
-    cy.wait([
-      "@getPublicActions",
-      "@getPublicQuestions",
-      "@getPublicDashboards",
-    ]);
-
-    cy.findByTestId("admin-layout-content")
-      .findByText("Shared action forms")
-      .scrollIntoView()
-      .should("be.visible");
-    cy.findByTestId("admin-layout-content")
-      .findByText(expectedActionName)
-      .scrollIntoView()
-      .should("be.visible");
+    cy.log("public action");
     cy.get("@actionUuid").then((actionUuid) => {
       cy.findByText(`${location.origin}/public/action/${actionUuid}`).click();
       cy.findByRole("heading", { name: expectedActionName }).should(
@@ -277,14 +248,45 @@ describe("scenarios > admin > settings > public sharing", () => {
       cy.visit("/admin/settings/public-sharing");
     });
 
-    cy.button("Revoke link").click();
-    H.modal().within(() => {
-      cy.findByText("Disable this link?").should("be.visible");
-      cy.button("Yes").click();
-    });
+    revokePublicLink(expectedDashboardName);
+    cy.findByTestId("admin-layout-content")
+      .findByText("No dashboards have been publicly shared yet.")
+      .scrollIntoView()
+      .should("be.visible");
+
+    revokePublicLink(expectedQuestionName);
+    cy.findByTestId("admin-layout-content")
+      .findByText("No questions have been publicly shared yet.")
+      .scrollIntoView()
+      .should("be.visible");
+
+    revokePublicLink(expectedActionName);
     cy.findByTestId("admin-layout-content")
       .findByText("No actions have been publicly shared yet.")
       .scrollIntoView()
       .should("be.visible");
+
+    cy.findByTestId("enable-public-sharing-setting")
+      .scrollIntoView()
+      .within(() => {
+        cy.findByText("Enabled").should("be.visible");
+        cy.findByLabelText("Enabled").click();
+      });
+    cy.wait("@updatePublicSharing");
+    cy.findByTestId("enable-public-sharing-setting")
+      .findByText("Disabled")
+      .should("be.visible");
   });
 });
+
+function revokePublicLink(name) {
+  cy.findByTestId("admin-layout-content")
+    .findByText(name)
+    .closest("tr")
+    .findByRole("button", { name: "Revoke link" })
+    .click();
+  H.modal().within(() => {
+    cy.findByText("Disable this link?").should("be.visible");
+    cy.button("Yes").click();
+  });
+}

@@ -1,0 +1,109 @@
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-09-07T00:00:00
+      author: poom
+      comment: Bind each data app to its generated resource collection
+      changes:
+        - addColumn:
+            tableName: data_app
+            columns:
+              - column:
+                  name: resource_collection_id
+                  type: int
+                  remarks: Server-owned collection containing the data app's generated saved questions
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-09-07T00:00:01
+      author: poom
+      comment: Bind each data app to its generated permission group
+      changes:
+        - addColumn:
+            tableName: data_app
+            columns:
+              - column:
+                  name: permission_group_id
+                  type: int
+                  remarks: Server-owned read-only permissions group for the data app's users
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v64.2026-09-07T00:00:02
+      author: poom
+      comment: Add the data app resource collection foreign key
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: data_app
+            baseColumnNames: resource_collection_id
+            referencedTableName: collection
+            referencedColumnNames: id
+            constraintName: fk_data_app_resource_collection_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v64.2026-09-07T00:00:03
+      author: poom
+      comment: Add the data app permission group foreign key
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: data_app
+            baseColumnNames: permission_group_id
+            referencedTableName: permissions_group
+            referencedColumnNames: id
+            constraintName: fk_data_app_permission_group_id
+            onDelete: SET NULL
+
+  - changeSet:
+      id: v64.2026-09-07T00:00:04
+      author: poom
+      comment: Track data app drafts before repository import
+      changes:
+        - addColumn:
+            tableName: data_app
+            columns:
+              - column:
+                  name: draft
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: Whether this row is a data app draft before its first repository import
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v64.2026-09-07T00:00:05
+      author: timofei
+      comment: Add permissions_group.is_data_app_group boolean column
+      changes:
+        - addColumn:
+            tableName: permissions_group
+            columns:
+              - column:
+                  name: is_data_app_group
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: "true iff this is a Data App group (server-managed, hidden from the groups UI)"
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: permissions_group
+            columnName: is_data_app_group
+
+  - changeSet:
+      id: v64.2026-09-07T00:00:06
+      author: poom
+      comment: Store table ids used by the last successful resource sync in data apps
+      changes:
+        - addColumn:
+            tableName: data_app
+            columns:
+              - column:
+                  name: table_ids
+                  type: ${text.type}
+                  remarks: JSON array of table ids used by the last successful resource sync
+      rollback:
+        - dropColumn:
+            tableName: data_app
+            columnName: table_ids

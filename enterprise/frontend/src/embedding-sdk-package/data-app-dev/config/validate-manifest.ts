@@ -36,7 +36,7 @@ const compareAllowedHosts = (
 };
 
 /**
- * Not a full validator: the manifest rules live in the backend's `parse-app-config`
+ * Not a full validator: the manifest rules live in the backend's data-apps schemas
  * and a copy here would drift. This only adds what the backend cannot see —
  * this machine's disk, and what the dev server booted with.
  */
@@ -44,7 +44,10 @@ export function validateDataAppManifest(
   appRoot: string,
   initialAllowedHosts: string[],
 ): DataAppManifestStatus {
+  const manifestPath = path.join(appRoot, DATA_APP_MANIFEST_FILE_NAME);
+
   const status: DataAppManifestStatus = {
+    exists: fs.existsSync(manifestPath),
     name: null,
     bundlePath: null,
     bundlePathExists: false,
@@ -54,13 +57,7 @@ export function validateDataAppManifest(
     restartRequired: false,
   };
 
-  const manifestPath = path.join(appRoot, DATA_APP_MANIFEST_FILE_NAME);
-
-  if (!fs.existsSync(manifestPath)) {
-    status.errors.push(
-      `No ${DATA_APP_MANIFEST_FILE_NAME} found — this app will not sync.`,
-    );
-
+  if (!status.exists) {
     return status;
   }
 

@@ -3,7 +3,9 @@ import { useEffect } from "react";
 import { useIsTrackingEnabled } from "embedding-sdk-bundle/analytics/component-events";
 import type { SdkAuthMethod } from "embedding-sdk-bundle/analytics/snowplow";
 import {
+  getHostReactVersion,
   getSdkAuthMethod,
+  getSdkClient,
   getSdkLocaleUsed,
   initSdkTracker,
   trackSdkSimpleEvent,
@@ -13,7 +15,19 @@ import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import { getSdkPackageVersion } from "embedding-sdk-shared/lib/get-build-info";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import { isEmbeddingEajs } from "metabase/embedding-sdk/config";
+import { getSettings } from "metabase/settings";
 import { initMetaplow } from "metabase/utils/metaplow";
+
+const METAPLOW_RELAY_PATH = "/api/metaplow-proxy";
+
+function getMetaplowHostUrl(store: SdkStore, metabaseInstanceUrl: string) {
+  const isEnabled = !!getSettings(store.getState())?.[
+    "metaplow-tracking-enabled"
+  ];
+  return isEnabled
+    ? `${metabaseInstanceUrl.replace(/\/+$/, "")}${METAPLOW_RELAY_PATH}`
+    : null;
+}
 
 export function deriveAuthMethod(
   authConfig: MetabaseAuthConfig,
@@ -42,6 +56,7 @@ export function useInitSdkTracker(
       return;
     }
     initMetaplow({
+      hostUrl: getMetaplowHostUrl(reduxStore, authConfig.metabaseInstanceUrl),
       // Via frontend/src/embedding-sdk-bundle/analytics/snowplow.ts
       // Omits userId — unlike the main-app tracker, SDK component usage is tracked at instance granularity;
       // the analytics-uuid already identifies the account.
@@ -71,6 +86,8 @@ export function useInitSdkTracker(
             auth_method: getSdkAuthMethod(),
             sdk_version: sdkVersion,
             locale_used: getSdkLocaleUsed(),
+            react_version: getHostReactVersion(),
+            client: getSdkClient(),
           },
         }),
       });

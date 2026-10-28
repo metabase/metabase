@@ -8,10 +8,10 @@
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task-history.core :as task-history]
    [metabase.task.core :as task]
+   [metabase.transforms.db :as transforms.db]
    [metabase.transforms.jobs :as transforms.jobs]
    [metabase.transforms.settings :as transforms.settings]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
+   [metabase.util.log :as log])
   (:import
    (java.util TimeZone)
    (org.quartz CronTrigger TriggerKey CronExpression)))
@@ -80,9 +80,10 @@
        (log/info "Deleting trigger for transform job with schedule" (:schedule job-id-or-trigger))
        (task/delete-trigger! (-> job-id-or-trigger :key triggers/key))))))
 
-(task/defjob ^{:doc "Run transforms."
-               org.quartz.DisallowConcurrentExecution true}
-  RunTransforms
+(task/defjob RunTransforms
+  "Run transforms."
+  {:saved-class "metabase.transforms.schedule.RunTransforms"
+   :concurrent? false}
   [context]
   (let [job-id   (-> (conversion/from-job-data context)
                      (get "job-id"))
@@ -137,5 +138,5 @@
 
 (defmethod task/init! ::RunTransform [_]
   (log/info "Initializing transform job execution jobs")
-  (->> (t2/select :model/TransformJob :active true)
+  (->> (transforms.db/active-jobs)
        (run! initialize-job!)))

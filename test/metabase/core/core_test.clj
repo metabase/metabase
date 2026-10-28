@@ -17,7 +17,7 @@
       (let [h2-db (t2/insert-returning-instance! :model/Database
                                                  {:name "Sample Database" :engine :h2 :is_sample true
                                                   :details (#'sample-data.impl/try-to-extract-sample-database! :h2)})]
-        (sync/sync-database! h2-db)
+        (sync/sync-database! (:id h2-db))
         (let [before-tables (t2/select-fn-set :id :model/Table :db_id (:id h2-db))]
           (#'core/reconcile-sample-database!)
           (let [after (t2/select-one :model/Database :id (:id h2-db))]
@@ -37,7 +37,7 @@
       (let [db       (t2/insert-returning-instance! :model/Database
                                                     {:name "Sample Database" :engine :sqlite :is_sample true
                                                      :details (#'sample-data.impl/try-to-extract-sample-database! :sqlite)})
-            _        (sync/sync-database! db)
+            _        (sync/sync-database! (:id db))
             messages (mt/with-log-messages-for-level [messages [metabase.sample-data.impl :error]]
                        (#'core/reconcile-sample-database!)
                        (messages))]
@@ -49,7 +49,7 @@
   (testing "With no sample database present the bundled one is added, so fresh installs still get it"
     (mt/with-temp-empty-app-db [_conn :h2]
       (mdb/setup-db! :create-sample-content? false)
-      (with-redefs [config/load-sample-content? (constantly true)]
+      (mt/with-dynamic-fn-redefs [config/load-sample-content? (constantly true)]
         (#'core/reconcile-sample-database!))
       (let [sample-db (t2/select-one :model/Database :is_sample true)]
         (is (some? sample-db))

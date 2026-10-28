@@ -2,7 +2,6 @@ import type { Store, ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 
 import { App } from "metabase/AppComponent";
 import { getAccountRoutes } from "metabase/account/routes";
-import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
 import { getRoutes as getAdminRoutes } from "metabase/admin/routes";
 import { ForgotPassword } from "metabase/auth/components/ForgotPassword";
 import { Login } from "metabase/auth/components/Login";
@@ -20,12 +19,14 @@ import { MoveQuestionsIntoDashboardsModal } from "metabase/common/components/Mov
 import { NotFoundFallbackPage } from "metabase/common/components/NotFoundFallbackPage";
 import { UnsubscribePage } from "metabase/common/components/Unsubscribe";
 import { getDataStudioRoutes } from "metabase/data-studio/routes";
+import { getEmbeddingHubRoutes } from "metabase/embedding-hub/routes";
 import { getRoutes as getExplorationsRoutes } from "metabase/explorations/routes";
 import { getMetabotRoutes } from "metabase/metabot/routes";
 import { getMetricRoutes } from "metabase/metrics/routes";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import { getMonitorRedirects, getMonitorRoutes } from "metabase/monitor/routes";
+import { CollectionPermissionsModal } from "metabase/permissions";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_DATA_APPS,
@@ -50,6 +51,7 @@ import {
   Navigate,
   type RouteObject,
   redirect,
+  registerBackgroundPagePrefetch,
   registerPagePrefetch,
   toRouteObjects,
   useParams,
@@ -88,8 +90,10 @@ export function LegacyBrowseRedirect() {
  * them is visited.
  *
  * A `lazy` route makes that first navigation asynchronous: the router resolves
- * the module before it commits the location. It resolves the route in place, so
- * every later navigation to the query builder is synchronous again.
+ * the module before it commits the location, or gives up waiting for it and
+ * shows a spinner in the page's place (see `withChunkFallback`). It resolves the
+ * route in place, so every later navigation to the query builder is synchronous
+ * again.
  */
 const queryBuilder = () =>
   loadQueryBuilder().then(({ QueryBuilder }) => ({ Component: QueryBuilder }));
@@ -202,6 +206,23 @@ const commentsSidesheet = () =>
     /* webpackChunkName: "comments-sidesheet" */ "metabase/documents/components/CommentsSidesheet"
   ).then(({ CommentsSidesheet }) => CommentsSidesheet);
 
+const dashboardMoveModal = () =>
+  import(
+    /* webpackChunkName: "dashboard-move-modal" */ "metabase/dashboard/components/DashboardMoveModal"
+  ).then(({ DashboardMoveModalConnected }) => DashboardMoveModalConnected);
+
+const dashboardCopyModal = () =>
+  import(
+    /* webpackChunkName: "dashboard-copy-modal" */ "metabase/dashboard/components/DashboardCopyModal"
+  ).then(({ DashboardCopyModalConnected }) => DashboardCopyModalConnected);
+
+const dashboardArchiveModal = () =>
+  import(
+    /* webpackChunkName: "dashboard-archive-modal" */ "metabase/dashboard/containers/ArchiveDashboardModal"
+  ).then(
+    ({ ArchiveDashboardModalConnected }) => ArchiveDashboardModalConnected,
+  );
+
 /**
  * Hovering a link into one of these chunks starts the fetch, so it is usually in
  * hand by the time the click lands. The router still awaits `lazy` and still
@@ -232,6 +253,13 @@ registerPagePrefetch("/", landingPage, { exact: true });
 registerPagePrefetch("/collection/", collectionLanding);
 registerPagePrefetch("/trash", trashCollectionLanding);
 registerPagePrefetch("/browse", browsePage("BrowseModels"));
+
+// No link points at a modal, so hovering never says one is wanted. These are
+// fetched only in the background, where the point is that a tab which outlives a
+// deploy can still open them.
+registerBackgroundPagePrefetch(dashboardMoveModal);
+registerBackgroundPagePrefetch(dashboardCopyModal);
+registerBackgroundPagePrefetch(dashboardArchiveModal);
 
 export const getRoutes = (store: AppStore): RouteObject[] => [
   {
@@ -357,10 +385,13 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                       {modalRoute("archive", ArchiveCollectionModal, {
                         noWrap: true,
                       })}
-                      {modalRoute("permissions", CollectionPermissionsModal)}
+                      {modalRoute("permissions", CollectionPermissionsModal, {
+                        noWrap: true,
+                      })}
                       {modalRoute(
                         "move-questions-dashboard",
                         MoveQuestionsIntoDashboardsModal,
+                        { noWrap: true },
                       )}
                       {PLUGIN_COLLECTIONS.cleanUpRoute}
                     </>,
@@ -391,39 +422,15 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                 path: "dashboard/:slug",
                 lazy: dashboardApp,
                 children: [
-                  lazyModalRoute(
-                    "move",
-                    () =>
-                      import(
-                        /* webpackChunkName: "dashboard-move-modal" */ "metabase/dashboard/components/DashboardMoveModal"
-                      ).then(
-                        ({ DashboardMoveModalConnected }) =>
-                          DashboardMoveModalConnected,
-                      ),
-                    { noWrap: true },
-                  ),
-                  lazyModalRoute(
-                    "copy",
-                    () =>
-                      import(
-                        /* webpackChunkName: "dashboard-copy-modal" */ "metabase/dashboard/components/DashboardCopyModal"
-                      ).then(
-                        ({ DashboardCopyModalConnected }) =>
-                          DashboardCopyModalConnected,
-                      ),
-                    { noWrap: true },
-                  ),
-                  lazyModalRoute(
-                    "archive",
-                    () =>
-                      import(
-                        /* webpackChunkName: "dashboard-archive-modal" */ "metabase/dashboard/containers/ArchiveDashboardModal"
-                      ).then(
-                        ({ ArchiveDashboardModalConnected }) =>
-                          ArchiveDashboardModalConnected,
-                      ),
-                    { noWrap: true },
-                  ),
+                  lazyModalRoute("move", dashboardMoveModal, {
+                    noWrap: true,
+                  }),
+                  lazyModalRoute("copy", dashboardCopyModal, {
+                    noWrap: true,
+                  }),
+                  lazyModalRoute("archive", dashboardArchiveModal, {
+                    noWrap: true,
+                  }),
                 ],
               },
 
@@ -454,7 +461,7 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
               },
 
               // MODELS
-              ...toRouteObjects(getModelRoutes()),
+              ...toRouteObjects(getModelRoutes(IsAdmin)),
 
               {
                 path: "/model",
@@ -539,6 +546,9 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
 
               // MONITOR
               ...toRouteObjects(getMonitorRoutes()),
+
+              // EMBEDDING HUB
+              ...toRouteObjects(getEmbeddingHubRoutes()),
             ],
           },
         ],

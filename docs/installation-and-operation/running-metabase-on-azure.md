@@ -80,9 +80,9 @@ Now click on the button of the top bar with a plus sign that says **Private endp
 
 ![Azure PrivateLink config](images/AZPrivateLink.png)
 
-Now go to the last step and click **Create**. Once the endpoint is created, you will need do two things before proceeding:
+Now go to the last step and click **Create**. Once the endpoint is created, you will need to do two things before proceeding:
 
-1. In the page of database server you just created go to the database **Connection Security** item and **deny all public network access**.
+1. In the page of the database server you just created go to the database **Connection Security** item and **deny all public network access**.
 2. In the page of the VNET you created in the previous step, go to **Connected devices** setting and you should see a device connected to the network. Take note of the IP address, as you'll need it in Step 5 (this is the IP address that the network has given to the database server).
 
 ## Step 5: Create web application (deploy Metabase)
@@ -96,7 +96,7 @@ Now set up the following values on the page (resource group should be the same a
 - **Publish**: Docker Container.
 - **Operating System**: Linux.
 - **Region**: Use the same region as the previous steps.
-- **App Service Plan**: If you don't have one a service plan, Azure will create a new one automatically.
+- **App Service Plan**: If you don't have a service plan, Azure will create a new one automatically.
 - **SKU and Size**: Set a Production level plan with **AT LEAST** 200 total ACU and 3.5GB of memory, and click **Apply**.
 
 Now go to the next step where you will select:

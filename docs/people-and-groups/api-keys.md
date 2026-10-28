@@ -29,7 +29,7 @@ To create an API key:
 
 ### Creating API keys from the config file
 
-If you're on a [Pro or Enterprise self-hosted plan](https://www.metabase.com/pricing/), you can [create API keys via the configuration file](../configuring-metabase/config-file.md#api-keys).
+If you're on a [Pro or Enterprise self-hosted plan](https://www.metabase.com/pricing), you can [create API keys via the configuration file](../configuring-metabase/config-file.md#api-keys).
 
 ## Managing API Keys
 
@@ -40,6 +40,10 @@ To view and manage existing API keys:
 3. Go to the **Settings** tab.
 4. Click on the **Authentication** tab on the left menu.
 5. Scroll to **API Keys** and click **Manage**.
+
+### See how your API keys get used
+
+See [API key usage](../monitor/api-key-usage.md) in Monitor.
 
 ### Editing API keys
 
@@ -89,7 +93,7 @@ Assuming you've set your key as an environment variable like so:
 export METABASE_API_KEY="YOUR_API_KEY"
 ```
 
-Here's a basic `GET` request using `fetch` to get the list of groups. You can copy the code, save it as file (e.g., as `api-test.js`), and run the code with `node api-test.js`.
+Here's a basic `GET` request using `fetch` to get the list of groups. You can copy the code, save it as a file (e.g., as `api-test.js`), and run the code with `node api-test.js`.
 
 ```js
 // Assuming you've set the key in process with
@@ -116,4 +120,5 @@ getGroups().then((groups) => console.log("Groups in your Metabase:", groups));
 ## Further reading
 
 - [Metabase API reference](../api.html).
+- [API key usage](../monitor/api-key-usage.md).
 - [Working with the Metabase API](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/metabase-api).

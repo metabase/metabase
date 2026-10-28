@@ -8,6 +8,7 @@
    [metabase.metabot.api :as metabot.api]
    [metabase.metabot.conversation-title :as conversation-title]
    [metabase.metabot.persistence :as metabot.persistence]
+   [metabase.metabot.self :as metabot.self]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -468,6 +469,7 @@
                      :model/MetabotMessage _a1 {:conversation_id convo-id :user_id user-id :role "assistant"
                                                 :external_id a1 :finished true :total_tokens 100
                                                 :usage {"gpt" {:prompt 60 :completion 40}}
+                                                :context_tokens 60
                                                 :data [{:type "text" :text "hello"}]
                                                 :created_at (seconds-ago 50)}
                      :model/MetabotMessage _u2 {:conversation_id convo-id :user_id user-id :role "user"
@@ -491,7 +493,8 @@
                 (is (= convo-id (:forked_from_conversation_id response))))
               (is (= user-id (:user_id response))))
             (testing "only the thread up to and including the target is copied"
-              (is (= ["hi" "hello"] (mapv :message (:messages response)))))
+              (is (= ["hi" "hello"]
+                     (mapv #(-> % :parts first :message) (:messages response)))))
             (let [rows        (metabot.persistence/live-messages new-id)
                   orig-a1-at  (t2/select-one-fn :created_at :model/MetabotMessage :external_id a1)]
               (testing "cloned rows are fresh copies"
@@ -503,25 +506,103 @@
                   (is (every? #(t/after? (t/instant (:created_at %)) (t/instant orig-a1-at)) rows))))
               (testing "token usage is zeroed so forks don't double-count in analytics"
                 (is (every? #(zero? (:total_tokens %)) rows))
-                (is (every? #(nil? (:usage %)) rows))))
+                (is (every? #(nil? (:usage %)) rows)))
+              (testing "context size carries over so the fork is as full as the thread it copied"
+                (is (= [nil 60] (mapv :context_tokens rows)))
+                (is (= [nil 60] (mapv :contextTokens (:messages response))))))
             (testing "the original conversation is untouched"
               (is (= 4 (count (metabot.persistence/live-messages convo-id)))))
             (finally
               (t2/delete! :model/MetabotMessage :conversation_id new-id)
               (t2/delete! :model/MetabotConversation :id new-id))))))))
 
+(deftest conversation-detail-returns-incomplete-status-test
+  (testing "GET /api/metabot/conversations/:id reports a turn that stopped early as incomplete"
+    (let [user-id (mt/user->id :rasta)]
+      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id :title "truncated"}
+                     :model/MetabotMessage _u {:conversation_id convo-id :user_id user-id :role "user"
+                                               :external_id (str (random-uuid))
+                                               :data [{:type "text" :text "hi"}]
+                                               :created_at (seconds-ago 60)}
+                     :model/MetabotMessage _a {:conversation_id convo-id :user_id user-id :role "assistant"
+                                               :external_id (str (random-uuid))
+                                               :finished true :finish_reason "length"
+                                               :context_tokens 150
+                                               :data [{:type "text" :text "cut o"}]
+                                               :created_at (seconds-ago 50)}
+                     :model/MetabotMessage _u2 {:conversation_id convo-id :user_id user-id :role "user"
+                                                :external_id (str (random-uuid))
+                                                :data [{:type "text" :text "go on"}]
+                                                :created_at (seconds-ago 40)}
+                     :model/MetabotMessage _a2 {:conversation_id convo-id :user_id user-id :role "assistant"
+                                                :external_id (str (random-uuid))
+                                                :finished true :finish_reason "length"
+                                                :context_tokens 200 :context_window_full true
+                                                :data [{:type "text" :text "cut o"}]
+                                                :created_at (seconds-ago 30)}]
+        (let [statuses-at-window (fn [window]
+                                   (mt/with-dynamic-fn-redefs [metabot.self/context-window-tokens (constantly window)]
+                                     (let [{:keys [messages]} (mt/user-http-request
+                                                               :rasta :get 200 (str "metabot/conversations/" convo-id))]
+                                       (mapv :status [(nth messages 1) (nth messages 3)]))))
+              plain-length       {:type "incomplete" :finishReason "length"}
+              full-window        (assoc plain-length :contextWindowFull true)]
+          (testing "each turn reads as its row recorded it: a plain length stop, and one that filled its window"
+            (is (= [plain-length full-window] (statuses-at-window 1000))))
+          (testing "the current model's window does not change a past turn's verdict"
+            (testing "a smaller window does not make the plain stop full"
+              (is (= [plain-length full-window] (statuses-at-window 100))))
+            (testing "a bigger window does not clear the full one"
+              (is (= [plain-length full-window] (statuses-at-window 1000000))))))))))
+
+(deftest fork-conversation-from-incomplete-turn-test
+  (testing "POST /api/metabot/conversations/:id/fork forks from a turn that stopped early"
+    (let [user-id (mt/user->id :rasta)
+          a1      (str (random-uuid))]
+      (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id :title "truncated"}
+                     :model/MetabotMessage _u {:conversation_id convo-id :user_id user-id :role "user"
+                                               :external_id (str (random-uuid))
+                                               :data [{:type "text" :text "hi"}]
+                                               :created_at (seconds-ago 60)}
+                     :model/MetabotMessage _a {:conversation_id convo-id :user_id user-id :role "assistant"
+                                               :external_id a1 :finished true :finish_reason "length"
+                                               :context_tokens 150 :context_window_full true
+                                               :data [{:type "text" :text "cut o"}]
+                                               :created_at (seconds-ago 50)}]
+        ;; a current window far bigger than the turn's context: the verdict must come from the row
+        (let [response (mt/with-dynamic-fn-redefs [metabot.self/context-window-tokens (constantly 1000000)]
+                         (mt/user-http-request :rasta :post 200
+                                               (str "metabot/conversations/" convo-id "/fork")
+                                               {:message_id a1}))
+              new-id   (:conversation_id response)]
+          (try
+            (testing "the clone keeps the reason and the full-window verdict"
+              (is (=? [{:finish_reason nil :context_window_full nil}
+                       {:finish_reason "length" :context_window_full true}]
+                      (metabot.persistence/live-messages new-id))))
+            (testing "so the forked conversation still reads as incomplete, with a full window"
+              (is (= {:type "incomplete" :finishReason "length" :contextWindowFull true}
+                     (:status (second (:messages response))))))
+            (finally
+              (t2/delete! :model/MetabotMessage :conversation_id new-id)
+              (t2/delete! :model/MetabotConversation :id new-id))))))))
+
 (deftest fork-conversation-validation-test
   (testing "POST /api/metabot/conversations/:id/fork rejects invalid fork targets"
-    (let [user-id  (mt/user->id :rasta)
-          user-ext (str (random-uuid))
-          err-ext  (str (random-uuid))
-          live-ext (str (random-uuid))]
+    (let [user-id    (mt/user->id :rasta)
+          user-ext   (str (random-uuid))
+          err-ext    (str (random-uuid))
+          live-ext   (str (random-uuid))
+          abort-ext  (str (random-uuid))]
       (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id :title "c"}
                      :model/MetabotMessage _u {:conversation_id convo-id :user_id user-id :role "user"
                                                :external_id user-ext :created_at (seconds-ago 60)}
                      :model/MetabotMessage _errored {:conversation_id convo-id :user_id user-id :role "assistant"
                                                      :external_id err-ext :finished true
                                                      :error "{\"message\":\"boom\"}" :created_at (seconds-ago 50)}
+                     :model/MetabotMessage _aborted {:conversation_id convo-id :user_id user-id :role "assistant"
+                                                     :external_id abort-ext :finished false
+                                                     :finish_reason "length" :created_at (seconds-ago 45)}
                      :model/MetabotMessage _inflight {:conversation_id convo-id :user_id user-id :role "assistant"
                                                       :external_id live-ext :finished nil :created_at (seconds-ago 40)}]
         (let [convo-count #(t2/count :model/MetabotConversation)
@@ -534,6 +615,8 @@
             (fork! user-ext))
           (testing "an errored assistant message cannot be a fork target"
             (fork! err-ext))
+          (testing "an aborted assistant message that stored a reason cannot be a fork target"
+            (fork! abort-ext))
           (testing "an in-flight placeholder cannot be a fork target"
             (fork! live-ext))
           (testing "an unknown message id cannot be a fork target"
@@ -664,7 +747,7 @@
                                 body))))))
 
 (deftest record-saved-entity-strips-extra-query-keys-test
-  (testing "POST /api/metabot/conversations/:id/saved-entity validates and strips undeclared keys from :dataset_query"
+  (testing "POST /api/metabot/conversations/:id/saved-entity strips the query processor's internal keys from :dataset_query"
     (let [user-id (mt/user->id :crowberto)]
       (mt/with-model-cleanup [:model/Card]
         (mt/with-temp [:model/MetabotConversation {convo-id :id} {:user_id user-id}
@@ -673,9 +756,13 @@
                                               (str "metabot/conversations/" convo-id "/saved-entity")
                                               {:chart_id "chart-1"
                                                :card     {:name          "Venues"
-                                                          :dataset_query (assoc (venues-query) :a 1 :a/b 2)
+                                                          ;; internal keys the QP adds while a query runs; a client
+                                                          ;; must not be able to smuggle them in through a save
+                                                          :dataset_query (-> (venues-query)
+                                                                             (assoc :qp/source-card-id 1)
+                                                                             (assoc-in [:stages 0 :qp/stage-had-source-card] 1))
                                                           :display       "bar"}})
                 stored  (:dataset_query (t2/select-one :model/Card :id (:id created)))]
             (is (= :mbql/query (:lib/type stored)))
-            (is (not (contains? stored :a)))
-            (is (not (contains? stored :a/b)))))))))
+            (is (not (contains? stored :qp/source-card-id)))
+            (is (not (contains? (first (:stages stored)) :qp/stage-had-source-card)))))))))

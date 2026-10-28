@@ -37,11 +37,12 @@
    [metabase.query-processor :as qp]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.warehouse-schema.models.field-values :as field-values]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouse-schema.models.field-values :as field-values]))
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *batch-size*
   "Number of per-field arms unioned into one query. Keeps query text well under driver limits."
   50)
@@ -137,7 +138,7 @@
   (or equivalent) to decide log-and-continue vs abort semantics."
   [table fields]
   (let [db-id          (:db_id table)
-        driver         (:engine (t2/select-one :model/Database :id db-id))
+        driver         (:engine (warehouse-schema.db/database db-id))
         fields         (vec fields)
         hsql           (build-union driver table fields)
         [sql & params] (sql.qp/format-honeysql driver hsql)

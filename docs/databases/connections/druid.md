@@ -34,7 +34,7 @@ See our [guide to SSH tunneling](../ssh-tunnel.md).
 
 This enables unfolding of JSON columns into their component fields.
 
-See [JSON unfolding](../../data-modeling/json-unfolding.md).
+See [JSON unfolding](../../data-modeling/metadata/json-unfolding.md).
 
 ### Authentication
 
@@ -44,7 +44,7 @@ Toggle on to enable basic authentication with a username and password.
 
 Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../../questions/query-builder/summarizing-and-grouping.md) or filter selections.
 
-By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](../../questions/visualizations/drill-through.md). If your database is slow, you may want to disable re-running to avoid loading data on each click.
+By default, Metabase will execute a query as soon as you choose a grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](../../questions/visualizations/drill-through.md). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 
 ### Choose when syncs and scans happen
 
@@ -79,6 +79,6 @@ See [Danger Zone](../danger-zone.md).
 ## Further reading
 
 - [Managing databases](../../databases/connecting.md)
-- [Metadata editing](../../data-modeling/metadata-editing.md)
-- [Models](../../data-modeling/models.md)
+- [Metadata editing](../../data-modeling/metadata/metadata-editing.md)
+- [Models](../../data-modeling/models/models.md)
 - [Setting data access permissions](../../permissions/data.md)

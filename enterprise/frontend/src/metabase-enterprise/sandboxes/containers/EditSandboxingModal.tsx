@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { GROUPS_BASE_PATH } from "metabase/admin/permissions/utils/urls";
 import {
   skipToken,
   useGetGroupTableAccessPolicyQuery,
@@ -8,6 +7,7 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
+import { getGroupsBasePath } from "metabase/permissions";
 import { useDispatch, useSelector } from "metabase/redux";
 import { parseIntParam } from "metabase/urls";
 import { getGroupTableAccessPolicy } from "metabase-enterprise/sandboxes/selectors";
@@ -77,7 +77,7 @@ const EditSandboxingModalContainer = ({
         entityId: { databaseId, schemaName: params.schemaName, tableId },
         // the modal is mounted under both permissions editor views; only
         // permission post-actions read the view
-        view: location.pathname.startsWith(GROUPS_BASE_PATH)
+        view: location.pathname.startsWith(getGroupsBasePath())
           ? "group"
           : "database",
       }),

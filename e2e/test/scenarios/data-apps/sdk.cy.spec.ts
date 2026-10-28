@@ -1,18 +1,9 @@
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   DATA_APP_DISPLAY_NAME as APP_DISPLAY_NAME,
-  DATA_APP_NAME as APP_NAME,
   visitDataAppRoute as visitAppRoute,
 } from "e2e/support/helpers";
 
-import {
-  DATA_APP_TEST_ENV as TEST_ENV,
-  dataAppNumericField as numericField,
-  dataAppNumericResultColumn as resultColumn,
-} from "./helpers";
-
-const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
+import { createKitchenSinkDataApp } from "./helpers";
 
 const { H } = cy;
 
@@ -25,18 +16,9 @@ describe("scenarios > data apps > SDK runtime", () => {
   });
 
   describe("query hooks & question components", () => {
-    const setupQueryStatesApp = () =>
-      H.mockDataApp(APP_NAME, {
-        displayName: APP_DISPLAY_NAME,
-        testEnv: {
-          ...TEST_ENV,
-          // A table id that doesn't exist → the query resolves to an error.
-          errorQuery: { source: { type: "table", id: 999999 } },
-        },
-      });
-
-    it("surfaces the useMetabaseQuery error state", () => {
-      setupQueryStatesApp();
+    it("surfaces the useMetabaseQuery error state, and re-runs the query when the app calls refetch", () => {
+      cy.intercept("POST", "/api/dataset").as("datasetQuery");
+      createKitchenSinkDataApp();
 
       visitAppRoute("query-states");
       H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
@@ -44,15 +26,7 @@ describe("scenarios > data apps > SDK runtime", () => {
           "have.text",
           "error",
         );
-      });
-    });
 
-    it("re-runs the query when the app calls refetch", () => {
-      cy.intercept("POST", "/api/dataset").as("datasetQuery");
-      setupQueryStatesApp();
-
-      visitAppRoute("query-states");
-      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
         // The query has to have resolved before refetching means anything.
         cy.findByTestId("query-value", { timeout: 30000 })
           .invoke("text")
@@ -74,10 +48,7 @@ describe("scenarios > data apps > SDK runtime", () => {
     });
 
     it("renders a StaticQuestion from useMetabaseQueryObject", () => {
-      H.mockDataApp(APP_NAME, {
-        displayName: APP_DISPLAY_NAME,
-        testEnv: TEST_ENV,
-      });
+      createKitchenSinkDataApp();
 
       visitAppRoute("static-question");
       H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
@@ -105,98 +76,11 @@ describe("scenarios > data apps > SDK runtime", () => {
         );
       });
     });
-
-    it("builds a query with filter/breakout/orderBy/aggregations helpers", () => {
-      H.mockDataApp(APP_NAME, {
-        displayName: APP_DISPLAY_NAME,
-        testEnv: {
-          ...TEST_ENV,
-          combinators: {
-            source: { type: "table", id: ORDERS_ID },
-            filterField: numericField(ORDERS.TOTAL, "TOTAL"),
-            filterValue: 50,
-            breakoutField: numericField(ORDERS.PRODUCT_ID, "PRODUCT_ID"),
-          },
-        },
-      });
-
-      visitAppRoute("combinators");
-      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
-        cy.findByTestId("combinators-loading", { timeout: 30000 }).should(
-          "have.text",
-          "done",
-        );
-        cy.findByTestId("combinators-error").should("have.text", "no-error");
-        // `.should(callback)` retries until the query resolves with rows.
-        cy.findByTestId("combinators-rowcount", { timeout: 30000 }).should(
-          ($el) => {
-            expect(Number($el.text())).to.be.greaterThan(0);
-          },
-        );
-      });
-    });
-  });
-
-  describe("saved question sources", () => {
-    const setupCardSourceApp = () =>
-      H.createQuestion({
-        name: "Orders as a data-app query source",
-        query: { "source-table": ORDERS_ID },
-      }).then(({ body: card }) => {
-        H.mockDataApp(APP_NAME, {
-          displayName: APP_DISPLAY_NAME,
-          testEnv: {
-            ...TEST_ENV,
-            cardSource: {
-              source: { type: "card", id: card.id },
-              tableSource: { type: "table", id: ORDERS_ID },
-              filterField: numericField(ORDERS.TOTAL, "TOTAL"),
-              filterColumn: resultColumn("TOTAL"),
-              filterValue: 50,
-              breakoutField: numericField(ORDERS.PRODUCT_ID, "PRODUCT_ID"),
-              breakoutColumn: resultColumn("PRODUCT_ID"),
-            },
-          },
-        });
-
-        visitAppRoute("card-source");
-      });
-
-    it("queries a saved question as a source", () => {
-      setupCardSourceApp();
-
-      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
-        cy.findByTestId("card-source-case-source", {
-          timeout: 30000,
-        }).should("have.text", "match");
-
-        // A match on two empty results would be vacuous, so the source has to
-        // have actually returned rows.
-        cy.findByTestId("card-source-total").should(($el) => {
-          expect(Number($el.text())).to.be.greaterThan(0);
-        });
-      });
-    });
-
-    it("applies filters, aggregations, and breakouts on top of a saved question", () => {
-      setupCardSourceApp();
-
-      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
-        ["filters", "aggregations", "breakouts"].forEach((clause) => {
-          cy.findByTestId(`card-source-case-${clause}`, {
-            timeout: 30000,
-          }).should("have.text", "match");
-        });
-      });
-    });
   });
 
   describe("clipboard (copy)", () => {
     it("writes text to the clipboard from a user click", () => {
-      H.mockDataApp(APP_NAME, {
-        displayName: APP_DISPLAY_NAME,
-        testEnv: TEST_ENV,
-      });
+      createKitchenSinkDataApp();
 
       visitAppRoute("clipboard");
 
@@ -231,10 +115,7 @@ describe("scenarios > data apps > SDK runtime", () => {
 
   describe("error component", () => {
     it("shows the default neutral error state for a missing question", () => {
-      H.mockDataApp(APP_NAME, {
-        displayName: APP_DISPLAY_NAME,
-        testEnv: TEST_ENV,
-      });
+      createKitchenSinkDataApp();
 
       visitAppRoute("missing-question");
       H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
@@ -246,7 +127,9 @@ describe("scenarios > data apps > SDK runtime", () => {
       const CUSTOM_APP = "custom-error-component";
       const CUSTOM_DISPLAY = "Custom Error App";
 
-      H.mockDataApp(CUSTOM_APP, { displayName: CUSTOM_DISPLAY });
+      H.createDataApp({ name: CUSTOM_APP, display_name: CUSTOM_DISPLAY }).then(
+        H.uploadDataAppBundle,
+      );
 
       H.openDataApp(CUSTOM_APP);
       H.dataAppIframe(CUSTOM_DISPLAY).within(() => {
@@ -263,13 +146,7 @@ describe("scenarios > data apps > SDK runtime", () => {
     });
 
     it("downloads a chart question as PNG", () => {
-      H.mockDataApp(APP_NAME, {
-        displayName: APP_DISPLAY_NAME,
-        testEnv: {
-          ...TEST_ENV,
-          downloadQuestionId: ORDERS_BY_YEAR_QUESTION_ID,
-        },
-      });
+      createKitchenSinkDataApp();
 
       visitAppRoute("download-question");
 

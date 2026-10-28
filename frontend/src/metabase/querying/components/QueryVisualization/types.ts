@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type {
   ClickObject,
   VisualizationPassThroughProps,
@@ -9,6 +11,7 @@ import type {
   Series,
   SeriesCard,
   TimelineEvent,
+  TimelineEventsVisibility,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -38,13 +41,15 @@ export type QueryVisualizationProps = VisualizationPassThroughProps & {
   isDirty?: boolean;
   isShowingSummarySidebar?: boolean;
   hideLegend?: boolean;
+  noResultsAction?: ReactNode;
+  errorAction?: ReactNode;
 
   // query-builder-specific props injected by callers via `useVisualizationResultQBProps`
   isRawTable?: boolean;
   scrollToLastColumn?: boolean;
   getExtraDataForClick?: () => Record<string, unknown>;
 
-  timelineEvents?: TimelineEvent[];
+  timelineEventsVisibility?: TimelineEventsVisibility;
   selectedTimelineEventIds?: number[];
 
   runQuestionQuery?: () => void;

@@ -65,7 +65,7 @@
   (is (=? {:effective-type    :type/Boolean
            :display-name      "[Unknown Segment]"
            :long-display-name "[Unknown Segment]"}
-          (lib.metadata.calculation/display-info query-with-segment [:segment {} (inc segment-id)]))))
+          (lib.metadata.calculation/display-info query-with-segment [:segment {:lib/uuid (str (random-uuid))} (inc segment-id)]))))
 
 (deftest ^:parallel available-segments-test
   (testing "Should return Segments with the same Table ID as query's `:source-table`"

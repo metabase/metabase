@@ -3,8 +3,14 @@ import createAsyncCallback from "@loki/create-async-callback";
 import type { StoryContext, StoryFn } from "@storybook/react";
 import { userEvent, within } from "@storybook/test";
 import { HttpResponse, http } from "msw";
+import type { ComponentType } from "react";
 
 import { getPublicStore } from "__support__/entities-store";
+import {
+  createMockDashboardState,
+  createMockSettingsState,
+  createMockState,
+} from "__support__/state";
 import { createWaitForResizeToStopDecorator } from "__support__/storybook";
 import { getNextId } from "__support__/utils";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
@@ -14,11 +20,6 @@ import {
 } from "metabase/dashboard/context/mock-context";
 import { PublicOrEmbeddedDashboardView } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboardView";
 import { MetabaseReduxProvider } from "metabase/redux";
-import {
-  createMockDashboardState,
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import MetabaseSettings from "metabase/utils/settings";
 import { Map } from "metabase/visualizations/visualizations/Map";
 import { registerVisualization } from "metabase/viz-core";
@@ -61,7 +62,7 @@ const DASHBOARD_ID = getNextId();
 const DASHCARD_MAP_ID = getNextId();
 const CARD_MAP_ID = getNextId();
 
-function ReduxDecorator(Story: StoryFn, context: StoryContext) {
+function ReduxDecorator(Story: ComponentType, context: StoryContext) {
   // Unjustified type cast. FIXME
   const dashboard = (context.args.dashboard as Dashboard) ?? createDashboard();
   const initialState = createMockState({

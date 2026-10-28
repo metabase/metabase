@@ -5,22 +5,28 @@ set -euo pipefail
 # The only place that knows what a release branch's opt-out looks like. The cut-release workflow, the
 # backport helper, and the tests all go through this function.
 write_disabled_ratchets() {
-  mkdir -p .clj-kondo
+  local file=$1
+  mkdir -p "$(dirname "$file")"
   printf '%s\n' \
     ';; Kondo ignore ratchets apply only to master; this release branch opts out.' \
     ';; The test and fixer recognize this explicit opt-out.' \
     '{:disabled true}' \
-    > .clj-kondo/ratchets.edn
+    > "$file"
 }
 
 disable_ratchets() {
   local commit=$1
-  local file=.clj-kondo/ratchets.edn
-  [ -n "$(git diff-tree --root --no-commit-id --name-only -r "$commit" -- "$file")" ] || return 0
+  local file
+  local disabled_any=
+  for file in .clj-kondo/ratchets.edn .clj-kondo/ratchets-test.edn; do
+    [ -n "$(git diff-tree --root --no-commit-id --name-only -r "$commit" -- "$file")" ] || continue
 
-  echo "$file: disabling kondo ratchets on the release branch"
-  write_disabled_ratchets
-  git add -- "$file"
+    echo "$file: disabling kondo ratchets on the release branch"
+    write_disabled_ratchets "$file"
+    git add -- "$file"
+    disabled_any=1
+  done
+  [ -n "$disabled_any" ] || return 0
 
   if ! git rev-parse -q --verify CHERRY_PICK_HEAD >/dev/null; then
     if ! git diff --cached --quiet HEAD; then
@@ -30,7 +36,7 @@ disable_ratchets() {
   fi
 
   if [ -z "$(git ls-files -u)" ]; then
-    echo "$file was the only conflict, finishing the cherry-pick"
+    echo "disabled ratchet file(s) were the only conflict, finishing the cherry-pick"
     if git diff --cached --quiet HEAD; then
       echo "nothing left to apply, committing the backport empty"
       git commit --allow-empty --no-edit

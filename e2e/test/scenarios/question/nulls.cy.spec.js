@@ -121,10 +121,15 @@ describe("scenarios > question > null", () => {
 
           H.visitDashboard(DASHBOARD_ID);
           cy.log("P0 regression in v0.37.1!");
-          cy.findByTestId("loading-indicator").should("not.exist");
-          cy.findByText("13801_Q1");
-          cy.findAllByTestId("scalar-value").should("contain", "0");
-          cy.findByText("13801_Q2");
+          H.getDashboardCard(1).within(() => {
+            cy.findByText("13801_Q2").should("be.visible");
+            cy.findByTestId("scalar-value").should("have.text", "0");
+          });
+          H.getDashboardCard(0).within(() => {
+            cy.findByText("13801_Q1").should("be.visible");
+            cy.findByTestId("scalar-value").should("exist");
+            cy.findByTestId("loading-indicator").should("not.exist");
+          });
         });
       });
     });
@@ -135,6 +140,9 @@ describe("scenarios > question > null", () => {
     const findGridcell = (text) =>
       cy.findByRole("grid").findByRole("gridcell", { name: text });
 
+    findGridcell("49.21").should("be.visible");
+    cy.intercept("POST", "/api/dataset").as("dataset");
+
     // Total of "39.72", and the next cell is the `discount` (which is empty)
     findGridcell("39.72")
       .next()
@@ -144,6 +152,8 @@ describe("scenarios > question > null", () => {
       .click({ force: true });
 
     H.popover().contains("=").click();
+    cy.wait("@dataset");
+    cy.findByTestId("filter-pill").should("contain.text", "Discount is empty");
 
     findGridcell("39.72").should("be.visible");
     // This row ([id] 3) had the `discount` column value and should be filtered out now
@@ -172,12 +182,12 @@ describe("scenarios > question > null", () => {
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.contains("Cumulative sum of Discount by Created At: Month");
 
+      H.cartesianChartCircle().should("have.length.of.at.least", 40);
+
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
       cy.findByText("There was a problem with your question").should(
         "not.exist",
       );
-
-      H.cartesianChartCircle().should("have.length.of.at.least", 40);
     });
   });
 });

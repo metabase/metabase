@@ -131,6 +131,7 @@ const GOOGLE_TYPE = createMockLlmProviderType({
       display_name: "Claude Sonnet 4.6",
     },
   ],
+  model_fields: ["endpoint-id"],
   required_any: [["service-account-key"], ["oauth-access-token", "project-id"]],
   fields: [
     createMockLlmProviderField({
@@ -164,6 +165,12 @@ const GOOGLE_TYPE = createMockLlmProviderType({
       type: "password",
       required: false,
       show_when: { field: "auth-method", value: "oauth-token" },
+    }),
+    createMockLlmProviderField({
+      key: "endpoint-id",
+      label: "Model Garden endpoint ID",
+      type: "text",
+      required: false,
     }),
   ],
 });
@@ -338,6 +345,43 @@ describe("ProviderConnectionForm with fields behind a choice", () => {
       model: "google/gemini-3.6-flash",
     });
   });
+
+  it("connects to a Model Garden endpoint in place of a catalog model", async () => {
+    const { onSaved } = setupGoogle();
+    const key = '{"type":"service_account"}';
+
+    await pickGoogle();
+    await userEvent.upload(
+      screen.getByLabelText("Service account key file file input"),
+      new File([key], "key.json", { type: "application/json" }),
+    );
+    expect(screen.getByLabelText("Model")).toBeInTheDocument();
+
+    await userEvent.type(
+      screen.getByLabelText("Model Garden endpoint ID"),
+      "1234567890123456789",
+    );
+
+    expect(screen.queryByLabelText("Model")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+    await waitFor(() => {
+      expect(onSaved).toHaveBeenCalled();
+    });
+    expect(
+      await fetchMock.callHistory
+        .lastCall("path:/api/llm/providers", { method: "POST" })
+        ?.request?.json(),
+    ).toEqual({
+      type: "google",
+      name: "Google Gemini Enterprise",
+      config: {
+        "service-account-key": key,
+        "endpoint-id": "1234567890123456789",
+      },
+    });
+  });
 });
 
 describe("ProviderConnectionForm editing a fixed-catalog connection", () => {
@@ -421,6 +465,39 @@ describe("ProviderConnectionForm editing a fixed-catalog connection", () => {
     );
   });
 
+  it("saves a connection that names an endpoint without picking a catalog model", async () => {
+    const { onSaved } = setupGoogle(
+      createMockLlmProviderConnection({
+        key: "google",
+        type: "google",
+        name: "Google Gemini Enterprise",
+        config: {
+          "auth-method": "oauth-token",
+          "oauth-access-token": "**********en",
+          "project-id": "my-project",
+          "endpoint-id": "1234567890123456789",
+        },
+      }),
+      { modelRef: "google/endpoints/1234567890123456789" },
+    );
+
+    expect(
+      await screen.findByLabelText("Model Garden endpoint ID"),
+    ).toHaveValue("1234567890123456789");
+    expect(screen.queryByLabelText("Model")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(onSaved).toHaveBeenCalled();
+    });
+    expect(
+      await fetchMock.callHistory
+        .lastCall("express:/api/llm/providers/:key", { method: "PUT" })
+        ?.request?.json(),
+    ).not.toHaveProperty("model");
+  });
+
   it("disables the fields the environment owns and leaves the rest editable", async () => {
     setupGoogle(
       createMockLlmProviderConnection({
@@ -438,5 +515,95 @@ describe("ProviderConnectionForm editing a fixed-catalog connection", () => {
 
     expect(await screen.findByLabelText("Project ID")).toBeDisabled();
     expect(screen.getByLabelText("OAuth access token")).toBeEnabled();
+  });
+});
+
+const OLLAMA_TYPE = createMockLlmProviderType({
+  type: "ollama",
+  label: "Ollama",
+  default_model: null,
+  models: [],
+  fields: [
+    createMockLlmProviderField({
+      key: "base-url",
+      label: "API base URL",
+      type: "text",
+      required: true,
+    }),
+    createMockLlmProviderField({
+      key: "api-key",
+      label: "API key",
+      type: "password",
+      required: false,
+    }),
+  ],
+});
+
+const setupOllama = () => {
+  fetchMock.removeRoutes();
+  fetchMock.clearHistory();
+  setupCreateLlmProviderEndpoint();
+  const onSaved = jest.fn();
+
+  renderWithProviders(
+    <ProviderConnectionForm providerTypes={[OLLAMA_TYPE]} onSaved={onSaved} />,
+  );
+
+  return { onSaved };
+};
+
+const pickOllama = async () => {
+  await userEvent.click(screen.getByRole("button", { name: /Ollama/ }));
+  await screen.findByLabelText(/API base URL/);
+};
+
+describe("ProviderConnectionForm for Ollama", () => {
+  it("needs a base URL to connect", async () => {
+    setupOllama();
+
+    await pickOllama();
+    await userEvent.type(screen.getByLabelText(/API key/), "k");
+
+    expect(screen.getByRole("button", { name: "Connect" })).toBeDisabled();
+  });
+
+  it("fills in Ollama Cloud's address, and saves nothing else for it", async () => {
+    const { onSaved } = setupOllama();
+
+    await pickOllama();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Use Ollama Cloud" }),
+    );
+    expect(screen.getByLabelText(/API base URL/)).toHaveValue(
+      "https://ollama.com/v1",
+    );
+    await userEvent.type(screen.getByLabelText(/API key/), "k");
+    await userEvent.click(screen.getByRole("button", { name: "Connect" }));
+
+    await waitFor(() => {
+      expect(onSaved).toHaveBeenCalled();
+    });
+    expect(
+      await fetchMock.callHistory
+        .lastCall("path:/api/llm/providers", { method: "POST" })
+        ?.request?.json(),
+    ).toEqual({
+      type: "ollama",
+      name: "Ollama",
+      // no model: Ollama's catalog comes from the server that connecting reaches, so a new
+      // connection adopts whatever its probe exercised
+      config: { "base-url": "https://ollama.com/v1", "api-key": "k" },
+    });
+  });
+
+  it("does not offer Ollama Cloud for another provider type", async () => {
+    setup();
+
+    await userEvent.click(screen.getByRole("button", { name: /Anthropic/ }));
+    await screen.findByLabelText(/API key/);
+
+    expect(
+      screen.queryByRole("button", { name: "Use Ollama Cloud" }),
+    ).not.toBeInTheDocument();
   });
 });

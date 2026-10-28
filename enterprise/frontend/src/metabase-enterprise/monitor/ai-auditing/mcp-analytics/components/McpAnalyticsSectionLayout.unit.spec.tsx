@@ -7,6 +7,7 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,
@@ -14,7 +15,6 @@ import {
   waitFor,
   within,
 } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route, redirect } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -133,7 +133,7 @@ const datasetResponse: Dataset = createMockDataset({
 });
 
 // A count/breakout dataset whose scalar count (rows[0][0]) exceeds one page, so the events
-// table's pagination controls appear (total > EVENTS_PAGE_SIZE of 25).
+// table's pagination controls appear (total > PAGE_SIZE of 25).
 const multiPageDatasetResponse: Dataset = createMockDataset({
   data: createMockDatasetData({
     rows: [

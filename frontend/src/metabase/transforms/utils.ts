@@ -4,7 +4,6 @@ import _ from "underscore";
 import { hasFeature } from "metabase/databases";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   Database,
   DatabaseId,
@@ -16,6 +15,8 @@ import type {
   TransformRunStatus,
   TransformSource,
 } from "metabase-types/api";
+
+import { RUN_STATUS_FILTER_VALUES } from "./constants";
 
 export function parseTimestampWithTimezone(
   timestamp: string,
@@ -49,6 +50,16 @@ export function formatStatus(status: TransformRunStatus | null) {
     case "canceled":
       return t`Canceled`;
   }
+}
+
+export function getRunStatusOptions(): {
+  value: TransformRunStatus;
+  label: string;
+}[] {
+  return RUN_STATUS_FILTER_VALUES.map((status) => ({
+    value: status,
+    label: formatStatus(status),
+  }));
 }
 
 export function formatRunMethod(trigger: TransformRunMethod) {
@@ -168,27 +179,6 @@ export function isSameSource(
   return false;
 }
 
-export function isSourceEmpty(
-  source: DraftTransformSource,
-  databaseId: DatabaseId,
-  metadata: Metadata,
-): boolean {
-  if (source.type !== "query") {
-    return false;
-  }
-
-  const metadataProvider = Lib.metadataProvider(databaseId, metadata);
-  const query = Lib.fromJsQuery(metadataProvider, source.query);
-  const { isNative } = Lib.queryDisplayInfo(query);
-
-  if (!isNative) {
-    return false;
-  }
-
-  const nativeQuery = Lib.rawNativeQuery(query);
-  return !nativeQuery?.trim();
-}
-
 export function isCompleteSource(
   source: DraftTransformSource,
 ): source is TransformSource {
@@ -239,20 +229,23 @@ function validateTemplateTag(tag: TemplateTag): ValidationResult {
 
 export const getLibQuery = (
   source: DraftTransformSource,
-  metadata: Metadata,
+  getMetadataProvider: (databaseId: DatabaseId | null) => Lib.MetadataProvider,
 ) => {
   if (source.type !== "query") {
     return null;
   }
-  return Lib.fromJsQueryAndMetadata(metadata, source.query);
+  return Lib.fromJsQuery(
+    getMetadataProvider(source.query.database),
+    source.query,
+  );
 };
 
 // Check if this is an MBQL query (not native SQL or Python)
 export const isMbqlQuery = (
   source: DraftTransformSource,
-  metadata: Metadata,
+  getMetadataProvider: (databaseId: DatabaseId | null) => Lib.MetadataProvider,
 ) => {
-  const query = getLibQuery(source, metadata);
+  const query = getLibQuery(source, getMetadataProvider);
   if (!query) {
     return false;
   }

@@ -79,7 +79,7 @@ export function InfoPanelField({
       )}
       {targetNode != null && (
         <Group
-          gap="xs"
+          gap="xxs"
           wrap="nowrap"
           flex="1 1 auto"
           h="100%"

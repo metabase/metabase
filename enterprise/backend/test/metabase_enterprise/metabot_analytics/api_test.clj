@@ -22,7 +22,7 @@
 
 (defn- insert-message!
   [{:keys [conversation-id created-at role profile-id total-tokens data data-version
-           deleted-at external-id finished]
+           deleted-at external-id finished finish-reason context-window-full]
     :as   options
     :or   {data-version 2}}]
   (first (t2/insert-returning-pks!
@@ -34,8 +34,10 @@
                    :data            data
                    :data_version    data-version
                    :external_id     (or external-id (str (random-uuid)))}
-            created-at       (assoc :created_at created-at)
-            deleted-at       (assoc :deleted_at deleted-at)
+            created-at          (assoc :created_at created-at)
+            deleted-at          (assoc :deleted_at deleted-at)
+            finish-reason       (assoc :finish_reason finish-reason)
+            context-window-full (assoc :context_window_full context-window-full)
             (contains? options :finished) (assoc :finished finished)))))
 
 (defn- insert-usage!
@@ -491,15 +493,20 @@
             (is (= 2 (:message_count response)))
             (is (= [] (:feedback response)))
             (is (= 2 (count (:messages response)))
-                "one user prompt + one assistant reply, as flat single-level chat messages")
+                "one user prompt + one assistant reply, as row-level messages")
             (let [[user-msg asst-msg] (:messages response)]
-              (is (= ["user" "text" "hello"] [(:role user-msg) (:type user-msg) (:message user-msg)]))
+              (is (= ["user" "text" "hello" {:type "done"}]
+                     [(:role user-msg)
+                      (-> user-msg :parts first :type)
+                      (-> user-msg :parts first :message)
+                      (:status user-msg)]))
               (is (nil? (:parent_message_id user-msg)) "the root prompt has no parent")
               (is (not (contains? asst-msg :kept))
                   "no :kept on the wire; the client derives the current path from sibling order")
-              (is (= ["agent" "text"] [(:role asst-msg) (:type asst-msg)]))
+              (is (= ["agent" "text" {:type "done"}]
+                     [(:role asst-msg) (-> asst-msg :parts first :type) (:status asst-msg)]))
               (is (= (:id user-msg) (:parent_message_id asst-msg))
-                  "the reply points at its prompt's message id")
+                  "the reply points at its prompt's row message id")
               (is (string? (:externalId asst-msg)) "the agent message keeps its feedback external id")))
           (finally
             (delete-conversations! [conversation-id])))))))
@@ -521,7 +528,10 @@
 
 (defn- message-by-text
   [messages text]
-  (or (some #(when (= text (:message %)) %) messages)
+  (or (some (fn [message]
+              (when (some #(= text (:message %)) (:parts message))
+                message))
+            messages)
       (throw (ex-info (str "Message not found: " text) {:text text}))))
 
 (deftest get-conversation-detail-attempts-test
@@ -538,7 +548,8 @@
                   :data [{:type "text" :text "kept answer"}]})
         (let [{:keys [messages total_tokens message_count]} (fetch)
               [prompt & attempts] messages]
-          (is (= ["first try" "second try" "kept answer"] (map :message attempts)))
+          (is (= ["first try" "second try" "kept answer"]
+                 (map #(-> % :parts first :message) attempts)))
           (is (every? #(= (:id prompt) (:parent_message_id %)) attempts))
           (is (= [62 4] [total_tokens message_count])))))))
 
@@ -590,8 +601,30 @@
         (insert! {:role "assistant" :profile-id "internal" :total-tokens 0 :data [] :finished nil})
         (let [{:keys [messages message_count]} (fetch)]
           (is (= ["user" "agent"] (map :role messages)))
-          (is (= "turn_in_progress" (:type (second messages))))
+          (is (= {:type "in_progress"} (:status (second messages))))
+          (is (= [] (:parts (second messages))))
           (is (= 2 message_count)))))))
+
+(deftest get-conversation-detail-incomplete-status-test
+  (testing "a reply the provider cut off surfaces as an incomplete message"
+    (with-detail-conversation!
+      (fn [{:keys [insert! day fetch]}]
+        (insert! {:created-at (day 1) :role "user" :profile-id "p" :total-tokens 3
+                  :data [{:type "text" :text "a long question"}]})
+        (insert! {:created-at (day 2) :role "assistant" :profile-id "internal" :total-tokens 9 :finished true
+                  :finish-reason "length" :data [{:type "text" :text "cut o"}]})
+        (insert! {:created-at (day 3) :role "user" :profile-id "p" :total-tokens 3
+                  :data [{:type "text" :text "go on"}]})
+        (insert! {:created-at (day 4) :role "assistant" :profile-id "internal" :total-tokens 9 :finished true
+                  :finish-reason "length" :context-window-full true
+                  :data [{:type "text" :text "cut again"}]})
+        (let [messages (:messages (fetch))]
+          (testing "a row with no full-window verdict is a plain length stop"
+            (is (= {:type "incomplete" :finishReason "length"}
+                   (:status (message-by-text messages "cut o")))))
+          (testing "a row saved as full reads as full here too, the same as on chat reload"
+            (is (= {:type "incomplete" :finishReason "length" :contextWindowFull true}
+                   (:status (message-by-text messages "cut again"))))))))))
 
 (deftest get-conversation-detail-feedback-on-discarded-attempt-test
   (testing "feedback on a regenerated-away attempt still resolves to that attempt's message"

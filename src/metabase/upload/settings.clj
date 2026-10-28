@@ -3,9 +3,9 @@
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.settings.core :refer [defsetting]]
+   [metabase.upload.db :as upload.db]
    [metabase.util.i18n :refer [deferred-tru]]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.util.log :as log]))
 
 (defn- not-handling-api-request?
   []
@@ -16,7 +16,7 @@
   [db-id]
   (or (not-handling-api-request?)
       (mi/can-write? :model/Database db-id)
-      (t2/select-one-fn :is_attached_dwh :model/Database db-id)
+      (upload.db/database-is-attached-dwh? db-id)
       (api/throw-403)))
 
 (defsetting uploads-settings
@@ -27,20 +27,16 @@
   :type       :json
   :audit      :getter
   :getter     (fn []
-                (let [db (t2/select-one :model/Database :uploads_enabled true)]
+                (let [db (upload.db/current-database)]
                   {:db_id        (:id db)
                    :schema_name  (:uploads_schema_name db)
                    :table_prefix (:uploads_table_prefix db)}))
   :setter     (fn [{:keys [db_id schema_name table_prefix]}]
                 (if (nil? db_id)
-                  (t2/update! :model/Database :uploads_enabled true {:uploads_enabled      false
-                                                                     :uploads_schema_name  nil
-                                                                     :uploads_table_prefix nil})
+                  (upload.db/disable-uploads-for-all-databases!)
                   (do
                     (check-required-perms! db_id)
-                    (t2/update! :model/Database db_id {:uploads_enabled      true
-                                                       :uploads_schema_name  schema_name
-                                                       :uploads_table_prefix table_prefix})))))
+                    (upload.db/enable-uploads-for-database! db_id schema_name table_prefix)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Deprecated uploads settings begin
@@ -50,7 +46,7 @@
 ;; to migrate to the new way to set uploads settings.
 
 (defsetting uploads-enabled
-  (deferred-tru "Whether or not uploads are enabled")
+  "Whether or not uploads are enabled"
   :deprecated "0.50.0"
   :visibility :internal
   :export?    false
@@ -60,7 +56,7 @@
   :setter     (fn [_] (log/warn "'uploads-enabled' has been removed; use 'uploads_enabled' on the database instead")))
 
 (defsetting uploads-database-id
-  (deferred-tru "Database ID for uploads")
+  "Database ID for uploads"
   :deprecated "0.50.0"
   :visibility :internal
   :export?    false
@@ -69,7 +65,7 @@
   :setter     (fn [_] (log/warn "'uploads-database-id' has been removed; use 'uploads_enabled' on the database instead")))
 
 (defsetting uploads-schema-name
-  (deferred-tru "Schema name for uploads")
+  "Schema name for uploads"
   :deprecated "0.50.0"
   :encryption :no
   :visibility :internal
@@ -79,7 +75,7 @@
   :setter     (fn [_] (log/warn "'uploads-schema-name' has been removed; use 'uploads_schema_name' on the database instead")))
 
 (defsetting uploads-table-prefix
-  (deferred-tru "Prefix for upload table names")
+  "Prefix for upload table names"
   :encryption :no
   :deprecated "0.50.0"
   :visibility :internal

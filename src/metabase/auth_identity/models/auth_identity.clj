@@ -3,6 +3,7 @@
   for a User - a User can have multiple AuthIdentities (e.g., password + SSO)."
   (:require
    [java-time.api :as t]
+   [metabase.auth-identity.db :as auth-identity.db]
    [metabase.auth-identity.provider :as provider]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -94,7 +95,7 @@
   authoritative credential store. This is the only supported way to set a user's password; the User model itself no
   longer stores, hashes, or mirrors passwords.
 
-  Always deletes the user's existing sessions: changing a password must invalidate every session authenticated with the
+  Always ends the user's existing sessions: changing a password must invalidate every session authenticated with the
   old one. A caller that wants the acting user to stay logged in should create a fresh session afterward.
 
   Also deletes the user's `emailed-secret-password-reset` AuthIdentity: this is called by the password-reset flow, so
@@ -102,7 +103,8 @@
   password again until it expires.
 
   `opts` may contain `:expires-at`, an instant after which the credential is no longer valid (used by time-limited
-  support-access grants)."
+  support-access grants), and `:ended-by`, the id of the person changing the password, recorded on each session it
+  ends."
   ([user-id  :- ms/PositiveInt
     password :- ms/NonBlankString]
    (set-password! user-id password nil))
@@ -110,25 +112,26 @@
   ([user-id  :- ms/PositiveInt
     password :- ms/NonBlankString
     opts     :- [:maybe
-                 [:map
-                  [:expires-at {:optional true} [:maybe (ms/InstanceOfClass java.time.temporal.Temporal)]]]]]
+                 [:map {:closed true}
+                  [:expires-at {:optional true} [:maybe (ms/InstanceOfClass java.time.temporal.Temporal)]]
+                  [:ended-by   {:optional true} [:maybe ms/PositiveInt]]]]]
    ;; always write :expires_at (nil unless an expiry was requested) so setting a password clears any stale expiry a
    ;; prior support-access grant left behind — otherwise `authenticate` would reject the new password as expired
-   ;; the credential write and the session delete must be atomic: if either fails the password must not change while
+   ;; the credential write and the session ending must be atomic: if either fails the password must not change while
    ;; sessions authenticated with the old one survive
    (t2/with-transaction [_]
      (let [attrs {:credentials {:plaintext_password password}
                   :expires_at  (:expires-at opts)}]
-       (if-let [pw-auth-identity (t2/select-one :model/AuthIdentity :user_id user-id :provider "password")]
-         (t2/update! :model/AuthIdentity (u/the-id pw-auth-identity) attrs)
-         (t2/insert! :model/AuthIdentity (merge {:user_id user-id, :provider "password"} attrs))))
-     (t2/delete! :model/AuthIdentity :user_id user-id :provider "emailed-secret-password-reset")
-     (t2/delete! :model/Session :user_id user-id))))
+       (if-let [pw-auth-identity (auth-identity.db/auth-identity user-id "password")]
+         (auth-identity.db/update-auth-identity! (u/the-id pw-auth-identity) attrs)
+         (auth-identity.db/insert-auth-identity! (merge {:user_id user-id, :provider "password"} attrs))))
+     (auth-identity.db/delete-auth-identities! user-id "emailed-secret-password-reset")
+     (auth-identity.db/end-sessions-for-user! user-id (:ended-by opts)))))
 
 (mu/defn reset-token-hash :- [:maybe :string]
   "The bcrypt hash of `user-id`'s current password-reset token, taken from their `emailed-secret-password-reset`
   AuthIdentity (the authoritative store), or nil if they have none. Lets callers include the token in audit events
   without reading the legacy `core_user.reset_token` column."
   [user-id :- ms/PositiveInt]
-  (get-in (t2/select-one :model/AuthIdentity :user_id user-id :provider "emailed-secret-password-reset")
+  (get-in (auth-identity.db/auth-identity user-id "emailed-secret-password-reset")
           [:credentials :token_hash]))

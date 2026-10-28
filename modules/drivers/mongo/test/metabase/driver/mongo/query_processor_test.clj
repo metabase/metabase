@@ -47,7 +47,7 @@
       (is (= nil
              (query->collection-name {:query {:source-query
                                               {:native []}
-                                              :joins [{:source-query {:source-table 1, :collection "wow"}
+                                              :joins [{:source-query {:native [], :collection "wow"}
                                                        :condition    [:= 1 2]}]}}))))))
 
 (deftest ^:parallel order-postprocessing-test
@@ -279,7 +279,25 @@
                   compiled (mongo.qp/mbql->native query)
                   let-lhs (-> compiled (get-in [:query 0 "$lookup" :let]) keys first)]
               (is (and (not (str/includes? let-lhs "."))
-                       (str/includes? let-lhs "source_categories"))))))))))
+                       (str/includes? let-lhs "source_categories")))))
+          (testing "Nested fields projected from a joined collection return their real values (#81546)"
+            (let [query (lib/query
+                         (mt/metadata-provider)
+                         (mt/mbql-query tips
+                           {:fields   [$_id
+                                       $tips.venue.categories
+                                       &Tips.$tips.venue.categories]
+                            :joins    [{:alias        "Tips"
+                                        :source-table $$tips
+                                        :condition    [:= $_id &Tips.$_id]
+                                        :fields       :none}]
+                            :order-by [[:asc $_id]]
+                            :limit    3}))
+                  rows  (mt/rows (qp/process-query query))]
+              (is (= [[1 ["Gluten-Free" "Café"]       ["Gluten-Free" "Café"]]
+                      [2 ["Homestyle" "Eatery"]       ["Homestyle" "Eatery"]]
+                      [3 ["Cage-Free" "Coffee House"] ["Cage-Free" "Coffee House"]]]
+                     rows)))))))))
 
 (deftest ^:parallel multiple-distinct-count-test
   (mt/test-driver :mongo
@@ -778,7 +796,7 @@
         (let [mp (mt/metadata-provider)
               dogs (lib.metadata/table mp (mt/id :dogs))
               person-id (lib.metadata/field mp (mt/id :dogs :person_id))]
-          (if (-> (driver/dbms-version :mongo (mt/db)) :semantic-version (driver.u/semantic-version-gte [8]))
+          (if (-> (driver/dbms-version :mongo (lib.metadata/database (mt/metadata-provider))) :semantic-version (driver.u/semantic-version-gte [8]))
             (do
               (is (= [[1 #uuid "27e164bc-54f8-47a0-a85a-9f0e90dd7667" "Ivan" #uuid "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]
                       [2 #uuid "3a0c0508-6b00-40ff-97f6-549666b2d16b" "Zach" #uuid "d6b02fa2-bf7b-4b32-80d5-060b649c9859"]]

@@ -1,13 +1,9 @@
 import { useMemo } from "react";
-import { useLatest } from "react-use";
 
 import { useSdkQuestionContext } from "embedding-sdk-bundle/components/private/SdkQuestion/context";
-import { getMetadata } from "metabase/metadata-store";
-import { ResponsiveParametersList } from "metabase/querying/components/ResponsiveParametersList";
-import { useSelector } from "metabase/redux";
+import { ResponsiveParametersList } from "metabase/parameters/components/ResponsiveParametersList";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import type { ParameterId } from "metabase-types/api";
 
 import SqlParametersListS from "./SqlParametersList.module.css";
@@ -27,10 +23,6 @@ export const SqlParametersList = () => {
     hiddenParameters,
   } = useSdkQuestionContext();
 
-  const metadata = useSelector(getMetadata);
-  // we cannot use `metadata` directly otherwise component will re-run on every metadata change
-  const metadataRef = useLatest(metadata);
-
   const isNativeQuestion = useMemo(() => {
     if (!question) {
       return false;
@@ -48,12 +40,9 @@ export const SqlParametersList = () => {
 
     const originalParameters = originalQuestion.card().parameters ?? [];
 
-    const uiParameters = getCardUiParameters(
-      question.card(),
-      metadataRef.current,
-      parameterValues,
-      question.parameters() || undefined,
-    );
+    const uiParameters = question
+      .setParameterValues(parameterValues)
+      .parameters();
 
     return uiParameters.filter(
       ({ id, slug }) =>
@@ -61,13 +50,7 @@ export const SqlParametersList = () => {
           (originalParameter) => originalParameter.id === id,
         ) && !hiddenParameters?.includes(slug),
     );
-  }, [
-    question,
-    originalQuestion,
-    metadataRef,
-    parameterValues,
-    hiddenParameters,
-  ]);
+  }, [question, originalQuestion, parameterValues, hiddenParameters]);
 
   if (!question || !isNativeQuestion || !parameters.length) {
     return null;

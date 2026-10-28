@@ -21,6 +21,7 @@ import {
   PluginPlaceholder,
   pluginPlaceholderRoute,
 } from "../components/PluginPlaceholder";
+import { definePluginSlot } from "../slot";
 import type { PluginRoute } from "../types";
 
 export type CreatedTenantData = {
@@ -222,11 +223,4 @@ export const PLUGIN_TENANTS: {
     sharedTenantCollections: Collection[] | undefined;
     regularCollections: CollectionTreeItem[];
   }) => CollectionTreeItem[];
-} = getDefaultPluginTenants();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_TENANTS, getDefaultPluginTenants());
-}
+} = definePluginSlot(getDefaultPluginTenants);

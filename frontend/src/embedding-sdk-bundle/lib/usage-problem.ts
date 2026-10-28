@@ -45,13 +45,13 @@ export const USAGE_PROBLEM_MESSAGES = {
 
 export const SDK_AUTH_DOCS_URL =
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- these links are used in the SDK banner which is only shown to developers
-  "https://www.metabase.com/docs/latest/embedding/sdk/authentication#2-add-a-new-endpoint-to-your-backend-to-handle-authentication";
+  "https://www.metabase.com/docs/latest/embedding/authentication#2-add-a-new-endpoint-to-your-backend-to-handle-authentication";
 
 export const METABASE_UPGRADE_URL = "https://www.metabase.com/upgrade";
 
 export const SDK_INTRODUCTION_DOCS_URL =
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- these links are used in the SDK banner which is only shown to developers
-  "https://www.metabase.com/docs/latest/embedding/sdk/introduction#in-metabase";
+  "https://www.metabase.com/docs/latest/embedding/sdk/introduction#enable-the-sdk-in-metabase";
 
 /** Documentation for each kind of SDK usage problems */
 export const USAGE_PROBLEM_DOC_URLS: Record<SdkUsageProblemKey, string> = {
@@ -130,6 +130,10 @@ export function getSdkUsageProblem(
         },
         () => toError("EMBEDDING_SDK_NOT_ENABLED"),
       )
+      // We do not allow using API keys in production.
+      .with({ isApiKey: true, hasTokenFeature: true, isLocalhost: false }, () =>
+        toError("API_KEYS_WITH_LICENSE"),
+      )
       // For API keys, we allow evaluation usage without a license in localhost.
       // This allows them to test-drive the SDK in development.
       // API keys are always enabled regardless of the "enable-embedding" setting,
@@ -139,10 +143,6 @@ export function getSdkUsageProblem(
       )
       .with({ isLocalhost: true, isApiKey: true, hasTokenFeature: false }, () =>
         toWarning("API_KEYS_WITHOUT_LICENSE"),
-      )
-      // We do not allow using API keys in production.
-      .with({ isApiKey: true, hasTokenFeature: true }, () =>
-        toError("API_KEYS_WITH_LICENSE"),
       )
       .with({ session: { exp: P.nullish } }, () => toWarning("JWT_EXP_NULL"))
       .otherwise(() => null)

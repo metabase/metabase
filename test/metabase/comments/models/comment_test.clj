@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.comments.api-test :as at]
    [metabase.comments.models.comment :as comment]
+   [metabase.comments.schema :as comments.schema]
    [toucan2.core :as t2]))
 
 (deftest exploration-comment-url-test
@@ -25,13 +26,17 @@
 
 (deftest comment-test
   (testing "mentions are parsed correctly"
+    ;; `mentions` reads its `attrs` string-keyed, the shape content takes once normalized on its way into
+    ;; or out of the app DB -- `comments.schema/normalize-content` mimics that for this raw tiptap fixture.
     (is (= [6]
            (comment/mentions
-            (at/tiptap
-             [:p
-              "omg is that you? "
-              [:smartLink {:entityId 6 :model "user"}]]))))
+            (comments.schema/normalize-content
+             (at/tiptap
+              [:p
+               "omg is that you? "
+               [:smartLink {:entityId 6 :model "user"}]])))))
     (is (= [6]
            (comment/mentions
-            (at/tiptap
-             [:smartLink {:entityId 6 :model "user"}]))))))
+            (comments.schema/normalize-content
+             (at/tiptap
+              [:smartLink {:entityId 6 :model "user"}])))))))

@@ -16,6 +16,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :refer [tru]]
@@ -107,7 +108,7 @@
   problematic case is when refs with and without `:source-field-name` are mixed, but there should be the same implicit
   join for all of them."
   [metadata-providerable                                            :- ::lib.schema.metadata/metadata-providerable
-   {:keys [source-field source-field-name source-field-join-alias]} :- :map] ; not `::lib.schema.ref/field.options` because this might come from a legacy ref
+   {:keys [source-field source-field-name source-field-join-alias]} :- ::lib.schema.ref/field.options]
   (let [fk-field (lib.metadata/field metadata-providerable source-field)]
     (m/assoc-some {:fk-field-id source-field}
                   :fk-field-name (when (and (some? source-field-name) (not= source-field-name (:name fk-field)))
@@ -129,7 +130,7 @@
   (let [fk-field-infos (->> field-clauses-with-source-field
                             (keep (fn [clause]
                                     (match/match-one clause
-                                      [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) (_id :guard integer?)]
+                                      [:field (opts :guard (and (:source-field opts) (not (:join-alias opts)))) #'integer?]
                                       (field-opts->fk-field-info metadata-providerable opts))))
                             distinct
                             not-empty)

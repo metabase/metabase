@@ -4,6 +4,8 @@ import { createContext } from "react";
 import { PluginPlaceholder } from "metabase/plugins/components/PluginPlaceholder";
 import type { GetDependencyGraphRequest } from "metabase-types/api";
 
+import { definePluginSlot } from "../slot";
+
 // Types
 export type DependencyGraphPageContextType = {
   baseUrl?: string;
@@ -32,11 +34,6 @@ const getDefaultPluginDependencies = (): DependenciesPlugin => ({
   }),
 });
 
-export const PLUGIN_DEPENDENCIES = getDefaultPluginDependencies();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_DEPENDENCIES, getDefaultPluginDependencies());
-}
+export const PLUGIN_DEPENDENCIES = definePluginSlot(
+  getDefaultPluginDependencies,
+);

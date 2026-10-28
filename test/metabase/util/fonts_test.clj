@@ -16,6 +16,7 @@
                         "PT_Sans"          "PT Sans"
                         "Poppins"          "Poppins"
                         "PT_Serif"         "PT Serif"
+                        "JetBrains_Mono"   "JetBrains Mono"
                         "Roboto_Mono"      "Roboto Mono"
                         "Roboto_Condensed" "Roboto Condensed"
                         "Playfair_Display" "Playfair Display"

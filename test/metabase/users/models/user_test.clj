@@ -4,6 +4,8 @@
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.schema-migrations-test.impl :as schema-migrations-test.impl]
+   [metabase.auth-identity.core :as auth-identity]
+   [metabase.auth-identity.provider :as provider]
    [metabase.config.core :as config]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
@@ -17,7 +19,11 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.users.models.user :as user]
+   [metabase.users.settings :as users.settings]
    [metabase.util :as u]
+   [metabase.util.encryption :as encryption]
+   [metabase.util.log.capture :as log.capture]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -26,7 +32,7 @@
   :once
   (fixtures/initialize :test-users :notifications))
 
-;;; Tests for invite-user and create-new-google-auth-user!
+;;; Tests for invite-user and SSO user provisioning
 
 (defn- maybe-accept-invite!
   "Accept an invite if applicable. Look in the body of the content of the invite email for the reset token since this is
@@ -48,10 +54,29 @@
              [address (for [{subject :subject} emails]
                         (str/replace subject (str new-user-first-name " " new-user-last-name) "<New User>"))])))
 
+(def ^:private ^:dynamic *sso-user-data* nil)
+
+(methodical/defmethod provider/authenticate :provider/test-sso
+  [_provider _request]
+  {:success? true :user-data *sso-user-data*})
+
+(defn- sso-login!
+  "Provision `user-data` by logging in through `:provider/test-sso`. The provider joins the auth-identity hierarchy only
+  for this call, so tests that check every registered provider (e.g. the MFA gate's) never see it."
+  [user-data]
+  (auth-identity/derive! :provider/test-sso ::provider/provider)
+  (auth-identity/derive! :provider/test-sso ::provider/create-user-if-not-exists)
+  (try
+    (binding [*sso-user-data* user-data]
+      (provider/login! :provider/test-sso {:session/skip? true}))
+    (finally
+      (auth-identity/underive! :provider/test-sso ::provider/create-user-if-not-exists)
+      (auth-identity/underive! :provider/test-sso ::provider/provider))))
+
 (defn- invite-user-accept-and-check-inboxes!
-  "Create user by passing `invite-user-args` to `create-and-invite-user!` or `create-new-google-auth-user!`,
-  and return a map of addresses emails were sent to to the email subjects."
-  [& {:keys [google-auth? accept-invite? password invitor]
+  "Create user by passing `invite-user-args` to `create-and-invite-user!`, or via a dummy sso provider,
+  and return a map of each email address to the subjects of the emails sent to it."
+  [& {:keys [sso-auth? accept-invite? password invitor]
       :or   {accept-invite? true}}]
   (mt/with-temporary-setting-values [site-name "Metabase"]
     (mt/with-fake-inbox
@@ -63,8 +88,8 @@
                                  :email      new-user-email
                                  :password   password}]
         (try
-          (if google-auth?
-            (user/create-new-google-auth-user! (dissoc new-user :password))
+          (if sso-auth?
+            (sso-login! (-> new-user (dissoc :password) (assoc :sso_source :google)))
             (user/create-and-invite-user! new-user invitor false))
           (when accept-invite?
             (maybe-accept-invite! new-user-email))
@@ -74,7 +99,7 @@
             (t2/delete! :model/User :email new-user-email)))))))
 
 (def ^:private default-invitor
-  {:email "crowberto@metabase.com", :is_active true, :first_name "Crowberto"})
+  {:id 1, :email "crowberto@metabase.com", :is_active true, :first_name "Crowberto"})
 
 ;; Admins are notified of new joins via `all-admin-recipients`, which excludes admins who haven't yet accepted their
 ;; own invitation (i.e. `last_login` is still nil). These tests therefore construct fresh admin users with explicit
@@ -153,7 +178,7 @@
           (t2/update! :model/User (:id admin-2) {:last_login :%now})
           (is (= {(:email admin-1) ["<New User> created a Metabase account"]
                   (:email admin-2) ["<New User> created a Metabase account"]}
-                 (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
+                 (-> (invite-user-accept-and-check-inboxes! :sso-auth? true)
                      (select-keys [(:email admin-1) (:email admin-2)])))))))))
 
 (deftest google-auth-site-admin-email-test
@@ -165,7 +190,7 @@
             (fn [admin]
               (is (= {(:email admin)      ["<New User> created a Metabase account"]
                       "cam2@metabase.com" ["<New User> created a Metabase account"]}
-                     (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
+                     (-> (invite-user-accept-and-check-inboxes! :sso-auth? true)
                          (select-keys [(:email admin) "cam2@metabase.com"])))))))))))
 
 (deftest google-auth-inactive-admin-no-email-test
@@ -176,7 +201,7 @@
           (fn [admin]
             (mt/with-temp [:model/User inactive {:is_superuser true, :is_active false}]
               (is (= {(:email admin) ["<New User> created a Metabase account"]}
-                     (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
+                     (-> (invite-user-accept-and-check-inboxes! :sso-auth? true)
                          (select-keys [(:email admin) (:email inactive)])))))))))))
 
 (deftest google-auth-setting-disabled-test
@@ -189,7 +214,7 @@
               (is (= (if config/ee-available?
                        {}
                        {(:email admin) ["<New User> created a Metabase account"]})
-                     (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
+                     (-> (invite-user-accept-and-check-inboxes! :sso-auth? true)
                          (select-keys [(:email admin)])))))))))))
 
 (deftest sso-login-link-email-test
@@ -477,7 +502,7 @@
 
 (deftest add-attributes-merges-login-and-jwt-attributes-test
   (testing "add-attributes should add :attributes key with merged login attributes"
-    (let [user {:login_attributes {"user_attr" "user_value"}
+    (let [user {:id 1, :login_attributes {"user_attr" "user_value"}
                 :jwt_attributes {"jwt_attr" "jwt_value"}
                 :email "test@example.com", :type :personal}
           result (user/add-attributes user)]
@@ -488,7 +513,7 @@
 
 (deftest add-attributes-handles-nil-login-attributes-test
   (testing "add-attributes should handle nil login_attributes"
-    (let [user {:email "test@example.com", :type :personal
+    (let [user {:id 1, :email "test@example.com", :type :personal
                 :jwt_attributes {"jwt_attr" "jwt_value"}}
           result (user/add-attributes user)]
       (is (= {"jwt_attr" "jwt_value"}
@@ -496,7 +521,7 @@
 
 (deftest add-attributes-handles-empty-login-attributes-test
   (testing "add-attributes should handle empty login_attributes"
-    (let [user {:login_attributes {}
+    (let [user {:id 1, :login_attributes {}
                 :jwt_attributes {"jwt_attr" "jwt_value"}
                 :email "test@example.com", :type :personal}
           result (user/add-attributes user)]
@@ -505,8 +530,8 @@
 
 (deftest add-attributes-user-overrides-jwt-test
   (testing "add-attributes: user attributes should override jwt attributes with same keys"
-    (let [user {:login_attributes {"shared_key" "user_value"
-                                   "user_only" "user_val"}
+    (let [user {:id 1, :login_attributes {"shared_key" "user_value"
+                                          "user_only" "user_val"}
                 :jwt_attributes   {"shared_key" "jwt_value"
                                    "jwt_only" "jwt_val"}
                 :email "test@example.com", :type :personal}
@@ -537,7 +562,7 @@
 (deftest add-attributes-merges-tenant-attributes-test
   (testing "add-attributes should merge tenant attributes"
     (mt/with-dynamic-fn-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
-      (let [user {:login_attributes {"user_attr" "user_value"}
+      (let [user {:id 1, :login_attributes {"user_attr" "user_value"}
                   :email "test@example.com", :type :personal}
             result (user/add-attributes user)]
         (is (= {"tenant_attr" "tenant_value"
@@ -548,7 +573,7 @@
 (deftest add-attributes-tenant-handles-nil-login-attributes-test
   (testing "add-attributes with tenant attributes should handle nil login_attributes"
     (mt/with-dynamic-fn-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
-      (let [user {:email "test@example.com", :type :personal}
+      (let [user {:id 1, :email "test@example.com", :type :personal}
             result (user/add-attributes user)]
         (is (= {"tenant_attr" "tenant_value"}
                (:attributes result)))))))
@@ -556,7 +581,7 @@
 (deftest add-attributes-tenant-handles-empty-login-attributes-test
   (testing "add-attributes with tenant attributes should handle empty login_attributes"
     (mt/with-dynamic-fn-redefs [tenants/login-attributes (constantly {"tenant_attr" "tenant_value"})]
-      (let [user {:login_attributes {}
+      (let [user {:id 1, :login_attributes {}
                   :email "test@example.com", :type :personal}
             result (user/add-attributes user)]
         (is (= {"tenant_attr" "tenant_value"}
@@ -565,7 +590,7 @@
 (deftest add-attributes-handles-nil-tenant-attributes-test
   (testing "add-attributes should handle nil tenant attributes"
     (mt/with-dynamic-fn-redefs [tenants/login-attributes (constantly nil)]
-      (let [user {:login_attributes {"user_attr" "user_value"}
+      (let [user {:id 1, :login_attributes {"user_attr" "user_value"}
                   :email "test@example.com", :type :personal}
             result (user/add-attributes user)]
         (is (= {"user_attr" "user_value"}
@@ -574,7 +599,7 @@
 (deftest add-attributes-handles-both-nil-tenant-and-user-attributes-test
   (testing "add-attributes should handle both nil tenant and user attributes"
     (mt/with-dynamic-fn-redefs [tenants/login-attributes (constantly nil)]
-      (let [user {:email "test@example.com", :type :personal}
+      (let [user {:id 1, :email "test@example.com", :type :personal}
             result (user/add-attributes user)]
         (is (= {}
                (:attributes result)))))))
@@ -585,22 +610,22 @@
       (doseq [user-type [:api-key :internal]]
         (testing user-type
           (is (= {}
-                 (:attributes (user/add-attributes {:email "test@example.com"
+                 (:attributes (user/add-attributes {:id 1, :email "test@example.com"
                                                     :type user-type
                                                     :login_attributes {"user_attr" "user_value"}
                                                     :jwt_attributes {"jwt_attr" "jwt_value"}}))))))
       (testing "throws (in dev) when :type is missing from the user map, so callers can't forget to select it"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"Invalid input"
-                              (user/add-attributes {:email "test@example.com"
+                              (user/add-attributes {:id 1, :email "test@example.com"
                                                     :login_attributes {"user_attr" "user_value"}})))))))
 
 (deftest add-attributes-user-overrides-tenant-test
   (testing "add-attributes: user attributes should override tenant attributes with same keys"
     (mt/with-dynamic-fn-redefs [tenants/login-attributes (constantly {"shared_key" "tenant_value"
                                                                       "tenant_only" "tenant_val"})]
-      (let [user {:login_attributes {"shared_key" "user_value"
-                                     "user_only" "user_val"}
+      (let [user {:id 1, :login_attributes {"shared_key" "user_value"
+                                            "user_only" "user_val"}
                   :email "test@example.com", :type :personal}
             result (user/add-attributes user)]
         (is (= {"shared_key" "user_value"
@@ -625,3 +650,63 @@
         (is (= {"tenant_attr" "tenant_value"
                 "user_attr" "user_value"}
                (:attributes result)))))))
+
+;;; ------------------------------------------- Unparseable settings column --------------------------------------------
+
+(def ^:private unparseable-settings-plaintext "not-json")
+
+(defn- corrupt-settings-column!
+  "Write a value straight into `core_user.settings` that [[metabase.models.interface/encrypted-json-out]] hands back
+  un-parsed. The value is run through [[encryption/maybe-encrypt]] so it is encrypted exactly the way the column
+  expects: since #80785 the encrypted read is strict and a plaintext value would throw inside `t2/select` when
+  `MB_ENCRYPTION_SECRET_KEY` is set, never reaching the code under test. What is left after decryption is not JSON, so
+  the transform falls back to returning the raw column value (a String) instead of a map."
+  [user-id]
+  (t2/query {:update :core_user
+             :set    {:settings (encryption/maybe-encrypt unparseable-settings-plaintext)}
+             :where  [:= :id user-id]}))
+
+(deftest user-local-settings-unparseable-column-test
+  (testing "a `settings` column that can't be decrypted or parsed is treated as empty (#76900)"
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (corrupt-settings-column! user-id)
+      (testing "looked up by user id"
+        (is (= {} (user/user-local-settings user-id))))
+      (testing "looked up from an already-selected user"
+        (is (= {} (user/user-local-settings (t2/select-one [:model/User :settings] :id user-id))))))))
+
+(deftest user-local-settings-unparseable-column-read-write-test
+  (testing "user-local Settings still work for a user whose `settings` column can't be decrypted or parsed (#76900)"
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (corrupt-settings-column! user-id)
+      (testing "reads fall back to the Setting's default instead of throwing"
+        (request/with-current-user user-id
+          (is (nil? (users.settings/last-acknowledged-version)))))
+      (testing "writes replace the unusable value instead of throwing"
+        (request/with-current-user user-id
+          (users.settings/last-acknowledged-version! "v0.99.0")
+          (is (= "v0.99.0" (users.settings/last-acknowledged-version))))
+        (is (= {:last-acknowledged-version "v0.99.0"}
+               (user/user-local-settings user-id)))))))
+
+(deftest user-local-settings-unparseable-column-warns-on-overwrite-test
+  (testing "discarding an unreadable `settings` column is logged, because the write destroys it permanently (#76900)"
+    (mt/with-temp [:model/User {user-id :id} {}]
+      (corrupt-settings-column! user-id)
+      (testing "reading user-local settings does not warn -- nothing is destroyed, and this runs on every request"
+        (log.capture/with-log-messages-for-level [messages [metabase.settings.models.setting :warn]]
+          (request/with-current-user user-id
+            (users.settings/last-acknowledged-version))
+          (is (empty? (messages)))))
+      (testing "the write that overwrites it warns, naming the user"
+        (log.capture/with-log-messages-for-level [messages [metabase.settings.models.setting :warn]]
+          (request/with-current-user user-id
+            (users.settings/last-acknowledged-version! "v0.99.0")
+            (users.settings/dismissed-browse-models-banner! true))
+          (let [msgs (mapv :message (messages))]
+            (testing "only once, no matter how many Settings are written in the same request"
+              (is (= 1 (count msgs))))
+            (is (str/includes? (str (first msgs))
+                               (str "Discarding unreadable settings for user " user-id)))
+            (testing "without leaking the unreadable column contents, which are user data"
+              (is (not (str/includes? (str (first msgs)) unparseable-settings-plaintext))))))))))

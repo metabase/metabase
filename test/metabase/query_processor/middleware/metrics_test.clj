@@ -172,6 +172,17 @@
                        :aggregation [[:avg {} [:field {} (meta/id :products :rating)]]]}]}
             (adjust query)))))
 
+(deftest ^:parallel metric-with-name-override-test
+  (testing "name from the metric clause options is preserved (GHY-4517) so later stages can reference the column"
+    (let [[source-metric mp] (mock-metric)
+          query (-> (lib/query mp (meta/table-metadata :products))
+                    (lib/aggregate (lib.options/update-options (lib/ref (lib.metadata/metric mp (:id source-metric)))
+                                                               assoc :name "avg_rating")))]
+      (is (=? {:stages [{:aggregation [[:avg {:name "avg_rating"} some?]]}]}
+              (adjust query)))
+      (is (= ["avg_rating"]
+             (map :name (lib/returned-columns (adjust query))))))))
+
 (deftest ^:parallel adjust-aggregation-metric-ref-test
   (let [[source-metric mp] (mock-metric)
         query (-> (lib/query mp (meta/table-metadata :products))

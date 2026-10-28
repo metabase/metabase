@@ -28,11 +28,12 @@ import {
 } from "../constants/dataset";
 
 import {
-  NO_X_AXIS_VALUES_ERROR_MESSAGE,
   applyVisualizationSettingsDataTransformations,
   getDatasetExtents,
   getDatasetKey,
   getJoinedCardsDataset,
+  getNoXAxisValuesErrorMessage,
+  getSortedSeriesModels,
   replaceValues,
   sortDataset,
 } from "./dataset";
@@ -892,7 +893,7 @@ describe("dataset transform functions", () => {
             yAxisScaleTransforms,
             createMockComputedVisualizationSettings(),
           ),
-        ).toThrow(NO_X_AXIS_VALUES_ERROR_MESSAGE);
+        ).toThrow(getNoXAxisValuesErrorMessage());
       });
     });
 
@@ -999,6 +1000,33 @@ describe("dataset transform functions", () => {
       expect(result[0][X_AXIS_DATA_KEY]).toBe(1);
       expect(result[1][X_AXIS_DATA_KEY]).toBe(5);
       expect(result[2][X_AXIS_DATA_KEY]).toBe(1000);
+    });
+  });
+
+  describe("getSortedSeriesModels", () => {
+    const KEYS = ["A", "B", "C"];
+    const seriesModels = KEYS.map((key) =>
+      createMockSeriesModel({ dataKey: key }),
+    );
+    const settings = createMockComputedVisualizationSettings({
+      "graph.series_order": KEYS.map((key) => ({
+        key,
+        name: key,
+        enabled: true,
+      })),
+      "stackable.stack_type": "stacked",
+    });
+    const getSortedKeys = (isRowChart?: boolean) =>
+      getSortedSeriesModels(seriesModels, settings, isRowChart).map(
+        (seriesModel) => seriesModel.dataKey,
+      );
+
+    it("reverses stacked series so the stack matches the sidebar order", () => {
+      expect(getSortedKeys()).toEqual(["C", "B", "A"]);
+    });
+
+    it("keeps row chart stacks in sidebar order, since they grow left to right", () => {
+      expect(getSortedKeys(true)).toEqual(["A", "B", "C"]);
     });
   });
 });

@@ -13,16 +13,15 @@
 
   The var/namespace name (`entity-retrieval`) is retained deliberately — the module is a home for
   information retrieval generally, not 1:1 with this index or tool.
-  Runs in the enterprise pgvector store via [[metabase.entity-retrieval.core]]."
+  Runs in the enterprise pgvector store via [[metabase.search.entity-retrieval.core]]."
   (:require
    [clojure.string :as str]
-   [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.metabot.scope :as scope]
+   [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.search :as tools.search]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
-   [metabase.util :as u]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.search.entity-retrieval.core :as entity-retrieval]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -168,38 +167,46 @@
                  :confidence         (if weak? "weak" "strong")))
         matches))
 
+(tools/defrecoverable blank-search-prompt!
+  "`user_search_prompt` is empty or only whitespace."
+  {:payload [:map {:closed true}]}
+  [_]
+  {:message  "`user_search_prompt` is blank. Set it to a full sentence that describes the data the user wants."
+   :recovery []})
+
 ;; No capability gate: this tool lives only in the :nlq profile, which [[metabase.metabot.agent.profiles/
 ;; get-profile]] serves (the library variant, with this tool) only when entity-retrieval-available? — otherwise it
 ;; redirects to :nlq-fallback (general search). That single probe is the sole gate, so prompt and tools can't
 ;; disagree about index availability.
-(mu/defn ^{:tool-name "retrieve_library_entities"
-           :scope     scope/agent-search}
-  retrieve-library-entities-tool
-  "Find the best data to answer the user's request from the library — the set of entities published to it
-  (published tables, library metrics/models, and their measures/segments). Phrase
-  `user_search_prompt` as a full natural-language description of the data wanted (it is matched on
-  meaning, not keywords).
+(defrecord RetrieveLibraryEntitiesTool []
+  tools/Tool
+  (declaration [_]
+    {:name        "retrieve_library_entities"
+     :description (str "Find the best data to answer the user's request from the library – the set of entities "
+                       "published to it (published tables, library metrics/models, and their measures/segments). "
+                       "Phrase `user_search_prompt` as a full natural-language description of the data wanted (it "
+                       "is matched on meaning, not keywords).\n\n"
+                       "Returns a handful of distinct library entities, best-first. Each match has the `matched_on` "
+                       "text that triggered it, any curator `usage_instructions`, a raw `similarity`, and the "
+                       "`entity` – a full search record (name, type, database, `portable_entity_id`, "
+                       "fully-qualified name). Use it to pick the right entity, then `read_resource` that entity to "
+                       "confirm its fields and sample values before building. If the top match is flagged "
+                       "low-confidence (a leading <note> / confidence=\"weak\"), nothing in the library clearly "
+                       "matches – prefer asking the user to clarify or narrow the request.")
+     :scope       scope/agent-search
+     :args        entity-retrieval-schema})
 
-  Returns a handful of distinct library entities, best-first. Each match has the `matched_on` text that
-  triggered it, any curator `usage_instructions`, a raw `similarity`, and the `entity` — a full search
-  record (name, type, database, `portable_entity_id`, fully-qualified name). Use it to pick the right
-  entity, then `read_resource` that entity to confirm its fields and sample values before building. If the
-  top match is flagged low-confidence (a leading <note> / confidence=\"weak\"), nothing in the library
-  clearly matches — prefer asking the user to clarify or narrow the request."
-  [{:keys [user_search_prompt limit]} :- entity-retrieval-schema]
-  (try
+  (handle [_ {:keys [user_search_prompt limit]} _ctx]
+    (when (str/blank? user_search_prompt)
+      (blank-search-prompt! {}))
     (let [n       (min max-limit (or limit default-limit))
           matches (build-matches user_search_prompt n)]
       {:output            (format-output matches)
        :structured-output {:result-type :search
                            :data        (flatten-data matches)
                            :total_count (count matches)
-                           :weak_match  (boolean (:weak? (first matches)))}})
-    (catch Exception e
-      ;; A failure here is the search subsystem being down (typically the embedding service), not "the
-      ;; library is empty" — say so in :output (the only channel the agent reads) so it doesn't confidently
-      ;; tell the user nothing matches. No :structured-output: that feeds the FE a result payload, and there's
-      ;; no successful search to render.
-      (log/errorf "Error in retrieve_library_entities: %s" (ex-message e))
-      {:output (str "The library search is temporarily unavailable (" (or (ex-message e) "unknown error")
-                    "). This does not mean the library is empty; the search could not be run.")})))
+                           :weak_match  (boolean (:weak? (first matches)))}})))
+
+(def retrieve-library-entities-tool
+  "The `retrieve_library_entities` tool."
+  (->RetrieveLibraryEntitiesTool))

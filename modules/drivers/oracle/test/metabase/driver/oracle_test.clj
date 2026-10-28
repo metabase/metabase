@@ -271,7 +271,7 @@
 
 (deftest connection-properties-test
   (testing "Connection properties should be returned properly (including transformation of secret types)"
-    (with-redefs [premium-features/is-hosted? (constantly false)]
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly false)]
       (let [expected [{:type :group
                        :fields [{:name "host"}
                                 {:name "port"}]}
@@ -287,13 +287,13 @@
                                      :value "local"}
                                     {:name  "Uploaded file path"
                                      :value "uploaded"}]
-                       :visible-if {:ssl-use-keystore true}}
+                       :visible-if {"ssl-use-keystore" true}}
                       {:name       "ssl-keystore-value"
                        :type       "textFile"
-                       :visible-if {:ssl-keystore-options "uploaded"}}
+                       :visible-if {"ssl-keystore-options" "uploaded"}}
                       {:name       "ssl-keystore-path"
                        :type       "string"
-                       :visible-if {:ssl-keystore-options "local"}}
+                       :visible-if {"ssl-keystore-options" "local"}}
                       {:name "ssl-keystore-password-value"
                        :type "password"}
                       {:name "ssl-use-truststore"}
@@ -303,13 +303,13 @@
                                      :value "local"}
                                     {:name  "Uploaded file path"
                                      :value "uploaded"}]
-                       :visible-if {:ssl-use-truststore true}}
+                       :visible-if {"ssl-use-truststore" true}}
                       {:name       "ssl-truststore-value"
                        :type       "textFile"
-                       :visible-if {:ssl-truststore-options "uploaded"}}
+                       :visible-if {"ssl-truststore-options" "uploaded"}}
                       {:name       "ssl-truststore-path"
                        :type       "string"
-                       :visible-if {:ssl-truststore-options "local"}}
+                       :visible-if {"ssl-truststore-options" "local"}}
                       {:name "ssl-truststore-password-value"
                        :type "password"}
                       {:name "tunnel-enabled"}
@@ -329,16 +329,15 @@
                        :visible-if {"tunnel-enabled" true}}
                       {:name       "tunnel-known-hosts-value"
                        :type       "textFile"
-                       :visible-if {:tunnel-known-hosts-options "uploaded"
+                       :visible-if {"tunnel-known-hosts-options" "uploaded"
                                     "tunnel-enabled" true}}
                       {:name       "tunnel-known-hosts-path"
                        :type       "string"
-                       :visible-if {:tunnel-known-hosts-options "local"
+                       :visible-if {"tunnel-known-hosts-options" "local"
                                     "tunnel-enabled" true}}
                       {:name "advanced-options"}
                       {:name "destination-database"}
                       {:name "write-data-connection"}
-                      {:name "admin-connection"}
                       {:name "auto_run_queries"}
                       {:name "let-user-control-scheduling"}
                       {:name "schedules.metadata_sync"}
@@ -381,7 +380,7 @@
 (deftest timezone-id-test
   (mt/test-driver :oracle
     (is (= (t/zone-id "Z")
-           (-> (driver/db-default-timezone :oracle (mt/db))
+           (-> (driver/db-default-timezone :oracle (lib.metadata/database (mt/metadata-provider)))
                t/zone-id
                .normalized)))))
 
@@ -432,7 +431,9 @@
                                                    :database-type "char"
                                                    :base-type     :type/Text}]})
       (let [hsql (sql.qp/mbql->honeysql :oracle
-                                        {:query {:source-query {:source-table 1
+                                        {:database 1
+                                         :type     :query
+                                         :query {:source-query {:source-table 1
                                                                 :expressions  {"s" [:substring [:field 1 nil] 2]}
                                                                 :fields       [[:field 1 nil]
                                                                                [:expression "s"]]}
@@ -481,7 +482,7 @@
               (execute! "INSERT INTO \"%s\".\"messages\" (\"id\", \"message\") VALUES (1, 'Hello')" username)
               (execute! "INSERT INTO \"%s\".\"messages\" (\"id\", \"message\") VALUES (2, NULL)"    username)
               (binding [oracle.tx/*override-describe-database-to-filter-by-db-name?* false]
-                (sync/sync-database! (mt/db) {:scan :schema}))
+                (sync/sync-database! (mt/id) {:scan :schema}))
               (let [table    (t2/select-one :model/Table :schema username, :name "messages", :db_id (mt/id))
                     id-field (t2/select-one :model/Field :table_id (u/the-id table), :name "id")]
                 (testing "The CLOB is synced as a text field"
@@ -608,7 +609,7 @@
                                                            :details details}]
                     (mt/with-db database
                       (testing " can sync correctly"
-                        (sync/sync-database! database {:scan :schema})
+                        (sync/sync-database! (:id database) {:scan :schema})
                         ;; should be four tables from test-data
                         (is (= 8 (t2/count :model/Table :db_id (u/the-id database) :name [:like "test_data%"])))
                         (binding [api/*current-user-id* orig-user-id ; restore original user-id to avoid perm errors
@@ -682,7 +683,7 @@
             sql        (format "SELECT CAST(TIMESTAMP '%s' AS TIMESTAMP WITH LOCAL TIME ZONE) AS timestamp_tz FROM dual" test-date)
             query      (-> (mt/native-query {:query sql})
                            (assoc-in [:middleware :format-rows?] false))
-            spec       #(sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+            spec       #(sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
             old-format (-> (jdbc/query (spec) "SELECT value FROM NLS_SESSION_PARAMETERS WHERE PARAMETER = 'NLS_TIMESTAMP_TZ_FORMAT'")
                            ffirst
                            val)
@@ -852,7 +853,7 @@
 (deftest table-privileges-test
   (mt/test-driver :oracle
     (testing "`current-user-table-privileges` returns correct structure and privileges"
-      (let [conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+      (let [conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
             privileges  (sql-jdbc.sync/current-user-table-privileges :oracle conn-spec)]
         (is (seq privileges) "Should return at least one table")
         (doseq [priv privileges]

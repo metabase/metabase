@@ -6,12 +6,14 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.secrets.core :as secret]
    [metabase.test.data.impl.get-or-create :as test.data.impl.get-or-create]
    [metabase.test.data.impl.verify :as verify]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.warehouses.schema :as warehouses.schema]
    [methodical.core :as methodical]
    [potemkin :as p]
    [toucan2.core :as t2]
@@ -56,7 +58,7 @@
   does exactly what it suggests."
   #'get-or-create-default-dataset!)
 
-(mu/defn db :- [:map [:id ::lib.schema.id/database]]
+(mu/defn db :- ::warehouses.schema/database
   []
   (*db-fn*))
 
@@ -192,7 +194,7 @@
 
 (mu/defn do-with-db
   "Internal impl of [[metabase.test.data/with-db]]."
-  [db    :- [:map [:id ::lib.schema.id/database]]
+  [db    :- ::warehouses.schema/database
    thunk :- fn?]
   (binding [*db-fn*                   (constantly db)
             *db-id-fn*                (constantly (u/the-id db))
@@ -216,7 +218,7 @@
 
 (mu/defn database-source-dataset-name :- :string
   "Get the name of the test dataset this Database was created from, e.g. `test-data`."
-  [database :- [:map [:settings [:map [:database-source-dataset-name :string]]]]]
+  [database :- [:or ::lib.schema.metadata/database ::warehouses.schema/database ::warehouses.schema/database.update]]
   (get-in database [:settings :database-source-dataset-name]))
 
 (mu/defn the-table-id :- ::lib.schema.id/table
@@ -397,7 +399,7 @@
   from the standard test database, and syncs it."
   [f]
   (let [{old-db-id :id, :as old-db} (*db-fn*)
-        original-db (-> old-db copy-secrets (select-keys [:details :engine :name :settings]))
+        original-db (-> old-db copy-secrets (select-keys [:details :engine :name :settings :dbms_version]))
         {new-db-id :id, :as new-db} (first (t2/insert-returning-instances! :model/Database original-db))]
     (try
       (copy-db-tables-and-fields! old-db-id new-db-id)

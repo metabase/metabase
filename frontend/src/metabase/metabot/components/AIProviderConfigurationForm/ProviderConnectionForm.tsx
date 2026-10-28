@@ -9,12 +9,13 @@ import {
   useUpdateLlmProviderMutation,
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
+import { FormFooter } from "metabase/common/components/FormFooter";
 import { PLUGIN_METABOT } from "metabase/plugins";
 import { useSetting } from "metabase/settings";
 import {
+  Box,
   Button,
   Collapse,
-  Flex,
   Group,
   Icon,
   Select,
@@ -34,6 +35,11 @@ import { ProviderTypePicker } from "./ProviderTypePicker";
 import { findProviderTypeForApiKey } from "./api-key";
 import { getHiddenFieldKeys, isVisibleField } from "./visible-fields";
 
+const OLLAMA_TYPE = "ollama";
+const BASE_URL_FIELD = "base-url";
+// Ollama Cloud is reached like any other Ollama server, at its own address.
+const OLLAMA_CLOUD_BASE_URL = "https://ollama.com/v1";
+
 export function ProviderConnectionForm({
   providerTypes,
   connection,
@@ -46,8 +52,8 @@ export function ProviderConnectionForm({
   onCancel?: () => void;
 }) {
   const isEditing = connection != null;
-  const [typeName, setTypeName] = useState<string | undefined>(
-    connection?.type,
+  const [providerType, setProviderType] = useState(() =>
+    providerTypes.find((option) => option.type === connection?.type),
   );
   const [name, setName] = useState(connection?.name ?? "");
   const [config, setConfig] = useState<LlmProviderConfig>(
@@ -83,11 +89,6 @@ export function ProviderConnectionForm({
   const [updateProvider, updateResult] = useUpdateLlmProviderMutation();
   const isSaving = createResult.isLoading || updateResult.isLoading;
 
-  const providerType = useMemo(
-    () => providerTypes.find((option) => option.type === typeName),
-    [providerTypes, typeName],
-  );
-
   const [primaryFields, advancedFields] = useMemo(() => {
     const fields = providerType?.fields ?? [];
     return [
@@ -102,7 +103,7 @@ export function ProviderConnectionForm({
 
   const selectProviderType = useCallback(
     (selected: LlmProviderType, nextConfig: LlmProviderConfig = {}) => {
-      setTypeName(selected.type);
+      setProviderType(selected);
       setName(selected.label);
       setConfig(nextConfig);
       setModel(selected.default_model ?? undefined);
@@ -140,7 +141,7 @@ export function ProviderConnectionForm({
   }, [isPickingType, providerTypes, selectProviderType]);
 
   const handleBack = () => {
-    setTypeName(undefined);
+    setProviderType(undefined);
     setName("");
     setConfig({});
     setModel(undefined);
@@ -150,7 +151,9 @@ export function ProviderConnectionForm({
   // A required field the registry gives a default is already satisfied — the form shows that value pre-selected,
   // and the backend fills it in for a connection that never touched it. A type with alternative credential
   // groups (Google: a service account key, or an OAuth token with a project ID) additionally needs one group
-  // filled in full; its fields are individually optional because either group will do.
+  // filled in full; its fields are individually optional because either group will do. A type with paired
+  // credential groups (Bedrock: the AWS key pair) needs each filled in full or left empty in full, and a
+  // dependent field (Bedrock: the session token) only counts filled when the fields it requires are too.
   const hasValue = (key: string) => (config[key] ?? "").trim() !== "";
   const isComplete =
     providerType != null &&
@@ -163,7 +166,14 @@ export function ProviderConnectionForm({
       )
       .every((field) => hasValue(field.key)) &&
     (providerType.required_any.length === 0 ||
-      providerType.required_any.some((group) => group.every(hasValue)));
+      providerType.required_any.some((group) => group.every(hasValue))) &&
+    Object.entries(providerType.requires).every(
+      ([key, deps]) => !hasValue(key) || deps.every(hasValue),
+    );
+  const hasConfiguredModel =
+    providerType != null &&
+    providerType.model_fields.length > 0 &&
+    providerType.model_fields.every(hasValue);
 
   const handleSave = async () => {
     if (!providerType) {
@@ -179,19 +189,20 @@ export function ProviderConnectionForm({
       ...config,
       ...Object.fromEntries(cleared.map((key) => [key, ""])),
     };
+    const savedModel = hasConfiguredModel ? undefined : model;
     try {
       const saved = isEditing
         ? await updateProvider({
             key: connection.key,
             name,
             config: savedConfig,
-            model,
+            model: savedModel,
           }).unwrap()
         : await createProvider({
             type: providerType.type,
             name,
             config: savedConfig,
-            model,
+            model: savedModel,
           }).unwrap();
       onSaved(saved);
     } catch (caught) {
@@ -206,118 +217,120 @@ export function ProviderConnectionForm({
 
   const MetabaseAIProviderSetup = PLUGIN_METABOT.MetabaseAIProviderSetup;
 
-  return (
-    <Stack gap="lg">
-      {match({ isEditing, providerType })
-        .with({ isEditing: false, providerType: P.nullish }, () => (
-          <ProviderTypePicker
-            providerTypes={providerTypes}
-            onSelect={handleTypeChange}
+  return match({ isEditing, providerType })
+    .with({ isEditing: false, providerType: P.nullish }, () => (
+      <ProviderTypePicker
+        providerTypes={providerTypes}
+        onSelect={handleTypeChange}
+      />
+    ))
+    .with({ providerType: { managed: true } }, ({ providerType: selected }) => (
+      <>
+        {!isEditing && (
+          <Box mb="xl">
+            <SelectedProvider providerType={selected} />
+          </Box>
+        )}
+        <MetabaseAIProviderSetup
+          isConnected={isEditing}
+          onConnect={() => onSaved()}
+          onCancel={isEditing ? undefined : handleBack}
+        />
+      </>
+    ))
+    .with({ providerType: P.nonNullable }, ({ providerType: selected }) => (
+      <form onSubmit={handleSubmit}>
+        <Stack gap="xl">
+          {!isEditing && <SelectedProvider providerType={selected} />}
+          <ProviderConfigFields
+            fields={primaryFields}
+            values={config}
+            onChange={(key, value) =>
+              setConfig((current) => ({ ...current, [key]: value }))
+            }
+            disabled={isSaving}
+            disabledFields={connection?.env_fields}
+            autoFocusFirstField
           />
-        ))
-        .with(
-          { providerType: { managed: true } },
-          ({ providerType: selected }) => (
-            <Stack gap="lg">
-              {!isEditing && <SelectedProvider providerType={selected} />}
-              <MetabaseAIProviderSetup
-                isConnected={isEditing}
-                onConnect={() => onSaved()}
-                onCancel={isEditing ? undefined : handleBack}
-              />
-            </Stack>
-          ),
-        )
-        .with({ providerType: P.nonNullable }, ({ providerType: selected }) => (
-          <form onSubmit={handleSubmit}>
-            <Stack gap="lg">
-              {!isEditing && <SelectedProvider providerType={selected} />}
-              <ProviderConfigFields
-                fields={primaryFields}
-                values={config}
-                onChange={(key, value) =>
-                  setConfig((current) => ({ ...current, [key]: value }))
-                }
-                disabled={isSaving}
-                disabledFields={connection?.env_fields}
-                autoFocusFirstField
-              />
-              {selected.models.length > 0 && (
-                <Select
-                  label={t`Model`}
-                  description={t`Connecting checks your credentials against this model, and Metabot starts on it.`}
-                  data={selected.models.map(({ id, display_name }) => ({
-                    value: id,
-                    label: display_name,
-                  }))}
-                  value={model ?? null}
-                  onChange={(next) => setModel(next ?? undefined)}
-                  disabled={isSaving}
-                />
-              )}
-              <AdvancedSettings
-                isOpened={isAdvancedOpen}
-                onToggle={toggleAdvanced}
-              >
-                <TextInput
-                  label={t`Display name`}
-                  description={t`What this connection is called in the model picker.`}
-                  value={name}
-                  onChange={(event) => setName(event.currentTarget.value)}
-                  disabled={isSaving}
-                />
-                <ProviderConfigFields
-                  fields={advancedFields}
-                  values={config}
-                  onChange={(key, value) =>
-                    setConfig((current) => ({ ...current, [key]: value }))
+          {selected.type === OLLAMA_TYPE &&
+            !connection?.env_fields.includes(BASE_URL_FIELD) && (
+              <Group>
+                <Button
+                  type="button"
+                  variant="subtle"
+                  onClick={() =>
+                    setConfig((current) => ({
+                      ...current,
+                      [BASE_URL_FIELD]: OLLAMA_CLOUD_BASE_URL,
+                    }))
                   }
                   disabled={isSaving}
-                  disabledFields={connection?.env_fields}
-                />
-              </AdvancedSettings>
-              {error && <Text c="error">{error}</Text>}
-              <Flex justify="end">
-                <Group gap="sm">
-                  {match({ isEditing, onCancel })
-                    .with(
-                      { isEditing: true, onCancel: P.nonNullable },
-                      ({ onCancel }) => (
-                        <Button
-                          type="button"
-                          onClick={onCancel}
-                          disabled={isSaving}
-                        >
-                          {t`Cancel`}
-                        </Button>
-                      ),
-                    )
-                    .with({ isEditing: false }, () => (
-                      <Button
-                        type="button"
-                        onClick={handleBack}
-                        disabled={isSaving}
-                      >
-                        {t`Back`}
-                      </Button>
-                    ))
-                    .otherwise(() => null)}
-                  <Button
-                    type="submit"
-                    variant="filled"
-                    loading={isSaving}
-                    disabled={isSaving || !isComplete}
-                  >
-                    {isEditing ? t`Save` : t`Connect`}
-                  </Button>
-                </Group>
-              </Flex>
-            </Stack>
-          </form>
-        ))
-        .otherwise(() => null)}
-    </Stack>
-  );
+                >
+                  {t`Use Ollama Cloud`}
+                </Button>
+              </Group>
+            )}
+          {selected.models.length > 0 && !hasConfiguredModel && (
+            <Select
+              label={t`Model`}
+              description={t`Connecting checks your credentials against this model, and Metabot starts on it.`}
+              data={selected.models.map(({ id, display_name }) => ({
+                value: id,
+                label: display_name,
+              }))}
+              value={model ?? null}
+              onChange={(next) => setModel(next ?? undefined)}
+              disabled={isSaving}
+            />
+          )}
+          <AdvancedSettings isOpened={isAdvancedOpen} onToggle={toggleAdvanced}>
+            <TextInput
+              label={t`Display name`}
+              description={t`What this connection is called in the model picker.`}
+              value={name}
+              onChange={(event) => setName(event.currentTarget.value)}
+              disabled={isSaving}
+            />
+            <ProviderConfigFields
+              fields={advancedFields}
+              values={config}
+              onChange={(key, value) =>
+                setConfig((current) => ({ ...current, [key]: value }))
+              }
+              disabled={isSaving}
+              disabledFields={connection?.env_fields}
+            />
+          </AdvancedSettings>
+          {error && <Text c="feedback-negative">{error}</Text>}
+        </Stack>
+        <FormFooter pageProps={{ mt: "xl" }}>
+          {match({ isEditing, onCancel })
+            .with(
+              { isEditing: true, onCancel: P.nonNullable },
+              ({ onCancel }) => (
+                <Button type="button" onClick={onCancel} disabled={isSaving}>
+                  {t`Cancel`}
+                </Button>
+              ),
+            )
+            .with({ isEditing: false }, () => (
+              <Button type="button" onClick={handleBack} disabled={isSaving}>
+                {t`Back`}
+              </Button>
+            ))
+            .otherwise(() => null)}
+          <Button
+            type="submit"
+            variant="filled"
+            loading={isSaving}
+            disabled={isSaving || !isComplete}
+          >
+            {isEditing ? t`Save` : t`Connect`}
+          </Button>
+        </FormFooter>
+      </form>
+    ))
+    .otherwise(() => null);
 }
 
 function hasStoredAdvancedValues(
@@ -340,11 +353,11 @@ function AdvancedSettings({
   children: ReactNode;
 }) {
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       <Button
         type="button"
-        variant="subtle"
-        p={0}
+        variant="transparent"
+        size="compact-md"
         w="fit-content"
         aria-expanded={isOpened}
         onClick={onToggle}
@@ -355,7 +368,7 @@ function AdvancedSettings({
         {t`Advanced settings`}
       </Button>
       <Collapse in={isOpened}>
-        <Stack gap="lg">{children}</Stack>
+        <Stack gap="xl">{children}</Stack>
       </Collapse>
     </Stack>
   );

@@ -6,13 +6,13 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockSetupState } from "__support__/state";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { BrowseModels } from "metabase/browse";
 import {
   createMockModelResult,
   createMockRecentModel,
 } from "metabase/browse/models/test-utils";
-import { createMockSetupState } from "metabase/redux/store/mocks";
 import type { RecentCollectionItem } from "metabase-types/api";
 import {
   createMockCollection,

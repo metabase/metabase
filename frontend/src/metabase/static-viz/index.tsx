@@ -1,9 +1,7 @@
 import { setPlatformAPI } from "echarts/core";
 import ReactDOMServer from "react-dom/server";
 
-// eslint-disable-next-line import/order
 import enterpriseOverrides from "ee-overrides";
-
 import {
   StaticChoropleth,
   getStaticChoroplethSettings,
@@ -13,6 +11,7 @@ import { LegacyStaticChart } from "metabase/static-viz/containers/LegacyStaticCh
 import type { LegacyStaticChartType } from "metabase/static-viz/containers/LegacyStaticChart/LegacyStaticChart";
 import { createStaticRenderingContext } from "metabase/static-viz/lib/rendering-context";
 import { measureTextEChartsAdapter } from "metabase/static-viz/lib/text";
+import { mutateColors } from "metabase/ui/colors/colors";
 import { updateStartOfWeek } from "metabase/utils/i18n";
 import MetabaseSettings from "metabase/utils/settings";
 import { DEFAULT_VISUALIZER_DISPLAY } from "metabase/visualizer/constants";
@@ -38,7 +37,6 @@ import type {
   GeoJSONData,
   RawSeries,
   SeriesCard,
-  SettingKey,
   VisualizerDataSourceId,
   VisualizerVizDefinition,
 } from "metabase-types/api";
@@ -128,11 +126,11 @@ function RenderChart(
   options: RenderChartOptions,
 ) {
   MetabaseSettings.set("token-features", options.tokenFeatures);
-  MetabaseSettings.set(
-    // Unjustified type cast. FIXME
-    "application-colors" as SettingKey,
-    options.applicationColors,
-  );
+  MetabaseSettings.set("application-colors", options.applicationColors);
+  // The app loads the instance's colors from the page bootstrap, which this
+  // context has no access to. Without them, a palette color looked up by name
+  // would resolve to the default value rather than the instance's.
+  mutateColors(options.applicationColors ?? {});
 
   if (typeof enterpriseOverrides === "function") {
     enterpriseOverrides();
@@ -217,6 +215,7 @@ function RenderChart(
       width={options.width}
       height={options.height}
       fitWithinBounds={options.fitWithinBounds}
+      gridSize={options.gridSize}
     />,
   );
 }

@@ -1,6 +1,7 @@
 import type { EChartsType } from "echarts/core";
 import { useCallback, useMemo, useRef } from "react";
 
+import { assignLazily } from "metabase/utils/merge-lazily";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
@@ -34,7 +35,7 @@ const SankeyChartComponent = ({
   );
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<EChartsType>();
+  const chartRef = useRef<EChartsType>(undefined);
   const renderingContext = useBrowserRenderingContext({ fontFamily });
   const chartModel = useMemo(
     () => getSankeyChartModel(rawSeriesWithRemappings, settings),
@@ -84,7 +85,7 @@ const SankeyChartComponent = ({
   );
 };
 
-export const SankeyChart = Object.assign(
+export const SankeyChart = assignLazily(
   SankeyChartComponent,
   SANKEY_CHART_DEFINITION,
 );

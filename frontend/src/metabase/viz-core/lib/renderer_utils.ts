@@ -33,38 +33,65 @@ type ParseOptions = {
 
 type Warn = (warning: VisualizationWarning) => void;
 
+type ParsedXValue = {
+  parsedValue: RowValue | Dayjs;
+  warning?: VisualizationWarning;
+};
+
+/**
+ * Lives for one getXValues pass. Repeated values must come back as the
+ * identical object: getXValues dedupes through a Set, and a parsed timestamp is
+ * a Dayjs, which a Set compares by reference. A cache that evicts, or that is
+ * not shared across the series of one chart, silently produces duplicate x
+ * values.
+ */
+type ParsedXValueCache = Map<string, ParsedXValue>;
+
+function parseXValueUncached(
+  xValue: RowValue,
+  { isNumeric, isTimeseries, isQuantitative, unit }: ParseOptions,
+): ParsedXValue {
+  // don't parse as timestamp if we're going to display as a quantitative
+  // scale, e.x. years and Unix timestamps
+  if (isTimeseries && !isQuantitative) {
+    return parseTimestampAndWarn(xValue, unit);
+  }
+  const parsedValue = isNumeric ? xValue : String(formatNullable(xValue));
+  return { parsedValue };
+}
+
+// we need typeof so "2" and 2 don't have the same cache key
+function getParsedXValueKey(xValue: RowValue, options: ParseOptions): string {
+  return [xValue, typeof xValue, ...Object.values(options)].join();
+}
+
+function parseXValueWithCache(
+  xValue: RowValue,
+  options: ParseOptions,
+  cache: ParsedXValueCache,
+): ParsedXValue {
+  const key = getParsedXValueKey(xValue, options);
+  const cached = cache.get(key);
+  if (cached !== undefined) {
+    return cached;
+  }
+
+  const parsed = parseXValueUncached(xValue, options);
+  cache.set(key, parsed);
+  return parsed;
+}
+
 export function parseXValue(
   xValue: RowValue,
   options: ParseOptions,
   warn: Warn = () => undefined,
 ): RowValue | Dayjs {
-  const { parsedValue, warning } = memoizedParseXValue(xValue, options);
+  const { parsedValue, warning } = parseXValueUncached(xValue, options);
   if (warning !== undefined) {
     warn(warning);
   }
   return parsedValue;
 }
-
-const memoizedParseXValue = _.memoize(
-  (
-    xValue: RowValue,
-    { isNumeric, isTimeseries, isQuantitative, unit }: ParseOptions,
-  ): {
-    parsedValue: RowValue | Dayjs;
-    warning?: VisualizationWarning;
-  } => {
-    // don't parse as timestamp if we're going to display as a quantitative
-    // scale, e.x. years and Unix timestamps
-    if (isTimeseries && !isQuantitative) {
-      return parseTimestampAndWarn(xValue, unit);
-    }
-    const parsedValue = isNumeric ? xValue : String(formatNullable(xValue));
-    return { parsedValue };
-  },
-  // create cache key from args
-  // we need typeof so "2" and 2 don't have the same cache key
-  (x, options) => [x, typeof x, ...Object.values(options)].join(),
-);
 
 function getParseOptions({
   data,
@@ -101,7 +128,8 @@ export function getXValues({
   // if _raw isn't set then we already have the raw series
   const rawSeries =
     isObjectWithRaw(series) && series._raw ? series._raw : series;
-  const warn = () => undefined; // no op since warning in handled by getDatas
+  // warnings are handled by getDatas, so they are dropped here
+  const parsedXValues: ParsedXValueCache = new Map();
   const uniqueValues = new Set<Exclude<RowValue, null | undefined> | Dayjs>();
   let isAscending = true;
   let isDescending = true;
@@ -120,7 +148,11 @@ export function getXValues({
       if (canDisplayNull(settings) && row[columnIndex] === null) {
         continue;
       }
-      const value = parseXValue(row[columnIndex], parseOptions, warn);
+      const { parsedValue: value } = parseXValueWithCache(
+        row[columnIndex],
+        parseOptions,
+        parsedXValues,
+      );
       if (lastValue !== undefined && value != null) {
         isAscending = isAscending && (lastValue ?? 0) <= value;
         isDescending = isDescending && value <= (lastValue ?? 0);

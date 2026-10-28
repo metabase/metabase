@@ -5,6 +5,7 @@ import type { GetExplorationDataResponse } from "metabase-types/api";
 import { updateSetting } from "./api";
 import { setupAnthropicLlmProvider } from "./e2e-metabot-helpers";
 import { activateToken } from "./e2e-token-helpers";
+import { closeNavigationSidebar } from "./e2e-ui-elements-helpers";
 
 const MOCK_LLM_PORT = 6125;
 const MOCK_LLM_RESPONSE = "Hello from Explorations!";
@@ -31,6 +32,7 @@ export function explorationsMetabotPromptInput(): Cypress.Chainable<
 
 export function visitNewExploration(): void {
   cy.visit("/question/research");
+  closeNavigationSidebar();
   cy.findByRole("button", { name: /Manual setup/i }).should("be.visible");
 }
 
@@ -50,25 +52,6 @@ export function startManualExploration(): void {
  */
 export function selectAllMetricsTab(): void {
   cy.findByRole("dialog").findByRole("tab", { name: "All" }).click();
-}
-
-export interface AddMetricsToExplorationOptions {
-  metrics: string[];
-}
-
-/**
- * Pick metrics through the "+ Metrics" picker.
- */
-export function addMetricsToExploration({
-  metrics,
-}: AddMetricsToExplorationOptions): void {
-  cy.findByRole("button", { name: /Metrics/ }).click();
-  cy.wait("@getDimensions");
-  selectAllMetricsTab();
-  for (const name of metrics) {
-    cy.findByRole("checkbox", { name }).check({ force: true });
-  }
-  cy.findByRole("button", { name: "Add" }).click();
 }
 
 /**
@@ -102,6 +85,18 @@ export function beginResearch(): Cypress.Chainable<number> {
 }
 
 /**
+ * A data part a tool emits alongside its result. Payloads too large to spend LLM
+ * context on ride one of these instead of the tool's `:output` — see
+ * `add_research_groups` and `research_plan_update` in
+ * `metabase.metabot.tools.explorations`.
+ */
+export interface ExplorationDataPart {
+  /** AI-SDK data type without the `data-` prefix, e.g. `research_plan_update`. */
+  dataType: string;
+  data: unknown;
+}
+
+/**
  * Shape of a single tool-call event the explorations agent emits over the AI-streaming protocol.
  */
 export interface ExplorationToolCall {
@@ -109,6 +104,11 @@ export interface ExplorationToolCall {
   toolName: string;
   args?: Record<string, unknown>;
   result: unknown;
+  dataParts?: ExplorationDataPart[];
+}
+
+function isKeyedPayload(data: unknown): data is Record<string, unknown> {
+  return typeof data === "object" && data !== null && !Array.isArray(data);
 }
 
 /**
@@ -118,7 +118,8 @@ export interface ExplorationToolCall {
  * event is a `data: {json}` SSE line, wrapped in the backend's lifecycle
  * (`start` → `start-step` → events → `finish-step` → `finish` → `[DONE]`).
  * Tool results are passed as objects — the client JSON-stringifies non-string
- * outputs before handing them to consumers like `NewExplorationChat`.
+ * outputs before handing them to consumers like `NewExplorationChat`. A tool's
+ * `dataParts` are emitted right after its output, as the backend does.
  */
 export function buildExplorationStreamingBody(
   toolCalls: ExplorationToolCall[],
@@ -138,6 +139,19 @@ export function buildExplorationStreamingBody(
       type: "tool-output-available",
       toolCallId: tc.toolCallId,
       output: tc.result,
+    });
+    // Data parts follow their tool's output, each stamped with the originating
+    // tool-call id, the way `expand-data-parts-xf` emits them on the backend.
+    // Array payloads (e.g. todo_list) have no keyed slot, so they're left as-is.
+    (tc.dataParts ?? []).forEach((dataPart, index) => {
+      const { data } = dataPart;
+      events.push({
+        type: `data-${dataPart.dataType}`,
+        id: `${tc.toolCallId}-data-${index}`,
+        data: isKeyedPayload(data)
+          ? { ...data, tool_call_id: tc.toolCallId }
+          : data,
+      });
     });
   }
   events.push({ type: "finish-step" });
@@ -267,5 +281,6 @@ export function createExplorationViaApi({
 
 export function visitExploration(id: number): void {
   cy.visit(`/question/research/${id}`);
+  closeNavigationSidebar();
   cy.findAllByRole("treeitem").first().should("be.visible");
 }

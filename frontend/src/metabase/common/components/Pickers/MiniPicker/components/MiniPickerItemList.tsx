@@ -564,7 +564,7 @@ function SearchItemList({ query: externalQuery }: { query: string }) {
         {!isSearching && searchResults.length === 0 && (
           <Box>
             <Text
-              px="md"
+              px="lg"
               py="sm"
               c="text-secondary"
             >{t`No search results`}</Text>
@@ -641,6 +641,12 @@ const isSchema = (
   return item.model === "schema";
 };
 
+const isDatabase = (
+  item: MiniPickerPickableItem,
+): item is MiniPickerDatabaseItem => {
+  return item.model === "database";
+};
+
 const useLocationDetails = (item: MiniPickerPickableItem) => {
   const getIcon = useGetIcon();
 
@@ -664,6 +670,9 @@ const useLocationDetails = (item: MiniPickerPickableItem) => {
       iconProps: { name: "database" as const },
     };
   }
+  if (isDatabase(item)) {
+    return { itemText: null, iconProps: null };
+  }
   return {
     itemText: item?.collection?.name ?? t`Our analytics`,
     iconProps: getIcon({ ...item.collection, model: "collection" }),
@@ -678,7 +687,7 @@ const LocationInfo = ({ item }: { item: MiniPickerPickableItem }) => {
   }
 
   return (
-    <Flex gap="xs" align="center" ml="auto" style={{ overflow: "hidden" }}>
+    <Flex gap="xxs" align="center" ml="auto" style={{ overflow: "hidden" }}>
       {iconProps && <Icon {...iconProps} size={12} miw={12} />}
       <Text size="sm" c="text-secondary" miw="0">
         <Ellipsified>{itemText}</Ellipsified>

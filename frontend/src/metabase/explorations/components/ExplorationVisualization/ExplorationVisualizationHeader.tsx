@@ -51,9 +51,15 @@ export function ExplorationVisualizationHeader({
       }
       iconProps={{ size: "1.125rem" }}
       isActive={isCommentsSidebarOpen}
-      bg={isCommentsSidebarOpen ? "background-brand" : "background-secondary"}
+      bg={
+        isCommentsSidebarOpen
+          ? "background_surface-brand-subtle"
+          : "background_page-secondary"
+      }
       bd={
-        isCommentsSidebarOpen ? "1px solid border-strong" : "1px solid border"
+        isCommentsSidebarOpen
+          ? "1px solid border-neutral-strong"
+          : "1px solid border-neutral"
       }
       onClick={() => {
         navigate(nextCommentsUrl);
@@ -69,7 +75,16 @@ export function ExplorationVisualizationHeader({
         </Ellipsified>
         <Group align="center" gap="sm" style={{ flexShrink: 0 }}>
           {allCommentsCount > 0 ? (
-            <Indicator label={allCommentsCount} size={16} color="core-info">
+            <Indicator
+              label={allCommentsCount}
+              size={16}
+              color="core-info"
+              styles={{
+                indicator: {
+                  paddingInline: "calc(var(--mantine-spacing-xxs) / 2)",
+                },
+              }}
+            >
               {commentsButton}
             </Indicator>
           ) : (

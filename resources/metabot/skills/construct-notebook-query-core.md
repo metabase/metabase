@@ -2,7 +2,7 @@
 id: construct-notebook-query-core
 title: Construct notebook query — core
 description: Building or editing a notebook (MBQL) query with construct_notebook_query — load before your first query so you get the clause shape, field references, and the rules/anti-patterns right.
-tools: [construct_notebook_query]
+tools: [construct_notebook_query, document_construct_model_chart]
 priority: 60
 ---
 # Construct Query Reference — Core
@@ -19,15 +19,17 @@ Return:
 
 > The Slackbot variant of this tool has a different contract: `reasoning` is **required**, `title` is optional and there's no `description`; it uses `display` (a Slack-specific visualization-type enum) instead of `visualization`. See the Slackbot system prompt for its exact argument set.
 
+> `document_construct_model_chart` takes the same `query`, with `name` instead of `title` and a required `viz_settings` instead of `visualization`.
+
 ## Minimal example — count of orders by month
 
 ```json
 {"lib/type": "mbql/query",
  "stages": [{"lib/type": "mbql.stage/mbql",
-             "source-table": ["Sample Database", "PUBLIC", "ORDERS"],
+             "source-table": ["Sample Database", null, "ORDERS"],
              "aggregation": [["count", {}]],
              "breakout": [["field", {"temporal-unit": "month"},
-                           ["Sample Database", "PUBLIC", "ORDERS", "CREATED_AT"]]]}]}
+                           ["Sample Database", null, "ORDERS", "CREATED_AT"]]]}]}
 ```
 
 Every clause is `["op", {}, ...args]` with a mandatory `{}` options map at position 1; every field reference uses a 4-segment portable FK in the last slot. These are the two most-violated rules.
@@ -59,7 +61,7 @@ There is no top-level `database:` field in the LLM contract — the database is 
 ["field", {}, ["<db-name>", "<schema-or-null>", "<table-name>", "<field-name>"]]
 ```
 
-The third slot is the **portable field FK** — a 4+ element string array. Schemaless databases (MongoDB, etc.) use `null` in the schema slot: `["Mongo", null, "orders", "created_at"]`. JSON-unfolded fields append extra segments: `["DB", "SCH", "TBL", "PARENT", "CHILD"]`.
+The third slot is the **portable field FK** — a 4+ element string array. Schemaless databases (the Sample Database, MongoDB, etc.) use `null` in the schema slot: `["Mongo", null, "orders", "created_at"]`. JSON-unfolded fields append extra segments: `["DB", "SCH", "TBL", "PARENT", "CHILD"]`.
 
 Inside later stages, refer to a column produced by the previous stage by **string name** instead of a portable FK: `["field", {}, "count"]`, `["field", {}, "PRODUCT_ID"]`.
 
@@ -75,18 +77,25 @@ Field options (all optional):
 
 ## Per-clause examples
 
-Filter (comparison + boolean combination):
+Use one entry per filter condition. Metabase combines the entries with `and`.
 
 ```json
-"filters": [["and", {},
-  [">", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]], 100],
-  ["=", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "STATUS"]], "paid"]]]
+"filters": [[">", {}, ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]], 100],
+            ["<=", {}, ["field", {}, ["Sample Database", null, "ORDERS", "QUANTITY"]], 5]]
+```
+
+Use one entry for conditions combined with `or` or negated together by `not`; nest `and` inside them when needed. For example, "total over 100, or quantity at most 5":
+
+```json
+"filters": [["or", {},
+  [">", {}, ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]], 100],
+  ["<=", {}, ["field", {}, ["Sample Database", null, "ORDERS", "QUANTITY"]], 5]]]
 ```
 
 Aggregation (on a field, plus `count`):
 
 ```json
-"aggregation": [["sum", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "TOTAL"]]],
+"aggregation": [["sum", {}, ["field", {}, ["Sample Database", null, "ORDERS", "TOTAL"]]],
                 ["count", {}]]
 ```
 
@@ -94,13 +103,13 @@ Breakout with temporal bucket:
 
 ```json
 "breakout": [["field", {"temporal-unit": "month"},
-              ["Sample Database", "PUBLIC", "ORDERS", "CREATED_AT"]]]
+              ["Sample Database", null, "ORDERS", "CREATED_AT"]]]
 ```
 
 Order by — direction wraps a ref; works on field refs or aggregation refs:
 
 ```json
-"order-by": [["desc", {}, ["field", {}, ["Sample Database", "PUBLIC", "ORDERS", "CREATED_AT"]]],
+"order-by": [["desc", {}, ["field", {}, ["Sample Database", null, "ORDERS", "CREATED_AT"]]],
              ["desc", {}, ["aggregation", {}, 0]]]
 ```
 
@@ -116,6 +125,10 @@ Shape rules:
 - **Clause heads are lowercase, hyphenated**: `"count"`, `"sum-where"`, `"time-interval"`, `"get-day-of-week"`. Not underscores, not camelCase.
 - **Never invent a `source-card` entity_id.** It must be a 21-char string copied verbatim from search / `read_resource` — no patterns, no numeric ids, no `card__<id>`.
 - **`source-card` columns are referenced by output name** (string in slot 3), not portable FK.
+
+Editing an existing query (the user asks to change, add, or remove part of the question they're viewing):
+- Start from the query shown in context and change only what the user asked for. Copy every other clause unchanged, including filters, breakouts, aggregations, and their order.
+- Keep each existing filter as its own `filters:` entry. To change one filter, replace just that entry. Never merge it with another filter into an `and`. The notebook shows a combined filter as one custom expression, so the user sees their untouched filters rewritten.
 
 Anti-hallucination:
 - **Don't subtract dates** with `-`. Use `["datetime-diff", {}, <left>, <right>, "<unit>"]` for the integer count of units between two temporal values.

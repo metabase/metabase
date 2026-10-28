@@ -1,15 +1,14 @@
 (ns metabase.explorations.models.exploration-query-result
   (:require
-   [clojure.edn :as edn]
    [metabase.api.common :as api]
    [metabase.explorations.composite :as composite]
+   [metabase.explorations.db :as explorations.db]
+   [metabase.interestingness.core :as interestingness]
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.core :as qp]
-   [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
@@ -23,41 +22,14 @@
 (doto :model/ExplorationQueryResult
   (derive :metabase/model))
 
-(defn- edn-in
-  "Encode a value as EDN. JSON would mangle `compute-chart-stats` output: `:chart-type` is a keyword,
-  `:series` is keyed by series-name *strings*, and the histogram `:distribution
-  :estimated-percentiles` is keyed by *integers* — only EDN round-trips all three."
-  [v]
-  (cond
-    (nil? v)    nil
-    (string? v) v
-    :else       (pr-str v)))
-
-(defn- edn-out
-  "Decode an EDN blob, recovering `nil` (with a warning) on parse failure rather than crashing the
-  whole `t2/select`. Bad rows can come from data written under an earlier transform (e.g. JSON), or
-  from forward-compat scenarios where the writer used types the reader can't parse — neither should
-  ever break a read."
-  [s]
-  (when (string? s)
-    (try
-      (edn/read-string {:readers {} :default (fn [tag v] [::unknown-tag tag v])} s)
-      (catch Throwable e
-        (log/warn e "Failed to parse an exploration_query_result EDN column; returning nil")
-        nil))))
-
-(def ^:private transform-encrypted-edn
-  "[[metabase.models.interface/transform-encrypted-text]] over a value serialized as EDN."
-  {:in  (comp encryption/maybe-encrypt edn-in)
-   :out (comp edn-out (mi/decrypt-error-context "exploration_query_result.chart_stats" encryption/maybe-decrypt))})
-
 ;; Every column here is encrypted at rest, and for one reason: each holds warehouse values, or prose
 ;; derived from them, produced under the creator's data-access lens. That is the same material as the
 ;; row blob in `stored_result.result_data`, which is encrypted too. `chart_stats` is easy to read as
 ;; mere shape and is not — the categorical stats carry each top category's `:name` straight from the
 ;; result rows (see [[metabase.interestingness.chart.categorical]]).
 (t2/deftransforms :model/ExplorationQueryResult
-  {:chart_stats        transform-encrypted-edn
+  {:chart_stats        (mi/transform-encrypted-json-with-schema "exploration_query_result.chart_stats"
+                                                                interestingness/chart-stats-schema)
    :metric_description (mi/transform-encrypted-text "exploration_query_result.metric_description")
    :chart_description  (mi/transform-encrypted-text "exploration_query_result.chart_description")})
 
@@ -66,9 +38,8 @@
   full stored_result row (creator/db/blob/query) or nil when no result row exists yet (query
   still pending/errored)."
   [eq-id]
-  (when-let [sr-id (t2/select-one-fn :stored_result_id :model/ExplorationQueryResult
-                                     :exploration_query_id eq-id)]
-    (t2/select-one :model/StoredResult :id sr-id)))
+  (when-let [sr-id (explorations.db/query-result-stored-result-id eq-id)]
+    (explorations.db/stored-result sr-id)))
 
 (defn- deserialize-stored-result
   "Inverse of [[qp/do-with-serialization]] for a stored_result's
@@ -98,11 +69,9 @@
   [eq-ids]
   (mapv
    (fn [eq-id]
-     (let [eq        (api/check-404 (t2/hydrate (t2/select-one :model/ExplorationQuery :id eq-id)
-                                                :segment_name))
-           eqr       (api/check-404 (t2/select-one :model/ExplorationQueryResult
-                                                   :exploration_query_id eq-id))
-           sr        (api/check-404 (t2/select-one :model/StoredResult :id (:stored_result_id eqr)))
+     (let [eq        (api/check-404 (t2/hydrate (explorations.db/query eq-id) :segment_name))
+           eqr       (api/check-404 (explorations.db/query-result eq-id))
+           sr        (api/check-404 (explorations.db/stored-result (:stored_result_id eqr)))
            qp-result (api/check-404 (deserialize-stored-result (:result_data sr)))]
        {:eq eq :eqr eqr :sr sr :qp-result qp-result}))
    eq-ids))
@@ -162,8 +131,7 @@
         first-eq      (:eq (first eq-results))
         first-sr      (:sr (first eq-results))
         src-card      (when-let [card-id (:card_id first-eq)]
-                        (t2/select-one [:model/Card :name :description :display :visualization_settings]
-                                       :id card-id))
+                        (explorations.db/card-presentation card-id))
         composite-qp  (composite/combine eq-results (or visualization-settings {}))
         dataset-query (:dataset_query first-eq)
         creator-id    (:id creator)]
@@ -179,19 +147,18 @@
       (t2/with-transaction [_conn]
         (let [stored-result-id (if single?
                                  (:id first-sr)
-                                 (first (t2/insert-returning-pks!
-                                         :model/StoredResult
-                                         {:result_data   composite-bytes
-                                          :creator_id    creator-id
-                                          :database_id   (or (:database_id first-sr)
-                                                             (-> dataset-query :database))
-                                          :dataset_query dataset-query
-                                          ;; `composite/combine` refreshed :row_count to the
-                                          ;; combined row set's size.
-                                          :row_count     (:row_count composite-qp)
-                                          ;; Without this the read gate denies the composite to
-                                          ;; every non-superuser. See [[composite-data-access-token]].
-                                          :data_access_token (composite-data-access-token eq-results)})))
+                                 (explorations.db/insert-stored-result!
+                                  {:result_data   composite-bytes
+                                   :creator_id    creator-id
+                                   :database_id   (or (:database_id first-sr)
+                                                      (-> dataset-query :database))
+                                   :dataset_query dataset-query
+                                   ;; `composite/combine` refreshed :row_count to the
+                                   ;; combined row set's size.
+                                   :row_count     (:row_count composite-qp)
+                                   ;; Without this the read gate denies the composite to
+                                   ;; every non-superuser. See [[composite-data-access-token]].
+                                   :data_access_token (composite-data-access-token eq-results)}))
               card-id          (:id (queries/create-card!
                                      {:name                   (or (not-empty (:name first-eq))
                                                                   (not-empty (:name src-card))
@@ -208,8 +175,8 @@
           ;; Record the (card -> stored_result) refs for lifecycle/GC tracking. For a combine we
           ;; reference the new composite snapshot plus every source, so a delete of any source
           ;; cascades; for a single-query embed the snapshot *is* the source, so one row covers it.
-          (t2/insert! :model/StoredResultUse {:stored_result_id stored-result-id :card_id card-id})
+          (explorations.db/insert-stored-result-use! {:stored_result_id stored-result-id :card_id card-id})
           (when-not single?
             (doseq [{:keys [sr]} eq-results]
-              (t2/insert! :model/StoredResultUse {:stored_result_id (:id sr) :card_id card-id})))
+              (explorations.db/insert-stored-result-use! {:stored_result_id (:id sr) :card_id card-id})))
           {:card-id card-id :stored-result-id stored-result-id :primary-eq first-eq})))))

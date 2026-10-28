@@ -224,7 +224,7 @@
     (let [cfg (explorations.interestingness/chart-config
                (query "bar")
                [(lib-col {:name "price_bin" :base-type :type/Integer :display-name "Price"
-                          :lib/source :source/breakouts})
+                          :lib/breakout? true})
                 (lib-col {:name "count" :base-type :type/Integer :display-name "Count"
                           :lib/source :source/aggregations})]
                [[10 5] [20 8] [30 3]])
@@ -240,9 +240,9 @@
     (let [cfg (explorations.interestingness/chart-config
                (query "line")
                [(lib-col {:name "bin" :base-type :type/Integer :display-name "Bin"
-                          :lib/source :source/breakouts})
+                          :lib/breakout? true})
                 (lib-col {:name "month" :base-type :type/DateTime :display-name "Month"
-                          :lib/source :source/breakouts})
+                          :lib/breakout? true})
                 (lib-col {:name "rev" :base-type :type/Integer :display-name "Revenue"
                           :lib/source :source/aggregations})]
                [[1 "2026-01-01" 100]

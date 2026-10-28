@@ -60,7 +60,7 @@ To open the chart options, click on the gear icon at the bottom left of the scre
 
 ### Data settings
 
-You can rename, reorder, or remove slices from the inner ring of a sunburst or pie chart. To reorder the pie slices, drag the cards with the slice names. To rename the slices, click on three dots next to the series name and enter a new name.
+You can rename, reorder, or remove slices from the inner ring of a sunburst or pie chart. To reorder the pie slices, drag the cards with the slice names. To rename the slices, click on the three dots next to the series name and enter a new name.
 
 To change the color of the pie slices, click on the color circle next to the slice's name. In sunburst charts, you can only change the color of the slices in the _inner_ ring (the slices in the outer rings inherit the colors of their parent slices).
 
@@ -74,13 +74,13 @@ To format the total displayed in the middle of the chart, click on the three dot
 
 You can configure whether to show:
 
-- The legend next to the chart.
+- The legend. To move it, see [Legend position](#legend-position).
 - The total in the center of the chart. The format of the total can be changed in the [data settings](#data-settings).
 - The labels for the pie slices. The labels for the inner ring slices can be changed in the [data settings](#data-settings).
 
   For sunburst charts with multiple breakouts, only the inner ring breakout will be displayed in the legend. By default, "Show labels" will be turned on. If you turn off "Show labels", the only way to distinguish slices on a sunburst chart will be to hover over them.
 
-- The percentage values for the slices. If you choose to display percentages **In the legend**, but then toggle off **Show legend**, the percentage values won't show up on the chart.
+- The percentage values for the slices. If you choose to display percentages **In the legend**, but then set **Legend position** to **Off**, the percentage values won't show up on the chart.
 
   You can always see percentage values for any slice by hovering over the slice.
 
@@ -93,6 +93,18 @@ To make the chart more legible, you can group slices smaller than a certain perc
 ![Other slice](../images/pie-other-slice.png)
 
 Currently, you can't change the color or label of the **Other** slice.
+
+#### Legend position
+
+To move or hide the legend, go to the **Display** tab and set **Legend position** to:
+
+- **Auto**: Put the legend to the left of the chart on wide cards, or below the chart on tall cards. If the card has no room for the legend, Metabase hides it.
+- **Top**, **Bottom**, **Left**, or **Right**: Put the legend on that side. Metabase hides the legend only when the card has no room on that side.
+- **Off**: Hide the legend. Any slices you hid by clicking the legend show up again.
+
+Legend items that don't fit go into a **+ N more** list, except when **Auto** puts the legend below the chart. There, the legend wraps onto more rows instead.
+
+[Dashboard subscriptions](../../dashboards/subscriptions.md) and [alerts](../alerts.md) always show the legend, because a chart in an email, a Slack message, or a PDF has no tooltips.
 
 ## Limitations and alternatives
 

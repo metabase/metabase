@@ -3,6 +3,7 @@ import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 
 import {
+  actionApi,
   cardApi,
   collectionApi,
   dashboardApi,
@@ -17,11 +18,12 @@ import {
   getCollectionItemsOptions,
 } from "metabase/common/components/Pickers/utils";
 import { useGetPersonalCollection } from "metabase/common/hooks/use-get-personal-collection";
-import { PLUGIN_LIBRARY } from "metabase/plugins";
+import { PLUGIN_DATA_APPS, PLUGIN_LIBRARY } from "metabase/plugins";
 import { type DispatchFn, useDispatch } from "metabase/redux";
 import type {
   Collection,
   CollectionNamespace,
+  DataApp,
   LibraryCollection,
   SchemaName,
 } from "metabase-types/api";
@@ -36,17 +38,24 @@ import type {
   OmniPickerValue,
 } from "../types";
 
-import { getRootCollectionItem, personalCollectionsRoot } from "./utils";
+import {
+  getDataAppItem,
+  getDataAppsRootItem,
+  getRootCollectionItem,
+  personalCollectionsRoot,
+} from "./utils";
 
 const getDefaultPath = async ({
   options,
   libraryCollection,
   namespaces,
+  models,
   dispatch,
 }: {
   options: EntityPickerOptions;
   libraryCollection?: LibraryCollection;
   namespaces: CollectionNamespace[];
+  models: OmniPickerCollectionItem["model"][];
   dispatch: DispatchFn;
 }): Promise<OmniPickerItem[]> => {
   if (libraryCollection && options.hasLibrary) {
@@ -57,8 +66,11 @@ const getDefaultPath = async ({
     ).unwrap();
 
     if (libraryChildrenResponse) {
+      // The Dashboards section only holds dashboards, so skip it unless we're picking them
       const firstChildCollection = libraryChildrenResponse.data.find(
-        (item) => item.model === "collection",
+        (item) =>
+          item.model === "collection" &&
+          (item.type !== "library-dashboards" || models.includes("dashboard")),
       );
       // we might also want to check if this collection has any relevant models
       if (firstChildCollection) {
@@ -89,11 +101,13 @@ export function useGetPathFromValue({
   options,
   namespaces,
   models,
+  showsDataApps = false,
 }: {
   value?: OmniPickerValue;
   options: EntityPickerOptions;
   namespaces: CollectionNamespace[];
   models: OmniPickerCollectionItem["model"][];
+  showsDataApps?: boolean;
 }) {
   const [path, setPath] = useState<OmniPickerItem[]>([]);
   const [isLoadingPath, setIsLoadingPath] = useState(false);
@@ -106,20 +120,35 @@ export function useGetPathFromValue({
   const { data: personalCollection, isLoading: isLoadingPersonalCollection } =
     useGetPersonalCollection();
 
+  const { data: dataApps, isLoading: isLoadingDataApps } =
+    PLUGIN_DATA_APPS.useDataApps({
+      skip: !showsDataApps || value?.model !== "data-app",
+    });
+
+  // `dataApps` isn't a dependency: a refetch of the list must not move the user out of the folder
+  // they opened.
   useDeepCompareEffect(() => {
-    if (isLoadingLibraryCollection || isLoadingPersonalCollection) {
+    if (
+      isLoadingLibraryCollection ||
+      isLoadingPersonalCollection ||
+      isLoadingDataApps
+    ) {
       return;
     }
 
     setIsLoadingPath(true);
 
     if (!value) {
-      getDefaultPath({ options, libraryCollection, namespaces, dispatch }).then(
-        (path) => {
-          setPath(path);
-          setIsLoadingPath(false);
-        },
-      );
+      getDefaultPath({
+        options,
+        libraryCollection,
+        namespaces,
+        models,
+        dispatch,
+      }).then((path) => {
+        setPath(path);
+        setIsLoadingPath(false);
+      });
       return;
     }
 
@@ -128,6 +157,7 @@ export function useGetPathFromValue({
       dispatch,
       libraryCollection,
       personalCollection,
+      dataApps,
       models,
     }).then((newPath) => {
       setPath(newPath);
@@ -139,6 +169,7 @@ export function useGetPathFromValue({
     libraryCollection,
     isLoadingLibraryCollection,
     isLoadingPersonalCollection,
+    isLoadingDataApps,
   ]);
 
   return [path, setPath, { isLoadingPath }] as const;
@@ -155,12 +186,14 @@ async function getPathFromValue({
   dispatch,
   libraryCollection,
   personalCollection,
+  dataApps,
   models,
 }: {
   value: OmniPickerValue;
   dispatch: DispatchFn;
   libraryCollection?: LibraryCollection;
   personalCollection?: Collection;
+  dataApps?: DataApp[];
   models: OmniPickerCollectionItem["model"][];
 }): Promise<OmniPickerItem[]> {
   if (value.id === "databases") {
@@ -169,6 +202,11 @@ async function getPathFromValue({
 
   if (value.id === "recents") {
     return [getFakeRecentsCollection()];
+  }
+
+  if (value.model === "data-app") {
+    const dataApp = dataApps?.find((dataApp) => dataApp.id === value.id);
+    return dataApp ? [getDataAppsRootItem(), getDataAppItem(dataApp)] : [];
   }
 
   if (!isInDbPath(value)) {
@@ -594,6 +632,10 @@ function getItemByModel(value: OmniPickerValue, dispatch: DispatchFn) {
     case "transform":
       return dispatch(
         transformApi.endpoints.getTransform.initiate(Number(value.id)),
+      ).unwrap();
+    case "action":
+      return dispatch(
+        actionApi.endpoints.getAction.initiate({ id: Number(value.id) }),
       ).unwrap();
     default:
       return Promise.resolve(null);

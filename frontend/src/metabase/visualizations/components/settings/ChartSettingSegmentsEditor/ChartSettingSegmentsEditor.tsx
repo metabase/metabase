@@ -4,7 +4,7 @@ import _ from "underscore";
 
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
-import { Box, Button, Icon, NumberInput, Text } from "metabase/ui";
+import { ActionIcon, Box, Button, Icon, NumberInput, Text } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import { getAccentColors } from "metabase/ui/colors/groups";
 import type { ChartSettingSegmentsEditorProps } from "metabase/viz-core";
@@ -97,12 +97,16 @@ export const ChartSettingSegmentsEditor = ({
                 </td>
                 <td>
                   {(segments.length > 1 || canRemoveAll) && (
-                    <Button
-                      leftSection={<Icon name="trash" c="text-disabled" />}
+                    <ActionIcon
+                      variant="subtle"
+                      size="lg"
                       onClick={() =>
                         onChange(segments.filter((v, i) => i !== index))
                       }
-                    />
+                      aria-label={t`Remove segment`}
+                    >
+                      <Icon name="trash" />
+                    </ActionIcon>
                   )}
                 </td>
               </tr>
@@ -120,6 +124,7 @@ export const ChartSettingSegmentsEditor = ({
         >{t`Add color ranges to make this number change color depending on it's value`}</Text>
       )}
       <Button
+        size="lg"
         leftSection={<Icon name="add" />}
         onClick={() => onChange(segments.concat(newSegment(segments)))}
         w="100%"
@@ -130,13 +135,12 @@ export const ChartSettingSegmentsEditor = ({
   );
 };
 
-function getColorPalette() {
+export function getColorPalette() {
   return [
     ...getAccentColors(),
     Color(color("feedback-negative")).hex(),
     Color(color("feedback-warning")).hex(),
     Color(color("feedback-positive")).hex(),
-    Color(color("background_page-tertiary")).hex(),
   ];
 }
 

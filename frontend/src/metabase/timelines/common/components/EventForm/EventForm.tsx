@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { type JSX, useCallback, useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
@@ -17,7 +17,16 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { Button, Flex, Group, Icon, Stack, TimeInput } from "metabase/ui";
+import {
+  ActionIcon,
+  Button,
+  Flex,
+  Group,
+  Icon,
+  Modal,
+  Stack,
+  TimeInput,
+} from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import type {
@@ -106,14 +115,17 @@ const EventForm = ({
     >
       {({ dirty, values, setFieldValue }) => (
         <Form disabled={!dirty} data-testid="event-form">
-          <Stack>
+          <Stack gap="xl">
             <FormTextInput
               name="name"
               label={t`Event name`}
               placeholder={t`Product launch`}
+              // The form can mount after the modal opens (while loading), when the
+              // modal no longer looks for `data-autofocus`
+              autoFocus
               data-autofocus
             />
-            <Flex align="end" gap="md">
+            <Flex align="end" gap="lg">
               <FormDateInput
                 name="timestamp"
                 title={t`Date`}
@@ -134,7 +146,7 @@ const EventForm = ({
                 }}
               />
               {values.time_matters ? (
-                <Flex gap="xs" align="end">
+                <Flex gap="xxs" align="end">
                   <TimeInput
                     value={dayjs.tz(values.timestamp).toDate()}
                     name="date"
@@ -149,15 +161,19 @@ const EventForm = ({
                       setFieldValue("timestamp", date.toISOString());
                     }}
                   />
-                  <Button
+                  <ActionIcon
+                    size="sm"
+                    mb="sm"
                     onClick={() => setFieldValue("time_matters", false)}
                     aria-label={t`Remove time`}
                     variant="subtle"
-                    leftSection={<Icon name="close" />}
-                  />
+                  >
+                    <Icon name="close" />
+                  </ActionIcon>
                 </Flex>
               ) : (
                 <Button
+                  size="lg"
                   onClick={() => setFieldValue("time_matters", true)}
                 >{t`Add time`}</Button>
               )}
@@ -190,23 +206,23 @@ const EventForm = ({
                 data={timelineOptions}
               />
             )}
-            <Flex gap="md" justify="end">
-              <FormErrorMessage inline />
-              {!isNew && (
-                <FormArchiveButton onClick={onArchive}>
-                  {t`Archive event`}
-                </FormArchiveButton>
-              )}
-              <Button type="button" onClick={onCancel}>
-                {t`Cancel`}
-              </Button>
-              <FormSubmitButton
-                variant="filled"
-                disabled={!dirty}
-                label={isNew ? t`Create` : t`Update`}
-              />
-            </Flex>
           </Stack>
+          <Modal.Footer>
+            <FormErrorMessage inline flex={1} />
+            {!isNew && (
+              <FormArchiveButton onClick={onArchive}>
+                {t`Archive event`}
+              </FormArchiveButton>
+            )}
+            <Button type="button" onClick={onCancel}>
+              {t`Cancel`}
+            </Button>
+            <FormSubmitButton
+              variant="filled"
+              disabled={!dirty}
+              label={isNew ? t`Create` : t`Update`}
+            />
+          </Modal.Footer>
         </Form>
       )}
     </FormProvider>

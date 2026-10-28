@@ -109,7 +109,7 @@ export function RunSection({
   const content = (
     <>
       <Stack>
-        <Group p="lg" justify="space-between">
+        <Group p="xl" justify="space-between">
           <RunStatusSection transform={transform} isScheduled={isScheduled} />
           <RunButtonSection
             transform={transform}
@@ -120,7 +120,7 @@ export function RunSection({
         <RunOutputSection transform={transform} />
       </Stack>
       <Divider />
-      <Group p="lg" gap="lg">
+      <Group p="xl" gap="xl">
         <Stack gap="sm">
           <Box fw="bold">{t`Run it on a schedule with tags`}</Box>
           <Box>{t`Jobs will run all transforms with their tags.`}</Box>
@@ -162,7 +162,7 @@ function RunStatusSection({ transform, isScheduled }: RunStatusSectionProps) {
   const runExtra = status === "succeeded" && previousStatus === "canceling" && (
     <Box
       c="text-disabled"
-      ml="lg"
+      ml="xl"
     >{t`This run succeeded before it had a chance to cancel.`}</Box>
   );
 

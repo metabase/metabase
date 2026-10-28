@@ -33,11 +33,15 @@ export const NewItemMenuView = ({
   hasDataAccess,
   hasNativeWrite,
   hasDatabaseWithJsonEngine,
+  onCloseNavbar,
 }: NewItemMenuProps) => {
   const dispatch = useDispatch();
 
   const lastUsedDatabaseId = useSelector((state) =>
     getSetting(state, "last-used-native-database-id"),
+  );
+  const areAiFeaturesEnabled = useSelector(
+    (state) => getSetting(state, "ai-features-enabled?") !== false,
   );
 
   const canWriteToCollections = useSelector(getUserCanWriteToCollections);
@@ -47,7 +51,7 @@ export const NewItemMenuView = ({
   const menuItems = useMemo(() => {
     const items = [];
 
-    if (hasDataAccess) {
+    if (hasDataAccess && areAiFeaturesEnabled) {
       items.push(
         <NewMenuItemAIExploration
           key="nlq"
@@ -68,6 +72,7 @@ export const NewItemMenuView = ({
             collectionId,
             cardType: "question",
           })}
+          onClick={onCloseNavbar}
           leftSection={<Icon name="insight" />}
         >
           {t`Question`}
@@ -87,6 +92,7 @@ export const NewItemMenuView = ({
             cardType: "question",
             DEPRECATED_RAW_MBQL_databaseId: lastUsedDatabaseId || undefined,
           })}
+          onClick={onCloseNavbar}
           leftSection={<Icon name="sql" />}
         >
           {hasDatabaseWithJsonEngine ? t`Native query` : t`SQL query`}
@@ -114,6 +120,7 @@ export const NewItemMenuView = ({
         key="document"
         component={ForwardRefLink}
         to="/document/new"
+        onClick={onCloseNavbar}
         leftSection={<Icon name="document" />}
       >
         {t`Document`}
@@ -123,6 +130,7 @@ export const NewItemMenuView = ({
     return items;
   }, [
     hasDataAccess,
+    areAiFeaturesEnabled,
     hasNativeWrite,
     collectionId,
     lastUsedDatabaseId,
@@ -130,6 +138,7 @@ export const NewItemMenuView = ({
     dispatch,
     canWriteToCollections,
     hasNlqAccess,
+    onCloseNavbar,
   ]);
 
   if (menuItems.length === 0) {

@@ -1,5 +1,8 @@
 {
   "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "src"
+  },
   "include": [
     "src/index.ts",
     "src/column-types.ts",

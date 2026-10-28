@@ -1,4 +1,7 @@
-import { NULL_DISPLAY_VALUE } from "metabase/utils/constants";
+import {
+  NULL_DIMENSION_KEY,
+  getNullDisplayValue,
+} from "metabase/utils/constants";
 import type { DatasetColumn, RowValue } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks/card";
 import {
@@ -160,9 +163,9 @@ describe("treemap data model", () => {
       treemapColumns,
       [
         {
-          key: NULL_DISPLAY_VALUE,
+          key: NULL_DIMENSION_KEY,
           name: "No category",
-          originalName: NULL_DISPLAY_VALUE,
+          originalName: getNullDisplayValue(),
           color: "#FF0000",
           defaultColor: false,
           enabled: true,
@@ -231,7 +234,7 @@ describe("treemap data model", () => {
           },
           {
             rawName: null,
-            displayName: NULL_DISPLAY_VALUE,
+            displayName: getNullDisplayValue(),
             value: 4,
             rowIndices: [1],
           },
