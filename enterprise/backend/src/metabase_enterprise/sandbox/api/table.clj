@@ -6,6 +6,7 @@
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.data-apps.core :as data-apps]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
@@ -85,7 +86,10 @@
    :- [:map {:closed true}
        [:include_sensitive_fields    {:default false} [:maybe ms/BooleanValue]]
        [:include_hidden_fields       {:default false} [:maybe ms/BooleanValue]]
-       [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]]
+       [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]
+   _body
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-table id))
   (fetch-table-query-metadata id {:include-sensitive-fields?    include_sensitive_fields
                                   :include-hidden-fields?       include_hidden_fields
                                   :include-editable-data-model? include_editable_data_model}))
