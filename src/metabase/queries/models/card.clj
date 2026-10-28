@@ -164,7 +164,7 @@
   so it is gated on their artifact verdicts rather than on the Summary's content gate over every thread."
   [card document]
   (when (and (:exploration_id document) (:id card))
-    (not-empty (queries.db/stored-results-for-card (:id card)))))
+    (not-empty (queries.db/stored-result-gate-inputs-for-card (:id card)))))
 
 (defn- parent-document-permits?
   "Whether the parent Document of `card`, if it has one, grants `read-or-write` to the current user.
@@ -189,9 +189,9 @@
           :read  (if-let [snapshots (summary-card-snapshots card document)]
                    (and (mi/current-user-has-full-permissions? :read document)
                         (every? cached-result/viewer-can-view-cached-result? snapshots))
-                   (mi/can-read? :model/Document document-id))
+                   (mi/can-read? document))
           :write (and (nil? (:exploration_id document))
-                      (mi/can-write? :model/Document document-id)))))))
+                      (mi/can-write? document)))))))
 
 ;; NOTE: deliberately a plain `defmethod` rather than `perms/define-collection-based-visibility!`.
 ;; That macro's contract is "read perms are determined *fully* by `:collection_id`", which stopped

@@ -13,8 +13,10 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.data-access-token :as data-access-token]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.queries.core :as queries]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.request.core :as request]
    [metabase.test :as mt]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
@@ -285,10 +287,25 @@
       (is (= 1 (verdicts 25))
           "one verdict for the group — before batching, 25 charts cost 25 of them"))))
 
+(deftest groups-sharing-a-table-read-its-sandbox-once-test
+  (testing "charts over one table land in different groups when their lenses differ, and each group's verdict
+            computes the viewer's lens over that table. The batch shares those reads, so the table's sandbox is
+            read once however many groups there are"
+    (let [venues (mt/id :venues)
+          thread (thread-with-snapshots! (for [token [{} {:sandbox {venues "d-a"}} {:sandbox {venues "d-b"}}]]
+                                           {:creator-id (mt/user->id :lucky) :table :venues :token token}))
+          reads  (atom 0)]
+      (dynamic-redefs/with-dynamic-fn-redefs
+        [data-access-token/sandbox-token-for-table (fn [table-id]
+                                                     (when (= venues table-id) (swap! reads inc))
+                                                     nil)]
+        (is (false? (visible? thread :rasta)) "the sandboxed creators' charts block an unsandboxed viewer"))
+      (is (= 1 @reads)))))
+
 (deftest verdict-cost-grows-only-with-distinct-chart-shapes-test
   (testing "grouping cannot be free: [[visibility-key]] resolves each chart's query, because the
-            lens half of the verdict compares *resolved* tables and two charts can share a raw
-            footprint while reading different ones. That resolution is per chart and mostly metadata
+            lens half of the verdict compares *resolved* tables and two charts can share raw
+            source ids while reading different ones. That resolution is per chart and mostly metadata
             reads, so cost grows — but it must stay far below re-running the verdict itself, which
             would be ~13 queries a chart (~325 for 25)."
     (let [specs   (fn [n] (repeat n {:creator-id (mt/user->id :lucky) :table :venues :token {}}))
@@ -302,6 +319,30 @@
           large   (measure 25)]
       (is (< large (* 2 small))
           (format "resolution must stay cheap (2 charts: %d queries, 25 charts: %d)" small large)))))
+
+(deftest stored-resolved-source-ids-key-the-verdict-only-for-their-own-query-test
+  (let [thread   (thread-with-snapshots! [{:creator-id (mt/user->id :lucky) :table :venues :token {}}])
+        q-id     (t2/select-one-pk :model/ExplorationQuery :exploration_thread_id thread)
+        stamp!   (fn [stamped-from]
+                   (t2/update! :model/ExplorationQuery q-id
+                               {:resolved_source_ids (query-perms/stamped-resolved-source-ids
+                                                      (count-query stamped-from)
+                                                      {:table-ids #{(mt/id stamped-from)}})}))
+        resolves (fn []
+                   (let [calls (atom 0)
+                         orig  (dynamic-redefs/original-fn #'query-perms/query->resolved-source-ids)]
+                     (dynamic-redefs/with-dynamic-fn-redefs
+                       [queries/viewer-can-view-cached-result? (constantly true)
+                        query-perms/query->resolved-source-ids (fn [& args] (swap! calls inc) (apply orig args))]
+                       (request/with-current-user (mt/user->id :rasta)
+                         (derived-perms/thread-ids-with-visible-derived-data [thread])))
+                     @calls))]
+    (testing "a value stamped from the row's own query stands in for resolving it"
+      (stamp! :venues)
+      (is (zero? (resolves))))
+    (testing "a value stamped from another query is ignored, and the row's query is resolved live"
+      (stamp! :checkins)
+      (is (= 1 (resolves))))))
 
 ;;; --------------------------------- Summary-document content gate ---------------------------------
 

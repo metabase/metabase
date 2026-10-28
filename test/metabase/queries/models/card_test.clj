@@ -2055,6 +2055,32 @@
             "a card belonging to an exploration Summary is never exported — its name and dataset_query
              carry values discovered under the creator's lens, and its parent document is excluded")))))
 
+(deftest exploration-summary-cards-are-never-writable-test
+  (testing "a Summary card is writable by nobody, superusers included"
+    (mt/with-temp [:model/Collection  {coll-id :id}      {}
+                   :model/Exploration {expl-id :id}      {:name "Explo" :creator_id (mt/user->id :rasta)}
+                   :model/Document    {summary-id :id}   {:name           "Summary"
+                                                          :creator_id     (mt/user->id :rasta)
+                                                          :collection_id  coll-id
+                                                          :exploration_id expl-id}
+                   :model/Document    {plain-doc :id}    {:name "Plain doc" :creator_id (mt/user->id :rasta)
+                                                          :collection_id coll-id}
+                   :model/Card        {doc-card :id}     {:collection_id coll-id :document_id plain-doc
+                                                          :creator_id (mt/user->id :rasta)}
+                   :model/Card        {summary-card :id} {:collection_id coll-id :document_id summary-id
+                                                          :creator_id (mt/user->id :rasta)}]
+      (doseq [user-kw [:rasta :crowberto]]
+        (testing user-kw
+          (testing "control: a card in an ordinary document in the same collection is writable"
+            (is (true? (mt/with-current-user (mt/user->id user-kw)
+                         (mi/can-write? (t2/select-one :model/Card :id doc-card))))))
+          (testing "through mi/can-write?"
+            (is (false? (mt/with-current-user (mt/user->id user-kw)
+                          (mi/can-write? (t2/select-one :model/Card :id summary-card))))))
+          (testing "through PUT /api/card/:id"
+            (mt/user-http-request user-kw :put 403 (str "card/" summary-card) {:name "Renamed"})
+            (is (not= "Renamed" (t2/select-one-fn :name :model/Card :id summary-card)))))))))
+
 (deftest before-update-schema-upgrade-uses-incoming-query-test
   (testing "a query edit to a legacy metric persists dimensions derived from the new query, not the old one"
     (mt/with-temp [:model/Card {card-id :id} {:type          :metric

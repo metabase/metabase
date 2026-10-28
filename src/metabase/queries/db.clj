@@ -565,10 +565,15 @@
   (t2/insert! :model/StoredResultUse {:stored_result_id stored-result-id
                                       :card_id          card-id}))
 
-(mu/defn stored-results-for-card
-  "The StoredResults used by the Card with `card-id`."
+(mu/defn stored-result-gate-inputs-for-card
+  "The StoredResults used by the Card with `card-id`, narrowed to the columns the cached-result gate reads."
   [card-id :- ::lib.schema.id/card]
-  (t2/select :model/StoredResult
+  (t2/select [:model/StoredResult
+              :id
+              :database_id
+              :dataset_query
+              :data_access_token
+              :resolved_source_ids]
              :id [:in ^:allow-subquery {:select [:stored_result_id]
                                         :from   [:stored_result_use]
                                         :where  [:= :card_id card-id]}]))

@@ -146,6 +146,10 @@
               (attach-thread-read-data thread blocks pages card-name-by-id)))
           threads)))
 
+(defn- strip-lens-stamp
+  [m]
+  (dissoc m :data_access_token :resolved_source_ids))
+
 (defn- gate-threads-derived-data
   "Drop every thread's derived read-data — its queries, the block/page tree built from them, and the
   thread name — when the current user's data-access lens isn't compatible with the creator's lens
@@ -165,8 +169,8 @@
             ;; stripping (see [[redact-query-error]]), so it has to come off here.
             (-> (or (get enriched (:id thread))
                     (assoc thread :queries [] :blocks [] :name nil :status "forbidden"))
-                (dissoc :data_access_token :source_footprint)
-                (u/update-if-exists :queries #(some->> % (mapv (fn [q] (dissoc q :source_footprint)))))))
+                strip-lens-stamp
+                (u/update-if-exists :queries #(some->> % (mapv strip-lens-stamp)))))
           threads)))
 
 (defn- thread-status
@@ -656,7 +660,7 @@
     (hydrate-exploration persisted)))
 
 (defn- drill-thread-stamp
-  "The lens stamp for the thread `explore-further` creates. Its `:source_footprint` is the union of the block's
+  "The lens stamp for the thread `explore-further` creates. Its `:resolved_source_ids` is the union of the block's
   metric cards', so the gate holds a viewer to every table the token was computed over.
 
   The token is computed under the *creator's* identity rather than the caller's. The values this thread is named
@@ -664,13 +668,15 @@
   same identity (see [[metabase.explorations.runner]]), which is the lens `finalize-row!` stamps them
   with."
   [exploration cards]
-  (let [footprint (query-perms/merge-source-footprints
-                   (map #(query-perms/query->source-footprint (:dataset_query %)) cards))]
-    {:data_access_token (request/with-current-user (:creator_id exploration)
-                          (perms/data-access-token
-                           {:database-id (:database_id (first cards))
-                            :table-ids   (:table-ids footprint)}))
-     :source_footprint  footprint}))
+  (let [resolved-source-ids (query-perms/merge-resolved-source-ids
+                             (map #(query-perms/query->resolved-source-ids (:dataset_query %)) cards))]
+    {:data_access_token   (request/with-current-user (:creator_id exploration)
+                            (perms/data-access-token
+                             {:database-id (:database_id (first cards))
+                              :table-ids   (:table-ids resolved-source-ids)}))
+     ;; The content gate checks the thread against the first card's query.
+     :resolved_source_ids (query-perms/stamped-resolved-source-ids (:dataset_query (first cards))
+                                                                   resolved-source-ids)}))
 
 (api.macros/defendpoint :post "/:id/explore-further" :- ::HydratedExploration
   "Start a follow-up investigation scoped to a clicked chart segment.

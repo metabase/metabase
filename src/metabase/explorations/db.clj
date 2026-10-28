@@ -171,7 +171,7 @@
 (mu/defn lens-stamped-threads
   "The ExplorationThreads among `thread-ids` that carry a data-access token, with what the content gate reads."
   [thread-ids :- [:set ms/PositiveInt]]
-  (t2/select [:model/ExplorationThread :id :data_access_token :source_footprint]
+  (t2/select [:model/ExplorationThread :id :data_access_token :resolved_source_ids]
              :id [:in thread-ids]
              :data_access_token [:not= nil]))
 
@@ -435,7 +435,7 @@
   in ID order."
   [thread-ids :- [:set ms/PositiveInt]]
   (t2/select [:model/ExplorationQuery :id :exploration_thread_id :database_id :dataset_query :data_access_token
-              :source_footprint]
+              :resolved_source_ids]
              :exploration_thread_id [:in thread-ids]
              :dataset_query [:not= nil]
              {:order-by [[:id :asc]]}))
@@ -500,9 +500,11 @@
 (mu/defn update-query!
   "Apply `changes` to the ExplorationQuery with `query-id`."
   [query-id :- ms/PositiveInt
-   changes  :- (mut/select-keys ::explorations.schema/exploration-query.update
-                                [:dataset_query :name :data_access_token :source_footprint
-                                 :status :started_at :finished_at])]
+   changes  :- [:and
+                (mut/select-keys ::explorations.schema/exploration-query.update
+                                 [:dataset_query :name :data_access_token :resolved_source_ids
+                                  :status :started_at :finished_at])
+                ::explorations.schema/exploration-query.update.stamped-together]]
   (t2/update! :model/ExplorationQuery query-id changes))
 
 (mu/defn fail-pending-query!

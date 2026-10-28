@@ -110,7 +110,7 @@
                     {:dataset_query     dq
                      :data_access_token (perms/data-access-token
                                          {:database-id (:database_id q)
-                                          :table-ids   (query-perms/query->resolved-source-table-ids dq)})})))))
+                                          :table-ids   (:table-ids (query-perms/query->resolved-source-ids dq))})})))))
 
 (defn- vectorize-clauses
   "`mt/user-http-request` decodes JSON arrays as lists, but MBQL normalization (and
@@ -1242,6 +1242,31 @@
                 "the raw driver error must not reach anyone who can read the exploration")
             (is (= "This query failed to run." (:error_message q)))))))))
 
+(deftest exploration-lens-stamps-never-reach-the-client-test
+  (testing "GET /:id strips the lens stamp and resolved source ids from every thread and every query"
+    (mt/with-temp [:model/User u      {:email "stamps@example.com"}
+                   :model/Card metric (valid-metric-card (:id u))]
+      (let [resp      (create-exploration! u
+                                           {:name "stamped"
+                                            :metrics [{:card_id (:id metric)
+                                                       :dimension_mappings [{:dimension_id (duid "d1")
+                                                                             :table_id     1
+                                                                             :target       ["field" 1 nil]}]}]
+                                            :dimensions [{:dimension_id (duid "d1")}]})
+            thread-id (-> resp :threads first :id)
+            qid       (-> resp :threads first :queries first :id)
+            stamp     {:data_access_token {} :resolved_source_ids {:table-ids #{(mt/id :venues)}}}]
+        (store-fake-result! qid {:status :completed :data {:cols [{:name "x"}] :rows [[1]]} :row_count 1})
+        (t2/update! :model/ExplorationQuery qid (assoc stamp :status "done"))
+        (t2/update! :model/ExplorationThread thread-id stamp)
+        (let [body (mt/user-http-request u :get 200 (str "exploration/" (:id resp)))
+              keys-in-body (atom #{})]
+          (is (= [qid] (->> body :threads (mapcat :queries) (map :id)))
+              "sanity: queries are present")
+          (walk/postwalk (fn [x] (when (map? x) (swap! keys-in-body into (keys x))) x) body)
+          (is (not (contains? @keys-in-body :data_access_token)))
+          (is (not (contains? @keys-in-body :resolved_source_ids))))))))
+
 (deftest exploration-query-result-permissions-test
   (testing "GET /query/:id enforces the parent exploration's read check"
     (mt/with-temp [:model/User owner {:email "qr-owner@example.com"}
@@ -1360,7 +1385,7 @@
     (mt/with-temp [:model/User u {:email "page-hide-404@example.com"}]
       (mt/user-http-request u :put 404 "exploration/pages/hidden" {:page_ids [9999999] :hidden true}))))
 
-(deftest exploration-explore-further-stamps-union-footprint-test
+(deftest exploration-explore-further-stamps-union-resolved-source-ids-test
   (testing "a block with two metric cards stamps its drill thread with every table either card reads, the same tables
             its token is computed over"
     (mt/with-temp [:model/User u {:email "explore-further-union@example.com"}
@@ -1390,7 +1415,13 @@
             new      (t2/select-one :model/ExplorationThread :exploration_id (:id created) :position 1)]
         (is (= {:table-ids       #{(mt/id :venues) (mt/id :products)}
                 :table-query-ids #{(mt/id :venues) (mt/id :products)}}
-               (:source_footprint new)))))))
+               (dissoc (:resolved_source_ids new) :query-digest)))
+        (testing "stamped from the first card's query as it reads back, which is what the content gate adjudicates"
+          (is (= {:table-ids       #{(mt/id :venues) (mt/id :products)}
+                  :table-query-ids #{(mt/id :venues) (mt/id :products)}}
+                 (query-perms/verified-resolved-source-ids
+                  (t2/select-one-fn :dataset_query :model/Card :id (:id venues-metric))
+                  (:resolved_source_ids new)))))))))
 
 (deftest exploration-explore-further-creates-filtered-thread-test
   (testing "POST /:id/explore-further copies the clicked block into a new filtered thread"
@@ -1425,11 +1456,11 @@
             "explore-further does not create a second Summary document")
         (is (= (:id orig-thread) (:id orig)))
         (is (= 1 (:position new)))
-        (testing "the drill thread's lens stamp carries the source footprint of the metric it drills, which never
+        (testing "the drill thread's lens stamp carries the resolved source ids of the metric it drills, which never
                   reaches the client"
           (is (= {:table-ids #{(mt/id :venues)} :table-query-ids #{(mt/id :venues)}}
-                 (t2/select-one-fn :source_footprint :model/ExplorationThread :id (:id new))))
-          (is (not-any? #(contains? % :source_footprint) (cons new new-queries))))
+                 (dissoc (t2/select-one-fn :resolved_source_ids :model/ExplorationThread :id (:id new)) :query-digest)))
+          (is (not-any? #(contains? % :resolved_source_ids) (cons new new-queries))))
         (testing "the drill thread records the page it was drilled from (sidebar nesting)"
           (is (= page-id (:source_page_id new)))
           (is (nil? (:source_page_id orig))))
