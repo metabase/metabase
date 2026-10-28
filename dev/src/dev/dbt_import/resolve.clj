@@ -17,14 +17,14 @@
 
   SQL, in a measure's `expr` or in a filter, goes through [[dev.dbt-import.sql]] in the dialect of the config's
   `:driver`. A filter's references are resolved here: a dimension reached through the model's own primary entity (or
-  `metric_time`) is one of its columns; one reached through a foreign entity is on the semantic model that entity is
-  primary for, and its column is reached by an implicit join through the entity's column on this model (see
-  [[join-context]]).
+  `metric_time`) is one of its columns; one reached through another entity is on the semantic model that has the
+  entity as its primary or a unique entity, and its column is reached by an implicit join through the entity's column
+  on this model (see [[join-context]]).
 
   Each metric also gets its curated dimension set (see [[dimension-set]]): the dbt dimensions of its own semantic
-  model, the dimensions of every semantic model its foreign entities join to, and the measure's `agg_time_dimension`
-  as the default. A dimension mapping targets a column, so a dimension whose `expr` is SQL is reported per metric
-  rather than written.
+  model, the dimensions of every semantic model its foreign and unique entities join to, and the measure's
+  `agg_time_dimension` as the default, bucketed by the metric's `time_granularity` when it has one. A dimension
+  mapping targets a column, so a dimension whose `expr` is SQL is reported per metric rather than written.
 
   Only knows the IR, not the manifest, so another semantic layer's parser would plug in unchanged."
   (:require
@@ -246,36 +246,47 @@
       (sql/unsupported "entity %s is the SQL expression %s, not a column; an implicit join needs a column"
                        (pr-str entity-name) (pr-str expr)))))
 
-(mu/defn- models-primary-for :- [:sequential ::schemas.ir/semantic-model]
-  "The semantic models that have `entity-name` as their primary entity, by name. A foreign entity joins to the one
-  such model."
-  [{:keys [models]} :- ::context
-   entity-name      :- :string]
+(mu/defn- keyed-by? :- :boolean
+  "Whether a reference through `entity-name` can join to `model`: the entity is the model's primary entity, or one of
+  its `unique` entities. Either identifies one row of the model, which is what a join from another model needs; a
+  `foreign` or `natural` entity does not."
+  [{:keys [primary-entity entities]} :- ::schemas.ir/semantic-model
+   entity-name                       :- :string]
+  (boolean (or (= entity-name primary-entity)
+               (m/find-first #(and (= entity-name (:name %)) (= :unique (:type %))) entities))))
+
+(mu/defn- join-targets :- [:sequential ::schemas.ir/semantic-model]
+  "The semantic models a reference through `entity-name` from `context`'s model can join to: the other models that
+  are [[keyed-by?]] it, by name. An entity joins to the one such model."
+  [{:keys [models model]} :- ::context
+   entity-name            :- :string]
   (->> (vals models)
-       (filter #(= entity-name (:primary-entity %)))
+       (filter #(and (not= (:name %) (:name model)) (keyed-by? % entity-name)))
        (sort-by :name)))
 
 (mu/defn- join-context :- ::context
-  "A context for the semantic model the foreign `entity` of `context`'s model joins to: bare column names resolve to
-  that model's columns, reached through the entity's column on this model. Metabase spells that `:source-field` on
-  the ref and joins implicitly, so the instance's metadata has to know the foreign key for the query to run.
-  [[sql/unsupported]] when there is no such model, more than one that the config's `:entity-models` does not choose
-  between, the join column on either side is SQL, or the model is in another Metabase database."
+  "A context for the semantic model the `entity` of `context`'s model joins to (see [[join-targets]]): bare column
+  names resolve to that model's columns, reached through the entity's column on this model. Metabase spells that
+  `:source-field` on the ref and joins implicitly, so the instance's metadata has to know the foreign key for the query
+  to run. [[sql/unsupported]] when there is no such model, more than one that the config's `:entity-models` does not
+  choose between, the join column on either side is SQL, or the model is in another Metabase database."
   [{:keys [config provider resolve-column] :as context} :- ::context
    {entity-name :name, :as entity}                      :- ::schemas.ir/entity]
   (b/cond
-    :let [candidates (models-primary-for context entity-name)
+    :let [candidates (join-targets context entity-name)
           chosen     (get-in config [:entity-models entity-name])]
 
     (empty? candidates)
-    (sql/unsupported "no semantic model has entity %s as its primary entity" (pr-str entity-name))
+    (sql/unsupported "no semantic model has entity %s as its primary or a unique entity" (pr-str entity-name))
 
     (and (next candidates) (not chosen))
-    (sql/unsupported "more than one semantic model has entity %s as its primary entity: %s; name the one to join to in :entity-models"
+    (sql/unsupported (str "more than one semantic model has entity %s as its primary or a unique entity: %s;"
+                          " name the one to join to in :entity-models")
                      (pr-str entity-name) (str/join ", " (map (comp pr-str :name) candidates)))
 
     (and (next candidates) (not (some #(= chosen (:name %)) candidates)))
-    (sql/unsupported ":entity-models names semantic model %s for entity %s, but the models with it as their primary entity are %s"
+    (sql/unsupported (str ":entity-models names semantic model %s for entity %s, but the models with it as their"
+                          " primary or a unique entity are %s")
                      (pr-str chosen) (pr-str entity-name) (str/join ", " (map (comp pr-str :name) candidates)))
 
     :let [target        (if (next candidates)
@@ -442,15 +453,24 @@
      :type         group-type
      :display-name display-name}))
 
+(mu/defn- available-unit :- [:maybe ::lib.schema.temporal-bucketing/unit]
+  "The Metabase unit the dbt granularity `grain` names (see [[grain->unit]]), when Lib can bucket `column`, the ref
+  for the dimension `dimension-name`, by it; nil otherwise."
+  [{:keys [query]} :- ::context
+   column          :- ::lib.schema.ref/ref
+   grain           :- :string
+   dimension-name  :- :string]
+  (when-let [unit (grain->unit grain dimension-name)]
+    (when (m/find-first #(= unit (:unit %)) (lib/available-temporal-buckets query column))
+      unit)))
+
 (mu/defn- default-temporal-unit :- [:maybe ::lib.schema.temporal-bucketing/unit]
   "The unit a time dimension's `granularity` names, when Lib can bucket `column` by it; nil otherwise."
-  [{:keys [query]}                             :- ::context
+  [context                                     :- ::context
    {:keys [granularity], dimension-name :name} :- ::schemas.ir/dimension
    column                                      :- ::lib.schema.ref/ref]
   (when granularity
-    (when-let [unit (grain->unit (name granularity) dimension-name)]
-      (when (m/find-first #(= unit (:unit %)) (lib/available-temporal-buckets query column))
-        unit))))
+    (available-unit context column (name granularity) dimension-name)))
 
 (mr/def ::dimension-pair
   "A curated dimension and the mapping that binds it to a column."
@@ -511,9 +531,9 @@
                (throw e)))))))
 
 (mu/defn- joined-dimensions :- [:sequential ::dimension-result]
-  "The dimensions reached through the foreign `entity` of `context`'s model, see [[join-context]]. When the join
-  itself cannot be made, every dimension of the models the entity would join to is reported with the reason, so a
-  dimension the project declares is never silently dropped; an entity no model is primary for has no dimensions
+  "The dimensions reached through the foreign or unique `entity` of `context`'s model, see [[join-context]]. When the
+  join itself cannot be made, every dimension of the models the entity would join to is reported with the reason, so
+  a dimension the project declares is never silently dropped; an entity no other model is keyed by has no dimensions
   behind it, and is just a key."
   [context                         :- ::context
    {entity-name :name, :as entity} :- ::schemas.ir/entity]
@@ -522,7 +542,7 @@
       (model-dimensions join (dimension-group "connection" model) entity-name))
     (catch ExceptionInfo e
       (if (sql/unsupported? e)
-        (vec (for [target    (models-primary-for context entity-name)
+        (vec (for [target    (join-targets context entity-name)
                    dimension (:dimensions target)]
                {:name (:name dimension), :reason (ex-message e)}))
         (throw e)))))
@@ -534,14 +554,27 @@
    [:dimension-mappings     [:sequential ::lib-metric.schema/dimension-mapping]]
    [:unsupported-dimensions [:sequential ::schemas.resolved/unsupported-dimension]]])
 
+(mu/defn- metric-time-unit :- ::lib.schema.temporal-bucketing/unit
+  "The default temporal unit of the default dimension `column` of a metric with `time-granularity`, dbt's coarsest
+  grain for querying the metric. Metabase cannot hold a breakout to a grain, so the grain becomes the default unit of
+  the default dimension instead, which is what a user breaking the metric out by time gets first. A grain Lib cannot
+  bucket `column` by, such as a custom calendar's, is [[sql/unsupported]]."
+  [context          :- ::context
+   time-granularity :- :string
+   dimension-name   :- :string
+   column           :- ::lib.schema.ref/ref]
+  (or (available-unit context column time-granularity dimension-name)
+      (sql/unsupported "time_granularity %s has no Metabase temporal unit for %s"
+                       (pr-str time-granularity) (pr-str dimension-name))))
+
 (mu/defn- with-default-dimension :- [:sequential ::dimension-result]
-  "`results` with the metric's `agg_time_dimension`, one of its own model's dimensions, marked as the default. An
-  `agg_time_dimension` that is not a dimension of the model is reported; one that is but could not be converted
-  already is."
-  [{:keys [model metric]} :- ::context
-   results                :- [:sequential ::dimension-result]]
+  "`results` with the metric's `agg_time_dimension`, one of its own model's dimensions, marked as the default, and
+  bucketed by the metric's `time_granularity` when it has one (see [[metric-time-unit]]). An `agg_time_dimension`
+  that is not a dimension of the model is reported; one that is but could not be converted already is."
+  [{:keys [model metric] :as context} :- ::context
+   results                            :- [:sequential ::dimension-result]]
   (b/cond
-    :let [agg-time-dimension (:agg-time-dimension metric)]
+    :let [{:keys [agg-time-dimension time-granularity]} metric]
 
     (nil? agg-time-dimension)
     results
@@ -552,22 +585,26 @@
                                    (pr-str agg-time-dimension) (pr-str (:name model)))})
 
     :else
-    (mapv (fn [result]
-            (cond-> result
-              (and (:dimension result)
-                   (= agg-time-dimension (-> result :dimension :name))
-                   (= "main" (-> result :dimension :group :type)))
-              (assoc-in [:dimension :default] true)))
+    (mapv (fn [{:keys [dimension mapping] :as result}]
+            (if (and dimension
+                     (= agg-time-dimension (:name dimension))
+                     (= "main" (-> dimension :group :type)))
+              (let [unit (when time-granularity
+                           (metric-time-unit context time-granularity agg-time-dimension (:target mapping)))]
+                (cond-> (assoc-in result [:dimension :default] true)
+                  unit (assoc-in [:dimension :default-temporal-unit] unit)))
+              result))
           results)))
 
 (mu/defn- dimension-set :- ::dimension-set
   "The curated dimension set of the metric `context` is for: its own model's dimensions first, then those reached
-  through each of its foreign entities, in the order the model declares them."
+  through each of its foreign and unique entities, in the order the model declares them. A unique entity is a key
+  into another model keyed by it just as a foreign entity is; the model's primary entity names its own dimensions."
   [{:keys [model] :as context} :- ::context]
   (let [results (with-default-dimension
                  context
                  (into (model-dimensions context (dimension-group "main" model) nil)
-                       (comp (filter #(= :foreign (:type %)))
+                       (comp (filter #(#{:foreign :unique} (:type %)))
                              (mapcat #(joined-dimensions context %)))
                        (:entities model)))
         pairs   (filter :mapping results)]
@@ -623,21 +660,24 @@
 
 (mu/defn- resolved-metric :- ::schemas.resolved/metric
   "The resolve stage's output for the metric of `context`, computed by `query`: the query, the metric's dimension set
-  and entity_id, and the card added to the provider for it, which later metrics refer to."
+  and entity_id, and the card added to the provider for it, which later metrics refer to. The dimension set comes
+  first, since it can still report the metric (see [[with-default-dimension]]), and a reported metric must leave no
+  card behind for a later metric to refer to."
   [{:keys [provider metric] :as context} :- ::context
    query                                 :- ::lib.schema/query]
-  (let [entity-id (metric-entity-id metric)
-        card-id   (metadata/add-metric! provider {:name          (:label metric)
-                                                  :description   (:description metric)
-                                                  :table-id      (get-in query [:stages 0 :source-table])
-                                                  :dataset-query query
-                                                  :entity-id     entity-id})]
+  (let [dimensions (dimension-set context)
+        entity-id  (metric-entity-id metric)
+        card-id    (metadata/add-metric! provider {:name          (:label metric)
+                                                   :description   (:description metric)
+                                                   :table-id      (get-in query [:stages 0 :source-table])
+                                                   :dataset-query query
+                                                   :entity-id     entity-id})]
     (merge {:metric            metric
             :entity-id         entity-id
             :card-id           card-id
             :metadata-provider provider
             :query             query}
-           (dimension-set context))))
+           dimensions)))
 
 (mu/defn- filter-clauses :- [:sequential ::lib.schema.expression/boolean]
   "The Lib filter clauses for `templates`, each failure saying which template."
@@ -782,12 +822,12 @@
 (mu/defn- resolve-composed :- ::schemas.resolved/metric
   "Resolve a ratio or derived metric against what its `inputs` became. Its table, and so its dimensions, are its
   inputs', which must all be on one semantic model; its default dimension is their `agg_time_dimension` when they
-  agree on one."
+  agree on one. Its `fill_nulls_with`, if any, wraps the arithmetic in `coalesce`, as on a simple metric."
   [config                      :- ::schemas.resolved/config
    providers                   :- [:map-of :string ::lib.schema.metadata/metadata-provider]
    semantic-models             :- [:map-of :string ::schemas.ir/semantic-model]
    {:keys [resolved] :as inputs} :- ::inputs
-   metric                      :- ::schemas.ir/metric]
+   {:keys [fill-nulls-with] :as metric} :- ::schemas.ir/metric]
   (let [metric-inputs (metric-inputs metric)
         present       (keep #(get resolved (:metric %)) metric-inputs)
         models        (distinct (map #(-> % :metric :semantic-model) present))]
@@ -805,6 +845,9 @@
           {:keys [query] :as context} (metric-context config providers semantic-models (get semantic-models model-name) metric)
           expression         (with-context (case (:type metric) :ratio "ratio" :derived (str "expr " (pr-str (:expr metric))))
                                #(composed-expression context inputs metric))
+          expression         (if (some? fill-nulls-with)
+                               (lib/coalesce expression fill-nulls-with)
+                               expression)
           filters            (filter-clauses context (:filters metric))]
       (resolved-metric context (reduce lib/filter (lib/aggregate query expression) filters)))))
 

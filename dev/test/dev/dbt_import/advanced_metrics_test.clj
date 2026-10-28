@@ -75,14 +75,21 @@
    :type-params (merge {:measure nil, :input_measures (mapv #(tu/input-measure {:name %}) inputs)} type-params)
    :edit        with-input-metrics})
 
+(def ^:private period-agg-last
+  "The `cumulative_type_params` of a cumulative metric with no window and `period_agg: last`, the one `period_agg` the
+  converter accepts (dbt's default, `first`, is reported; see `dev.dbt-import.parse-test/advanced-metric-types-test`)."
+  {:window nil, :grain_to_date nil, :period_agg "last"})
+
 (defn- cumulative
-  "[[tu/build-manifest]] tweaks for a cumulative metric `m` over the measure `sales` (unless `type-params` says
-  otherwise), alongside the simple metrics."
+  "[[tu/build-manifest]] tweaks for a cumulative metric `m` over the measure `sales` with `period_agg: last` (unless
+  `type-params` says otherwise), alongside the simple metrics."
   [type-params]
   {:measures    input-measures
    :columns     {"target" "float"}
    :metric      {:type "cumulative"}
-   :type-params (merge {:measure (tu/input-measure {:name "sales"}), :input_measures [(tu/input-measure {:name "sales"})]}
+   :type-params (merge {:measure                (tu/input-measure {:name "sales"})
+                        :input_measures         [(tu/input-measure {:name "sales"})]
+                        :cumulative_type_params period-agg-last}
                        type-params)
    :edit        with-input-metrics})
 
@@ -267,11 +274,11 @@
                      (get "m"))))))
 
 (deftest ^:parallel cumulative-test
-  (testing "a cumulative metric with no window is a running sum"
+  (testing "a cumulative metric with no window and period_agg last is a running sum"
     (is (= cum-sum-sales (tu/aggregation (cumulative {}))))
-    (testing "also with the period_agg dbt 1.12 writes by default"
-      (is (= cum-sum-sales
-             (tu/aggregation (cumulative {:cumulative_type_params {:window nil, :grain_to_date nil, :period_agg "first"}}))))))
+    (testing "period_agg first, which dbt writes by default, is the running total at the start of each period rather than its end, and is reported"
+      (is (re-find #"period_agg first .* set period_agg: last"
+                   (tu/unsupported (cumulative {:cumulative_type_params {:window nil, :grain_to_date nil, :period_agg "first"}}))))))
   (testing "over a row count it is a running count"
     (is (= [:cum-count {}] (tu/aggregation (cumulative {:measure (tu/input-measure {:name "row_count"})})))))
   (testing "over a count of a column, which skips nulls, it is a running sum of 1 where the column is not null"
@@ -291,10 +298,31 @@
       "avg_sales"   #"average"))
   (testing "a window or grain_to_date is reported, whether written the 1.12 way or the legacy way"
     (are [type-params re] (re-find re (tu/unsupported (cumulative type-params)))
-      {:cumulative_type_params {:window {:count 7, :granularity "day"}, :grain_to_date nil, :period_agg "first"}} #"window"
-      {:cumulative_type_params {:window nil, :grain_to_date "month", :period_agg "first"}}                        #"grain_to_date"
-      {:window {:count 7, :granularity "day"}}                                                                      #"window"
-      {:grain_to_date "month"}                                                                                      #"grain_to_date")))
+      {:cumulative_type_params {:window {:count 7, :granularity "day"}, :grain_to_date nil, :period_agg "last"}} #"window"
+      {:cumulative_type_params {:window nil, :grain_to_date "month", :period_agg "last"}}                        #"grain_to_date"
+      {:window {:count 7, :granularity "day"}}                                                                     #"window"
+      {:grain_to_date "month"}                                                                                     #"grain_to_date")))
+
+(deftest ^:parallel composed-fill-nulls-with-test
+  (testing "fill_nulls_with on a ratio wraps the division in coalesce, as it does the aggregation of a simple metric"
+    (is (= [:coalesce {} [:/ {} [:metric {} "sales"] [:metric {} "target"]] 0]
+           (-> (convert (assoc-in (composed "ratio" ["sales" "target"]
+                                            {:numerator (tu/metric-input "sales"), :denominator (tu/metric-input "target")})
+                                  [:type-params :fill_nulls_with] 0))
+               :aggregation
+               (get "m")))))
+  (testing "and on a derived metric wraps the whole expr"
+    (is (= [:coalesce {} [:- {} [:metric {} "sales"] [:metric {} "target"]] -1]
+           (-> (convert (assoc-in (derived "sales - target") [:type-params :fill_nulls_with] -1))
+               :aggregation
+               (get "m")))))
+  (testing "an input's own fill_nulls_with stays on the input's card, not on the metric referring to it"
+    (let [{:keys [aggregation]} (convert (-> (derived "sales - target")
+                                             (update :edit (fn [edit]
+                                                             (comp #(assoc-in % [:metrics "metric.p.sales" :type_params :fill_nulls_with] 0)
+                                                                   edit)))))]
+      (is (= [:coalesce {} sum-sales 0] (aggregation "sales")))
+      (is (= [:- {} [:metric {} "sales"] [:metric {} "target"]] (aggregation "m"))))))
 
 (deftest ^:parallel conversion-test
   (testing "conversion metrics are out of scope and reported as such"

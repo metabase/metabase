@@ -127,6 +127,7 @@ they are defined on. Saved queries, exports and the time spine are never read.
 | `cumulative` with a `window` | `type: cumulative`, `type_params: {measure: revenue, window: 7 days}` (inline spec: `cumulative_type_params: {window: 7 days}`) | A trailing window is a rolling-window aggregation, which MBQL does not have. The running total minus the running total seven rows back would nest window functions, which SQL does not allow. | Extend MBQL with a windowed cumulative aggregation (`cum-sum` over a trailing span of time), compiled to a window frame. |
 | `cumulative` with `grain_to_date` | `type_params: {measure: revenue, grain_to_date: month}` | A running total that resets each month needs a month breakout, and a metric cannot require one. The query processor does partition a cumulative aggregation by every breakout but the finest temporal one, so a user who breaks out by month *and* day gets month-to-date, but under a day breakout alone `cum-sum` is the all-time running total. | Extend MBQL so a cumulative aggregation can name the grain it resets at, then let a metric definition carry it. |
 | `cumulative` over anything but a `sum` or a `count` | `type: cumulative` over a measure with `agg: count_distinct` (or `average`, `min`, `max`, `median`, `percentile`) | MBQL's only running aggregations are `cum-sum` and `cum-count`. SQL does not allow `DISTINCT` in a window function, and there is no running average, min, max or percentile. (A running `count` of a column, which skips nulls, converts: it is the `cum-sum` of a `case` that is 1 where the column is not null.) | Running average, min and max: extend MBQL with the window-function aggregations. A running distinct count cannot be written in SQL at all. |
+| `cumulative` with `period_agg: first` (dbt's default) or `average` | `type: cumulative`, `type_params: {measure: revenue}` with no `cumulative_type_params`, or `cumulative_type_params: {period_agg: first}` | `period_agg` says which value of the running total stands for a period when the metric is queried coarser than its grain: the value on the period's first day, its last day, or the average over its days. Metabase's `cum-sum` under a month breakout is the total through the end of the month, which is `last`; `first` leaves out the period's own rows and `average` is a mean of running totals, and neither can be written as one aggregation. | Nothing for a project that can write `period_agg: last`, the one value that converts; otherwise extend MBQL so a cumulative aggregation can name the value it takes per period. |
 | a `ratio` or `derived` input with `offset_window` | `metrics: [{name: revenue}, {name: revenue, offset_window: 1 month, alias: revenue_last_month}]` | dbt shifts the input by a fixed span of time. MBQL's `offset` is relative to the rows of the result, so its meaning changes with whatever breakout grain the user picks. | Extend MBQL with an `offset` by a span of time rather than a number of rows, then allow it in metric definitions. |
 | a `ratio` or `derived` input with `offset_to_grain` | `metrics: [{name: revenue, offset_to_grain: month, alias: revenue_at_month_start}]` | The value at the start of the current period has no MBQL equivalent at all. | Extend MBQL with a "value at the start of the period" aggregation; in SQL it is a self-join or a window frame bounded at the truncated date. |
 | `ratio` or `derived` inputs on different semantic models | `numerator: {name: order_count}` on `orders`, `denominator: {name: customer_count}` on `customers` | A metric queries one table, and the `[:metric ...]` references in its aggregation have to share it. | Extend Metabase metrics so a `[:metric ...]` reference may point at a card on another table, with the query processor combining the two aggregates. |
@@ -139,7 +140,13 @@ they are defined on. Saved queries, exports and the time spine are never read.
 | dbt | Example | Why it is unsupported | What it would take |
 | -- | -- | -- | -- |
 | `non_additive_dimension` | `non_additive_dimension: {name: metric_time, window_choice: max, window_groupings: [account]}` | A semi-additive measure takes one time slice per group before it aggregates (each account's balance at its latest date). Nothing in MBQL picks a row per group ahead of the aggregation. | Extend MBQL with a "latest row per group" pre-aggregation step (a window-function filter), then let a metric carry it. |
-| discrete percentiles | `agg: percentile`, `agg_params: {percentile: 0.5, use_discrete_percentile: true}` | Metabase percentiles are continuous: they interpolate between rows. `percentile_type: continuous` (inline spec `use_approximate_percentile`) converts. | Extend MBQL with a discrete percentile aggregation (`percentile_disc`), with driver support where the warehouse has it. |
+| discrete percentiles | `agg: percentile`, `agg_params: {percentile: 0.5, use_discrete_percentile: true}` | Metabase percentiles are continuous: they interpolate between rows. `percentile_type: continuous` converts. | Extend MBQL with a discrete percentile aggregation (`percentile_disc`), with driver support where the warehouse has it. |
+
+One flag is accepted and ignored rather than reported: `use_approximate_percentile: true` (inline spec
+`percentile_type: continuous`, which dbt writes as this flag) asks the warehouse for an approximate percentile where it
+has one (`approx_percentile`, `percentile_approx`). Metabase has no approximate percentile, so the exact continuous
+percentile is computed instead, which is what dbt computes where the warehouse has no approximation. The number can
+differ from dbt's on a warehouse that approximates, and the import reports nothing about it.
 
 ### SQL in `expr` and `filter`
 
@@ -174,10 +181,12 @@ conversion:
 - A warehouse database with no entry in the config's `:databases`.
 - A column whose `data_type` the config's `:driver` does not know; add it to `:base-types`.
 - A metric whose semantic model, measure or input metric is not in the manifest, for example because it is disabled.
-- A foreign entity that more than one semantic model is primary for (`customer` declared `type: primary` on both
-  `dim_customer` and `dim_customer_history`) with no entry in the config's `:entity-models` naming the model it joins
-  to, or an entry naming a model that is not primary for it. An entity no model is primary for is just a key and
-  reports nothing.
+- A foreign or unique entity that more than one other semantic model is keyed by (`customer` declared `type: primary`
+  on both `dim_customer` and `dim_customer_history`, or `primary` on one and `unique` on the other) with no entry in
+  the config's `:entity-models` naming the model it joins to, or an entry naming a model that is not keyed by it. An
+  entity no other model is keyed by is just a key and reports nothing.
+- A metric `time_granularity` Metabase has no temporal unit for (a custom calendar grain, or `hour` on a date
+  column); see "Entities and dimensions".
 
 ## The end-to-end test
 
@@ -335,12 +344,15 @@ metrics they refer to are written before them.
 | `ratio` of `numerator` to `denominator` | one metric card whose aggregation divides `[:metric ...]` references to the input metrics' cards |
 | `derived` with `expr` over `metrics` | the same arithmetic over `[:metric ...]` references, aliases resolved; `x / nullif(y, 0)` is `x / y` |
 | an input (`numerator`, `denominator`, `metrics[]`) with its own `filter` | inlined as `sum-where`, `count-where` or `distinct-where` over the input's measure, with the input's own filters and the reference's combined, so the metric stays one card |
-| `cumulative` with no window over a `sum`, a row count or a `count` of a column | `cum-sum` / `cum-count`, or for a `count` of a column (which skips nulls) `cum-sum` of a `case` that is 1 where the column is not null; the metric's filters apply as on a simple metric |
+| `cumulative` with no window and `period_agg: last` over a `sum`, a row count or a `count` of a column | `cum-sum` / `cum-count`, or for a `count` of a column (which skips nulls) `cum-sum` of a `case` that is 1 where the column is not null; the metric's filters apply as on a simple metric |
+| `fill_nulls_with` on a `ratio` or `derived` metric | the arithmetic wrapped in `coalesce`, as on a simple metric; an input's own `fill_nulls_with` stays on the input's card |
 | `conversion` | out of scope, reported |
 
-Every other form is reported with the reason: a cumulative `window` or `grain_to_date`, an input with an
-`offset_window` or `offset_to_grain`, a `conversion` metric, a `filter` on an input whose aggregation has no filtered
-form. "Limitations" lists them all with the reasoning.
+Every other form is reported with the reason: a cumulative `window` or `grain_to_date`, a cumulative `period_agg` of
+`first` (dbt's default when none is written) or `average`, an input with an `offset_window` or `offset_to_grain`, a
+`conversion` metric, a `filter` on an input whose aggregation has no filtered form. "Limitations" lists them all with
+the reasoning. `period_agg` only matters when the metric is queried coarser than its grain, but that is exactly where
+the number would silently differ, so a project has to say `period_agg: last` to convert a cumulative metric.
 
 ## Entities and dimensions
 
@@ -349,12 +361,23 @@ out in the UI as soon as it is imported:
 
 - Every dimension of the metric's own semantic model whose `expr` is a column becomes a dimension of the metric's
   table. A time dimension's `time_granularity` is its default temporal unit.
-- Every foreign entity of the model joins to the semantic model that has an entity of the same name as its primary
-  entity. That model's dimensions become dimensions of the metric too, reached by an implicit join: the mapping's
-  target names the joined column with `:source-field` set to the entity's column on the metric's table, the same way
-  Metabase represents a column reached through a foreign key. The instance has to know that foreign key, through sync
-  or a Field edit, for the breakout to run. No explicit join clause is written to the query.
-- The measure's `agg_time_dimension` (the model default or the measure's own) is the metric's default dimension.
+- Every foreign or unique entity of the model joins to the other semantic model that is keyed by an entity of the same
+  name: one that has it as its primary entity or as a unique entity, either of which identifies one row. (These are
+  the joins MetricFlow itself allows, except that a model's primary entity is not followed to another model keyed by
+  it: it names the model's own dimensions in filters, and the dimension set stays with that.) That model's dimensions
+  become dimensions of the metric too, reached by an implicit join: the mapping's target names the joined column with
+  `:source-field` set to the entity's column on the metric's table, the same way Metabase represents a column reached
+  through a foreign key. The instance has to know that foreign key, through sync or a Field edit, for the breakout to
+  run. No explicit join clause is written to the query.
+- The measure's `agg_time_dimension` (the model default or the measure's own) is the metric's default dimension. A
+  metric `time_granularity` (dbt's coarsest grain for querying the metric, standard or from a custom calendar) becomes
+  that dimension's default temporal unit instead of its own `time_granularity`, so a user breaking the metric out by
+  time gets the metric's grain first. Metabase cannot hold a breakout to a grain, so a finer breakout is still a click
+  away; a grain Metabase has no unit for, or cannot bucket the column by, is reported.
+- A metric's free-form `meta` (the flexanalytics project puts `format` and `synonyms` there) is parsed into the IR and
+  written nowhere: a card's `visualization_settings` key number formatting by column name, which a metric's
+  aggregation does not have until it is run, so there is no place to put a `format` without guessing at the project's
+  own convention for it.
 
 Dimension ids are derived from the metric's dbt unique ID and the dimension's reference, so a re-run writes the same
 ids and a re-import updates the dimensions in place. Groups are named after the semantic model's label, or its table.

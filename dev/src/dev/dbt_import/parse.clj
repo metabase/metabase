@@ -9,9 +9,9 @@
   * `filter` and `fill_nulls_with` may sit on the metric or on its input measure, and either counts.
 
   Simple, cumulative, ratio and derived metrics are parsed. What is structurally beyond Metabase is reported in
-  `:unsupported` with a reason here: a cumulative metric with a window or `grain_to_date`, an input with an offset,
-  and conversion metrics. Whether the metrics a ratio or derived metric refers to exist is the resolve stage's
-  business."
+  `:unsupported` with a reason here: a cumulative metric with a window, a `grain_to_date` or a `period_agg` other than
+  `last`, an input with an offset, and conversion metrics. Whether the metrics a ratio or derived metric refers to
+  exist is the resolve stage's business."
   (:require
    [better-cond.core :as b]
    [clojure.java.io :as io]
@@ -138,17 +138,21 @@
    :agg-time-dimension     (or agg_time_dimension (:default-agg-time-dimension semantic-model))})
 
 (mu/defn- metric-common :- ::ir/metric.common
-  "The part of the IR every kind of metric shares."
+  "The part of the IR every kind of metric shares. `fill_nulls_with` is read from the metric's `type_params`;
+  [[parse-simple]] also looks on the input measure and overrides this."
   [metric-type :- [:enum :simple :cumulative :ratio :derived]
-   {metric-name :name, metric-filter :filter, metric-meta :meta, :keys [unique_id label description]}
+   {metric-name :name, metric-filter :filter, metric-meta :meta
+    :keys       [unique_id label description type_params time_granularity]}
    :- ::dbt-manifest/metric]
-  {:type        metric-type
-   :name        metric-name
-   :unique-id   unique_id
-   :label       (if (str/blank? label) metric-name label)
-   :description description
-   :filters     (filter-templates metric-filter)
-   :meta        metric-meta})
+  {:type             metric-type
+   :name             metric-name
+   :unique-id        unique_id
+   :label            (if (str/blank? label) metric-name label)
+   :description      description
+   :filters          (filter-templates metric-filter)
+   :fill-nulls-with  (:fill_nulls_with type_params)
+   :time-granularity time_granularity
+   :meta             metric-meta})
 
 (mu/defn- parse-metric-input :- ::ir/metric-input
   [{metric-name :name, :keys [alias filter]} :- ::dbt-manifest/metric-input]
@@ -212,11 +216,15 @@
 
 (mu/defn- cumulative-reason :- [:maybe :string]
   "Why a cumulative metric cannot be converted: a window or a `grain_to_date`, written the 1.12 way in
-  `cumulative_type_params` or the legacy way directly in `type_params`. Without either it is a running total over
-  everything, which Metabase has."
+  `cumulative_type_params` or the legacy way directly in `type_params`, or a `period_agg` other than `last`. Without
+  a window or `grain_to_date` it is a running total over everything, which Metabase has, but only as the value at the
+  end of each period when broken out coarser than its grain: dbt's `period_agg: last`. The default, `first`, is the
+  value at the start of each period, and `average` the mean over its days; neither is what Metabase computes, so both
+  are reported rather than approximated. A manifest without `period_agg` means dbt's default."
   [{:keys [window grain_to_date cumulative_type_params]} :- ::dbt-manifest/metric-type-params]
   (let [window        (or window (:window cumulative_type_params))
-        grain-to-date (or grain_to_date (:grain_to_date cumulative_type_params))]
+        grain-to-date (or grain_to_date (:grain_to_date cumulative_type_params))
+        period-agg    (or (:period_agg cumulative_type_params) :first)]
     (cond
       window
       (format "a cumulative metric with a window of %d %s has no Metabase equivalent: MBQL has no rolling-window aggregation"
@@ -224,7 +232,13 @@
 
       grain-to-date
       (format "a cumulative metric with grain_to_date %s has no Metabase equivalent: a running total that resets at each %s needs a breakout the metric cannot require"
-              (pr-str grain-to-date) grain-to-date))))
+              (pr-str grain-to-date) grain-to-date)
+
+      (not= period-agg :last)
+      (format (str "a cumulative metric with period_agg %s has no Metabase equivalent: under a breakout coarser than"
+                   " its grain, Metabase's running total is the value at the end of each period, which is"
+                   " period_agg last; set period_agg: last to convert it")
+              (name period-agg)))))
 
 (mu/defn- parse-simple :- [:or ::ir/metric.simple ::ir/unsupported]
   "A simple or cumulative metric, which aggregate one measure of one semantic model. A legacy-spec metric of either
