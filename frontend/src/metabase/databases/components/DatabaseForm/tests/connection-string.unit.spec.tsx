@@ -25,7 +25,10 @@ const pasteConnectionString = async (connectionString: string) => {
 
 describe("DatabaseForm connection string", () => {
   it("should enable Save once a valid connection string pre-fills the required fields", async () => {
-    await setup({ engines: ENGINES, initialValues: { engine: "mysql" } });
+    const { onSubmit } = await setup({
+      engines: ENGINES,
+      initialValues: { engine: "mysql" },
+    });
 
     const saveButton = screen.getByRole("button", { name: "Save" });
     expect(saveButton).toBeDisabled();
@@ -46,6 +49,15 @@ describe("DatabaseForm connection string", () => {
     expect(
       screen.getByLabelText("Use a secure connection (SSL)"),
     ).toBeChecked();
+
+    await userEvent.click(saveButton);
+
+    // The connection string only pre-fills the form, the backend never sees it.
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.not.objectContaining({ "connection-string": expect.anything() }),
+      ),
+    );
   });
 
   it("should keep the values that the connection string does not set", async () => {
