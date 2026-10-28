@@ -373,7 +373,7 @@
       (perms/set-database-permission! (perms-group/all-users) builder-db :perms/create-queries :query-builder)
       (perms/set-database-permission! (perms-group/all-users) unreadable-db :perms/create-queries :no)
       (mt/with-current-user (mt/user->id :rasta)
-        (testing ":sql forbids the model from answering in text, so the loop stops on the denial"
+        (testing ":sql has no notebook builder to fall back to, so the loop stops on the denial"
           (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :sql builder-db)]
             (is (= 1 llm-calls)
                 "one call, not the profile's 20 iterations")
@@ -393,6 +393,11 @@
                               :output #"(?s).*Build the question with `construct_notebook_query`.*"}}
                     (some #(when (= :tool-output (:type %)) %) parts)))
             (is (not= :terminal-error (:finish-reason (last parts))))))
+        (testing ":internal-sql is :internal without the notebook builder, so the turn stops on the denial"
+          (mt/with-temp-env-var-value! [mb-metabot-eval-profiles-enabled true]
+            (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :internal-sql builder-db)]
+              (is (= 1 llm-calls))
+              (is (= :terminal-error (:finish-reason (last parts)))))))
         (testing "a database the user cannot read at all stops the turn the same way"
           (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :sql unreadable-db)]
             (is (= 1 llm-calls)
