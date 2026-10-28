@@ -126,33 +126,62 @@
       :else
       attr-value)))
 
-(defn- attr-remapping->parameter [metadata-providerable login-attributes [attr-name target]]
-  (let [attr-value      (get login-attributes attr-name)
+(defn- unwrap-single-value
+  "A list of one value means that value. Identity-providers and API clients often send every attribute as a list."
+  [attr-value]
+  (if (and (sequential? attr-value) (= 1 (count attr-value)))
+    (first attr-value)
+    attr-value))
+
+(defn- check-single-value!
+  "Throw unless `attr-value` is a single value. A list or map value is not coerced and normalizes to `[nil]`, which
+  would leave nothing to filter on."
+  [attr-value error-data]
+  (when-not (or (string? attr-value) (number? attr-value) (boolean? attr-value))
+    (throw (ex-info (tru "User attribute `{0}` must be a single value" (:attribute-name error-data))
+                    (assoc error-data :type qp.error-type/invalid-parameter)))))
+
+(defn- attribute-error-data
+  "ex-data for an error about attribute `attr-name` of `sandbox`. The ids go to the error log line (`:log/keys`), so an
+  admin can find the user and sandbox to fix; the attribute's value does not."
+  [sandbox attr-name]
+  (let [log-data (m/assoc-some {:attribute-name (name attr-name)}
+                               :user-id          *current-user-id*
+                               :sandbox-id       (:id sandbox)
+                               :sandbox-table-id (:table_id sandbox))]
+    (assoc log-data :log/keys (set (keys log-data)))))
+
+(defn- attr-remapping->parameter [metadata-providerable sandbox login-attributes [attr-name target]]
+  (let [error-data      (attribute-error-data sandbox attr-name)
+        attr-value      (unwrap-single-value (get login-attributes attr-name))
         field-base-type (target-field->base-type metadata-providerable target)]
     (when (not attr-value)
       (throw (ex-info (tru "Query requires user attribute `{0}`" (name attr-name))
-                      {:type qp.error-type/missing-required-parameter})))
+                      (assoc error-data :type qp.error-type/missing-required-parameter))))
+    (check-single-value! attr-value error-data)
     (let [param-value (attr-value->param-value field-base-type attr-value)]
       (when (nil? param-value)
         ;; Without this a nil `param-value` propagates as `[nil]`, which
         ;; `parameters.mbql/expand` treats as "no value" and filter is dropped. (#81821)
         (throw (ex-info (tru "User attribute `{0}` value `{1}` cannot be coerced to column type {2}"
                              (name attr-name) attr-value field-base-type)
-                        {:type            qp.error-type/invalid-parameter
-                         :attribute-name  attr-name
-                         :attribute-value attr-value
-                         :field-base-type field-base-type})))
+                        (assoc error-data
+                               :type            qp.error-type/invalid-parameter
+                               :attribute-value attr-value
+                               :field-base-type field-base-type))))
       {:type   (if (and field-base-type (isa? field-base-type :type/Number))
                  :number/=
                  :string/=)
        :target target
        ;; :number/= and :string/= are variadic operators that require a sequential value
-       :value  [param-value]})))
+       :value  [param-value]
+       ;; the query processor throws, rather than skip this filter, if it cannot apply it
+       :lib/must-apply? true})))
 
 (mu/defn- sandbox->parameters :- [:maybe [:sequential ::lib.schema.parameter/parameter]]
   [metadata-providerable                        :- ::lib.schema.metadata/metadata-providerable
-   {attribute-remappings :attribute_remappings} :- ::sandbox]
-  (mapv (partial attr-remapping->parameter metadata-providerable (api/current-user-attributes))
+   {attribute-remappings :attribute_remappings, :as sandbox} :- ::sandbox]
+  (mapv (partial attr-remapping->parameter metadata-providerable sandbox (api/current-user-attributes))
         attribute-remappings))
 
 (mu/defn- preprocess-query :- ::lib.schema/query

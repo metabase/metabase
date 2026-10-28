@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -13,10 +14,12 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.macros :as lib.tu.macros]
+   [metabase.query-processor.middleware.catch-exceptions :as qp.catch-exceptions]
    [metabase.query-processor.middleware.parameters :as parameters]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.test :as mt]
-   [metabase.test.fixtures :as fixtures]))
+   [metabase.test.fixtures :as fixtures]
+   [metabase.util.malli :as mu]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -521,3 +524,96 @@
                                     "2026-01-01"
                                     "2026-03-31"]]}]}
               (substitute-params query))))))
+
+(defn- substitute-must-apply-params
+  "Run `params` through [[parameters/substitute-parameters]] as an MBQL 5 query built from `legacy-query`, with
+  schema checks on, or off as in production."
+  [enforce? legacy-query & params]
+  (let [query (-> (lib/query meta/metadata-provider (mbql.normalize/normalize legacy-query))
+                  (assoc :parameters (vec params)))
+        f     #(driver/with-driver :h2 (parameters/substitute-parameters query))]
+    (if enforce? (f) (mu/disable-enforcement (f)))))
+
+(def ^:private venues-query
+  {:database (meta/id), :type :query, :query {:source-table (meta/id :venues)}})
+
+(def ^:private native-price-query
+  {:database (meta/id)
+   :type     :native
+   :native   {:query         "SELECT * FROM venues WHERE price = {{price}}"
+              :template-tags {"price" {:name "price", :display-name "Price", :type :number}}}})
+
+(deftest must-apply-failure-log-context-test
+  (testing "a must-apply failure gives the error log line the parameter, card, dashboard and user ids, but not the value"
+    (mt/with-test-user :rasta
+      (let [param {:id              "p1"
+                   :type            :number/=
+                   :value           [nil]
+                   :target          [:dimension [:field (meta/id :venues :price) nil]]
+                   :lib/must-apply? true}
+            query (-> (lib/query meta/metadata-provider (mbql.normalize/normalize venues-query))
+                      (assoc :parameters [param]))
+            fail  (fn [query]
+                    (try
+                      (driver/with-driver :h2 (parameters/substitute-parameters query))
+                      nil
+                      (catch clojure.lang.ExceptionInfo e e)))]
+        (is (= {:parameter-id "p1", :card-id 1, :dashboard-id 2, :user-id (mt/user->id :rasta)}
+               (#'qp.catch-exceptions/log-context (fail (assoc query :info {:card-id 1, :dashboard-id 2})))))
+        (testing "ids the query does not have are left out"
+          (is (= {:parameter-id "p1", :user-id (mt/user->id :rasta)}
+                 (#'qp.catch-exceptions/log-context (fail query)))))))))
+
+(deftest ^:parallel must-apply-param-for-missing-stage-fails-closed-test
+  (testing "a must-apply parameter that targets a stage the query does not have throws"
+    (let [param {:id     "p1"
+                 :type   :number/=
+                 :target [:dimension [:field (meta/id :venues :price) nil] {:stage-number 5}]
+                 :value  [1]}]
+      (doseq [enforce? [true false]]
+        (testing (str "schema checks " (if enforce? "on" "off"))
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Filter `p1` must be applied, but it could not be"
+               (substitute-must-apply-params enforce? venues-query (assoc param :lib/must-apply? true))))
+          (testing "without the flag the parameter is dropped, as before"
+            (is (empty? (:filters (lib/query-stage (substitute-must-apply-params enforce? venues-query param) 0))))))))))
+
+(deftest ^:parallel must-apply-native-param-fails-closed-test
+  (testing "a must-apply parameter on a native stage that cannot be applied throws"
+    (doseq [[description param] {"nil value"             {:value nil}
+                                 "all-nil value"         {:value [nil]}
+                                 "no matching template"  {:target [:variable [:template-tag "nope"]]}}
+            enforce?            [true false]]
+      (testing (str description ", schema checks " (if enforce? "on" "off"))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Filter `p1` must be applied, but it could not be"
+             (substitute-must-apply-params enforce? native-price-query
+                                           (merge {:id           "p1"
+                                                   :type         :number/=
+                                                   :target       [:variable [:template-tag "price"]]
+                                                   :value        [1]
+                                                   :lib/must-apply? true}
+                                                  param))))))
+    (testing "a good must-apply parameter is substituted"
+      (is (=? {:stages [{:native "SELECT * FROM venues WHERE price = 1"}]}
+              (substitute-must-apply-params true native-price-query
+                                            {:id           "p1"
+                                             :type         :number/=
+                                             :target       [:variable [:template-tag "price"]]
+                                             :value        [1]
+                                             :lib/must-apply? true}))))))
+
+(deftest must-apply-native-param-without-native-parameters-support-fails-closed-test
+  (testing "a must-apply parameter on a driver without :native-parameters throws instead of being ignored"
+    (mt/with-dynamic-fn-redefs [driver.u/supports? (fn [_driver feature _db] (not= feature :native-parameters))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Filter `p1` must be applied, but it could not be"
+           (substitute-must-apply-params true native-price-query
+                                         {:id           "p1"
+                                          :type         :number/=
+                                          :target       [:variable [:template-tag "price"]]
+                                          :value        [1]
+                                          :lib/must-apply? true}))))))

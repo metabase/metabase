@@ -12,11 +12,35 @@
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.middleware.parameters.mbql :as qp.mbql]
+   [metabase.query-processor.middleware.parameters.must-apply :as must-apply]
    [metabase.query-processor.middleware.parameters.native :as qp.native]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [mapv some]]))
+
+(defn- tag-for-param
+  "Find the template tag in `template-tags` that matches `param`'s target."
+  [template-tags param]
+  (when-let [name-or-id (lib.parameters/parameter-target-template-tag-name (:target param))]
+    (or (m/find-first #(= (:name %) name-or-id) ; handle name
+                      template-tags)
+        (some (fn [tag]                         ; handle id (defensive, may be unnecessary)
+                (when (= (:id tag) name-or-id)
+                  tag))
+              template-tags))))
+
+(defn- check-must-apply-native-params
+  "Throw if a must-apply parameter on native `stage` has no value or matches none of its template tags."
+  [stage]
+  (doseq [param (:parameters stage)]
+    (cond
+      (must-apply/no-value? (or (:value param) (:default param)))
+      (must-apply/throw-if-must-apply param (tru "it has no value"))
+
+      (not (tag-for-param (:template-tags stage) param))
+      (must-apply/throw-if-must-apply param (tru "it matches no template tag")))))
 
 (mu/defn- expand-stage :- ::lib.schema/stage
   "Expand `:parameters` in one stage map that contains them."
@@ -28,7 +52,8 @@
     (let [f        (case (:lib/type stage)
                      :mbql.stage/mbql   qp.mbql/expand
                      :mbql.stage/native (mu/fn :- ::lib.schema/stage.native
-                                          [query path _stage]
+                                          [query path stage]
+                                          (check-must-apply-native-params stage)
                                           (let [{query* :query, :keys [stage-number]} (lib.walk/query-for-path query path)]
                                             (-> (qp.native/expand-stage query* stage-number)
                                                 (lib/query-stage stage-number)))))
@@ -76,6 +101,7 @@
      (let [param-stage-number (parameter->stage-number query parameter)]
        (if (>= param-stage-number (count (:stages query)))
          (do
+           (must-apply/throw-if-must-apply parameter (tru "the query has no stage {0}" param-stage-number))
            (log/errorf "Query does not have a stage %d, ignoring parameter %s"
                        param-stage-number
                        (:id parameter))
@@ -86,17 +112,6 @@
                                    (conj (vec parameters) parameter))))))
    query
    parameters))
-
-(defn- tag-for-param
-  "Find the template tag in `template-tags` that matches `param`'s target."
-  [template-tags param]
-  (when-let [name-or-id (lib.parameters/parameter-target-template-tag-name (:target param))]
-    (or (m/find-first #(= (:name %) name-or-id) ; handle name
-                      template-tags)
-        (some (fn [tag]                         ; handle id (defensive, may be unnecessary)
-                (when (= (:id tag) name-or-id)
-                  tag))
-              template-tags))))
 
 (defn- stage-has-non-default-params?
   "True if a stage has parameters with non-default values.
@@ -178,6 +193,9 @@
   well as any prepared statement args needed. MBQL queries will have additional filter clauses added. (Or in a special
   case, the temporal bucketing on a breakout altered by a `:temporal-unit` parameter.)"
   [query :- ::lib.schema/query]
-  (-> query
-      hoist-database-for-snippet-tags
-      expand-parameters))
+  (try
+    (-> query
+        hoist-database-for-snippet-tags
+        expand-parameters)
+    (catch clojure.lang.ExceptionInfo e
+      (throw (must-apply/with-query-ids e (:info query))))))

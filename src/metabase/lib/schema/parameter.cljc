@@ -450,7 +450,12 @@
     [:position             {:optional true} [:maybe :int]]
     [:values-query-type    {:optional true} [:maybe [:ref ::values-query-type]]]
     [:values-source-type   {:optional true} [:maybe [:ref ::values-source-type]]]
-    [:values-source-config {:optional true} [:maybe [:ref ::values-source-config]]]]
+    [:values-source-config {:optional true} [:maybe [:ref ::values-source-config]]]
+    ;; Set by the server on a filter that must be applied, such as a sandbox or a locked embedding filter. When it
+    ;; cannot be applied, the query processor throws instead of skipping it. Not an internal `:qp/` key, because
+    ;; preprocessing strips those and sandbox queries are preprocessed on their own. A client that sets it only makes
+    ;; its own query stricter.
+    [:lib/must-apply?      {:optional true} :boolean]]
    ::lib.schema.common/kebab-cased-map
    (lib.schema.common/disallowed-keys
     {:dimension ":dimension is not allowed in a parameter, you probably meant to use :target [:dimension ...] instead."})])

@@ -1,6 +1,5 @@
 (ns metabase.query-processor.middleware.parameters.mbql
   "Code for handling parameter substitution in MBQL queries."
-  (:refer-clojure :exclude [every?])
   (:require
    [metabase.lib.core :as lib]
    [metabase.lib.filter :as lib.filter]
@@ -15,13 +14,13 @@
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.parameters.must-apply :as must-apply]
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.query-processor.parameters.operators :as params.ops]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.match :as match]
-   [metabase.util.performance :refer [every?]]))
+   [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
 
@@ -164,6 +163,7 @@
         ;; then replaced it with an MBQL source card.
         (match/match-one target [:template-tag & _] &match)
         (do
+          (must-apply/throw-if-must-apply param (tru "it targets a template tag in an MBQL stage"))
           (log/warnf "Ignoring :template-tag parameter %s because this is an MBQL stage (path = %s)"
                      (pr-str target)
                      (pr-str stage-path))
@@ -171,13 +171,13 @@
 
         (not target)
         (do
+          (must-apply/throw-if-must-apply param (tru "it has no target"))
           (log/debugf "Ignoring parameter %s because it has no target" (pr-str (:id param)))
           (recur stage more-params))
 
-        (or (nil? param-value)
-            (and (sequential? param-value)
-                 (every? nil? param-value)))
+        (must-apply/no-value? param-value)
         (do
+          (must-apply/throw-if-must-apply param (tru "it has no value"))
           (log/debugf "Ignoring parameter %s because it has no value" (pr-str (:id param)))
           (recur stage more-params))
 
@@ -187,6 +187,7 @@
 
         :else
         (let [filter-clause (or (build-filter-clause query stage-path (assoc param :value param-value))
+                                (must-apply/throw-if-must-apply param (tru "no filter could be built for it"))
                                 (log/warnf "build-filter-clause did not return a valid clause for param %s" (pr-str (:id param))))
               stage'        (lib.filter/add-filter-to-stage stage filter-clause)]
           (recur stage' more-params))))))

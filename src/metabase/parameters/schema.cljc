@@ -84,6 +84,9 @@
    [:filteringParameters  {:optional true} [:maybe [:sequential ::lib.schema.parameter/id]]]
    [:hasVariableTemplateTagTarget {:optional true} [:maybe :boolean]]
    [:id                   ::lib.schema.parameter/id]
+   ;; set by the server on a locked embedding filter, so the query processor throws rather than skip it; see
+   ;; `::lib.schema.parameter/parameter`
+   [:lib/must-apply?      {:optional true} :boolean]
    ;; whether the widget lets you pick more than one value. Saved on the parameter by the "A single value"/"Multiple
    ;; values" picker, and read back by the frontend to choose the widget, so it has to survive a round trip.
    [:isMultiSelect        {:optional true} [:maybe :boolean]]
@@ -153,7 +156,9 @@
    [:value   {:optional true} [:ref ::lib.schema.parameter/parameter.value]]
    [:default {:optional true} [:ref ::lib.schema.parameter/parameter.value]]
    [:target  {:optional true} [:maybe [:ref ::lib.schema.parameter/target]]]
-   [:options {:optional true} [:maybe [:ref ::lib.schema.parameter/parameter.options]]]])
+   [:options {:optional true} [:maybe [:ref ::lib.schema.parameter/parameter.options]]]
+   ;; set by the server on a locked embedding filter; see `::lib.schema.parameter/parameter`
+   [:lib/must-apply? {:optional true} :boolean]])
 
 ;; The `:parameters` a client sends when *running* something: values for parameter slots the Card or Dashboard
 ;; already declares. Contrast `::parameters`, which is the declaration of the slots themselves and belongs on the

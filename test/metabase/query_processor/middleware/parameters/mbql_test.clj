@@ -18,7 +18,8 @@
    [metabase.query-processor.middleware.parameters.mbql :as qp.mbql]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
-   [metabase.test.data.interface :as tx]))
+   [metabase.test.data.interface :as tx]
+   [metabase.util.malli :as mu]))
 
 (defn- expand-parameters
   [query]
@@ -675,3 +676,48 @@
                             :target         [:dimension month-ref]
                             :value          :year
                             :temporal_units [:month :quarter]}]))))))))
+
+(defn- expand-stage-with-params
+  "Expand `params` on stage 0 of a plain venues query, with no normalization in between."
+  [& params]
+  (let [query (lib/query meta/metadata-provider (meta/table-metadata :venues))]
+    (qp.mbql/expand query [:stages 0] (assoc (lib/query-stage query 0) :parameters (vec params)))))
+
+(deftest ^:parallel must-apply-parameter-fails-closed-test
+  (testing "a must-apply parameter that cannot become a filter throws instead of being skipped"
+    (let [price-target [:dimension [:field (meta/id :venues :price) nil]]]
+      (doseq [[description param] {"nil value"           {:type :number/=, :target price-target, :value nil}
+                                   "all-nil value"       {:type :number/=, :target price-target, :value [nil]}
+                                   "several nil values"  {:type :string/=, :target price-target, :value [nil nil]}
+                                   "no target"           {:type :number/=, :value [1]}
+                                   "template-tag target" {:type :number/=, :target [:variable [:template-tag "price"]], :value [1]}}
+              enforce?           [true false]]
+        (testing (str description (when-not enforce? " (schema checks off, as in production)"))
+          (let [expand #(expand-stage-with-params (assoc param :id "p1", :lib/must-apply? true))]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Filter `p1` must be applied, but it could not be"
+                 (if enforce? (expand) (mu/disable-enforcement (expand)))))))
+        (testing (str description " without the flag is skipped, as for an optional dashboard filter")
+          (is (empty? (:filters (mu/disable-enforcement (expand-stage-with-params (assoc param :id "p1")))))))))))
+
+(deftest must-apply-parameter-without-filter-clause-fails-closed-test
+  (testing "a must-apply parameter whose filter clause cannot be built throws"
+    (mt/with-dynamic-fn-redefs [qp.mbql/build-filter-clause (constantly nil)]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Filter `p1` must be applied, but it could not be"
+           (expand-stage-with-params {:id           "p1"
+                                      :type         :number/=
+                                      :target       [:dimension [:field (meta/id :venues :price) nil]]
+                                      :value        [1]
+                                      :lib/must-apply? true}))))))
+
+(deftest ^:parallel must-apply-parameter-applies-filter-test
+  (testing "a must-apply parameter with a good value adds its filter as usual"
+    (is (=? [[:= {} [:field {} (meta/id :venues :price)] 1]]
+            (:filters (expand-stage-with-params {:id           "p1"
+                                                 :type         :number/=
+                                                 :target       [:dimension [:field (meta/id :venues :price) nil]]
+                                                 :value        [1]
+                                                 :lib/must-apply? true}))))))

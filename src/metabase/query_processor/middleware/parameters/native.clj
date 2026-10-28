@@ -30,6 +30,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
+   [metabase.query-processor.middleware.parameters.must-apply :as must-apply]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
 (mu/defn expand-stage :- ::lib.schema/query
@@ -38,6 +40,9 @@
   [query        :- ::lib.schema/query
    stage-number :- :int]
   (if-not (driver.u/supports? driver/*driver* :native-parameters (lib.metadata/database query))
-    query
+    (do
+      (doseq [param (:parameters (lib/query-stage query stage-number))]
+        (must-apply/throw-if-must-apply param (tru "the database does not support native query parameters")))
+      query)
     (-> (driver/substitute-native-parameters-in-stage driver/*driver* query stage-number)
         (lib/update-query-stage stage-number dissoc :parameters :template-tags))))
