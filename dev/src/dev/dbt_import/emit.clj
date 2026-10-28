@@ -11,6 +11,7 @@
   so `clojure -M:run:ee import <dir> -e` loads it. Only knows the resolve stage's output."
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [dev.dbt-import.metadata :as metadata]
    [dev.dbt-import.schemas.resolved :as resolved]
    [metabase-enterprise.serialization.dump :as dump]
@@ -22,7 +23,11 @@
    [metabase.queries.models.card :as card]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr])
+  (:import
+   (org.apache.commons.io FileUtils)))
+
+(set! *warn-on-reflection* true)
 
 (mr/def ::entity
   "A serdes entity: a map carrying `:serdes/meta`, as [[serdes/storable]] writes it."
@@ -117,11 +122,27 @@
                     :metric resolved-metric})))
           metrics)))
 
-(mu/defn write! :- [:sequential :string]
-  "Write `entries` under `out-dir` with the same YAML formatting serdes export uses. Returns the paths written,
-  relative to `out-dir`."
+(mu/defn- clear-previous-run!
+  "Delete what an earlier run wrote for the collections among `entries`: each collection's own YAML and the directory
+  of its cards (the layout [[files]] writes). Without this a metric renamed since the last run leaves two files with
+  the same `entity_id`, and a metric removed from the project survives as a file and is imported again, since serdes
+  import never deletes. Anything else under `out-dir` is left alone."
   [out-dir :- :string
    entries :- [:sequential ::file]]
+  (doseq [{:keys [path entity]} entries
+          :when (= "Collection" (-> entity :serdes/meta last :model))
+          :let [collection-file (io/file out-dir path)
+                card-dir        (io/file out-dir (str/replace path #"\.yaml$" ""))]]
+    ;; both are no-ops when nothing is there
+    (FileUtils/deleteDirectory card-dir)
+    (io/delete-file collection-file true)))
+
+(mu/defn write! :- [:sequential :string]
+  "Write `entries` under `out-dir` with the same YAML formatting serdes export uses, after removing what a previous
+  run wrote for the same collections (see [[clear-previous-run!]]). Returns the paths written, relative to `out-dir`."
+  [out-dir :- :string
+   entries :- [:sequential ::file]]
+  (clear-previous-run! out-dir entries)
   (doseq [{:keys [path entity]} entries]
     (dump/spit-yaml! (io/file out-dir path) (serdes/storable entity)))
   (mapv :path entries))
