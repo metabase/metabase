@@ -219,6 +219,37 @@ describe("SummaryWells", () => {
     });
   });
 
+  it("preserves a named formula on Update and only renames it through the pill", async () => {
+    setup({ formulas: [["Revenue", "Sum([Total])"]] });
+    await userEvent.click(getFormulaChip("Revenue"));
+    await waitForFormula("Sum([Total])|");
+    await typeInFormula(" * 2");
+
+    await userEvent.click(screen.getByRole("button", { name: "Update" }));
+
+    await waitForFormulaBarToClose();
+    expect(getFormulaChip("Revenue")).toBeInTheDocument();
+    await userEvent.dblClick(getFormulaChip("Revenue"));
+    const nameInput = screen.getByRole("textbox", { name: "Name of Revenue" });
+    await userEvent.clear(nameInput);
+    await userEvent.type(nameInput, "Adjusted revenue{Enter}");
+    expect(getFormulaChip("Adjusted revenue")).toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Cancel formula" }),
+    );
+    await waitForFormulaBarToClose();
+    await userEvent.click(getFormulaChip("Adjusted revenue"));
+    await waitForFormula("Sum([Total]) * 2|");
+    await typeInFormula(" + 1");
+    await userEvent.click(screen.getByRole("button", { name: "Update" }));
+
+    await waitForFormulaBarToClose();
+    expect(getFormulaChip("Adjusted revenue")).toBeInTheDocument();
+    await userEvent.click(getFormulaChip("Adjusted revenue"));
+    await waitForFormula("Sum([Total]) * 2 + 1|");
+  });
+
   describe("tabbing through formulas", () => {
     const formulas: [string, string][] = [
       ["Revenue", "Sum([Total])"],
@@ -266,7 +297,7 @@ describe("SummaryWells", () => {
       expect(getFormulaView().hasFocus).toBe(true);
     });
 
-    it("commits a changed formula before moving on", async () => {
+    it("commits a changed formula before moving on, preserving its name", async () => {
       setup({ formulas });
       await userEvent.click(getValuesField());
       await userEvent.tab({ shift: true });
@@ -276,12 +307,14 @@ describe("SummaryWells", () => {
       await userEvent.tab();
 
       expect(getValuesField()).toHaveFocus();
-      expect(getFormulaChip("Average(Total) * 2")).toBeInTheDocument();
+      expect(getFormulaChip("Average order")).toBeInTheDocument();
       expect(
         screen.queryByRole("button", {
-          name: "Edit the formula of Average order",
+          name: "Edit the formula of Average(Total) * 2",
         }),
       ).not.toBeInTheDocument();
+      await userEvent.click(getFormulaChip("Average order"));
+      await waitForFormula("Average([Total]) * 2|");
     });
 
     it("stays on a changed formula that doesn't compile, showing why", async () => {

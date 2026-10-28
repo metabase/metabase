@@ -53,7 +53,7 @@ type SummaryFormulaEditorProps = {
   initialClause?: Lib.Expressionable | null;
   /** What was typed after `=` in a well, or what AI drafted, for a new formula. */
   initialSource?: string;
-  /** The name AI gave the formula, or the edited item's name; kept until the formula is changed. */
+  /** The name AI gave the formula, or the edited item's name; preserved when its expression changes. */
   initialName?: string;
   submitLabel: string;
   /** Called once the editor exists and has focus. */
@@ -77,9 +77,9 @@ type SummaryFormulaEditorProps = {
 
 /**
  * The formula bar while a formula is open: fx, the single-line editor, any error, then cancel and
- * commit at the far right. Enter and ⌘/Ctrl+Enter commit. Nobody types a name: an untouched formula
- * keeps the one it came with (from AI, or the edited item's), and a typed one is named after the
- * formula itself.
+ * commit at the far right. Enter and ⌘/Ctrl+Enter commit. Nobody types a name: a named formula
+ * keeps the one it came with (from AI, or the edited item's). Only unnamed formulas are named
+ * after the formula itself; renaming happens on the pill.
  */
 export function SummaryFormulaEditor({
   base,
@@ -111,12 +111,11 @@ export function SummaryFormulaEditor({
   // the edited formula is printed once, when the editor opens, so later renders don't reset what was typed
   const [editedClause] = useState(initialClause);
   const hasTypedRef = useRef(false);
-  const [hasTyped, setHasTyped] = useState(false);
   const viewRef = useRef<EditorView | null>(null);
   // set when the formatter prints the edited formula, so the caret lands at its end like a spreadsheet's
   const isCaretToEndPendingRef = useRef(false);
   const formulaName =
-    (!hasTyped && initialName.trim()) || getDefaultFormulaName(source.trim());
+    initialName.trim() || getDefaultFormulaName(source.trim());
   const hasFormula = source.trim().length > 0;
   const liveName = hasFormula ? formulaName : "";
 
@@ -168,7 +167,6 @@ export function SummaryFormulaEditor({
   // completion tooltip rerenders this on every editor update
   const handleSourceChange = useCallback((value: string) => {
     hasTypedRef.current = true;
-    setHasTyped(true);
     setSource(value);
     setErrorMessage(null);
   }, []);
