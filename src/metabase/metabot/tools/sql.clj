@@ -62,7 +62,7 @@
                              :value sql}))
 
 (tools/defrecoverable no-native-permission-with-notebook-fallback!
-  "The user may not write SQL against the query's database, and the notebook builder is offered this turn."
+  "The user may not write SQL against the target database, and the notebook builder is offered this turn."
   {:payload [:map {:closed true}]}
   [_]
   {:message  "You do not have permission to write SQL against this database."
