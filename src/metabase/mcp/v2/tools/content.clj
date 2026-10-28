@@ -32,12 +32,12 @@
    [metabase.mcp.v2.redaction :as redaction]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resolve :as v2.resolve]
-   [metabase.metabot.metadata-perms :as metadata-perms]
    [metabase.metabot.scope :as metabot.scope]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [metabase.pulse.core :as pulse]
    [metabase.queries.core :as queries]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
@@ -456,26 +456,15 @@
 
 (def ^:private card-definition-include (definition-include card-definition))
 
-(defn- strip-restricted-fingerprints
-  "Drop `:fingerprint` from any column belonging to a table whose rows the current user only sees
-   part of. A fingerprint is computed over the whole table: `:min` and `:max` are individual cell
-   values, and `:distinct-count` counts every row — so handing one to a sandboxed caller reports
-   data the sandbox exists to hide, and a caller with no data permission at all gets the same
-   numbers. Nothing else in the column metadata is data-derived — names, types, semantic types and
-   field ids are schema, not rows — so only this key moves.
-
-   `row-restricted-table-ids` fails closed, so a table whose restriction can't be resolved is
-   treated as restricted and loses its fingerprints."
-  [columns]
-  (let [restricted (metadata-perms/row-restricted-table-ids
-                    (into #{} (keep :table_id) columns))]
-    (cond->> columns
-      (seq restricted) (mapv (fn [col]
-                               (cond-> col
-                                 (contains? restricted (:table_id col)) (dissoc :fingerprint)))))))
-
-(defn- fields-include [row]
-  {:result_metadata (vec (strip-restricted-fingerprints (:result_metadata row)))})
+(defn- fields-include
+  "The `fields` section: the Card's column metadata, without the fingerprints of a Card whose rows are narrowed for the
+  current user. A fingerprint is computed over every row the Card's last run read: `:min` and `:max` are individual
+  cell values and `:distinct-count` counts them all. See [[query-perms/remove-row-restricted-card-fingerprints]]."
+  [row]
+  {:result_metadata (-> (select-keys row [:id :database_id :dataset_query :result_metadata])
+                        query-perms/remove-row-restricted-fingerprints-from-card
+                        :result_metadata
+                        vec)})
 
 (defn- settings-include
   "The `visualization_settings` section: the card's stored settings, verbatim and in the shape

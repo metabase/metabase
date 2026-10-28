@@ -469,7 +469,9 @@
                         (filter #(contains? #{"card" "metric" "dataset"} (:model %)))
                         (map :id))
                        search-results)
-        card-metadata (search.db/card-result-metadata card-ids)]
+        card-metadata (into {}
+                            (map (juxt :id :result_metadata))
+                            (perms/remove-row-restricted-card-fingerprints-by-database (search.db/cards-result-metadata card-ids)))]
     (map (fn [{:keys [model id] :as item}]
            (if (contains? #{"card" "metric" "dataset"} model)
              (assoc item :result_metadata (card-metadata id))

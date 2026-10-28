@@ -21,6 +21,7 @@
    [metabase.lib.schema.validate :as lib.schema.validate]
    [metabase.measures.schema]
    [metabase.native-query-snippets.schema]
+   [metabase.permissions.core :as perms]
    [metabase.queries.schema :as queries.schema]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
@@ -30,6 +31,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.table :as schema.table]
    [toucan2.core :as t2]))
 
 (def ^:private entity-keys
@@ -389,10 +391,22 @@
          (into {} (mapcat errors-by-entity-type-and-id))
          not-empty)))
 
-(mu/defn- hydrate-entities :- [:sequential Entity]
-  "`entities` of the entity type `entity-type`, hydrated with what the dependency graph responses show."
-  [entity-type :- ::deps.dependency-types/dependency-types
-   entities    :- [:sequential Entity]]
+(defn- remove-row-restricted-fingerprints
+  "Hydrated `entities` of `entity-type` without the fingerprints the current user may not see: those of a Card's
+  `:result_metadata` (judged by its database, as for the other lists of Cards) and of the Fields of a table, or of
+  the `:table` a transform or sandbox node carries."
+  [entity-type entities]
+  (case entity-type
+    :card                 (perms/remove-row-restricted-card-fingerprints-by-database entities)
+    :table                (schema.table/remove-row-restricted-fingerprints-in-tables entities)
+    (:transform :sandbox) (mapv (fn [entity table]
+                                  (cond-> entity (:table entity) (assoc :table table)))
+                                entities
+                                (schema.table/remove-row-restricted-fingerprints-in-tables (map :table entities)))
+    entities))
+
+(defn- hydrate-entities*
+  [entity-type entities]
   (case entity-type
     :card (-> entities
               (t2/hydrate :creator :dashboard :document [:collection :is_personal])
@@ -422,6 +436,14 @@
     ;; Like the data-app API, which gives a non-admin only an app's names.
     :data-app (cond->> entities
                 (not api/*is-superuser?*) (map #(select-keys % [:id :name :display_name])))))
+
+(mu/defn- hydrate-entities :- [:sequential Entity]
+  "`entities` of the entity type `entity-type`, hydrated with what the dependency graph responses show."
+  [entity-type :- ::deps.dependency-types/dependency-types
+   entities    :- [:sequential Entity]]
+  (remove-row-restricted-fingerprints
+   entity-type
+   (hydrate-entities* entity-type entities)))
 
 (mu/defn- fetch-and-hydrate-nodes :- [:map-of ::deps.schema/node Entity]
   "Fetches and hydrates entities for the given nodes.

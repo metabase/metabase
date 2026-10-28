@@ -4,6 +4,7 @@
   `permissions` itself to a minimum."
   (:require
    [metabase.query-permissions.impl]
+   [metabase.query-permissions.row-restriction]
    [potemkin :as p]))
 
 (p/import-vars
@@ -22,7 +23,11 @@
   query->resolved-source-table-ids
   query->source-ids
   query->source-table-ids
-  required-perms-for-query])
+  query-row-restriction
+  required-perms-for-query]
+ [metabase.query-permissions.row-restriction
+  remove-row-restricted-card-fingerprints
+  remove-row-restricted-fingerprints-from-card])
 
 (defmacro with-card-instances
   "Provide a map of Card ID -> instance to use instead of hitting a metadata provider for more efficient perms

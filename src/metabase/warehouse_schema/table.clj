@@ -47,6 +47,37 @@
   [table]
   (api/check-403 (first (filter-tables-by-data-model-perms [table]))))
 
+(defn- update-all
+  "`maps` with the `k` collection of each replaced by its part of `(f items)`, where `items` is every `k` collection
+  joined in order and `f` returns one item for each, in the same order. One call of `f` for all of `maps`."
+  [maps k f]
+  (let [items (vec (f (into [] (mapcat k) maps)))]
+    (first (reduce (fn [[acc offset] m]
+                     (if-let [xs (get m k)]
+                       (let [end (+ offset (count xs))]
+                         [(conj acc (assoc m k (subvec items offset end))) end])
+                       [(conj acc m) offset]))
+                   [[] 0]
+                   maps))))
+
+(defn remove-row-restricted-fingerprints-in-tables
+  "`tables` (or Cards) without the fingerprints the current user may not see, from the `:fields` and the `:metrics` of
+  all of them at once. See [[perms/remove-row-restricted-fingerprints]] and
+  [[perms/remove-row-restricted-card-fingerprints-by-database]]: these metric lists do not use them."
+  [tables]
+  (-> tables
+      (update-all :fields #(perms/remove-row-restricted-fingerprints
+                            %
+                            (into {}
+                                  (keep (fn [{:keys [id db_id]}] (when (and (pos-int? id) (pos-int? db_id)) [id db_id])))
+                                  tables)))
+      (update-all :metrics perms/remove-row-restricted-card-fingerprints-by-database)))
+
+(defn- remove-row-restricted-fingerprints-in-table
+  "[[remove-row-restricted-fingerprints-in-tables]] for the single `table`."
+  [table]
+  (first (remove-row-restricted-fingerprints-in-tables [table])))
+
 (defn- can-access-table-for-query-metadata?
   "Returns true if the current user can access this table for query metadata.
   Uses can-read? which checks data permissions, metadata management permissions,
@@ -85,7 +116,8 @@
                                           (case (keyword visibility-type)
                                             :hidden    include-hidden-fields?
                                             :sensitive include-sensitive-fields?
-                                            true)))))))
+                                            true))))
+        remove-row-restricted-fingerprints-in-table)))
 
 (defn batch-fetch-query-metadatas*
   "Returns the query metadata used to power the Query Builder for the `table`s specified by `ids`.
@@ -102,15 +134,16 @@
            tables (filter can-access-table-for-query-metadata? tables)
            sensitive-table-ids (sensitive-fields-table-ids include-sensitive-fields? tables)
            tables (t2/hydrate tables [:fields [:target :has_field_values] :has_field_values :dimensions :name_field] :segments :measures :metrics)]
-       (for [table tables
-             :let [excluded-visibility-types (cond-> #{:hidden}
-                                               (not (contains? sensitive-table-ids (:id table)))
-                                               (conj :sensitive))]]
-         (-> table
-             (m/dissoc-in [:db :details])
-             format-fields-for-response
-             present-table
-             (update :fields #(remove (comp excluded-visibility-types :visibility_type) %))))))))
+       (remove-row-restricted-fingerprints-in-tables
+        (for [table tables
+              :let [excluded-visibility-types (cond-> #{:hidden}
+                                                (not (contains? sensitive-table-ids (:id table)))
+                                                (conj :sensitive))]]
+          (-> table
+              (m/dissoc-in [:db :details])
+              format-fields-for-response
+              present-table
+              (update :fields #(remove (comp excluded-visibility-types :visibility_type) %)))))))))
 
 (defenterprise fetch-table-query-metadata
   "Returns the query metadata used to power the Query Builder for the given table `id`. `include-sensitive-fields?`,
@@ -256,7 +289,8 @@
   (let [underlying (m/index-by :id (or metadata-fields
                                        (when-let [ids (seq (keep :id metadata))]
                                          (-> (warehouse-schema.db/fields ids)
-                                             (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)))))
+                                             (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)
+                                             perms/remove-row-restricted-fingerprints))))
         fields (for [{col-id :id :as col} metadata]
                  (-> col
                      (update :base_type keyword)
@@ -296,6 +330,7 @@
         metadata-fields    (if (seq metadata-field-ids)
                              (-> (warehouse-schema.db/fields metadata-field-ids)
                                  (t2/hydrate [:target :has_field_values] :has_field_values :dimensions :name_field)
+                                 perms/remove-row-restricted-fingerprints
                                  (->> (m/index-by :id)))
                              {})]
     (into {}
@@ -340,7 +375,9 @@
   "Return [[card->virtual-table]] metadata for `cards`, batching the Field fetch that `:include-fields?` needs so it
   costs one select for the whole list instead of one per card."
   [cards & {:keys [include-database? include-fields? databases]}]
-  (let [card-id->metadata-fields (when include-fields?
+  (let [cards                    (cond-> cards
+                                   include-fields? perms/remove-row-restricted-card-fingerprints-by-database)
+        card-id->metadata-fields (when include-fields?
                                    (cards->card-id->metadata-fields cards))]
     (for [card cards]
       (card->virtual-table card
@@ -364,15 +401,22 @@
                                        field))))
 
 (defn batch-fetch-card-query-metadatas
-  "Return metadata for the 'virtual' tables for a Cards. Unreadable cards are silently skipped."
-  [ids {:keys [include-database?]}]
+  "Return metadata for the 'virtual' tables for a Cards. Unreadable cards are silently skipped.
+
+  `remove-card-fingerprints` removes the fingerprints of the Cards' columns that the current user may not see. It
+  defaults to [[perms/remove-row-restricted-card-fingerprints-by-database]]; an endpoint whose frontend uses them
+  passes [[metabase.query-permissions.core/remove-row-restricted-card-fingerprints]], which this module cannot call."
+  [ids {:keys [include-database? remove-card-fingerprints]
+        :or   {remove-card-fingerprints perms/remove-row-restricted-card-fingerprints-by-database}}]
   (when (seq ids)
     (let [cards (warehouse-schema.db/cards-with-moderated-status ids)
           dbs (if (seq cards)
                 (warehouse-schema.db/databases-by-id (into #{} (map :database_id) cards))
                 {})
           card-id->metadata-fields (cards->card-id->metadata-fields cards)
-          readable-cards (t2/hydrate (filter mi/can-read? cards) :metrics)]
+          readable-cards (-> (t2/hydrate (filter mi/can-read? cards) :metrics)
+                             remove-card-fingerprints
+                             remove-row-restricted-fingerprints-in-tables)]
       (for [card readable-cards]
         ;; Models can have user configured FK columns which, for MBQL models, we cannot distinguish from
         ;; stale data that remained there from a time when the given column was still FK. We assume

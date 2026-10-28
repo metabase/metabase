@@ -393,8 +393,8 @@
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pk->fn :common_name [:model/User :id :first_name :last_name :email] :id [:in user-ids]))
 
-(mu/defn card-result-metadata
-  "A map of Card id to result metadata for the Cards with `card-ids`.
+(mu/defn cards-result-metadata
+  "The ID, Database ID and result metadata of the Cards with `card-ids`.
 
   SELECTs `report_card` directly instead of `:model/Card`, so the `:card_schema` read-time upgrade stays out of it.
   Naming a schema-governed column on the model arms the whole upgrade chain, and the upgrade to 24 recomputes a
@@ -404,7 +404,6 @@
   a stale one reaching a search payload is harmless.)"
   [card-ids :- [:set ::lib.schema.id/card]]
   (let [result-metadata-out (:out mi/transform-result-metadata)]
-    (into {}
-          (map (juxt :id (comp result-metadata-out :result_metadata)))
+    (mapv #(update % :result_metadata result-metadata-out)
           (when (seq card-ids)
-            (t2/select [(t2/table-name :model/Card) :id :result_metadata] :id [:in card-ids])))))
+            (t2/select [(t2/table-name :model/Card) :id :database_id :result_metadata] :id [:in card-ids])))))

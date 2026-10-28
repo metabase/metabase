@@ -429,4 +429,7 @@
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (-> (warehouse-schema-rest.db/field id) api/read-check xrays/related))
+  (let [field (-> (warehouse-schema-rest.db/field id) api/read-check)]
+    (schema.field/check-not-hidden-by-sandbox field)
+    (-> (xrays/related field)
+        (update :fields schema.field/remove-fields-hidden-by-sandbox))))

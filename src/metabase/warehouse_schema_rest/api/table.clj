@@ -15,6 +15,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.core :as qp]
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]}
@@ -354,7 +355,9 @@
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (first (schema.table/batch-fetch-card-query-metadatas [id] {:include-database? true})))
+  (first (schema.table/batch-fetch-card-query-metadatas
+          [id] {:include-database?        true
+                :remove-card-fingerprints query-perms/remove-row-restricted-card-fingerprints})))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -381,17 +384,22 @@
                     [:id ms/PositiveInt]]]
   (api/read-check :model/Table id)
   (when-let [field-ids (seq (warehouse-schema-rest.db/active-unretired-field-ids-for-table id))]
-    (for [origin-field (warehouse-schema-rest.db/active-fields-targeting field-ids)
-          :let [origin-field (t2/hydrate origin-field [:table :db])]
-          :when (and (-> origin-field :table :active)
-                     (mi/can-read? origin-field))
-          :let [origin-field (update origin-field :table schema.table/present-table)]]
-      ;; it's silly to be hydrating some of these tables/dbs
-      {:relationship   :Mt1
-       :origin_id      (:id origin-field)
-       :origin         origin-field
-       :destination_id (:fk_target_field_id origin-field)
-       :destination    (t2/hydrate (warehouse-schema-rest.db/field (:fk_target_field_id origin-field)) :table)})))
+    (let [fks (for [origin-field (warehouse-schema-rest.db/active-fields-targeting field-ids)
+                    :let [origin-field (t2/hydrate origin-field [:table :db])]
+                    :when (and (-> origin-field :table :active)
+                               (mi/can-read? origin-field))
+                    :let [origin-field (update origin-field :table schema.table/present-table)]]
+                ;; it's silly to be hydrating some of these tables/dbs
+                {:relationship   :Mt1
+                 :origin_id      (:id origin-field)
+                 :origin         origin-field
+                 :destination_id (:fk_target_field_id origin-field)
+                 :destination    (t2/hydrate (warehouse-schema-rest.db/field (:fk_target_field_id origin-field)) :table)})]
+      (map (fn [fk origin destination]
+             (assoc fk :origin origin :destination destination))
+           fks
+           (perms/remove-row-restricted-fingerprints (map :origin fks))
+           (perms/remove-row-restricted-fingerprints (map :destination fks))))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;

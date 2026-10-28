@@ -104,6 +104,15 @@
                                  (dissoc :action)))
                              dashcards))))
 
+(defn- remove-row-restricted-card-fingerprints
+  "`dashboard` without the fingerprints of its dashcards' Cards that the current user may not see."
+  [dashboard]
+  (m/update-existing dashboard :dashcards
+                     (fn [dashcards]
+                       (mapv (fn [dashcard card] (cond-> dashcard card (assoc :card card)))
+                             dashcards
+                             (perms/remove-row-restricted-card-fingerprints-by-database (map :card dashcards))))))
+
 (defn- hydrate-dashboard-details
   "Get dashboard details for the complete dashboard, including tabs, dashcards, params, etc."
   [{dashboard-id :id :as dashboard}]
@@ -132,7 +141,8 @@
                  [:collection :is_personal :effective_location]]
         (dashboards.settings/dashboards-save-last-used-parameters) (cons :last_used_param_values)
         true (apply t2/hydrate dashboard)
-        true remove-unreadable-actions))))
+        true remove-unreadable-actions
+        true remove-row-restricted-card-fingerprints))))
 
 (defn- dashcard-card-ids [dashcard]
   (concat (when-let [card-id (:card_id dashcard)]

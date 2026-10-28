@@ -205,7 +205,7 @@
      (comp (map (partial mi/do-after-select :model/Card))
            (filter card-can-be-used-as-source-query?)
            xform)
-     (completing conj #(t2/hydrate % :collection :metrics))
+     (completing conj #(schema.table/remove-row-restricted-fingerprints-in-tables (t2/hydrate % :collection :metrics)))
      []
      (warehouses-rest.db/source-query-cards-reducible
       card-type ids-of-dbs-that-support-source-queries collection-scope))))
@@ -427,7 +427,8 @@
                             ; filter hidden fields
                             (= include "tables.fields") (map #(update % :fields filter-sensitive-fields))
                             ; filter columns the user's column-restricting sandbox hides
-                            (= include "tables.fields") apply-sandbox-column-filter))))))
+                            (= include "tables.fields") apply-sandbox-column-filter
+                            (= include "tables.fields") schema.table/remove-row-restricted-fingerprints-in-tables))))))
 
 (mu/defn- check-database-exists
   ([id :- ms/PositiveInt] (check-database-exists id {}))
@@ -561,7 +562,8 @@
         (update :tables (if remove_inactive?
                           (fn [tables]
                             (filter :active tables))
-                          identity)))))
+                          identity))
+        (update :tables schema.table/remove-row-restricted-fingerprints-in-tables))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -753,8 +755,10 @@
                         (let [table-ids (into #{} (map :id) (schema.table/filter-tables-by-data-model-perms
                                                              (distinct (map :table fields))))]
                           (filter (comp table-ids :table_id) fields))
-                        (filter mi/can-read? fields))]
-    (sort-by (comp u/lower-case-en :name :table) fields)))
+                        (do
+                          (perms/prime-table-perms-cache {:table-ids (into #{} (map :table_id) fields)})
+                          (filter mi/can-read? fields)))]
+    (sort-by (comp u/lower-case-en :name :table) (perms/remove-row-restricted-fingerprints fields))))
 
 ;;; ----------------------------------------------- POST /api/database -----------------------------------------------
 

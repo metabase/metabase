@@ -495,6 +495,22 @@
                   (pr-str (select-keys item [:id :model]))
                   (me/humanize (mr/explain Item item))))))
 
+(defn- remove-row-restricted-card-fingerprints
+  "`items` without the fingerprints in the `:result_metadata` of the Cards among them that the current user may not
+  see (see [[perms/remove-row-restricted-card-fingerprints-by-database]]). Every Card type is keyed `:card` in
+  `entity->id->data`, which holds each Card's database."
+  [entity->id->data items]
+  (let [card?        #(contains? #{:card :dataset :metric} (:model %))
+        id->metadata (into {}
+                           (map (juxt :id :result_metadata))
+                           (perms/remove-row-restricted-card-fingerprints-by-database
+                            (for [{:keys [id result_metadata] :as item} items
+                                  :when (card? item)]
+                              {:id              id
+                               :database_id     (get-in entity->id->data [:card id :database_id])
+                               :result_metadata result_metadata})))]
+    (mapv #(cond-> % (card? %) (assoc :result_metadata (id->metadata (:id %)))) items)))
+
 (mu/defn get-recents
   "Gets all recent views for a given user, and context. Returns a list of at most 20 [[Item]]s per [[rv-models]], per context.
 
@@ -528,4 +544,5 @@
                            (keep error-avoider)
                            (m/distinct-by (juxt :id :model)))
                           recent-items)]
-     {:recents view-items})))
+     {:recents (cond->> view-items
+                 (:include-metadata? options) (remove-row-restricted-card-fingerprints entity->id->data))})))

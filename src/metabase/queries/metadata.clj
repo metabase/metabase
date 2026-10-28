@@ -12,8 +12,10 @@
    [metabase.permissions.core :as perms]
    [metabase.queries.db :as queries.db]
    [metabase.queries.schema :as queries.schema]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.warehouse-schema.field :as schema.field]
    [metabase.warehouse-schema.table :as schema.table]
    [toucan2.core :as t2]))
@@ -95,28 +97,40 @@
                       (integer? field-id))]
      field-id)))
 
+(mr/def ::batch-fetch-options
+  [:map {:closed true}
+   [:include-sensitive-fields? {:optional true} :boolean]
+   [:remove-card-fingerprints  {:optional true} [:fn {:error/message "a function"} ifn?]]])
+
 (mu/defn- batch-fetch-query-metadata*
   "Fetch dependent metadata for ad-hoc queries.
   Options:
     - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive in the `:tables` the
-      current user can edit the data model of (default false)"
+      current user can edit the data model of (default false)
+    - `remove-card-fingerprints` - removes the fingerprints of the source Cards the current user may not see (default
+      [[query-perms/remove-row-restricted-card-fingerprints]], which judges each Card by the Tables its query reads)"
   [queries :- [:maybe [:sequential ::lib.schema/query]]
-   opts    :- [:maybe [:map {:closed true} [:include-sensitive-fields? {:optional true} :boolean]]]]
+   opts    :- [:maybe ::batch-fetch-options]]
   (let [source-table-ids       (into #{}
                                      (mapcat lib/all-source-table-ids)
                                      queries)
         source-card-ids        (into #{}
                                      (mapcat lib/all-source-card-ids)
                                      queries)
-        source-tables          (concat (schema.table/batch-fetch-table-query-metadatas source-table-ids opts)
-                                       (schema.table/batch-fetch-card-query-metadatas source-card-ids
-                                                                                      {:include-database? false}))
+        table-opts             (dissoc opts :remove-card-fingerprints)
+        source-tables          (concat (schema.table/batch-fetch-table-query-metadatas source-table-ids table-opts)
+                                       (schema.table/batch-fetch-card-query-metadatas
+                                        source-card-ids
+                                        {:include-database?        false
+                                         :remove-card-fingerprints (:remove-card-fingerprints
+                                                                    opts
+                                                                    query-perms/remove-row-restricted-card-fingerprints)}))
         fk-target-field-ids    (into #{} (comp (mapcat :fields)
                                                (keep :fk_target_field_id))
                                      source-tables)
         fk-target-table-ids    (into #{} (remove source-table-ids)
                                      (field-ids->table-ids fk-target-field-ids))
-        fk-target-tables       (schema.table/batch-fetch-table-query-metadatas fk-target-table-ids opts)
+        fk-target-tables       (schema.table/batch-fetch-table-query-metadatas fk-target-table-ids table-opts)
         tables                 (concat source-tables fk-target-tables)
         template-tag-field-ids (into #{} (mapcat lib/all-template-tag-field-ids) queries)
         direct-snippet-ids     (into #{} (mapcat lib/all-template-tag-snippet-ids) queries)
@@ -158,24 +172,27 @@
     opts)))
 
 (mu/defn batch-fetch-card-metadata
-  "Fetch dependent metadata for cards.
+  "Fetch dependent metadata for cards. `opts` are those of [[batch-fetch-query-metadata]].
 
   Models and native queries need their definitions walked as well as their own, card-level metadata."
-  [cards :- [:sequential ::queries.schema/card]]
-  (let [;; remove any Cards with empty queries
-        cards (remove #(empty? (:dataset_query %)) cards)
-        ;; All the queries on all the cards
-        card-queries (map :dataset_query cards)
-        ;; Plus the card-level metadata of each model and native query
-        queries (into []
-                      (comp (filter (fn [{query :dataset_query, card-type :type, :as _card}]
-                                      (or (= card-type :model)
-                                          (lib/native-only-query? query))))
-                            (map (fn [{database-id :database_id, card-id :id, :as _card}]
-                                   (let [mp (lib-be/application-database-metadata-provider database-id)]
-                                     (lib/query mp (lib.metadata/card mp card-id))))))
-                      cards)]
-    (batch-fetch-query-metadata (concat card-queries queries))))
+  ([cards :- [:sequential ::queries.schema/card]]
+   (batch-fetch-card-metadata cards nil))
+  ([cards :- [:sequential ::queries.schema/card]
+    opts  :- [:maybe ::batch-fetch-options]]
+   (let [;; remove any Cards with empty queries
+         cards (remove #(empty? (:dataset_query %)) cards)
+         ;; All the queries on all the cards
+         card-queries (map :dataset_query cards)
+         ;; Plus the card-level metadata of each model and native query
+         queries (into []
+                       (comp (filter (fn [{query :dataset_query, card-type :type, :as _card}]
+                                       (or (= card-type :model)
+                                           (lib/native-only-query? query))))
+                             (map (fn [{database-id :database_id, card-id :id, :as _card}]
+                                    (let [mp (lib-be/application-database-metadata-provider database-id)]
+                                      (lib/query mp (lib.metadata/card mp card-id))))))
+                       cards)]
+     (batch-fetch-query-metadata (concat card-queries queries) opts))))
 
 (defn- click-behavior->link-details
   [{:keys [linkType type targetId] :as _click-behavior}]
@@ -194,7 +211,7 @@
   (when (seq ids)
     (let [cards (into [] (filter mi/can-read?)
                       (queries.db/cards ids))]
-      (t2/hydrate cards :can_write))))
+      (perms/remove-row-restricted-card-fingerprints-by-database (t2/hydrate cards :can_write)))))
 
 (defn- dashcard->click-behaviors [dashcard]
   (let [viz-settings        (:visualization_settings dashcard)
@@ -236,9 +253,11 @@
         card-ids  (into #{} (map :id) cards)
         links     (batch-fetch-dashboard-links dashcards)]
     (merge
-     (->> (remove (comp card-ids :id) (:cards links))
-          (concat cards)
-          (filter some?)
-          batch-fetch-card-metadata)
+     (batch-fetch-card-metadata
+      (->> (remove (comp card-ids :id) (:cards links))
+           (concat cards)
+           (filter some?))
+      ;; a dashboard is a list of Cards, which does not use their fingerprints
+      {:remove-card-fingerprints perms/remove-row-restricted-card-fingerprints-by-database})
      {:cards      (or (:cards links)      [])
       :dashboards (or (:dashboards links) [])})))

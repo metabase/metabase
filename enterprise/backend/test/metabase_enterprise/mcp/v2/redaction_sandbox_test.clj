@@ -89,3 +89,26 @@
               (is (= #{} (fingerprinted-columns row))
                   (str "no column may carry a :fingerprint for a sandboxed caller; got "
                        (pr-str (fingerprinted-columns row)))))))))))
+
+(deftest sandboxed-caller-does-not-receive-computed-column-fingerprints-test
+  (testing "an aggregate's fingerprint is computed over the rows the Card's last run read, and the column has no
+            table of its own to judge it by: the Card's query decides"
+    (met/with-gtaps-for-user! :rasta
+      {:gtaps      {:venues {:remappings {:cat [:dimension [:field (mt/id :venues :category_id) nil]]}}}
+       :attributes {"cat" "50"}}
+      (let [mp    (mt/metadata-provider)
+            query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                      (lib/aggregate (lib/count))
+                      (lib/breakout (lib.metadata/field mp (mt/id :venues :price))))]
+        (mt/with-temp [:model/Card {card-id :id} {:type          :question
+                                                  :creator_id    (mt/user->id :crowberto)
+                                                  :dataset_query query
+                                                  :result_metadata
+                                                  (mt/with-test-user :crowberto
+                                                    (-> (mt/user-http-request :crowberto :post 202 "dataset" query)
+                                                        :data :results_metadata :columns))}]
+          (mt/with-test-user :crowberto
+            (is (contains? (fingerprinted-columns (get-content-fields card-id)) "count")
+                "positive control: the stored count column carries a fingerprint"))
+          (mt/with-test-user :rasta
+            (is (= #{} (fingerprinted-columns (get-content-fields card-id))))))))))

@@ -236,6 +236,23 @@
   [query :- ::query]
   (:table-ids (query->resolved-source-ids query)))
 
+(mu/defn query-row-restriction :- [:map
+                                   [:table-ids       [:set ::lib.schema.id/table]]
+                                   [:row-restricted? [:maybe :boolean]]]
+  "The Tables running `query` reads, and whether the current user sees only some of the rows of one of them
+  ([[perms/row-restricted-table-ids]]). `:row-restricted?` is nil when that can't be told: a native stage reads Tables
+  no query names.
+
+  Preprocesses as [[query->resolved-source-ids]] does, so source Cards and implicit joins count, no sandbox query runs,
+  and it throws when the query can't be preprocessed."
+  [query :- ::query]
+  (let [preprocessed (preprocess-without-per-user-lens query)
+        table-ids    (or (lib/all-source-table-ids preprocessed) #{})]
+    {:table-ids       table-ids
+     :row-restricted? (when-not (lib/any-native-stage? preprocessed)
+                        (boolean (seq (perms/row-restricted-table-ids
+                                       (map (fn [id] {:id id, :db_id (:database preprocessed)}) table-ids)))))}))
+
 (defn- referenced-card-ids
   "Return the union of all the `:query-permissions/referenced-card-ids` sets anywhere in the query."
   [query]

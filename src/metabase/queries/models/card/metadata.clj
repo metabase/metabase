@@ -114,6 +114,17 @@ saved later when it is ready."
   [dataset-query]
   (lib-be/normalize-query dataset-query))
 
+(defn- keep-stored-fingerprints
+  "`metadata` with the `:fingerprint` that `original-metadata` stores for each column of the same name that has none. A
+  user whose rows are narrowed is served a Card's metadata without fingerprints, so their client sends it back without
+  them; for an unchanged query the stored ones still describe the columns."
+  [metadata original-metadata]
+  (let [name->fingerprint (into {} (keep (juxt :name :fingerprint)) original-metadata)]
+    (mapv (fn [col]
+            (cond-> col
+              (nil? (:fingerprint col)) (m/assoc-some :fingerprint (name->fingerprint (:name col)))))
+          metadata)))
+
 (mu/defn maybe-async-result-metadata :- ::maybe-async-result-metadata
   "Return result metadata for the passed in `query`. If metadata needs to be recalculated, waits up to
   [[metadata-sync-wait-ms]] for it to be recalculated; if not recalculated by then, returns a map with
@@ -152,7 +163,7 @@ saved later when it is ready."
             valid-metadata?))
       (do
         (log/debug "Reusing provided metadata")
-        {:metadata metadata})
+        {:metadata (keep-stored-fingerprints metadata original-metadata)})
 
       ;; frontend always sends query. But sometimes programmatic don't (cypress, API usage). Returning an empty channel
       ;; means the metadata won't be updated at all.

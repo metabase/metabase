@@ -7,6 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.query-processor.util :as qp.util]
    [metabase.segments.schema :as segments.schema]
    [metabase.util.log :as log]
@@ -191,12 +192,12 @@
        (keep (comp xrays.db/collection :collection_id))
        filter-visible))
 
-(defmulti related
+(defmulti ^:private related*
   "Return related entities."
   {:arglists '([entity])}
   mi/model)
 
-(defmethod related :model/Card
+(defmethod related* :model/Card
   [card]
   (let [table             (xrays.db/table (:table_id card))
         similar-questions (similar-questions card)
@@ -211,11 +212,11 @@
      :dashboards        (recommended-dashboards similar-questions)
      :collections       (recommended-collections similar-questions)}))
 
-(defmethod related :model/Query
+(defmethod related* :model/Query
   [query]
-  (related (mi/instance :model/Card query)))
+  (related* (mi/instance :model/Card query)))
 
-(defmethod related :xrays/Metric
+(defmethod related* :xrays/Metric
   [metric]
   (let [table (xrays.db/table (:table_id metric))]
     {:table    table
@@ -224,7 +225,7 @@
                     (rank-by-similarity metric)
                     interesting-mix)}))
 
-(defmethod related :model/Segment
+(defmethod related* :model/Segment
   [segment]
   (let [table (xrays.db/table (:table_id segment))]
     {:table       table
@@ -235,8 +236,10 @@
                        interesting-mix)
      :linked-from (linked-from table)}))
 
-(defmethod related :model/Table
+(defmethod related* :model/Table
   [table]
+  ;; the sibling tables are read-checked one by one
+  (perms/prime-table-perms-cache {:db-ids #{(:db_id table)}})
   (let [linking-to  (linking-to table)
         linked-from (linked-from table)]
     {:segments    (segments-for-table table)
@@ -248,7 +251,7 @@
                        filter-visible
                        interesting-mix)}))
 
-(defmethod related :model/Field
+(defmethod related* :model/Field
   [field]
   (let [table (xrays.db/table (:table_id field))]
     {:table    table
@@ -265,7 +268,7 @@
                     filter-visible
                     interesting-mix)}))
 
-(defmethod related :model/Dashboard
+(defmethod related* :model/Dashboard
   [dashboard]
   (let [cards (map xrays.db/card (xrays.db/card-ids-for-dashboard (:id dashboard)))]
     {:cards (->> cards
@@ -274,3 +277,13 @@
                  distinct
                  filter-visible
                  interesting-mix)}))
+
+(defn related
+  "Return related entities, without the fingerprints the current user may not see (see
+  [[perms/remove-row-restricted-fingerprints]])."
+  [entity]
+  (-> (related* entity)
+      (m/update-existing :fields perms/remove-row-restricted-fingerprints)
+      (m/update-existing :metrics perms/remove-row-restricted-card-fingerprints-by-database)
+      (m/update-existing :cards perms/remove-row-restricted-card-fingerprints-by-database)
+      (m/update-existing :dashboard-mates perms/remove-row-restricted-card-fingerprints-by-database)))

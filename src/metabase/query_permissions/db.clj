@@ -12,6 +12,11 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one [:model/Card :collection_id] :id card-id))
 
+(mu/defn card-id->dataset-query
+  "A map of Card id to `:dataset_query` for the Cards with `card-ids`."
+  [card-ids :- [:set {:min 1} ::lib.schema.id/card]]
+  (t2/select-pk->fn :dataset_query :model/Card :id [:in card-ids]))
+
 (mu/defn card-not-in-database
   "The Card with `card-id` if it does not belong to the Database with `database-id`, or nil."
   [card-id     :- ::lib.schema.id/card

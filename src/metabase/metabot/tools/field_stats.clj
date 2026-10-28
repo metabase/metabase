@@ -10,8 +10,7 @@
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.permissions.core :as perms]
-   [metabase.query-processor.interface :as qp.i]
-   [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.request.core :as request]
    [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
@@ -61,12 +60,9 @@
   (try
     (if (database-unrestricted? (:database query))
       false
-      (let [query (binding [qp.i/*skip-middleware-because-app-db-access* true]
-                    (request/as-admin (qp.preprocess/preprocess query)))
-            table-ids (set (lib/all-source-table-ids query))]
-        (or (lib/any-native-stage? query)
-            (not= table-ids (metabot.perms/data-accessible-table-ids table-ids))
-            (boolean (seq (metabot.perms/row-restricted-table-ids table-ids))))))
+      (let [{:keys [table-ids row-restricted?]} (query-perms/query-row-restriction query)]
+        (or (not (false? row-restricted?))
+            (not= table-ids (metabot.perms/data-accessible-table-ids table-ids)))))
     (catch Exception e
       (log/debug e "Could not determine source tables for virtual column statistics")
       true)))

@@ -19,6 +19,11 @@
                             target-field))]
     (assoc field :target target-field)))
 
+(defn check-not-hidden-by-sandbox
+  "Throw a 403 when the current user's column-restricting sandbox on `field`'s table hides `field`."
+  [field]
+  (api/check-403 (seq (schema.table/filter-sandboxed-fields (:table_id field) [(select-keys field [:id :name])]))))
+
 (defn get-field
   "Get `Field` with ID."
   [id {:keys [include-editable-data-model?]}]
@@ -37,15 +42,28 @@
     ;; Check for permissions and throw 403 if we don't have them...
     (if include-editable-data-model?
       (schema.table/check-data-model-perms (:table field))
-      (api/check-403 (mi/can-read? field)))
+      (do (api/check-403 (mi/can-read? field))
+          ;; ...and a column-restricting sandbox on the table hides the columns its source card does not return. It
+          ;; limits what its user can query, not what a data model editor edits.
+          (check-not-hidden-by-sandbox field)))
     ;; ...but if we do, return the Field <3
-    field))
+    (perms/remove-row-restricted-fingerprints-from-field field)))
 
 (defn- prime-table-perms-for-fields!
   "Load table permissions for `fields`' tables in one go — reading a Field delegates to its Table, so filtering a batch
   of Fields would otherwise check one table at a time."
   [fields]
   (perms/prime-table-perms-cache {:table-ids (into #{} (keep :table_id) fields)}))
+
+(defn remove-fields-hidden-by-sandbox
+  "`fields` without those the current user's column-restricting sandboxes hide."
+  [fields]
+  (let [visible-ids (into #{}
+                          (comp (mapcat val) (map :id))
+                          (schema.table/batch-filter-sandboxed-fields
+                           (update-vals (group-by :table_id fields)
+                                        (partial mapv #(select-keys % [:id :name])))))]
+    (filter (comp visible-ids :id) fields)))
 
 (defn get-fields
   "Get `Field`s with IDs in `ids`."
@@ -54,7 +72,9 @@
     (let [fields (warehouse-schema.db/fields ids)]
       (prime-table-perms-for-fields! fields)
       (-> (filter mi/can-read? fields)
-          (t2/hydrate :has_field_values [:dimensions :human_readable_field] :name_field)))))
+          remove-fields-hidden-by-sandbox
+          (t2/hydrate :has_field_values [:dimensions :human_readable_field] :name_field)
+          perms/remove-row-restricted-fingerprints))))
 
 (defn field-ids->table-ids
   "Get sorted unique table IDs for readable Fields with IDs in `ids`."

@@ -74,3 +74,24 @@
               (is (true? (:cached (:cache/details result))))
               (is (seq (mt/cols result)))
               (is (every? nil? (vals (col-fingerprints result)))))))))))
+
+(deftest impersonated-metadata-omits-fingerprints-test
+  (mt/with-premium-features #{:advanced-permissions}
+    (testing "Field and Card metadata served to a user under an impersonation policy carry no fingerprint"
+      (let [fingerprints (fn [response]
+                           (into [] (comp (filter map?) (keep :fingerprint)) (tree-seq coll? seq response)))
+            query        (mt/mbql-query venues)
+            metadata     (-> (mt/user-http-request :crowberto :post 202 "dataset" query) :data :results_metadata :columns)]
+        (mt/with-temp [:model/Card card {:dataset_query query :result_metadata metadata}]
+          (doseq [url [(str "field/" (mt/id :venues :price))
+                       (format "table/%d/query_metadata" (mt/id :venues))
+                       (format "database/%d/metadata" (mt/id))
+                       (str "card/" (u/the-id card))
+                       (format "table/card__%d/query_metadata" (u/the-id card))]]
+            (testing url
+              (testing "positive control: an admin gets the fingerprints"
+                (is (seq (fingerprints (mt/user-http-request :crowberto :get 200 url)))))
+              (impersonation.util-test/with-impersonations! (impersonation-def)
+                (is (= [] (fingerprints (mt/user-http-request :rasta :get 200 url)))))
+              (testing "the same user without a policy still gets the fingerprints"
+                (is (seq (fingerprints (mt/user-http-request :rasta :get 200 url))))))))))))

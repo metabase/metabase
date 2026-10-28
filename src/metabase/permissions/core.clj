@@ -14,6 +14,7 @@
    [metabase.permissions.models.permissions-revision]
    [metabase.permissions.path]
    [metabase.permissions.published-tables]
+   [metabase.permissions.row-restriction]
    [metabase.permissions.settings]
    [metabase.permissions.user]
    [metabase.permissions.util]
@@ -33,6 +34,7 @@
   metabase.permissions.data-access-token/keep-me
   metabase.permissions.path/keep-me
   metabase.permissions.published-tables/keep-me
+  metabase.permissions.row-restriction/keep-me
   metabase.permissions.user/keep-me
   metabase.permissions.util/keep-me
   metabase.permissions.validation/keep-me)
@@ -170,7 +172,13 @@
   data-access-token
   data-access-compatible?
   data-access-token-transform
-  routing-token-for-db])
+  routing-token-for-db]
+ [metabase.permissions.row-restriction
+  remove-row-restricted-card-fingerprints-by-database
+  remove-row-restricted-card-fingerprints-with
+  remove-row-restricted-fingerprints
+  remove-row-restricted-fingerprints-from-field
+  row-restricted-table-ids])
 
 ;;; import these vars with different names to make their purpose more obvious.
 (p/import-def metabase.permissions.models.permissions-group/all-users                    all-users-group)

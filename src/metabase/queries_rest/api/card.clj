@@ -169,7 +169,8 @@
       :table         (api/read-check :model/Database (queries-rest.db/table-database-id model-id))
       :using_model   (api/read-check :model/Card model-id)
       :using_segment (api/read-check :model/Database (queries-rest.db/segment-database-id model-id))))
-  (let [cards          (filter mi/can-read? (cards-for-filter-option f model-id))
+  (let [cards          (perms/remove-row-restricted-card-fingerprints-by-database
+                        (filter mi/can-read? (cards-for-filter-option f model-id)))
         last-edit-info (:card (revisions/fetch-last-edited-info {:card-ids (map :id cards)}))]
     (into []
           (map (fn [{:keys [id] :as card}]
@@ -203,7 +204,8 @@
         (update :dashboard #(some-> % (select-keys [:name :id :moderation_status])))
         (cond->
          ;; can_manage_db determines whether we should enable model persistence settings
-         (queries/model? card) (t2/hydrate :persisted :can_manage_db)))))
+         (queries/model? card) (t2/hydrate :persisted :can_manage_db))
+        query-perms/remove-row-restricted-fingerprints-from-card)))
 
 (defn- get-card
   "Get `Card` with ID."
@@ -430,12 +432,13 @@
                       {:display         card-display
                        :allowed-display (map name supported-series-display-type)
                        :status-code     400})))
-    (fetch-compatible-series
-     card
-     {:exclude-ids exclude_ids
-      :query       query
-      :last-cursor last_cursor
-      :page-size   (request/limit)})))
+    (perms/remove-row-restricted-card-fingerprints-by-database
+     (fetch-compatible-series
+      card
+      {:exclude-ids exclude_ids
+       :query       query
+       :last-cursor last_cursor
+       :page-size   (request/limit)}))))
 
 ;;; ------------------------------------------------- Creating Cards -------------------------------------------------
 

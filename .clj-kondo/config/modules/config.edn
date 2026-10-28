@@ -1420,6 +1420,7 @@
            premium-features
            pulse
            queries
+           query-permissions
            query-processor
            request
            server
@@ -3458,6 +3459,7 @@
            parameters
            permissions
            premium-features
+           query-permissions
            query-processor
            request
            sync
@@ -3933,6 +3935,7 @@
            util
            util.graph
            warehouse-schema-overlay
+           warehouses.schema
            enterprise/permissions.sandbox}
    :model-imports #{:model/Action
                     :model/Card

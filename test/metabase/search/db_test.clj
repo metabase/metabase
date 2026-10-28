@@ -16,7 +16,7 @@
     (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
         (lib/aggregate (lib/count)))))
 
-(deftest card-result-metadata-does-not-run-the-card-schema-upgrade-test
+(deftest cards-result-metadata-does-not-run-the-card-schema-upgrade-test
   (testing "reading result metadata for a legacy metric costs one query"
     (mt/with-temp [:model/Card {card-id :id} {:type          :metric
                                               :database_id   (mt/id)
@@ -29,17 +29,17 @@
                      :where  [:= :id card-id]})
       (is (= ["count"]
              (t2/with-call-count [call-count]
-               (let [metadata (get (search.db/card-result-metadata #{card-id}) card-id)]
+               (let [metadata (:result_metadata (first (search.db/cards-result-metadata #{card-id})))]
                  (is (= 1 (call-count))
                      (str "Going through `:model/Card` here would arm the `:card_schema` upgrade to 24, which "
                           "recomputes this metric's whole dimension set from its query — several more queries "
                           "per row, for columns search throws away."))
                  (mapv :name metadata))))))))
 
-(deftest ^:parallel card-result-metadata-no-cards-test
+(deftest ^:parallel cards-result-metadata-no-cards-test
   (testing "no card ids means no query, and no `IN ()` for the app DB to choke on"
-    (is (= {}
+    (is (= []
            (t2/with-call-count [call-count]
-             (let [result (search.db/card-result-metadata #{})]
+             (let [result (search.db/cards-result-metadata #{})]
                (is (zero? (call-count)))
                result))))))
