@@ -398,8 +398,14 @@
 
 (mu/defn- reference-clause :- ::sql/value
   "The Lib expression a filter template's reference stands for."
-  [{:keys [model] :as context}         :- ::context
-   {:keys [kind grain], ref-name :name} :- ::sql/reference]
+  [{:keys [model] :as context}                   :- ::context
+   {:keys [kind grain arguments], ref-name :name} :- ::sql/reference]
+  ;; `entity_path=[...]` names the join path to a dimension; the converter reaches one through the entity in the
+  ;; reference itself and cannot follow another path, so the argument is reported rather than dropped. A `Metric`
+  ;; reference is reported whatever its arguments.
+  (when (and arguments (not= kind :metric))
+    (sql/unsupported "%s has the argument %s, which is not supported: only the name and, for TimeDimension, a grain"
+                     (pr-str ref-name) arguments))
   (case kind
     :metric
     (sql/unsupported "Metric(%s): filters on other metrics are not supported yet (QRES-5)" (pr-str ref-name))

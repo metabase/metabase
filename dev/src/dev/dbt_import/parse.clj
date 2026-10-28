@@ -1,8 +1,6 @@
 (ns dev.dbt-import.parse
   "Stage 1 of the converter: turn a decoded dbt manifest into the IR (see [[dev.dbt-import.schemas.ir]]).
 
-(set! *warn-on-reflection* true)
-
   Pure apart from [[read-manifest]]. Applies dbt's own defaulting rules and nothing Metabase-specific:
 
   * a nil `expr` on an entity, dimension or measure means the name is the column;

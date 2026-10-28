@@ -87,6 +87,13 @@
   [node]
   (format "%s (%s)" (:sql node) (:class node)))
 
+(defn- unparenthesized
+  "`node` with any parentheses around it removed."
+  [node]
+  (if (= "Paren" (:class node))
+    (recur (arg node :this))
+    node))
+
 (defmulti ^:private ->value
   "The Lib expression for a sqlglot node used as a value: a column, a literal, arithmetic, or CASE."
   {:arglists '([node resolve-column])}
@@ -375,12 +382,27 @@
   ;; a bare column in a boolean position is a boolean column, `WHERE is_returned`
   (lib/= (->value node resolve-column) true))
 
-(defmethod ->predicate "EQ" [node resolve-column] (binary lib/= node resolve-column ->value))
-(defmethod ->predicate "NEQ" [node resolve-column] (binary lib/!= node resolve-column ->value))
-(defmethod ->predicate "GT" [node resolve-column] (binary lib/> node resolve-column ->value))
-(defmethod ->predicate "GTE" [node resolve-column] (binary lib/>= node resolve-column ->value))
-(defmethod ->predicate "LT" [node resolve-column] (binary lib/< node resolve-column ->value))
-(defmethod ->predicate "LTE" [node resolve-column] (binary lib/<= node resolve-column ->value))
+(defn- without-null-operands
+  "Report comparison `node` when any of its operand `nodes` is the literal `NULL`. In SQL a comparison against NULL
+  is null, so never true; the Lib clause it would convert to treats a nil operand as a null check (`[:= x nil]` is
+  `x IS NULL`) and matches the null rows instead."
+  [node nodes]
+  (when (some #(= "Null" (:class (unparenthesized %))) nodes)
+    (unsupported "%s compares against NULL, which is never true in SQL; use IS [NOT] NULL" (describe node))))
+
+(defn- comparison
+  "`(lib-fn left right)` over the operands of comparison `node`, neither of which may be `NULL` (see
+  [[without-null-operands]])."
+  [lib-fn node resolve-column]
+  (without-null-operands node [(arg node :this) (arg node :expression)])
+  (binary lib-fn node resolve-column ->value))
+
+(defmethod ->predicate "EQ" [node resolve-column] (comparison lib/= node resolve-column))
+(defmethod ->predicate "NEQ" [node resolve-column] (comparison lib/!= node resolve-column))
+(defmethod ->predicate "GT" [node resolve-column] (comparison lib/> node resolve-column))
+(defmethod ->predicate "GTE" [node resolve-column] (comparison lib/>= node resolve-column))
+(defmethod ->predicate "LT" [node resolve-column] (comparison lib/< node resolve-column))
+(defmethod ->predicate "LTE" [node resolve-column] (comparison lib/<= node resolve-column))
 
 (defn- logical
   "`(lib-fn & operands)` over the flattened operands of `node`, so `a AND b AND c` is one `:and`."
@@ -409,6 +431,7 @@
   [node resolve-column lib-fn]
   (when (arg node :query)
     (unsupported "IN over a subquery is not supported, only over a list of values"))
+  (without-null-operands node (cons (arg node :this) (arg node :expressions)))
   (apply lib-fn
          (->value (arg node :this) resolve-column)
          (map #(->value % resolve-column) (arg node :expressions))))
@@ -455,13 +478,6 @@
 (defmethod ->predicate "NullSafeEQ" [node resolve-column] (null-safe-comparison node resolve-column false))
 (defmethod ->predicate "NullSafeNEQ" [node resolve-column] (null-safe-comparison node resolve-column true))
 
-(defn- unparenthesized
-  "`node` with any parentheses around it removed."
-  [node]
-  (if (= "Paren" (:class node))
-    (recur (arg node :this))
-    node))
-
 (defmethod ->predicate "Not"
   [node resolve-column]
   ;; sqlglot wraps NOT IN and NOT (x IS NULL) in a Not; Lib has clauses for both, and `NOT (x IS TRUE)` has to keep
@@ -474,6 +490,7 @@
 
 (defmethod ->predicate "Between"
   [node resolve-column]
+  (without-null-operands node [(arg node :this) (arg node :low) (arg node :high)])
   (lib/between (->value (arg node :this) resolve-column)
                (->value (arg node :low) resolve-column)
                (->value (arg node :high) resolve-column)))
@@ -698,11 +715,13 @@
 
 (mr/def ::reference
   "A MetricFlow object reference from a filter template: `Dimension('entity__name')`, `TimeDimension('entity__name',
-  'grain')`, `Entity('name')` or `Metric('name', ...)`."
+  'grain')`, `Entity('name')` or `Metric('name', ...)`. `:arguments` is whatever followed the quoted arguments,
+  `entity_path=['order']` or `group_by=['customer']`, as written; nil when nothing did."
   [:map
-   [:kind  [:enum :dimension :time-dimension :entity :metric]]
-   [:name  :string]
-   [:grain [:maybe :string]]])
+   [:kind      [:enum :dimension :time-dimension :entity :metric]]
+   [:name      :string]
+   [:grain     [:maybe :string]]
+   [:arguments [:maybe :string]]])
 
 (mr/def ::rendered-filter
   "A filter template with its references replaced by placeholder identifiers, and what each placeholder stood for."
@@ -714,7 +733,13 @@
   "`{{ Dimension('order__status') }}`, `{{ TimeDimension('metric_time', 'day') }}`, `{{ Entity('customer') }}`,
   `{{ Metric('revenue', group_by=['customer']) }}`: the object, its quoted first argument, an optional quoted second
   argument, and whatever else precedes the closing parenthesis."
-  #"\{\{\s*(Dimension|TimeDimension|Entity|Metric)\(\s*(?:'([^']*)'|\"([^\"]*)\")\s*(?:,\s*(?:'([^']*)'|\"([^\"]*)\"))?[^)]*\)\s*\}\}")
+  #"\{\{\s*(Dimension|TimeDimension|Entity|Metric)\(\s*(?:'([^']*)'|\"([^\"]*)\")\s*(?:,\s*(?:'([^']*)'|\"([^\"]*)\"))?([^)]*)\)\s*\}\}")
+
+(defn- extra-arguments
+  "`remainder`, what a reference had after its quoted arguments, without the comma that separated it from them; nil
+  when there was nothing but whitespace."
+  [remainder]
+  (not-empty (str/replace (str/trim remainder) #"^,\s*" "")))
 
 (def ^:private reference-kinds
   {"Dimension"     :dimension
@@ -725,15 +750,17 @@
 (mu/defn render-filter :- ::rendered-filter
   "Replace each MetricFlow reference in the filter `template` with a placeholder identifier, so the rest parses as SQL
   with [[condition->mbql]], whose column callback then sees the placeholders as column names. `:references` says what
-  each placeholder stood for. Jinja the regex does not recognise is left alone and fails to parse."
+  each placeholder stood for, arguments the converter does not read included, for the resolver to report. Jinja the
+  regex does not recognise is left alone and fails to parse."
   [template :- :string]
   (let [references (volatile! (transient {}))
         sql        (str/replace template reference-re
-                                (fn [[_ object single-1 double-1 single-2 double-2]]
+                                (fn [[_ object single-1 double-1 single-2 double-2 remainder]]
                                   (let [placeholder (format "__dbt_ref_%d__" (count @references))]
-                                    (vswap! references assoc! placeholder {:kind  (reference-kinds object)
-                                                                           :name  (or single-1 double-1)
-                                                                           :grain (or single-2 double-2)})
+                                    (vswap! references assoc! placeholder {:kind      (reference-kinds object)
+                                                                           :name      (or single-1 double-1)
+                                                                           :grain     (or single-2 double-2)
+                                                                           :arguments (extra-arguments remainder)})
                                     placeholder)))]
     {:sql        sql
      :references (persistent! @references)}))

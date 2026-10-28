@@ -1,8 +1,6 @@
 (ns dev.dbt-import.schemas.dbt-manifest
   "Malli schemas for the parts of a dbt `target/manifest.json` that the dbt → Metabase metric converter reads.
 
-(set! *warn-on-reflection* true)
-
   These describe the *input* contract, not the converter's intermediate representation. They cover manifest schema
   v12 as written by dbt 1.12 and later, and only the keys the converter looks at. Undeclared keys pass through
   untouched. Older dbt releases are not supported: dbt 1.8 to 1.11 also write schema v12 but without the
