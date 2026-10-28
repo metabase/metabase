@@ -19,11 +19,6 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select-one-fn :db_id (t2/table-name :model/Table) :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database database-id))
-
 (mu/defn database-engine
   "The engine of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
@@ -46,12 +41,18 @@
   (t2/select-one :model/PythonLibrary :path path))
 
 (mu/defn upsert-python-library-source!
-  "Insert or update the PythonLibrary at `path`, setting its source to `source`. Returns the ID of the row."
-  [path   :- :string
-   source :- :string]
+  "Insert or update the PythonLibrary at `path`, setting its source to `source` and, on insert only, the columns in
+  `insert-values`. Returns the ID of the row."
+  [path          :- :string
+   source        :- :string
+   insert-values :- [:map {:closed true}
+                     [:entity_id  {:optional true} :string]
+                     [:is_default {:optional true} :boolean]]]
   (mdb/update-or-insert! :model/PythonLibrary
                          {:path path}
-                         (constantly {:path path :source source})))
+                         (fn [existing]
+                           (cond-> {:path path :source source}
+                             (nil? existing) (merge insert-values)))))
 
 (mu/defn library-sources-by-path
   "A map of path to source for every PythonLibrary."

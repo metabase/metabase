@@ -320,7 +320,7 @@ on your IdP, this usually looks something like `http://www.example.com/141xkex60
   :doc              false)
 
 (defsetting sdk-encryption-validation-key
-  (deferred-tru "Used for encrypting and checking whether SDK requests are signed")
+  "Used for encrypting and checking whether SDK requests are signed"
   :type       :string
   :init       (fn []
                 (let [ba (byte-array 32)

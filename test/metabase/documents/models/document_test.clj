@@ -435,9 +435,7 @@
       (is (= [:archived :archived_directly :content_type :entity_id :name :collection_position]
              (:copy spec)))
       (is (= [:view_count :last_viewed_at :public_uuid :public_uuid_prefix :made_public_by_id :exploration_id :is_placeholder] (:skip spec)))
-      (is (contains? (:transform spec) :created_at))
       (is (contains? (:transform spec) :document))
-      (is (contains? (:transform spec) :updated_at))
       (is (contains? (:transform spec) :collection_id))
       (is (contains? (:transform spec) :creator_id))
       (testing "foreign key transformers are properly configured"

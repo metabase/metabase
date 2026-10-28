@@ -1,20 +1,15 @@
 import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import {
   DATA_APP_DISPLAY_NAME as APP_DISPLAY_NAME,
-  DATA_APP_NAME as APP_NAME,
-  createDataAppCollection,
-  createDataAppScoreboardAction,
   visitDataAppRoute as visitAppRoute,
 } from "e2e/support/helpers";
-import type { CollectionPermission } from "metabase-types/api";
 
-import { DATA_APP_TEST_ENV as TEST_ENV } from "./helpers";
+import { createKitchenSinkDataApp } from "./helpers";
 
 const { H } = cy;
 
 const TEST_TABLE = "scoreboard_actions";
 const EXISTING_TEAM = "Amorous Aardvarks";
-const RESOURCE_COLLECTION = "Data App resources";
 
 describe(
   "scenarios > data apps > actions (useAction)",
@@ -30,19 +25,6 @@ describe(
       H.setActionsEnabledForDB(WRITABLE_DB_ID);
     });
 
-    const setupActionsApp = (actionParams: Record<string, string | number>) =>
-      createDataAppScoreboardAction().then((action) => {
-        H.mockDataApp(APP_NAME, {
-          displayName: APP_DISPLAY_NAME,
-          testEnv: {
-            ...TEST_ENV,
-            actionId: action.id,
-            actionEntityId: action.entity_id,
-            actionParams,
-          },
-        });
-      });
-
     it("executes the action, exposing isExecuting and result, and resets", () => {
       cy.intercept("POST", "/api/action/*/execute", (req) => {
         req.on("response", (res) => {
@@ -50,7 +32,7 @@ describe(
         });
       });
 
-      setupActionsApp({ team_name: "Data App FC", score: 7 });
+      createKitchenSinkDataApp({}, { withAddTeamAction: true });
 
       visitAppRoute("actions");
       H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
@@ -79,9 +61,9 @@ describe(
     it("surfaces an error when the action fails", () => {
       // `team_name` is unique, so creating a team that already exists fails in the
       // database — a real rejection, not a stubbed one.
-      setupActionsApp({ team_name: EXISTING_TEAM, score: 1 });
+      createKitchenSinkDataApp({}, { withAddTeamAction: true });
 
-      visitAppRoute("actions");
+      visitAppRoute("actions-existing-team");
       H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
         cy.findByTestId("action-execute").click();
 
@@ -101,52 +83,9 @@ describe(
       });
     });
 
-    describe("collection permissions", () => {
-      const setupRestrictedApp = (access: CollectionPermission) =>
-        createDataAppCollection({ name: RESOURCE_COLLECTION, access }).then(
-          (collection) =>
-            createDataAppScoreboardAction({ collectionId: collection.id }).then(
-              (action) => {
-                H.mockDataApp(APP_NAME, {
-                  displayName: APP_DISPLAY_NAME,
-                  testEnv: {
-                    ...TEST_ENV,
-                    actionId: action.id,
-                    actionEntityId: action.entity_id,
-                    actionParams: { team_name: "Data App FC", score: 7 },
-                  },
-                });
-              },
-            ),
-        );
-
-      const assertNothingWritten = () =>
-        H.queryWritableDB(
-          `SELECT team_name FROM ${TEST_TABLE} WHERE team_name = 'Data App FC'`,
-        ).then(({ rows }) => {
-          expect(rows).to.have.length(0);
-        });
-
-      it("refuses the action when the user cannot read its collection", () => {
-        setupRestrictedApp("none");
-        cy.signInAsNormalUser();
-
-        visitAppRoute("actions");
-        H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
-          cy.findByTestId("action-execute").click();
-
-          cy.findByTestId("action-error", { timeout: 30000 }).should(
-            "have.text",
-            "has-error",
-          );
-          cy.findByTestId("action-result").should("have.text", "no-result");
-        });
-
-        assertNothingWritten();
-      });
-
-      it("executes the action when the user has view access to its collection", () => {
-        setupRestrictedApp("read");
+    describe("non-admin access", () => {
+      it("executes action for non-admin member of app's group", () => {
+        createKitchenSinkDataApp({}, { withAddTeamAction: true });
         cy.signInAsNormalUser();
 
         visitAppRoute("actions");

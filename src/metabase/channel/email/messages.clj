@@ -167,11 +167,11 @@
 
 (defn send-user-joined-admin-notification-email!
   "Send an email to the `invitor` (the Admin who invited `new-user`) letting them know `new-user` has joined."
-  [new-user & {:keys [google-auth?]}]
+  [new-user & {:keys [sso-auth?]}]
   {:pre [(map? new-user)]}
   (let [recipients (all-admin-recipients)]
     (send-email-with-logo!
-     {:subject      (str (if google-auth?
+     {:subject      (str (if sso-auth?
                            (trs "{0} created a {1} account" (:common_name new-user) (app-name-trs))
                            (trs "{0} accepted their {1} invite" (:common_name new-user) (app-name-trs))))
       :recipients   recipients
@@ -183,7 +183,7 @@
                                                                   :site_url             (system/site-url)}
                                               :payload           {:style {:color_text_dark channel.render/color-text-dark}}
                                               :joinedUserName    (or (:first_name new-user) (:email new-user))
-                                              :joinedViaSSO      google-auth?
+                                              :joinedViaSSO      sso-auth?
                                               :joinedUserEmail   (:email new-user)
                                               :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13".
                                               :joinedUserEditUrl (str (system/site-url) "/admin/people")})})))
@@ -309,7 +309,7 @@
                         :logoHeader   true
                         :heading      (trs "We hope you''ve been enjoying Metabase.")
                         :callToAction (trs "Would you mind taking a quick 5 minute survey to tell us how it’s going?")
-                        :link         "https://metabase.com/feedback/active"})
+                        :link         "https://www.metabase.com/feedback/active"})
         email-msg {:subject      (trs "[{0}] Tell us how things are going." (app-name-trs))
                    :recipients   [email]
                    :message-type :html
@@ -330,7 +330,7 @@
                        {:emailType  "notification"
                         :logoHeader true
                         :first-name first_name
-                        :link       (cond-> "https://metabase.com/feedback/creator"
+                        :link       (cond-> "https://www.metabase.com/feedback/creator"
                                       encoded-info (str "?context=" encoded-info))}
                        (when-not (premium-features/is-hosted?)
                          {:self-hosted (system/site-url)}))

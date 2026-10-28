@@ -38,6 +38,13 @@
                 (is (contains? snippets-from-api (select-keys snippet-1 test-snippet-fields)))
                 (is (contains? snippets-from-api (select-keys snippet-2 test-snippet-fields)))))))))))
 
+(deftest list-snippets-can-write-test
+  (testing "GET /api/native-query-snippet includes whether the current user can write each snippet"
+    (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:content "1" :name "snippet_can_write"}]
+      (is (=? {:can_write true}
+              (some #(when (= snippet-id (:id %)) %)
+                    (mt/user-http-request :crowberto :get 200 (snippet-url))))))))
+
 (deftest list-snippets-call-count-test
   (testing "GET /api/native-query-snippet app-DB call count should not scale with the number of snippets"
     (mt/with-model-cleanup [:model/NativeQuerySnippet]

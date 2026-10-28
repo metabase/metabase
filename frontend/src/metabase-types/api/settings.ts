@@ -511,6 +511,7 @@ interface AdminSettings {
   "analytics-pii-retention-enabled"?: boolean;
   "custom-geojson-enabled": boolean;
   "encryption-enabled": boolean;
+  "metabot-query-execution-enabled?": boolean;
   "deprecation-notice-version"?: string;
   "disable-cors-on-localhost": boolean;
   "embedding-secret-key"?: string;
@@ -805,6 +806,7 @@ export interface EnterpriseSettings extends Settings {
   "remote-sync-type"?: RemoteSyncType | null;
   "remote-sync-auto-import"?: boolean | null;
   "remote-sync-transforms"?: boolean | null;
+  "remote-sync-custom-collections-enabled"?: boolean | null;
   "login-page-illustration"?: IllustrationSettingValue;
   "login-page-illustration-custom"?: string;
   "landing-page-illustration"?: IllustrationSettingValue;

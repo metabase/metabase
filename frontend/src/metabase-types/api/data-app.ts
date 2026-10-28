@@ -26,8 +26,6 @@ export interface DataApp {
   enabled: boolean;
   /** The collection that contains this app's saved questions and models. */
   resource_collection_id: number;
-  /** Tables used by the last successful resource synchronization. */
-  table_ids: number[];
   /**
    * External origins the app's sandboxed bundle may `fetch`/XHR. Empty means
    * none (Metabase data still flows through the SDK). Each entry is an origin,
@@ -38,6 +36,16 @@ export interface DataApp {
   bundle_hash: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface CreateDataAppRequest {
+  name: string;
+  display_name?: string;
+  description?: string | null;
+  version?: number;
+  bundle_path?: string;
+  allowed_hosts?: string[];
+  enabled?: boolean;
 }
 
 /**

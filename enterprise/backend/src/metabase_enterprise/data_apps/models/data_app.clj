@@ -2,15 +2,14 @@
   (:require
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.db :as data-apps.db]
-   [metabase-enterprise.data-apps.resources :as data-app.resources]
    [metabase-enterprise.data-apps.schema :as data-apps.schema]
    [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.users.models.user :as user]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.search.core :as search]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -40,13 +39,13 @@
 (t2/deftransforms :model/DataApp
   {:bundle        transform-bundle
    ;; JSON array of origins the sandboxed bundle may fetch/XHR (see config.clj).
-   :allowed_hosts mi/transform-json
-   :table_ids     mi/transform-json})
+   :allowed_hosts mi/transform-json})
 
 (doto :model/DataApp
   (derive :metabase/model)
   (derive :hook/entity-id)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/dependencies))
 
 (t2.default-fields/define-default-fields :model/DataApp
   data-apps.db/non-blob-columns)
@@ -66,30 +65,49 @@
     (contains? row :bundle) (assoc :bundle_hash (some-> ^bytes (:bundle row) bytes-hash))))
 
 (defn- prepare
-  "The DataApp `row` normalized and validated against `schema`, with the hash of any bundle it sets."
+  "The DataApp `row` normalized and validated against `schema`."
   [schema row]
   (->> row
        (lib/normalize schema)
        (mu/validate-throw schema)
        with-bundle-hash))
 
+(defn- check-resource-collection
+  "Throws unless the Collection with `collection-id` can be the resource collection of the data app `app-id`, nil for a
+  new app: a top-level collection of data apps, not archived, official, typed or the sample, that no other app has;
+  remote sync may sync it."
+  [collection-id app-id]
+  (let [collection (data-apps.db/resource-collection collection-id)]
+    (when-not (and collection
+                   (= "data-apps" (some-> (:namespace collection) name))
+                   (= "/" (:location collection))
+                   (not-any? collection [:personal_owner_id :authority_level :type :archive_operation_id])
+                   (not-any? collection [:archived :is_sample]))
+      (throw (ex-info (tru "A data app''s collection must be a top-level collection of data apps that isn''t archived or official. Give the app a collection of its own.")
+                      {:status-code 400, :collection-id collection-id})))
+    (when (data-apps.db/other-app-has-collection? collection-id app-id)
+      (throw (ex-info (tru "This collection already belongs to another data app. Give the app a collection of its own.")
+                      {:status-code 400, :collection-id collection-id})))))
+
 (t2/define-before-insert :model/DataApp
   [data-app]
-  ;; Every app owns a resource collection from its first moment: one it is given (an import names the collection
-  ;; its manifest references) or one created here, so the column is never null.
   (let [row (prepare ::data-apps.schema/data-app.insert data-app)]
-    (cond-> row
-      (nil? (:resource_collection_id row))
-      (assoc :resource_collection_id (:id (data-app.resources/create-resource-collection! row))))))
+    (when-not (:resource_collection_id row)
+      (throw (ex-info (tru "A data app needs a collection of its own.")
+                      {:status-code 400})))
+    (check-resource-collection (:resource_collection_id row) nil)
+    row))
 
 (t2/define-before-update :model/DataApp
   [data-app]
   (let [changes (t2/changes data-app)]
-    ;; A missing collection (the column is nullable, so the row survives its collection's deletion) may be set
-    ;; again; one the app has is never replaced or cleared.
-    (when (and (contains? changes :resource_collection_id)
-               (some? (:resource_collection_id (t2/original data-app))))
-      (throw (ex-info (tru "A data app''s resource collection cannot be changed.")
+    (when (contains? changes :resource_collection_id)
+      (when (some? (:resource_collection_id (t2/original data-app)))
+        (throw (ex-info (tru "A data app''s resource collection cannot be changed.")
+                        {:status-code 400, :data-app-id (:id data-app)})))
+      (check-resource-collection (:resource_collection_id changes) (:id data-app)))
+    (when (contains? changes :bundle_hash)
+      (throw (ex-info (tru "A data app''s bundle hash is computed from its bundle.")
                       {:status-code 400, :data-app-id (:id data-app)})))
     (merge data-app (some->> changes (prepare ::data-apps.schema/data-app.update)))))
 
@@ -100,18 +118,17 @@
 (t2/define-after-select :model/DataApp
   [app]
   (cond-> app
-    (contains? app :allowed_hosts) (update :allowed_hosts #(or % []))
-    (contains? app :table_ids)     (update :table_ids #(or % []))))
+    (contains? app :allowed_hosts) (update :allowed_hosts #(or % []))))
 
 (defmethod mi/can-read? :model/DataApp
   ([app] (mi/can-read? :model/DataApp (:id app)))
   ([_model pk]
-   (or api/*is-superuser?*
-       (and api/*current-user-id*
-            (nil? (:tenant_id @api/*current-user*))
-            (let [group-ids (user/group-ids api/*current-user-id*)]
-              (boolean (some (comp group-ids :permission_group_id)
-                             (data-apps.db/app-assignments [pk]))))))))
+   (and (premium-features/has-feature? :data-apps)
+        (or api/*is-superuser?*
+            (let [{:keys [enabled resource_collection_id]} (data-apps.db/data-app pk)]
+              (and (true? enabled)
+                   (some? resource_collection_id)
+                   (mi/can-read? :model/Collection resource_collection_id)))))))
 
 (defmethod mi/can-write? :model/DataApp
   ([_instance]   api/*is-superuser?*)
@@ -121,15 +138,22 @@
   [_model _instance]
   api/*is-superuser?*)
 
-(t2/define-after-insert :model/DataApp
-  [app]
-  (merge app (data-app.resources/ensure-resources! app)))
-
 ;; The collection goes first, while the row still references it: the reference is nullable so the database can clear
 ;; it, and the collection's own hooks delete what it holds and the grants on it.
 (t2/define-before-delete :model/DataApp
   [app]
-  (data-app.resources/delete-resources! app))
+  (some-> (:resource_collection_id app) data-apps.db/delete-resource-collection!)
+  (search/delete! :model/DataApp [(str (:id app))]))
+
+(search/define-spec "data-app"
+  {:model        :model/DataApp
+   :attrs        {:archived      false
+                  :collection-id false
+                  :created-at    true
+                  :updated-at    true}
+   :search-terms [:name :display_name :description]
+   ;; A result's `name` can be its display name, and the app's URL needs its slug.
+   :render-terms {:data-app-slug :name}})
 
 (methodical/defmethod mi/to-json :model/DataApp
   "Never include the raw bundle bytes in JSON."
@@ -157,11 +181,8 @@
    :skip      [;; admin-owned state of this instance
                :enabled
                ;; set by the import itself
-               :bundle_hash
-               ;; server-managed resources, recreated on import
-               :table_ids]
-   :transform {:created_at   (serdes/date)
-               ;; the app's resource collection, a collection in the `data-apps` namespace that loads before the app
+               :bundle_hash]
+   :transform {;; the app's resource collection, a collection in the `data-apps` namespace that loads before the app
                :resource_collection_id (assoc (serdes/fk :model/Collection) :as :collection)
                :name         {:as :slug :export identity :import identity}
                :display_name {:as :name :export identity :import identity}
@@ -211,10 +232,7 @@
     (throw (ex-info (tru "A data app named \"{0}\" already exists on this instance. Delete it, or give the app in the repository another slug."
                          (:slug ingested))
                     {:status-code 400})))
-  (let [app (serdes/default-load-one! ingested maybe-local)]
-    (when maybe-local
-      (data-app.resources/ensure-resources! app))
-    app))
+  (serdes/default-load-one! ingested maybe-local))
 
 (defenterprise data-app-collection-ids
   "The resource collections of the data apps, which hold the copies an app runs."
@@ -223,7 +241,8 @@
   (data-apps.db/resource-collection-ids))
 
 (defenterprise data-app-collection?
-  "Whether the Collection with `collection-id` is a data app's resource collection."
+  "Whether the Collection with `collection-id` is in the data-apps namespace, which holds only data apps' collections;
+  asked of the namespace, not of the apps, since a load may write a collection's content before the app that owns it."
   :feature :none
   [collection-id]
-  (data-apps.db/resource-collection? collection-id))
+  (data-apps.db/data-apps-namespace-collection? collection-id))

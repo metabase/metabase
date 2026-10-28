@@ -71,8 +71,10 @@
               (m/remove-vals nil? (select-keys row concise-row-keys)))
   ;; The v1 engine enriches some rows (metrics) with its own field vocabulary; the v2 surface
   ;; names entity ids `entity_id` and never emits portable FK arrays, so translate/strip here.
+  ;; A metric's source card is referenced by its numeric `source_card_id` here, so its portable
+  ;; entity id goes too.
   :detailed (fn [row]
-              (cond-> (dissoc row :portable_entity_id :base_table_portable_fk)
+              (cond-> (dissoc row :portable_entity_id :base_table_portable_fk :source_card_portable_entity_id)
                 (and (:portable_entity_id row) (nil? (:entity_id row)))
                 (assoc :entity_id (:portable_entity_id row))))
   :sample   {:id                     1
@@ -101,7 +103,10 @@
              :entity_id              "x"
              :base_table_id          1
              :base_table_name        "x"
-             :base_table_schema      "x"}})
+             :base_table_schema      "x"
+             :source_card_id         1
+             :source_card_name       "x"
+             :source_unavailable     true}})
 
 ;;; --------------------------------------------- Collection paths -------------------------------------------------
 

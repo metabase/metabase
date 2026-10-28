@@ -260,11 +260,12 @@
     (testing "GET api/table/:id/query_metadata?include_sensitive_fields"
       (testing "Sensitive fields are included"
         (is (= (merge
-                (table-defaults)
+                (update (table-defaults) :db merge {:details nil, :write_data_details nil, :initial_sync_error nil})
                 (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count]
                                            :id (mt/id :users))
                             :collection)
                 {:schema       "PUBLIC"
+                 :can_write    true
                  :name         "USERS"
                  :display_name "Users"
                  :entity_type  "entity/UserTable"
@@ -337,8 +338,16 @@
                                        :database_is_auto_increment false
                                        :name_field                 nil)]
                  :id           (mt/id :users)})
-               (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (mt/id :users))))
+               (mt/user-http-request :crowberto :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (mt/id :users))))
             "Make sure that getting the User table *does* include info about the password field, but not actual values themselves")))))
+
+(deftest ^:parallel sensitive-fields-require-write-perms-test
+  (mt/with-premium-features #{}
+    (testing "GET api/table/:id/query_metadata?include_sensitive_fields ignores the flag for users who can't edit the table's metadata"
+      (is (= ["ID" "NAME" "LAST_LOGIN"]
+             (->> (mt/user-http-request :rasta :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (mt/id :users)))
+                  :fields
+                  (map :name)))))))
 
 (deftest ^:parallel sensitive-fields-not-included-test
   (mt/with-premium-features #{}
@@ -350,6 +359,7 @@
                                            :id (mt/id :users))
                             :collection)
                 {:schema       "PUBLIC"
+                 :can_write    false
                  :name         "USERS"
                  :display_name "Users"
                  :entity_type  "entity/UserTable"
@@ -471,7 +481,7 @@
       (is (= (merge
               (-> (table-defaults)
                   (dissoc :segments :field_values :metrics :measures :updated_at)
-                  (update :db merge (select-keys (mt/db) [:details :write_data_details :admin_details :initial_sync_error])))
+                  (update :db merge (select-keys (mt/db) [:details :write_data_details :initial_sync_error])))
               (t2/hydrate (t2/select-one [:model/Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table))
                           :pk_field :collection)
               {:description     "What a nice table!"
@@ -693,6 +703,7 @@
               (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status] :id (mt/id :categories))
                           :collection)
               {:schema       "PUBLIC"
+               :can_write    false
                :name         "CATEGORIES"
                :display_name "Categories"
                :fields       [(merge
@@ -1514,21 +1525,21 @@
        ["country" [{:field-name "continent_id", :base-type :type/Integer}]
         []]]
       (let [db (mt/db)
-            db-spec (sql-jdbc.conn/db->pooled-connection-spec db)
+            db-spec (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database db))
             get-fk-target #(t2/select-one-fn :fk_target_field_id :model/Field (mt/id :country :continent_id))]
         ;; 1. add FK relationship in the database targeting continent_1
         (jdbc/execute! db-spec "ALTER TABLE country ADD CONSTRAINT country_continent_id_fkey FOREIGN KEY (continent_id) REFERENCES continent(id);")
-        (sync/sync-database! db {:scan :schema})
+        (sync/sync-database! (:id db) {:scan :schema})
         (testing "initially country's continent_id is targeting continent_1"
           (is (= (mt/id :continent :id)
                  (get-fk-target))))
         (is (= 1 (count (mt/user-http-request :rasta :get 200 (format "table/%d/fks" (mt/id :continent))))))
         ;; 2. drop the country table
         (jdbc/execute! db-spec "DROP TABLE country;")
-        (sync/sync-database! db {:scan :schema})
+        (sync/sync-database! (:id db) {:scan :schema})
         (is (= () (mt/user-http-request :rasta :get 200 (format "table/%d/fks" (mt/id :continent)))))))))
 
-;;; ---------------------------------------- can-query and can-write filter tests ----------------------------------------
+;;; -------------------------------------------- can-query filter tests --------------------------------------------
 
 (deftest list-tables-can-query-filter-returns-only-queryable-tables-test
   (testing "can-query=true filters to only queryable tables"
@@ -1551,26 +1562,16 @@
         (is (= 1 (count response)))
         (is (= "queryable_table" (-> response first :name)))))))
 
-(deftest list-tables-can-write-filter-returns-only-editable-tables-test
-  (testing "can-write=true filters to only editable tables"
-    (mt/with-temp [:model/Database {db-id :id} {}
-                   :model/Table {table-1-id :id} {:db_id db-id :name "editable_table" :active true}
-                   :model/Table _ {:db_id db-id :name "not_editable_table" :active true}
-                   :model/PermissionsGroup {pg-id :id :as pg} {}
-                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :crowberto) :group_id pg-id}]
-      (t2/delete! :model/DataPermissions :db_id db-id)
-      ;; Block database-level access
-      (data-perms/set-database-permission! pg db-id :perms/view-data :unrestricted)
-      (data-perms/set-database-permission! pg db-id :perms/create-queries :query-builder)
-      ;; Grant manage-table-metadata to table-1 only (editable)
-      (data-perms/set-table-permission! pg table-1-id :perms/manage-table-metadata :yes)
-      ;; table-2 gets no manage-table-metadata (not editable)
-
-      (let [response (->> (mt/user-http-request :crowberto :get 200 "table" :can-write true)
-                          (filter #(= (:db_id %) db-id)))]
-        ;; crowberto is an admin, so should see all tables when they have manage-table-metadata
-        (is (>= (count response) 1))
-        (is (contains? (set (map :name response)) "editable_table"))))))
+(deftest list-tables-include-editable-data-model-filter-test
+  (testing "include-editable-data-model=true filters to only tables the user can edit the data model of"
+    (mt/with-premium-features #{}
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Table    {table-id :id} {:db_id db-id :active true}]
+        (let [table-ids (fn [user]
+                          (into #{} (comp (filter #(= db-id (:db_id %))) (map :id))
+                                (mt/user-http-request user :get 200 "table" :include-editable-data-model true)))]
+          (is (= #{table-id} (table-ids :crowberto)))
+          (is (= #{} (table-ids :rasta))))))))
 
 ;;; ---------------------------------------- /data endpoint permission tests ----------------------------------------
 

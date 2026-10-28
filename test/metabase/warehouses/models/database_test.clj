@@ -40,24 +40,24 @@
     (testing "so that newly inserted or edited databases skip Quartz trigger registration."
       (mt/with-temp [:model/Database db {}]
         (testing "default (disable-auto-sync=false): a regular database is auto-sync-eligible"
-          (is (true? (database/should-auto-sync? db))))
+          (is (true? (database/should-auto-sync? (:id db)))))
         (testing "with disable-auto-sync=true: a regular database is not auto-sync-eligible"
           (mt/with-temporary-setting-values [disable-auto-sync true]
-            (is (false? (database/should-auto-sync? db)))))))
+            (is (false? (database/should-auto-sync? (:id db))))))))
     (testing "but should-sync? (the gate for explicit, user-requested syncs) ignores the setting"
       (mt/with-temp [:model/Database db {}]
-        (is (true? (database/should-sync? db)))
+        (is (true? (database/should-sync? (:id db))))
         (mt/with-temporary-setting-values [disable-auto-sync true]
-          (is (true? (database/should-sync? db))
+          (is (true? (database/should-sync? (:id db)))
               "an explicit Sync-now must remain available even when auto-sync is disabled")))))
   (testing "destination databases (router children) are excluded from both, regardless of the flag"
     (mt/with-temp [:model/Database router {}
                    :model/Database dest   {:router_database_id (:id router)}]
-      (is (false? (database/should-sync? dest)))
-      (is (false? (database/should-auto-sync? dest)))
+      (is (false? (database/should-sync? (:id dest))))
+      (is (false? (database/should-auto-sync? (:id dest))))
       (mt/with-temporary-setting-values [disable-auto-sync true]
-        (is (false? (database/should-sync? dest)))
-        (is (false? (database/should-auto-sync? dest)))))))
+        (is (false? (database/should-sync? (:id dest))))
+        (is (false? (database/should-auto-sync? (:id dest))))))))
 
 (defn- trigger-for-db [db-id]
   (some (fn [{trigger-key :key, :as trigger}]
@@ -287,6 +287,18 @@
                 "settings"    {"database-enable-actions" true}
                 "id"          3}
                (encode-decode pg-db)))))))
+
+(deftest unknown-database-setting-test
+  (testing "a removed setting left in a database's settings is hidden, and isn't logged as an error (GHY-4961)"
+    (let [db (mi/instance :model/Database {:id       3
+                                           :settings {:database-enable-actions true
+                                                      :removed-setting         true}})]
+      (request/with-current-user (mt/user->id :rasta)
+        (mt/with-log-messages-for-level [messages [metabase.warehouses.models.database :debug]]
+          (is (= {"database-enable-actions" true}
+                 (get (json/decode (json/encode db)) "settings")))
+          (is (=? [{:level :debug, :message #"Hiding unknown setting :removed-setting.*"}]
+                  (filter #(re-find #"removed-setting" (:message %)) (messages)))))))))
 
 (deftest driver-supports-actions-and-database-enable-actions-test
   (mt/test-drivers #{:sqlite}
@@ -804,7 +816,7 @@
            (t2/update! :model/Database (:id db) {:engine (u/qualified-name ::alternate-details-driver)}))))))
 
 (deftest overlay-details-are-validated-the-way-they-are-resolved-test
-  ;; `:write_data_details` and `:admin_details` are merged onto `:details` by
+  ;; `:write_data_details` is merged onto `:details` by
   ;; [[metabase.driver.connection/effective-details]] rather than used on their own, so that merge is what has to
   ;; satisfy the policy -- an overlay holding nothing but credentials repoints nothing.
   (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
@@ -816,7 +828,28 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"private or internal network address"
-             (t2/update! :model/Database (:id db) {:admin_details {:host "127.0.0.1" :user "hummingbird"}})))))))
+             (t2/update! :model/Database (:id db) {:write_data_details {:host "127.0.0.1" :user "hummingbird"}})))))))
+
+(deftest disallowed-connection-parameters-are-refused-on-save-test
+  ;; like the network policy, enforced on the model so serialization import and config-file provisioning -- which
+  ;; write a Database without testing a connection -- cannot store one either
+  (testing "a disallowed connection parameter cannot be stored"
+    (doseq [details [{:host "db.example.com" :additional-options "socketFactory=a.b.C"}
+                     {:host "db.example.com" :sslfactory "a.b.C"}]]
+      (testing (pr-str details)
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"dangerous"
+             (mt/with-temp [:model/Database _ {:engine :postgres :details details}]))))))
+  (testing "...including by adding it to an existing database"
+    (mt/with-temp [:model/Database db {:engine :postgres :details {:host "db.example.com"}}]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"dangerous"
+           (t2/update! :model/Database (:id db) {:details {:host "db.example.com" :sslfactory "a.b.C"}})))))
+  (testing "a database whose driver isn't registered (e.g. an uninstalled plugin) can still be saved"
+    (mt/with-temp [:model/Database db {:engine "not-a-registered-driver" :details {:host "db.example.com"}}]
+      (t2/update! :model/Database (:id db) {:details {:host "db2.example.com"}})
+      (is (=? {:details {:host "db2.example.com"}}
+              (t2/select-one :model/Database (:id db)))))))
 
 (deftest empty-details-are-not-subject-to-the-network-policy-test
   (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]

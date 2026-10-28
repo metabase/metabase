@@ -91,6 +91,7 @@ export const SdkQuestionProvider = ({
   clickActionMode: userClickActionMode,
   navigateToNewCard: userNavigateToNewCard,
   onDrillThrough,
+  navigatedEntity,
   onVisualizationChange,
   initialVisualization,
 }: SdkQuestionProviderProps) => {
@@ -225,6 +226,7 @@ export const SdkQuestionProvider = ({
   useSdkControlledSqlParameters({
     sqlParameters,
     onSqlParametersChange,
+    navigatedEntity,
     question,
     parameterValues: parameterValues ?? {},
     updateParameterValues,

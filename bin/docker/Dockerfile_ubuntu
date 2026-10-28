@@ -13,10 +13,15 @@ RUN apt-get update && \
   apt-get upgrade -y && \
   apt-get install -y ca-certificates ca-certificates-java fonts-noto && \
   apt-get clean && \
+  sed -i 's|^mozilla/emSign_ECC_Root_CA_-_G3.crt|!&|' /etc/ca-certificates.conf && \
+  keytool -list -v -cacerts -storepass changeit | awk '/^Alias name:/{a=substr($0,13)} /^Owner: CN=emSign ECC Root CA - G3,/{print a}' | while read -r a; do keytool -delete -cacerts -storepass changeit -alias "$a"; done && \
   curl https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem -o /usr/local/share/ca-certificates/rds-combined-ca-bundle.pem && \
   update-ca-certificates && \
   mkdir -p /plugins && chmod a+rwx /plugins && \
   keytool -list -cacerts
+
+COPY blocked.certs /app/certs/
+RUN cat /app/certs/blocked.certs >> /opt/java/openjdk/lib/security/blocked.certs
 
 # add Metabase jar & add our run script to the image
 COPY ./metabase.jar ./run_metabase.sh /app/

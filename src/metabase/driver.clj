@@ -280,6 +280,28 @@
 
 (defmethod validate-db-details! :default [_driver _details] nil)
 
+(defmulti disallowed-connection-parameters
+  "The names of client connection parameters a user may never set for this driver, whether written into
+  `:additional-options` or sent as a detail key -- several drivers hand detail keys they do not recognize to the client
+  as connection properties. Typically parameters whose value the client loads and instantiates as a Java class. Defaults
+  to none.
+
+  Matched case-insensitively, and as substrings, so a name here also catches its longer spellings (`socketFactory`
+  covers `socketFactoryClass`). Enforced by [[metabase.driver.util/validate-connection-parameters!]], which runs when a
+  connection is tested, a connection pool is created, and a Database is saved. Extend a parent's list rather than
+  replacing it:
+
+    (defmethod driver/disallowed-connection-parameters :mysql
+      [driver]
+      (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver) [\"autoDeserialize\"]))"
+  {:added "0.65.0" :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod disallowed-connection-parameters :default
+  [_driver]
+  [])
+
 (def default-host-detail-keys
   "Detail keys that hold a warehouse host across the drivers we ship. `:host` is the near-universal one;
   `:hostname` is Athena's."
@@ -1035,9 +1057,10 @@
     ;; `{{table}}` gets replaced by a reference to a table.
     :parameters/table-reference
     ;;
-    ;; Does this driver natively support pivot queries via a single `GROUP BY GROUPING SETS (...)` query, instead of
-    ;; the legacy multi-query path? Drivers that opt in must also derive from `:sql` (which provides the
-    ;; `:pivot` clause compiler).
+    ;; Does this driver have a native single-scan pivot compiler — one that runs the shared upstream
+    ;; (filters/joins/expressions) once and emits every breakout combination in a single query, rather
+    ;; than a query per combination? Drivers that opt in must supply a `:pivot` clause compiler that
+    ;; emits the `pivot-grouping` column alongside the breakouts and aggregations.
     :native-pivot-tables})
 
 (defmulti database-supports?
@@ -1226,9 +1249,9 @@
 ;; TODO -- shouldn't this be called `notify-database-updated!`, since the expectation is that it is done for side
 ;; effects? issue: https://github.com/metabase/metabase/issues/39367
 (defmulti notify-database-updated
-  "Notify the driver that the attributes of a `database` have changed, or that `database was deleted. This is
-  specifically relevant in the event that the driver was doing some caching or connection pooling; the driver should
-  release ALL related resources when this is called."
+  "Notify the driver that the attributes of `database`, the Lib metadata of a Database, have changed, or that it was
+  deleted. This is specifically relevant in the event that the driver was doing some caching or connection pooling;
+  the driver should release ALL related resources when this is called."
   {:added "0.32.0" :arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -1390,10 +1413,9 @@
   update the value for `:details`. The default implementation is essentially `identity` (i.e returns `database`
   unchanged). This multimethod will only be called if `:details` is actually present in the `database` map.
 
-  Implementations should normalize `:details`, `:write-data-details`, and `:admin-details` (each if present),
-  since `:write-data-details` and `:admin-details` are merged on top of `:details` by
-  [[metabase.driver.connection/effective-details]] under their respective contexts. Un-normalized fields in
-  the overlay maps can leak through to the merged result. See [[metabase.driver.connection]] for more
+  Implementations should normalize `:details` and `:write-data-details` (each if present), since
+  `:write-data-details` is merged on top of `:details` by [[metabase.driver.connection/effective-details]] in a
+  write context. Un-normalized fields in the overlay map can leak through to the merged result. See [[metabase.driver.connection]] for more
   information."
   {:added "0.41.0" :arglists '([driver database])}
   dispatch-on-initialized-driver
@@ -1567,10 +1589,19 @@
    {:closed true}
    [:transform :metabase.lib.schema.id/transform]])
 
+(mr/def ::native-query-deps.unresolved-table-dep
+  [:map
+   {:closed true}
+   [:unresolved-table [:map
+                       {:closed true}
+                       [:schema {:optional true} :string]
+                       [:table :string]]]])
+
 (mr/def ::native-query-deps
   [:set [:or
          ::native-query-deps.table-dep
-         ::native-query-deps.transform-dep]])
+         ::native-query-deps.transform-dep
+         ::native-query-deps.unresolved-table-dep]])
 
 (defmulti native-query-deps
   "Gets the table dependencies of a given sql string (or equivalent).
@@ -1579,6 +1610,9 @@
 
   `query` is a Lib `:metabase.lib.schema/native-only-query`; you can use [[metabase.driver-api.core/raw-native-query]]
   to get the raw native query as needed.
+
+  A table the query names that matches no synced table or transform target can be returned as
+  `{:unresolved-table {:schema ... :table ...}}`, which dependency tracking does not record as an upstream.
 
   The return value should match the `:metabase.driver/native-query-deps` schema."
   {:added "0.57.0" :arglists '([driver query])}
@@ -1592,31 +1626,6 @@
                     {:driver driver
                      :args args}))
     #{}))
-
-(mr/def ::native-query-table-refs.table-ref
-  [:map
-   {:closed true}
-   [:schema {:optional true} [:maybe :string]]
-   [:table :string]])
-
-(mr/def ::native-query-table-refs
-  [:set ::native-query-table-refs.table-ref])
-
-(defmulti native-query-table-refs
-  "Gets the raw table references from a native query without resolving them to IDs.
-
-  Unlike [[native-query-deps]] which looks up tables in the database to return IDs,
-  this method returns just the schema and table names as they appear in the query.
-  This is useful for dependency tracking where referenced tables may not
-  exist yet.
-
-  `query` is a Lib `:metabase.lib.schema/native-only-query`; you can use
-  [[metabase.driver-api.core/raw-native-query]] to get the raw native query as needed.
-
-  The return value should match the `:metabase.driver/native-query-table-refs` schema."
-  {:changelog-test/ignore true :added "0.58.0" :arglists '([driver query])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
 
 (defmulti native-result-metadata
   "Gets the result-metadata for a native query using static analysis (i.e., without actually

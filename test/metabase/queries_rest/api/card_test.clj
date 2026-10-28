@@ -1602,6 +1602,62 @@
           (is (= "You cannot save this Question because you do not have permissions to run its query."
                  body)))))))
 
+(deftest save-card-with-sensitive-field-test
+  (testing "non-admins can't save a query that references a :sensitive column (SEC-829)"
+    (let [sensitive-query (mt/mbql-query users {:fields [$id $password]})]
+      (mt/with-model-cleanup [:model/Card]
+        (testing "POST /api/card"
+          (let [body (mt/user-http-request :rasta :post 400 "card"
+                                           (card-with-name-and-query (mt/random-name) sensitive-query))]
+            (is (=? #".*not available for querying.*" body))
+            (testing "without naming the column"
+              (is (not (re-find #"(?i)password" (pr-str body))))))
+          (is (some? (mt/user-http-request :crowberto :post 200 "card"
+                                           (card-with-name-and-query (mt/random-name) sensitive-query))))))
+      (mt/with-temp [:model/Card card {:creator_id    (mt/user->id :crowberto)
+                                       :dataset_query sensitive-query}]
+        (testing "PUT /api/card/:id without changing the query still works on a card an admin saved"
+          (is (=? {:name "Renamed"}
+                  (mt/user-http-request :rasta :put 200 (format "card/%d" (:id card)) {:name "Renamed"}))))
+        (testing "PUT /api/card/:id changing the query to another one that references the column is rejected"
+          (is (=? #".*not available for querying.*"
+                  (mt/user-http-request :rasta :put 400 (format "card/%d" (:id card))
+                                        {:dataset_query (mt/mbql-query users {:fields [$password]})})))))
+      (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query users)}]
+        (testing "PUT /api/card/:id adding the column to a query is rejected"
+          (is (=? #".*not available for querying.*"
+                  (mt/user-http-request :rasta :put 400 (format "card/%d" (:id card))
+                                        {:dataset_query sensitive-query}))))))))
+
+(deftest sensitive-field-in-saved-content-test
+  (testing "content someone else saved that uses a :sensitive column keeps working for non-admins who can see it"
+    (mt/with-temp [:model/Card    card    {:creator_id    (mt/user->id :crowberto)
+                                           :dataset_query (mt/mbql-query users
+                                                            {:fields   [$id $password]
+                                                             :filter   [:not-null $password]
+                                                             :order-by [[:asc $id]]
+                                                             :limit    1})}
+                   :model/Segment segment {:table_id   (mt/id :users)
+                                           :definition (mt/mbql-query users {:filter [:starts-with $password "4"]})}]
+      (testing "running the saved card"
+        (is (= [[1 "4be68cda-6fd5-4ba7-944e-2b475600bda5"]]
+               (mt/rows (mt/user-http-request :rasta :post 202 (format "card/%d/query" (:id card)))))))
+      (testing "an ad-hoc query built on top of the saved card"
+        (is (= [["4be68cda-6fd5-4ba7-944e-2b475600bda5"]]
+               (mt/rows (mt/user-http-request :rasta :post 202 "dataset"
+                                              {:database (mt/id)
+                                               :type     :query
+                                               :query    {:source-table (str "card__" (:id card))
+                                                          :fields       [[:field "PASSWORD" {:base-type :type/Text}]]}})))))
+      (testing "an ad-hoc query using a segment defined on the column"
+        (is (= [[1]]
+               (mt/rows (mt/user-http-request :rasta :post 202 "dataset"
+                                              (mt/mbql-query users
+                                                {:fields   [$id]
+                                                 :filter   [:segment (:id segment)]
+                                                 :order-by [[:asc $id]]
+                                                 :limit    1})))))))))
+
 (deftest create-card-parameter-permissions-generic-error-test
   (testing "POST /api/card"
     (testing "the 403 for a parameter field the user cannot query names neither the table nor its ids"
@@ -5833,3 +5889,31 @@
               (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
               (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
               (is (= [[9]] (mt/rows (mt/user-http-request :rasta :post 202 (format "card/%d/query" (u/the-id outer)))))))))))))
+
+(deftest sql-change-preserves-metadata-when-required-param-has-no-default-test
+  (testing "editing a native card with a required-no-default parameter preserves existing result_metadata on save (#83734)"
+    (let [mp                    (mt/metadata-provider)
+          state-tag             {:id           "_STATE_"
+                                 :name         "state"
+                                 :display-name "State"
+                                 :type         :text
+                                 :required     true}
+          query-with-default    (-> (lib/native-query mp "SELECT ID, NAME, EMAIL FROM PEOPLE WHERE STATE = {{state}}")
+                                    (lib/with-template-tags {"state" (assoc state-tag :default "CA")}))
+          query-without-default (-> (lib/native-query
+                                     mp
+                                     "SELECT ID, NAME, EMAIL FROM PEOPLE WHERE STATE = {{state}}\n-- edited")
+                                    (lib/with-template-tags {"state" state-tag}))]
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query query-with-default}]
+        ;; First, run the card with the default value so result_metadata gets populated server-side.
+        (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))
+        (let [metadata-before (t2/select-one-fn :result_metadata :model/Card card-id)]
+          (is (seq metadata-before)
+              "baseline: a run with the default value should populate result_metadata")
+          ;; Now edit the SQL and remove the default — the recompute at save time can't run the query
+          (mt/user-http-request :crowberto :put 200 (format "card/%d" card-id)
+                                {:dataset_query query-without-default})
+          (let [metadata-after (t2/select-one-fn :result_metadata :model/Card card-id)]
+            (is (= (map :name metadata-before)
+                   (map :name metadata-after))
+                "result_metadata should be preserved across SQL edits when the recompute cannot run")))))))

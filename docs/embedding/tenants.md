@@ -388,6 +388,8 @@ To deactivate a tenant:
 
 All tenant users will be deactivated and won't be able to sign in anymore. Tenant users will not be permanently deleted (Metabase does not delete users, only deactivates), so even though the tenant users will be deactivated, you won't be able to create new users with the same email.
 
+Metabase reactivates the tenant and the users deactivated with it on the next SSO sign-in from anyone in the tenant, if [user provisioning](../people-and-groups/authenticating-with-jwt.md#creating-metabase-accounts-with-sso) is on. To keep a tenant deactivated, turn off user provisioning (which also stops Metabase from creating accounts for new people).
+
 ## Changing tenant strategy
 
 ### From single-tenant to multi-tenant

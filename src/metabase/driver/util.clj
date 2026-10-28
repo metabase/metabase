@@ -8,12 +8,14 @@
    [metabase.app-db.core :as mdb]
    [metabase.auth-provider.core :as auth-provider]
    [metabase.config.core :as config]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.error-type :as qp.error-type]
    ;; the legacy QP pipeline still conveys the metadata provider via the ambient store; no MBQL 5 path yet
@@ -234,6 +236,29 @@
         (when (some #(not (u.http/host-allowed-for-network-policy? policy %)) hosts)
           (throw (blocked-network-address-exception)))))))
 
+(defn disallowed-connection-parameter
+  "The first name in [[driver/disallowed-connection-parameters]] that the string `s` contains, matched
+  case-insensitively, or nil when it contains none."
+  [driver s]
+  (let [s (u/lower-case-en (str s))]
+    (some #(when (str/includes? s (u/lower-case-en %)) %)
+          (driver/disallowed-connection-parameters driver))))
+
+(defn validate-connection-parameters!
+  "Throw a 400 if `details` set a connection parameter named in [[driver/disallowed-connection-parameters]], either in
+  `:additional-options` or as a detail key. Returns nil when the details are acceptable.
+
+  Reads the details a user supplied rather than the connection spec built from them: the spec also carries properties
+  Metabase sets itself, which are not the user's to have chosen. An auth provider's response is merged into the details
+  as well (see [[driver/incorporate-auth-provider-details]]), so check the details again once it has been."
+  [driver details]
+  (letfn [(refuse! [where match]
+            (throw (ex-info (str "Potentially dangerous keys in " where) {:status-code 400, :disallowed-key match})))]
+    (when-let [match (some->> (:additional-options details) (disallowed-connection-parameter driver))]
+      (refuse! "additional options" match))
+    (when-let [match (some #(disallowed-connection-parameter driver (if (keyword? %) (name %) %)) (keys details))]
+      (refuse! "connection details" match))))
+
 (defn can-connect-with-details?
   "Check whether we can connect to a database with `driver` and `details-map` and perform a basic query such as `SELECT
   1`. Specify optional param `throw-exceptions` if you want to handle any exceptions thrown yourself (e.g., so you
@@ -327,7 +352,8 @@
   how long the driver may take -- callers bound it at whatever granularity suits them."
   [driver feature database]
   (try
-    (driver/database-supports? driver feature database)
+    (database-routing/with-anonymous-router-access
+      (driver/database-supports? driver feature database))
     (catch Throwable e
       (log/error (u/format-color 'red "Failed to check feature '%s' for database %s: %s" (u/qualified-name feature) (:id database) (ex-message e)))
       false)))
@@ -355,6 +381,11 @@
   (if-not (:lib/type database)
     (lib-be/instance->metadata database :metadata/database)
     database))
+
+(mu/defn lib-database :- ::lib.schema.metadata/database
+  "The Database with `database-id` from the application database, as the Lib metadata that connections take."
+  [database-id :- ::lib.schema.id/database]
+  (lib.metadata/database (lib-be/application-database-metadata-provider database-id)))
 
 (mu/defn supports?
   "A defensive wrapper around [[metabase.driver/database-supports?]]. It adds logging, caching, and error handling to
@@ -895,13 +926,6 @@
    when the write-data-connection form marker is true."
   [driver]
   (fields-hidden-by-form-marker driver "write-data-connection"))
-
-(defn fields-hidden-for-admin-connection
-  "Returns the set of field names (strings) that should NOT appear in `admin_details` for the given `driver`.
-   These are fields whose resolved `visible-if` includes `\"admin-connection\" false`, meaning they are hidden
-   when the admin-connection form marker is true."
-  [driver]
-  (fields-hidden-by-form-marker driver "admin-connection"))
 
 (defn fetch-and-incorporate-auth-provider-details
   "Incorporates auth-provider responses with db-details.

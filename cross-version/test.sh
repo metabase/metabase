@@ -20,6 +20,8 @@ TARGET_VERSION=""
 METABASE_PORT="${METABASE_PORT:-3000}"
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-120}"
 LOG_DIR="${LOG_DIR:-$SCRIPT_DIR/logs}"
+GRACE_PERIOD="${GRACE_PERIOD:-3}"
+CYPRESS_FAILURES_RECORDED=0
 
 # Colors for output
 RED='\033[0;31m'
@@ -100,8 +102,23 @@ run_e2e() {
   fi
 
   log "Running @${phase} e2e tests for ${version} from: e2e/cross-version/${specs_dir##*/}/"
-  CYPRESS_SPEC_PATTERN="${specs_dir}/**/*.cy.spec.ts" \
-    "$REPO_ROOT/e2e/cross-version/run.sh" --phase "$phase"
+  local recorded_before
+  recorded_before=$(count_recorded_failures)
+  if ! CYPRESS_SPEC_PATTERN="${specs_dir}/**/*.cy.spec.ts" \
+    "$REPO_ROOT/e2e/cross-version/run.sh" --phase "$phase"; then
+    if (( $(count_recorded_failures) > recorded_before )); then
+      CYPRESS_FAILURES_RECORDED=1
+    fi
+    return 1
+  fi
+}
+
+count_recorded_failures() {
+  if [[ -n "${QUARANTINE_FAILURES_FILE:-}" && -f "$QUARANTINE_FAILURES_FILE" ]]; then
+    wc -l < "$QUARANTINE_FAILURES_FILE" | tr -d ' '
+  else
+    echo 0
+  fi
 }
 
 
@@ -251,9 +268,77 @@ migrate_down_step() {
   fi
 
   if grep -q "not rolled back" <<<"$output"; then
+    if changesets_in_grace_period "$output"; then
+      return 2
+    fi
     error "migrate down had changesets that were not rolled back (check logs above)"
     return 1
   fi
+}
+
+fetch_history() {
+  local git_=(git -C "$REPO_ROOT") head
+  [[ "$("${git_[@]}" rev-parse --is-shallow-repository)" == "true" ]] || return 0
+  head=$("${git_[@]}" rev-parse HEAD)
+  "${git_[@]}" fetch -q --no-tags --shallow-since="${GRACE_PERIOD} days ago" origin "$head" &&
+    "${git_[@]}" fetch -q --no-tags --deepen=1 origin "$head"
+}
+
+changesets_in_grace_period() {
+  local ids id id_line commit added now age_hours base json=""
+  ids=$(grep "not in the changelog file:" <<<"$1" | sed 's/.*not in the changelog file://' |
+    grep -oE 'v[0-9]+\.[0-9A-Za-z:._-]+' | sort -u || true)
+  if [[ -z "$ids" ]]; then
+    warn "Could not read the changeset ids that were not rolled back"
+    return 1
+  fi
+
+  if ! fetch_history; then
+    warn "Could not fetch the git history"
+    return 1
+  fi
+
+  base=$(git -C "$REPO_ROOT" rev-list -1 --first-parent --before="${GRACE_PERIOD} days ago" HEAD)
+  if [[ -z "$base" ]]; then
+    warn "Could not find the commit from ${GRACE_PERIOD} day(s) ago"
+    return 1
+  fi
+
+  now=$(date +%s)
+  for id in $ids; do
+    id_line="^[[:space:]]*id:[[:space:]]*['\"]?${id//./\\.}['\"]?[[:space:]]*$"
+    if git -C "$REPO_ROOT" grep -qE "$id_line" "$base" -- resources/migrations; then
+      warn "$id was already in ${base:0:11}, which is older than ${GRACE_PERIOD} day(s)"
+      return 1
+    fi
+    commit="" added=""
+    read -r commit added < <(git -C "$REPO_ROOT" -c log.showRoot=false log --since="${GRACE_PERIOD} days ago" \
+      -E -G "$id_line" --format='%H %ct' HEAD -- resources/migrations | tail -1) || true
+    if [[ -z "${commit:-}" ]]; then
+      warn "$id was not added in the last ${GRACE_PERIOD} day(s)"
+      return 1
+    fi
+    age_hours=$(( (now - added) / 3600 ))
+    warn "$id was added ${age_hours}h ago in ${commit:0:11}, which is in the grace period of ${GRACE_PERIOD} day(s)"
+    json+="${json:+,}{\"id\":\"$id\",\"commit\":\"$commit\",\"age_hours\":$age_hours}"
+  done
+
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    echo "unreleased_migrations=[$json]" >> "$GITHUB_OUTPUT"
+  fi
+}
+
+skip_for_unreleased_changesets() {
+  local message="Skipped $SOURCE_VERSION → $TARGET_VERSION: master has migrations that the released images do not have yet. The test runs in full again after the release."
+  warn "$message"
+  echo "::warning title=Cross-version test skipped::$message"
+  if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+    echo "⚠️ $message" >> "$GITHUB_STEP_SUMMARY"
+  fi
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    echo "skipped=true" >> "$GITHUB_OUTPUT"
+  fi
+  exit 0
 }
 
 # Cascading migrate down: rolls back multiple major versions one at a time
@@ -285,7 +370,11 @@ cascading_migrate_down() {
     log "--------------------------------------------"
     log "Cascade step $step/$steps: $version"
     log "--------------------------------------------"
-    if ! migrate_down_step "$version"; then
+    local step_rc=0
+    migrate_down_step "$version" || step_rc=$?
+    if (( step_rc == 2 )); then
+      return 2
+    elif (( step_rc != 0 )); then
       error "Migrate down failed at step $step ($version)"
       return 1
     fi
@@ -347,6 +436,44 @@ cleanup() {
   teardown
 }
 
+xml_escape() {
+  local value="$1"
+  value="${value//&/&amp;}"
+  value="${value//</&lt;}"
+  value="${value//>/&gt;}"
+  value="${value//\"/&quot;}"
+  printf '%s' "$value"
+}
+
+write_junit_result() {
+  local code="$1"
+  local name="$2"
+  local result="/>"
+  if (( code != 0 )); then
+    result="><failure message=\"test.sh exited with code ${code}\">test.sh exited with code ${code}</failure></testcase>"
+  fi
+  mkdir -p "$(dirname "$CROSS_VERSION_JUNIT_FILE")"
+  printf '<?xml version="1.0" encoding="UTF-8"?>\n<testsuite name="cross-version">\n  <testcase name="%s" classname="cross-version" file="cross-version/test.sh"%s\n</testsuite>\n' \
+    "$(xml_escape "$name")" "$result" > "$CROSS_VERSION_JUNIT_FILE"
+}
+
+# Writes a small xml file recording pass/fail that is uploaded to CI Conductor so we can quarantine these tests if required.
+record_result() {
+  local code="$1"
+  local name="$SOURCE_VERSION -> $TARGET_VERSION"
+  if (( CYPRESS_FAILURES_RECORDED == 1 )); then
+    code=0
+  fi
+  if [[ -n "${CROSS_VERSION_JUNIT_FILE:-}" ]]; then
+    write_junit_result "$code" "$name"
+  fi
+  (( code == 0 )) && return 0
+  [[ -n "${QUARANTINE_FAILURES_FILE:-}" ]] || return 0
+  mkdir -p "$(dirname "$QUARANTINE_FAILURES_FILE")"
+  printf '{"test_name":"%s","test_path":"cross-version","file_path":"cross-version/test.sh"}\n' \
+    "$name" >> "$QUARANTINE_FAILURES_FILE"
+}
+
 check_image_exists() {
   local image="$1"
   if ! docker manifest inspect "$image" > /dev/null 2>&1; then
@@ -357,6 +484,8 @@ check_image_exists() {
 
 main() {
   local direction source_image target_image
+
+  trap 'code=$?; record_result "$code"; exit "$code"' EXIT
 
   direction=$(cli compare "$SOURCE_VERSION" "$TARGET_VERSION") || exit 1
   source_image=$(cli image "$SOURCE_VERSION") || exit 1
@@ -383,7 +512,7 @@ main() {
   teardown
   init_logs
 
-  trap cleanup EXIT
+  trap 'code=$?; cleanup; record_result "$code"; exit "$code"' EXIT
 
   log ""
   log "Step 1: Starting SOURCE version ($SOURCE_VERSION)..."
@@ -439,7 +568,11 @@ main() {
 
     log ""
     log "Step 5: Rolling back database ($SOURCE_VERSION → $TARGET_VERSION)..."
-    if ! cascading_migrate_down "$SOURCE_VERSION" "$TARGET_VERSION"; then
+    local cascade_rc=0
+    cascading_migrate_down "$SOURCE_VERSION" "$TARGET_VERSION" || cascade_rc=$?
+    if (( cascade_rc == 2 )); then
+      skip_for_unreleased_changesets
+    elif (( cascade_rc != 0 )); then
       error "❌ migrate down failed"
       exit 1
     fi

@@ -1,9 +1,6 @@
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { DataApp } from "metabase-types/api";
 
 const { H } = cy;
-
-const { ORDERS_ID } = SAMPLE_DATABASE;
 
 /**
  * Drives a real remote-sync pull of a repo whose `data_apps/` holds two apps, each a `data_app.yaml` with its bundle
@@ -19,42 +16,35 @@ describe("scenarios > data apps > repo sync", () => {
 
   it("materializes each app with its bundle, then removes an app whose files are removed from the repo on the next sync", () => {
     H.copySyncedCollectionFixture();
+    H.updateSetting("remote-sync-custom-collections-enabled", true);
     H.copySyncedDataAppsFixture();
     H.commitToRepo("Add data apps");
     H.configureGitAndPullChanges("read-write");
 
-    cy.visit("/admin/settings/apps");
-    cy.findByTestId("admin-layout-content").within(() => {
-      cy.findByTestId("data-app-list-item-good")
-        .scrollIntoView()
-        .within(() => {
-          cy.findByRole("link", { name: "Good App" }).should("be.visible");
-          cy.findByText("A well-formed app that syncs cleanly").should(
-            "be.visible",
-          );
-        });
-      cy.findByTestId("data-app-list-item-second-app").should("exist");
+    cy.visit("/data-studio/apps");
+    H.main().within(() => {
+      cy.findByRole("row", { name: /Good App/ }).should("be.visible");
+      cy.findByRole("row", { name: /Second App/ }).should("be.visible");
     });
 
-    cy.request("GET", "/api/apps").then(({ body: apps }) => {
+    cy.request("GET", "/api/ee/apps").then(({ body: apps }) => {
       expect(apps.map((app: { name: string }) => app.name).sort()).to.deep.eq([
         "good",
         "second-app",
       ]);
     });
 
-    cy.request("/api/apps/good/bundle").its("status").should("eq", 200);
+    cy.request("/api/ee/apps/good/bundle").its("status").should("eq", 200);
 
     // The good app's collection files were loaded with it: its collection, and
     // the saved question in it, addressed by the entity IDs the files carry.
-    cy.request<DataApp>("/api/apps/good").then(({ body: app }) => {
+    cy.request<DataApp>("/api/ee/apps/good").then(({ body: app }) => {
       cy.request("/api/collection/goodAppCollection0000")
         .its("body.id")
         .should("eq", app.resource_collection_id);
       cy.request("/api/card/goodAppOrdersQuestion")
         .its("body.collection_id")
         .should("eq", app.resource_collection_id);
-      expect(app.table_ids).to.deep.eq([ORDERS_ID]);
     });
 
     // An author deletes an app by deleting its directory and its collection's
@@ -70,12 +60,12 @@ describe("scenarios > data apps > repo sync", () => {
     H.commitToRepo("Remove the good app from the repo");
     H.configureGitAndPullChanges("read-write");
 
-    cy.request("GET", "/api/apps").then(({ body: apps }) => {
+    cy.request("GET", "/api/ee/apps").then(({ body: apps }) => {
       expect(apps.map((app: { name: string }) => app.name)).to.deep.eq([
         "second-app",
       ]);
     });
-    cy.request({ url: "/api/apps/good", failOnStatusCode: false })
+    cy.request({ url: "/api/ee/apps/good", failOnStatusCode: false })
       .its("status")
       .should("eq", 404);
     cy.request({

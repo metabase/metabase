@@ -288,7 +288,7 @@
       (testing "Refingerprints field when updated"
         (mt/with-dynamic-fn-redefs [quick-task/submit-task! (fn [task] (task))]
           (mt/dataset integer-coerceable
-            (sync/sync-database! (t2/select-one :model/Database :id (mt/id)))
+            (sync/sync-database! (:id (t2/select-one :model/Database :id (mt/id))))
             (let [field-id      (mt/id :t :f)
                   set-strategy! (fn [strategy]
                                   (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id)
@@ -929,7 +929,7 @@
           (mt/with-temp [:model/Database database {:engine driver/*driver* :details (assoc (:details database) :json-unfolding true)}]
             (mt/with-db database
               ;; Sync the new database
-              (sync/sync-database! database)
+              (sync/sync-database! (:id database))
               (let [field (t2/select-one :model/Field :id (mt/id :json :json_bit))
                     get-database (fn [] (t2/select-one :model/Database :id (mt/id)))
                     set-json-unfolding-for-field! (fn [v]
@@ -948,11 +948,11 @@
                   (is (seq (nested-fields))))
                 (testing "nested fields are removed when json unfolding is disabled for the DB"
                   (set-json-unfolding-for-db! false)
-                  (sync/sync-database! (get-database))
+                  (sync/sync-database! (:id (get-database)))
                   (is (empty? (nested-fields))))
                 (testing "nested fields are added when json unfolding is enabled again for the DB"
                   (set-json-unfolding-for-db! true)
-                  (sync/sync-database! (get-database))
+                  (sync/sync-database! (:id (get-database)))
                   (is (seq (nested-fields))))
                 (testing "nested fields are removed when json unfolding is disabled for the field"
                   (set-json-unfolding-for-field! false)
@@ -971,7 +971,7 @@
             (mt/with-temp [:model/Database database {:engine driver/*driver* :details (assoc (:details database) :json-unfolding false)}]
               (mt/with-db database
                 ;; Sync the new database
-                (sync/sync-database! database)
+                (sync/sync-database! (:id database))
                 (let [get-field (fn [] (t2/select-one :model/Field :id (mt/id :json :json_bit)))
                       get-database (fn [] (t2/select-one :model/Database :id (mt/id)))
                       set-json-unfolding-for-field! (fn [v]
@@ -999,11 +999,11 @@
                     (set-json-unfolding-for-db! true)
                     (is (true? (:json-unfolding (:details (get-database)))))
                     (is (true? (:json_unfolding (get-field))))
-                    (sync/sync-database! (get-database))
+                    (sync/sync-database! (:id (get-database)))
                     (is (seq (nested-fields))))
                   (testing "nested fields are removed when json unfolding is disabled again"
                     (set-json-unfolding-for-db! false)
-                    (sync/sync-database! (get-database))
+                    (sync/sync-database! (:id (get-database)))
                     (is (empty? (nested-fields)))))))))))))
 
 (deftest coercion-strategy-is-respected-after-follow-up-request-test

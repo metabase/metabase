@@ -86,7 +86,10 @@ export function BulkTableVisibilityToggle({
   };
 
   return (
-    <Tooltip label={areAllHidden ? t`Unhide all tables` : t`Hide all tables`}>
+    <Tooltip
+      label={areAllHidden ? t`Unhide all tables` : t`Hide all tables`}
+      position="right"
+    >
       <ActionIcon
         variant="subtle"
         aria-label={areAllHidden ? t`Unhide all tables` : t`Hide all tables`}

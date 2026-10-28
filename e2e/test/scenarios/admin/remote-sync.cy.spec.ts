@@ -40,6 +40,7 @@ const setup = (snapshot = "default") => {
   H.resetSnowplow();
   cy.signInAsAdmin();
   H.activateToken("pro-self-hosted");
+  H.updateSetting("remote-sync-custom-collections-enabled", true);
   H.setupGitSync();
   H.interceptTask();
 };
@@ -1189,8 +1190,10 @@ describe("Remote Sync", () => {
 
       it("flags a new term on the Glossary tab and pushes it to the repository", () => {
         // Glossary entries ride with the Library, so sync the Library rather than a plain collection.
-        H.createLibrary().then(({ body: library }) => {
-          H.configureGit("read-write", LOCAL_GIT_URL, { [library.id]: true });
+        H.createLibrary().then(({ libraryCollectionId }) => {
+          H.configureGit("read-write", LOCAL_GIT_URL, {
+            [libraryCollectionId]: true,
+          });
         });
 
         visitDataStudioGlossary();

@@ -8,6 +8,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.indexes.reconcile :as reconcile]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -195,7 +196,7 @@
     ;; GET /indexes API consumes reads them back correctly, including catalog shapes the apply path can't produce
     ;; (e.g. a Postgres gin or partial index). Tables are created directly from raw DDL.
     (mt/test-drivers (index-util/index-test-drivers)
-      (let [db     (mt/db)
+      (let [db     (lib.metadata/database (mt/metadata-provider))
             schema (fetch-schema driver/*driver*)
             cases  (index-util/fetch-cases driver/*driver*)]
         (is (driver/database-supports? driver/*driver* :index/fetch db)
@@ -286,7 +287,7 @@
                                              :target {:database (mt/id) :type "table" :schema "public" :name "t"}}
                  :model/TableIndex {idx-id :id} {:transform_id tid :index_name "boom_idx"
                                                  :structured {:kind :btree :name "boom_idx" :columns [{:name "x"}]}}]
-    (let [transform {:id tid :target {:database (mt/id) :schema "public" :name "t"
+    (let [transform {:id tid :target {:database (mt/id) :type "table" :schema "public" :name "t"
                                       :indexes [{:kind :btree :name "boom_idx" :columns [{:name "x"}]}]}}]
       (with-redefs [driver/supported-index-methods (fn [& _] {:btree {:lifecycle :standalone}})
                     driver/connection-spec        (fn [& _] {})
@@ -294,7 +295,7 @@
                     driver/execute-raw-queries!   (fn [& _] (throw (ex-info "ddl boom" {})))]
         (is (thrown? Throwable
                      (#'transforms-base.u/apply-standalone-indexes!
-                      {:engine :postgres :id (mt/id)} (assoc (:target transform) :transform-id tid))))
+                      {:lib/type :metadata/database :engine :postgres :id (mt/id)} (assoc (:target transform) :transform-id tid))))
         (is (= :failed (t2/select-one-fn :status :model/TableIndex idx-id)))
         (is (re-find #"ddl boom" (t2/select-one-fn :error_message :model/TableIndex idx-id)))))))
 

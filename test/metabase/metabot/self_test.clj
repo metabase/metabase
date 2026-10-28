@@ -429,21 +429,24 @@
       (is (= ["msg-0" "msg-1" "msg-2"] result)))))
 
 (deftest sse-reducible-stops-response-test
-  (let [cnt     (atom 30)
+  (let [total   500
+        sent    (atom 0)
+        stopped (promise)
         handler (fn [_req]
                   (let [out (java.io.PipedOutputStream.)
                         in  (java.io.PipedInputStream. out 65536)]
                     (future
                       (try
-                        (dotimes [i @cnt]
+                        (dotimes [i total]
                           (.write out (.getBytes (test-util/make-sse [(str "msg-" i)])))
                           (.flush out)
-                          (swap! cnt dec)
+                          (swap! sent inc)
                           (Thread/sleep 10))
                         (catch Exception _)
                         (finally
                           (try (.close out)
-                               (catch Exception _)))))
+                               (catch Exception _))
+                          (deliver stopped true))))
                     {:status  200
                      :headers {"Content-Type"      "text/event-stream"
                                "Cache-Control"     "no-cache"}
@@ -451,22 +454,25 @@
         server  (jetty/run-jetty handler {:port 0
                                           :join? false
                                           :output-buffer-size 1})
-        url     (str "http://localhost:" (.. server getURI getPort))]
+        url     (str "http://localhost:" (.. server getURI getPort))
+        opts    {:method :post :url url :as :stream}]
     (try
-      (let [res       (http/request {:method :post :url url :as :stream})
-            reducible (self.core/sse-reducible (:body res))
-            ;; Take only 2 items, which should trigger early termination
-            result    (reduce (fn [acc item]
-                                (if (< (count acc) 2)
-                                  (conj acc item)
-                                  (reduced acc)))
-                              []
-                              reducible)]
-        (is (= ["msg-0" "msg-1"] result))
-        ;; Give time for cancellation to propagate
-        (Thread/sleep 30)
-        ;; Should have stopped writing when reduction stopped
-        (is (> @cnt 20) "SHOULD have stopped writing when reduction terminated early"))
+      ;; Held through the checks, so that a garbage-collected socket can't stop the server in sse-reducible's place
+      (with-open [^java.io.Closeable body (self.core/abort-on-close (http/request opts) opts)]
+        (let [reducible (self.core/sse-reducible body)
+              ;; Take only 2 items, which should trigger early termination
+              result    (reduce (fn [acc item]
+                                  (if (< (count acc) 2)
+                                    (conj acc item)
+                                    (reduced acc)))
+                                []
+                                reducible)]
+          (is (= ["msg-0" "msg-1"] result))
+          (is (deref stopped 10000 false)
+              "the server was still writing 10 s after the client stopped reading")
+          (is (< @sent (/ total 2))
+              (str "the server kept writing after the client stopped reading: it wrote "
+                   @sent " of " total " messages"))))
       (finally
         (.stop server)))))
 
@@ -724,13 +730,14 @@
     (let [running  (test-util/parts->aisdk-chunks
                     [{:type :tool-input :id "call-1" :function "get-time" :arguments {:tz "Europe/Kyiv"}}])
           cut-off  (test-util/parts->aisdk-chunks
-                    [{:type :tool-input :id "call-2" :function "get-time" :arguments {:tz "Europe/Paris"}}])
+                    [{:type :tool-input :id "call-2" :function "convert-currency"
+                      :arguments {:amount 100, :from "EUR", :to "USD"}}])
           streamed (concat running (butlast cut-off) [{:type :error :errorText "Overloaded"}])]
       (log.capture/with-log-messages-for-level [messages [metabase.metabot.self.core :warn]]
         (is (=? (conj (vec streamed) {:type :tool-output-available :toolCallId "call-1"})
                 (into [] (self.core/tool-executor-xf test-util/TOOLS) (concat streamed [(last cut-off)]))))
         (testing "and a warning names the call that never ran"
-          (is (=? [{:level :warn :message #".*call-2.*get-time.*"}] (messages))))))))
+          (is (=? [{:level :warn :message #".*call-2 convert-currency.*"}] (messages))))))))
 
 ;;; tool argument validation tests
 
@@ -793,6 +800,32 @@
       (is (= "Invalid tool arguments: the arguments were not valid JSON. Send the call again as a JSON object."
              (:output result)))
       (is (= {:class :validation :code :invalid-json} (:error result))))))
+
+(deftest ^:parallel tool-unparseable-arguments-warning-test
+  (testing "invalid JSON logs one warning with the tool name, the call ID and the length, but not the parse error"
+    (let [raw "{\"tz\": jane_doe_4165551234}"]
+      (doseq [[tool-name logged-name] [["get-time" "get-time"] ["analyze_chart" "unknown"]]]
+        (testing tool-name
+          (log.capture/with-log-messages-for-level [messages [metabase.metabot.self.core :warn]]
+            (run! identity (eduction (self.core/tool-executor-xf test-util/TOOLS)
+                                     (self.core/lite-aisdk-xf)
+                                     [{:type :tool-input-start :toolName tool-name :toolCallId "call-j"}
+                                      {:type :tool-input-delta :toolCallId "call-j" :inputTextDelta raw}
+                                      {:type :tool-input-available :toolName tool-name :toolCallId "call-j"}]))
+            (is (=? [{:level   :warn
+                      :message (str "Failed to parse tool arguments as JSON {:tool-name " logged-name
+                                    ", :tool-call-id call-j, :raw-len " (count raw) "}")}]
+                    (messages)))))))))
+
+(deftest ^:parallel tool-sentinel-key-arguments-test
+  (testing "valid JSON that sets the raw-arguments sentinel key gets a validation outcome"
+    (doseq [[tool-name code] [["get-time" :invalid-json] ["analyze_chart" :unknown-tool]]]
+      (testing tool-name
+        (let [chunks (test-util/parts->aisdk-chunks
+                      [{:type :tool-input :id "call-k" :function tool-name
+                        :arguments {::self.core/raw-arguments 1}}])]
+          (is (= {:class :validation :code code}
+                 (-> (into [] (self.core/tool-executor-xf test-util/TOOLS) chunks) last :result :error))))))))
 
 (deftest ^:parallel tool-non-object-arguments-test
   (let [received (atom ::not-called)
@@ -2004,22 +2037,26 @@
 (deftest call-llm-snowplow-test
   (llm.tu/with-default-connections
     (testing "fires :snowplow/token_usage and :snowplow/ai_service_event for call-llm with tool calls"
-      (let [rasta-id (mt/user->id :rasta)]
-        ;; The adapter pre-sums input + cache_creation + cache_read into :promptTokens,
-        ;; so the mock supplies the already-summed value (950 = 100 fresh + 50 cache_creation + 800 cache_read).
-        ;; total_tokens reverts to prompt + completion = 950 + 20 = 970.
+      (let [rasta-id (mt/user->id :rasta)
+            ;; The adapter pre-sums input + cache_creation + cache_read into :promptTokens,
+            ;; so the mock supplies the already-summed value (950 = 100 fresh + 50 cache_creation + 800 cache_read).
+            ;; total_tokens reverts to prompt + completion = 950 + 20 = 970.
+            chunks   (test-util/parts->aisdk-chunks
+                      [{:type :start :id "msg-1"}
+                       {:type :tool-input :id "call-1" :function "get-time"
+                        :arguments {:tz "UTC"}}
+                       {:type :tool-input :id "call-2" :function "lookup_jane_doe_4165551234"
+                        :arguments {}}
+                       {:type :usage :usage {:promptTokens        950
+                                             :completionTokens    20
+                                             :cacheCreationTokens 50
+                                             :cacheReadTokens     800}
+                        :model "test-model" :id "msg-1"}
+                       {:type :tool-input :id "call-3" :function "lookup_jane_doe_4165551234"
+                        :arguments {:tz "UTC"}}])]
         (mt/with-dynamic-fn-redefs [openrouter/openrouter
-                                    (constantly (test-util/mock-llm-response
-                                                 [{:type :start :id "msg-1"}
-                                                  {:type :tool-input :id "call-1" :function "get-time"
-                                                   :arguments {:tz "UTC"}}
-                                                  {:type :tool-input :id "call-2" :function "lookup_jane_doe_4165551234"
-                                                   :arguments {}}
-                                                  {:type :usage :usage {:promptTokens        950
-                                                                        :completionTokens    20
-                                                                        :cacheCreationTokens 50
-                                                                        :cacheReadTokens     800}
-                                                   :model "test-model" :id "msg-1"}]))]
+                                    (constantly (concat (drop-last 2 chunks)
+                                                        [{:type :error :errorText "Overloaded"}]))]
           (mt/with-current-user rasta-id
             (snowplow-test/with-fake-snowplow-collector
               (let [[spans logs] (tracing.tu/with-span-exporter [exporter]
@@ -2057,6 +2094,8 @@
                         tool-events))
                 (is (= 2 (count (filter #(= ":metabot.agent/run-tool" (:name %)) spans))))
                 (is (some #(str/includes? (:message %) "call-2") logs))
+                (is (some #(str/includes? (:message %) "call-3 unknown") logs))
+                (is (some #(str/includes? (:message %) ":tool-call-id call-3") logs))
                 (is (not (str/includes? (pr-str [events spans logs]) "jane_doe"))
                     "a name the model made up never reaches analytics, spans or logs")))))))))
 

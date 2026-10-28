@@ -89,7 +89,8 @@
       (interface/returned-columns-impl parser driver native-query))))
 
 (mu/defn referenced-tables :- [:set :map]
-  "Return tables referenced by the `native-query`"
+  "Return the tables and transforms the `native-query` references, keeping each name that matches neither as
+  `{:unresolved-table spec}`."
   [driver :- :keyword
    native-query :- :metabase.lib.schema/native-only-query]
   (let [parser (sql-tools.settings/current-parser-backend)]
@@ -220,7 +221,7 @@
 (def ^:private TranspilationResult
   [:map
    [:status [:enum :success :error :skipped]]
-   [:reason {:optional true} [:enum :contains-templates :missing-dialect]]
+   [:reason {:optional true} [:enum :contains-templates :missing-dialect :multiple-statements]]
    [:error-message {:optional true} :string]
    [:transpiled-sql {:optional true} :string]])
 

@@ -98,6 +98,7 @@
    {:context "Multiple SQL statements should be rejected"
     :dialect "postgres" :sql "SELECT 1; SELECT 2"
     :expected {:valid? false
+               :reason :multiple-statements
                :error-message "Multiple SQL statements are not supported. Please provide a single query."}}
    {:context "Transpilation should preserve the query's logical structure"
     :dialect "snowflake" :sql "SELECT a, b FROM t WHERE x > 1 ORDER BY a"

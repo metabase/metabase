@@ -23,6 +23,7 @@
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.sync.core :as sync]
+   [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
    [metabase.test.data.impl :as data.impl]
@@ -257,7 +258,9 @@
                   " `v4_test_data.venues`.`price` AS `price` "
                   "FROM `v4_test_data.venues` "
                   "LIMIT 1"
-                  "\n\n-- Metabase:: userID: 1000 queryType: MBQL queryHash: 01020304"))
+                  (format "\n\n-- Metabase:: userID: 1000 queryType: MBQL queryHash: 01020304 accountID: %s databaseID: %d"
+                          (system/site-uuid)
+                          (mt/id))))
            (query->native
             {:database (mt/id)
              :type     :query
@@ -604,7 +607,7 @@
            (with-test-db-name
              (format "INSERT INTO `v4_test_data.%s` (ts, dt) VALUES (TIMESTAMP \"2020-01-01 00:00:00 UTC\", DATETIME \"2020-01-01 00:00:00\")"
                      table-name)))
-          (sync/sync-database! (mt/db))
+          (sync/sync-database! (mt/id))
           (f table-name)
           (finally
             (bigquery.tx/execute! (with-test-db-name "DROP TABLE IF EXISTS `v4_test_data.%s`") table-name)))))))
@@ -1171,24 +1174,25 @@
                      :limit        2})]
         (mt/with-native-query-testing-context query
           (is (= (with-test-db-name
-                   {:query      ["SELECT"
+                   {:query      ["WITH `__mb_stage_0` AS ("
+                                 "  SELECT"
+                                 "    DATE_TRUNC("
+                                 "      `v4_test_data.checkins`.`date`,"
+                                 "      month"
+                                 "    ) AS `date`,"
+                                 "    COUNT(*) AS `count`"
+                                 "  FROM"
+                                 "    `v4_test_data.checkins`"
+                                 "  GROUP BY"
+                                 "    `date`"
+                                 "  ORDER BY"
+                                 "    `date` ASC"
+                                 ")"
+                                 "SELECT"
                                  "  `__mb_source`.`count` AS `count`,"
                                  "  COUNT(*) AS `count_2`"
                                  "FROM"
-                                 "  ("
-                                 "    SELECT"
-                                 "      DATE_TRUNC("
-                                 "        `v4_test_data.checkins`.`date`,"
-                                 "        month"
-                                 "      ) AS `date`,"
-                                 "      COUNT(*) AS `count`"
-                                 "    FROM"
-                                 "      `v4_test_data.checkins`"
-                                 "    GROUP BY"
-                                 "      `date`"
-                                 "    ORDER BY"
-                                 "      `date` ASC"
-                                 "  ) AS `__mb_source`"
+                                 "  `__mb_stage_0` AS `__mb_source`"
                                  "GROUP BY"
                                  "  `count`"
                                  "ORDER BY"
@@ -1236,15 +1240,16 @@
                     {:aggregation  [[:count]]
                      :breakout     [[:field "source" {:base-type :type/Text}]]
                      :source-query {:native "select 1 as `val`, '2' as `source`"}})]
-        (is (= {:query      ["SELECT"
+        (is (= {:query      ["WITH `__mb_stage_0` AS ("
+                             "  select"
+                             "    1 as `val`,"
+                             "    '2' as `source`"
+                             ")"
+                             "SELECT"
                              "  `__mb_source`.`source` AS `source`,"
                              "  COUNT(*) AS `count`"
                              "FROM"
-                             "  ("
-                             "    select"
-                             "      1 as `val`,"
-                             "      '2' as `source`"
-                             "  ) AS `__mb_source`"
+                             "  `__mb_stage_0` AS `__mb_source`"
                              "GROUP BY"
                              "  `source`"
                              "ORDER BY"
@@ -1268,8 +1273,8 @@
 
 (deftest ^:parallel cast-timestamp-to-datetime-if-needed-for-temporal-arithmetic-test
   (testing "cast timestamps to datetimes so we can use DATETIME_ADD() if needed for units like month (#21969)"
-    (is (= ["DATETIME_ADD(CAST(? AS datetime), INTERVAL 3 month)"
-            #t "2022-04-22T18:27-08:00"]
+    (is (= ["TIMESTAMP(DATETIME_ADD(?, INTERVAL 3 month))"
+            #t "2022-04-22T18:27"]
            (let [t         #t "2022-04-22T18:27:00-08:00"
                  hsql-form (sql.qp/add-interval-honeysql-form :bigquery-cloud-sdk t 3 :month)]
              (sql.qp/format-honeysql :bigquery-cloud-sdk hsql-form))))))
@@ -1328,7 +1333,17 @@
                                 ;; 4. sum of order total
                                 (lib/aggregate (lib/sum orders-total))
                                 (lib/limit 3))]
-      (is (= ["SELECT"
+      (is (= ["WITH `__mb_stage_0` AS ("
+              "  SELECT"
+              "    TIMESTAMP_TRUNC("
+              "      `test_data.orders`.`created_at`,"
+              "      month"
+              "    ) AS `created_at`,"
+              "    `test_data.orders`.`total` AS `total`"
+              "  FROM"
+              "    `test_data.orders`"
+              ")"
+              "SELECT"
               "  `__mb_source`.`created_at` AS `created_at`,"
               "  SUM(COUNT(*)) OVER ("
               "    ORDER BY"
@@ -1340,16 +1355,7 @@
               "  ) AS `sum`,"
               "  SUM(`__mb_source`.`total`) AS `sum_2`"
               "FROM"
-              "  ("
-              "    SELECT"
-              "      TIMESTAMP_TRUNC("
-              "        `test_data.orders`.`created_at`,"
-              "        month"
-              "      ) AS `created_at`,"
-              "      `test_data.orders`.`total` AS `total`"
-              "    FROM"
-              "      `test_data.orders`"
-              "  ) AS `__mb_source`"
+              "  `__mb_stage_0` AS `__mb_source`"
               "GROUP BY"
               "  `created_at`"
               "ORDER BY"

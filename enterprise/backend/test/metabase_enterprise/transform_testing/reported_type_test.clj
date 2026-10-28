@@ -27,7 +27,7 @@
   [driver sql]
   (driver/do-with-test-connection
    driver
-   (mt/db)
+   (lib.metadata/database (mt/metadata-provider))
    (fn [conn]
      (let [table (driver/temp-table-name driver)]
        (try
