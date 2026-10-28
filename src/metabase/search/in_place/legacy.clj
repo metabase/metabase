@@ -471,10 +471,12 @@
         cols-or-nils                  (canonical-columns model column-alias->honeysql-clause)]
     cols-or-nils))
 
-(mu/defn- from-clause-for-model :- [:tuple [:tuple :keyword :keyword]]
+(mu/defn- from-clause-for-model :- [:tuple [:tuple :any :keyword]]
   [model :- SearchableModel]
   (let [{:keys [db-model alias]} (get search.config/model-to-db-model model)]
-    [[(t2/table-name db-model) alias]]))
+    (if (= model "table")
+      [(warehouse-schema-overlay/table-query {:alias alias})]
+      [[(t2/table-name db-model) alias]])))
 
 (mu/defn- base-query-for-model :- [:map {:closed true}
                                    [:select :any]
