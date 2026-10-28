@@ -1,5 +1,5 @@
 import _userEvent from "@testing-library/user-event";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { createMockMetadata } from "__support__/metadata";
 import {
@@ -21,8 +21,12 @@ import {
   within,
 } from "__support__/ui";
 import { METAKEY } from "metabase/utils/browser";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
-import { createMetadataProvider } from "metabase-lib/test-helpers";
+import {
+  columnFinder,
+  createMetadataProvider,
+} from "metabase-lib/test-helpers";
 import type {
   CollectionItem,
   RecentItem,
@@ -33,12 +37,15 @@ import {
   createMockCollection,
   createMockCollectionItem,
   createMockDatabase,
+  createMockField,
   createMockRecentCollectionItem,
+  createMockTable,
 } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
   PEOPLE_ID,
   PRODUCTS_ID,
+  REVIEWS_ID,
   createSampleDatabase,
   createSavedStructuredCard,
   createStructuredModelCard,
@@ -48,12 +55,34 @@ import { createMockNotebookStep, getColumnNames } from "../../test-utils";
 import type { NotebookStep } from "../../types";
 import { NotebookProvider } from "../Notebook/context";
 
+import { getDefaultJoinStrategy } from "./JoinDraft/utils";
 import { JoinStep } from "./JoinStep";
 
 const SAMPLE_DATABASE = createSampleDatabase();
+const ANOTHER_DATABASE_ID = 2;
+const ANOTHER_DATABASE_TABLE_ID = 100;
 const ANOTHER_DATABASE = createMockDatabase({
-  id: 2,
+  id: ANOTHER_DATABASE_ID,
   name: "Another Database",
+  tables: [
+    createMockTable({
+      id: ANOTHER_DATABASE_TABLE_ID,
+      db_id: ANOTHER_DATABASE_ID,
+      name: "ACCOUNTS",
+      display_name: "Accounts",
+      fields: [
+        createMockField({
+          id: 1000,
+          table_id: ANOTHER_DATABASE_TABLE_ID,
+          name: "ID",
+          display_name: "ID",
+          base_type: "type/BigInteger",
+          effective_type: "type/BigInteger",
+          semantic_type: "type/PK",
+        }),
+      ],
+    }),
+  ],
 });
 const DATABASES = [SAMPLE_DATABASE, ANOTHER_DATABASE];
 const MODEL = createStructuredModelCard({ name: "my cool model" });
@@ -82,6 +111,10 @@ const metadata = createMockMetadata({
 });
 
 const provider = createMetadataProvider({ metadata });
+const anotherDatabaseProvider = createMetadataProvider({
+  databaseId: ANOTHER_DATABASE_ID,
+  metadata,
+});
 
 const userEvent = _userEvent.setup();
 
@@ -203,8 +236,10 @@ function setup({
     collectionItems: [],
   });
 
-  function Wrapper() {
-    const [query, setQuery] = useState(step.query);
+  function Wrapper({ sourceQuery }: { sourceQuery: Lib.Query }) {
+    const [query, setQuery] = useState(sourceQuery);
+
+    useEffect(() => setQuery(sourceQuery), [sourceQuery]);
 
     const onChange = async (nextQuery: Lib.Query) => {
       setQuery(nextQuery);
@@ -227,9 +262,16 @@ function setup({
     );
   }
 
-  renderWithProviders(<Wrapper />, {
-    storeInitialState: STATE,
-  });
+  const { rerender } = renderWithProviders(
+    <Wrapper sourceQuery={step.query} />,
+    {
+      storeInitialState: STATE,
+    },
+  );
+
+  function changeQuery(nextQuery: Lib.Query) {
+    rerender(<Wrapper sourceQuery={nextQuery} />);
+  }
 
   function getNextQuery(): Lib.Query {
     const [lastCall] = updateQuery.mock.calls.slice(-1);
@@ -262,7 +304,7 @@ function setup({
     };
   }
 
-  return { getRecentJoin, mockWindowOpen };
+  return { getRecentJoin, changeQuery, mockWindowOpen };
 }
 
 async function enterCustomExpression(expression: string) {
@@ -683,6 +725,60 @@ describe("Notebook Editor > Join Step", () => {
     ).toBeInTheDocument();
     expect(within(lhsColumn).queryByText("ID")).not.toBeInTheDocument();
   });
+
+  it.each([
+    {
+      description: "a table in the same database",
+      sourceQuery: () =>
+        Lib.createTestQuery(provider, {
+          stages: [{ source: { type: "table", id: PRODUCTS_ID } }],
+        }),
+      sourceTableName: "Products",
+    },
+    {
+      description: "a table in another database",
+      sourceQuery: () =>
+        Lib.createTestQuery(anotherDatabaseProvider, {
+          stages: [
+            { source: { type: "table", id: ANOTHER_DATABASE_TABLE_ID } },
+          ],
+        }),
+      sourceTableName: "Accounts",
+    },
+  ])(
+    "should reset the draft join when the source changes to $description (metabase#42385, metabase#46675)",
+    async ({ sourceQuery, sourceTableName }) => {
+      const { changeQuery } = setup();
+      await userEvent.click(
+        within(screen.getByLabelText("Right table")).getByRole("textbox"),
+      );
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: /Browse all/ }),
+      );
+      const modal = await screen.findByTestId("entity-picker-modal");
+      await waitForLoaderToBeRemoved();
+      await userEvent.click(await within(modal).findByText("Databases"));
+      await userEvent.click(await screen.findByText(/Sample Database/));
+      await userEvent.click(await within(modal).findByText("Reviews"));
+      const lhsColumnPicker = await screen.findByTestId("lhs-column-picker");
+      await userEvent.click(await within(lhsColumnPicker).findByText("ID"));
+
+      expect(screen.getByLabelText("Right table")).toHaveTextContent("Reviews");
+      expect(screen.getByTestId("new-join-condition")).toBeInTheDocument();
+
+      changeQuery(sourceQuery());
+
+      expect(await screen.findByLabelText("Left table")).toHaveTextContent(
+        sourceTableName,
+      );
+      expect(screen.getByLabelText("Right table")).not.toHaveTextContent(
+        "Reviews",
+      );
+      expect(
+        screen.queryByTestId("new-join-condition"),
+      ).not.toBeInTheDocument();
+    },
+  );
 
   describe("join strategies", () => {
     it("should be able to change the join strategy for a new join clause", async () => {
@@ -1425,6 +1521,101 @@ describe("Notebook Editor > Join Step", () => {
 
       const [condition] = getRecentJoin().conditions;
       expect(condition.rhsExpression.longDisplayName).toBe("ID + 1");
+    });
+
+    it("should allow custom expressions referencing model columns on both sides", async () => {
+      const query = Lib.createTestQuery(provider, {
+        stages: [
+          {
+            source: { type: "card", id: MODEL.id },
+            joins: [
+              {
+                source: { type: "card", id: MODEL.id },
+                strategy: "left-join",
+                conditions: [
+                  {
+                    operator: "=",
+                    left: { type: "column", name: "ID" },
+                    right: { type: "column", name: "ID" },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      });
+      const { getRecentJoin } = setup({
+        step: createMockNotebookStep({ query }),
+      });
+
+      await userEvent.click(screen.getByLabelText("Left column"));
+      const lhsPicker = await screen.findByTestId("lhs-column-picker");
+      await userEvent.click(within(lhsPicker).getByText("Custom Expression"));
+      await enterCustomExpression("[[ID] + [[User ID]");
+      await submitCustomExpression();
+
+      await userEvent.click(screen.getByLabelText("Right column"));
+      const rhsPicker = await screen.findByTestId("rhs-column-picker");
+      await userEvent.click(within(rhsPicker).getByText("Custom Expression"));
+      await enterCustomExpression(
+        `[[${MODEL.name}_2 → ID] + [[${MODEL.name}_2 → Product ID]`,
+      );
+      await submitCustomExpression();
+
+      const [condition] = getRecentJoin().conditions;
+      expect(condition.lhsExpression.longDisplayName).toBe("ID + User ID");
+      expect(condition.rhsExpression.longDisplayName).toBe(
+        `${MODEL.name}_2 → ID + ${MODEL.name}_2 → Product ID`,
+      );
+    });
+
+    it("should display a custom column used as a join column (metabase#18818)", () => {
+      const queryWithExpression = Lib.createTestQuery(provider, {
+        stages: [
+          {
+            source: { type: "table", id: REVIEWS_ID },
+            expressions: [
+              {
+                name: "CC Rating",
+                value: { type: "column", name: "RATING" },
+              },
+            ],
+          },
+        ],
+      });
+      const orders = checkNotNull(
+        Lib.tableOrCardMetadata(queryWithExpression, ORDERS_ID),
+      );
+      const findLhsColumn = columnFinder(
+        queryWithExpression,
+        Lib.joinConditionLHSColumns(queryWithExpression, 0, orders),
+      );
+      const findRhsColumn = columnFinder(
+        queryWithExpression,
+        Lib.joinConditionRHSColumns(queryWithExpression, 0, orders),
+      );
+      const condition = Lib.joinConditionClause(
+        "=",
+        findLhsColumn(null, "CC Rating"),
+        findRhsColumn("ORDERS", "QUANTITY"),
+      );
+      const query = Lib.join(
+        queryWithExpression,
+        0,
+        Lib.joinClause(
+          orders,
+          [condition],
+          getDefaultJoinStrategy(queryWithExpression, 0),
+        ),
+      );
+      setup({ step: createMockNotebookStep({ query }) });
+
+      expect(screen.getByLabelText("Left column")).toHaveTextContent(
+        "CC Rating",
+      );
+      expect(screen.getByLabelText("Right column")).toHaveTextContent(
+        "Quantity",
+      );
     });
 
     it("should display the literal value for a LHS literal", () => {
