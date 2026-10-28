@@ -68,6 +68,10 @@ type QuestionChartProps = {
   legendAccessory?: ReactNode;
   /** Drawn around the whole legend row; a `[data-legend-lead]` inside it pushes the items along. */
   legendWrap?: (frame: LegendFrame) => ReactNode;
+  /** Drawn in place of the y-axis title, which it hides. */
+  yAxisTitle?: (frame: AxisTitleFrame) => ReactNode;
+  /** Whether the chart shows a y-axis title for `yAxisTitle` to replace. */
+  onYAxisTitleChange?: (hasTitle: boolean) => void;
 };
 
 type OpenMenu = { model: DrillMenuModel; x: number; y: number };
@@ -88,6 +92,8 @@ export function QuestionChart({
   onHeaderClick,
   legendAccessory,
   legendWrap,
+  yAxisTitle,
+  onYAxisTitleChange,
 }: QuestionChartProps) {
   const metadataProvider = useMetadataProviderUnfiltered(Lib.databaseID(query));
   const jsQuery = useMemo(() => Lib.toJsQuery(query), [query]);
@@ -95,6 +101,11 @@ export function QuestionChart({
   const [menu, setMenu] = useState<OpenMenu>();
   const containerRef = useRef<HTMLDivElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const axisTitle = useYAxisTitle(containerRef, yAxisTitle != null);
+  const hasAxisTitle = axisTitle != null;
+  useEffect(() => {
+    onYAxisTitleChange?.(hasAxisTitle);
+  }, [hasAxisTitle, onYAxisTitleChange]);
   const legendEnd = useLegendEnd(
     containerRef,
     legendAccessory != null || legendWrap != null,
@@ -201,6 +212,16 @@ export function QuestionChart({
             })}
           </Box>
         )}
+        {yAxisTitle && axisTitle && (
+          <Box
+            pos="absolute"
+            left={axisTitle.centerX}
+            top={axisTitle.centerY}
+            style={{ transform: "translate(-50%, -50%)", zIndex: 1 }}
+          >
+            {yAxisTitle(axisTitle)}
+          </Box>
+        )}
         {legendAccessory && legendEnd && (
           <Box
             pos="absolute"
@@ -234,6 +255,82 @@ export function QuestionChart({
 
 const LEGEND_ACCESSORY_GAP = 12;
 const LEGEND_WRAP_PADDING = 10;
+
+export type AxisTitleFrame = {
+  centerX: number;
+  centerY: number;
+  fontSize: string;
+};
+
+/** The y-axis title's text: the leftmost label turned a quarter. */
+function findYAxisTitle(container: HTMLElement): SVGTextElement | undefined {
+  const rotated = Array.from(container.querySelectorAll("svg text")).filter(
+    (text): text is SVGTextElement => {
+      if (!(text instanceof SVGTextElement) || !text.textContent?.trim()) {
+        return false;
+      }
+      const matrix = text.transform.baseVal.consolidate()?.matrix;
+      return matrix != null && Math.abs(matrix.a) < 0.01;
+    },
+  );
+  return rotated.sort(
+    (a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left,
+  )[0];
+}
+
+/**
+ * Where the chart's y-axis title sits, relative to the container, kept up to
+ * date as the chart re-renders. The title itself is hidden so a component can
+ * take its place.
+ */
+function useYAxisTitle(
+  containerRef: RefObject<HTMLDivElement>,
+  isEnabled: boolean,
+): AxisTitleFrame | undefined {
+  const [frame, setFrame] = useState<AxisTitleFrame>();
+
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    if (!container || !isEnabled) {
+      setFrame(undefined);
+      return;
+    }
+    const update = () => {
+      const title = findYAxisTitle(container);
+      if (!title) {
+        setFrame(undefined);
+        return;
+      }
+      title.style.visibility = "hidden";
+      const containerRect = container.getBoundingClientRect();
+      const rect = title.getBoundingClientRect();
+      const centerX = Math.round(
+        rect.left - containerRect.left + rect.width / 2,
+      );
+      const centerY = Math.round(
+        rect.top - containerRect.top + rect.height / 2,
+      );
+      const fontSize = getComputedStyle(title).fontSize;
+      setFrame((previous) =>
+        previous?.centerX === centerX &&
+        previous.centerY === centerY &&
+        previous.fontSize === fontSize
+          ? previous
+          : { centerX, centerY, fontSize },
+      );
+    };
+    update();
+    const observer = new MutationObserver(update);
+    observer.observe(container, { childList: true, subtree: true });
+    window.addEventListener("resize", update);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, [containerRef, isEnabled]);
+
+  return frame;
+}
 
 export type LegendFrame = { width: number; row: HTMLElement };
 
@@ -417,6 +514,9 @@ function DrillMenu({
   );
 }
 
+/** Today's column picker under "Break out by…" is this wide. */
+const SUBMENU_MIN_WIDTH = 300;
+
 /** A submenu that replaces the main list, like today's popover. */
 type NestedView = { kind: "action"; action: DrillAction } | { kind: "filter" };
 
@@ -463,8 +563,14 @@ function NestedDrillMenu({ menu, onClose, onPick, onAction }: DrillMenuProps) {
       <Popover.Target>
         <Box pos="fixed" left={menu.x} top={menu.y} w={1} h={1} />
       </Popover.Target>
-      <Popover.Dropdown>
-        <Stack gap="sm" px="xl" py="lg" fw={700}>
+      <Popover.Dropdown mah="65vh" style={{ overflowX: "hidden" }}>
+        <Stack
+          gap="sm"
+          px="xl"
+          py="lg"
+          fw={700}
+          miw={view ? SUBMENU_MIN_WIDTH : undefined}
+        >
           {view && (
             <PopoverBackButton mb="sm" onClick={goBack}>
               {view.kind === "filter" ? t`Filter…` : view.action.title}
@@ -481,7 +587,7 @@ function NestedDrillMenu({ menu, onClose, onPick, onAction }: DrillMenuProps) {
             <NestedFilterView options={menu.model.options} onPick={onPick} />
           )}
           {view?.kind === "action" && (
-            <Stack gap="sm" mah="60vh" style={{ overflowY: "auto" }}>
+            <>
               {view.action.children?.map((child) => (
                 <NestedMenuButton
                   key={child.id}
@@ -491,7 +597,7 @@ function NestedDrillMenu({ menu, onClose, onPick, onAction }: DrillMenuProps) {
                   {child.title}
                 </NestedMenuButton>
               ))}
-            </Stack>
+            </>
           )}
         </Stack>
       </Popover.Dropdown>

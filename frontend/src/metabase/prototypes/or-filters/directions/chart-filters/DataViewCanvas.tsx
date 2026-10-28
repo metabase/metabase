@@ -34,7 +34,11 @@ import BarS from "../expression-bar-rows/ExpressionBar.module.css";
 import { ExpressionBar } from "../expression-bar-unified/ExpressionBar";
 
 import S from "./ChartFilters.module.css";
-import { type LegendFrame, QuestionChart } from "./QuestionChart";
+import {
+  type AxisTitleFrame,
+  type LegendFrame,
+  QuestionChart,
+} from "./QuestionChart";
 import {
   LandedFlash,
   QuestionShell,
@@ -59,12 +63,15 @@ export function DataViewCanvas({
   DataZone = SourceDataZone,
   Legend,
   LegendWrap,
+  AxisTitle,
 }: FilterCanvasProps & {
   DataZone?: ComponentType<FilterCanvasProps>;
   /** Replaces the chart's legend and the thresholds beside it. */
-  Legend?: ComponentType<FilterCanvasProps>;
+  Legend?: ComponentType<FilterCanvasProps & { isFilteredOnly?: boolean }>;
   /** Wraps the chart's own legend when it shows series rather than measures. */
   LegendWrap?: ComponentType<FilterCanvasProps & { frame: LegendFrame }>;
+  /** Replaces the y-axis title while one measure is plotted. */
+  AxisTitle?: ComponentType<FilterCanvasProps & { frame: AxisTitleFrame }>;
 }) {
   const question = useQuestionHistory(query, onChange);
   const [hasLlm, setHasLlm] = useState(true);
@@ -72,7 +79,18 @@ export function DataViewCanvas({
   // A second breakout splits the chart into series: the legend shows those, and
   // the measures lead it.
   const hasSeries = Lib.breakouts(query, ROWS_STAGE).length > 1;
-  const isLegendReplaced = Legend != null && !hasSeries;
+  // Like the app, one measure without series has no legend: its axis title
+  // takes over.
+  const hasAxisTitle =
+    AxisTitle != null &&
+    !hasSeries &&
+    Lib.aggregations(query, ROWS_STAGE).length === 1;
+  const [isAxisTitleShown, setIsAxisTitleShown] = useState(true);
+  // With axis titles turned off, the legend comes back, but only to show a
+  // condition: an unfiltered measure stays without one, as in the app.
+  const isLegendFallback = hasAxisTitle && !isAxisTitleShown;
+  const isLegendReplaced =
+    Legend != null && !hasSeries && (!hasAxisTitle || isLegendFallback);
   const chartRef = useRef<HTMLDivElement>(null);
   const chartInset = useFirstFilterInset(
     chartRef,
@@ -121,7 +139,11 @@ export function DataViewCanvas({
               {question.landed === "summary" && (
                 <LandedFlash landedKey={question.landedKey} />
               )}
-              <Legend query={query} onChange={onChange} />
+              <Legend
+                query={query}
+                onChange={onChange}
+                isFilteredOnly={isLegendFallback}
+              />
             </Box>
           )}
           <QuestionChart
@@ -129,6 +151,18 @@ export function DataViewCanvas({
             display="bar"
             onPick={question.apply}
             onLegacyDrill={(nextQuery) => question.apply(nextQuery)}
+            onYAxisTitleChange={setIsAxisTitleShown}
+            yAxisTitle={
+              AxisTitle && hasAxisTitle
+                ? (frame) => (
+                    <AxisTitle
+                      query={query}
+                      onChange={onChange}
+                      frame={frame}
+                    />
+                  )
+                : undefined
+            }
             legendWrap={
               LegendWrap && hasSeries && isAggregated
                 ? (frame) => (

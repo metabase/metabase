@@ -121,6 +121,15 @@
   cursor: pointer;
 }
 
+/* Turned like the axis title it replaces, reading bottom to top. */
+.legendPillVertical {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  height: auto;
+  width: 1.75rem;
+  padding: 0.625rem 0;
+}
+
 .legendPill:hover,
 .legendPill[data-active] {
   border-color: var(--mb-color-border-neutral);

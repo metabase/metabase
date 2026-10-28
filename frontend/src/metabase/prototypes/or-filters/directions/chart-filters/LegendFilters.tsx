@@ -20,7 +20,7 @@ import { toFilterClause } from "../../harness/clauses";
 import type { FilterCanvasProps } from "../../types";
 
 import S from "./ChartFilters.module.css";
-import type { LegendFrame } from "./QuestionChart";
+import type { AxisTitleFrame, LegendFrame } from "./QuestionChart";
 
 const OPERATOR_SYMBOLS: Record<string, string> = {
   "=": "=",
@@ -35,12 +35,25 @@ const OPERATOR_SYMBOLS: Record<string, string> = {
  * The chart's legend as pills: one per measure. Clicking one filters the
  * summary on it, and a filtered measure reads "Count ≥ 3".
  */
-export function LegendFilters({ query, onChange }: FilterCanvasProps) {
+export function LegendFilters({
+  query,
+  onChange,
+  isFilteredOnly,
+}: FilterCanvasProps & {
+  /** Only the measures with a condition: the legend stands in for a hidden axis title. */
+  isFilteredOnly?: boolean;
+}) {
   const summaryQuery = toSummaryQuery(query);
   const handleChange = (nextQuery: Lib.Query) =>
     onChange(Lib.dropEmptyStages(nextQuery));
 
-  const measures = getMeasures(summaryQuery);
+  const measures = getMeasures(summaryQuery).filter(
+    (measure) =>
+      !isFilteredOnly || getMeasureFilters(summaryQuery, measure).length > 0,
+  );
+  if (measures.length === 0) {
+    return null;
+  }
   // same keys and hashing the chart uses for its series colors
   const names = measures.map(
     (measure) =>
@@ -64,10 +77,41 @@ export function LegendFilters({ query, onChange }: FilterCanvasProps) {
   );
 }
 
+type AxisTitleFilterProps = FilterCanvasProps & { frame: AxisTitleFrame };
+
+/**
+ * The y-axis title as the pill: with one measure the chart has no legend, so
+ * the axis that plots it is the way in. Filtered, it reads "Count ≥ 3".
+ */
+export function AxisTitleFilter({
+  query,
+  onChange,
+  frame,
+}: AxisTitleFilterProps) {
+  const summaryQuery = toSummaryQuery(query);
+  const measure = getMeasures(summaryQuery)[0];
+  if (!measure) {
+    return null;
+  }
+  return (
+    <LegendPill
+      summaryQuery={summaryQuery}
+      measure={measure}
+      fontSize={frame.fontSize}
+      isVertical
+      onChange={(nextQuery) => onChange(Lib.dropEmptyStages(nextQuery))}
+    />
+  );
+}
+
 type LegendPillProps = {
   summaryQuery: Lib.Query;
   measure: Lib.ColumnMetadata;
-  seriesColor: string;
+  /** No dot without one, as on the axis. */
+  seriesColor?: string;
+  /** Reads bottom to top, like an axis title. */
+  isVertical?: boolean;
+  fontSize?: string;
   onChange: (query: Lib.Query) => void;
 };
 
@@ -75,6 +119,8 @@ function LegendPill({
   summaryQuery,
   measure,
   seriesColor,
+  isVertical,
+  fontSize,
   onChange,
 }: LegendPillProps) {
   const [isOpened, setIsOpened] = useState(false);
@@ -88,25 +134,35 @@ function LegendPill({
   const condition = describeConditions(summaryQuery, filters);
 
   return (
-    <Popover opened={isOpened} position="bottom-start" onChange={setIsOpened}>
+    <Popover
+      opened={isOpened}
+      position={isVertical ? "right-start" : "bottom-start"}
+      onChange={setIsOpened}
+    >
       <Popover.Target>
         <Box>
-          <Tooltip label={t`Click to filter`} disabled={isOpened}>
+          <Tooltip
+            label={t`Click to filter`}
+            disabled={isOpened}
+            position={isVertical ? "right" : "top"}
+          >
             <UnstyledButton
-              className={S.legendPill}
+              className={cx(S.legendPill, isVertical && S.legendPillVertical)}
               data-active={isOpened || undefined}
               onClick={() => setIsOpened(!isOpened)}
             >
-              <Box
-                className={S.legendDot}
-                style={{ backgroundColor: seriesColor }}
-              />
+              {seriesColor && (
+                <Box
+                  className={S.legendDot}
+                  style={{ backgroundColor: seriesColor }}
+                />
+              )}
               <Group gap={4} wrap="nowrap" className={S.legendLabel}>
-                <Text size="xs" fw="bold" c="inherit">
+                <Text size="xs" fz={fontSize} fw="bold" c="inherit">
                   {measureInfo.displayName}
                 </Text>
                 {condition && (
-                  <Text size="xs" c="inherit">
+                  <Text size="xs" fz={fontSize} c="inherit">
                     {condition}
                   </Text>
                 )}

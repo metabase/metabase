@@ -390,8 +390,17 @@ export function getDrillMenu({
     options.push(...rowOptions(query, drilled, newFilters, header));
   }
 
+  // After a summary stage (a threshold, a sort) the chart's columns no longer
+  // come from an aggregation, so match them to the summary's by name.
+  const measureNames = new Set(
+    Lib.returnedColumns(rowsQuery, ROWS_STAGE)
+      .map((column) => Lib.displayInfo(rowsQuery, ROWS_STAGE, column))
+      .filter((info) => info.isAggregation)
+      .map((info) => info.name),
+  );
   const isMeasure =
-    clicked.column?.source === "aggregation" &&
+    (clicked.column?.source === "aggregation" ||
+      measureNames.has(clicked.column?.name ?? "")) &&
     typeof clicked.value === "number";
   const formattedMeasure =
     isMeasure && clicked.column

@@ -6,7 +6,11 @@ import type { FilterDirection } from "../types";
 
 import { DataViewCanvas } from "./chart-filters/DataViewCanvas";
 import { DrillMenuCanvas } from "./chart-filters/DrillMenuCanvas";
-import { LegendFilterWrap, LegendFilters } from "./chart-filters/LegendFilters";
+import {
+  AxisTitleFilter,
+  LegendFilterWrap,
+  LegendFilters,
+} from "./chart-filters/LegendFilters";
 import { StackedCanvas } from "./chart-filters/StackedCanvas";
 import { ChartHandlesCanvas } from "./chart-handles/ChartHandlesCanvas";
 import { ExpressionBarDataZone } from "./expression-bar-rows/DataZone";
@@ -25,7 +29,7 @@ export const ITERATION_3_DIRECTIONS: FilterDirection[] = [
       return t`Aggregation filters from the legend`;
     },
     get description() {
-      return t`"Aggregation filters with \"show if\" pills" without the "Show if…" and "+" beside the legend: the legend is the way in. Each measure in it is a pill, outlined on hover with a "Click to filter" tooltip; clicking it opens the number filter for that measure right there. Once filtered, the legend reads the condition: "Count ≥ 3", the name bold and the value regular, with × to remove it.`;
+      return t`"Aggregation filters with \"show if\" pills" without the "Show if…" and "+" beside the legend: the legend is the way in. Each measure in it is a pill, outlined on hover with a "Click to filter" tooltip; clicking it opens the number filter for that measure right there. Once filtered, the legend reads the condition: "Count ≥ 3", the name bold and the value regular, with × to remove it. Like the app, one measure without series has no legend: the y-axis title is the pill instead. Clicking a bar offers "Filter…" too.`;
     },
     Component: ExpressionBarSplitPrototype,
     Canvas: (props) =>
@@ -34,6 +38,7 @@ export const ITERATION_3_DIRECTIONS: FilterDirection[] = [
         DataZone: ExpressionBarDataZone,
         Legend: LegendFilters,
         LegendWrap: LegendFilterWrap,
+        AxisTitle: AxisTitleFilter,
       }),
     NotebookCanvas: UnifiedExpressionBarNotebook,
     initialExample: REALISTIC_EXAMPLES[0],
