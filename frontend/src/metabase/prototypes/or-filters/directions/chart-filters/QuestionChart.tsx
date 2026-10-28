@@ -115,7 +115,7 @@ export function QuestionChart({
 
   const MenuComponent = menuLayout === "flat" ? DrillMenu : NestedDrillMenu;
   const isAggregated = Lib.aggregations(query, 0).length > 0;
-  const effectiveDisplay = isAggregated ? display : "table";
+  const effectiveDisplay = getEffectiveDisplay(query, display);
   const groupCount = result.data?.data?.rows.length ?? 0;
   const markNoun = effectiveDisplay === "line" ? t`points` : t`bars`;
 
@@ -536,6 +536,24 @@ function DrillMenu({
       </Menu.Dropdown>
     </Menu>
   );
+}
+
+/**
+ * Rows render as a table whatever was asked for, and a summary with nothing
+ * to break out by (a lone "Sum of Total") as a scalar, since a bar or line
+ * has no axis to draw it on.
+ */
+function getEffectiveDisplay(
+  query: Lib.Query,
+  display: CardDisplayType,
+): CardDisplayType {
+  if (Lib.aggregations(query, 0).length === 0) {
+    return "table";
+  }
+  if (Lib.breakouts(query, 0).length === 0) {
+    return "scalar";
+  }
+  return display;
 }
 
 /** Today's column picker under "Break out by…" is this wide. */

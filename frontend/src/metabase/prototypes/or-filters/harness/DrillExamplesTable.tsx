@@ -328,6 +328,7 @@ const FILTER_DRILLS: DrillRow[] = [
     get howToOpen() {
       return t`Click a point → "See this month by week"`;
     },
+    worksWithOr: true,
   },
   {
     drill: "zoom-in.binning",
@@ -384,6 +385,7 @@ const FILTER_DRILLS: DrillRow[] = [
     get howToOpen() {
       return t`Click Texas → "Zoom in: State"`;
     },
+    worksWithOr: true,
   },
   {
     drill: "pivot",
@@ -410,6 +412,7 @@ const FILTER_DRILLS: DrillRow[] = [
     get howToOpen() {
       return t`Click the Affiliate bar → "Break out by…" → Product → Category`;
     },
+    worksWithOr: true,
   },
   {
     drill: "pk",
@@ -439,6 +442,10 @@ const FILTER_DRILLS: DrillRow[] = [
     get howToOpen() {
       return t`Click a Product ID cell → "View details"; the bar shows ID = 14 on Products`;
     },
+    worksWithOr: false,
+    get orFailure() {
+      return t`Pre-existing bug, reachable today with a custom-expression OR filter. The drill scans the old query's filters for "= other FK" clauses to carry over to the new table, and reads each one by taking its first argument as a column. For an OR group the first argument is another filter, not a column, so the lookup throws "Unknown type of ref" and nothing loads. Fix: skip every filter that is not a plain "=" before reading its parts.`;
+    },
   },
 ];
 
@@ -462,6 +469,7 @@ const OTHER_DRILLS: DrillRow[] = [
     get howToOpen() {
       return t`Click the Total header → "Distribution"`;
     },
+    worksWithOr: true,
   },
   {
     drill: "sort",
@@ -481,6 +489,7 @@ const OTHER_DRILLS: DrillRow[] = [
     get howToOpen() {
       return t`Click the Total header → ↓`;
     },
+    worksWithOr: true,
   },
   {
     drill: "summarize-column",
@@ -501,6 +510,7 @@ const OTHER_DRILLS: DrillRow[] = [
     get howToOpen() {
       return t`Click the Total header → "Sum" (also Avg, Distinct values)`;
     },
+    worksWithOr: true,
   },
   {
     drill: "summarize-column-by-time",
@@ -533,6 +543,7 @@ const OTHER_DRILLS: DrillRow[] = [
     get howToOpen() {
       return t`Click the Created At header → "Extract part of column" → "Month of year"`;
     },
+    worksWithOr: true,
   },
   {
     drill: "combine-columns",
@@ -552,6 +563,7 @@ const OTHER_DRILLS: DrillRow[] = [
     get howToOpen() {
       return t`Click the Month of year header → "Combine columns" → add Quantity; Orders has no text column of its own`;
     },
+    worksWithOr: true,
   },
   {
     drill: "zoom",
