@@ -1,3 +1,4 @@
+import { api, reinitializeRequestHandlers } from "metabase/api/client";
 import { createDataAppSandbox } from "metabase-enterprise/data-apps/sandbox/sandbox";
 
 import {
@@ -23,7 +24,7 @@ describe("fetchDataAppBundleCode", () => {
       (_input: RequestInfo | URL, _init?: RequestInit) =>
         response instanceof Error
           ? Promise.reject(response)
-          : Promise.resolve(response),
+          : Promise.resolve(response.clone()),
     );
 
     global.fetch = fetchMock;
@@ -34,18 +35,36 @@ describe("fetchDataAppBundleCode", () => {
   afterEach(() => {
     global.fetch = originalFetch;
     jest.clearAllMocks();
+    jest.restoreAllMocks();
+
+    reinitializeRequestHandlers();
   });
 
-  it("requests the bundle endpoint with cache disabled and the name encoded", async () => {
-    const { fetchMock } = setup(new Response("CODE"));
+  it.each([false, true])(
+    "requests the bundle with the Metabase client with cache disabled and the name encoded (embedded: %s)",
+    async (embedded) => {
+      const apiFetch = jest.spyOn(api, "fetch");
+      const { fetchMock } = setup(new Response("CODE"));
 
-    await fetchDataAppBundleCode("my app");
+      await fetchDataAppBundleCode("my app", { embedded });
 
-    const [url, init] = fetchMock.mock.calls[0];
+      expect(apiFetch).toHaveBeenCalledWith({
+        method: "GET",
+        url: "/api/ee/apps/my%20app/bundle",
+        cache: "no-store",
+      });
 
-    expect(url).toContain("/api/ee/apps/my%20app/bundle");
-    expect(init).toEqual({ cache: "no-store" });
-  });
+      const request = fetchMock.mock.calls[0][0];
+      if (!(request instanceof Request)) {
+        throw new Error("expected an API request");
+      }
+
+      expect(new URL(request.url).search).toBe("");
+      expect(new URL(request.url).pathname).toBe(
+        "/api/ee/apps/my%20app/bundle",
+      );
+    },
+  );
 
   it.each<[string, string | undefined, string[]]>([
     [
@@ -78,6 +97,24 @@ describe("fetchDataAppBundleCode", () => {
         allowedHosts: expected,
         contentSecurityPolicy: null,
       });
+    },
+  );
+
+  it.each<[number, string]>([
+    [403, "You don't have access to this data app."],
+    [
+      404,
+      'Data app "demo" was not found or is disabled. Check the app name in path.',
+    ],
+    [409, "Failed to fetch data app bundle: HTTP 409"],
+  ])(
+    "reports embedded bundle failures inside the runtime: %s",
+    async (status, message) => {
+      setup(new Response("unavailable", { status }));
+
+      await expect(
+        fetchDataAppBundleCode("demo", { embedded: true }),
+      ).rejects.toMatchObject({ status, message });
     },
   );
 
