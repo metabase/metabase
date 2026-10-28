@@ -1,6 +1,6 @@
 ---
 title: Data apps (beta)
-summary: Data apps are custom apps that an AI coding agent builds on your semantic layer. They show your data in any layout you want, and let people add, edit, and delete rows.
+summary: Data apps are custom apps that an AI coding agent builds on your semantic layer. They show your data in any layout you want, and can let people add, edit, and delete rows.
 ---
 
 # Data apps (beta)
@@ -11,7 +11,7 @@ summary: Data apps are custom apps that an AI coding agent builds on your semant
 
 {% include plans-blockquote.html feature="Data apps" is_plural=true %}
 
-Data apps are custom apps that you build on your Metabase data. Like a dashboard, a data app shows charts and tables from your [semantic layer](../data-modeling/semantic-layer/library.md). But an app isn't limited to cards and filters on a grid: an app can have its own layout, its own pages, and forms that add, edit, or delete rows in your database. You can build apps like portals, review queues, and forms, without having to stand up a separate app and backend.
+Data apps are custom apps that you build on your Metabase data. Like a dashboard, a data app shows charts and tables from your [semantic layer](../data-modeling/semantic-layer/library.md). But an app isn't limited to cards and filters on a grid: an app can have its own layout, its own pages, and forms that add, edit, or delete rows in your database. An app doesn't have to write data: an app can just show data, from any database. You can build apps like portals, review queues, and forms, without having to stand up a separate app and backend.
 
 A data app runs with the permissions of the person who opens it, so people see only the data that they're allowed to see. And an app can read and write data only through the questions, metrics, and actions in its own collection. See [what a data app can read and write](#what-a-data-app-can-read-and-write).
 
@@ -40,7 +40,7 @@ Your agent does most of the work, but here's an overview of the end-to-end proce
 - A development Metabase, connected to your data warehouse, where you build and change your apps.
 - [Remote Sync](../installation-and-operation/remote-sync.md), to ship your apps from your development Metabase to production. Your Remote Sync repository also keeps each app's source code.
 - A [semantic layer](../data-modeling/semantic-layer/library.md) with the [published tables](../data-modeling/semantic-layer/published-tables.md) and metrics that your apps read. Your agent can publish tables and create metrics while it builds an app. But for apps that people rely on, use tables and metrics that you trust.
-- [Actions enabled](../data-modeling/models/actions/introduction.md#enabling-actions-for-a-database) on the databases that your apps write to, if your apps write data.
+- If your apps write data, [actions enabled](../data-modeling/models/actions/introduction.md#enabling-actions-for-a-database) on the databases that your apps write to. An app that only shows data doesn't need actions, so the app can read from any database that Metabase connects to, even a database that doesn't support actions.
 
 ## What a data app can read and write
 
