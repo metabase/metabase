@@ -558,14 +558,14 @@
                                 (#{NATIONAL CHARACTER NCHAR} LARGE OBJECT)
                                 NCLOB}
     :type/UUID                #{UUID}
-    :type/*                   #{ARRAY
-                                BINARY
+    :type/Binary              #{BINARY
                                 "BINARY VARYING"
                                 VARBINARY
                                 "BINARY LARGE OBJECT"
                                 BLOB
-                                GEOMETRY
                                 IMAGE}
+    :type/*                   #{ARRAY
+                                GEOMETRY}
     :type/Date                #{DATE}
     :type/DateTime            #{TIMESTAMP}
     :type/Time                #{TIME "TIME WITHOUT TIME ZONE"}

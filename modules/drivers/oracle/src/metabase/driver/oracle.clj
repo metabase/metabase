@@ -204,8 +204,8 @@
     [#"ANYTYPE"     :type/*]  ; Can be any named SQL type or an unnamed transient type
     [#"ARRAY"       :type/*]
     [#"BFILE"       :type/*]
-    [#"BLOB"        :type/*]
-    [#"RAW"         :type/*]
+    [#"BLOB"        :type/Binary]
+    [#"RAW"         :type/Binary]
     [#"CHAR"        :type/Text]
     [#"CLOB"        :type/OracleCLOB]
     ;; Yes, the DATE is mapped to `:type/DateTime`. Oracle's DATE can store also a time part.
@@ -217,7 +217,7 @@
     [#"FLOAT"       :type/Float]
     ;; Does this make sense?
     [#"INTERVAL"    :type/DateTime]
-    [#"LONG RAW"    :type/*]
+    [#"LONG RAW"    :type/Binary]
     [#"LONG"        :type/Text]
     ;; Media types -- http://docs.oracle.com/cd/B28359_01/server.111/b28286/sql_elements001.htm#i121058
     [#"^ORD"        :type/*]

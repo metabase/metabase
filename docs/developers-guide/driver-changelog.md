@@ -7,9 +7,10 @@ title: Driver interface changelog
 ## Metabase 0.66.0
 
 - `:type/Binary` is a new base type for raw bytes: Postgres `bytea`, MySQL `BLOB` and `VARBINARY`, SQL Server
-  `varbinary`, and the like. Drivers should return it from `sql-jdbc.sync/database-type->base-type` for such columns
-  instead of `:type/*`. The bundled drivers already do. It derives from `:type/fingerprint-unsupported`, so sync does
-  not sample these columns.
+  `varbinary`, Oracle `RAW`, and the like. Drivers should return it from `sql-jdbc.sync/database-type->base-type` for
+  such columns instead of `:type/*`. It derives from `:type/fingerprint-unsupported` and
+  `:type/field-values-unsupported`, so sync neither samples these columns for a fingerprint nor scans their distinct
+  values. It is still a plain base type under `:type/*`, not a semantic type. The bundled drivers return it.
 
 ## Metabase 0.65.3
 
