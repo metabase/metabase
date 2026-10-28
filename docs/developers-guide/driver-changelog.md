@@ -4,6 +4,14 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.58.39
+
+- `metabase.driver/validate-impersonated-query` `[driver query]` has moved from `:sql-jdbc` to `:sql`, so every
+  SQL driver -- not only the JDBC ones -- inherits the check that a connection-impersonated native query is a
+  single select statement. It now walks native stages nested inside joins as well as the top-level ones. A driver
+  that supports `:connection-impersonation` without descending from `:sql` must implement the method itself;
+  impersonated native queries on such a driver are refused outright.
+
 ## Metabase 0.58.29
 
 - `metabase.driver/url-building-detail-keys` `[driver]` -- new multimethod returning the connection-detail keys whose
