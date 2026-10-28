@@ -314,8 +314,7 @@
                                      :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
       (let [thread (temp-thread! (:id u))
             row    (pending-query! (:id thread) (:id card)
-                                   {:database 999999 :type :query
-                                    :query {:source-table 1 :aggregation [[:count]]}})
+                                   {:database (mt/id) :type :query :query {:source-table Integer/MAX_VALUE :aggregation [[:count]]}})
             final  (drain-until-terminal! (:id row))]
         (is (= "error" (:status final)))
         (is (some? (:error_message final)))

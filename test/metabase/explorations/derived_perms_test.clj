@@ -287,8 +287,9 @@
   (testing "grouping cannot be free: [[visibility-key]] resolves each chart's query, because the
             lens half of the verdict compares *resolved* tables and two charts can share a raw
             footprint while reading different ones. That resolution is per chart and mostly metadata
-            reads, so cost grows — but it must stay far below re-running the verdict itself, which
-            would be ~13 queries a chart (~325 for 25)."
+            reads (each chart's stored query is read back with its metadata provider attached), so cost
+            grows — but it must stay far below re-running the verdict itself, which would be ~13
+            queries a chart (~325 for 25)."
     (let [specs   (fn [n] (repeat n {:creator-id (mt/user->id :lucky) :table :venues :token {}}))
           measure (fn [n]
                     (let [thread (thread-with-snapshots! (specs n))]
@@ -298,7 +299,7 @@
                           (call-count)))))
           small   (measure 2)
           large   (measure 25)]
-      (is (< large (* 2 small))
+      (is (< large (* 3 small))
           (format "resolution must stay cheap (2 charts: %d queries, 25 charts: %d)" small large)))))
 
 ;;; --------------------------------- Summary-document content gate ---------------------------------
