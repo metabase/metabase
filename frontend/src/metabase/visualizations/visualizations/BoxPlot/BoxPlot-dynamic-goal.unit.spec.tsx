@@ -126,7 +126,7 @@ describe("box plot dynamic goal", () => {
   });
 
   it("reports a goal warning when the reference cannot be resolved", async () => {
-    const onUpdateGoalWarning = jest.fn();
+    const onUpdateGoalWarning = jest.fn<void, [boolean]>();
 
     await setup(createSeries(FAILED), { onUpdateGoalWarning });
 
@@ -134,7 +134,7 @@ describe("box plot dynamic goal", () => {
   });
 
   it("reports no goal warning when the reference resolves", async () => {
-    const onUpdateGoalWarning = jest.fn();
+    const onUpdateGoalWarning = jest.fn<void, [boolean]>();
 
     await setup(createSeries(ANSWERED), { onUpdateGoalWarning });
 

@@ -136,7 +136,7 @@ describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
     });
 
     it("reports a goal warning when the reference cannot be resolved", async () => {
-      const onUpdateGoalWarning = jest.fn();
+      const onUpdateGoalWarning = jest.fn<void, [boolean]>();
 
       await setup(createSeries(display, FAILED), { onUpdateGoalWarning });
 
@@ -144,7 +144,7 @@ describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
     });
 
     it("reports no goal warning when the reference resolves", async () => {
-      const onUpdateGoalWarning = jest.fn();
+      const onUpdateGoalWarning = jest.fn<void, [boolean]>();
 
       await setup(createSeries(display, ANSWERED), { onUpdateGoalWarning });
 

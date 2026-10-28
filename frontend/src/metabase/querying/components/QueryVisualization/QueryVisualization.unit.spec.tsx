@@ -5,6 +5,7 @@ import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { act, renderWithProviders, screen } from "__support__/ui";
 import { registerVisualizations } from "metabase/visualizations/register";
+import type { OnOpenChartSettings } from "metabase/visualizations/types";
 import { loadVisualizationComponents } from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import type { DatasetData, VisualizationSettings } from "metabase-types/api";
@@ -54,7 +55,7 @@ async function setup({
   rowsTruncated,
   canOpenChartSettings = true,
 }: SetupOpts = {}) {
-  const onOpenChartSettings = jest.fn();
+  const onOpenChartSettings = jest.fn<void, Parameters<OnOpenChartSettings>>();
   const question = new Question(
     {
       dataset_query: {
