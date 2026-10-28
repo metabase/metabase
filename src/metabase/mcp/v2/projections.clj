@@ -306,7 +306,10 @@
                            :default              "x"
                            :required             true
                            :values_source_type   "x"
-                           :values_source_config {:values ["x"]}
+                           :values_source_config {:values      ["x"]
+                                                  :card_id     1
+                                                  :value_field ["x"]
+                                                  :label_field ["x"]}
                            :dashcard_ids         [1]}]
              :dashcards [{:id 1 :kind "x" :card {:id 1 :name "x"} :text "x" :dashboard_tab_id 1
                           :row 0 :col 0 :size_x 1 :size_y 1 :series [{:id 1 :name "x"}]
