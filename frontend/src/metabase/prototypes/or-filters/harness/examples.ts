@@ -349,6 +349,48 @@ export function withCountWhereByCategory(
   );
 }
 
+/** `Discount is not empty OR Quantity > 3`, the condition inside the count-where aggregation below. */
+function discountOrQuantityCondition(
+  query: Lib.Query,
+  stageIndex: number,
+): Lib.ExpressionClause | undefined {
+  const discount = findColumn(query, stageIndex, "Discount");
+  const quantity = findColumn(query, stageIndex, "Quantity");
+  if (!discount || !quantity) {
+    return undefined;
+  }
+  return Lib.expressionClause("or", [
+    Lib.defaultFilterClause({ operator: "not-null", column: discount }),
+    Lib.numberFilterClause({ operator: ">", column: quantity, values: [3] }),
+  ]);
+}
+
+/**
+ * `Count where (Discount is not empty OR Quantity > 3)` by `Product → Category`:
+ * underlying-records brings the aggregation's own OR along as a filter group.
+ */
+export function withCountWhereOrByCategory(
+  query: Lib.Query,
+  stageIndex: number,
+): Lib.Query {
+  const cleared = clearFilters(query, stageIndex);
+  const condition = discountOrQuantityCondition(cleared, stageIndex);
+  const category = findBreakoutColumn(
+    cleared,
+    stageIndex,
+    "Product → Category",
+  );
+  if (!condition || !category) {
+    return query;
+  }
+  const countWhere = Lib.expressionClause("count-where", [condition]);
+  return Lib.breakout(
+    Lib.aggregate(cleared, stageIndex, countWhere),
+    stageIndex,
+    category,
+  );
+}
+
 function withCountByBreakout(
   query: Lib.Query,
   stageIndex: number,
@@ -519,6 +561,30 @@ export function withCountWhereDrilled(
     stringEquals(category, "Doohickey"),
     Lib.defaultFilterClause({ operator: "not-null", column: discount }),
   ].reduce(
+    (nextQuery, clause) => Lib.filter(nextQuery, stageIndex, clause),
+    cleared,
+  );
+}
+
+/**
+ * underlying-records on a count-where bar whose condition is an OR:
+ * `Category = Gizmo` and the drill-produced `(Discount is not empty OR Quantity > 3)` group.
+ */
+export function withCountWhereOrDrilled(
+  query: Lib.Query,
+  stageIndex: number,
+): Lib.Query {
+  const cleared = clearFilters(query, stageIndex);
+  const category = findFilterColumnByLongName(
+    cleared,
+    stageIndex,
+    "Product → Category",
+  );
+  const condition = discountOrQuantityCondition(cleared, stageIndex);
+  if (!category || !condition) {
+    return query;
+  }
+  return [stringEquals(category, "Gizmo"), condition].reduce(
     (nextQuery, clause) => Lib.filter(nextQuery, stageIndex, clause),
     cleared,
   );

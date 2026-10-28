@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Code, Group, Stack, Text } from "metabase/ui";
+import { Code, Group, Stack, Text, Tooltip } from "metabase/ui";
 
 import type { Example } from "../types";
 
@@ -18,6 +18,8 @@ import {
   withCountFilterDrilled,
   withCountWhereByCategory,
   withCountWhereDrilled,
+  withCountWhereOrByCategory,
+  withCountWhereOrDrilled,
   withFkFilterDrilled,
   withMonthCombined,
   withMonthExtracted,
@@ -51,8 +53,10 @@ type DrillRow = {
   results: Example[];
   /** What to click in the results, then which popover item. */
   howToOpen: string;
-  /** Set once the drill was tried from the "+ OR" start and landed correctly next to the OR. */
+  /** Set once the drill was tried from the "+ OR" start: whether it landed correctly next to the OR. */
   worksWithOr?: boolean;
+  /** Why it breaks, when `worksWithOr` is false. */
+  orFailure?: string;
 };
 
 type DrillGroup = {
@@ -129,6 +133,7 @@ const FILTER_DRILLS: DrillRow[] = [
     get howToOpen() {
       return t`Click the Gadget Count cell → ">"; lands on the stage after the summary`;
     },
+    worksWithOr: true,
   },
   {
     drill: "fk-filter",
@@ -245,6 +250,35 @@ const FILTER_DRILLS: DrillRow[] = [
   {
     drill: "underlying-records",
     get variant() {
+      return t`count-where with an OR`;
+    },
+    filter: "rows",
+    get queryChange() {
+      return t`Drops the summary, adds the breakout value and the aggregation's OR condition as a group`;
+    },
+    start: {
+      get label() {
+        return t`Count where (Discount or Quantity) by Category`;
+      },
+      load: withCountWhereOrByCategory,
+      display: "bar",
+    },
+    results: [
+      {
+        get label() {
+          return t`Gizmo, (Discount not empty or Quantity > 3)`;
+        },
+        load: withCountWhereOrDrilled,
+      },
+    ],
+    get howToOpen() {
+      return t`Click the Gizmo bar → "See these Orders"; the drill writes an OR group the user never typed`;
+    },
+    worksWithOr: true,
+  },
+  {
+    drill: "underlying-records",
+    get variant() {
       return t`two breakouts`;
     },
     filter: "rows",
@@ -320,6 +354,10 @@ const FILTER_DRILLS: DrillRow[] = [
     ],
     get howToOpen() {
       return t`Click the 40–60 bar → "Zoom in"`;
+    },
+    worksWithOr: false,
+    get orFailure() {
+      return t`Pre-existing query-processor bug, not caused by the drill or by GUI ORs: it is reachable today with a custom-expression filter like [Total] > 100 OR [Tax] > 2 on a binned breakout. The drill only removes top-level range filters on the column, so a range left inside the OR stays; binning then reads both the old and the new range as bounds, they don't overlap, the bin width comes out negative and the query fails. Fix: make the bounds extractor read only top-level AND-ed clauses.`;
     },
   },
   {
@@ -562,18 +600,30 @@ const SUMMARY_MARK = (
   </Text>
 );
 
-function OrCheckMark({ worksWithOr }: { worksWithOr?: boolean }) {
-  return worksWithOr ? (
-    <Text
-      component="span"
-      title={t`Tried from the + OR start; lands AND-ed next to the OR`}
-    >
-      ✅
-    </Text>
-  ) : (
-    <Text component="span" c="text-secondary">
-      —
-    </Text>
+type OrCheckMarkProps = Pick<DrillRow, "worksWithOr" | "orFailure">;
+
+function OrCheckMark({ worksWithOr, orFailure }: OrCheckMarkProps) {
+  if (worksWithOr === undefined) {
+    return (
+      <Text component="span" c="text-secondary">
+        —
+      </Text>
+    );
+  }
+  if (worksWithOr) {
+    return (
+      <Text
+        component="span"
+        title={t`Tried from the + OR start; lands AND-ed next to the OR`}
+      >
+        ✅
+      </Text>
+    );
+  }
+  return (
+    <Tooltip label={orFailure} multiline maw="24rem">
+      <Text component="span">🟠</Text>
+    </Tooltip>
   );
 }
 
@@ -649,7 +699,10 @@ export function DrillExamplesTable({ onLoad }: DrillExamplesTableProps) {
                   <Text size="sm">{row.queryChange}</Text>
                 </td>
                 <td>
-                  <OrCheckMark worksWithOr={row.worksWithOr} />
+                  <OrCheckMark
+                    worksWithOr={row.worksWithOr}
+                    orFailure={row.orFailure}
+                  />
                 </td>
                 <td>
                   {row.start ? (
@@ -700,7 +753,7 @@ export function DrillExamplesTable({ onLoad }: DrillExamplesTableProps) {
           {t`+ OR: the same start with (Total > 100 or Tax > 2) on the rows`}
         </Text>
         <Text size="xs" c="text-secondary">
-          {t`With OR ✅: tried from the + OR start, the drill lands AND-ed next to the OR; — not tried yet`}
+          {t`With OR ✅: tried from the + OR start, the drill lands AND-ed next to the OR; 🟠 breaks on a pre-existing bug, hover for why; — not tried yet`}
         </Text>
       </Group>
     </Stack>
