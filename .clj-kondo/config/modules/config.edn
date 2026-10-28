@@ -190,6 +190,7 @@
    :uses #{analytics.interface
            analytics.internal-stats
            api
+           api-scope
            api.eid-translation
            app-db
            appearance
@@ -1153,6 +1154,7 @@
            metabase.geojson.init
            metabase.geojson.settings}
    :uses #{api
+           api-scope
            permissions
            settings
            util
@@ -2948,6 +2950,7 @@
            search
            security-center
            session
+           settings
            util
            util.config}
    :model-imports #{:model/AiUsageLog
@@ -2969,6 +2972,7 @@
            metabase.tiles.init
            metabase.tiles.settings}
    :uses #{api
+           api-scope
            lib
            lib.be
            lib.legacy-mbql

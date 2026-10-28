@@ -27,6 +27,7 @@
    [metabase.search.task.search-index :as task.search-index]
    [metabase.security-center.schema :as security-center.schema]
    [metabase.session.api :as session.api]
+   [metabase.settings.core :as setting]
    [metabase.testing-api.db :as testing-api.db]
    [metabase.util.date-2 :as u.date]
    [metabase.util.files :as u.files]
@@ -311,6 +312,15 @@
   (let [value (mapv #(update % :config update-keys keyword) value)]
     (run! validate-llm-provider-fixture! value)
     (llm.settings/set-llm-providers! value))
+  nil)
+
+(api.macros/defendpoint :put "/isolated-origin" :- :nil
+  "Set `MB_ISOLATED_ORIGIN`, or unset it with a nil `value`. It is an environment-only setting, and the E2E backend is
+  one process for every spec, so a spec turns the isolated origin on here. A snapshot restore unsets it."
+  [_route-params
+   _query-params
+   {:keys [value]} :- [:map {:closed true} [:value [:maybe ms/NonBlankString]]]]
+  (setting/set! :isolated-origin value :bypass-read-only? true)
   nil)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
