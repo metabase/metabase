@@ -39,7 +39,6 @@ describe("DataAppEmbed", () => {
     componentName: "metabase-data-app",
     path: "sales/orders?active=true",
     instanceUrl: window.location.origin,
-    theme: { colors: { brand: "#ff0000" } },
   };
 
   const setupSettings = (overrides: Partial<Settings> = {}) => {

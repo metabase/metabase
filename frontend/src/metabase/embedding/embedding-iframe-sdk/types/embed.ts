@@ -252,6 +252,7 @@ export interface DataAppEmbedOptions {
   componentName: "metabase-data-app";
   path: string;
 
+  theme?: never;
   template?: never;
   questionId?: never;
   dashboardId?: never;
