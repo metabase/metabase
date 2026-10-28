@@ -30,7 +30,7 @@ const CREATED_DASHBOARD: MetabaseDashboard = {
   },
 };
 
-const NewDashboardFlow = () => {
+function NewDashboardFlow() {
   const [createdName, setCreatedName] = useState("");
 
   return (
@@ -41,15 +41,15 @@ const NewDashboardFlow = () => {
       {createdName && <p>Opened {createdName}</p>}
     </div>
   );
-};
+}
 
-const ClickCounter = () => {
+function ClickCounter() {
   const [count, setCount] = useState(0);
 
   return (
     <button onClick={() => setCount(count + 1)}>Clicked {count} times</button>
   );
-};
+}
 
 describe("component mocks", () => {
   it("renders mock with props app passed to SDK component", async () => {

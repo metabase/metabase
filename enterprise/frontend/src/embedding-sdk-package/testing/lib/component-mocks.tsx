@@ -18,29 +18,33 @@ import { getMockSdkRegistry } from "./mock-sdk-registry";
 
 type ChildrenProps = { children?: ReactNode };
 
-const renderNothing = () => null;
+function renderNothing() {
+  return null;
+}
 
-const renderChildren = ({ children }: ChildrenProps) => children;
+function renderChildren({ children }: ChildrenProps) {
+  return children;
+}
 
-const createComponentMock = <TProps extends object>(
+function createComponentMock<TProps extends object>(
   renderDefault: (props: TProps) => ReactNode,
-) => {
+) {
   let render: ComponentType<TProps> | undefined;
 
   getMockSdkRegistry().resets.add(() => {
     render = undefined;
   });
 
-  const Component = (props: TProps) => (
-    <>{render ? createElement(render, props) : renderDefault(props)}</>
-  );
+  function Component(props: TProps) {
+    return <>{render ? createElement(render, props) : renderDefault(props)}</>;
+  }
 
-  const setMock = (nextRender: ComponentType<TProps>) => {
+  function setMock(nextRender: ComponentType<TProps>) {
     render = nextRender;
-  };
+  }
 
   return { Component, setMock };
-};
+}
 
 export const COLLECTION_BROWSER_MOCK =
   createComponentMock<CollectionBrowserProps>(renderNothing);
