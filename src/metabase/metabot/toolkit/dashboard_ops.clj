@@ -14,9 +14,9 @@
    Op methods validate, then compose the row primitives in the State algebra section; those
    primitives are the only code that touches the `:dashcards`/`:tabs`/`:parameters` vectors.
 
-   An invalid op throws an `ex-info` whose data holds an error code from [[errors]] under `::error`,
-   the values that explain it, and the failing op's `:op-index` and `:op`. This namespace words no
-   errors: each tool turns that data into text for its own model."
+   An invalid op throws an `ex-info` whose data holds an error code from [[errors]] under `::error`, the values that
+   explain it, and the failing op's `:op-index` and `:op`.
+   This namespace words no errors: each tool turns that data into text for its own model."
   (:require
    [metabase.dashboards.autoplace :as autoplace]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
@@ -29,9 +29,9 @@
 ;;; ------------------------------------------------- Errors -------------------------------------------------------
 
 (def errors
-  "Every error code [[compile-ops]] throws, mapped to the keys of the data that come with it. Errors
-   thrown while applying an op also carry `:op-index` (0-based, as sent) and `:op` (the op name as
-   sent, possibly nil); `:cards-without-tab` is checked after the last op, so it carries neither."
+  "Every error code [[compile-ops]] throws, mapped to the keys of the data that come with it.
+   Errors thrown while applying an op also carry `:op-index` (0-based, as sent) and `:op` (the op name as sent, or nil).
+   The `:cards-without-tab` check runs after the last op, so that error carries neither."
   {:missing-op                         #{}
    :unknown-op                         #{}
    :invalid-new-id                     #{:id}
@@ -70,8 +70,8 @@
                    (assoc data ::error code)))))
 
 (defn error-data
-  "The data of `e` when it is an invalid-op error from [[compile-ops]], else nil. The error code is
-   under `::error`; see [[errors]] for the rest."
+  "The data of `e` when it is an invalid-op error from [[compile-ops]], else nil.
+   The error code is under `::error`, and [[errors]] lists the rest."
   [e]
   (when (::error (ex-data e))
     (ex-data e)))
@@ -426,7 +426,7 @@
   (doseq [k (keys patch)]
     (cond
       (contains? patch-rejected-keys k)
-      (fail! :unpatchable-key {:key (name k) :use-op (get patch-rejected-keys k)})
+      (fail! :unpatchable-key {:key (name k), :use-op (get patch-rejected-keys k)})
 
       (not (contains? patchable-keys k))
       (fail! :unknown-patch-key {:key (name k)})))
@@ -473,7 +473,7 @@
   [state {:keys [tab_id index]}]
   (resolve-tab! state tab_id)
   (or (move-row state :tabs tab_id index)
-      (fail! :tab-index-out-of-range {:index index :tab-count (count (:tabs state))})))
+      (fail! :tab-index-out-of-range {:index index, :tab-count (count (:tabs state))})))
 
 (defmethod apply-op "duplicate_tab"
   [state {:keys [id tab_id]}]
@@ -590,7 +590,7 @@
 
     (contains? op :index)
     (or (move-row state :parameters parameter_id index)
-        (fail! :parameter-index-out-of-range {:index index :parameter-count (count (:parameters state))}))
+        (fail! :parameter-index-out-of-range {:index index, :parameter-count (count (:parameters state))}))
 
     :else
     (fail! :missing-parameter-destination)))

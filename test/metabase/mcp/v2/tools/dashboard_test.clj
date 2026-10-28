@@ -350,8 +350,7 @@
             (is (= "Cat" (:name (param))))))))))
 
 (deftest response-echoes-parameter-default-and-value-source-test
-  (testing "BOT-2524: the response shows each parameter's default, required flag, and value source, so
-            the agent can see what it wrote"
+  (testing "BOT-2524: the response shows each parameter's default, required flag, and value source"
     (mt/with-temp [:model/Dashboard dash {:name "Sales"}]
       (let [run! (fn [ops] (tool-result (call-tool! :crowberto v2.tu/all-scopes "dashboard_write"
                                                     (wire {:method "update" :id (:id dash) :ops ops}))))]

@@ -69,9 +69,8 @@
       (is (<= 4 (:row added))))))
 
 (defn- op-error
-  "The error data `compile-ops` throws for `ops` against `current`, or nil when it compiles. Also
-   asserts the data carries exactly the keys [[dashboard-ops/errors]] declares for its code, so every
-   error test checks that contract."
+  "The error data `compile-ops` throws for `ops` against `current`, or nil when it compiles.
+   It also checks that the data carries the keys [[dashboard-ops/errors]] declares for its code."
   ([current ops] (op-error current ops {}))
   ([current ops cards]
    (try
