@@ -2765,13 +2765,20 @@ describe("scenarios > admin > transforms > jobs", () => {
         createMbqlTransform({
           tagIds: [tag.id],
         });
-        H.createTransformJob({
-          name: "New job",
-          schedule: "* * * * * ? *", // every second
-          tag_ids: [tag.id],
-        });
+        H.createTransformJob(
+          {
+            name: "New job",
+            schedule: "* * * * * ? *", // every second
+            tag_ids: [tag.id],
+          },
+          { wrapId: true },
+        );
       });
       H.waitForSucceededTransformRuns();
+      cy.log("deactivate the job so it cannot fire during later tests");
+      cy.get<number>("@transformJobId").then((jobId) =>
+        cy.request("PUT", `/api/transform-job/${jobId}`, { active: false }),
+      );
       visitRunListPage();
       getTransformRunTable().within(() => {
         cy.findAllByText("MBQL transform").should("have.length.gte", 1);
