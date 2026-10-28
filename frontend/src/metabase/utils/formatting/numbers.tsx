@@ -2,11 +2,7 @@ import type { ReactNode } from "react";
 
 import type { CurrencyPosition } from "metabase-types/api";
 
-import {
-  COMPACT_CURRENCY_OPTIONS,
-  getCurrencySymbol,
-  getEffectiveCurrencyPosition,
-} from "./currency";
+import { COMPACT_CURRENCY_OPTIONS, getCurrencySymbol } from "./currency";
 
 const DISPLAY_COMPACT_DECIMALS_CUTOFF = 1000;
 
@@ -267,10 +263,7 @@ function formatNumberCompact(
         ...options,
         ...COMPACT_CURRENCY_OPTIONS,
       });
-      const currencyPosition = getEffectiveCurrencyPosition(
-        options.currency_style,
-        options.currency_position,
-      );
+      const currencyPosition = options.currency_position ?? "before";
 
       if (abs(value) < DISPLAY_COMPACT_DECIMALS_CUTOFF) {
         return currencyPosition === "after"

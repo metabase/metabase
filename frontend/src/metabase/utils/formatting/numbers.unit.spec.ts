@@ -323,8 +323,27 @@ describe("formatNumber", () => {
       );
       expect(
         formatNumber(1234567.89, { ...options, currency_style: "name" }),
-      ).toEqual("1.2M\u00a0$");
+      ).toEqual("$1.2M");
     });
+
+    it.each([
+      [2, "$2.00", "2.00\u00a0$"],
+      [1200, "$1.2k", "1.2k\u00a0$"],
+    ])(
+      "preserves compact symbol placement for Name-style currency %s",
+      (value, before, after) => {
+        const options = {
+          compact: true,
+          number_style: "currency",
+          currency: "USD",
+          currency_style: "name",
+        };
+        expect(formatNumber(value, options)).toBe(before);
+        expect(
+          formatNumber(value, { ...options, currency_position: "after" }),
+        ).toBe(after);
+      },
+    );
   });
 
   it("should format to correct number of decimal places", () => {

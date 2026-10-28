@@ -16,14 +16,13 @@ describe("scenarios > visualizations > table > currency position", () => {
   });
 
   it("should inherit the instance currency position and save an override for one column", () => {
-    cy.intercept("PUT", "/api/setting/custom-formatting").as(
-      "updateFormatting",
-    );
-    cy.visit("/admin/settings/localization");
-    cy.findByTestId("currency_position-formatting-setting")
-      .findByRole("radio", { name: "After amount" })
-      .check();
-    cy.wait("@updateFormatting").its("response.statusCode").should("eq", 204);
+    H.updateSetting("custom-formatting", {
+      "type/Currency": {
+        currency: "USD",
+        currency_style: "symbol",
+        currency_position: "after",
+      },
+    });
 
     H.createNativeQuestion(
       {

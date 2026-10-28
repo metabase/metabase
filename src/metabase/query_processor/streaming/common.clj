@@ -15,7 +15,10 @@
    [metabase.util.performance :as perf :refer [mapv select-keys not-empty get-in]])
   (:import
    (clojure.lang ISeq)
-   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
+   (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
+   (java.util.regex Pattern)))
+
+(set! *warn-on-reflection* true)
 
 (defn export-filename-timestamp
   "Generates the current timestamp as a string to use in export filenames."
@@ -47,9 +50,17 @@
 (def ^:private plain-number-re
   "Matches values a spreadsheet reads as an ordinary number, so a leading `-`/`+` on them is harmless (`-1,234.56` is
   the number, not a formula). Deliberately conservative: only digits, group/decimal separators, whitespace, currency
-  symbols, an exponent and a trailing `%`. Nothing that matches this can carry formula syntax, so exempting it can't
-  reopen the injection."
-  #"[-+]?\p{Sc}?\s?\d[\d,\s.]*(?:[eE][-+]?\d+)?[\s\u00a0]?\p{Sc}?\s?%?")
+  symbols, an exponent and a trailing `%`. Known currency symbols and uppercase three-letter codes can follow a space
+  or NBSP.
+  Nothing that matches this can carry formula syntax, so exempting it can't reopen the injection."
+  (let [symbols (->> (vals currency/currency)
+                     (mapcat (juxt :symbol :symbol_native))
+                     distinct
+                     (map #(Pattern/quote %))
+                     (str/join "|"))]
+    (re-pattern
+     (str #"[-+]?\p{Sc}?\s?\d[\d,\s.]*(?:[eE][-+]?\d+)?"
+          "(?:[\\s\\u00a0]?\\p{Sc}?|[ \\u00a0](?:[A-Z]{3}|" symbols "))\\s?%?"))))
 
 (defn escape-spreadsheet-formula
   "Neutralize spreadsheet formula (a.k.a. CSV/DDE) injection in an exported cell value: a value an attacker planted in

@@ -17,9 +17,9 @@ type Props = {
 
 export function CurrencyFormattingSection({ value, onChange }: Props) {
   const { currency, currency_style, currency_position } = value;
-  const currencyOptions = getCurrencyOptions().map(({ name, value }) => ({
-    label: name,
-    value,
+  const currencyOptions = getCurrencyOptions().map((option) => ({
+    label: option.name,
+    value: option.value,
   }));
   const styleOptions = getCurrencyStyleOptions(currency, currency_style);
   const positionOptions = getCurrencyPositionOptions();
@@ -42,9 +42,9 @@ export function CurrencyFormattingSection({ value, onChange }: Props) {
           value={currency}
           searchable
           data={currencyOptions}
-          onChange={(currency) => {
-            if (currency !== null) {
-              onChange({ ...value, currency });
+          onChange={(nextCurrency) => {
+            if (nextCurrency !== null) {
+              onChange({ ...value, currency: nextCurrency });
             }
           }}
         />
@@ -53,9 +53,9 @@ export function CurrencyFormattingSection({ value, onChange }: Props) {
         <Radio.Group
           label={t`Currency label style`}
           value={currency_style}
-          onChange={(currencyStyle) => {
+          onChange={(nextStyle) => {
             const option = styleOptions.find(
-              ({ value }) => value === currencyStyle,
+              ({ value: optionValue }) => optionValue === nextStyle,
             );
             if (option) {
               onChange({ ...value, currency_style: option.value });
@@ -63,8 +63,12 @@ export function CurrencyFormattingSection({ value, onChange }: Props) {
           }}
         >
           <Stack gap="sm" mt="xxs">
-            {styleOptions.map(({ name, value }) => (
-              <Radio key={value} value={value} label={name} />
+            {styleOptions.map((option) => (
+              <Radio
+                key={option.value}
+                value={option.value}
+                label={option.name}
+              />
             ))}
           </Stack>
         </Radio.Group>
@@ -81,9 +85,9 @@ export function CurrencyFormattingSection({ value, onChange }: Props) {
               ? t`Currency names always appear after the amount.`
               : undefined
           }
-          onChange={(currencyPosition) => {
+          onChange={(nextPosition) => {
             const option = positionOptions.find(
-              ({ value }) => value === currencyPosition,
+              ({ value: optionValue }) => optionValue === nextPosition,
             );
             if (option) {
               onChange({ ...value, currency_position: option.value });
@@ -91,8 +95,13 @@ export function CurrencyFormattingSection({ value, onChange }: Props) {
           }}
         >
           <Stack gap="sm" mt="xxs">
-            {positionOptions.map(({ name, value }) => (
-              <Radio key={value} value={value} label={name} disabled={isName} />
+            {positionOptions.map((option) => (
+              <Radio
+                key={option.value}
+                value={option.value}
+                label={option.name}
+                disabled={isName}
+              />
             ))}
           </Stack>
         </Radio.Group>

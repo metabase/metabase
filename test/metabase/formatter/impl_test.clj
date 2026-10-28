@@ -169,6 +169,7 @@
                  ["symbol" "before" "€-1,234.56"]
                  ["symbol" "after" "-1,234.56\u00a0€"]
                  ["code" "after" "-1,234.56\u00a0EUR"]
+                 ["narrowSymbol" "before" "€-1,234.56"]
                  ["narrowSymbol" "after" "-1,234.56\u00a0€"]
                  ["name" "before" "-1,234.56 euros"]
                  ["name" "after" "-1,234.56 euros"]]]
