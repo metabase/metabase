@@ -1,6 +1,7 @@
 import type {
   Card,
   CardId,
+  CardType,
   DatasetData,
   MeasureId,
   ReferencedEntityType,
@@ -23,6 +24,8 @@ export type ResolvedGoalSegment = ResolvedOpenEndedGoalSegment & {
   min: number;
   max: number;
 };
+
+export type ReferencedEntityKind = CardType | "measure";
 
 export type GoalRefErrorReason =
   | "query-failed"
