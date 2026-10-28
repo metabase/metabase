@@ -39,7 +39,7 @@
 (defn- card-error
   "The error message for a data app's run of the card with `card-id`."
   [card-id]
-  (format "A data app can use only the cards in its own collection, not the card %d." card-id))
+  (format "A data app can use only the cards in its own collection and the metrics in the Library, not the card %d." card-id))
 
 (defn- run-query
   "The response to a data app's request to run `query` through `POST /api/dataset`, expecting `status`."
@@ -197,7 +197,7 @@
 
 (deftest metrics-test
   (do-with-app-card!
-   (fn [card-id collection-id]
+   (fn [card-id _collection-id]
      (data-apps.tu/do-with-sources!
       (fn [{:keys [metric-id]}]
         (testing "a Library metric runs"
@@ -211,18 +211,7 @@
           (testing "a metric outside the Library is refused"
             (is (= (error-message :metrics outside-id)
                    (run-query 400 (lib/aggregate (card-query card-id)
-                                                 (lib.metadata/metric (mt/metadata-provider) outside-id)))))))
-        (testing "a metric in the app's collection is not a Library metric either"
-          (mt/with-temp [:model/Card {app-metric-id :id} {:name          "Venue count of the app"
-                                                          :type          :metric
-                                                          :collection_id collection-id
-                                                          :database_id   (mt/id)
-                                                          :dataset_query (lib/aggregate (table-query :venues)
-                                                                                        (lib/count))}]
-            (is (= (error-message :metrics app-metric-id)
-                   (run-query 400 (lib/aggregate (table-query :venues)
-                                                 (lib.metadata/metric (mt/metadata-provider)
-                                                                      app-metric-id))))))))))))
+                                                 (lib.metadata/metric (mt/metadata-provider) outside-id))))))))))))
 
 (deftest segments-and-measures-test
   (do-with-app-card!
@@ -282,6 +271,28 @@
        (testing "a request that is not a data app's still runs the card"
          (is (= "completed" (:status (mt/user-http-request :crowberto :post 202
                                                            (format "card/%d/query" elsewhere-id))))))))))
+
+(deftest card-endpoints-allow-library-metrics-test
+  (do-with-app-collection
+   (fn [_collection-id]
+     (data-apps.tu/do-with-sources!
+      (fn [{:keys [metric-id]}]
+        (testing "a Library metric, its metadata and its run are open to a data app"
+          (is (=? {:id metric-id} (mt/user-http-request :crowberto :get 200 (format "card/%d" metric-id) as-data-app)))
+          (is (map? (mt/user-http-request :crowberto :get 200 (format "card/%d/query_metadata" metric-id) as-data-app)))
+          (is (=? {:id (str "card__" metric-id)}
+                  (mt/user-http-request :crowberto :get 200 (format "table/card__%d/query_metadata" metric-id) as-data-app)))
+          (is (= "completed" (:status (mt/user-http-request :crowberto :post 202 (format "card/%d/query" metric-id)
+                                                            as-data-app)))))
+        (mt/with-temp [:model/Card {outside-id :id} {:name          "Venue count elsewhere"
+                                                     :type          :metric
+                                                     :database_id   (mt/id)
+                                                     :dataset_query (lib/aggregate (data-apps.tu/venues-query) (lib/count))}]
+          (testing "a metric outside the Library is refused"
+            (doseq [url ["card/%d" "card/%d/query_metadata" "table/card__%d/query_metadata"]]
+              (is (= (card-error outside-id)
+                     (mt/user-http-request :crowberto :get 400 (format url outside-id) as-data-app))
+                  url)))))))))
 
 (deftest card-read-endpoints-check-card-test
   (do-with-app-card!
@@ -405,7 +416,7 @@
    (fn [_card-id _collection-id]
      (mt/with-temp [:model/Card {elsewhere-id :id} {:id 1234567 :dataset_query (data-apps.tu/venues-query)}]
        (testing "an ID of a thousand or more appears as it is, not as 1,234,567"
-         (is (= "A data app can use only the cards in its own collection, not the card 1234567."
+         (is (= "A data app can use only the cards in its own collection and the metrics in the Library, not the card 1234567."
                 (mt/user-http-request :crowberto :post 400 (format "card/%d/query" elsewhere-id) as-data-app))))))))
 
 (deftest without-data-apps-feature-test

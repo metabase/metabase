@@ -75,15 +75,18 @@
   nil)
 
 (defn- read-checked-app-card
-  "The card with `card-id`, after a read check; throws a 400 unless it is in `data-app`'s collection."
+  "The card with `card-id`, after a read check; throws a 400 unless it is in `data-app`'s collection or a metric in the
+  Library."
   [data-app card-id]
   (let [card (api/read-check :model/Card card-id)]
-    (when-not (in-app-collection? data-app card)
-      (throw (data-app-error (tru "A data app can use only the cards in its own collection, not the card {0}." (str card-id)))))
+    (when-not (or (in-app-collection? data-app card) (empty? (data-apps.db/external-metric-ids #{card-id})))
+      (throw (data-app-error (tru "A data app can use only the cards in its own collection and the metrics in the Library, not the card {0}."
+                                  (str card-id)))))
     card))
 
 (defenterprise-schema check-card :- :nil
-  "Throws a 400 unless the card with `card-id` is in `data-app`'s collection, after a read check of the card."
+  "Throws a 400 unless the card with `card-id` is in `data-app`'s collection or a metric in the Library, after a read
+  check of the card."
   :feature :data-apps
   [data-app :- ::data-apps.schema/data-app
    card-id  :- ::lib.schema.id/card]
