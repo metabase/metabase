@@ -16,7 +16,7 @@ Remote sync syncs:
 - The Library: published tables with their segments and measures, metrics, dashboards, documents, data apps, SQL snippets, data actions, and the glossary.
 - Transforms: their tags, tests, folders, and Python libraries.
 
-Metabase doesn't sync any of your data. All Metabase stores in Git are [YAML files](./serialization.md#example-of-a-serialized-question) that describe your analytics content. Your actual data stays in your databases and never leaves your Metabase.
+Metabase doesn't sync any of your data. All Metabase stores in Git are [YAML files](../../installation-and-operation/serialization.md#example-of-a-serialized-question) that describe your analytics content. Your actual data stays in your databases and never leaves your Metabase.
 
 > **Metabase 65 and later syncs the Library and transforms.** Earlier versions let you pick which top-level collections to sync. Starting in Metabase 65, Remote sync syncs the Library and transforms, and there is no list of collections to choose from. If you already synced other collections before upgrading, your setup keeps working. See [Syncing other collections](#syncing-other-collections).
 
@@ -47,11 +47,11 @@ Your repository can't change users, groups, or permissions, because those [don't
 
 ### Content is stored as YAML files
 
-Remote sync stores your content as [YAML files](./serialization.md#example-of-a-serialized-question) in your Git repository. Each published table, metric, dashboard, document, and transform becomes a YAML file that can be reviewed in pull requests and versioned like code.
+Remote sync stores your content as [YAML files](../../installation-and-operation/serialization.md#example-of-a-serialized-question) in your Git repository. Each published table, metric, dashboard, document, and transform becomes a YAML file that can be reviewed in pull requests and versioned like code.
 
 ### Remote sync excludes table metadata
 
-Table metadata doesn't sync. Table metadata includes things like table names, column types, descriptions, and visibility settings. If you need to version table metadata, use [serialization](./serialization.md) instead.
+Table metadata doesn't sync. Table metadata includes things like table names, column types, descriptions, and visibility settings. If you need to version table metadata, use [serialization](../../installation-and-operation/serialization.md) instead.
 
 ### One branch at a time per Metabase
 
@@ -105,7 +105,7 @@ Create a personal access token with read and write repository access. Copy the t
 
 ![Development settings](./images/read-write-settings.png)
 
-You can put any Metabase into Read-write mode. We also offer [Development instances](./development-instance.md) that you can use for Remote sync or any other kind of development.
+You can put any Metabase into Read-write mode. We also offer [Development instances](../../installation-and-operation/development-instance.md) that you can use for Remote sync or any other kind of development.
 
 In the Metabase that you use for development:
 
@@ -197,7 +197,7 @@ Remote sync versions your [transforms](../transforms/transforms-overview.md), in
 
 ## Local file repositories
 
-Remote sync can point at a bare git repo on the same filesystem as your Metabase process, via a `file://` URL. Local repos come in handy for local development, especially alongside the [agent-driven development workflow](../ai/agent-driven-development.md).
+Remote sync can point at a bare git repo on the same filesystem as your Metabase process, via a `file://` URL. Local repos come in handy for local development, especially alongside the [agent-driven development workflow](../../ai/agent-driven-development.md).
 
 Create a bare git repo on the same filesystem as your Metabase process:
 
@@ -304,7 +304,7 @@ Everything a Library dashboard or question needs must be in the Library. This in
 
 ## What Metabase syncs
 
-Remote sync uses the same serialization format as the [Metabase CLI serialization feature](./serialization.md), storing your content as YAML files in your Git repository.
+Remote sync uses the same serialization format as the [Metabase CLI serialization feature](../../installation-and-operation/serialization.md), storing your content as YAML files in your Git repository.
 
 **What syncs:**
 
@@ -454,7 +454,7 @@ Content in other Metabases that depended on this item may break, because the dep
 
 ### Making sub-collections appear at the top level
 
-Sometimes you might want synced content to appear at the top level of your navigation rather than nested under a synced collection. If you use [Tenants](../embedding/tenants.md), you can accomplish that with synced shared collections.
+Sometimes you might want synced content to appear at the top level of your navigation rather than nested under a synced collection. If you use [Tenants](../../embedding/tenants.md), you can accomplish that with synced shared collections.
 
 If you aren't using tenants, you can use permissions to control how the collection hierarchy appears to different groups.
 
@@ -513,10 +513,10 @@ If you want to switch fully to Remote sync, we recommend starting with a new rep
 3. Move the content you want to sync into the Library.
 4. Push up your changes to the new repo.
 
-Remote sync does NOT sync table metadata, so if you're importing and exporting your [table metadata](../data-modeling/metadata/metadata-editing.md), you should stick with serialization.
+Remote sync does NOT sync table metadata, so if you're importing and exporting your [table metadata](../metadata/metadata-editing.md), you should stick with serialization.
 
 ## Further reading
 
-- [Library](../data-modeling/semantic-layer/library.md)
+- [Library](./library.md)
 - [Transforms](../transforms/transforms-overview.md)
-- [Serialization](./serialization.md)
+- [Serialization](../../installation-and-operation/serialization.md)
