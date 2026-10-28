@@ -41,7 +41,7 @@ export type CountShape = {
   stage: Stage;
   x: number;
   y: number;
-  anchor: "middle" | "start";
+  anchor: "middle" | "start" | "end";
 };
 export type Shape =
   | PillShape

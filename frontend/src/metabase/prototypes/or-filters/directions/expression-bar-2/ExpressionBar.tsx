@@ -4,7 +4,10 @@ import {
   type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
+  type Ref,
+  useContext,
   useEffect,
+  useImperativeHandle,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -28,6 +31,8 @@ import type * as Lib from "metabase-lib";
 import { getFilterLabel, toFilterClause } from "../../harness/clauses";
 import { Token as TokenPill } from "../or-pills/Token";
 
+const FRESH_TOKEN_FLASH_MS = 1500;
+
 import S from "./ExpressionBar.module.css";
 import {
   type DropdownView,
@@ -35,10 +40,11 @@ import {
   activateSuggestion,
   useSuggestions,
 } from "./FilterSearchDropdown";
+import { CompactReadingContext } from "./settings";
 import {
   CLOSE_PAREN,
   OPEN_PAREN,
-  type Token,
+  type ExpressionToken,
   filterToken,
   insertToken,
   opToken,
@@ -51,10 +57,37 @@ import {
   writeTokens,
 } from "./tokens";
 
+/** Lets a parent move the caret into the bar, e.g. when arrowing in from a neighbouring segment. */
+export type ExpressionBarHandle = {
+  focusAt: (position: "start" | "end") => void;
+};
+
 type ExpressionBarProps = {
   query: Lib.Query;
   stageIndex: number;
   onChange: (query: Lib.Query) => void;
+  handleRef?: Ref<ExpressionBarHandle>;
+  /** Arrow key pressed at the very start of the bar; the caret has nowhere to go here. */
+  onExitStart?: () => void;
+  /** Arrow key pressed at the very end of the bar. */
+  onExitEnd?: () => void;
+  /**
+   * `false` for the segment after a summary: "or" is rejected and the
+   * operator pills do not toggle, since the summary's filters can only be
+   * AND-ed with the rows before it.
+   */
+  allowOr?: boolean;
+  placeholder?: string;
+  /**
+   * `"segment"` renders the tokens without a box of their own, so a parent
+   * row can lay several segments out as one wrapping stream. Status and
+   * Cancel/Apply then go on a full-width line at the end of that row.
+   */
+  layout?: "bar" | "segment";
+  /** Extra class on the bar box, or on the segment wrapper in segment layout. */
+  className?: string;
+  /** Segment layout only: rendered before the first token, e.g. a stage badge. */
+  leading?: ReactNode;
   /** Cancel/Apply live inside the bar instead of a trailing "+" button. */
   hasInlineActions?: boolean;
   /** Renders Cancel/Apply elsewhere, e.g. in a modal footer. */
@@ -74,11 +107,21 @@ export function ExpressionBar({
   query,
   stageIndex,
   onChange,
+  handleRef,
+  onExitStart,
+  onExitEnd,
+  allowOr = true,
+  placeholder = t`Type a column, "and", "or", "("…`,
+  layout = "bar",
+  className,
+  leading,
   hasInlineActions = false,
   renderActions,
 }: ExpressionBarProps) {
+  const compactReading = useContext(CompactReadingContext);
+  const [isFocused, setIsFocused] = useState(false);
   const committedTokens = useMemo(
-    () => readTokens(query, stageIndex),
+    () => readTokens(query, stageIndex, { withNot: true }),
     [query, stageIndex],
   );
   const [tokens, setTokens] = useState(committedTokens);
@@ -93,17 +136,46 @@ export function ExpressionBar({
   const [hasNavigated, setHasNavigated] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const shouldRefocusRef = useRef(false);
+  const previousCommittedRef = useRef(committedTokens);
+  const isOwnCommitRef = useRef(false);
+  const [freshIndexes, setFreshIndexes] = useState<ReadonlySet<number>>(
+    () => new Set(),
+  );
 
-  // External query changes (examples, other frames) reset the draft.
+  // External query changes (examples, drills, other frames) drop the draft
+  // and briefly highlight what arrived.
   useEffect(() => {
+    const previous = previousCommittedRef.current;
+    previousCommittedRef.current = committedTokens;
     setTokens(committedTokens);
     setCaret(committedTokens.length);
+
+    const isOwnCommit = isOwnCommitRef.current;
+    isOwnCommitRef.current = false;
+    const fresh = isOwnCommit
+      ? new Set<number>()
+      : freshTokenIndexes(previous, committedTokens);
+    setFreshIndexes(fresh);
+    if (fresh.size === 0) {
+      return;
+    }
+    const timeout = setTimeout(
+      () => setFreshIndexes(new Set()),
+      FRESH_TOKEN_FLASH_MS,
+    );
+    return () => clearTimeout(timeout);
   }, [committedTokens]);
 
   const isDirty = tokens !== committedTokens;
-  const parsed = useMemo(() => parseTokens(tokens), [tokens]);
+  const parsed = useMemo(
+    () => parseTokens(tokens, { allowOr }),
+    [tokens, allowOr],
+  );
   const errorPosition = parsed.ok ? undefined : parsed.position;
-  const suggestions = useSuggestions(query, stageIndex, text);
+  const suggestions = useSuggestions(query, stageIndex, text, {
+    allowOr,
+    withNot: true,
+  });
 
   // Moving the caret moves the input's DOM node, which blurs it; refocus after render.
   const focusInput = () => {
@@ -115,6 +187,16 @@ export function ExpressionBar({
       inputRef.current?.focus();
     }
   });
+
+  useImperativeHandle(handleRef, () => ({
+    focusAt: (position) => {
+      setCaret(position === "start" ? 0 : tokens.length);
+      // When the caret already sits there nothing re-renders, so focus now;
+      // when it moves, the input remounts and the layout effect refocuses it.
+      inputRef.current?.focus();
+      focusInput();
+    },
+  }));
 
   const openDropdown = () => {
     setDropdownView({ type: "list" });
@@ -140,7 +222,7 @@ export function ExpressionBar({
     setDropdownView({ type: "browse" });
   };
 
-  const insert = (token: Token) => {
+  const insert = (token: ExpressionToken) => {
     const next = insertToken(tokens, caret, token);
     setTokens(next.tokens);
     setCaret(next.caret);
@@ -154,7 +236,7 @@ export function ExpressionBar({
     focusInput();
   };
 
-  const handlePickToken = (token: Token) => {
+  const handlePickToken = (token: ExpressionToken) => {
     insert(token);
     setDropdownView({ type: "list" });
     setActiveIndex(0);
@@ -163,7 +245,8 @@ export function ExpressionBar({
 
   const commit = () => {
     if (parsed.ok && isDirty) {
-      onChange(writeTokens(query, stageIndex, tokens));
+      isOwnCommitRef.current = true;
+      onChange(writeTokens(query, stageIndex, tokens, { allowOr }));
     }
     closeDropdown();
   };
@@ -186,7 +269,7 @@ export function ExpressionBar({
       return;
     }
     if (event.key === " " || event.key === "Tab") {
-      const typed = parseTypedToken(text);
+      const typed = parseTypedToken(text, { withNot: true });
       if (typed) {
         event.preventDefault();
         handlePickToken(typed);
@@ -201,7 +284,7 @@ export function ExpressionBar({
         commit();
         return;
       }
-      const typed = parseTypedToken(text);
+      const typed = parseTypedToken(text, { withNot: true });
       if (typed) {
         handlePickToken(typed);
         return;
@@ -233,16 +316,28 @@ export function ExpressionBar({
       focusInput();
       return;
     }
-    if (event.key === "ArrowLeft" && cursorAtStart && caret > 0) {
-      event.preventDefault();
-      setCaret(caret - 1);
-      focusInput();
+    if (event.key === "ArrowLeft" && cursorAtStart) {
+      if (caret > 0) {
+        event.preventDefault();
+        setCaret(caret - 1);
+        focusInput();
+      } else if (onExitStart) {
+        event.preventDefault();
+        closeDropdown();
+        onExitStart();
+      }
       return;
     }
-    if (event.key === "ArrowRight" && cursorAtEnd && caret < tokens.length) {
-      event.preventDefault();
-      setCaret(caret + 1);
-      focusInput();
+    if (event.key === "ArrowRight" && cursorAtEnd) {
+      if (caret < tokens.length) {
+        event.preventDefault();
+        setCaret(caret + 1);
+        focusInput();
+      } else if (onExitEnd) {
+        event.preventDefault();
+        closeDropdown();
+        onExitEnd();
+      }
       return;
     }
     if (event.key === "ArrowDown") {
@@ -282,7 +377,7 @@ export function ExpressionBar({
           ref={inputRef}
           className={cx(S.input, {
             [S.inputInline]: caret < tokens.length,
-            [S.inputInlineEmpty]: caret < tokens.length && text.length === 0,
+            [S.inputEmpty]: text.length === 0,
           })}
           // Between tokens the input hugs its text and takes no space while empty, so
           // moving the caret never shifts the tokens. The active Gap shows where it sits.
@@ -294,9 +389,7 @@ export function ExpressionBar({
               : undefined
           }
           value={text}
-          placeholder={
-            tokens.length === 0 ? t`Type a column, "and", "or", "("…` : ""
-          }
+          placeholder={tokens.length === 0 ? placeholder : ""}
           aria-label={t`Filter expression`}
           onChange={(event) => {
             setText(event.target.value);
@@ -313,6 +406,8 @@ export function ExpressionBar({
       <Popover.Dropdown p={0} style={{ overflow: "visible" }}>
         <FilterSearchDropdown
           query={query}
+          allowOr={allowOr}
+          withNot
           stageIndex={stageIndex}
           text={text}
           view={dropdownView}
@@ -333,57 +428,128 @@ export function ExpressionBar({
     </Popover>
   );
 
+  // One keyed array holds the input so React moves it instead of remounting it.
+  const stream = [
+    ...tokens.flatMap((token, index) => [
+      <Gap
+        key={`gap-${index}`}
+        isActive={index === caret}
+        onClick={() => {
+          setCaret(index);
+          focusInput();
+        }}
+      />,
+      index === caret && <Fragment key="input">{input}</Fragment>,
+      <TokenView
+        key={`token-${index}`}
+        query={query}
+        stageIndex={stageIndex}
+        token={token}
+        hasError={index === errorPosition}
+        isFresh={freshIndexes.has(index)}
+        compact={compactReading && !isFocused && !isDirty && !isDropdownOpen}
+        canToggleOperator={allowOr}
+        onReplace={(next) => setTokens(replaceTokenAt(tokens, index, next))}
+        onRemove={() => {
+          setTokens(removeTokenAt(tokens, index));
+          setCaret(Math.min(caret, tokens.length - 1));
+        }}
+      />,
+    ]),
+    caret === tokens.length ? (
+      <Fragment key="input">{input}</Fragment>
+    ) : (
+      layout === "segment" && (
+        <Box
+          key="end-spacer"
+          component="span"
+          className={S.endSpacer}
+          onClick={() => {
+            setCaret(tokens.length);
+            focusInput();
+          }}
+        />
+      )
+    ),
+  ];
+
+  const statusMessage = !parsed.ok
+    ? parsed.error
+    : isDirty
+      ? t`Press Enter to apply`
+      : undefined;
+
+  const inlineActions = isDirty && (
+    <Group gap="xs" ml="auto">
+      <Button size="compact-sm" variant="subtle" onClick={revert}>
+        {t`Cancel`}
+      </Button>
+      <Button
+        size="compact-sm"
+        variant="filled"
+        disabled={!parsed.ok}
+        onClick={commit}
+      >
+        {t`Apply`}
+      </Button>
+    </Group>
+  );
+
+  if (layout === "segment") {
+    // Each token contributes [gap, input?, token] to the stream. The leading
+    // element is grouped with the first token so a line break never separates them.
+    const headLength = tokens.length > 0 ? 3 : stream.length;
+    return (
+      <>
+        <Box
+          className={cx(S.segment, className)}
+          onFocusCapture={() => setIsFocused(true)}
+          onBlurCapture={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) {
+              setIsFocused(false);
+            }
+          }}
+        >
+          {leading ? (
+            <Box component="span" className={S.segmentHead}>
+              {leading}
+              {stream.slice(0, headLength)}
+            </Box>
+          ) : (
+            stream.slice(0, headLength)
+          )}
+          {stream.slice(headLength)}
+        </Box>
+        {(statusMessage || isDirty) && (
+          <Group className={S.segmentStatus} gap="sm" wrap="nowrap">
+            <Text
+              size="sm"
+              c={parsed.ok ? "text-secondary" : "feedback-negative"}
+            >
+              {statusMessage}
+            </Text>
+            {inlineActions}
+          </Group>
+        )}
+      </>
+    );
+  }
+
   return (
     <Stack gap="xs" w="100%">
       <Box
-        className={cx(S.bar, { [S.barInvalid]: !parsed.ok })}
+        className={cx(S.bar, className, { [S.barInvalid]: !parsed.ok })}
         onClick={handleBarClick}
+        onFocusCapture={() => setIsFocused(true)}
+        onBlurCapture={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) {
+            setIsFocused(false);
+          }
+        }}
       >
-        {/* One keyed array holds the input so React moves it instead of remounting it. */}
-        {[
-          ...tokens.flatMap((token, index) => [
-            <Gap
-              key={`gap-${index}`}
-              isActive={index === caret}
-              onClick={() => {
-                setCaret(index);
-                focusInput();
-              }}
-            />,
-            index === caret && <Fragment key="input">{input}</Fragment>,
-            <TokenView
-              key={`token-${index}`}
-              query={query}
-              stageIndex={stageIndex}
-              token={token}
-              hasError={index === errorPosition}
-              onReplace={(next) =>
-                setTokens(replaceTokenAt(tokens, index, next))
-              }
-              onRemove={() => {
-                setTokens(removeTokenAt(tokens, index));
-                setCaret(Math.min(caret, tokens.length - 1));
-              }}
-            />,
-          ]),
-          caret === tokens.length && <Fragment key="input">{input}</Fragment>,
-        ]}
+        {stream}
         {hasInlineActions ? (
-          isDirty && (
-            <Group gap="xs" ml="auto">
-              <Button size="compact-sm" variant="subtle" onClick={revert}>
-                {t`Cancel`}
-              </Button>
-              <Button
-                size="compact-sm"
-                variant="filled"
-                disabled={!parsed.ok}
-                onClick={commit}
-              >
-                {t`Apply`}
-              </Button>
-            </Group>
-          )
+          inlineActions
         ) : (
           <ActionIcon
             size="sm"
@@ -402,8 +568,7 @@ export function ExpressionBar({
       </Box>
       <Group justify="space-between" gap="sm" mih={28}>
         <Text size="sm" c={parsed.ok ? "text-secondary" : "feedback-negative"}>
-          {!parsed.ok && parsed.error}
-          {parsed.ok && isDirty && t`Press Enter to apply`}
+          {statusMessage}
         </Text>
         {renderActions?.({
           canApply: parsed.ok,
@@ -430,9 +595,13 @@ function Gap({
 type TokenViewProps = {
   query: Lib.Query;
   stageIndex: number;
-  token: Token;
+  token: ExpressionToken;
   hasError: boolean;
-  onReplace: (token: Token) => void;
+  /** The token came from outside the bar (a drill, an example) a moment ago. */
+  isFresh: boolean;
+  compact: boolean;
+  canToggleOperator: boolean;
+  onReplace: (token: ExpressionToken) => void;
   onRemove: () => void;
 };
 
@@ -441,20 +610,47 @@ function TokenView({
   stageIndex,
   token,
   hasError,
+  isFresh,
+  canToggleOperator,
+  compact,
   onReplace,
   onRemove,
 }: TokenViewProps) {
-  const errorClass = hasError ? S.tokenError : undefined;
+  const errorClass = cx({
+    [S.tokenError]: hasError,
+    [S.tokenFresh]: isFresh,
+  });
 
   if (token.type === "op") {
     return (
       <Box
         component="span"
         className={cx(S.op, { [S.opOr]: token.op === "or" }, errorClass)}
-        title={t`Click to switch`}
-        onClick={() => onReplace(opToken(toggleOperator(token.op)))}
+        title={
+          canToggleOperator
+            ? t`Click to switch`
+            : t`Filters on the summary can only be combined with "and"`
+        }
+        onClick={
+          canToggleOperator
+            ? () => onReplace(opToken(toggleOperator(token.op)))
+            : undefined
+        }
       >
         {token.op}
+      </Box>
+    );
+  }
+
+  if (token.type === "not") {
+    return (
+      <Box
+        component="span"
+        className={cx(S.op, S.opNot, errorClass)}
+        title={t`Click to remove`}
+        onClick={onRemove}
+      >
+        {t`not`}
       </Box>
     );
   }
@@ -476,6 +672,7 @@ function TokenView({
     <FilterTokenView
       query={query}
       stageIndex={stageIndex}
+      compact={compact}
       clause={token.clause}
       className={errorClass}
       onReplace={(filterable) =>
@@ -489,6 +686,7 @@ function TokenView({
 type FilterTokenViewProps = {
   query: Lib.Query;
   stageIndex: number;
+  compact: boolean;
   clause: Lib.FilterClause;
   className?: string;
   onReplace: (filterable: Lib.Filterable) => void;
@@ -499,6 +697,7 @@ function FilterTokenView({
   query,
   stageIndex,
   clause,
+  compact,
   className,
   onReplace,
   onRemove,
@@ -513,12 +712,19 @@ function FilterTokenView({
       onChange={setIsOpened}
     >
       <Popover.Target>
-        <Box component="span" className={className}>
+        <Box component="span" className={cx(S.filterToken, className)}>
           <TokenPill
             onClick={() => setIsOpened((opened) => !opened)}
             onRemove={onRemove}
           >
-            {getFilterLabel(query, stageIndex, clause)}
+            {compact && !isOpened
+              ? getFilterLabel(query, stageIndex, clause)
+                  .replaceAll("is greater than or equal to", "≥")
+                  .replaceAll("is less than or equal to", "≤")
+                  .replaceAll("is greater than", ">")
+                  .replaceAll("is less than", "<")
+                  .replaceAll("is equal to", "=")
+              : getFilterLabel(query, stageIndex, clause)}
           </TokenPill>
         </Box>
       </Popover.Target>
@@ -536,4 +742,27 @@ function FilterTokenView({
       </Popover.Dropdown>
     </Popover>
   );
+}
+
+/**
+ * Which tokens a longer committed stream gained: the appended tail, plus the
+ * opening parenthesis when a drill wrapped a top-level OR to AND onto it.
+ */
+function freshTokenIndexes(
+  previous: readonly ExpressionToken[],
+  next: readonly ExpressionToken[],
+): Set<number> {
+  if (next.length <= previous.length) {
+    return new Set();
+  }
+  const fresh = new Set<number>();
+  for (let index = previous.length; index < next.length; index++) {
+    fresh.add(index);
+  }
+  const opensWithParen = (tokens: readonly ExpressionToken[]) =>
+    tokens[0]?.type === "paren" && tokens[0].side === "open";
+  if (opensWithParen(next) && !opensWithParen(previous)) {
+    fresh.add(0);
+  }
+  return fresh;
 }

@@ -11,18 +11,52 @@ type FilterTreeInspectorProps = {
 };
 
 /**
- * The stage's filters as an indented operator tree, next to what
- * `Lib.displayInfo` says about each top-level clause.
+ * Every stage's filters as indented operator trees, next to what
+ * `Lib.displayInfo` says about each top-level clause. Stages after
+ * `stageIndex` are the ones a drill or the summary segment appended.
  */
 export function FilterTreeInspector({
   query,
   stageIndex,
 }: FilterTreeInspectorProps) {
-  const filters = Lib.filters(query, stageIndex);
+  const stageIndexes = Lib.stageIndexes(query).filter(
+    (index) => index >= stageIndex,
+  );
 
   return (
     <Stack gap="sm">
       <Text fw="bold">{t`Filter tree`}</Text>
+      {stageIndexes.map((index) => (
+        <StageFilters
+          key={index}
+          query={query}
+          stageIndex={index}
+          hasHeading={stageIndexes.length > 1}
+        />
+      ))}
+      <Code block>{JSON.stringify(Lib.toLegacyQuery(query), null, 2)}</Code>
+    </Stack>
+  );
+}
+
+type StageFiltersProps = {
+  query: Lib.Query;
+  stageIndex: number;
+  hasHeading: boolean;
+};
+
+function StageFilters({ query, stageIndex, hasHeading }: StageFiltersProps) {
+  const filters = Lib.filters(query, stageIndex);
+
+  return (
+    <Stack gap="sm">
+      {hasHeading && (
+        <Text size="sm" fw="bold" c="text-secondary">
+          {stageIndex === 0
+            ? t`Stage ${stageIndex}: rows`
+            : t`Stage ${stageIndex}: after the summary`}
+        </Text>
+      )}
       {filters.map((filter, index) => (
         <Stack key={index} gap="xs">
           <Text size="sm" c="text-secondary">
@@ -38,7 +72,6 @@ export function FilterTreeInspector({
           </Code>
         </Stack>
       ))}
-      <Code block>{JSON.stringify(Lib.toLegacyQuery(query), null, 2)}</Code>
     </Stack>
   );
 }

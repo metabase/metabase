@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { getColumnIcon } from "metabase/common/utils/columns";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
 import { FilterPickerBody } from "metabase/querying/filters/components/FilterPicker/FilterPickerBody";
 import { Box, Icon, Stack, Text, UnstyledButton } from "metabase/ui";
@@ -9,6 +10,8 @@ import * as Lib from "metabase-lib";
 import S from "./ExpressionBar.module.css";
 import {
   CLOSE_PAREN,
+  type ExpressionToken,
+  NOT_TOKEN,
   OPEN_PAREN,
   type Token,
   opToken,
@@ -17,14 +20,15 @@ import {
 
 const MAX_COLUMN_SUGGESTIONS = 8;
 
-export type Suggestion =
-  | { type: "token"; token: Token; label: string }
+export type Suggestion<T extends ExpressionToken = Token> =
+  | { type: "token"; token: T; label: string }
   | { type: "column"; column: Lib.ColumnMetadata; label: string }
   | { type: "browse"; label: string };
 
-const KEYWORDS: { word: string; token: Token }[] = [
+const KEYWORDS: { word: string; token: ExpressionToken }[] = [
   { word: "and", token: opToken("and") },
   { word: "or", token: opToken("or") },
+  { word: "not", token: NOT_TOKEN },
   { word: "(", token: OPEN_PAREN },
   { word: ")", token: CLOSE_PAREN },
 ];
@@ -38,31 +42,49 @@ export function useSuggestions(
   query: Lib.Query,
   stageIndex: number,
   text: string,
-): Suggestion[] {
+  options?: { allowOr?: boolean; withNot?: false },
+): Suggestion[];
+export function useSuggestions(
+  query: Lib.Query,
+  stageIndex: number,
+  text: string,
+  options: { allowOr?: boolean; withNot: true },
+): Suggestion<ExpressionToken>[];
+export function useSuggestions(
+  query: Lib.Query,
+  stageIndex: number,
+  text: string,
+  {
+    allowOr = true,
+    withNot = false,
+  }: { allowOr?: boolean; withNot?: boolean } = {},
+): Suggestion<ExpressionToken>[] {
   return useMemo(() => {
     const needle = text.trim().toLowerCase();
-    const keywordSuggestions: Suggestion[] = KEYWORDS.filter(
-      ({ word }) => needle.length > 0 && word.startsWith(needle),
+    const keywordSuggestions: Suggestion<ExpressionToken>[] = KEYWORDS.filter(
+      ({ word }) =>
+        needle.length > 0 &&
+        word.startsWith(needle) &&
+        (allowOr || word !== "or") &&
+        (withNot || word !== "not"),
     ).map(({ word, token }) => ({ type: "token", token, label: word }));
 
-    const columnSuggestions: Suggestion[] = Lib.filterableColumns(
-      query,
-      stageIndex,
-    )
-      .map((column) => ({
-        column,
-        label: Lib.displayInfo(query, stageIndex, column).longDisplayName,
-      }))
-      .filter(({ label }) => label.toLowerCase().includes(needle))
-      .slice(0, MAX_COLUMN_SUGGESTIONS)
-      .map(({ column, label }) => ({ type: "column", column, label }));
+    const columnSuggestions: Suggestion<ExpressionToken>[] =
+      Lib.filterableColumns(query, stageIndex)
+        .map((column) => ({
+          column,
+          label: Lib.displayInfo(query, stageIndex, column).longDisplayName,
+        }))
+        .filter(({ label }) => label.toLowerCase().includes(needle))
+        .slice(0, MAX_COLUMN_SUGGESTIONS)
+        .map(({ column, label }) => ({ type: "column", column, label }));
 
     return [
       ...keywordSuggestions,
       ...columnSuggestions,
       { type: "browse", label: t`Browse all filters…` },
     ];
-  }, [query, stageIndex, text]);
+  }, [query, stageIndex, text, allowOr, withNot]);
 }
 
 /** Which pane the dropdown shows: the suggestion list, one column's widget, or the full picker. */
@@ -71,18 +93,22 @@ export type DropdownView =
   | { type: "column"; column: Lib.ColumnMetadata }
   | { type: "browse" };
 
-type FilterSearchDropdownProps = {
+type FilterSearchDropdownProps<T extends ExpressionToken> = {
   query: Lib.Query;
   stageIndex: number;
   text: string;
   view: DropdownView;
-  suggestions: Suggestion[];
+  /** `false` hides "or" from the hint; the segment only takes "and". */
+  allowOr?: boolean;
+  /** `true` mentions "not" in the hint, for bars that have a `not` token. */
+  withNot?: boolean;
+  suggestions: Suggestion<T>[];
   activeIndex: number;
   onViewChange: (view: DropdownView) => void;
   onHover: (index: number) => void;
   onPickColumn: (column: Lib.ColumnMetadata) => void;
   onBrowse: () => void;
-  onPickToken: (token: Token) => void;
+  onPickToken: (token: T) => void;
   onPickFilter: (filterable: Lib.Filterable) => void;
   onClose: () => void;
 };
@@ -92,11 +118,13 @@ type FilterSearchDropdownProps = {
  * picking a column swaps in that column's filter widget, "Browse" swaps in the
  * full picker.
  */
-export function FilterSearchDropdown({
+export function FilterSearchDropdown<T extends ExpressionToken = Token>({
   query,
   stageIndex,
   text,
   view,
+  allowOr = true,
+  withNot = false,
   suggestions,
   activeIndex,
   onViewChange,
@@ -106,7 +134,7 @@ export function FilterSearchDropdown({
   onPickToken,
   onPickFilter,
   onClose,
-}: FilterSearchDropdownProps) {
+}: FilterSearchDropdownProps<T>) {
   if (view.type === "column") {
     return (
       <FilterPickerBody
@@ -132,10 +160,10 @@ export function FilterSearchDropdown({
   }
 
   return (
-    <Stack gap={0} p="xs" miw={320}>
+    <Stack gap={0} py="xs" miw={360}>
       {parseTypedToken(text) == null && text.trim().length === 0 && (
         <Text size="xs" c="text-secondary" px="sm" py="xs">
-          {t`Type a column name, or "and", "or", "(", ")"`}
+          <EmptyTextHint allowOr={allowOr} withNot={withNot} />
         </Text>
       )}
       {suggestions.map((suggestion, index) => (
@@ -164,10 +192,10 @@ export function FilterSearchDropdown({
   );
 }
 
-export function activateSuggestion(
-  suggestion: Suggestion,
+export function activateSuggestion<T extends ExpressionToken>(
+  suggestion: Suggestion<T>,
   handlers: {
-    onPickToken: (token: Token) => void;
+    onPickToken: (token: T) => void;
     onPickColumn: (column: Lib.ColumnMetadata) => void;
     onBrowse: () => void;
   },
@@ -181,7 +209,11 @@ export function activateSuggestion(
   }
 }
 
-function SuggestionLabel({ suggestion }: { suggestion: Suggestion }) {
+function SuggestionLabel({
+  suggestion,
+}: {
+  suggestion: Suggestion<ExpressionToken>;
+}) {
   if (suggestion.type === "token") {
     return (
       <>
@@ -195,17 +227,40 @@ function SuggestionLabel({ suggestion }: { suggestion: Suggestion }) {
   if (suggestion.type === "column") {
     return (
       <>
-        <Icon name="filter" c="text-secondary" />
-        <Text size="sm">{suggestion.label}</Text>
+        <Icon
+          name={getColumnIcon(suggestion.column)}
+          size={18}
+          className={S.suggestionIcon}
+        />
+        <Text fw="bold" className={S.suggestionTitle}>
+          {suggestion.label}
+        </Text>
       </>
     );
   }
   return (
     <>
-      <Icon name="ellipsis" c="text-secondary" />
-      <Text size="sm" c="text-secondary">
+      <Icon name="ellipsis" size={18} className={S.suggestionIcon} />
+      <Text fw="bold" className={S.suggestionTitle}>
         {suggestion.label}
       </Text>
     </>
   );
+}
+
+function EmptyTextHint({
+  allowOr,
+  withNot,
+}: {
+  allowOr: boolean;
+  withNot: boolean;
+}) {
+  if (!allowOr) {
+    return withNot
+      ? t`Type a column name, or "and", "not"`
+      : t`Type a column name, or "and"`;
+  }
+  return withNot
+    ? t`Type a column name, or "and", "or", "not", "(", ")"`
+    : t`Type a column name, or "and", "or", "(", ")"`;
 }

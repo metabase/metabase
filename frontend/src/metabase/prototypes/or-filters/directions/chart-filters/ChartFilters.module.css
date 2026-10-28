@@ -1,0 +1,179 @@
+.dataZone {
+  border-top: 1px solid var(--mb-color-border-neutral);
+  border-left: 4px solid var(--mb-color-core-filter);
+  background-color: var(--mb-color-background_page-filter);
+}
+
+.viewZone {
+  border-top: 1px solid var(--mb-color-border-neutral);
+  border-left: 4px solid var(--mb-color-core-summarize);
+  background-color: var(--mb-color-background_page-secondary);
+}
+
+.zoneLabel {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.6875rem;
+  font-weight: bold;
+  color: var(--mb-color-text-secondary);
+}
+
+.threshold {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.125rem 0.25rem 0.125rem 0.625rem;
+  border: 1px solid var(--mb-color-core-summarize);
+  border-radius: 999px;
+  background-color: var(--mb-color-background_surface-primary);
+}
+
+.landed {
+  animation: landed 1.4s ease-out;
+}
+
+@keyframes landed {
+  from {
+    box-shadow: inset 0 0 0 3px var(--mb-color-core-brand);
+  }
+
+  to {
+    box-shadow: inset 0 0 0 3px transparent;
+  }
+}
+
+.funnelRow {
+  max-width: 48rem;
+}
+
+.funnelLabel {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.funnelTrack {
+  flex: 0 0 10rem;
+  height: 0.375rem;
+  border-radius: 999px;
+  background-color: var(--mb-color-border-neutral);
+  overflow: hidden;
+}
+
+.funnelFill {
+  height: 100%;
+  background-color: var(--mb-color-core-filter);
+  transition: width 0.2s ease-out;
+}
+
+/* Small enough to read as part of the chart's legend. */
+.thresholdCompact {
+  box-sizing: border-box;
+  gap: 0.25rem;
+  height: 1.5rem;
+  cursor: pointer;
+  padding: 0 0.375rem 0 0.5rem;
+  border-color: var(--mb-color-border-neutral);
+  color: var(--mb-color-text-primary);
+}
+
+.compactInput {
+  height: 1.25rem;
+  min-height: 1.25rem;
+  padding: 0;
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-decoration: underline dashed;
+}
+
+.thresholdEmpty {
+  border-style: dashed;
+  color: var(--mb-color-text-secondary);
+}
+
+.thresholdCompact:hover {
+  border-color: var(--mb-color-core-summarize);
+}
+
+.thresholdRemove {
+  color: var(--mb-color-text-secondary);
+}
+
+.legendFilters {
+  position: relative;
+  z-index: 1;
+}
+
+/* The chart's own legend gives way to the filterable pills. */
+.hidesNativeLegend [data-testid="legend-horizontal"],
+.hidesNativeLegend [data-testid="legend-vertical"] {
+  display: none;
+}
+
+.legendPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 1.75rem;
+  padding: 0 0.625rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: var(--mb-color-text-primary);
+  cursor: pointer;
+}
+
+.legendPill:hover,
+.legendPill[data-active] {
+  border-color: var(--mb-color-border-neutral);
+}
+
+.legendDot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.legendLabel {
+  white-space: nowrap;
+}
+
+.legendRemove {
+  visibility: hidden;
+}
+
+.legendPill:hover .legendRemove,
+.legendPill[data-active] .legendRemove,
+.legendWrap[data-active] .legendRemove {
+  visibility: visible;
+}
+
+/* Outlines the chart's own legend row; it lets the pointer through to the series. */
+.legendWrap {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  height: 1.75rem;
+  padding-left: calc(0.625rem - 1px);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: var(--mb-color-text-primary);
+}
+
+.legendWrap[data-active] {
+  border-color: var(--mb-color-border-neutral);
+}
+
+.legendLead {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.legendMeasureOption {
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  color: var(--mb-color-text-primary);
+}
+
+.legendMeasureOption:hover {
+  background-color: var(--mb-color-background_page-secondary);
+}

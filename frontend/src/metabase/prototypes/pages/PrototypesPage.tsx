@@ -29,13 +29,20 @@ export function PrototypesPage() {
       ? PROTOTYPES[0]
       : PROTOTYPES.find((candidate) => candidate.id === prototypeId);
 
-  // Baseline sits above the iterations: it is today's UI, not a direction.
-  const [baseline, ...directions] = PROTOTYPES;
+  // The drills reference and Baseline sit above the iterations: neither is a direction.
+  const [docs, baseline, ...directions] = PROTOTYPES;
   const iteration1 = directions.filter(
     (candidate) => candidate.iteration === 1,
   );
   const iteration2 = directions.filter(
     (candidate) => candidate.iteration === 2,
+  );
+
+  const iteration3 = directions.filter(
+    (candidate) => candidate.iteration === 3 && !candidate.draft,
+  );
+  const iteration3Drafts = directions.filter(
+    (candidate) => candidate.iteration === 3 && candidate.draft,
   );
 
   return (
@@ -51,7 +58,12 @@ export function PrototypesPage() {
           <AppSwitcher />
         </Group>
 
-        <PrototypeLinks prototypes={[baseline]} activeId={prototype?.id} />
+        <PrototypeLinks
+          prototypes={[docs, baseline]}
+          activeId={prototype?.id}
+        />
+
+        <Divider my="sm" />
 
         <NavLink label={t`Iteration 1`} childrenOffset="sm">
           <PrototypeLinks
@@ -63,11 +75,33 @@ export function PrototypesPage() {
 
         <Divider my="sm" />
 
-        <Text fw="bold" px="sm">{t`Iteration 2`}</Text>
-        {iteration2.length > 0 ? (
-          <PrototypeLinks prototypes={iteration2} activeId={prototype?.id} />
-        ) : (
-          <Text c="text-secondary" px="sm">{t`No directions yet.`}</Text>
+        <NavLink
+          label={t`Iteration 2`}
+          childrenOffset="sm"
+          defaultOpened={false}
+        >
+          <PrototypeLinks
+            prototypes={iteration2}
+            activeId={prototype?.id}
+            mt="xs"
+          />
+        </NavLink>
+        <Divider my="sm" />
+
+        <Text fw="bold" px="sm">{t`Iteration 3`}</Text>
+        <PrototypeLinks prototypes={iteration3} activeId={prototype?.id} />
+        {iteration3Drafts.length > 0 && (
+          <NavLink
+            label={t`Other drafts`}
+            childrenOffset="sm"
+            defaultOpened={false}
+          >
+            <PrototypeLinks
+              prototypes={iteration3Drafts}
+              activeId={prototype?.id}
+              mt="xs"
+            />
+          </NavLink>
         )}
       </Stack>
 

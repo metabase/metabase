@@ -1,0 +1,281 @@
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  row-gap: 0.375rem;
+  align-items: center;
+  min-height: 2.125rem;
+  padding: 0.125rem 0.25rem;
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: 0.5rem;
+  background-color: var(--mb-color-background_surface-primary);
+  font-family: var(--mantine-font-family-monospace);
+  cursor: text;
+}
+
+.bar:focus-within {
+  border-color: var(--mb-color-core-filter);
+}
+
+.barInvalid:focus-within,
+.barInvalid {
+  border-color: var(--mb-color-feedback-negative);
+}
+
+.gap {
+  position: relative;
+  align-self: stretch;
+  width: 0.25rem;
+  border-radius: 2px;
+}
+
+.gap:hover {
+  background-color: var(--mb-color-background_page-secondary);
+}
+
+@keyframes caret-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes caret-blink-shadow {
+  0%,
+  49% {
+    box-shadow: inset 2px 0 0 var(--mb-color-core-filter);
+  }
+
+  50%,
+  100% {
+    box-shadow: none;
+  }
+}
+
+/* The caret between tokens: a line in the gap, so it takes no extra space. */
+.bar:focus-within .gapActive::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  margin-left: -1px;
+  background-color: var(--mb-color-core-filter);
+  animation: caret-blink 1s steps(1) infinite;
+}
+
+.op {
+  padding: 0 0.25rem;
+  border-radius: 0.25rem;
+  color: var(--mb-color-text-secondary);
+  font-weight: 700;
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.5rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.op:hover {
+  background-color: var(--mb-color-background_page-secondary);
+  color: var(--mb-color-text-primary);
+}
+
+.opOr {
+  color: var(--mb-color-core-filter);
+}
+
+.opNot {
+  color: var(--mb-color-text-secondary);
+}
+
+.paren {
+  padding: 0 0.125rem;
+  color: var(--mb-color-text-primary);
+  font-weight: 700;
+  font-size: 1.125rem;
+  line-height: 1.5rem;
+  user-select: none;
+  cursor: pointer;
+}
+
+.paren:hover {
+  background-color: var(--mb-color-background_page-secondary);
+  border-radius: 0.25rem;
+}
+
+.tokenError {
+  outline: 2px solid var(--mb-color-feedback-negative);
+  outline-offset: 1px;
+  border-radius: 0.25rem;
+}
+
+/* A token that just arrived from outside the bar (a drill, an example). */
+.tokenFresh {
+  border-radius: 0.25rem;
+  animation: fresh-token 1.5s ease-out both;
+}
+
+@keyframes fresh-token {
+  from {
+    background-color: var(--mb-color-background_surface-selected);
+    box-shadow: 0 0 0 2px var(--mb-color-core-filter);
+  }
+
+  to {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
+.input {
+  flex: 1 0 4rem;
+  min-width: 4rem;
+  height: 1.5rem;
+  padding: 0 0.25rem;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--mb-color-text-primary);
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+.input::placeholder {
+  color: var(--mb-color-text-tertiary);
+}
+
+.inputInline {
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 0;
+}
+
+/* Tighter pill than the shared Token: less inner gap and padding. */
+.filterToken > button {
+  gap: 0.375rem;
+  padding: 0.0625rem 0.375rem 0.0625rem 0.5rem;
+}
+
+/* While empty, our own position caret stands in for the native one. */
+.inputEmpty {
+  caret-color: transparent;
+}
+
+/* Rows styled after the default filter picker's column list: icon, bold title, brand fill when active. */
+.suggestion {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: calc(100% - 1rem);
+  margin: 1px 0.5rem;
+  padding: 0.5rem;
+  border-radius: 4px;
+  text-align: left;
+  color: var(--mb-color-text-primary);
+}
+
+.suggestionIcon {
+  flex: 0 0 auto;
+  color: var(--mb-color-text-disabled);
+}
+
+.suggestionTitle {
+  color: var(--mb-color-text-primary);
+}
+
+.suggestion:hover,
+.suggestionActive {
+  background-color: var(--mb-color-core-brand);
+}
+
+.suggestion:hover .suggestionTitle,
+.suggestionActive .suggestionTitle,
+.suggestion:hover .suggestionIcon,
+.suggestionActive .suggestionIcon {
+  color: var(--mb-color-text-primary-inverse);
+}
+
+.keyword {
+  padding: 0 0.375rem;
+  border-radius: 0.25rem;
+  background-color: var(--mb-color-background_page-secondary);
+  font-family: var(--mantine-font-family-monospace);
+  font-weight: 700;
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+}
+
+/* At the end of the expression the input itself shows where the caret sits. */
+.input:not(.inputInline).inputEmpty:focus {
+  animation: caret-blink-shadow 1s steps(1) infinite;
+}
+
+/* A filter on the summary: the summarize colour family, so it reads as "after summarizing". */
+.summaryToken > button {
+  border-color: var(--mb-color-core-summarize);
+  background-color: var(--mb-color-background_surface-success);
+}
+
+.summaryToken > button:hover {
+  border-color: var(--mb-color-core-summarize);
+}
+
+.summaryTokenIcon {
+  flex: 0 0 auto;
+  color: var(--mb-color-core-summarize);
+}
+
+.suggestionSummaryIcon {
+  flex: 0 0 auto;
+  color: var(--mb-color-core-summarize);
+}
+
+.suggestionHint {
+  margin-left: auto;
+}
+
+.suggestion:hover .suggestionHint,
+.suggestionActive .suggestionHint,
+.suggestion:hover .suggestionSummaryIcon,
+.suggestionActive .suggestionSummaryIcon {
+  color: var(--mb-color-text-primary-inverse);
+}
+
+/*
+ * With a trailing zone the caret input hugs its text instead of filling the
+ * line, so the zone follows the expression as one stream and wraps to the
+ * start of the next line like any token would.
+ */
+.inputHugging {
+  flex: 0 0 auto;
+  field-sizing: content;
+  min-width: 4rem;
+  max-width: 100%;
+}
+
+/* Right of the expression while sharing its line; see useSummaryZonePlacement. */
+.summaryZone {
+  margin-left: auto;
+  font-family: var(--mantine-font-family);
+}
+
+/* On a line of its own the zone starts at the left and leaves the right to the actions. */
+.summaryZoneOwnLine {
+  flex: 1 1 auto;
+  margin-left: 0;
+}
+
+.summaryAddButton {
+  color: var(--mb-color-core-summarize);
+}
+
+.summaryAddButton:hover {
+  background-color: var(--mb-color-background_surface-success);
+}
