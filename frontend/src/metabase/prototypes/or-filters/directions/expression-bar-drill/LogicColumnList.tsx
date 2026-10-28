@@ -60,7 +60,7 @@ type ColumnItem = {
 const SEARCH_PROP = ["name", "displayName", "longDisplayName"] as const;
 
 type LogicColumnListProps = {
-  listRef: RefObject<HTMLDivElement>;
+  listRef: RefObject<HTMLDivElement | null>;
   query: Lib.Query;
   stageIndex: number;
   text: string;

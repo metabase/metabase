@@ -367,7 +367,7 @@ function Gap({ onClick }: { onClick: () => void }) {
   );
 }
 
-function getHiddenSearch(listRef: RefObject<HTMLDivElement>) {
+function getHiddenSearch(listRef: RefObject<HTMLDivElement | null>) {
   return listRef.current?.querySelector("input") ?? undefined;
 }
 
@@ -376,7 +376,7 @@ function getHiddenSearch(listRef: RefObject<HTMLDivElement>) {
  * the best match so Enter picks it.
  */
 export function useSearchSync(
-  listRef: RefObject<HTMLDivElement>,
+  listRef: RefObject<HTMLDivElement | null>,
   text: string,
   isActive: boolean,
   shouldHighlight: boolean,
@@ -412,7 +412,10 @@ export function useSearchSync(
 }
 
 /** Arrow keys and Enter in the bar drive the list's own keyboard navigation. */
-export function forwardKey(listRef: RefObject<HTMLDivElement>, key: string) {
+export function forwardKey(
+  listRef: RefObject<HTMLDivElement | null>,
+  key: string,
+) {
   getHiddenSearch(listRef)?.dispatchEvent(
     new KeyboardEvent("keydown", { key, bubbles: true }),
   );

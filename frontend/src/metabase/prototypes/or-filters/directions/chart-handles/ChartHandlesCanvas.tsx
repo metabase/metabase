@@ -304,7 +304,7 @@ function readBarSeries(chart: EChartsType): BarSeries[] {
 }
 
 /** Polls the chart under `overlayRef`: ECharts re-renders on its own schedule. */
-function useChartGeometry(overlayRef: RefObject<HTMLDivElement>) {
+function useChartGeometry(overlayRef: RefObject<HTMLDivElement | null>) {
   const [geometry, setGeometry] = useState<Geometry>();
   const signature = useRef("");
 
@@ -376,7 +376,7 @@ function BarWithHandles({
   const geometry = useChartGeometry(overlayRef);
   const [drag, setDrag] = useState<{ index: number; value: number }>();
 
-  const valueOf = (handle: Handle, index: number) =>
+  const getHandleValue = (handle: Handle, index: number) =>
     drag?.index === index ? drag.value : handle.value;
   const columnIndexOf = (handle: Handle) =>
     cols.findIndex((col) => col.name === handle.columnName);
@@ -386,7 +386,7 @@ function BarWithHandles({
       const columnIndex = columnIndexOf(handle);
       return (
         columnIndex < 0 ||
-        passes(row[columnIndex], handle.operator, valueOf(handle, index))
+        passes(row[columnIndex], handle.operator, getHandleValue(handle, index))
       );
     }),
   );
@@ -449,7 +449,7 @@ function BarWithHandles({
           handles.map((handle, index) => {
             const series = seriesFor(handle);
             const yAxisIndex = series?.yAxisIndex ?? 0;
-            const value = valueOf(handle, index);
+            const value = getHandleValue(handle, index);
             const y =
               geometry.offsetY +
               geometry.chart.convertToPixel({ yAxisIndex }, value);

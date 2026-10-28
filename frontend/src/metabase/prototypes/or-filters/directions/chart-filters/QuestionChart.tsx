@@ -230,10 +230,10 @@ type LegendEnd = {
  * so the accessory reads as the legend's last entry.
  */
 function useLegendEnd(
-  containerRef: RefObject<HTMLDivElement>,
+  containerRef: RefObject<HTMLDivElement | null>,
 
   isEnabled: boolean,
-  wrapRef?: RefObject<HTMLDivElement>,
+  wrapRef?: RefObject<HTMLDivElement | null>,
 ): LegendEnd | undefined {
   const [legendEnd, setLegendEnd] = useState<LegendEnd>();
 

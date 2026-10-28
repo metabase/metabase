@@ -449,6 +449,12 @@ const elements = [
 ];
 
 const baseRules = [
+  // Integration prototype only: mount the OR editor alongside the summary sidebar.
+  // A production implementation should move the editor into shared/querying.
+  {
+    from: ["feature/query_builder"],
+    allow: ["feature/prototypes"],
+  },
   ...elements.map((element) => ({
     // always allow self-imports
     from: [element.type],

@@ -150,7 +150,9 @@ export function ExpressionBar({
   const [freshIndexes, setFreshIndexes] = useState<ReadonlySet<number>>(
     () => new Set(),
   );
-  const flashTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const flashTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
 
   const flashTokens = useCallback((indexes: ReadonlySet<number>) => {
     clearTimeout(flashTimeoutRef.current);

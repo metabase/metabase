@@ -2,6 +2,7 @@ import cx from "classnames";
 import {
   type KeyboardEvent,
   type MouseEvent,
+  type ReactElement,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -49,7 +50,7 @@ type Editor = {
   activeRowId: string | undefined;
   setRows: (update: (rows: FilterRow[]) => FilterRow[]) => void;
   focusRow: (rowId: string, open?: boolean) => void;
-  renderCaret: (row: FilterRow) => JSX.Element;
+  renderCaret: (row: FilterRow) => ReactElement;
 };
 
 /**
@@ -73,7 +74,7 @@ export function FilterRowsBar({
   const [hasNavigated, setHasNavigated] = useState(false);
   const [draftColumn, setDraftColumn] = useState<Lib.ColumnMetadata>();
   const inputRefs = useRef(new Map<string, HTMLInputElement>());
-  const pendingFocusRef = useRef<string>();
+  const pendingFocusRef = useRef<string | undefined>(undefined);
   const listRef = useRef<HTMLDivElement>(null);
 
   // External query changes (drills) reset the draft.
@@ -456,7 +457,7 @@ function ItemSlot({
   children,
 }: {
   hasConnector: boolean;
-  children: JSX.Element;
+  children: ReactElement;
 }) {
   return (
     <>

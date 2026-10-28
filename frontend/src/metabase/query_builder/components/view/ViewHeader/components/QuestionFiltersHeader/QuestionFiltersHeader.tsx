@@ -1,3 +1,5 @@
+import { INTEGRATED_OR_FILTERS, usePrototypeSetting } from "metabase/prototype";
+import { IntegrationFilters } from "metabase/prototypes/IntegrationFilters";
 import { FilterPanel } from "metabase/querying/filters/components/FilterPanel";
 import type { QueryBuilderMode } from "metabase/redux/store";
 import * as Lib from "metabase-lib";
@@ -17,6 +19,7 @@ export function QuestionFiltersHeader({
   updateQuestion,
 }: FilterHeaderProps) {
   const query = question.query();
+  const [useOrFilters] = usePrototypeSetting(INTEGRATED_OR_FILTERS);
 
   const handleChange = (query: Lib.Query) => {
     updateQuestion(question.setQuery(query), { run: true });
@@ -24,6 +27,10 @@ export function QuestionFiltersHeader({
 
   if (!expanded) {
     return null;
+  }
+
+  if (useOrFilters) {
+    return <IntegrationFilters query={query} onChange={handleChange} />;
   }
 
   return (

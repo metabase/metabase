@@ -174,7 +174,7 @@ const BAR_INSET = 32;
  * legend can line up with it. Falls back to the bar's own padding.
  */
 function useFirstFilterInset(
-  chartRef: RefObject<HTMLDivElement>,
+  chartRef: RefObject<HTMLDivElement | null>,
   isEnabled: boolean,
 ): number | undefined {
   const [inset, setInset] = useState<number>();

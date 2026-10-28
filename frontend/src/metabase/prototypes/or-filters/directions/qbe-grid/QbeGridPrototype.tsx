@@ -84,7 +84,7 @@ function useGridState(
   onChange: (query: Lib.Query) => void,
 ) {
   const [value, setValue] = useState(() => readGrid(query, stageIndex));
-  const writtenQuery = useRef<Lib.Query>();
+  const writtenQuery = useRef<Lib.Query | undefined>(undefined);
 
   useEffect(() => {
     if (query !== writtenQuery.current) {

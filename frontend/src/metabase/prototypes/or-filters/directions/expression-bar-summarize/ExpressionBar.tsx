@@ -655,7 +655,7 @@ function useSummaries(
 
 /** Clicks outside the bar (portalled pickers excluded) count as blur. */
 function useCollapseOnBlur(
-  containerRef: RefObject<HTMLDivElement>,
+  containerRef: RefObject<HTMLDivElement | null>,
   isActive: boolean,
   onBlur: () => void,
 ) {
@@ -765,7 +765,7 @@ type DragState = {
  */
 function useDragSelection(tokens: Token[], isEnabled: boolean) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const dragRef = useRef<DragState>();
+  const dragRef = useRef<DragState | undefined>(undefined);
   const didDragRef = useRef(false);
   const [range, setRange] = useState<TokenRange>();
   const [isDragging, setIsDragging] = useState(false);
@@ -987,7 +987,7 @@ function Gap({
   );
 }
 
-function getHiddenSearch(listRef: RefObject<HTMLDivElement>) {
+function getHiddenSearch(listRef: RefObject<HTMLDivElement | null>) {
   return listRef.current?.querySelector("input") ?? undefined;
 }
 
@@ -996,7 +996,7 @@ function getHiddenSearch(listRef: RefObject<HTMLDivElement>) {
  * the best match so Enter picks it.
  */
 function useSearchSync(
-  listRef: RefObject<HTMLDivElement>,
+  listRef: RefObject<HTMLDivElement | null>,
   text: string,
   isActive: boolean,
   shouldHighlight: boolean,
@@ -1032,7 +1032,7 @@ function useSearchSync(
 }
 
 /** Arrow keys and Enter in the bar drive the list's own keyboard navigation. */
-function forwardKey(listRef: RefObject<HTMLDivElement>, key: string) {
+function forwardKey(listRef: RefObject<HTMLDivElement | null>, key: string) {
   getHiddenSearch(listRef)?.dispatchEvent(
     new KeyboardEvent("keydown", { key, bubbles: true }),
   );

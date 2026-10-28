@@ -1,9 +1,8 @@
 import { t } from "ttag";
 
-import type { IconName } from "metabase/ui";
 import { formatValue } from "metabase/value-formatting";
 import * as Lib from "metabase-lib";
-import type { DatasetColumn, RowValue } from "metabase-types/api";
+import type { DatasetColumn, IconName, RowValue } from "metabase-types/api";
 
 const ROWS_STAGE = 0;
 const SUMMARY_STAGE = 1;
@@ -322,9 +321,13 @@ function currentActions(
         ];
       case "drill-thru/zoom-in.timeseries":
         return [
-          { id: info.type, icon: "zoom_in", title: info.displayName, apply },
+          {
+            id: info.type,
+            icon: "zoom_in",
+            title: info.displayName ?? t`Zoom in`,
+            apply,
+          },
         ];
-      case "drill-thru/zoom-in.binning":
       case "drill-thru/zoom-in.geographic":
         return [{ id: info.type, icon: "zoom_in", title: t`Zoom in`, apply }];
       case "drill-thru/pivot":

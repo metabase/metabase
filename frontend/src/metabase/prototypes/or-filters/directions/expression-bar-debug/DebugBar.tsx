@@ -93,7 +93,7 @@ function ExplainModal({
       size="auto"
     >
       <Stack gap="lg" maw="56rem">
-        <Paper withBorder radius="md" p="md" bg="background-secondary">
+        <Paper withBorder radius="md" p="md" bg="background_page-secondary">
           <Flex gap="sm" align="flex-start">
             <Icon name="metabot" c="icon-brand" mt={2} />
             <Stack gap="xs">
