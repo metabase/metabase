@@ -64,6 +64,11 @@
     (driver/hosts-from-details {:db db} [:db])
     []))
 
+;; `:db` holds a whole H2 connection string, not a value spliced into one
+(defmethod driver/url-building-detail-keys :h2
+  [_driver]
+  [])
+
 ;;; this will prevent the H2 driver from showing up in the list of options when adding a new Database.
 (defmethod driver/superseded-by :h2 [_driver] :deprecated)
 

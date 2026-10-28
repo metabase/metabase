@@ -177,6 +177,11 @@
     (check-db-file! details))
   nil)
 
+;; `:db` is a file path, not part of a URL
+(defmethod driver/url-building-detail-keys :sqlite
+  [driver]
+  (remove #{:db} ((get-method driver/url-building-detail-keys :sql-jdbc) driver)))
+
 (defmethod driver/can-connect? :sqlite
   [driver details]
   (driver/validate-db-details! driver details)
