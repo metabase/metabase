@@ -111,10 +111,6 @@ Metabase supports [CSV uploads](../uploads.md) to ClickHouse Cloud and self-host
 
 For self-hosted deployments, the database user must be able to read the `system.clusters` table, as well as create tables and insert data.
 
-## Model features
-
-There aren't (yet) any model features for ClickHouse.
-
 ## Danger zone
 
 See [Danger zone](../danger-zone.md).

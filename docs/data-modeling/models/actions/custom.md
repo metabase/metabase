@@ -12,11 +12,14 @@ Write SQL to update records in your databases.
 
 ## Creating a custom action
 
-> You must be in a group with Native query editing access to create an action.
+Only admins can create custom actions.
 
 1. First, [create a model](../../../data-modeling/models/models.md).
-2. Visit the model and click on the **info** button.
-3. Click the **Actions** tab.
+2. Visit the model and click the **info** button.
+3. Click **Actions**.
+4. Click **New action**.
+
+To write an action without a model, see [Data actions](../../data-actions.md).
 
 In the action editor, you can write your own code to create an action, like writing an action that would only update a subset of the columns in a table. See [Example actions](#example-custom-actions).
 
@@ -60,11 +63,13 @@ The appearance tab in the action editor modal will display a preview of the vari
 
 ## Action settings
 
-From the model detail page, click on the **three dot menu** (...) next to the action. Once in the action editor, click on the **gear** icon to bring up the action settings.
+To change an action's settings, open the action and click the **gear** icon (**Action settings**).
 
 ### Make public
 
 Creates a publicly shareable link to the action form. Anyone with access to that link can fill out the form and run the action. Useful for creating surveys.
+
+Only admins can make an action public, and [public sharing](../../../embedding/public-links.md) must be on.
 
 ![Public action form](./images/public-form.png)
 
@@ -73,6 +78,14 @@ Creates a publicly shareable link to the action form. Anyone with access to that
 Here you can edit the success message, which is the message Metabase will display in the toast that pops up after Metabase hears back from the database that everything went smoothly.
 
 If something goes wrong, Metabase will display the error message it received from the database.
+
+## Deleting a custom action
+
+Only admins can delete a custom action. Deleting it also removes any dashboard buttons and public forms that use it. Moving the model to the trash also deletes its actions; see [Deleting a model deletes its actions](./introduction.md#deleting-a-model-deletes-its-actions).
+
+1. Visit the model, click the **info** button, and click **Actions**.
+2. Click the **...** next to the action, and select **Delete**.
+3. Confirm by clicking **Delete**.
 
 ## Example custom actions
 

@@ -10,7 +10,7 @@ description: Version control your dashboards, questions, and transforms. Sync yo
 Remote Sync lets you develop analytics content in your Metabase and automatically deploy it to a read-only production Metabase through Git. Remote Sync can sync:
 
 - Top-level collections (dashboards, questions, models, metrics)
-- Library content (published tables with their segments and measures, plus metrics, dashboards, snippets, and the glossary)
+- Library content (published tables with their segments and measures, plus metrics, dashboards, snippets, data actions, and the glossary)
 - Transforms
 - [Data apps](../data-apps/build.md#what-syncs-with-a-data-app), with their bundles and collections
 
@@ -372,7 +372,7 @@ Remote Sync uses the same serialization format as the [Metabase CLI serializatio
 - Documents
 - Timelines and events
 - Collection structure and metadata
-- Library content (published tables, metrics, dashboards, snippets, segments, measures, glossary)
+- Library content (published tables, metrics, dashboards, snippets, data actions, segments, measures, glossary)
 - Transforms (including tags, tests, and folders)
 - [Data apps](../data-apps/build.md#what-syncs-with-a-data-app), with their bundles and collections
 
