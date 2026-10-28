@@ -581,10 +581,14 @@ describe("scenarios > filters", () => {
       .findByText("roduct ID")
       .should("be.visible");
 
-    cy.log("Tab accepts a suggestion and then indents");
+    cy.log("a function searched in the filter picker opens with its template");
     H.openOrdersTable({ mode: "notebook" });
     H.filter({ mode: "notebook" });
-    H.popover().findByText("Custom Expression").click();
+    H.popover().findByPlaceholderText("Find...").type("case(");
+    H.CustomExpressionEditor.value().should("equal", "case(condition, output)");
+
+    cy.log("Tab accepts a suggestion and then indents");
+    H.CustomExpressionEditor.clear();
     H.CustomExpressionEditor.focus().type("[Ta");
     H.CustomExpressionEditor.acceptCompletion("tab");
     cy.focused().should("have.attr", "role", "textbox");

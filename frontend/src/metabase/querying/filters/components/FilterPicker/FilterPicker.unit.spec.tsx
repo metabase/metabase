@@ -469,6 +469,44 @@ describe("FilterPicker", () => {
       );
     });
 
+    it("should reach the custom expression editor after going back from a column (metabase#29094)", async () => {
+      setup();
+
+      await userEvent.click(screen.getByText("Total"));
+      expect(screen.getByTestId("number-filter-picker")).toBeInTheDocument();
+      await userEvent.click(screen.getByLabelText("Back"));
+      await userEvent.click(screen.getByText(/Custom expression/i));
+
+      expect(
+        await screen.findByTestId("custom-expression-query-editor"),
+      ).toBeInTheDocument();
+    });
+
+    it.each<[string, (search: HTMLElement) => Promise<void>]>([
+      [
+        "a function picked from the search results",
+        async (search) => {
+          await userEvent.type(search, "coalesce");
+          await userEvent.click(screen.getByText("coalesce"));
+        },
+      ],
+      [
+        "a search that ends with an opening parenthesis",
+        (search) => userEvent.type(search, "case("),
+      ],
+    ])("should open the expression editor for %s", async (_name, act) => {
+      setup();
+      expect(
+        screen.queryByTestId("custom-expression-query-editor"),
+      ).not.toBeInTheDocument();
+
+      await act(screen.getByPlaceholderText("Find..."));
+
+      expect(
+        await screen.findByTestId("custom-expression-query-editor"),
+      ).toBeInTheDocument();
+    });
+
     it("should open the expression editor for unsupported expressions", async () => {
       setup(createQueryWithNullStringFilter());
       const editor = await screen.findByTestId(
