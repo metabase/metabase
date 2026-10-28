@@ -2668,8 +2668,8 @@
 ;;;   * Walk stages left-to-right.
 ;;;   * Before processing stage `i` (i ≥ 1), build a mini-query consisting of stages[0..i-1]
 ;;;     and resolve it. Call `lib/returned-columns` on the result; index by `:name`.
-;;;   * Walk stage[i] (skipping descent into `joins` subtrees - those have their own
-;;;     resolution context). For every `["field" opts <string>]` clause:
+;;;   * Walk stage[i], including its joins' `conditions` but not their own `stages` - those
+;;;     have their own resolution context. For every `["field" opts <string>]` clause:
 ;;;       - If `opts` already has `"base-type"`, leave it alone (idempotent).
 ;;;       - If the name is unknown to the previous stage, leave it alone (the resolver will
 ;;;         report the real error with a better message).
@@ -2685,6 +2685,26 @@
 (defn- stage-join-aliases [stage]
   (let [joins (get stage "joins")]
     (into #{} (keep #(when (map? %) (get % "alias"))) (when (sequential? joins) joins))))
+
+(defn- without-join-stages
+  "`stage` with each join's own `stages` removed, leaving the clauses that may reference a join's
+  columns: the stage's own and the joins' `conditions`."
+  [stage]
+  (cond-> stage
+    (sequential? (get stage "joins"))
+    (update "joins" (partial mapv #(cond-> % (map? %) (dissoc "stages"))))))
+
+(defn- postwalk-outside-join-stages
+  "`walk/postwalk` `f` over the parts of `stage` that [[without-join-stages]] keeps."
+  [f stage]
+  (let [joins (get stage "joins")]
+    (cond-> (walk/postwalk f (without-join-stages stage))
+      (sequential? joins)
+      (update "joins" #(mapv (fn [walked join]
+                               (cond-> walked
+                                 (and (map? join) (contains? join "stages")) (assoc "stages" (get join "stages"))))
+                             %
+                             joins)))))
 
 (defn- string-cross-stage-field-clause?
   "True if `v` is a string-named field ref to a previous-stage column of a stage whose joins are
@@ -2822,21 +2842,16 @@
 
 (defn- infer-cross-stage-field-types-in-stage
   "Walk one stage and stamp inferred types into every string-named field reference that lacks
-  `\"base-type\"`. Skips descent into `\"joins\"` subtrees - join stages have their own
-  resolution context (the join's own `stages`) and shouldn't reach into their parent stage's
-  previous-stage columns."
+  `\"base-type\"`, including those in its joins' `conditions`. Skips each join's own `stages`,
+  which have their own resolution context and can't reach the parent's previous-stage columns."
   [stage cols]
-  (let [joins   (get stage "joins")
-        aliases (stage-join-aliases stage)
-        stage'  (cond-> stage (contains? stage "joins") (dissoc "joins"))
-        walked  (walk/postwalk
-                 (fn [node]
-                   (if (string-cross-stage-field-clause? aliases node)
-                     (maybe-fill-cross-stage-types node cols)
-                     node))
-                 stage')]
-    (cond-> walked
-      (contains? stage "joins") (assoc "joins" joins))))
+  (let [aliases (stage-join-aliases stage)]
+    (postwalk-outside-join-stages
+     (fn [node]
+       (if (string-cross-stage-field-clause? aliases node)
+         (maybe-fill-cross-stage-types node cols)
+         node))
+     stage)))
 
 (defn- mini-resolved-columns-for-source-card
   "Resolve a single-stage query consisting only of `{:source-card <entity-id>}` (plus the
@@ -2917,26 +2932,6 @@
          (map? (first stages))
          (contains? (first stages) "source-table")
          (not-any? #(contains? (first stages) %) ["aggregation" "breakout" "fields"]))))
-
-(defn- without-join-stages
-  "`stage` with each join's own `stages` removed, leaving the clauses that may reference a join's
-  columns: the stage's own and the joins' `conditions`."
-  [stage]
-  (cond-> stage
-    (sequential? (get stage "joins"))
-    (update "joins" (partial mapv #(cond-> % (map? %) (dissoc "stages"))))))
-
-(defn- postwalk-outside-join-stages
-  "`walk/postwalk` `f` over the parts of `stage` that [[without-join-stages]] keeps."
-  [f stage]
-  (let [joins (get stage "joins")]
-    (cond-> (walk/postwalk f (without-join-stages stage))
-      (sequential? joins)
-      (update "joins" #(mapv (fn [walked join]
-                               (cond-> walked
-                                 (and (map? join) (contains? join "stages")) (assoc "stages" (get join "stages"))))
-                             %
-                             joins)))))
 
 (defn- join-alias-refs
   "`stage`'s join-alias string refs (`:named`) and concrete-column join-alias refs (`:path`), each
@@ -3085,21 +3080,19 @@
 
 (defn- stage-has-unstamped-cross-stage-ref?
   "Cheap structural pre-scan: does `stage` contain any [[unstamped-cross-stage-ref?]] outside
-  its `joins` subtrees? Lets the assert pass skip the (resolving) confirmation step entirely
+  its joins' own `stages`? Lets the assert pass skip the (resolving) confirmation step entirely
   on the happy path, where every ref already carries a stamped `base-type`."
   [stage]
-  (let [aliases (stage-join-aliases stage)
-        stage'  (cond-> stage (contains? stage "joins") (dissoc "joins"))]
-    (some? (match/match-one stage'
+  (let [aliases (stage-join-aliases stage)]
+    (some? (match/match-one (without-join-stages stage)
              (node :guard (unstamped-cross-stage-ref? aliases node)) true))))
 
 (defn- first-unresolved-cross-stage-ref
   "Return the first [[unstamped-cross-stage-ref?]] clause in `stage` that matches no column in
-  `cols`, or nil. Skips `joins` subtrees (their own resolution context)."
+  `cols`, or nil. Skips the joins' own `stages` (their own resolution context)."
   [stage cols]
-  (let [aliases (stage-join-aliases stage)
-        stage'  (cond-> stage (contains? stage "joins") (dissoc "joins"))]
-    (match/match-one stage'
+  (let [aliases (stage-join-aliases stage)]
+    (match/match-one (without-join-stages stage)
       (node :guard (and (unstamped-cross-stage-ref? aliases node)
                         (nil? (match-cross-stage-column cols (nth node 2)))))
       node)))
