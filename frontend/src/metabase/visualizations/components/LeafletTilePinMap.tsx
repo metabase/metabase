@@ -2,7 +2,7 @@ import L from "leaflet";
 import type { ContextType } from "react";
 
 import { api } from "metabase/api/client";
-import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { isDataApp, isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { EmbeddingEntityContext } from "metabase/embedding/context";
 import { isWithinIframe } from "metabase/utils/iframe";
 import type { DashboardId } from "metabase-types/api";
@@ -44,6 +44,14 @@ function isTileImage(tile: unknown): tile is TileImage {
   return tile instanceof HTMLImageElement;
 }
 
+/**
+ * The SDK loads tiles with `fetch`, so they carry its auth headers. Embed JS (the SDK
+ * inside an iframe) keeps plain images. A data app does not: on its own isolated origin the
+ * iframe has no session, and only `fetch` is relayed to the page that shows it.
+ */
+export const shouldLoadTilesWithFetch = (): boolean =>
+  isEmbeddingSdk() && (!isWithinIframe() || isDataApp());
+
 interface LeafletTilePinMapProps extends LeafletMapProps {
   dashboard?: {
     id?: DashboardId | null;
@@ -76,8 +84,7 @@ export class LeafletTilePinMap extends LeafletMap<LeafletTilePinMapProps> {
 
     this.pinTileLayer = L.tileLayer("", {}).addTo(this.map);
 
-    // Override only for SDK and not for cases when SDK is used under the hood for other embed types (Embed JS)
-    if (isEmbeddingSdk() && !isWithinIframe()) {
+    if (shouldLoadTilesWithFetch()) {
       this._overrideCreateTileToUseFetch(this.pinTileLayer);
     }
 

@@ -1,7 +1,15 @@
 import { createRoot } from "react-dom/client";
 
 import { sdkBundleExports } from "embedding-sdk-bundle/sdk-bundle-exports";
+import { setBasename } from "metabase/utils/basename";
 import { applyDocumentLocales } from "metabase/utils/boot-locale";
+
+import {
+  getDataAppUserLocale,
+  initDataAppBroker,
+  installDataAppFetchBroker,
+  installDataAppRouteReporter,
+} from "../broker/iframe-broker";
 
 import { DataAppIframeApp } from "./components/DataAppIframeApp/DataAppIframeApp";
 
@@ -20,11 +28,20 @@ import { DataAppIframeApp } from "./components/DataAppIframeApp/DataAppIframeApp
 // implementations the package component facades look up at render time.
 window.METABASE_EMBEDDING_SDK_BUNDLE = sdkBundleExports;
 
+setBasename(window.MetabaseRoot);
+
+if (window.parent !== window) {
+  initDataAppBroker();
+  installDataAppFetchBroker();
+  installDataAppRouteReporter();
+}
+
 const init = async () => {
   document.body.style.margin = "0";
 
-  // This page is served from our own document, which carries the catalogues.
-  await applyDocumentLocales();
+  // The document carries the catalogues. On the isolated origin it is served without a
+  // signed-in user, so the top page passes the user's locale.
+  await applyDocumentLocales(await getDataAppUserLocale());
 
   const rootElement = document.getElementById("root");
 

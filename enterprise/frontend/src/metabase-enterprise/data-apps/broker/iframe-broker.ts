@@ -5,6 +5,7 @@ import {
   DATA_APP_BROKER_READY_MESSAGE_TYPE,
   DATA_APP_ROUTE_MESSAGE_TYPE,
 } from "metabase-enterprise/data-apps/constants";
+import { observeHistory } from "metabase-enterprise/data-apps/host/lib/attach-iframe-url-mirror";
 import { isDataAppMessage } from "metabase-enterprise/data-apps/host/lib/is-data-app-message";
 
 import {
@@ -260,17 +261,5 @@ export function installDataAppRouteReporter(): void {
       parentOrigin,
     );
 
-  const { history } = window;
-  const pushState = history.pushState.bind(history);
-  const replaceState = history.replaceState.bind(history);
-
-  history.pushState = (...args) => {
-    pushState(...args);
-    report();
-  };
-  history.replaceState = (...args) => {
-    replaceState(...args);
-    report();
-  };
-  window.addEventListener("popstate", report);
+  observeHistory(window, report);
 }
