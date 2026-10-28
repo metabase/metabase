@@ -38,10 +38,12 @@ import type {
   MetabaseDashboard,
 } from "embedding-sdk-bundle/types";
 import type { FunctionSchema } from "embedding-sdk-bundle/types/schema";
-import type { LoginStatus } from "embedding-sdk-bundle/types/user";
+import type {
+  LoginStatus,
+  MetabaseUser,
+} from "embedding-sdk-bundle/types/user";
 import type { FunctionSchemaValidationResult } from "embedding-sdk-shared/types/validation";
 import type { PartialBy } from "metabase/common/types";
-import type { User } from "metabase-types/api";
 
 export type InternalComponent<TComponent extends JSXElementConstructor<any>> =
   JSXElementConstructor<ComponentProps<TComponent>> &
@@ -109,7 +111,7 @@ type ReduxStoreSelectorsExports = {
   getApplicationName: ReduxStoreSelector<string>;
   getAvailableFonts: ReduxStoreSelector<string[]>;
   getLoginStatus: ReduxStoreSelector<LoginStatus>;
-  getUser: ReduxStoreSelector<User | null>;
+  getUser: ReduxStoreSelector<MetabaseUser | null>;
 };
 
 type InternalHooksExports = {
