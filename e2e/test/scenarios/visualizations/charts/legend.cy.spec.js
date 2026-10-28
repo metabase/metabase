@@ -465,6 +465,9 @@ describe("scenarios > visualizations > legend", () => {
   });
 
   it("should toggle series visibility in the query builder", () => {
+    cy.intercept("PUT", "/api/setting/non-table-chart-generated").as(
+      "nonTableChartGenerated",
+    );
     H.createQuestion(SINGLE_AGGREGATION_QUESTION, { visitQuestion: true });
 
     H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should("have.length", 5);
@@ -472,6 +475,11 @@ describe("scenarios > visualizations > legend", () => {
     H.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 5);
     H.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
 
+    // CI failed here once: the first hover showed no tooltip. We do not know the cause.
+    // The query builder sends this PUT for the first non-table chart on the instance. Wait for it as a precaution.
+    // A hover while the DebouncedFrame has "pointer-events: none" is lost, so wait until the frame is active.
+    cy.wait("@nonTableChartGenerated");
+    H.ensureChartIsActive();
     H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover();
     H.assertEChartsTooltip({
       header: "2025",
