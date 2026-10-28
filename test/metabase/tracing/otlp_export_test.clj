@@ -17,8 +17,7 @@
    [metabase.tracing.core :as tracing]
    [steffan-westcott.clj-otel.api.trace.span :as span])
   (:import
-   (com.sun.net.httpserver HttpExchange HttpHandler HttpServer)
-   (io.opentelemetry.sdk OpenTelemetrySdk)
+   (com.sun.net.httpserver HttpHandler HttpServer)
    (java.net InetSocketAddress)))
 
 (set! *warn-on-reflection* true)
@@ -31,24 +30,23 @@
     (.createContext "/v1/traces"
                     (reify HttpHandler
                       (handle [_ exchange]
-                        (let [^HttpExchange exchange exchange]
-                          (swap! received conj {:content-type (.getFirst (.getRequestHeaders exchange) "Content-Type")
-                                                :bytes        (count (.readAllBytes (.getRequestBody exchange)))})
-                          (.sendResponseHeaders exchange 200 -1)
-                          (.close exchange)))))
+                        (swap! received conj {:content-type (.getFirst (.getRequestHeaders exchange) "Content-Type")
+                                              :bytes        (count (.readAllBytes (.getRequestBody exchange)))})
+                        (.sendResponseHeaders exchange 200 -1)
+                        (.close exchange))))
     (.start)))
 
 (deftest build-otel-sdk-exports-spans-test
   (let [received  (atom [])
         collector (start-collector! received)]
     (try
-      (let [sdk ^OpenTelemetrySdk (tracing/build-otel-sdk
-                                   {:endpoint     (format "http://127.0.0.1:%d/v1/traces"
-                                                          (.getPort (.getAddress collector)))
-                                    :service-name "otlp-export-test"
-                                    :queue-size   2048
-                                    :timeout-ms   5000
-                                    :delay-ms     5000})]
+      (let [sdk (tracing/build-otel-sdk
+                 {:endpoint     (format "http://127.0.0.1:%d/v1/traces"
+                                        (.getPort (.getAddress collector)))
+                  :service-name "otlp-export-test"
+                  :queue-size   2048
+                  :timeout-ms   5000
+                  :delay-ms     5000})]
         (try
           (span/with-span! {:name   "otlp-export-test"
                             :tracer (span/get-tracer {:open-telemetry sdk})}
