@@ -33,9 +33,9 @@ export function AddDataAppGroupsModal({
   const isTenantsEnabled = useSetting("use-tenants");
   const hasTenantsFeature = useHasTokenFeature("tenants");
   const canAssignTenantGroups = isTenantsEnabled && hasTenantsFeature;
-  const { data: groups, isLoading } = useListPermissionsGroupsQuery({
-    tenancy: canAssignTenantGroups ? "all" : "internal",
-  });
+  const { data: groups, isLoading } = useListPermissionsGroupsQuery(
+    canAssignTenantGroups ? undefined : { tenancy: "internal" },
+  );
   const [addGroups, { isLoading: isAdding }] = useAddDataAppGroupsMutation();
   const { sendErrorToast } = useMetadataToasts();
 
