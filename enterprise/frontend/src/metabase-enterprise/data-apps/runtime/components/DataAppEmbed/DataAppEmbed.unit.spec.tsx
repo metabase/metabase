@@ -71,23 +71,69 @@ describe("DataAppEmbed", () => {
     expect(mockUseDataAppBundle).not.toHaveBeenCalled();
   });
 
-  // TODO(DAT-18): add api key support for local development
-  it.each([true, false])("rejects API keys on localhost: %s", (isLocalhost) => {
-    setupSettings({ apiKey: "development-key", _isLocalhost: isLocalhost });
+  it.each([
+    "http://localhost:3000",
+    "http://127.0.0.1:5000",
+    "http://[::1]:4000",
+  ])(
+    "passes API-key authentication for the actual loopback origin %s",
+    (parentOrigin) => {
+      setupSettings(
+        { apiKey: "development-key", _isLocalhost: false },
+        parentOrigin,
+      );
+      render(<DataAppEmbed />);
+
+      expect(mockComponentProvider.mock.lastCall?.[0]).toMatchObject({
+        authConfig: {
+          metabaseInstanceUrl: window.location.origin,
+          apiKey: "development-key",
+        },
+        isLocalHost: true,
+      });
+      expect(mockUseDataAppBundle).toHaveBeenCalledWith("sales", {
+        embedded: true,
+      });
+    },
+  );
+
+  it.each(["https://host.example.com", "null", null])(
+    "rejects API keys from %s even when settings claim localhost",
+    (parentOrigin) => {
+      setupSettings(
+        {
+          apiKey: "development-key",
+          _isLocalhost: true,
+          _embedReferrer: "http://localhost:3000",
+        },
+        parentOrigin,
+      );
+      render(<DataAppEmbed />);
+
+      expect(
+        screen.getByText("Using an API key in production is not allowed."),
+      ).toBeInTheDocument();
+      expect(mockComponentProvider).not.toHaveBeenCalled();
+      expect(mockUseDataAppBundle).not.toHaveBeenCalled();
+    },
+  );
+
+  it("allows local API-key development without the embedding license", () => {
+    jest.spyOn(PLUGIN_EMBEDDING_IFRAME_SDK, "isEnabled").mockReturnValue(false);
+    setupSettings({ apiKey: "development-key" }, "http://localhost:3000");
     render(<DataAppEmbed />);
 
-    expect(
-      screen.getByText("Embedded data apps require SSO authentication."),
-    ).toBeInTheDocument();
-
-    expect(mockComponentProvider).not.toHaveBeenCalled();
-    expect(mockUseDataAppBundle).not.toHaveBeenCalled();
+    expect(mockComponentProvider).toHaveBeenCalled();
+    expect(mockUseDataAppBundle).toHaveBeenCalledWith("sales", {
+      embedded: true,
+    });
   });
 
   it("waits for settings to arrive before starting auth", () => {
     mockUseSdkIframeEmbedEventBus.mockReturnValue({
       embedSettings: null,
       sendMessage: jest.fn(),
+      parentOrigin: null,
     });
 
     render(<DataAppEmbed />);

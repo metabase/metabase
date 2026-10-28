@@ -6,10 +6,14 @@ import { getSdkStore } from "embedding-sdk-bundle/store";
 import { getEmbeddedAppNameFromPath } from "embedding-sdk-shared/lib/embedded-data-app-path";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { getCurrentMetabaseInstanceUrl } from "embedding-sdk-shared/lib/get-current-metabase-instance-url";
+import { getIsLocalhostOrigin } from "embedding-sdk-shared/lib/get-is-localhost";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import { SdkLoadingState } from "embedding-sdk-shared/types/sdk-loading";
 import { PLUGIN_API } from "metabase/api/client";
-import { SdkIframeError } from "metabase/embedding/embedding-iframe-sdk/components/SdkIframeError";
+import {
+  SdkIframeApiKeyInProductionError,
+  SdkIframeError,
+} from "metabase/embedding/embedding-iframe-sdk/components/SdkIframeError";
 import { useSdkIframeEmbedEventBus } from "metabase/embedding/embedding-iframe-sdk/hooks/use-sdk-iframe-embed-event-bus";
 import type { SdkIframeEmbedSettings } from "metabase/embedding/embedding-iframe-sdk/types/embed";
 import { PLUGIN_EMBEDDING_IFRAME_SDK } from "metabase/plugins";
@@ -25,7 +29,7 @@ const store = getSdkStore();
 export function DataAppEmbed() {
   const name = useMemo(() => readNameFromUrl(), []);
 
-  const { embedSettings } = useSdkIframeEmbedEventBus({
+  const { embedSettings, parentOrigin } = useSdkIframeEmbedEventBus({
     store,
     onSettingsChanged: installEmbedReferrerHeader,
   });
@@ -40,8 +44,10 @@ export function DataAppEmbed() {
   const authConfig = useMemo<MetabaseAuthConfig>(() => {
     const metabaseInstanceUrl = getCurrentMetabaseInstanceUrl();
 
-    return { metabaseInstanceUrl, isGuest: false };
-  }, []);
+    return embedSettings?.apiKey
+      ? { metabaseInstanceUrl, apiKey: embedSettings.apiKey }
+      : { metabaseInstanceUrl, isGuest: false };
+  }, [embedSettings?.apiKey]);
 
   useDeepCompareEffect(() => {
     ensureMetabaseProviderPropsStore().setProps({
@@ -62,7 +68,9 @@ export function DataAppEmbed() {
   // These errors cannot be localized as they are outside of the locale provider.
   // These are configuration errors, mainly intended for embedding developers.
 
-  if (!PLUGIN_EMBEDDING_IFRAME_SDK.isEnabled()) {
+  const isParentLocalhost = getIsLocalhostOrigin(parentOrigin);
+
+  if (!PLUGIN_EMBEDDING_IFRAME_SDK.isEnabled() && !embedSettings.apiKey) {
     return (
       <SdkIframeError message="A valid license is required for embedding." />
     );
@@ -74,8 +82,11 @@ export function DataAppEmbed() {
     );
   }
 
-  // TODO(DAT-18): add support for API keys for local development
-  if (embedSettings.apiKey || embedSettings.useExistingUserSession) {
+  if (embedSettings.apiKey && !isParentLocalhost) {
+    return <SdkIframeApiKeyInProductionError />;
+  }
+
+  if (embedSettings.useExistingUserSession) {
     return (
       <SdkIframeError message="Embedded data apps require SSO authentication." />
     );
@@ -103,7 +114,7 @@ export function DataAppEmbed() {
       authConfig={authConfig}
       locale={embedSettings.locale}
       reduxStore={store}
-      isLocalHost={embedSettings._isLocalhost}
+      isLocalHost={isParentLocalhost}
     >
       <DataAppEmbedContent
         name={name}
