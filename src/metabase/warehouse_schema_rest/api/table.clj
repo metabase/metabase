@@ -7,6 +7,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.collections.core :as collections]
    [metabase.collections.db :as collections.db]
+   [metabase.data-apps.core :as data-apps]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
@@ -139,10 +140,13 @@
                     [:id ms/PositiveInt]]
    {:keys [include_editable_data_model]}
    :- [:map {:closed true}
-       [:include_editable_data_model {:optional true} [:maybe :boolean]]]]
+       [:include_editable_data_model {:optional true} [:maybe :boolean]]]
+   _body
+   request]
   ;; partial schema only
   :- [:map {:closed false}
       [:data_authority ::data-authority-read]]
+  (some-> (data-apps/request-data-app request) (data-apps/check-table id))
   (let [api-perm-check-fn (if include_editable_data_model
                             schema.table/check-data-model-perms
                             api/read-check)]
@@ -340,7 +344,10 @@
    :- [:map {:closed true}
        [:include_sensitive_fields    {:default false} [:maybe ms/BooleanValue]]
        [:include_hidden_fields       {:default false} [:maybe ms/BooleanValue]]
-       [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]]
+       [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]
+   _body
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-table id))
   (schema.table/fetch-table-query-metadata id {:include-sensitive-fields?    include_sensitive_fields
                                                :include-hidden-fields?       include_hidden_fields
                                                :include-editable-data-model? include_editable_data_model}))
@@ -356,7 +363,11 @@
   "Return metadata for the 'virtual' table for a Card."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
+                    [:id ms/PositiveInt]]
+   _query-params
+   _body
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-card id))
   (first (schema.table/batch-fetch-card-query-metadatas [id] {:include-database? true})))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -381,7 +392,11 @@
   "Get all foreign keys whose destination is a `Field` that belongs to this `Table`."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
+                    [:id ms/PositiveInt]]
+   _query-params
+   _body
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-table id))
   (api/read-check :model/Table id)
   (when-let [field-ids (seq (warehouse-schema-rest.db/active-unretired-field-ids-for-table id))]
     (for [origin-field (warehouse-schema-rest.db/active-fields-targeting field-ids)

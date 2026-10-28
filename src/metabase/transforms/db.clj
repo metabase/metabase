@@ -179,6 +179,11 @@
   []
   (t2/select :model/TransformJob :active true))
 
+(mu/defn inactive-job-ids
+  "The IDs of the inactive TransformJobs."
+  []
+  (t2/select-pks-set :model/TransformJob :active false))
+
 (mu/defn job-names-by-id
   "A map of ID to name for the TransformJobs with `job-ids`."
   [job-ids :- [:sequential ms/PositiveInt]]

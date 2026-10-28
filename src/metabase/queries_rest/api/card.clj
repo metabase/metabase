@@ -6,6 +6,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.data-apps.core :as data-apps]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -232,8 +233,11 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {legacy-mbql? :legacy-mbql
-    :keys        []} :- [:map {:closed true} [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]]
+    :keys        []} :- [:map {:closed true} [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]
+   _body
+   request]
   (let [resolved-id (eid-translation/->id-or-404 :card id)
+        _           (some-> (data-apps/request-data-app request) (data-apps/check-card resolved-id))
         card (get-card resolved-id)]
     (cond-> card
       legacy-mbql?
@@ -657,8 +661,12 @@
   "Get all of the required query metadata for a card."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
+   _query-params
+   _body
+   request]
   (let [resolved-id (eid-translation/->id-or-404 :card id)]
+    (some-> (data-apps/request-data-app request) (data-apps/check-card resolved-id))
     (queries/batch-fetch-card-metadata [(get-card resolved-id)])))
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
@@ -814,8 +822,10 @@
        [:parameters         {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]
        [:stored_result_id   {:optional true} [:maybe ms/PositiveInt]]
        [:sort               {:optional true}
-        [:maybe [:enum "value_asc" "value_desc" "label_asc" "label_desc"]]]]]
+        [:maybe [:enum "value_asc" "value_desc" "label_asc" "label_desc"]]]]
+   request]
   (let [resolved-card-id (eid-translation/->id-or-404 :card card-id)
+        _                (some-> (data-apps/request-data-app request) (data-apps/check-card resolved-card-id))
         card             (api/check-404 (queries.db/card resolved-card-id))]
     (if stored_result_id
       (do
@@ -866,7 +876,9 @@
        [:parameters    {:optional true} [:maybe ::parameters.schema/api.parameter-values]]
        [:format_rows   {:default false} ms/BooleanValue]
        [:pivot_results {:default false} ms/BooleanValue]
-       [:csv_include_bom {:default false} ms/BooleanValue]]]
+       [:csv_include_bom {:default false} ms/BooleanValue]]
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-card card-id))
   (qp.card/process-query-for-card
    (api/check-404 (queries.db/card card-id)) export-format
    :parameters  parameters
@@ -950,7 +962,9 @@
     :or   {ignore_cache false}} :- [:map {:closed true}
                                     [:ignore_cache {:optional true} [:maybe :boolean]]
                                     [:dashboard_id {:optional true} [:maybe ms/PositiveInt]]
-                                    [:parameters   {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]]]
+                                    [:parameters   {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]]
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-card card-id))
   (let [card (api/check-404 (queries.db/card card-id))]
     (when dashboard_id
       (api/read-check :model/Dashboard dashboard_id))
@@ -974,7 +988,11 @@
   {:scope api-scope/data-app}
   [{:keys [card-id param-key]} :- [:map {:closed true}
                                    [:card-id   ms/PositiveInt]
-                                   [:param-key ::lib.schema.parameter/id]]]
+                                   [:param-key ::lib.schema.parameter/id]]
+   _query-params
+   _body
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-card-parameter card-id param-key))
   (binding [qp.perms/*param-values-query* true]
     (queries/card-param-values (api/read-check :model/Card card-id) param-key)))
 
@@ -993,7 +1011,11 @@
   [{:keys [card-id param-key query]} :- [:map {:closed true}
                                          [:card-id   ms/PositiveInt]
                                          [:param-key ::lib.schema.parameter/id]
-                                         [:query     ms/NonBlankString]]]
+                                         [:query     ms/NonBlankString]]
+   _query-params
+   _body
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-card-parameter card-id param-key))
   (binding [qp.perms/*param-values-query* true]
     (queries/card-param-values (api/read-check :model/Card card-id) param-key query)))
 
@@ -1010,7 +1032,10 @@
   [{:keys [id param-key]} :- [:map {:closed true}
                               [:id ::lib.schema.id/card]
                               [:param-key ::lib.schema.parameter/id]]
-   {:keys [value]}        :- [:map {:closed true} [:value :string]]]
+   {:keys [value]}        :- [:map {:closed true} [:value :string]]
+   _body
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-card-parameter id param-key))
   (binding [qp.perms/*param-values-query* true]
     (-> (api/read-check :model/Card id)
         (queries/card-param-remapped-value param-key (codec/url-decode value)))))
