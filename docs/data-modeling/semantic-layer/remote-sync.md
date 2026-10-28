@@ -129,7 +129,7 @@ When you save, Metabase creates the Library if it doesn’t exist yet and turns 
 
 ### 4. Push your changes to your repository
 
-Once you've added content to your Library, you'll see a yellow dot on the Library indicating uncommitted changes.
+Once you've added content to your Library, a yellow dot appears next to the Library section that changed (for example, **Semantic layer**), indicating uncommitted changes.
 
 1. At the top of the Data Studio sidebar, click the branch name and select **Push changes**.
 
@@ -137,7 +137,7 @@ Once you've added content to your Library, you'll see a yellow dot on the Librar
 
 3. Click **Push changes** to commit and push your changes to your repository.
 
-Check your repository. You should see the Library's files.
+Check your repository. You should see a `collections` folder with the Library and a `databases` folder with your published tables.
 
 By default, you push to your repository's main branch. You can choose (or create) a different branch so you can open pull requests for review. See [Branch management](#branch-management) for details on creating and switching branches.
 
@@ -282,9 +282,9 @@ On your production Metabase:
 
 ### The Library in the UI
 
-When the Library has unsynced changes, a yellow dot appears on it. At the top of the Data Studio sidebar, click the branch name to push or pull changes.
+When the Library has unsynced changes, a yellow dot appears next to the Library section that changed (for example, **Semantic layer**). At the top of the Data Studio sidebar, click the branch name to push or pull changes.
 
-In Read-only mode, the Library appears with a special icon to indicate that it's versioned and read-only.
+In the main Metabase sidebar, the Library sections (Data, Metrics, and Dashboards) show a sync icon to indicate that they are versioned.
 
 ### Moving and deleting Library content
 
@@ -383,7 +383,7 @@ You can only push changes in a Metabase with Remote sync set to Read-write mode.
 
 ### Committing and pushing your changes
 
-When you make changes to the Library or to transforms, a yellow dot appears on the Library (indicating uncommitted changes). To commit and push your changes:
+When you make changes to the Library or to transforms, a yellow dot appears next to the section that changed (indicating uncommitted changes). To commit and push your changes:
 
 1. At the top of the Data Studio sidebar, click the branch name and select **Push changes**.
 2. (Optional) Describe your changes.
