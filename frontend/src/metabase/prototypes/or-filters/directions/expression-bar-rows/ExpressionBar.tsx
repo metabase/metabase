@@ -97,16 +97,21 @@ export function ExpressionBar({
   const [openPillCount, setOpenPillCount] = useState(0);
 
   // External query changes (drills, examples) reset the draft; our own
-  // notebook commits keep the caret where it is.
+  // notebook commits keep the caret where it is. Adjusted during render rather
+  // than in an effect: an effect would leave one pass where the draft is stale
+  // but not edited, and the notebook auto-commit below would write that stale
+  // draft back over the new query, which the reset then undoes, forever.
   const isSelfCommitRef = useRef(false);
-  useEffect(() => {
+  const [syncedTokens, setSyncedTokens] = useState(committedTokens);
+  if (syncedTokens !== committedTokens) {
+    setSyncedTokens(committedTokens);
     setTokens(committedTokens);
     if (isSelfCommitRef.current) {
       isSelfCommitRef.current = false;
     } else {
       setCaret(committedTokens.length);
     }
-  }, [committedTokens]);
+  }
 
   const focusInput = () => {
     shouldRefocusRef.current = true;
