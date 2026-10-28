@@ -93,8 +93,7 @@
                  :attribute      :semantic_type
                  :proposed_value "type/Email"
                  :confidence     :high
-                 :reasoning      "Values look like email addresses."
-                 :status         :pending}
+                 :reasoning      "Values look like email addresses."}
                 row))
         (is (mr/validate ::proposal/metadata-generation-proposal row)))
       (testing "a field has one proposal per attribute, across runs"

@@ -177,7 +177,7 @@
   keep a proposal that no longer fits the field."
   :feature :none
   [field-id]
-  (t2/delete! :model/MetadataGenerationProposal :field_id field-id :attribute :semantic_type :status :pending))
+  (t2/delete! :model/MetadataGenerationProposal :field_id field-id :attribute :semantic_type))
 
 ;;; Review
 
@@ -196,7 +196,7 @@
   {:from  [[:metadata_generation_proposal :p]]
    :join  [(warehouse-schema-overlay/table-query {:alias :t}) [:= :t.id :p.table_id]
            (warehouse-schema-overlay/field-query {:alias :f}) [:= :f.id :p.field_id]]
-   :where (cond-> [:and [:= :p.status "pending"] [:= :t.active true] [:= :f.active true]]
+   :where (cond-> [:and [:= :t.active true] [:= :f.active true]]
             database_id     (conj [:= :t.db_id database_id])
             schema          (conj [:= :t.schema schema])
             (seq table_ids) (conj [:in :p.table_id table_ids]))})
@@ -233,14 +233,14 @@
     (t2/select :model/MetadataGenerationProposal :id [:in ids] {:order-by [[:id :asc]]})
     []))
 
-(mu/defn lock-proposals :- [:map-of ms/PositiveInt [:map [:proposed_value [:maybe :string]] [:status ::proposal/status]]]
-  "A map of proposal id to the `proposed_value` and `status` of the proposals with `ids`, with their rows locked
-  until the current transaction ends."
+(mu/defn lock-proposals :- [:map-of ms/PositiveInt [:maybe :string]]
+  "A map of proposal id to the `proposed_value` of the proposals with `ids`, with their rows locked until the current
+  transaction ends."
   [ids :- [:sequential ms/PositiveInt]]
   (if (seq ids)
     (into {}
-          (map (juxt :id #(select-keys % [:proposed_value :status])))
-          (t2/select [:model/MetadataGenerationProposal :id :proposed_value :status]
+          (map (juxt :id :proposed_value))
+          (t2/select [:model/MetadataGenerationProposal :id :proposed_value]
                      {:where [:in :id ids] :for [:update]}))
     {}))
 
