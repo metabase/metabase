@@ -147,10 +147,11 @@
 
 (defn- format-field-metadata-output
   ;; NOTE: keep in sync with read_resource.clj/format-content :field-metadata branch
-  [{:keys [field_id value_metadata portable_fk table_reference]}]
+  [{:keys [field_id value_metadata portable_fk reference_name table_reference]}]
   (format-with-instructions
    (llm-shape/field-metadata->xml {:field_id field_id :value_metadata value_metadata
-                                   :portable_fk portable_fk :table_reference table_reference})
+                                   :portable_fk portable_fk :reference_name reference_name
+                                   :table_reference table_reference})
    instructions/field-metadata-instructions))
 
 (defn- add-output

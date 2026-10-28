@@ -99,18 +99,24 @@
 (defn- field-metadata-output
   "Build the `:field-metadata` tool result for `col` of `query`. Surfaces the column's portable
   FK + join label (via `->result-column`) so a drilled-into field/dimension detail tells the LLM
-  exactly how to reference the column."
+  exactly how to reference the column.
+
+  A column without a portable FK, like the renamed copy `NAME_2` or a computed column, carries its emitted string
+  `field_id` as `:reference_name`. The requested `field-id` is never a reference: `\"48\"` stays a lookup key."
   [query col field-id limit]
   (let [;; `field-id` is the field ID, maybe as a string, or a column alias. A column with a field ID that is found by
         ;; its alias is a later column of one field, see `column-field-ids`.
-        column-id (if (= (str field-id) (str (:id col)))
-                    (:id col)
-                    field-id)]
+        column-id  (if (= (str field-id) (str (:id col)))
+                     (:id col)
+                     field-id)
+        result-col (metabot.tools.u/->result-column query col column-id)]
     {:structured-output (merge {:result-type    :field-metadata
                                 :field_id       field-id
                                 :value_metadata (field-statistics query col limit)}
-                               (select-keys (metabot.tools.u/->result-column query col column-id)
-                                            [:portable_fk :table_reference]))}))
+                               (select-keys result-col [:portable_fk :table_reference])
+                               (when (and (nil? (:portable_fk result-col))
+                                          (string? (:field_id result-col)))
+                                 {:reference_name (:field_id result-col)}))}))
 
 (def ^:private max-suggested-field-ids 100)
 
@@ -144,9 +150,10 @@
   (m/distinct-by metabot.tools.u/column-field-id (entity-details/permission-filter-columns columns)))
 
 (defn- field-column
-  "Find the column of `field-id` in `columns`. The caller removes the columns that the current user cannot see."
-  [entity-type entity-id field-id columns]
-  (or (metabot.tools.u/find-column-by-field-id field-id columns)
+  "Find the column of `field-id` in `columns` of `query`. The caller removes the columns that the current user cannot
+  see."
+  [query entity-type entity-id field-id columns]
+  (or (metabot.tools.u/find-column-by-field-id query field-id columns)
       (let [available-ids (into [] (distinct) (metabot.tools.u/column-field-ids columns))]
         (unknown-field! {:field-id field-id :entity-type entity-type :entity-id entity-id
                          :available-ids (vec (take max-suggested-field-ids available-ids))
@@ -167,7 +174,7 @@
 (defn- table-field-stats
   [table-id field-id limit]
   (let [query (metabot.tools.u/table-query table-id)
-        col (field-column "table" table-id field-id (usable-columns (lib/visible-columns query)))]
+        col (field-column query "table" table-id field-id (usable-columns (lib/visible-columns query)))]
     (field-metadata-output query col field-id limit)))
 
 (defn- card-field-stats
@@ -188,15 +195,17 @@
                      (concat returned
                              (->> (usable-columns (lib/visible-columns query))
                                   (remove (comp returned-ids metabot.tools.u/column-field-id))))))
-        col      (field-column entity-type card-id field-id columns)]
+        col      (field-column query entity-type card-id field-id columns)]
     (check-curated-field-owner! card-id col)
     (field-metadata-output query col field-id limit)))
 
 (defn- metric-field-stats
   [metric-id field-id limit]
   (let [query (metabot.tools.u/metric-query metric-id)
-        col (field-column "metric" metric-id field-id
-                          (m/distinct-by metabot.tools.u/column-field-id
+        ;; Keep the first FK path to each field. A renamed copy on a card stage, like `NAME_2` of `NAME`, has the
+        ;; field ID of its field but is its own column, so its output name keeps it.
+        col (field-column query "metric" metric-id field-id
+                          (m/distinct-by (juxt metabot.tools.u/column-field-id :name)
                                          (entity-details/metric-dimension-columns query metric-id)))]
     (check-curated-field-owner! metric-id col)
     (field-metadata-output query col field-id limit)))
