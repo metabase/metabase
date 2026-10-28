@@ -560,3 +560,22 @@
         (testing "an existing library metric is accepted"
           (is (some? (save! 200 metric)))
           (is (= 1 (count!))))))))
+
+(deftest move-dashboard-question-between-dashboards-test
+  (mt/with-premium-features #{:library}
+    (mt/with-temp [:model/Collection allow-dashboards {:name "Test Dashboards" :type collection/library-dashboards-collection-type}
+                   :model/Collection regular          {:name "Regular Collection"}
+                   :model/Dashboard  library-dash     {:collection_id (:id allow-dashboards)}
+                   :model/Dashboard  library-dash-2   {:collection_id (:id allow-dashboards)}
+                   :model/Dashboard  regular-dash     {:collection_id (:id regular)}
+                   :model/Card       dash-question    {:dashboard_id (:id library-dash) :type :question}
+                   :model/Card       regular-question {:collection_id (:id regular) :type :question}]
+      (insert-legacy-dashcard! (:id library-dash) (:id dash-question))
+      (testing "a dashboard question moved to a regular dashboard leaves its Library dashboard"
+        (mt/user-http-request :crowberto :put 200 (str "card/" (:id dash-question)) {:dashboard_id (:id regular-dash)})
+        (is (= (:id regular) (t2/select-one-fn :collection_id :model/Card (:id dash-question))))
+        (is (not (t2/exists? :model/DashboardCard :dashboard_id (:id library-dash)))))
+      (testing "a regular question moved into a Library dashboard becomes its dashboard question"
+        (mt/user-http-request :crowberto :put 200 (str "card/" (:id regular-question)) {:dashboard_id (:id library-dash-2)})
+        (is (= (:id allow-dashboards) (t2/select-one-fn :collection_id :model/Card (:id regular-question))))
+        (is (t2/exists? :model/DashboardCard :dashboard_id (:id library-dash-2) :card_id (:id regular-question)))))))
