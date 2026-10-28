@@ -80,8 +80,10 @@ without a base type: the instance supplies it when the import binds the field, a
 warehouse fails there.
 
 `convert!` returns a report: `:converted` lists each metric with its `entity_id` and file, and `:unsupported` lists
-every metric that could not be converted with the reason. Nothing is silently dropped. Entity IDs are derived from
-the dbt metric's unique ID, so re-running and re-importing updates the existing cards instead of duplicating them.
+every metric that could not be converted with the reason. Nothing is silently dropped, and one bad metric does not
+stop the run: an unexpected exception while resolving a metric is logged with its stack and reported like any other
+unsupported metric, naming the exception. Entity IDs are derived from the dbt metric's unique ID, so re-running and
+re-importing updates the existing cards instead of duplicating them.
 
 The output is a serdes tree, `collections/main/<collection>.yaml` plus one card per metric under
 `collections/main/<collection>/`, in the same format `export` produces. Import it into the instance from QRES-2:
