@@ -305,7 +305,9 @@
    {:keys     [parameter]
     field-ids :field_ids} :- [:map {:closed true}
                               [:parameter ::parameters.schema/parameter]
-                              [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]]
+                              [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-parameter parameter field-ids))
   (parameter-values parameter field-ids nil))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -321,7 +323,9 @@
    {:keys     [parameter]
     field-ids :field_ids} :- [:map {:closed true}
                               [:parameter ::parameters.schema/parameter]
-                              [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]]
+                              [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-parameter parameter field-ids))
   (parameter-values parameter field-ids query))
 
 (defn param-remapped-value
@@ -350,5 +354,7 @@
    {:keys [parameter value field_ids]} :- [:map {:closed true}
                                            [:parameter ::parameters.schema/parameter]
                                            [:value [:ref ::lib.schema.parameter/parameter.value]]
-                                           [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]]
+                                           [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-parameter parameter field_ids))
   (param-remapped-value field_ids parameter value))

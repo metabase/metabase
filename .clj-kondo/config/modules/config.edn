@@ -140,6 +140,7 @@
            api-scope
            api.eid-translation
            collections
+           data-apps
            events
            lib.schema
            models
@@ -668,6 +669,7 @@
            api-scope
            api.eid-translation
            collections
+           data-apps
            documents
            events
            lib.schema
@@ -830,6 +832,7 @@
            channel
            collections
            dashboards
+           data-apps
            embedding
            events
            lib
@@ -866,10 +869,13 @@
   data-apps
   {:team "Embedding"
    :api #{metabase.data-apps.core}
-   :uses #{analytics
+   :uses #{actions
+           analytics
            api
            api-scope
            lib.be
+           lib.schema
+           parameters.schema
            premium-features
            util}}
 
@@ -2239,6 +2245,7 @@
            api-scope
            api.eid-translation
            collections
+           data-apps
            events
            lib
            lib.be
@@ -3213,6 +3220,7 @@
            metabase.user-key-value.init}
    :uses #{api
            api-scope
+           data-apps
            lib.schema
            util
            util.config}}
@@ -3362,6 +3370,7 @@
            api-scope
            app-db
            collections
+           data-apps
            database-routing
            driver
            events
@@ -3455,6 +3464,7 @@
            api-scope
            app-db
            collections
+           data-apps
            database-routing
            driver
            events
@@ -3852,6 +3862,8 @@
            lib.schema
            lib.types
            models
+           parameters
+           parameters.schema
            permissions
            premium-features
            remote-sync
@@ -3864,7 +3876,10 @@
    :model-imports #{:model/Action
                     :model/Card
                     :model/Collection
+                    :model/Dashboard
                     :model/DataPermissions
+                    :model/Database
+                    :model/Field
                     :model/Measure
                     :model/Segment
                     :model/Table}
@@ -4252,6 +4267,7 @@
            api-scope
            app-db
            audit-app
+           data-apps
            driver
            lib
            lib.be
