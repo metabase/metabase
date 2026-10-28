@@ -11,7 +11,9 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.agent.core :as agent]
+   [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.config :as metabot.config]
+   [metabase.metabot.query-repair-test :as query-repair-test]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.test-util :as mut]
@@ -173,6 +175,22 @@
                                                    {:status :completed, :data {:cols [], :rows []}})]
       (run-tool! {"q1" (venues-by-id)} {:query_id "q1"}))
     (is (=? {:context :metabot, :executed-by (mt/user->id :rasta)} @info))))
+
+(deftest run-query-runs-stripped-query-from-state-test
+  (testing "a query in conversation state without its :lib/* keys runs once the state is read (BOT-2410)"
+    ;; State persisted before the viewing context kept the `:lib/*` keys holds such queries. The repair happens where
+    ;; the agent reads the state, in `memory/initialize`, so the memory goes through it here as it does in the loop.
+    (let [mp       (mt/metadata-provider)
+          q        (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                       (lib/aggregate (lib/count)))
+          stripped (query-repair-test/strip-lib-keys (lib/order-by q (lib/aggregation-ref q 0) :desc))]
+      (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]
+        (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+          (let [{:keys [output structured-output]}
+                (call-tool! (assoc (memory/initialize [] {:queries {"q1" stripped}}) :conversation-id conversation-id)
+                            {:query_id "q1"})]
+            (is (=? {:query-id "q1", :returned 1} structured-output))
+            (is (= ["| Count |" "| --- |" "| 100 |"] (data-lines output)))))))))
 
 (deftest run-query-refusals-test
   (testing "nothing runs while an admin has query execution turned off"

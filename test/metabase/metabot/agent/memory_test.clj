@@ -2,8 +2,11 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.memory :as memory]
+   [metabase.metabot.query-repair-test :as query-repair-test]
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.tools.shared :as shared]
    [metabase.util.malli.registry :as mr]))
@@ -21,6 +24,24 @@
     (let [mem (memory/initialize [{:role :user :content "Hello"}] nil)]
       (is (= {:queries {} :charts {} :todos [] :link-registry {}}
              (memory/get-state mem))))))
+
+(deftest ^:parallel initialize-repairs-stripped-queries-test
+  (testing "a structured query without its :lib/* keys is read as valid MBQL 5, wherever state holds it (BOT-2410)"
+    ;; Conversation state persisted before the viewing context kept the `:lib/*` keys holds such queries. Every tool
+    ;; reads them through this normalization, and `metabot_message` normalizes its `:state` the same way on read.
+    (let [stripped (query-repair-test/stripped-aggregated-query (lib/count))
+          mem      (memory/initialize [] {:queries {"q1" stripped}
+                                          :charts  {"c1" {:chart_id "c1", :query_id "q1", :queries [stripped]}}})
+          valid?   (fn [query]
+                     (and (= :mbql/query (:lib/type query))
+                          (mr/validate :metabase.lib.schema/query query)))]
+      (is (valid? (memory/find-query mem "q1")))
+      (is (valid? (-> (memory/find-chart mem "c1") :queries first)))))
+  (testing "a query the repair cannot make valid stays as it was"
+    (let [stripped (query-repair-test/stripped-aggregated-query
+                    (lib/count) (lib/sum (meta/field-metadata :venues :price)))
+          mem      (memory/initialize [] {:queries {"q1" stripped}})]
+      (is (= stripped (memory/find-query mem "q1"))))))
 
 (deftest ^:parallel initialize-normalizes-state-registry-keys-test
   (let [query          {:database 1 :nested/value "preserved"}

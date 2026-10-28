@@ -7,6 +7,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.metabot.agent.links :as links]
+   [metabase.metabot.query-repair-test :as query-repair-test]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools.charts :as charts]
    [metabase.metabot.tools.shared :as shared]
@@ -43,27 +44,8 @@
                                                    :base-type     :type/DateTime}]]}}
              (links/->legacy-mbql rehydrated))))))
 
-(defn- strip-lib-keys
-  "Recursively remove all namespaced `:lib/*` keys from a query: the shape of a query
-  a client sends without lib's internal keys, or of one in conversation state persisted
-  before the viewing context kept them (BOT-2410). Structurally MBQL 5 (`:stages`,
-  MBQL 5 field clauses, `:effective-type`s) but without `:lib/type`, `:lib/uuid`, and
-  `:lib/metadata`."
-  [x]
-  (cond
-    (map? x)        (into {} (keep (fn [[k v]]
-                                     (when-not (and (keyword? k) (= "lib" (namespace k)))
-                                       [k (strip-lib-keys v)])))
-                          x)
-    (sequential? x) (mapv strip-lib-keys x)
-    :else           x))
-
-(defn- stripped-aggregated-query
-  "A venues query with `aggregations`, ordered by the first of them, stripped of its `:lib/*` keys.
-  The order-by's `[:aggregation {} <uuid>]` ref names a uuid no aggregation carries any more."
-  [& aggregations]
-  (let [q (reduce lib/aggregate (lib.tu/venues-query) aggregations)]
-    (strip-lib-keys (lib/order-by q (lib/aggregation-ref q 0) :desc))))
+(def ^:private strip-lib-keys query-repair-test/strip-lib-keys)
+(def ^:private stripped-aggregated-query query-repair-test/stripped-aggregated-query)
 
 (deftest ^:parallel ->legacy-mbql-lib-type-less-pmbql-test
   (testing "converts pMBQL stripped of :lib/* keys (frontend viewing-context round-trip) to legacy MBQL"
@@ -134,6 +116,13 @@
       (is (mr/validate :metabase.lib.schema/query sent))
       (is (= (-> stage :aggregation first second :lib/uuid)
              (-> stage :order-by first (nth 2) (nth 2))))))
+  (testing "a dangling ref in the stage of a join is repaired the same way"
+    (let [sent       (links/->frontend-query (query-repair-test/stripped-query-with-aggregated-join))
+          join-stage (-> sent :stages first :joins first :stages first)]
+      (is (= :mbql/query (:lib/type sent)))
+      (is (mr/validate :metabase.lib.schema/query sent))
+      (is (= (-> join-stage :aggregation first second :lib/uuid)
+             (-> join-stage :order-by first (nth 2) (nth 2))))))
   (testing "goes out as the raw MBQL 5 query when the ref could mean any of several aggregations"
     ;; Normalization gives each aggregation a new uuid, the ref resolves to none of them, and ->legacy-mbql cannot
     ;; convert the query either.
