@@ -12,7 +12,7 @@
 (mu/defn channel-template :- [:maybe ::channel.schema/channel-template]
   "The ::channel.schema/channel-template with `channel-template-id`, or nil."
   [channel-template-id :- ms/PositiveInt]
-  (t2/select-one :model/ChannelTemplate channel-template-id))
+  (t2/select-one :model/ChannelTemplate :id channel-template-id))
 
 (def ^:private ChannelRow
   "A whole Channel row for insert or update."

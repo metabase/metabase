@@ -18,7 +18,7 @@
 (mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard]
   "The ::dashboards.schema/dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/Dashboard dashboard-id))
+  (t2/select-one :model/Dashboard :id dashboard-id))
 
 (mu/defn insert-dashboard!
   "Insert the Dashboard `row` and return the inserted instance."
@@ -177,7 +177,7 @@
 (mu/defn dashboard-card :- [:maybe ::dashboards.schema/dashboard-card]
   "The ::dashboards.schema/dashboard-card with `dashcard-id`, or nil."
   [dashcard-id :- ::lib.schema.id/dashcard]
-  (t2/select-one :model/DashboardCard dashcard-id))
+  (t2/select-one :model/DashboardCard :id dashcard-id))
 
 (mu/defn multi-cards-for-dashcard
   "The unarchived Cards added to the DashboardCard with `dashcard-id` as series (the 'add series' feature)."
@@ -374,7 +374,7 @@
 (mu/defn dashboard-tab :- [:maybe ::dashboards.schema/dashboard-tab]
   "The ::dashboards.schema/dashboard-tab with `tab-id`, or nil."
   [tab-id :- ms/PositiveInt]
-  (t2/select-one :model/DashboardTab tab-id))
+  (t2/select-one :model/DashboardTab :id tab-id))
 
 (mu/defn insert-dashboard-tabs!
   "Insert the DashboardTab `rows` and return their ids."

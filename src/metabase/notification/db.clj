@@ -19,7 +19,7 @@
 (mu/defn notification-card :- [:maybe ::notification.schema/notification-card]
   "The ::notification.schema/notification-card with `notification-card-id`, or nil."
   [notification-card-id :- ms/PositiveInt]
-  (t2/select-one :model/NotificationCard notification-card-id))
+  (t2/select-one :model/NotificationCard :id notification-card-id))
 
 (def ^:private NotificationRow
   "A whole Notification row for insert."

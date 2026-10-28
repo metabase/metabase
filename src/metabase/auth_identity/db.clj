@@ -25,7 +25,7 @@
 (mu/defn auth-identity :- [:maybe ::auth-identity.schema/auth-identity]
   "The ::auth-identity.schema/auth-identity with `auth-identity-id`, or nil."
   [auth-identity-id :- ms/PositiveInt]
-  (t2/select-one :model/AuthIdentity auth-identity-id))
+  (t2/select-one :model/AuthIdentity :id [:auto/param auth-identity-id]))
 
 (mu/defn auth-identity-for-user-and-provider
   "The AuthIdentity of the User with `user-id` at `provider`, or nil."

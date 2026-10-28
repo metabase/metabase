@@ -27,7 +27,7 @@
 (mu/defn collection :- [:maybe ::collections.schema/collection]
   "The ::collections.schema/collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one :model/Collection collection-id))
+  (t2/select-one :model/Collection :id collection-id))
 
 (mu/defn collection-location-columns
   "The location, id, and type of the Collection with `collection-id`, or nil."

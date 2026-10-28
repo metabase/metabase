@@ -12,7 +12,7 @@
 (mu/defn connection-impersonation :- [:maybe ::impersonation.schema/connection-impersonation]
   "The ::impersonation.schema/connection-impersonation with `impersonation-id`, or nil."
   [impersonation-id :- ms/PositiveInt]
-  (t2/select-one :model/ConnectionImpersonation impersonation-id))
+  (t2/select-one :model/ConnectionImpersonation :id impersonation-id))
 
 (mu/defn impersonation-for-group-and-database
   "The ConnectionImpersonation of the group with `group-id` on the Database with `database-id`, or nil."

@@ -18,7 +18,7 @@
 (mu/defn transform-test :- [:maybe ::transform-testing.schema/transform-test]
   "The ::transform-testing.schema/transform-test with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/TransformTest id))
+  (t2/select-one :model/TransformTest :id id))
 
 (mu/defn insert-transform-test! :- ::transform-testing.schema/transform-test
   "Insert the TransformTest `transform-test` and return the inserted instance."

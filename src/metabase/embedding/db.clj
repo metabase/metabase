@@ -11,7 +11,7 @@
 (mu/defn embedding-theme :- [:maybe ::embedding.schema/embedding-theme]
   "The ::embedding.schema/embedding-theme with `embedding-theme-id`, or nil."
   [embedding-theme-id :- ms/PositiveInt]
-  (t2/select-one :model/EmbeddingTheme embedding-theme-id))
+  (t2/select-one :model/EmbeddingTheme :id embedding-theme-id))
 
 (mu/defn count-embedded-cards
   "Number of Cards that have embedding enabled."

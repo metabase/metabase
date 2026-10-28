@@ -13,7 +13,7 @@
 (mu/defn action :- [:maybe ::actions.schema/action]
   "The ::actions.schema/action with `action-id`, or nil."
   [action-id :- ::lib.schema.id/action]
-  (t2/select-one :model/Action action-id))
+  (t2/select-one :model/Action :id action-id))
 
 (defn- action-database-joins
   "The joins from `action` to the Database `db` of its query, or for an implicit action of its model Card or its table."
@@ -214,7 +214,7 @@
 (mu/defn dashcard-dashboard-id
   "The `:dashboard_id` of the DashboardCard with `dashcard-id`, or nil."
   [dashcard-id :- ::lib.schema.id/dashcard]
-  (t2/select-one-fn :dashboard_id [:model/DashboardCard :dashboard_id] dashcard-id))
+  (t2/select-one-fn :dashboard_id [:model/DashboardCard :dashboard_id] :id dashcard-id))
 
 (mu/defn dashcard-action-id
   "The Action id of the DashboardCard with `dashcard-id`, or nil."
@@ -224,4 +224,4 @@
 (mu/defn dashboard-collection-id
   "The Collection id of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] dashboard-id))
+  (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] :id dashboard-id))

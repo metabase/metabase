@@ -29,7 +29,7 @@
 (mu/defn metabot :- [:maybe ::metabot.schema/metabot]
   "The ::metabot.schema/metabot with `metabot-id`, or nil."
   [metabot-id :- ms/PositiveInt]
-  (t2/select-one :model/Metabot metabot-id))
+  (t2/select-one :model/Metabot :id metabot-id))
 
 (mu/defn metabot-by-entity-id
   "The Metabot with `entity-id`, or nil."

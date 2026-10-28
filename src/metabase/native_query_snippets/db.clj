@@ -18,7 +18,7 @@
 (mu/defn native-query-snippet :- [:maybe ::native-query-snippets.schema/native-query-snippet]
   "The ::native-query-snippets.schema/native-query-snippet with `id`, or nil."
   [id :- ::lib.schema.id/native-query-snippet]
-  (t2/select-one :model/NativeQuerySnippet id))
+  (t2/select-one :model/NativeQuerySnippet :id id))
 
 (mu/defn snippet-name-exists?
   "Whether a NativeQuerySnippet named `snippet-name` exists."

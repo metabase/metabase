@@ -19,7 +19,7 @@
 (mu/defn support-access-grant-log :- [:maybe ::support-access-grants.schema/support-access-grant-log]
   "The ::support-access-grants.schema/support-access-grant-log with `grant-id`, or nil."
   [grant-id :- ms/PositiveInt]
-  (t2/select-one :model/SupportAccessGrantLog grant-id))
+  (t2/select-one :model/SupportAccessGrantLog :id grant-id))
 
 (mu/defn current-grant
   "The newest unrevoked SupportAccessGrantLog that has not ended, or nil."

@@ -11,7 +11,7 @@
 (mu/defn model-index :- [:maybe ::indexed-entities.schema/model-index]
   "The ::indexed-entities.schema/model-index with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/ModelIndex id))
+  (t2/select-one :model/ModelIndex :id id))
 
 (mu/defn model-indexes-for-model
   "The ModelIndexes of the model Card with `model-id`."

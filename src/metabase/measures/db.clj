@@ -24,7 +24,7 @@
 (mu/defn measure :- [:maybe ::measures.schema/measure]
   "The ::measures.schema/measure with `id`, or nil."
   [id :- ::lib.schema.id/measure]
-  (t2/select-one :model/Measure id))
+  (t2/select-one :model/Measure :id id))
 
 (mu/defn unarchived-measures
   "The unarchived Measures, in case-insensitive name order."

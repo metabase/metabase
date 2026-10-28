@@ -12,7 +12,7 @@
 (mu/defn pulse-channel :- [:maybe ::pulse.schema/pulse-channel]
   "The ::pulse.schema/pulse-channel with `pulse-channel-id`, or nil."
   [pulse-channel-id :- ms/PositiveInt]
-  (t2/select-one :model/PulseChannel pulse-channel-id))
+  (t2/select-one :model/PulseChannel :id pulse-channel-id))
 
 (mu/defn dashboard-archived? :- :boolean
   "Whether the Dashboard with `dashboard-id` exists and is archived."
@@ -62,7 +62,7 @@
 (mu/defn pulse :- [:maybe ::pulse.schema/pulse]
   "The ::pulse.schema/pulse with `pulse-id`, or nil."
   [pulse-id :- ::lib.schema.id/pulse]
-  (t2/select-one :model/Pulse pulse-id))
+  (t2/select-one :model/Pulse :id pulse-id))
 
 (mu/defn pulse-id
   "The id of the Pulse with `pulse-id` if it exists, or nil."

@@ -76,7 +76,7 @@
 (mu/defn data-complexity-score :- [:maybe ::data-complexity-score.schema/data-complexity-score]
   "The ::data-complexity-score.schema/data-complexity-score with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/DataComplexityScore id))
+  (t2/select-one :model/DataComplexityScore :id id))
 
 (mu/defn scored-within-hours?
   "Whether a DataComplexityScore of `source` for `fingerprint` was created within the last `hours` hours of

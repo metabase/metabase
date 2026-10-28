@@ -10,7 +10,7 @@
 (mu/defn custom-viz-plugin :- [:maybe ::custom-viz-plugin.schema/custom-viz-plugin]
   "The ::custom-viz-plugin.schema/custom-viz-plugin with `custom-viz-plugin-id`, or nil."
   [custom-viz-plugin-id :- ms/PositiveInt]
-  (t2/select-one :model/CustomVizPlugin custom-viz-plugin-id))
+  (t2/select-one :model/CustomVizPlugin :id custom-viz-plugin-id))
 
 (def ^:private non-blob-columns
   "Columns to select for normal plugin reads, excluding the bundle blob."

@@ -23,7 +23,7 @@
 (mu/defn transform
   "The Transform with `transform-id`, or nil."
   [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one :model/Transform transform-id))
+  (t2/select-one :model/Transform :id transform-id))
 
 (mu/defn update-transform!
   "Apply `changes` to the Transform with `transform-id`."

@@ -13,7 +13,7 @@
 (mu/defn security-advisory :- [:maybe ::security-center.schema/security-advisory]
   "The ::security-center.schema/security-advisory with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/SecurityAdvisory id))
+  (t2/select-one :model/SecurityAdvisory :id id))
 
 (mu/defn advisory-by-advisory-id
   "The SecurityAdvisory with the external `advisory-id`, or nil."
