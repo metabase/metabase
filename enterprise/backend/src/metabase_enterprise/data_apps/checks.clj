@@ -186,3 +186,57 @@
    field-id  :- ::lib.schema.id/field]
   (check-published-field field-id)
   nil)
+
+(defenterprise-schema check-database :- :nil
+  "Throws a 400 unless the database with `database-id` has a table published to the Library, after a read check of the
+  database."
+  :feature :data-apps
+  [_data-app   :- ::data-apps.schema/data-app
+   database-id :- ::lib.schema.id/database]
+  (api/read-check :model/Database database-id)
+  (when-not (some #(= database-id (:db_id %)) (data-apps.db/published-tables))
+    (throw (data-app-error (tru "A data app can read only databases with tables published to the Library, not the database {0}."
+                                (str database-id)))))
+  nil)
+
+(def ^:private sdk-user-key-values
+  "The user key-values, as `[namespace key]`, that the SDK reads and writes inside a data app."
+  #{["last_download_format" "download_format_preference"]})
+
+(defenterprise-schema check-user-key-value :- :nil
+  "Throws a 400 unless the user key-value `k` in `nmspace` is one the SDK uses inside a data app."
+  :feature :data-apps
+  [_data-app :- ::data-apps.schema/data-app
+   nmspace   :- :string
+   k         :- :string]
+  (when-not (contains? sdk-user-key-values [nmspace k])
+    (throw (data-app-error (tru "A data app can use only the user key-values of the SDK, not the key {0} in the namespace {1}."
+                                k nmspace))))
+  nil)
+
+(defenterprise-schema data-app-collection-types :- [:maybe [:set :string]]
+  "The types of the Library and of its collections, which their subcollections inherit."
+  :feature :data-apps
+  [_data-app :- ::data-apps.schema/data-app]
+  collections/library-collection-types)
+
+(defenterprise-schema check-collection :- :nil
+  "Throws a 400 unless the collection with `collection-id` is of a type in [[data-app-collection-types]], after a read
+  check of the collection."
+  :feature :data-apps
+  [data-app      :- ::data-apps.schema/data-app
+   collection-id :- ::lib.schema.id/collection]
+  (when-not (contains? (data-app-collection-types data-app) (:type (api/read-check :model/Collection collection-id)))
+    (throw (data-app-error (tru "A data app can see only the Library and its collections, not the collection {0}."
+                                (str collection-id)))))
+  nil)
+
+(defenterprise-schema check-dashboard :- :nil
+  "Throws a 400 unless the dashboard with `dashboard-id` is in the Library, after a read check of the dashboard."
+  :feature :data-apps
+  [_data-app    :- ::data-apps.schema/data-app
+   dashboard-id :- ::lib.schema.id/dashboard]
+  (when-not (in-library? (api/read-check :model/Dashboard dashboard-id))
+    (throw (data-app-error (tru "A data app can use only the dashboards in the Library, not the dashboard {0}."
+                                (str dashboard-id)))))
+  nil)

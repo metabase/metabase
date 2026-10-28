@@ -8,6 +8,8 @@
    [metabase.collections.core :as collections]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -621,6 +623,289 @@
                  url)))
          (testing "a request that is not a data app's still reads an unpublished table"
            (mt/user-http-request :crowberto :get 200 (format "table/%d" checkins))))))))
+
+(deftest database-endpoints-narrow-to-published-tables-test
+  (do-with-app-collection
+   (fn [_collection-id]
+     (mt/with-temp [:model/Database db          {:engine :h2 :details {}}
+                    :model/Table    published   {:db_id (:id db) :name "PUBLISHED" :schema "PUBLIC"}
+                    :model/Table    unpublished {:db_id (:id db) :name "UNPUBLISHED" :schema "PRIVATE"}
+                    :model/Database other       {:engine :h2 :details {}}
+                    :model/Table    _           {:db_id (:id other) :name "ELSEWHERE" :schema "PUBLIC"}]
+       (data-apps.tu/with-published-tables! [(:id published)]
+         (let [list-dbs (fn [url] (:data (mt/user-http-request :crowberto :get 200 url as-data-app)))
+               listed   (fn [dbs] (some #(when (= (:id db) (:id %)) %) dbs))]
+           (testing "the database list holds the database with a published table, with only that table and its schema"
+             (is (= [(:id published)] (map :id (:tables (listed (list-dbs "database?include=tables"))))))
+             (is (= ["PUBLIC"] (:schemas (listed (list-dbs "database?include=schemas"))))))
+           (testing "but not a database without published tables, nor the saved-questions virtual database"
+             (doseq [id [(:id other) lib.schema.id/saved-questions-virtual-database-id]]
+               (is (not-any? #(= id (:id %)) (list-dbs "database?saved=true")) id)))
+           (testing "a database with a published table lists only that table and its schema"
+             (is (= [(:id published)]
+                    (map :id (:tables (mt/user-http-request :crowberto :get 200 (format "database/%d?include=tables" (:id db))
+                                                            as-data-app)))))
+             (is (= ["PUBLIC"] (mt/user-http-request :crowberto :get 200 (format "database/%d/schemas" (:id db)) as-data-app)))
+             (is (= [(:id published)]
+                    (map :id (mt/user-http-request :crowberto :get 200 (format "database/%d/schema/PUBLIC" (:id db)) as-data-app))))
+             (is (= "Not found."
+                    (mt/user-http-request :crowberto :get 404 (format "database/%d/schema/PRIVATE" (:id db)) as-data-app))))
+           (testing "a database without published tables is refused"
+             (doseq [url ["database/%d" "database/%d/schemas" "database/%d/schema/PUBLIC"]]
+               (is (= (format "A data app can read only databases with tables published to the Library, not the database %d."
+                              (:id other))
+                      (mt/user-http-request :crowberto :get 400 (format url (:id other)) as-data-app))
+                   url)))
+           (testing "a request that is not a data app's still lists the unpublished table"
+             (is (= [(:id unpublished)]
+                    (map :id (mt/user-http-request :crowberto :get 200 (format "database/%d/schema/PRIVATE" (:id db)))))))))))))
+
+(deftest database-endpoints-without-published-tables-test
+  (do-with-app-collection
+   (fn [_collection-id]
+     (mt/with-temp [:model/Database db {:engine :h2 :details {}}
+                    :model/Table    _  {:db_id (:id db) :name "UNPUBLISHED" :schema "PUBLIC"}]
+       (testing "a database whose tables are all unpublished is not listed"
+         (is (not-any? #(= (:id db) (:id %))
+                       (:data (mt/user-http-request :crowberto :get 200 "database?include=tables" as-data-app)))))
+       (testing "and is refused by its ID"
+         (is (= (format "A data app can read only databases with tables published to the Library, not the database %d." (:id db))
+                (mt/user-http-request :crowberto :get 400 (format "database/%d" (:id db)) as-data-app))))))))
+
+(deftest database-autocomplete-endpoints-suggest-only-published-tables-test
+  (do-with-app-collection
+   (fn [_collection-id]
+     (mt/with-temp [:model/Database db                 {:engine :h2 :details {}}
+                    :model/Table    published          {:db_id (:id db) :name "ZEBRA_PUBLISHED"}
+                    :model/Table    unpublished        {:db_id (:id db) :name "ZEBRA_UNPUBLISHED"}
+                    :model/Field    _published-field   {:table_id (:id published) :name "ZEBRA_SEEN"}
+                    :model/Field    _unpublished-field {:table_id (:id unpublished) :name "ZEBRA_HIDDEN"}
+                    :model/Card     card               {:name "Zebra autocomplete card"}]
+       (data-apps.tu/with-published-tables! [(:id published)]
+         (let [url (format "database/%d/autocomplete_suggestions" (:id db))]
+           (testing "table and field suggestions hold only published tables and their fields"
+             (is (= #{"ZEBRA_PUBLISHED" "ZEBRA_SEEN"}
+                    (set (map first (mt/user-http-request :crowberto :get 200 url as-data-app :prefix "zebra")))))
+             (is (= #{"ZEBRA_PUBLISHED" "ZEBRA_SEEN"}
+                    (set (map first (mt/user-http-request :crowberto :get 200 url as-data-app :substring "ebra"))))))
+           (testing "a request that is not a data app's still suggests unpublished tables and their fields"
+             (is (= #{"ZEBRA_PUBLISHED" "ZEBRA_UNPUBLISHED" "ZEBRA_SEEN" "ZEBRA_HIDDEN"}
+                    (set (map first (mt/user-http-request :crowberto :get 200 url :prefix "zebra"))))))))
+       (let [url (format "database/%d/card_autocomplete_suggestions" (mt/id))]
+         (testing "card suggestions are empty"
+           (is (= [] (mt/user-http-request :crowberto :get 200 url as-data-app :query "zebra autocomplete"))))
+         (testing "a request that is not a data app's still suggests cards"
+           (is (some #(= (:id card) (:id %)) (mt/user-http-request :crowberto :get 200 url :query "zebra autocomplete")))))))))
+
+(defn- do-with-zebras!
+  "Call `f` with a temp table published to the Library, one unpublished, a metric in the Library and one outside it, all
+  named Zebra, as `{:published :unpublished :metric :outside-metric}`."
+  [f]
+  (data-apps.tu/do-with-library!
+   (fn [{:keys [metrics-id]}]
+     (mt/with-temp [:model/Database db             {:engine :h2 :details {}}
+                    :model/Table    published      {:db_id (:id db) :name "ZEBRA_PUBLISHED" :display_name "Zebra published"}
+                    :model/Table    unpublished    {:db_id (:id db) :name "ZEBRA_UNPUBLISHED" :display_name "Zebra unpublished"}
+                    :model/Card     metric         {:name          "Zebra metric"
+                                                    :type          :metric
+                                                    :collection_id metrics-id
+                                                    :dataset_query (lib/aggregate (data-apps.tu/venues-query) (lib/count))}
+                    :model/Card     outside-metric {:name          "Zebra outside metric"
+                                                    :type          :metric
+                                                    :dataset_query (lib/aggregate (data-apps.tu/venues-query) (lib/count))}]
+       (data-apps.tu/with-published-tables! [(:id published)]
+         (f {:published published :unpublished unpublished :metric metric :outside-metric outside-metric}))))))
+
+(defn- search-found
+  "The `[model id]` pairs of what a search for zebras finds, as the request with `options` does."
+  [options & params]
+  (set (map (juxt :model :id) (:data (apply mt/user-http-request :crowberto :get 200 "search" options :q "zebra" params)))))
+
+(deftest search-finds-library-content-test
+  (search.tu/with-appdb-search-and-legacy-search
+    (search.tu/with-sync-search-indexing
+      (do-with-app-collection
+       (fn [_collection-id]
+         (mt/with-premium-features #{:data-apps :library}
+           (do-with-zebras!
+            (fn [{:keys [published unpublished metric outside-metric]}]
+              (let [published      ["table" (:id published)]
+                    unpublished    ["table" (:id unpublished)]
+                    metric         ["metric" (:id metric)]
+                    outside-metric ["metric" (:id outside-metric)]]
+                (testing "a data app finds the Library's content, and nothing else"
+                  (let [found (search-found as-data-app)]
+                    (is (contains? found published))
+                    (is (contains? found metric))
+                    (is (not-any? found [unpublished outside-metric]))))
+                (testing "the models it asks for narrow the search"
+                  (let [found (search-found as-data-app :models "metric")]
+                    (is (contains? found metric))
+                    (is (not (contains? found published))))
+                  (let [found (search-found as-data-app :models "table")]
+                    (is (contains? found published))
+                    (is (not-any? found [unpublished metric]))))
+                (testing "a request that is not a data app's finds the unpublished table and the outside metric too"
+                  (let [found (search-found {})]
+                    (is (contains? found unpublished))
+                    (is (contains? found outside-metric)))))))))))))
+
+(deftest search-without-library-finds-nothing-test
+  (search.tu/with-appdb-search-and-legacy-search
+    (search.tu/with-sync-search-indexing
+      (do-with-app-collection
+       (fn [_collection-id]
+         (mt/with-premium-features #{:data-apps :library}
+           (do-with-zebras!
+            (fn [{:keys [published metric]}]
+              (mt/with-dynamic-fn-redefs [collections/library-collection (constantly nil)]
+                (testing "without a Library, a data app finds not even a published table or a Library metric"
+                  (is (not-any? (search-found as-data-app) [["table" (:id published)] ["metric" (:id metric)]]))))))))))))
+
+(deftest search-without-published-tables-finds-nothing-test
+  (search.tu/with-appdb-search-and-legacy-search
+    (search.tu/with-sync-search-indexing
+      (do-with-app-collection
+       (fn [_collection-id]
+         (mt/with-premium-features #{:data-apps :library}
+           (mt/with-temp [:model/Database db          {:engine :h2 :details {}}
+                          :model/Table    unpublished {:db_id (:id db) :name "ZEBRA_UNPUBLISHED" :display_name "Zebra unpublished"}]
+             (data-apps.tu/do-with-library!
+              (fn [_library]
+                (testing "with a Library that does not publish the table, a data app does not find it"
+                  (is (not (contains? (search-found as-data-app) ["table" (:id unpublished)])))))))))))))
+
+(deftest user-key-value-endpoints-allow-only-sdk-keys-test
+  (do-with-app-collection
+   (fn [_collection-id]
+     (let [sdk-key "user-key-value/namespace/last_download_format/key/download_format_preference"
+           other   "user-key-value/namespace/user_acknowledgement/key/seen"]
+       (testing "a data app reads, writes and clears the key the SDK uses"
+         (mt/user-http-request :crowberto :put 200 sdk-key as-data-app {:value {:last_download_format       "csv"
+                                                                                :last_table_download_format "csv"}})
+         (is (= {:last_download_format "csv" :last_table_download_format "csv"}
+                (mt/user-http-request :crowberto :get 200 sdk-key as-data-app)))
+         (mt/user-http-request :crowberto :delete 200 sdk-key as-data-app))
+       (testing "a data app is refused any other key"
+         (doseq [[method body] [[:put {:value true}] [:get nil] [:delete nil]]]
+           (is (= "A data app can use only the user key-values of the SDK, not the key seen in the namespace user_acknowledgement."
+                  (apply mt/user-http-request :crowberto method 400 other as-data-app (when body [body])))
+               (name method))))))))
+
+(defn- item-ids
+  "The `[model id]` pairs of the items that the request to `endpoint` with `options` finds."
+  [options endpoint]
+  (set (map (juxt :model :id) (:data (mt/user-http-request :crowberto :get 200 endpoint options)))))
+
+(deftest collection-endpoints-show-only-library-test
+  (do-with-app-collection
+   (fn [_collection-id]
+     (data-apps.tu/do-with-library!
+      (fn [{:keys [data-id metrics-id]}]
+        (mt/with-model-cleanup [:model/Collection]
+          (mt/with-temp [:model/Collection outside   {:name "Birds outside"}
+                         :model/Card       root-card {:name "Birds root card"}]
+            (let [library-id         (:id (collections/library-collection))
+                  dashboards-id      (t2/select-one-pk :model/Collection
+                                                       :location (str "/" library-id "/")
+                                                       :type     collections/library-dashboards-collection-type)
+                  data-child         (mt/user-http-request :crowberto :post 200 "collection" {:name "Birds data" :parent_id data-id})
+                  data-grandchild    (mt/user-http-request :crowberto :post 200 "collection" {:name      "Birds data nested"
+                                                                                              :parent_id (:id data-child)})
+                  metrics-child      (mt/user-http-request :crowberto :post 200 "collection" {:name "Birds metrics" :parent_id metrics-id})
+                  metrics-grandchild (mt/user-http-request :crowberto :post 200 "collection" {:name      "Birds metrics nested"
+                                                                                              :parent_id (:id metrics-child)})]
+              (testing "the root items of a data app are the Library alone"
+                (let [found (item-ids as-data-app "collection/root/items")]
+                  (is (contains? found ["collection" library-id]))
+                  (is (not-any? found [["collection" (:id outside)] ["card" (:id root-card)]]))))
+              (testing "the Library holds its Data, Metrics and Dashboards collections"
+                (let [found (item-ids as-data-app (str "collection/" library-id "/items"))]
+                  (is (contains? found ["collection" data-id]))
+                  (is (contains? found ["collection" metrics-id]))
+                  (is (contains? found ["collection" dashboards-id]))))
+              (testing "Data and Metrics hold their nested collections at every level"
+                (doseq [[parent child] [[data-id data-child]
+                                        [(:id data-child) data-grandchild]
+                                        [metrics-id metrics-child]
+                                        [(:id metrics-child) metrics-grandchild]]]
+                  (is (contains? (item-ids as-data-app (str "collection/" parent "/items")) ["collection" (:id child)])
+                      (:name child))))
+              (testing "a data app reads the Library, its collections and their nested collections"
+                (doseq [id (into [library-id data-id metrics-id dashboards-id]
+                                 (map :id)
+                                 [data-child data-grandchild metrics-child metrics-grandchild])]
+                  (is (= id (:id (mt/user-http-request :crowberto :get 200 (str "collection/" id) as-data-app))))))
+              (testing "the collection list and the tree of a data app hold the Library, its collections and their nested collections"
+                (let [visible [library-id data-id metrics-id dashboards-id (:id data-grandchild) (:id metrics-grandchild)]
+                      hidden  [(:id outside)]]
+                  (doseq [[label found] [["list" (set (map :id (mt/user-http-request :crowberto :get 200 "collection" as-data-app)))]
+                                         ["tree" (set (map :id (mapcat #(tree-seq (comp seq :children) :children %)
+                                                                       (mt/user-http-request :crowberto :get 200 "collection/tree" as-data-app))))]]]
+                    (is (every? found visible) label)
+                    (is (not-any? found hidden) label))))
+              (testing "the shallow tree of a data app holds the nested collections of Data"
+                (let [found (set (map :id (mt/user-http-request :crowberto :get 200 "collection/tree" as-data-app
+                                                                :shallow true :collection-id data-id)))]
+                  (is (contains? found (:id data-child)))))
+              (testing "a data app is refused any other collection and its items"
+                (doseq [endpoint [(str "collection/" (:id outside)) (str "collection/" (:id outside) "/items")]]
+                  (is (= (format "A data app can see only the Library and its collections, not the collection %s." (:id outside))
+                         (mt/user-http-request :crowberto :get 400 endpoint as-data-app))
+                      endpoint)))
+              (testing "a request that is not a data app's finds the other collection and the root card"
+                (let [found (item-ids {} "collection/root/items")]
+                  (is (contains? found ["collection" (:id outside)]))
+                  (is (contains? found ["card" (:id root-card)])))
+                (is (contains? (set (map :id (mt/user-http-request :crowberto :get 200 "collection"))) (:id outside))))))))))))
+
+(deftest dashboard-endpoints-allow-only-library-dashboards-test
+  (do-with-app-collection
+   (fn [_collection-id]
+     (data-apps.tu/do-with-library!
+      (fn [_library]
+        (data-apps.tu/with-published-tables! [(mt/id :venues)]
+          (let [library-id    (:id (collections/library-collection))
+                dashboards-id (t2/select-one-pk :model/Collection
+                                                :location (str "/" library-id "/")
+                                                :type     collections/library-dashboards-collection-type)]
+            (mt/with-temp [:model/Dashboard     library   {:collection_id dashboards-id :parameters [static-parameter]}
+                           :model/Card          question  {:collection_id dashboards-id
+                                                           :dashboard_id  (:id library)
+                                                           :dataset_query (data-apps.tu/venues-query)}
+                           :model/DashboardCard dashcard  {:dashboard_id (:id library) :card_id (:id question)}
+                           :model/Dashboard     outside   {:parameters [static-parameter]}
+                           :model/Card          card      {:dataset_query (data-apps.tu/venues-query)}
+                           :model/DashboardCard outside-dashcard {:dashboard_id (:id outside) :card_id (:id card)}]
+              (testing "a dashboard in the Library, its metadata, parameter values and dashcard runs are open to a data app"
+                (is (=? {:id (:id library)} (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (:id library)) as-data-app)))
+                (is (map? (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/query_metadata" (:id library)) as-data-app)))
+                (is (=? {:values [["bar"] ["cafe"]]}
+                        (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/params/kind/values" (:id library))
+                                              as-data-app)))
+                (is (= "completed" (:status (mt/user-http-request :crowberto :post 202
+                                                                  (format "dashboard/%d/dashcard/%d/card/%d/query"
+                                                                          (:id library) (:id dashcard) (:id question))
+                                                                  as-data-app)))))
+              (testing "a dashboard outside the Library is refused"
+                (doseq [[method url] [[:get (format "dashboard/%d" (:id outside))]
+                                      [:get (format "dashboard/%d/query_metadata" (:id outside))]
+                                      [:get (format "dashboard/%d/params/kind/values" (:id outside))]
+                                      [:get (format "dashboard/%d/params/kind/search/caf" (:id outside))]
+                                      [:post (format "dashboard/%d/dashcard/%d/card/%d/query"
+                                                     (:id outside) (:id outside-dashcard) (:id card))]]]
+                  (is (= (format "A data app can use only the dashboards in the Library, not the dashboard %d." (:id outside))
+                         (mt/user-http-request :crowberto method 400 url as-data-app))
+                      url)))
+              (testing "valid filter fields are open only for fields of published tables"
+                (is (map? (mt/user-http-request :crowberto :get 200 "dashboard/params/valid-filter-fields" as-data-app
+                                                :filtered (mt/id :venues :name) :filtering (mt/id :venues :price))))
+                (is (= (format "A data app can read only fields of tables published to the Library, not the field %d."
+                               (mt/id :categories :name))
+                       (mt/user-http-request :crowberto :get 400 "dashboard/params/valid-filter-fields" as-data-app
+                                             :filtered (mt/id :categories :name) :filtering (mt/id :venues :price)))))
+              (testing "a request that is not a data app's still reads the other dashboard"
+                (is (=? {:id (:id outside)} (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (:id outside))))))))))))))
 
 (deftest without-data-apps-feature-test
   (testing "without the data-apps feature a data app's queries are not checked"
