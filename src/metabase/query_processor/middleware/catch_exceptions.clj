@@ -2,13 +2,8 @@
   "Middleware for catching exceptions thrown by the query processor and returning them in a friendlier format.
 
   The response carries only the client-facing part of each exception's ex-data (see [[metabase.util.api-error]]). The
-  error log line carries just the message, plus the ex-data keys listed under `:log/keys`, as log context:
-
-    (throw (ex-info (tru \"Field is not available\")
-                    {:status-code 400, :field-id id, :field-name field-name, :log/keys #{:field-id :field-name}}))
-
-  responds without either key and logs `field-id` and `field-name` alongside the message. Don't list the query or
-  values from it."
+  error log line carries just the message, plus the ex-data keys listed under `:log/keys`, as log context (see
+  [[metabase.util.log-error]])."
   (:refer-clojure :exclude [some get-in not-empty select-keys])
   (:require
    [clojure.string :as str]
@@ -27,6 +22,7 @@
    [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
+   [metabase.util.log-error :as log-error]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [some get-in not-empty select-keys]])
@@ -174,19 +170,6 @@
     (catch Throwable e
       (assoc (Throwable->map e) :status :failed))))
 
-(defn- log-context
-  "The ex-data entries each exception in `e`'s chain lists under `:log/keys`, for the error log line. An inner
-  exception's entries win over an outer one's. Empty when a `:log/keys` is malformed, so that it can't mask `e`."
-  [e]
-  (try
-    (into {}
-          (map (fn [ex]
-                 (let [data (ex-data ex)]
-                   (select-keys data (:log/keys data)))))
-          (u/full-exception-chain e))
-    (catch Throwable _
-      {})))
-
 (mu/defn catch-exceptions :- ::qp.schema/qp
   "Middleware for catching exceptions thrown by the query processor and returning them in a 'normal' format. Forwards
   exceptions to the `result-chan`."
@@ -211,7 +194,7 @@
                   pool-saturated?     (qp.error-type/connection-pool-saturated?
                                        (:error_type formatted-exception))]
               (when-not (or query-canceled? pool-saturated?)
-                (log/with-thread-context (log-context e)
+                (log/with-thread-context (log-error/log-data e)
                   (log/errorf "Error processing query: %s"
                               (or (:error formatted-exception) "Error running query"))))
               ;; ensure always a message on the error otherwise FE thinks query was successful. (#23258, #23281)
