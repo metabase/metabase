@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen, waitFor } from "__support__/ui";
-import { trackSimpleEvent } from "metabase/analytics";
+import type { SimpleEventSchema } from "metabase-types/analytics/event";
 import type { Engine } from "metabase-types/api";
 
 import { mysqlFormConfig } from "./mysql-form-config.mock";
@@ -77,15 +77,19 @@ describe("DatabaseForm connection string", () => {
   });
 
   describe("analytics", () => {
-    const trackSimpleEventMock = jest.mocked(trackSimpleEvent);
+    // metabase/analytics is auto-mocked globally, and only an analytics.ts file
+    // may import the tracker by name.
+    const { trackSimpleEvent } = jest.requireMock<{
+      trackSimpleEvent: jest.Mock<void, [SimpleEventSchema]>;
+    }>("metabase/analytics");
 
     const getConnectionStringEvents = () =>
-      trackSimpleEventMock.mock.calls
+      trackSimpleEvent.mock.calls
         .map(([event]) => event)
         .filter(({ event }) => event.startsWith("connection_string_parsed_"));
 
     beforeEach(() => {
-      trackSimpleEventMock.mockClear();
+      trackSimpleEvent.mockClear();
     });
 
     it("should track a single success event for everything typed before the field is blurred", async () => {

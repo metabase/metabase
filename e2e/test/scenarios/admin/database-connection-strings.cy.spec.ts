@@ -328,4 +328,3 @@ describe("Database connection strings", () => {
     });
   });
 });
-
