@@ -319,6 +319,38 @@
                    #(contains? #{(:id personal-collection) (:id a)} (:id %))
                    (mt/user-http-request :rasta :get 200 "collection/tree")))))))))
 
+(deftest collection-tree-here-and-below-ignores-document-cards-test
+  (testing "Cards that live in a Document should not count toward `:here` or `:below` (#68587)"
+    (mt/with-temp [:model/Collection {nest-id :id}    {:name "Nest"}
+                   :model/Collection {egg-id :id}     {:name "Egg" :location (format "/%d/" nest-id)}
+                   :model/Collection {feeder-id :id}  {:name "Feeder"}
+                   :model/Document   {doc-id :id}     {:name "Field notes" :collection_id egg-id}
+                   :model/Card       _                {:name          "Sightings in a document"
+                                                       :collection_id egg-id
+                                                       :document_id   doc-id}
+                   :model/Card       _                {:name "Sightings" :collection_id feeder-id}]
+      (let [nodes (into {}
+                        (map (juxt :id identity))
+                        (mt/user-http-request :crowberto :get 200 "collection/tree"))
+            nest  (get nodes nest-id)
+            egg   (first (filter #(= egg-id (:id %)) (:children nest)))]
+        (testing "a collection whose only Card is in a Document"
+          (is (some? egg))
+          (is (not-any? #{"card"} (:here egg))))
+        (testing "its parent collection"
+          (is (not-any? #{"card"} (:below nest))))
+        (testing "a collection with a regular Card"
+          (is (=? {:here ["card"]}
+                  (get nodes feeder-id)))))
+      (testing "GET /api/collection/:id/items"
+        (let [egg-item (->> (mt/user-http-request :crowberto :get 200 (format "collection/%d/items" nest-id)
+                                                  :models "collection")
+                            :data
+                            (filter #(= egg-id (:id %)))
+                            first)]
+          (is (some? egg-item))
+          (is (not-any? #{"card"} (:here egg-item))))))))
+
 (deftest collection-tree-shallow-test
   (testing "GET /api/collection/tree?shallow=true"
     (with-collection-hierarchy! [a b c d e f g]
