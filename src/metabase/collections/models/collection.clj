@@ -274,11 +274,6 @@
     library-metrics-entity-id
     library-dashboards-entity-id})
 
-(defn library-data-collection
-  "Get the Library's 'Data' collection, if it exists."
-  []
-  (collections.db/collection-with-entity-id library-data-entity-id))
-
 (defn- grant-library-collection-permissions!
   "Gives All Users read and Data Analysts read-write access to the Library `collection`."
   [collection]

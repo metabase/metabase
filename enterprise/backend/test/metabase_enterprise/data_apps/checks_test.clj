@@ -672,28 +672,60 @@
          (is (= (format "A data app can read only databases with tables published to the Library, not the database %d." (:id db))
                 (mt/user-http-request :crowberto :get 400 (format "database/%d" (:id db)) as-data-app))))))))
 
-(defn- search-ids
-  "The IDs of what a search for `q` finds, as the request with `options` does."
-  [options q & params]
-  (set (map :id (:data (apply mt/user-http-request :crowberto :get 200 "search" options :q q params)))))
+(defn- do-with-zebras!
+  "Call `f` with a temp table published to the Library, one unpublished, a metric in the Library and one outside it, all
+  named Zebra, as `{:published :unpublished :metric :outside-metric}`."
+  [f]
+  (data-apps.tu/do-with-library!
+   (fn [{:keys [metrics-id]}]
+     (mt/with-temp [:model/Database db             {:engine :h2 :details {}}
+                    :model/Table    published      {:db_id (:id db) :name "ZEBRA_PUBLISHED" :display_name "Zebra published"}
+                    :model/Table    unpublished    {:db_id (:id db) :name "ZEBRA_UNPUBLISHED" :display_name "Zebra unpublished"}
+                    :model/Card     metric         {:name          "Zebra metric"
+                                                    :type          :metric
+                                                    :collection_id metrics-id
+                                                    :dataset_query (lib/aggregate (data-apps.tu/venues-query) (lib/count))}
+                    :model/Card     outside-metric {:name          "Zebra outside metric"
+                                                    :type          :metric
+                                                    :dataset_query (lib/aggregate (data-apps.tu/venues-query) (lib/count))}]
+       (data-apps.tu/with-published-tables! [(:id published)]
+         (f {:published published :unpublished unpublished :metric metric :outside-metric outside-metric}))))))
 
-(deftest search-finds-only-published-tables-test
+(defn- search-found
+  "The `[model id]` pairs of what a search for zebras finds, as the request with `options` does."
+  [options & params]
+  (set (map (juxt :model :id) (:data (apply mt/user-http-request :crowberto :get 200 "search" options :q "zebra" params)))))
+
+(deftest search-finds-library-tables-and-metrics-test
   (search.tu/with-appdb-search-and-legacy-search
     (search.tu/with-sync-search-indexing
       (do-with-app-collection
        (fn [_collection-id]
          (mt/with-premium-features #{:data-apps :library}
-           (mt/with-temp [:model/Database db          {:engine :h2 :details {}}
-                          :model/Table    published   {:db_id (:id db) :name "ZEBRA_PUBLISHED" :display_name "Zebra published"}
-                          :model/Table    unpublished {:db_id (:id db) :name "ZEBRA_UNPUBLISHED" :display_name "Zebra unpublished"}]
-             (data-apps.tu/with-published-tables! [(:id published)]
-               (testing "a data app finds a published table but not an unpublished one, whatever it asks for"
-                 (doseq [params [[] [:models "card"] [:models "table"] [:models "table" :ids (:id unpublished)]]]
-                   (let [found (apply search-ids as-data-app "zebra" params)]
-                     (is (contains? found (:id published)) (pr-str params))
-                     (is (not (contains? found (:id unpublished))) (pr-str params)))))
-               (testing "a request that is not a data app's finds the unpublished table too"
-                 (is (contains? (search-ids {} "zebra" :models "table") (:id unpublished))))))))))))
+           (do-with-zebras!
+            (fn [{:keys [published unpublished metric outside-metric]}]
+              (let [published      ["table" (:id published)]
+                    unpublished    ["table" (:id unpublished)]
+                    metric         ["metric" (:id metric)]
+                    outside-metric ["metric" (:id outside-metric)]]
+                (testing "a data app finds the published tables and metrics of the Library, and nothing else"
+                  (let [found (search-found as-data-app)]
+                    (is (contains? found published))
+                    (is (contains? found metric))
+                    (is (not-any? found [unpublished outside-metric]))))
+                (testing "the models it asks for narrow the search"
+                  (let [found (search-found as-data-app :models "metric")]
+                    (is (contains? found metric))
+                    (is (not (contains? found published))))
+                  (let [found (search-found as-data-app :models "table" :ids (second unpublished))]
+                    (is (contains? found published))
+                    (is (not-any? found [unpublished metric]))))
+                (testing "models it may not search find nothing"
+                  (is (not-any? (search-found as-data-app :models "card") [published metric unpublished outside-metric])))
+                (testing "a request that is not a data app's finds the unpublished table and the outside metric too"
+                  (let [found (search-found {})]
+                    (is (contains? found unpublished))
+                    (is (contains? found outside-metric)))))))))))))
 
 (deftest search-without-library-finds-nothing-test
   (search.tu/with-appdb-search-and-legacy-search
@@ -701,14 +733,11 @@
       (do-with-app-collection
        (fn [_collection-id]
          (mt/with-premium-features #{:data-apps :library}
-           (mt/with-temp [:model/Database db        {:engine :h2 :details {}}
-                          :model/Table    published {:db_id (:id db) :name "ZEBRA_PUBLISHED" :display_name "Zebra published"}
-                          :model/DataApp  app       {:name "wasps"}]
-             (data-apps.tu/with-published-tables! [(:id published)]
-               (t2/delete! :model/Collection (:resource_collection_id app))
-               (mt/with-dynamic-fn-redefs [collections/library-data-collection (constantly nil)]
-                 (testing "without a Library Data collection, an app without a collection finds not even a published table"
-                   (is (not (contains? (search-ids (as-app "wasps") "zebra") (:id published))))))))))))))
+           (do-with-zebras!
+            (fn [{:keys [published metric]}]
+              (mt/with-dynamic-fn-redefs [collections/library-collection (constantly nil)]
+                (testing "without a Library, a data app finds not even a published table or a Library metric"
+                  (is (not-any? (search-found as-data-app) [["table" (:id published)] ["metric" (:id metric)]]))))))))))))
 
 (deftest search-without-published-tables-finds-nothing-test
   (search.tu/with-appdb-search-and-legacy-search
@@ -721,7 +750,7 @@
              (data-apps.tu/do-with-library!
               (fn [_library]
                 (testing "with a Library that does not publish the table, a data app does not find it"
-                  (is (not (contains? (search-ids as-data-app "zebra") (:id unpublished))))))))))))))
+                  (is (not (contains? (search-found as-data-app) ["table" (:id unpublished)])))))))))))))
 
 (deftest without-data-apps-feature-test
   (testing "without the data-apps feature a data app's queries are not checked"
