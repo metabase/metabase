@@ -21,12 +21,9 @@
   "The groups other than Administrators that can read the resource collection of `app`, with their member counts."
   [app]
   (let [using-tenants? (setting/get :use-tenants)
-        group-ids     (access-group-ids app)
-        tenant-flags  (perms/group-tenant-flags group-ids)]
+        group-ids     (access-group-ids app)]
     (mapv (fn [group]
-            (assoc group
-                   :name (perms/group-display-name group using-tenants?)
-                   :is_tenant_group (boolean (get tenant-flags (:id group)))))
+            (assoc group :name (perms/group-display-name group using-tenants?)))
           (t2/hydrate (perms/groups-by-ids group-ids) :member_count))))
 
 (defn- check-assignable-groups
