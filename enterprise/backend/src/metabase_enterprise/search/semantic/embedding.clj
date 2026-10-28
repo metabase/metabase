@@ -591,17 +591,17 @@
   ;; A settings manager can store ee-embedding-service-base-url through the generic settings API.
   ;; An environment value comes from the deployment and skips the vetting setter.
   (let [base-url (not-empty (semantic-settings/ee-embedding-service-base-url))
-        ;; A whitespace-only environment URL normalizes to nil, so it supplies no URL.
-        env-url? (boolean (and base-url
-                               (not (str/blank? (setting/env-var-value :ee-embedding-service-base-url)))))
-        env-key? (not (str/blank? (setting/env-var-value :ee-embedding-service-api-key)))]
+        ;; A whitespace-only environment URL still overrides the stored one, and normalizes to nil.
+        ;; Checking base-url first keeps it from counting as an environment URL.
+        env-url? (boolean (and base-url (setting/env-var-value :ee-embedding-service-base-url)))
+        env-key? (some? (setting/env-var-value :ee-embedding-service-api-key))]
     ;; A key from the deployment only goes to a URL from the deployment.
     ;; This holds even when the URL was saved through the API before the key was set.
     (when (and env-key? (not env-url?))
       (throw (ex-info (str "Set " (setting/env-var-name :ee-embedding-service-base-url)
                            " alongside " (setting/env-var-name :ee-embedding-service-api-key)
-                           "; an environment API key is only sent to an embedding service URL from the"
-                           " environment.")
+                           "; an environment API key is only sent to an embedding service URL"
+                           " from the environment.")
                       {:error-code :embedding-environment-key-requires-environment-url
                        :settings   ["ee-embedding-service-base-url"
                                     "ee-embedding-service-api-key"]})))

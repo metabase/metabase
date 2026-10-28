@@ -640,9 +640,11 @@
              ["https://8.8.8.8" "https://1.1.1.1" nil       ["https://1.1.1.1/v1/embeddings" "stored-key"]]
              ["https://8.8.8.8" "https://1.1.1.1" "env-key" ["https://1.1.1.1/v1/embeddings" "env-key"]]
              [nil               nil               nil       ["https://ai.test/v1/embeddings" nil]]
-             ;; refused: an environment key with no environment URL, whether or not another URL is set
+             ;; refused: an environment key with no usable environment URL, whether or not another URL is set
              ["https://8.8.8.8" nil               "env-key" :embedding-environment-key-requires-environment-url]
-             [nil               nil               "env-key" :embedding-environment-key-requires-environment-url]]]
+             [nil               nil               "env-key" :embedding-environment-key-requires-environment-url]
+             ["https://8.8.8.8" "  \t "           "env-key" :embedding-environment-key-requires-environment-url]
+             ["https://8.8.8.8" nil               "  "      :embedding-environment-key-requires-environment-url]]]
       (testing (pr-str {:stored-url stored-url, :env-url env-url, :env-key env-key})
         (mt/with-temporary-setting-values [ee-embedding-service-base-url stored-url
                                            ee-embedding-service-api-key  "stored-key"]
