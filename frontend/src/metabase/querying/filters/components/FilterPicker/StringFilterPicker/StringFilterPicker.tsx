@@ -14,6 +14,7 @@ import { FilterPickerHeader } from "../FilterPickerHeader";
 import { StringFilterValuePicker } from "../FilterValuePicker";
 import { COMBOBOX_PROPS, WIDTH } from "../constants";
 import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
+import { useReportDraftFilter } from "../use-report-draft-filter";
 
 import { useStringFilter } from "./hooks";
 import type { OperatorType } from "./types";
@@ -28,6 +29,7 @@ export function StringFilterPicker({
   withAddButton,
   withSubmitButton,
   onChange,
+  onDraftChange,
   onBack,
   readOnly,
 }: FilterPickerWidgetProps) {
@@ -64,6 +66,10 @@ export function StringFilterPicker({
     column,
     filter,
   });
+
+  useReportDraftFilter(onDraftChange, { operator, values, options }, () =>
+    isValid ? getFilterClause(operator, values, options) : undefined,
+  );
 
   const handleOperatorChange = (newOperator: Lib.StringFilterOperator) => {
     setOperator(newOperator);

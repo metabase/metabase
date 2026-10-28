@@ -2070,10 +2070,20 @@
 
   prototype
   {:team "Gadget"
-   :api  #{metabase.prototype.core
+   :api  #{metabase.prototype.api
+           metabase.prototype.core
            metabase.prototype.init}
-   :uses #{app-db
+   :uses #{api
+           app-db
+           collections
+           events
+           lib
+           lib.be
+           lib.metadata
            lib.schema
+           metabot
+           queries
+           request
            settings
            startup
            sync
@@ -2084,8 +2094,14 @@
    :model-imports #{:model/Database
                     :model/Field
                     :model/FieldUserSettings
+                    :model/FieldValues
+                    :model/Glossary
+                    :model/Measure
+                    :model/OsiAiContext
+                    :model/Segment
                     :model/Table
-                    :model/TableUserSettings}}
+                    :model/TableUserSettings
+                    :model/User}}
 
   public-sharing
   {:team "UX West"

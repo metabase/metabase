@@ -58,24 +58,44 @@ export function getStatsBase(
   }
   newQuery = Lib.limit(newQuery, stageIndex, null);
 
-  let newStageIndex = stageIndex;
-  if (
+  const hasSummary =
     Lib.aggregations(newQuery, stageIndex).length > 0 ||
-    Lib.breakouts(newQuery, stageIndex).length > 0
-  ) {
-    newQuery = Lib.appendStage(newQuery);
-    newStageIndex = stageIndex + 1;
+    Lib.breakouts(newQuery, stageIndex).length > 0;
+  if (!hasSummary) {
+    return findStatsColumn(newQuery, stageIndex, column);
   }
 
-  const newColumn = Lib.findMatchingColumn(
-    newQuery,
-    newStageIndex,
-    column,
-    Lib.expressionableColumns(newQuery, newStageIndex),
+  // A filter on a summarized stage can use the summary columns, which are in
+  // the next stage, or the columns from before the summary.
+  return (
+    findStatsColumn(Lib.appendStage(newQuery), stageIndex + 1, column) ??
+    findStatsColumn(removeSummary(newQuery, stageIndex), stageIndex, column)
   );
-  return newColumn != null
-    ? { query: newQuery, stageIndex: newStageIndex, column: newColumn }
-    : null;
+}
+
+function findStatsColumn(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+): StatsBase | null {
+  const newColumn = Lib.findMatchingColumn(
+    query,
+    stageIndex,
+    column,
+    Lib.expressionableColumns(query, stageIndex),
+  );
+  return newColumn != null ? { query, stageIndex, column: newColumn } : null;
+}
+
+function removeSummary(query: Lib.Query, stageIndex: number): Lib.Query {
+  let newQuery = query;
+  for (const breakout of Lib.breakouts(newQuery, stageIndex)) {
+    newQuery = Lib.removeClause(newQuery, stageIndex, breakout);
+  }
+  for (const aggregation of Lib.aggregations(newQuery, stageIndex)) {
+    newQuery = Lib.removeClause(newQuery, stageIndex, aggregation);
+  }
+  return newQuery;
 }
 
 function findAggregationOperator(
@@ -223,4 +243,91 @@ export function getSliderRange(min: number, max: number, step: number) {
   const start = roundToStep(min, step, Math.floor);
   const end = roundToStep(max, step, Math.ceil);
   return { min: start, max: end > start ? end : start + step };
+}
+
+export interface MatchFilterParts {
+  operator: Lib.NumberFilterOperator;
+  values: number[];
+}
+
+/**
+ * The filter that the slider makes now, or null when it does not filter yet.
+ * A range with one end only is a filter on that end.
+ */
+export function getMatchFilterParts(
+  operator: Lib.NumberFilterOperator,
+  values: (number | null)[],
+): MatchFilterParts | null {
+  if (operator === "between") {
+    const [start = null, end = null] = values;
+    if (start != null && end != null) {
+      return { operator, values: [start, end] };
+    }
+    if (start != null) {
+      return { operator: ">=", values: [start] };
+    }
+    if (end != null) {
+      return { operator: "<=", values: [end] };
+    }
+    return null;
+  }
+  const numbers = values.filter((value) => value != null);
+  return numbers.length > 0 ? { operator, values: numbers } : null;
+}
+
+/** The count of the rows that the filter of the slider keeps. */
+export function getMatchCountQuery(
+  { query, stageIndex, column }: StatsBase,
+  { operator, values }: MatchFilterParts,
+): Lib.Query | null {
+  const newQuery = Lib.filter(
+    query,
+    stageIndex,
+    Lib.numberFilterClause({ operator, column, values }),
+  );
+  return aggregate(newQuery, stageIndex, null, "count");
+}
+
+/** A rounded count that looks like an estimate: 2 significant digits. */
+export function roundEstimate(count: number) {
+  if (count < 100) {
+    return Math.round(count);
+  }
+  const magnitude = 10 ** (Math.floor(Math.log10(count)) - 1);
+  return Math.round(count / magnitude) * magnitude;
+}
+
+/** The row count of each value of the column, with the most common first. */
+export function getValueCountsQuery({
+  query,
+  stageIndex,
+  column,
+}: StatsBase): Lib.Query | null {
+  const breakoutColumn = Lib.findMatchingColumn(
+    query,
+    stageIndex,
+    column,
+    Lib.breakoutableColumns(query, stageIndex),
+  );
+  if (breakoutColumn == null) {
+    return null;
+  }
+  return aggregate(
+    Lib.breakout(query, stageIndex, breakoutColumn),
+    stageIndex,
+    null,
+    "count",
+  );
+}
+
+/** Row counts by value, as strings. Rows with no value count as `null`. */
+export function parseValueCountRows(rows: RowValue[][]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const [value, count] of rows) {
+    if (typeof count === "number") {
+      const key = value == null ? "null" : String(value);
+      counts.set(key, (counts.get(key) ?? 0) + count);
+    }
+  }
+  return counts;
 }

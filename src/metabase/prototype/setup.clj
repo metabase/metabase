@@ -6,7 +6,12 @@
    [metabase.config.core :as config]
    [metabase.prototype.dataset :as dataset]
    [metabase.prototype.db :as prototype.db]
+   [metabase.prototype.field-categories :as field-categories]
+   [metabase.prototype.filter-usage-seed :as filter-usage-seed]
+   [metabase.prototype.runtime-estimate :as runtime-estimate]
+   [metabase.prototype.samples :as samples]
    [metabase.prototype.seed :as seed]
+   [metabase.prototype.semantic-layer :as semantic-layer]
    [metabase.sync.core :as sync]
    [metabase.util.log :as log]
    [ring.util.codec :as codec])
@@ -97,4 +102,11 @@
                        (prototype.db/insert-prototype-database! details))]
         (when (or seeded? (not existing) (not= "complete" (:initial_sync_status database)))
           (sync-and-apply-metadata! database))
-        (apply-table-display-names! (:id database))))))
+        (apply-table-display-names! (:id database))
+        ;; Prototype: a real Metabase would make the samples in the sync step, next to the fingerprints.
+        (samples/ensure-samples! seeded?)
+        (semantic-layer/ensure-semantic-layer!)
+        (filter-usage-seed/ensure-questions!)
+        (runtime-estimate/ensure-seeded!)
+        (field-categories/seed-categories!
+         (prototype.db/table-ids-by-name (:id database) dataset/schema-name))))))

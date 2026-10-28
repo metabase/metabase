@@ -1,7 +1,9 @@
 import { match } from "ts-pattern";
 
+import { useSetting } from "metabase/settings";
 import type Question from "metabase-lib/v1/Question";
 
+import { readsSlowTable } from "../../FilterAutoApply/utils";
 import { SummarySidebar } from "../../SummarySidebar";
 import { QuestionInfoSidebar } from "../../sidebars/QuestionInfoSidebar";
 import { QuestionSettingsSidebar } from "../../sidebars/QuestionSettingsSidebar";
@@ -14,7 +16,10 @@ interface StructuredQueryRightSidebarProps {
   isShowingTimelineSidebar: boolean;
   onSave: (question: Question) => Promise<void>;
   question: Question;
-  updateQuestion: (question: Question, opts?: { run?: boolean }) => void;
+  updateQuestion: (
+    question: Question,
+    opts?: { run?: boolean; shouldUpdateUrl?: boolean },
+  ) => void;
 }
 
 export const StructuredQueryRightSidebar = ({
@@ -26,6 +31,8 @@ export const StructuredQueryRightSidebar = ({
   question,
   updateQuestion,
 }: StructuredQueryRightSidebarProps) => {
+  const prototypeData = useSetting("prototype-data");
+
   return match({
     isSaved: question.isSaved(),
     isShowingSummarySidebar,
@@ -36,9 +43,16 @@ export const StructuredQueryRightSidebar = ({
     .with({ isShowingSummarySidebar: true }, () => (
       <SummarySidebar
         question={question}
-        onQuestionChange={(nextQuestion) =>
-          updateQuestion(nextQuestion, { run: true })
-        }
+        onQuestionChange={(nextQuestion) => {
+          const isSlowData = readsSlowTable(
+            nextQuestion.query(),
+            prototypeData,
+          );
+          updateQuestion(nextQuestion, {
+            run: !isSlowData,
+            shouldUpdateUrl: isSlowData,
+          });
+        }}
       />
     ))
     .with({ isShowingTimelineSidebar: true }, () => <TimelineSidebar />)

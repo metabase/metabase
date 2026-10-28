@@ -12,6 +12,7 @@ import { getQueryMode } from "metabase/querying/click-actions/lib/modes";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
 import type { SelectionRange } from "metabase/querying/editor/types";
 import { TimeseriesChrome } from "metabase/querying/filters/components/TimeseriesChrome";
+import { useDispatch, useSelector } from "metabase/redux";
 import type { QueryBuilderMode, QueryModalType } from "metabase/redux/store";
 import { Box } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -25,7 +26,10 @@ import type {
   ParameterId,
 } from "metabase-types/api";
 
+import { setCardAndRun } from "../../../../actions";
+import { updateUrl } from "../../../../actions/url";
 import { useVisualizationResultQBProps } from "../../../../hooks";
+import { getLastRunCard } from "../../../../store/selectors";
 import { ObjectDetailSidesheet } from "../../../ObjectDetailSidesheet";
 import { useColumnFormulaBar } from "../../ColumnFormulaBar";
 import { ViewFooter } from "../../ViewFooter";
@@ -87,7 +91,10 @@ interface ViewMainContainerProps {
   isLiveResizable: boolean;
   parameters: UiParameter[];
 
-  updateQuestion: (question: Question, opts?: { run?: boolean }) => void;
+  updateQuestion: (
+    question: Question,
+    opts?: { run?: boolean; shouldUpdateUrl?: boolean },
+  ) => void;
 }
 
 export const ViewMainContainer = (props: ViewMainContainerProps) => {
@@ -104,6 +111,17 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
   } = props;
 
   const visualizationResultProps = useVisualizationResultQBProps();
+  const dispatch = useDispatch();
+  const lastRunCard = useSelector(getLastRunCard);
+  // Prototype: puts back the question of the result, like the browser back
+  // button. The result is up to date again, so nothing runs.
+  const handleResetChanges =
+    lastRunCard != null
+      ? async () => {
+          await dispatch(setCardAndRun(lastRunCard));
+          dispatch(updateUrl());
+        }
+      : undefined;
 
   const { ref: mainRef, height: mainHeight } = useElementSize();
   const { ref: footerRef, height: footerHeight } = useElementSize();
@@ -169,6 +187,7 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
           }
           errorAction={<FixSqlQueryButton />}
           onUpdateQuestion={updateQuestion}
+          onResetChanges={handleResetChanges}
         />
       </DebouncedFrame>
       <ObjectDetailSidesheet />

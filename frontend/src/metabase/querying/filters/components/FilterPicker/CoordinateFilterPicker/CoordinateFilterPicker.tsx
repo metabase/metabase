@@ -13,6 +13,7 @@ import { FilterPickerHeader } from "../FilterPickerHeader";
 import { NumberFilterValuePicker } from "../FilterValuePicker";
 import { COMBOBOX_PROPS, WIDTH } from "../constants";
 import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
+import { useReportDraftFilter } from "../use-report-draft-filter";
 
 import { CoordinateColumnPicker } from "./CoordinateColumnPicker";
 import { useCoordinateFilter } from "./hooks";
@@ -28,6 +29,7 @@ export function CoordinateFilterPicker({
   withAddButton,
   withSubmitButton,
   onChange,
+  onDraftChange,
   onBack,
   readOnly,
 }: FilterPickerWidgetProps) {
@@ -57,6 +59,17 @@ export function CoordinateFilterPicker({
     column,
     filter,
   });
+
+  useReportDraftFilter(
+    onDraftChange,
+    {
+      operator,
+      values,
+      secondColumn: secondColumn ? Lib.columnKey(secondColumn) : null,
+    },
+    () =>
+      isValid ? getFilterClause(operator, secondColumn, values) : undefined,
+  );
 
   const handleOperatorChange = (newOperator: Lib.CoordinateFilterOperator) => {
     setOperator(newOperator);
