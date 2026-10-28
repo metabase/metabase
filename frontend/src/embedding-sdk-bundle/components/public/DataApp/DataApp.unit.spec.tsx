@@ -428,7 +428,7 @@ describe("DataApp", () => {
     render(<DataApp path="boba-hq" />);
 
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "Data app embeds require SSO authentication.",
+      "Guest embeds are not supported for data apps.",
     );
     expect(screen.queryByTestId("data-app-frame")).not.toBeInTheDocument();
     expect(requestSession).not.toHaveBeenCalled();

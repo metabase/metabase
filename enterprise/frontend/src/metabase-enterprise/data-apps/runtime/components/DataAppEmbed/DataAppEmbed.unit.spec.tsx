@@ -61,15 +61,18 @@ describe("DataAppEmbed", () => {
     [{ isGuest: true }, "Guest embeds are not supported for data apps."],
     [
       { useExistingUserSession: true },
-      "Embedded data apps require SSO authentication.",
+      "Existing-session embeds are not supported for data apps.",
     ],
-  ])("rejects non-SSO settings: %p", (overrides, message) => {
-    setupSettings(overrides);
-    render(<DataAppEmbed />);
+  ])(
+    "rejects guest and existing-session settings: %p",
+    (overrides, message) => {
+      setupSettings(overrides);
+      render(<DataAppEmbed />);
 
-    expect(screen.getByText(message)).toBeInTheDocument();
-    expect(mockUseDataAppBundle).not.toHaveBeenCalled();
-  });
+      expect(screen.getByText(message)).toBeInTheDocument();
+      expect(mockUseDataAppBundle).not.toHaveBeenCalled();
+    },
+  );
 
   it.each([
     "http://localhost:3000",
