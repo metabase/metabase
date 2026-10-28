@@ -1,6 +1,5 @@
 (ns metabase.search.api
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.analytics-interface.core :as analytics]
@@ -301,25 +300,16 @@
     :include-metadata?                   include-metadata
     :display-type                        (set display-type)}))
 
-(def ^:private data-app-search-models
-  "The models a data app may search for in the Library."
-  #{"table" "metric"})
-
 (defn- data-app-search-params
-  "`query-params` narrowed, for a data-app `request`, to the published tables and the metrics of the Library, among the
-  requested `models` if any; when none of them is left, or there is no Library, the search looks for tables in the
-  Trash, which holds none."
+  "`query-params` narrowed, for a data-app `request`, to the Library's content; without a Library, the search looks for
+  tables in the Trash, which holds none."
   [request query-params]
   (if (data-apps/request-data-app request)
-    (let [models  (cond->> data-app-search-models
-                    (seq (:models query-params)) (set/intersection (set (:models query-params))))
-          library (collections/library-collection)]
-      (if (and library (seq models))
-        (cond-> (assoc query-params :models (vec (sort models)) :collection (:id library))
-          (contains? models "table") (dissoc :ids))
-        (-> query-params
-            (dissoc :ids)
-            (assoc :models ["table"] :collection (collections/trash-collection-id)))))
+    (if-let [library (collections/library-collection)]
+      (assoc query-params :collection (:id library))
+      (-> query-params
+          (dissoc :ids)
+          (assoc :models ["table"] :collection (collections/trash-collection-id))))
     query-params))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case

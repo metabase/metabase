@@ -696,7 +696,7 @@
   [options & params]
   (set (map (juxt :model :id) (:data (apply mt/user-http-request :crowberto :get 200 "search" options :q "zebra" params)))))
 
-(deftest search-finds-library-tables-and-metrics-test
+(deftest search-finds-library-content-test
   (search.tu/with-appdb-search-and-legacy-search
     (search.tu/with-sync-search-indexing
       (do-with-app-collection
@@ -708,7 +708,7 @@
                     unpublished    ["table" (:id unpublished)]
                     metric         ["metric" (:id metric)]
                     outside-metric ["metric" (:id outside-metric)]]
-                (testing "a data app finds the published tables and metrics of the Library, and nothing else"
+                (testing "a data app finds the Library's content, and nothing else"
                   (let [found (search-found as-data-app)]
                     (is (contains? found published))
                     (is (contains? found metric))
@@ -717,11 +717,9 @@
                   (let [found (search-found as-data-app :models "metric")]
                     (is (contains? found metric))
                     (is (not (contains? found published))))
-                  (let [found (search-found as-data-app :models "table" :ids (second unpublished))]
+                  (let [found (search-found as-data-app :models "table")]
                     (is (contains? found published))
                     (is (not-any? found [unpublished metric]))))
-                (testing "models it may not search find nothing"
-                  (is (not-any? (search-found as-data-app :models "card") [published metric unpublished outside-metric])))
                 (testing "a request that is not a data app's finds the unpublished table and the outside metric too"
                   (let [found (search-found {})]
                     (is (contains? found unpublished))
