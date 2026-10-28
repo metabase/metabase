@@ -4166,6 +4166,20 @@
         (is (=? {:error :unresolved-cross-stage-field :join-alias "Two" :join-stage 0 :stage 1} e))
         (is (str/starts-with? (:message e) "In join \"Two\" of stage 0: No column named \"nope\""))))))
 
+(deftest ^:parallel join-fields-ref-without-alias-test
+  (let [join-fields (fn [previous-stage]
+                      (get-in (repair* (query previous-stage
+                                              (stage {"joins" [(assoc (join "First" [first-orders-stage] :lhs user-id-by-name)
+                                                                      "fields" [["field" {} "min"]])]})))
+                              ["stages" 1 "joins" 0 "fields"]))]
+    (testing "a by-name ref in a join's fields gets the join's alias and is typed from the join"
+      (is (= [["field" {"join-alias" "First" "base-type" "type/Date" "effective-type" "type/Date"} "min"]]
+             (join-fields min-total-by-user-stage))))
+    (testing "the previous stage not having the column doesn't matter"
+      (is (= "type/Date"
+             (base-type (first (join-fields (orders-stage {"aggregation" [["count" {}]]
+                                                           "breakout"    [(orders-col "USER_ID")]})))))))))
+
 (deftest ^:parallel previous-stage-ref-in-join-condition-test
   (let [joined-on (fn [lhs] (query first-orders-stage (stage {"joins" [(join "First" [first-orders-stage] :lhs lhs)]})))]
     (testing "a by-name ref to the previous stage in a join's conditions is typed from that stage"
