@@ -184,6 +184,11 @@
   []
   (t2/select :model/TransformJob :active true))
 
+(mu/defn inactive-job-ids
+  "The IDs of the inactive TransformJobs."
+  []
+  (t2/select-pks-set :model/TransformJob :active false))
+
 (mu/defn job-snapshot
   "The name, entity ID, and built-in type of the TransformJob with `job-id`."
   [job-id :- ms/PositiveInt]
