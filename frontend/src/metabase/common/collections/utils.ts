@@ -21,6 +21,7 @@ import {
   type CollectionItem,
   type CollectionItemModel,
   type CollectionType,
+  type Dashboard,
   type IconName,
   type User,
   isBaseEntityID,
@@ -145,6 +146,14 @@ export function isLibraryCollection(
   collection: Pick<Collection, "type">,
 ): boolean {
   return PLUGIN_LIBRARY.isLibraryCollectionType(collection.type);
+}
+
+export function isLibraryDashboard(
+  dashboard: Pick<Dashboard, "collection">,
+): boolean {
+  return (
+    dashboard.collection != null && isLibraryCollection(dashboard.collection)
+  );
 }
 
 export function isExamplesCollection(collection: Collection): boolean {

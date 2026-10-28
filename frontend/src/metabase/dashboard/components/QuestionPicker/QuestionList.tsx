@@ -7,6 +7,7 @@ import {
   useListCollectionItemsQuery,
   useSearchQuery,
 } from "metabase/api";
+import { isLibraryDashboard } from "metabase/common/collections/utils";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
@@ -14,7 +15,11 @@ import { SelectList } from "metabase/common/components/SelectList";
 import type { BaseSelectListItemProps } from "metabase/common/components/SelectList/BaseSelectListItem";
 import { usePagination } from "metabase/common/hooks/use-pagination";
 import { addCardWithVisualization } from "metabase/dashboard/actions";
-import { getDashboardId, getSelectedTabId } from "metabase/dashboard/selectors";
+import {
+  getDashboard,
+  getDashboardId,
+  getSelectedTabId,
+} from "metabase/dashboard/selectors";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_MODERATION } from "metabase/plugins";
@@ -31,10 +36,12 @@ import type {
 
 import S from "./QuestionList.module.css";
 import { trackVisualizeAnotherWayClicked } from "./analytics";
+import { getLibraryEmptyStateMessage } from "./utils/library";
 
 interface QuestionListProps {
   searchText: string;
   collectionId: CollectionId;
+  searchCollectionId?: CollectionId;
   onSelect: BaseSelectListItemProps["onSelect"];
   hasCollections: boolean;
   showOnlyPublicCollections: boolean;
@@ -43,6 +50,7 @@ interface QuestionListProps {
 export function QuestionList({
   searchText,
   collectionId,
+  searchCollectionId,
   onSelect,
   hasCollections,
   showOnlyPublicCollections,
@@ -57,6 +65,8 @@ export function QuestionList({
 
   const selectedTabId = useSelector(getSelectedTabId);
   const dashboardId = useSelector(getDashboardId);
+  const dashboard = useSelector(getDashboard);
+  const isLibraryScoped = dashboard != null && isLibraryDashboard(dashboard);
 
   useEffect(() => {
     setQueryOffset(0);
@@ -87,6 +97,7 @@ export function QuestionList({
           ...(showOnlyPublicCollections && {
             filter_items_in_personal_collection: "exclude" as const,
           }),
+          ...(searchCollectionId != null && { collection: searchCollectionId }),
           models: isEmbeddingSdk() // FIXME(sdk): remove this logic when v51 is released
             ? ["card", "dataset"] // ignore "metric" as SDK is used with v50 (or below) now, where we don't have this entity type
             : ["card", "dataset", "metric"],
@@ -132,7 +143,12 @@ export function QuestionList({
   if (shouldShowEmptyState) {
     return (
       <Box my="4rem">
-        <EmptyState message={t`Nothing here`} icon="folder" />
+        <EmptyState
+          message={
+            isLibraryScoped ? getLibraryEmptyStateMessage() : t`Nothing here`
+          }
+          icon="folder"
+        />
       </Box>
     );
   }
@@ -189,6 +205,7 @@ export function QuestionList({
         <VisualizerModalWithCardId
           cardId={visualizerModalCardId}
           dashboardId={dashboardId ?? undefined}
+          isLibraryDashboard={isLibraryScoped}
           onSave={async (visualization) => {
             // Await the dispatch before closing: the thunk commits the new
             // dashcard (and its series) only after fetching the referenced

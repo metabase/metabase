@@ -35,9 +35,11 @@ import { DatasetsList } from "./DatasetsList/DatasetsList";
 export const DataImporter = ({
   className,
   dashboardId,
+  isLibraryDashboard,
 }: {
   className?: string;
   dashboardId: DashboardId | undefined;
+  isLibraryDashboard: boolean;
 }) => {
   const [search, setSearch] = useState("");
   const [showDatasets, handlers] = useDisclosure(false);
@@ -128,6 +130,7 @@ export const DataImporter = ({
           setDataSourceCollapsed={setDataSourceCollapsed}
           muted={!showDatasets}
           dashboardId={dashboardId}
+          isLibraryDashboard={isLibraryDashboard}
         />
       </Flex>
       <Flex

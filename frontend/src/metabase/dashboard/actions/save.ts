@@ -1,12 +1,15 @@
 import { assocIn, dissocIn, getIn } from "icepick";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { cardApi, dashboardApi } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils/errors";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { isReturningToDataStudio } from "metabase/common/data-studio/utils/return-to";
 import { createThunkAction } from "metabase/redux";
 import { UPDATE_DASHBOARD_AND_CARDS } from "metabase/redux/dashboard";
 import type { StoreDashboard, StoreDashcard } from "metabase/redux/store";
+import { addUndo } from "metabase/redux/undo";
 import type { Location } from "metabase/router";
 import type {
   DashCardId,
@@ -150,6 +153,19 @@ export const updateDashboardAndCards = createThunkAction(
         return Object.assign({}, dc, { parameter_mappings });
       });
 
+      // every caller leaves the user in edit mode on failure, so the reason is
+      // surfaced here rather than by each of them
+      const notifySaveFailure = (error: unknown): never => {
+        dispatch(
+          addUndo({
+            icon: "warning",
+            toastColor: "feedback-negative",
+            message: getErrorMessage(error, t`Couldn't save the dashboard`),
+          }),
+        );
+        throw error;
+      };
+
       // update modified cards
       await Promise.all(
         dashboard.dashcards
@@ -162,7 +178,7 @@ export const updateDashboardAndCards = createThunkAction(
               ),
             ).unwrap(),
           ),
-      );
+      ).catch(notifySaveFailure);
 
       trackAddedIFrameDashcards(dashboard);
 
@@ -203,7 +219,7 @@ export const updateDashboardAndCards = createThunkAction(
         },
         dispatch,
         dashboardApi.endpoints.updateDashboard,
-      );
+      ).catch(notifySaveFailure);
 
       const endTime = performance.now();
       const duration_milliseconds = Math.trunc(endTime - startTime);
