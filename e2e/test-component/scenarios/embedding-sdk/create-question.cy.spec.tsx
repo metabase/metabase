@@ -264,6 +264,41 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     });
   });
 
+  it('should list only what is published in the Library in the staged picker when `entityTypes` = ["library"]', () => {
+    // Publishes only Orders
+    createLibraryWithTable();
+    cy.signOut();
+    mockAuthProviderAndJwtSignIn();
+
+    mountSdkContent(
+      <div style={{ display: "flex", padding: "20px" }}>
+        <InteractiveQuestion
+          questionId="new"
+          dataPicker="staged"
+          entityTypes={["library"]}
+        />
+      </div>,
+    );
+
+    getSdkRoot().findByText("Pick your starting data").should("be.visible");
+
+    cy.log(
+      "open on the Library's tables, not the bucket step or the raw tables",
+    );
+    H.popover().within(() => {
+      cy.findByTestId("saved-entity-title").should("have.text", "Data");
+      cy.findByText("Orders").should("be.visible");
+      cy.findByText("Reviews").should("not.exist");
+      cy.findByText("Raw Data").should("not.exist");
+    });
+
+    cy.log("select the published table");
+    H.popover().findByText("Orders").click();
+    getSdkRoot().within(() => {
+      H.getNotebookStep("data").findByText("Orders").should("be.visible");
+    });
+  });
+
   it('should list a table published in a Library subfolder when `entityTypes` = ["library"]', () => {
     // Publishes only Orders, into Library > Data > Customer A
     H.createLibrary().then(({ body: library }) => {
