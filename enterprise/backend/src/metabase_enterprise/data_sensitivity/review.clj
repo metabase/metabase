@@ -204,8 +204,8 @@
 
 (defn- write-table!
   "Write the accepted proposals `proposals` of one table in one transaction and delete their rows; a proposal that
-  fails keeps its row and status. The rows are locked first, and a proposal whose row is gone or whose value or status
-  is not the one in `proposals` fails as `changed`. An edited proposal is written as the person's value; any other is
+  fails keeps its row. The rows are locked first, and a proposal whose row is gone or whose value is not the one in
+  `proposals` fails as `changed`. An edited proposal is written as the person's value; any other is
   written as an AI value, and when it is over a human value now, the person's value is cleared. Returns the outcome
   of each proposal and the ids of the written fields."
   [proposals]
@@ -217,7 +217,7 @@
           outcomes  (mapv (fn [{:keys [id field_id attribute] :as s}]
                             (let [field (get fields field_id)]
                               (assoc s
-                                     ::outcome (if (= (rows id) (select-keys s [:proposed_value :status]))
+                                     ::outcome (if (= (rows id) (:proposed_value s))
                                                  (outcome field s)
                                                  :changed)
                                      :source   (when field (current-source (get settings field_id) field attribute)))))
@@ -270,7 +270,7 @@
 
 (defn- apply-table!
   "Write `proposals`, the accepted proposals of one table, then publish `:event/field-update` for each written field
-  as `user-id`. A table whose write throws counts all its proposals as failed and leaves their status."
+  as `user-id`. A table whose write throws counts all its proposals as failed and keeps their rows."
   [table-id proposals user-id]
   (if-let [{:keys [outcomes field-ids]} (try
                                           (write-table! proposals)

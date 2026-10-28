@@ -90,8 +90,7 @@
     (do-with-proposals!
      (fn [db-id {:keys [a b]} {:keys [a1-sem a1-ds a2-human b1-sem c1-sem]}]
        (testing "pending proposals in table and field order, with the reasoning and the current value and its layer"
-         (is (=? [{:id a1-ds    :field_name "a1" :attribute "data_sensitivity" :source "none" :current_value nil
-                   :status "pending"}
+         (is (=? [{:id a1-ds    :field_name "a1" :attribute "data_sensitivity" :source "none" :current_value nil}
                   {:id a1-sem   :field_name "a1" :attribute "semantic_type" :source "deterministic"
                    :current_value "type/Category" :proposed_value "type/Email" :confidence "high"
                    :reasoning "Values look like email addresses."}

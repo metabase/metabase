@@ -15,8 +15,7 @@
     {:join       [[(t2/table-name :model/MetadataGenerationProposal) proposal-alias]
                   [:and
                    [:= (column :field_id) (u/qualified-key field-alias :id)]
-                   [:= (column :attribute) (name attribute)]
-                   [:= (column :status) "pending"]]]
+                   [:= (column :attribute) (name attribute)]]]
      :value      (column :proposed_value)
      :reasoning  (column :reasoning)
      :confidence (column :confidence)}))

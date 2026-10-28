@@ -20,9 +20,6 @@
 (mr/def ::confidence
   [:enum :high :medium :low])
 
-(mr/def ::status
-  [:enum :pending])
-
 (mr/def ::metadata-generation-proposal
   [:map
    [:id             ms/PositiveInt]
@@ -33,7 +30,6 @@
    [:proposed_value :string]
    [:confidence     [:maybe ::confidence]]
    [:reasoning      [:maybe :string]]
-   [:status         ::status]
    [:created_at     some?]
    [:updated_at     some?]])
 
@@ -50,9 +46,4 @@
 
 (t2/deftransforms :model/MetadataGenerationProposal
   {:attribute  mi/transform-keyword
-   :confidence mi/transform-keyword
-   :status     mi/transform-keyword})
-
-(t2/define-before-insert :model/MetadataGenerationProposal
-  [proposal]
-  (merge {:status :pending} proposal))
+   :confidence mi/transform-keyword})
