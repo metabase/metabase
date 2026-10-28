@@ -13,6 +13,47 @@ import type { LoginStatus } from "embedding-sdk-bundle/types/user";
 
 import { getMockSdkRegistry } from "./mock-sdk-registry";
 
+type ChildrenProps = { children?: ReactNode };
+
+const EmptyOutput = () => <></>;
+
+const createChildrenOutput = () => {
+  const ChildrenOutput = ({ children }: ChildrenProps) => <>{children}</>;
+  return ChildrenOutput;
+};
+
+const createNoMockError = (bundleFunctionName: string) =>
+  new Error(
+    `No mock for ${bundleFunctionName}. Mock the data this component requests before rendering it.`,
+  );
+
+const rejectWithNoMock = (bundleFunctionName: string) =>
+  Promise.reject(createNoMockError(bundleFunctionName));
+
+const formatDate = (
+  value: string | null | undefined,
+  { format = DEFAULT_DATE_FORMAT }: FormatDateOptions = {},
+): string => {
+  if (value == null) {
+    return "";
+  }
+
+  const date = dayjs(value);
+  return date.isValid() ? date.format(format) : "";
+};
+
+const formatDateRange = (
+  value: DateRangeValue | null | undefined,
+  {
+    format = DEFAULT_DATE_FORMAT,
+    separator = DEFAULT_DATE_RANGE_SEPARATOR,
+  }: FormatDateRangeOptions = {},
+): string =>
+  (value ?? [])
+    .map((date) => formatDate(date, { format }))
+    .filter((label) => label !== "")
+    .join(separator);
+
 const DEFAULT_DATE_FORMAT = "MMMM D, YYYY";
 const DEFAULT_DATE_RANGE_SEPARATOR = "–";
 
@@ -20,17 +61,6 @@ const DEFAULT_DATE_RANGE_SEPARATOR = "–";
 const APPLICATION_NAME = "Metabase";
 const AVAILABLE_FONTS: string[] = [];
 const LOGIN_STATUS: LoginStatus = { status: "success" };
-
-type ChildrenProps = { children?: ReactNode };
-
-const EmptyOutput = () => <></>;
-
-const ChildrenOutput = ({ children }: ChildrenProps) => <>{children}</>;
-
-const createLayoutOutput = () => {
-  const LayoutOutput = ({ children }: ChildrenProps) => <>{children}</>;
-  return LayoutOutput;
-};
 
 const STATIC_QUESTION_SUBCOMPONENTS = {
   Filter: EmptyOutput,
@@ -66,56 +96,28 @@ const INTERACTIVE_QUESTION_SUBCOMPONENTS = {
   SaveButton: EmptyOutput,
 } satisfies Record<keyof InteractiveQuestionComponents, unknown>;
 
-const createNoMockError = (bundleFunctionName: string) =>
-  new Error(
-    `No mock for ${bundleFunctionName}. Mock the data this component requests before rendering it.`,
-  );
-
-const rejectWithNoMock = (bundleFunctionName: string) =>
-  Promise.reject(createNoMockError(bundleFunctionName));
-
-const isValidDate = (value: string | null | undefined): value is string =>
-  value != null && dayjs(value).isValid();
-
-const formatDate = (
-  value: string | null | undefined,
-  { format = DEFAULT_DATE_FORMAT }: FormatDateOptions = {},
-): string => (isValidDate(value) ? dayjs(value).format(format) : "");
-
-const formatDateRange = (
-  value: DateRangeValue | null | undefined,
-  {
-    format = DEFAULT_DATE_FORMAT,
-    separator = DEFAULT_DATE_RANGE_SEPARATOR,
-  }: FormatDateRangeOptions = {},
-): string =>
-  (value ?? [])
-    .map((date) => formatDate(date, { format }))
-    .filter((label) => label !== "")
-    .join(separator);
-
 export const MOCK_SDK_BUNDLE: MetabaseEmbeddingSdkBundleExports = {
   CollectionBrowser: EmptyOutput,
   CreateDashboardModal: EmptyOutput,
   CreateQuestion: EmptyOutput,
   DateRangeCalendar: EmptyOutput,
-  DateRangePopover: ChildrenOutput,
+  DateRangePopover: createChildrenOutput(),
   EditableDashboard: EmptyOutput,
   InteractiveDashboard: EmptyOutput,
   InteractiveQuestion: Object.assign(
-    createLayoutOutput(),
+    createChildrenOutput(),
     INTERACTIVE_QUESTION_SUBCOMPONENTS,
   ),
-  ComponentProvider: memo(ChildrenOutput),
+  ComponentProvider: memo(createChildrenOutput()),
   MetabotQuestion: EmptyOutput,
   SdkDebugInfo: EmptyOutput,
   StaticDashboard: EmptyOutput,
   StaticQuestion: Object.assign(
-    createLayoutOutput(),
+    createChildrenOutput(),
     STATIC_QUESTION_SUBCOMPONENTS,
   ),
   MetabotSubscriber: () => null,
-  SdkThemeProviderWithStore: ChildrenOutput,
+  SdkThemeProviderWithStore: createChildrenOutput(),
   getSdkStore: () => {
     throw new Error(
       // eslint-disable-next-line metabase/no-literal-metabase-strings -- developer-facing error naming SDK components
