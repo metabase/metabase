@@ -7,11 +7,17 @@ import {
   type Destination,
   QuestionMoveConfirmModal,
 } from "metabase/common/collections/components/QuestionMoveConfirmModal";
-import { isTrashedCollection } from "metabase/common/collections/utils";
+import {
+  isLibraryCollection,
+  isTrashedCollection,
+} from "metabase/common/collections/utils";
 import { BulkActionBar } from "metabase/common/components/BulkActionBar";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
-import { BulkMoveModal } from "metabase/common/components/Pickers/MoveModal/MoveModal";
+import {
+  BulkMoveModal,
+  getLibraryMoveRestriction,
+} from "metabase/common/components/Pickers/MoveModal/MoveModal";
 import {
   canMoveItem,
   isMovable,
@@ -66,6 +72,11 @@ export const CollectionBulkActions = memo(
       collection,
     );
     const isTrashed = isTrashedCollection(collection);
+    // trashed items come from many collections, so the server decides for them
+    const hasNonLibraryDashboardSelected =
+      !isTrashed &&
+      !isLibraryCollection(collection) &&
+      (selectedItems ?? []).some((item) => item.model === "dashboard");
     const isTrashConfirmOpen = selectedAction === "trash";
     const openTrashConfirm = useCallback(
       () => setSelectedAction("trash"),
@@ -256,6 +267,7 @@ export const CollectionBulkActions = memo(
             onMove={handleBulkMove}
             initialCollectionId={isTrashed ? "root" : collection.id}
             recentAndSearchFilter={recentAndSearchFilter}
+            {...getLibraryMoveRestriction(!hasNonLibraryDashboardSelected)}
           />
         )}
 

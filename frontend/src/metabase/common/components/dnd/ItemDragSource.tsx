@@ -99,7 +99,10 @@ const DragSourceComponent = DragSource(
           ? [...props.selected]
           : [props.item];
 
-      return { items } satisfies ItemDragPayload;
+      return {
+        items,
+        sourceCollection: props.collection,
+      } satisfies ItemDragPayload;
     },
     async endDrag(
       { onDrop, onMoveError, setPinned, setCollection }: DragSourceOwnProps,

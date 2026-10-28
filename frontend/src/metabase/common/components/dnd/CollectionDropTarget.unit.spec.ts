@@ -192,4 +192,36 @@ describe("canDropItemsIntoCollection", () => {
 
     expect(canDropItemsIntoCollection({ items: [], collection })).toBe(false);
   });
+
+  it.each([
+    { sourceType: null, targetType: "library-dashboards", canDrop: false },
+    {
+      sourceType: "library-dashboards",
+      targetType: "library-dashboards",
+      canDrop: true,
+    },
+    { sourceType: null, targetType: null, canDrop: true },
+  ] as const)(
+    "should let a dashboard from a $sourceType collection drop into a $targetType one: $canDrop",
+    ({ sourceType, targetType, canDrop }) => {
+      expect(
+        canDropItemsIntoCollection({
+          items: [
+            createMockCollectionItem({
+              id: 1,
+              model: "dashboard",
+              collection_id: 2,
+            }),
+          ],
+          sourceCollection: { type: sourceType },
+          collection: createMockCollectionItem({
+            id: 3,
+            model: "collection",
+            type: targetType,
+            can_write: true,
+          }),
+        }),
+      ).toBe(canDrop);
+    },
+  );
 });

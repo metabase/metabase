@@ -6,9 +6,13 @@ import {
   useGetDashboardQuery,
 } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { isLibraryDashboard } from "metabase/common/collections/utils";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { MoveModal } from "metabase/common/components/Pickers/MoveModal/MoveModal";
+import {
+  MoveModal,
+  getLibraryMoveRestriction,
+} from "metabase/common/components/Pickers/MoveModal/MoveModal";
 import { useSetCollection } from "metabase/common/hooks";
 import { Flex, Icon } from "metabase/ui";
 import { color } from "metabase/ui/utils/colors";
@@ -31,6 +35,7 @@ export function DashboardMoveModal({
       title={t`Move dashboard to…`}
       onClose={onClose}
       canMoveToDashboard={false}
+      {...getLibraryMoveRestriction(isLibraryDashboard(dashboard))}
       movingItem={{
         ...dashboard,
         collection: {

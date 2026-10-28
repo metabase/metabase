@@ -32,6 +32,7 @@ interface BaseMoveModalProps {
   onClose: () => void;
   movingItem: OmniPickerCollectionItem;
   isDisabledItem?: (item: OmniPickerCollectionItem) => boolean;
+  getItemTooltip?: (item: OmniPickerItem) => string | undefined;
 }
 
 type MoveModalProps =
@@ -51,6 +52,7 @@ export const MoveModal = ({
   movingItem,
   canMoveToDashboard,
   isDisabledItem,
+  getItemTooltip,
 }: MoveModalProps) => {
   const shouldDisableItem = useCallback(
     (item: OmniPickerItem): boolean => {
@@ -71,6 +73,10 @@ export const MoveModal = ({
 
       if (item.model === "collection") {
         if (!canMoveCollectionToLibraryDestination(movingItem, item)) {
+          return true;
+        }
+
+        if (isDisabledItem?.(item)) {
           return true;
         }
 
@@ -197,6 +203,7 @@ export const MoveModal = ({
         canCreateDashboards: canMoveToDashboard ?? false,
         hasPersonalCollections: true,
         confirmButtonText: t`Move`,
+        getItemTooltip,
       }}
       isDisabledItem={shouldDisableItem}
       isSelectableItem={canSelectItem}
@@ -226,12 +233,48 @@ export function canMoveCollectionToLibraryDestination(
   return movingItem.type === destinationType;
 }
 
+function isLibraryDestination(item: OmniPickerItem) {
+  return (
+    isInCollectionTree(item) &&
+    PLUGIN_LIBRARY.isLibraryCollectionType(getCollectionType(item))
+  );
+}
+
+function getLibraryDestinationTooltip(item: OmniPickerItem) {
+  return isLibraryDestination(item)
+    ? t`Dashboards can't be moved into the Library`
+    : undefined;
+}
+
+interface LibraryMoveRestriction {
+  isDisabledItem?: (item: OmniPickerItem) => boolean;
+  getItemTooltip?: (item: OmniPickerItem) => string | undefined;
+}
+
+/**
+ * Picker props that disable Library destinations, with a tooltip saying why,
+ * unless the moved dashboards may go into the Library.
+ */
+export function getLibraryMoveRestriction(
+  canMoveIntoLibrary: boolean,
+): LibraryMoveRestriction {
+  // a dashboard can only join the Library by being duplicated into it
+  return canMoveIntoLibrary
+    ? {}
+    : {
+        isDisabledItem: isLibraryDestination,
+        getItemTooltip: getLibraryDestinationTooltip,
+      };
+}
+
 interface BulkMoveModalProps {
   onClose: () => void;
   onMove: OnMoveWithOneItem<MoveDestination>;
   selectedItems: CollectionItem[];
   initialCollectionId: CollectionId;
   recentAndSearchFilter?: (item: OmniPickerItem) => boolean;
+  isDisabledItem?: (item: OmniPickerCollectionItem) => boolean;
+  getItemTooltip?: (item: OmniPickerItem) => string | undefined;
 }
 
 export const BulkMoveModal = ({
@@ -239,6 +282,8 @@ export const BulkMoveModal = ({
   onMove,
   selectedItems,
   initialCollectionId,
+  isDisabledItem,
+  getItemTooltip,
 }: BulkMoveModalProps) => {
   const movingCollectionIds = selectedItems
     .filter((item: OmniPickerCollectionItem) => isItemCollection(item))
@@ -272,14 +317,14 @@ export const BulkMoveModal = ({
               getCollectionType(item),
             ),
         );
-        if (hasInvalidItem) {
+        if (hasInvalidItem || isDisabledItem?.(item)) {
           return true;
         }
       }
 
       return false;
     },
-    [selectedItems, movingCollectionIds],
+    [selectedItems, movingCollectionIds, isDisabledItem],
   );
 
   const canSelectItem = useCallback(
@@ -379,6 +424,7 @@ export const BulkMoveModal = ({
         canCreateCollections: true,
         canCreateDashboards: canMoveToDashboard,
         confirmButtonText: t`Move`,
+        getItemTooltip,
       }}
       isDisabledItem={shouldDisableItem}
       isSelectableItem={canSelectItem}

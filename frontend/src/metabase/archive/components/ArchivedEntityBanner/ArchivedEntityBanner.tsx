@@ -4,8 +4,10 @@ import { c, t } from "ttag";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import {
   CollectionPickerModal,
+  type CollectionPickerModalProps,
   type CollectionPickerValueItem,
 } from "metabase/common/components/Pickers/CollectionPicker";
+import type { OmniPickerItem } from "metabase/common/components/Pickers/EntityPicker";
 import { Box, Flex, Icon, Text } from "metabase/ui";
 
 import Styles from "./ArchivedEntityBanner.module.css";
@@ -18,8 +20,11 @@ type ArchivedEntityBannerProps = {
   canRestore: boolean;
   canDelete: boolean;
   onUnarchive: () => void;
-  onMove: (collection: CollectionPickerValueItem) => void;
+  /** A rejected promise keeps the move picker open and shows the error. */
+  onMove: (collection: CollectionPickerValueItem) => void | Promise<unknown>;
   onDeletePermanently: () => void;
+  isDisabledMoveDestination?: CollectionPickerModalProps["isDisabledItem"];
+  getMoveDestinationTooltip?: (item: OmniPickerItem) => string | undefined;
 };
 
 export const ArchivedEntityBanner = ({
@@ -31,6 +36,8 @@ export const ArchivedEntityBanner = ({
   onUnarchive,
   onMove,
   onDeletePermanently,
+  isDisabledMoveDestination,
+  getMoveDestinationTooltip,
 }: ArchivedEntityBannerProps) => {
   const [modal, setModal] = useState<"move" | "delete" | null>(null);
   const hasAction = canMove || canDelete || canRestore;
@@ -87,13 +94,17 @@ export const ArchivedEntityBanner = ({
         <CollectionPickerModal
           title={`Move ${name}`}
           value={{ id: "root", model: "collection" }}
-          onChange={(collection) => onMove?.(collection)}
+          onChange={async (collection) => {
+            await onMove(collection);
+          }}
+          isDisabledItem={isDisabledMoveDestination}
           options={{
             hasSearch: true,
             hasConfirmButtons: true,
             hasRootCollection: true,
             hasPersonalCollections: true,
             confirmButtonText: t`Move`,
+            getItemTooltip: getMoveDestinationTooltip,
           }}
           onClose={() => setModal(null)}
         />

@@ -27,6 +27,7 @@ import {
   canonicalCollectionId,
   isItemCollection,
   isLibraryCollection,
+  isLibraryDashboard,
   isReadOnlyCollection,
   isRootPersonalCollection,
   isRootTrashCollection,
@@ -295,7 +296,7 @@ export function useSetCollection() {
   );
 
   const captureUndoAction = useCallback(
-    (item: MovableItem): Promise<() => Promise<unknown>> =>
+    (item: MovableItem): Promise<(() => Promise<unknown>) | null> =>
       match(item)
         .with(
           { model: "card" },
@@ -318,6 +319,11 @@ export function useSetCollection() {
           const dashboard = await dispatch(
             dashboardApi.endpoints.getDashboard.initiate({ id }),
           ).unwrap();
+          // a dashboard can't be moved back into the Library, so undoing a
+          // move out of it would always fail
+          if (isLibraryDashboard(dashboard)) {
+            return null;
+          }
           return () =>
             updateDashboard({
               id,
@@ -431,13 +437,13 @@ export function useSetCollection() {
 
       const result = await setCollection(item, destination);
 
-      if (undoAction) {
+      if (notify) {
         dispatch(
           addUndo({
             subject: LABELS[item.model](),
             verb: t`moved`,
             message,
-            actions: [undoAction],
+            actions: undoAction ? [undoAction] : [],
           }),
         );
       }

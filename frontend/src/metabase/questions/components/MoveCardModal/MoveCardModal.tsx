@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { c, t } from "ttag";
 import _ from "underscore";
 
@@ -149,17 +149,21 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
       <ConfirmModal
         data-testid="dashboard-to-collection-move-confirmation"
         opened
-        onConfirm={() => {
-          handleMove(confirmMoveState?.destination, deleteOldDashcardsState);
-          onClose();
-        }}
+        // a failed move keeps the modal open to show why; a successful one closes it
+        onConfirm={() =>
+          handleMove(
+            confirmMoveState?.destination,
+            deleteOldDashcardsState,
+          ).catch(() => undefined)
+        }
         onClose={onClose}
+        errorMessage={errorMessage}
         title={
           <Title order={3}>
             {c(
               "{0} is the dashboard name the question currently has dashcards in",
             ).jt`Do you still want this question to appear in ${(
-              <>
+              <Fragment key="dashboard">
                 <Icon
                   key="icon"
                   name="dashboard"
@@ -167,7 +171,7 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
                   size={20}
                 />{" "}
                 <DashboardName key="name" id={card.dashboard_id} />
-              </>
+              </Fragment>
             )}?`}
           </Title>
         }
@@ -210,7 +214,7 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
           <Title fz="1.25rem" lh={1.5}>
             {c("{0} is the name of a dashboard")
               .jt`Moving this question to another dashboard will remove it from ${(
-              <>
+              <Fragment key="dashboard">
                 <Icon
                   key="icon"
                   name="dashboard"
@@ -218,7 +222,7 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
                   size={20}
                 />{" "}
                 <DashboardName key="name" id={card.dashboard_id} />
-              </>
+              </Fragment>
             )}`}
           </Title>
         }
