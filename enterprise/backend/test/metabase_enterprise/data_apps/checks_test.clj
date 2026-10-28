@@ -834,6 +834,54 @@
                   (is (contains? found ["card" (:id root-card)])))
                 (is (contains? (set (map :id (mt/user-http-request :crowberto :get 200 "collection"))) (:id outside))))))))))))
 
+(deftest dashboard-endpoints-allow-only-library-dashboards-test
+  (do-with-app-collection
+   (fn [_collection-id]
+     (data-apps.tu/do-with-library!
+      (fn [_library]
+        (data-apps.tu/with-published-tables! [(mt/id :venues)]
+          (let [library-id    (:id (collections/library-collection))
+                dashboards-id (t2/select-one-pk :model/Collection
+                                                :location (str "/" library-id "/")
+                                                :type     collections/library-dashboards-collection-type)]
+            (mt/with-temp [:model/Dashboard     library   {:collection_id dashboards-id :parameters [static-parameter]}
+                           :model/Card          question  {:collection_id dashboards-id
+                                                           :dashboard_id  (:id library)
+                                                           :dataset_query (data-apps.tu/venues-query)}
+                           :model/DashboardCard dashcard  {:dashboard_id (:id library) :card_id (:id question)}
+                           :model/Dashboard     outside   {:parameters [static-parameter]}
+                           :model/Card          card      {:dataset_query (data-apps.tu/venues-query)}
+                           :model/DashboardCard outside-dashcard {:dashboard_id (:id outside) :card_id (:id card)}]
+              (testing "a dashboard in the Library, its metadata, parameter values and dashcard runs are open to a data app"
+                (is (=? {:id (:id library)} (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (:id library)) as-data-app)))
+                (is (map? (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/query_metadata" (:id library)) as-data-app)))
+                (is (=? {:values [["bar"] ["cafe"]]}
+                        (mt/user-http-request :crowberto :get 200 (format "dashboard/%d/params/kind/values" (:id library))
+                                              as-data-app)))
+                (is (= "completed" (:status (mt/user-http-request :crowberto :post 202
+                                                                  (format "dashboard/%d/dashcard/%d/card/%d/query"
+                                                                          (:id library) (:id dashcard) (:id question))
+                                                                  as-data-app)))))
+              (testing "a dashboard outside the Library is refused"
+                (doseq [[method url] [[:get (format "dashboard/%d" (:id outside))]
+                                      [:get (format "dashboard/%d/query_metadata" (:id outside))]
+                                      [:get (format "dashboard/%d/params/kind/values" (:id outside))]
+                                      [:get (format "dashboard/%d/params/kind/search/caf" (:id outside))]
+                                      [:post (format "dashboard/%d/dashcard/%d/card/%d/query"
+                                                     (:id outside) (:id outside-dashcard) (:id card))]]]
+                  (is (= (format "A data app can use only the dashboards in the Library, not the dashboard %d." (:id outside))
+                         (mt/user-http-request :crowberto method 400 url as-data-app))
+                      url)))
+              (testing "valid filter fields are open only for fields of published tables"
+                (is (map? (mt/user-http-request :crowberto :get 200 "dashboard/params/valid-filter-fields" as-data-app
+                                                :filtered (mt/id :venues :name) :filtering (mt/id :venues :price))))
+                (is (= (format "A data app can read only fields of tables published to the Library, not the field %d."
+                               (mt/id :categories :name))
+                       (mt/user-http-request :crowberto :get 400 "dashboard/params/valid-filter-fields" as-data-app
+                                             :filtered (mt/id :categories :name) :filtering (mt/id :venues :price)))))
+              (testing "a request that is not a data app's still reads the other dashboard"
+                (is (=? {:id (:id outside)} (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (:id outside))))))))))))))
+
 (deftest without-data-apps-feature-test
   (testing "without the data-apps feature a data app's queries are not checked"
     (mt/with-premium-features #{}
