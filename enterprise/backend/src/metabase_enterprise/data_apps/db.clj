@@ -6,6 +6,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.data-apps.schema :as data-apps.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.premium-features.core :as premium-features]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
@@ -113,20 +114,41 @@
   (t2/delete! :model/Collection :id collection-id))
 
 (mu/defn readable-data-app-ids-select
-  "A HoneySQL query of the ids of the DataApps that the User with `user-id` can read: every app for a superuser, else
-  the enabled apps whose resource collection they can read."
+  "A HoneySQL query of readable DataApp ids. Non-superusers need a resource-collection grant from a matching-tenancy group."
   [user-id    :- ms/PositiveInt
    superuser? :- :boolean]
   (if superuser?
     ^:allow-subquery {:select [:id] :from [(t2/table-name :model/DataApp)]}
-    ^:allow-subquery {:select [:id]
-                      :from   [(t2/table-name :model/DataApp)]
+    ^:allow-subquery {:select [:app.id]
+                      :from   [[(t2/table-name :model/DataApp) :app]]
+                      :join   [[(t2/table-name :model/Permissions) :grant]
+                               [:= :grant.collection_id :app.resource_collection_id]
+                               [(t2/table-name :model/PermissionsGroupMembership) :membership]
+                               [:= :membership.group_id :grant.group_id]
+                               [(t2/table-name :model/User) :member]
+                               [:= :member.id :membership.user_id]
+                               [(t2/table-name :model/PermissionsGroup) :assigned_group]
+                               [:= :assigned_group.id :grant.group_id]]
                       :where  [:and
-                               [:= :enabled true]
-                               [:in :resource_collection_id
-                                (collection/visible-collection-query
-                                 {:permission-level :read :include-archived-items :all}
-                                 {:current-user-id user-id :is-superuser? false})]]}))
+                               [:= :app.enabled true]
+                               [:= :membership.user_id user-id]
+                               [:= :grant.perm_type "perms/collection-access"]
+                               [:in :grant.perm_value ["read" "read-and-write"]]
+                               (cond-> [:or [:and
+                                             [:= :member.tenant_id nil]
+                                             [:= :assigned_group.is_tenant_group false]]]
+                                 (premium-features/has-feature? :tenants)
+                                 (conj [:and
+                                        [:not= :member.tenant_id nil]
+                                        [:= :assigned_group.is_tenant_group true]]))]}))
+
+(mu/defn readable-data-app?
+  "Whether the non-superuser with `user-id` can read the DataApp with `app-id`."
+  [user-id :- ms/PositiveInt
+   app-id  :- ms/PositiveInt]
+  (t2/exists? :model/DataApp {:where [:and
+                                      [:= :id app-id]
+                                      [:in :id (readable-data-app-ids-select user-id false)]]}))
 
 (mu/defn readable-data-apps
   "The DataApps that the User with `user-id` can read, without their bundles, ordered by display name."

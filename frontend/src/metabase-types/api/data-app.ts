@@ -66,6 +66,7 @@ export interface SetDataAppEnabledRequest {
 }
 
 export interface DataAppGroup {
+  is_tenant_group: boolean;
   id: number;
   name: string;
   member_count: number;

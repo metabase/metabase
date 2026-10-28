@@ -20,6 +20,9 @@ export function DataAppGroupMenu({ app, group }: DataAppGroupMenuProps) {
   const { sendErrorToast } = useMetadataToasts();
   const { show: showConfirmation, modalContent } = useConfirmation();
   const groupName = getGroupNameLocalized(group);
+  const groupUrl = group.is_tenant_group
+    ? Urls.adminTenantGroup(group.id)
+    : Urls.adminGroup(group.id);
 
   const handleRemove = () => {
     showConfirmation({
@@ -52,7 +55,7 @@ export function DataAppGroupMenu({ app, group }: DataAppGroupMenuProps) {
         <Menu.Dropdown onClick={(event) => event.stopPropagation()}>
           <Menu.Item
             component="a"
-            href={Urls.getSubpathSafeUrl(Urls.adminGroup(group.id))}
+            href={Urls.getSubpathSafeUrl(groupUrl)}
             target="_blank"
             rel="noreferrer"
             leftSection={<Icon name="external" />}
