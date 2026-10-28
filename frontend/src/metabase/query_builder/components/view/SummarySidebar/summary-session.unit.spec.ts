@@ -8,10 +8,9 @@ import {
 
 import {
   type SummarySession,
-  getStaleOutputFilters,
   getSummaryQuestion,
   getSummarySession,
-  removeOutputFilter,
+  setSummaryDefinition,
 } from "./summary-session";
 import type { SummaryDefinition } from "./types";
 import { getSummaryBase } from "./utils";
@@ -119,63 +118,45 @@ function getOutputFilterNames(session: SummarySession): string[] {
 
 describe("summary output filters", () => {
   it("keeps every output filter while the summary outputs their columns", () => {
-    const { session } = setup();
+    const { session, countAndSum } = setup();
 
     expect(session.outputFilters).toHaveLength(2);
-    expect(getOutputFilterNames(session)).toHaveLength(2);
-    expect(getStaleOutputFilters(session)).toEqual([]);
+    expect(
+      getOutputFilterNames(setSummaryDefinition(session, countAndSum)),
+    ).toHaveLength(2);
   });
 
-  it("leaves out a compound filter on a removed value and flags it", () => {
+  it("drops a compound filter on a removed value", () => {
     const { session, countOnly } = setup();
-    const nextSession = { ...session, definition: countOnly };
+    const nextSession = setSummaryDefinition(session, countOnly);
 
+    expect(nextSession.outputFilters).toHaveLength(1);
     expect(getOutputFilterNames(nextSession)).toEqual([
       "Count is greater than 10",
     ]);
-    const staleFilters = getStaleOutputFilters(nextSession);
-    expect(staleFilters).toHaveLength(1);
-    expect(staleFilters[0].missingColumnNames).toEqual(["Sum of Total"]);
   });
 
-  it("applies the flagged filter again when the value comes back", () => {
+  it("keeps a dropped filter gone when the value comes back", () => {
     const { session, countOnly, countAndSum } = setup();
-    const withoutSum = { ...session, definition: countOnly };
-    const withSumAgain = { ...withoutSum, definition: countAndSum };
-
-    expect(getOutputFilterNames(withSumAgain)).toHaveLength(2);
-    expect(getStaleOutputFilters(withSumAgain)).toEqual([]);
-  });
-
-  it("keeps a flagged filter when the summary is rebased on a changed question", () => {
-    const { session, countOnly } = setup();
-    const withoutSum = { ...session, definition: countOnly };
-    const question = getSummaryQuestion(withoutSum);
-    if (question == null) {
-      throw new Error("Could not build the summary");
-    }
-    const query = question.query();
-    const nextQuestion = question.setQuery(
-      Lib.filter(query, 1, greaterThan(query, 1, "Count", 30)),
-    );
-
-    const rebasedSession = getSummarySession(nextQuestion, withoutSum);
-
-    expect(getOutputFilterNames(rebasedSession)).toHaveLength(2);
-    expect(getStaleOutputFilters(rebasedSession)).toHaveLength(1);
-  });
-
-  it("forgets a flagged filter once it is removed", () => {
-    const { session, countOnly, countAndSum } = setup();
-    const withoutSum = { ...session, definition: countOnly };
-    const [{ filter }] = getStaleOutputFilters(withoutSum);
-    const withSumAgain = {
-      ...removeOutputFilter(withoutSum, filter),
-      definition: countAndSum,
-    };
+    const withoutSum = setSummaryDefinition(session, countOnly);
+    const withSumAgain = setSummaryDefinition(withoutSum, countAndSum);
 
     expect(getOutputFilterNames(withSumAgain)).toEqual([
       "Count is greater than 10",
     ]);
+  });
+
+  it("drops every output filter when the summary is cleared", () => {
+    const { session, countAndSum } = setup();
+    const cleared = setSummaryDefinition(session, {
+      rows: [],
+      columns: [],
+      values: [],
+    });
+
+    expect(cleared.outputFilters).toEqual([]);
+    expect(
+      getOutputFilterNames(setSummaryDefinition(cleared, countAndSum)),
+    ).toEqual([]);
   });
 });

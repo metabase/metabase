@@ -16,18 +16,16 @@ import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { ActionIcon, Box, Button, Flex, Icon, Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
-import { StaleOutputFilters } from "./StaleOutputFilters";
 import { type SummaryFieldItem, SummaryFieldList } from "./SummaryFieldList";
 import S from "./SummarySidebar.module.css";
 import { SummaryWells } from "./SummaryWells";
 import {
   type SummarySession,
-  getStaleOutputFilters,
   getSummaryQuestion,
   getSummarySession,
   isSummaryShown,
   rememberSummarySession,
-  removeOutputFilter,
+  setSummaryDefinition,
 } from "./summary-session";
 import {
   SUMMARY_WELL_IDS,
@@ -201,13 +199,9 @@ export function SummarySidebar({
     () => getItemLabels(base, definition, summaryQuery),
     [base, definition, summaryQuery],
   );
-  const staleOutputFilters = useMemo(
-    () => getStaleOutputFilters(session),
-    [session],
-  );
 
   const handleChange = (nextDefinition: SummaryDefinition) => {
-    const nextSession = { ...session, definition: nextDefinition };
+    const nextSession = setSummaryDefinition(session, nextDefinition);
     setSession(nextSession);
     if (isHoldingStartingCount && !hasSummaryToRun(nextDefinition)) {
       return;
@@ -259,12 +253,6 @@ export function SummarySidebar({
       <SidebarContent className={S.sidebar} data-testid="summary-sidebar">
         <Box className={S.columns}>
           <Box className={S.wellsColumn}>
-            <StaleOutputFilters
-              staleFilters={staleOutputFilters}
-              onRemove={(filter) =>
-                setSession(removeOutputFilter(session, filter))
-              }
-            />
             <SummaryWells
               base={base}
               definition={definition}

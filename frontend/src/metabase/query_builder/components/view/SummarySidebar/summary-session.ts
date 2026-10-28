@@ -18,18 +18,11 @@ type OutputFilterColumn = {
 
 /**
  * A filter on the summary's output, e.g. Count > 10 OR Sum of Total > 5, with every column it
- * reads, so it applies only while the summary outputs all of them.
+ * reads, so it can be dropped once the summary stops outputting any of them.
  */
-export type SummaryOutputFilter = {
+type SummaryOutputFilter = {
   clause: Lib.FilterClause;
-  displayName: string;
   columns: readonly OutputFilterColumn[];
-};
-
-/** An output filter left out of the summary, because the summary no longer outputs some of its columns. */
-export type StaleOutputFilter = {
-  filter: SummaryOutputFilter;
-  missingColumnNames: string[];
 };
 
 /**
@@ -57,11 +50,11 @@ export function rememberSummarySession(session: SummarySession) {
   lastSession = session;
 }
 
-/** The names of the columns `filter` reads that the stage after `summaryQuery` can't filter on. */
-function getMissingColumnNames(
+/** The output filters that read only columns the stage after `summaryQuery` can filter on. */
+function getApplicableOutputFilters(
   summaryQuery: Lib.Query,
-  filter: SummaryOutputFilter,
-): string[] {
+  outputFilters: readonly SummaryOutputFilter[],
+): SummaryOutputFilter[] {
   const query = Lib.appendStage(summaryQuery);
   const columns = Lib.filterableColumns(query, -1);
   // a name check too: a replaced aggregation can keep the old one's column name, e.g. `sum`
@@ -72,9 +65,7 @@ function getMissingColumnNames(
       Lib.displayInfo(query, -1, match).displayName === displayName
     );
   };
-  return filter.columns
-    .filter((column) => !isOutput(column))
-    .map(({ displayName }) => displayName);
+  return outputFilters.filter((filter) => filter.columns.every(isOutput));
 }
 
 /**
@@ -88,49 +79,32 @@ function withOutputFilters(
   if (outputFilters.length === 0) {
     return summaryQuery;
   }
-  const query = outputFilters
-    .filter(
-      (filter) => getMissingColumnNames(summaryQuery, filter).length === 0,
-    )
-    .reduce(
-      (nextQuery, { clause }) => Lib.filter(nextQuery, -1, clause),
-      Lib.appendStage(summaryQuery),
-    );
+  const query = getApplicableOutputFilters(summaryQuery, outputFilters).reduce(
+    (nextQuery, { clause }) => Lib.filter(nextQuery, -1, clause),
+    Lib.appendStage(summaryQuery),
+  );
   return Lib.dropEmptyStages(query);
 }
 
 /**
- * The session's output filters that its summary leaves out, each with the columns it misses. They
- * stay in the session, and apply again once the summary outputs those columns again.
+ * `session` with `definition` as its summary. An output filter on a column the new summary doesn't
+ * output, e.g. Count > 20 OR Sum of Total > 5 once Sum of Total is removed, is dropped for good:
+ * adding the column back doesn't bring the filter back.
  */
-export function getStaleOutputFilters({
-  base,
-  definition,
-  outputFilters,
-}: SummarySession): StaleOutputFilter[] {
-  if (outputFilters.length === 0) {
-    return [];
-  }
-  const summaryQuery = buildSummaryQuery(base, definition);
-  return outputFilters
-    .map((filter) => ({
-      filter,
-      missingColumnNames:
-        summaryQuery != null && hasSummary(definition)
-          ? getMissingColumnNames(summaryQuery, filter)
-          : filter.columns.map(({ displayName }) => displayName),
-    }))
-    .filter(({ missingColumnNames }) => missingColumnNames.length > 0);
-}
-
-/** `session` without `filter`, e.g. a stale output filter the user dismissed. */
-export function removeOutputFilter(
+export function setSummaryDefinition(
   session: SummarySession,
-  filter: SummaryOutputFilter,
+  definition: SummaryDefinition,
 ): SummarySession {
+  const summaryQuery = hasSummary(definition)
+    ? buildSummaryQuery(session.base, definition)
+    : null;
   return {
     ...session,
-    outputFilters: session.outputFilters.filter((item) => item !== filter),
+    definition,
+    outputFilters:
+      summaryQuery != null
+        ? getApplicableOutputFilters(summaryQuery, session.outputFilters)
+        : [],
   };
 }
 
@@ -201,7 +175,6 @@ function getOutputFilters(
   }
   return Lib.filters(query, stageIndex).map((clause) => ({
     clause,
-    displayName: Lib.displayInfo(query, stageIndex, clause).longDisplayName,
     columns: getPartsColumns(
       Lib.expressionParts(query, stageIndex, clause),
     ).map((column) => ({
@@ -293,11 +266,7 @@ function rebaseSummarySession(
     sourceQuestion: nextSourceQuestion,
     base: nextBase,
     definition,
-    // stale filters aren't in `question`; keep them, so they can still apply again
-    outputFilters: [
-      ...getOutputFilters(query, stageIndex),
-      ...getStaleOutputFilters(session).map(({ filter }) => filter),
-    ],
+    outputFilters: getOutputFilters(query, stageIndex),
   };
 }
 
