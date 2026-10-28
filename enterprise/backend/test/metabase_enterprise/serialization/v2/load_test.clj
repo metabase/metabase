@@ -3457,18 +3457,18 @@
       (let [import! (fn [job-id active]
                       (serdes.load/load-metabase!
                        (ts/ingestion-in-memory [(assoc (ts/extract-one "TransformJob" job-id) :active active)]))
-                      (t2/select-one [:model/TransformJob :active :built_in_type] job-id))]
+                      (t2/select-one [:model/TransformJob :active :built_in_type] :id job-id))]
         (testing "an import keeps active on an existing built-in job"
           (is (=? {:active false :built_in_type "hourly"} (import! built-in-id true)))
-          (t2/update! :transform_job built-in-id {:active true})
+          (t2/update! :transform_job :id built-in-id {:active true})
           (is (=? {:active true :built_in_type "hourly"} (import! built-in-id false))))
         (testing "an import keeps active on an existing custom job"
           (is (=? {:active false :built_in_type nil} (import! custom-id true)))
-          (t2/update! :transform_job custom-id {:active true})
+          (t2/update! :transform_job :id custom-id {:active true})
           (is (=? {:active true :built_in_type nil} (import! custom-id false))))
         (testing "an import inserts a job with the column default for active"
           (let [extracted (assoc (ts/extract-one "TransformJob" custom-id) :active false)]
-            (t2/delete! :model/TransformJob custom-id)
+            (t2/delete! :model/TransformJob :id custom-id)
             (serdes.load/load-metabase! (ts/ingestion-in-memory [extracted]))
             (is (=? {:active true}
                     (t2/select-one [:model/TransformJob :active] :entity_id (:entity_id extracted))))
