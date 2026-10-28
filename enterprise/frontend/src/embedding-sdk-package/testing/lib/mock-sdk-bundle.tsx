@@ -11,6 +11,19 @@ import type {
 import type { MetabaseEmbeddingSdkBundleExports } from "embedding-sdk-bundle/types/sdk-bundle";
 import type { LoginStatus } from "embedding-sdk-bundle/types/user";
 
+import {
+  COLLECTION_BROWSER_MOCK,
+  CREATE_DASHBOARD_MODAL_MOCK,
+  CREATE_QUESTION_MOCK,
+  DATE_RANGE_CALENDAR_MOCK,
+  DATE_RANGE_POPOVER_MOCK,
+  EDITABLE_DASHBOARD_MOCK,
+  INTERACTIVE_DASHBOARD_MOCK,
+  INTERACTIVE_QUESTION_MOCK,
+  METABOT_QUESTION_MOCK,
+  STATIC_DASHBOARD_MOCK,
+  STATIC_QUESTION_MOCK,
+} from "./component-mocks";
 import { getMockSdkRegistry } from "./mock-sdk-registry";
 
 type ChildrenProps = { children?: ReactNode };
@@ -104,23 +117,23 @@ const INTERACTIVE_QUESTION_SUBCOMPONENTS = {
 } satisfies Record<keyof InteractiveQuestionComponents, unknown>;
 
 export const MOCK_SDK_BUNDLE: MetabaseEmbeddingSdkBundleExports = {
-  CollectionBrowser: EmptyOutput,
-  CreateDashboardModal: EmptyOutput,
-  CreateQuestion: EmptyOutput,
-  DateRangeCalendar: EmptyOutput,
-  DateRangePopover: createChildrenOutput(),
-  EditableDashboard: EmptyOutput,
-  InteractiveDashboard: EmptyOutput,
+  CollectionBrowser: COLLECTION_BROWSER_MOCK.Component,
+  CreateDashboardModal: CREATE_DASHBOARD_MODAL_MOCK.Component,
+  CreateQuestion: CREATE_QUESTION_MOCK.Component,
+  DateRangeCalendar: DATE_RANGE_CALENDAR_MOCK.Component,
+  DateRangePopover: DATE_RANGE_POPOVER_MOCK.Component,
+  EditableDashboard: EDITABLE_DASHBOARD_MOCK.Component,
+  InteractiveDashboard: INTERACTIVE_DASHBOARD_MOCK.Component,
   InteractiveQuestion: Object.assign(
-    createChildrenOutput(),
+    INTERACTIVE_QUESTION_MOCK.Component,
     INTERACTIVE_QUESTION_SUBCOMPONENTS,
   ),
   ComponentProvider: memo(createChildrenOutput()),
-  MetabotQuestion: EmptyOutput,
+  MetabotQuestion: METABOT_QUESTION_MOCK.Component,
   SdkDebugInfo: EmptyOutput,
-  StaticDashboard: EmptyOutput,
+  StaticDashboard: STATIC_DASHBOARD_MOCK.Component,
   StaticQuestion: Object.assign(
-    createChildrenOutput(),
+    STATIC_QUESTION_MOCK.Component,
     STATIC_QUESTION_SUBCOMPONENTS,
   ),
   MetabotSubscriber: () => null,
