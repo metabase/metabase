@@ -432,6 +432,7 @@ jobs:
   update-docker-readme:
     needs: [add-extra-tags]
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    continue-on-error: true
     timeout-minutes: 10
     strategy:
       matrix:
@@ -458,8 +459,6 @@ jobs:
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
       - name: Update Docker Hub README (${{ matrix.edition }})
-        id: update-readme
-        continue-on-error: true
         working-directory: release
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -478,7 +477,7 @@ jobs:
             --repository "$REPOSITORY" \
             --publish
       - name: Send Docker Hub README failure message
-        if: steps.update-readme.outcome == 'failure'
+        if: failure()
         uses: actions/github-script@v9
         env:
           SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
