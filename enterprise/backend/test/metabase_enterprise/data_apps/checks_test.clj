@@ -400,6 +400,14 @@
                   (mt/user-http-request :crowberto :get 400 (format "card/%d/params/field/values" unpublished-id)
                                         as-data-app)))))))))
 
+(deftest refusal-names-large-id-without-grouping-test
+  (do-with-app-card!
+   (fn [_card-id _collection-id]
+     (mt/with-temp [:model/Card {elsewhere-id :id} {:id 1234567 :dataset_query (data-apps.tu/venues-query)}]
+       (testing "an ID of a thousand or more appears as it is, not as 1,234,567"
+         (is (= "A data app can use only the cards in its own collection, not the card 1234567."
+                (mt/user-http-request :crowberto :post 400 (format "card/%d/query" elsewhere-id) as-data-app))))))))
+
 (deftest without-data-apps-feature-test
   (testing "without the data-apps feature a data app's queries are not checked"
     (mt/with-premium-features #{}

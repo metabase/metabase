@@ -79,7 +79,7 @@
   [data-app card-id]
   (let [card (api/read-check :model/Card card-id)]
     (when-not (in-app-collection? data-app card)
-      (throw (data-app-error (tru "A data app can use only the cards in its own collection, not the card {0}." card-id))))
+      (throw (data-app-error (tru "A data app can use only the cards in its own collection, not the card {0}." (str card-id)))))
     card))
 
 (defenterprise-schema check-card :- :nil
@@ -101,7 +101,7 @@
   [field-id]
   (when-not (published-table? (:table_id (api/read-check :model/Field field-id)))
     (throw (data-app-error (tru "A data app can read only fields of tables published to the Library, not the field {0}."
-                                field-id)))))
+                                (str field-id))))))
 
 (defenterprise-schema check-card-parameter :- :nil
   "Throws a 400 unless the card with `card-id` is in `data-app`'s collection and its parameter `param-key` takes its
