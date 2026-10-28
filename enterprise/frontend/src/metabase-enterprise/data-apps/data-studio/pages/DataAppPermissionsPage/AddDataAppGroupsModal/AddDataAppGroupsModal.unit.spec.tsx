@@ -93,7 +93,7 @@ describe("AddDataAppGroupsModal", () => {
     const groupRequest = fetchMock.callHistory.calls(
       "path:/api/permissions/group",
     )[0];
-    expect(new URL(groupRequest.url).searchParams.get("tenancy")).toBe("all");
+    expect(new URL(groupRequest.url).searchParams.get("tenancy")).toBeNull();
   });
 
   it.each([
