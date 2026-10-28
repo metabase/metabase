@@ -71,12 +71,12 @@
                           " this database again.")}]})
 
 (defn- with-notebook-fallback
-  "Call `thunk`. When it refuses SQL on a database and the notebook builder is available this turn,
-  rethrow the refusal as [[no-native-permission-with-notebook-fallback!]], so the agent can try the
-  notebook builder instead of ending the turn. The SQL tools are offered to a user who may write SQL
-  on any database, so the agent can still pick one where they may not. Without the notebook builder
-  the refusal ends the turn."
+  "Call `thunk`, rethrowing its native-query refusal as [[no-native-permission-with-notebook-fallback!]]
+  when the notebook builder is offered this turn.
+  Without the notebook builder the refusal still ends the turn."
   [ctx thunk]
+  ;; A user who may write SQL on any database gets the SQL tools, so the agent can pick a database where they may not.
+  ;; The recoverable error lets it try the notebook builder instead of ending the turn.
   (try
     (thunk)
     (catch clojure.lang.ExceptionInfo e
