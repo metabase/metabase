@@ -31,6 +31,7 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.driver.util :as driver.u]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -78,12 +79,12 @@
   (mt/test-driver :postgres
     (testing "default"
       (is (= "public"
-             (driver.sql/default-schema :postgres (mt/db)))))
+             (driver.sql/default-schema :postgres (lib.metadata/database (mt/metadata-provider))))))
     (testing "schema configured in the JDBC additional options"
       (let [details (assoc (:details (mt/db)) :additional-options "currentSchema=information_schema")]
         (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
           (is (= "information_schema"
-                 (driver.sql/default-schema :postgres database))))))))
+                 (driver.sql/default-schema :postgres (driver.u/ensure-lib-database database)))))))))
 
 (use-fixtures :each (fn [thunk]
                       ;; 1. If sync fails when loading a test dataset, don't swallow the error; throw an Exception so we
@@ -227,7 +228,7 @@
         (tx/drop-if-exists-and-create-db! driver/*driver* "hyphen-names-test")
         ;; create the DB object
         (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "hyphen-names-test")}]
-          (let [sync! #(sync/sync-database! database)]
+          (let [sync! #(sync/sync-database! (:id database))]
             ;; populate the DB and create a view
             (exec! spec ["CREATE SCHEMA \"x-mas\";"
                          "CREATE TABLE \"x-mas\".\"presents-and-gifts\" (\"gift-description\" TEXT NOT NULL);"
@@ -240,12 +241,12 @@
                               :query    {:source-table (t2/select-one-pk :model/Table :name "presents-and-gifts")}}))))))))
     (testing "Make sure that Schemas / Tables / Fields with backslashes in their names get escaped properly"
       (mt/with-empty-db
-        (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+        (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))]
           (doseq [stmt ["CREATE SCHEMA \"my\\schema\";"
                         "CREATE TABLE \"my\\schema\".\"my\\table\" (\"my\\field\" INTEGER);"
                         "INSERT INTO \"my\\schema\".\"my\\table\" (\"my\\field\") VALUES (42);"]]
             (jdbc/execute! conn-spec stmt))
-          (sync/sync-database! (mt/db) {:scan :schema})
+          (sync/sync-database! (mt/id) {:scan :schema})
           (is (= [[42]]
                  (mt/rows (qp/process-query
                            {:database (mt/id)
@@ -305,12 +306,12 @@
                        ANALYZE test_mview;"])
         (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "materialized_views_test")}]
           (is (=? [(default-table-result "test_mview")]
-                  (describe-database->tables :postgres database)))
+                  (describe-database->tables :postgres (driver.u/lib-database (:id database)))))
           (is (=? [{:table-schema  "public"
                     :table-name    "test_mview"
                     :name          "true_facts"
                     :field-comment "Facts that are true"}]
-                  (into [] (driver/describe-fields :postgres database {:table-names ["test_mview"]})))))))))
+                  (into [] (driver/describe-fields :postgres (driver.u/ensure-lib-database database) {:table-names ["test_mview"]})))))))))
 
 (deftest foreign-tables-test
   (mt/test-driver :postgres
@@ -344,7 +345,7 @@
         (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "fdw_test")}]
           (is (=? [(default-table-result "foreign_table")
                    (default-table-result "local_table" {:estimated_row_count nil})]
-                  (describe-database->tables :postgres database))))))))
+                  (describe-database->tables :postgres (driver.u/lib-database (:id database))))))))))
 
 (deftest estimated-row-count-hides-zero-test
   (mt/test-driver :postgres
@@ -356,7 +357,7 @@
                          ANALYZE empty_table;"])
         (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "estimated_count_test")}]
           (is (=? [(default-table-result "empty_table" {:estimated_row_count nil})]
-                  (describe-database->tables :postgres database))))))))
+                  (describe-database->tables :postgres (driver.u/lib-database (:id database))))))))))
 
 (deftest recreated-views-test
   (mt/test-driver :postgres
@@ -368,7 +369,7 @@
         (tx/drop-if-exists-and-create-db! driver/*driver* "dropped_views_test")
         ;; create the DB object
         (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "dropped_views_test")}]
-          (let [sync! #(sync/sync-database! database)]
+          (let [sync! #(sync/sync-database! (:id database))]
             ;; populate the DB and create a view
             (exec! spec ["CREATE table birds (name VARCHAR UNIQUE NOT NULL);"
                          "INSERT INTO birds (name) VALUES ('Rasta'), ('Lucky'), ('Parroty');"
@@ -408,7 +409,7 @@
           (if (>= major-v 10)
             ;; create the DB object
             (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname db-name)}]
-              (let [sync! #(sync/sync-database! database)]
+              (let [sync! #(sync/sync-database! (:id database))]
                 ;; create a main partitioned table and two partitions for it
                 (exec! spec ["CREATE TABLE part_vals (val bigint NOT NULL) PARTITION BY RANGE (\"val\");"
                              "CREATE TABLE part_vals_0 (val bigint NOT NULL);"
@@ -422,7 +423,7 @@
                 (sync!)
                 ;; all three of these tables should appear in the metadata (including, importantly, the "main" table)
                 (is (=? (map default-table-result ["part_vals" "part_vals_0" "part_vals_1"])
-                        (describe-database->tables :postgres database)))))
+                        (describe-database->tables :postgres (driver.u/lib-database (:id database)))))))
             (log/warn
              (u/format-color
               'yellow
@@ -786,7 +787,7 @@
                                   "INSERT INTO bobdobbs.describe_json_table (trivial_json) VALUES ('{\"a\": 1}');")])
         (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
           (mt/with-db database
-            (sync-tables/sync-tables-and-database! database)
+            (sync-tables/sync-tables-and-database! (driver.u/lib-database (:id database)))
             (is (= #{{:name              "trivial_json → a",
                       :database-type     "decimal",
                       :base-type         :type/Integer,
@@ -796,7 +797,7 @@
                       :nfc-path          [:trivial_json "a"]}}
                    (sql-jdbc.sync/describe-nested-field-columns
                     :postgres
-                    database
+                    (driver.u/lib-database (:id database))
                     {:schema "bobdobbs" :name "describe_json_table" :id (mt/id "describe_json_table")})))))))))
 
 (deftest describe-funky-name-table-nested-field-columns-test
@@ -811,7 +812,7 @@
                                   "INSERT INTO \"AAAH_#\".\"dESCribe_json_table_%\" (trivial_json) VALUES ('{\"a\": 1}');")])
         (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
           (mt/with-db database
-            (sync-tables/sync-tables-and-database! database)
+            (sync-tables/sync-tables-and-database! (driver.u/lib-database (:id database)))
             (is (= #{{:name              "trivial_json → a",
                       :database-type     "decimal",
                       :base-type         :type/Integer,
@@ -821,7 +822,7 @@
                       :nfc-path          [:trivial_json "a"]}}
                    (sql-jdbc.sync/describe-nested-field-columns
                     :postgres
-                    database
+                    (driver.u/lib-database (:id database))
                     {:schema "AAAH_#" :name "dESCribe_json_table_%" :id (mt/id "dESCribe_json_table_%")})))))))))
 
 (mt/defdataset with-uuid
@@ -964,7 +965,7 @@
                           "Katie Parakeet" 23.99]]]
          (next.jdbc/execute! conn sql+args))))
     (mt/with-temp [:model/Database db {:engine :postgres, :details (assoc details :dbname "money_columns_test")}]
-      (sync/sync-database! db)
+      (sync/sync-database! (:id db))
       (mt/with-db db
         (thunk)))))
 
@@ -973,7 +974,7 @@
     (testing "It should be possible to return money column results (#3754)"
       (sql-jdbc.execute/do-with-connection-with-options
        :postgres
-       (mt/db)
+       (mt/id)
        nil
        (fn [conn]
          (with-open [stmt (sql-jdbc.execute/prepared-statement :postgres conn "SELECT 1000::money AS \"money\";" nil)
@@ -1059,9 +1060,9 @@
 (defn- do-with-enums-db! [f]
   (create-enums-db!)
   (mt/with-temp [:model/Database database {:engine :postgres, :details (enums-test-db-details)}]
-    (sync-metadata/sync-db-metadata! database)
+    (sync-metadata/sync-db-metadata! (:id database))
     (f database)
-    (driver/notify-database-updated :postgres database)))
+    (driver/notify-database-updated :postgres (driver.u/lib-database (:id database)))))
 
 (deftest ^:parallel enums-test
   (mt/test-driver :postgres
@@ -1076,7 +1077,7 @@
      (fn [db]
        (testing "check that we can actually fetch the enum types from a DB"
          (is (= #{"\"bird_schema\".\"bird_status\"" "bird type" "bird_status"}
-                (#'postgres/enum-types db))))
+                (#'postgres/enum-types (driver.u/lib-database (:id db))))))
 
        (testing "check that describe-table properly describes the database & base types of the enum fields"
          (is (=? [{:table-schema               "public"
@@ -1116,7 +1117,7 @@
                    :database-required          true
                    :database-is-auto-increment false
                    :json-unfolding             false}]
-                 (->> (driver/describe-fields :postgres db {:table-names ["birds"]})
+                 (->> (driver/describe-fields :postgres (driver.u/ensure-lib-database db) {:table-names ["birds"]})
                       (into #{})
                       (sort-by :database-position)))))
 
@@ -1186,7 +1187,7 @@
     (do-with-enums-db!
      (fn [db]
        (tx/create-view-of-table! driver/*driver* db "birds_m" "birds" true)
-       (sync/sync-database! db)
+       (sync/sync-database! (:id db))
 
        (testing "check that describe-table properly describes the database & base types of the enum fields"
          (is (=? [{:table-schema               "public"
@@ -1226,7 +1227,7 @@
                    :database-required          false
                    :database-is-auto-increment false
                    :json-unfolding             false}]
-                 (->> (driver/describe-fields :postgres db {:table-names ["birds_m"]})
+                 (->> (driver/describe-fields :postgres (driver.u/ensure-lib-database db) {:table-names ["birds_m"]})
                       (into #{})
                       (sort-by :database-position)))))
 
@@ -1471,7 +1472,7 @@
           (jdbc/execute! (sql-jdbc.conn/connection-details->spec :postgres details) [stmt]))
         (mt/with-temp [:model/Database database {:engine driver/*driver* :details details}]
           (mt/with-db database
-            (sync/sync-database! database)
+            (sync/sync-database! (:id database))
             (mt/with-actions-enabled
               (testing "when creating with invalid email"
                 (is (=? {:errors      {}
@@ -1502,7 +1503,7 @@
           (jdbc/execute! (sql-jdbc.conn/connection-details->spec :postgres details) [stmt]))
         (mt/with-temp [:model/Database database {:engine driver/*driver* :details details}]
           (mt/with-db database
-            (sync/sync-database! database)
+            (sync/sync-database! (:id database))
             (mt/with-actions-enabled
               (testing "when creating"
                 (is (=? {:errors      {"column1" "This Column1 value already exists."
@@ -1567,7 +1568,7 @@
                              "INSERT INTO toucan_sleep_schedule (start_time, end_time, reason) "
                              "  VALUES ('22:00'::time, '9:00'::time, 'Beauty Sleep');")])
         (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "time_field_test")}]
-          (sync/sync-database! database)
+          (sync/sync-database! (:id database))
           (let [fingerprints  (t2/select-fn->fn :name :fingerprint :model/Field
                                                 :table_id (t2/select-one-pk :model/Table :db_id (u/the-id database)))
                 ;; Strip extended interestingness stats — this test covers the core TIME fingerprint
@@ -1669,7 +1670,7 @@
         (mt/with-temp [:model/Database database {:engine :postgres, :details test-user-details}]
           ;; make sure that sync still succeeds even tho some tables are not SELECTable.
           (binding [sync-util/*log-exceptions-and-continue?* false]
-            (is (some? (sync/sync-database! database {:scan :schema}))))
+            (is (some? (sync/sync-database! (:id database) {:scan :schema}))))
           (is (= #{"table_with_perms"}
                  (t2/select-fn-set :name :model/Table :db_id (:id database)))))))))
 
@@ -1693,13 +1694,13 @@
         (try
           (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
             (testing "sanity check: a user that can read every column syncs all of them"
-              (sync/sync-database! database {:scan :schema})
+              (sync/sync-database! (:id database) {:scan :schema})
               (is (= #{"id" "col_visible" "col_json" "col_json → key_a" "col_json_hidden" "col_json_hidden → key_b" "col_hidden"}
                      (active-fields database))))
             (t2/update! :model/Database (:id database) {:details (assoc details :user role :password "password")})
             (let [database (t2/select-one :model/Database (:id database))]
               (binding [sync-util/*log-exceptions-and-continue?* false]
-                (sync/sync-database! database {:scan :schema}))
+                (sync/sync-database! (:id database) {:scan :schema}))
               (testing "after switching to a user with column-level grants, unreadable columns are retired and readable JSON is still unfolded"
                 (is (= #{"id" "col_visible" "col_json" "col_json → key_a"}
                        (active-fields database))))
@@ -1726,7 +1727,7 @@
                                  "json_val::jsonb ?& array['a', 'b']"
                                  "FROM \"json_table\";")]
         (mt/with-temp [:model/Database database {:engine :postgres, :details json-db-details}]
-          (mt/with-db database (sync/sync-database! database)
+          (mt/with-db database (sync/sync-database! (:id database))
             (is (= [[true false true]]
                    (-> {:query query}
                        (mt/native-query)
@@ -1767,7 +1768,7 @@
             (jdbc/execute! spec [statement]))
           (mt/with-temp [:model/Database database {:engine driver/*driver* :details details}]
             (mt/with-db database
-              (sync-tables/sync-tables-and-database! database)
+              (sync-tables/sync-tables-and-database! (driver.u/lib-database (:id database)))
               (is (= #{{:name              "json_val → int_turn_string",
                         :database-type     "text"
                         :base-type         :type/Text
@@ -1777,7 +1778,7 @@
                         :nfc-path          [:json_val "int_turn_string"]}}
                      (sql-jdbc.sync/describe-nested-field-columns
                       :postgres
-                      database
+                      (driver.u/lib-database (:id database))
                       (t2/select-one :model/Table :db_id (mt/id) :name "json_table")))))))))))
 
 (defn- pretty-sql [s]
@@ -2059,11 +2060,11 @@
     (testing "`syncable-schemas` should return schemas that should be synced"
       (mt/with-empty-db
         (is (= #{"public"}
-               (driver/syncable-schemas driver/*driver* (mt/db))))))
+               (driver/syncable-schemas driver/*driver* (lib.metadata/database (mt/metadata-provider)))))))
     (testing "metabase_cache schemas should be excluded"
       (mt/dataset test-data
         (mt/with-persistence-enabled! [persist-models!]
-          (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+          (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))]
             (mt/with-temp [:model/Card _ {:name "model"
                                           :type :model
                                           :dataset_query (mt/mbql-query categories)
@@ -2072,13 +2073,13 @@
               (is (some (partial re-matches #"metabase_cache(.*)")
                         (map :schema_name (jdbc/query conn-spec "SELECT schema_name from INFORMATION_SCHEMA.SCHEMATA;"))))
               (is (nil? (some (partial re-matches #"metabase_cache(.*)")
-                              (driver/syncable-schemas driver/*driver* (mt/db))))))))))))
+                              (driver/syncable-schemas driver/*driver* (lib.metadata/database (mt/metadata-provider)))))))))))))
 
 (deftest table-privileges-test
   (mt/test-driver :postgres
     (testing "`table-privileges` should return the correct data for current_user and role privileges"
       (mt/with-empty-db
-        (let [conn-spec      (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+        (let [conn-spec      (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
               get-privileges (fn []
                                (sql-jdbc.conn/with-connection-spec-for-testing-connection
                                 [spec [:postgres (assoc (:details (mt/db)) :user "privilege_rows_test_example_role")]]
@@ -2155,7 +2156,7 @@
       (mt/dataset test-data
         (let [long-sleep-sql "select pg_sleep(5)"]
           (sql-jdbc.execute/do-with-connection-with-options
-           :postgres (mt/db) nil
+           :postgres (mt/id) nil
            (fn [conn]
              (with-open [stmt (sql-jdbc.sync.common/prepare-statement :postgres conn long-sleep-sql [])]
                (try (doto stmt
@@ -2189,7 +2190,7 @@
       (mt/with-empty-db
         (sql-jdbc.execute/do-with-connection-with-options
          :postgres
-         (mt/db)
+         (mt/id)
          nil
          (fn [^Connection conn]
            (let [do-test (fn [& {:keys [schema-pattern table-pattern schemas tables]
@@ -2202,7 +2203,7 @@
                                              :postgres (.getMetaData conn) nil schema-pattern table-pattern
                                              ["TABLE" "PARTITIONED TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"]))
                                   (into #{} (map #(dissoc % :estimated_row_count))
-                                        (#'postgres/get-tables (mt/db) schemas tables)))))]
+                                        (#'postgres/get-tables (lib.metadata/database (mt/metadata-provider)) schemas tables)))))]
              (doseq [stmt ["CREATE TABLE public.table (id INTEGER, type TEXT);"
                            "CREATE UNIQUE INDEX idx_table_type ON public.table(type);"
                            "CREATE TABLE public.partition_table (id INTEGER) PARTITION BY RANGE (id);"
@@ -2288,7 +2289,7 @@
             (binding [sql-jdbc.describe-database/*select-probe-query-timeout-seconds* 1]
               (sql-jdbc.execute/do-with-connection-with-options
                driver/*driver*
-               (mt/db)
+               (mt/id)
                nil
                (fn [^java.sql.Connection conn]
                  (is (true? (sql-jdbc.sync.interface/have-select-privilege?
@@ -2319,7 +2320,7 @@
                                                  :user "sync_writable_test_user"
                                                  :password "password")]
               (mt/with-temp [:model/Database database {:engine "postgres", :details user-connection-details}]
-                (sync/sync-database! database)
+                (sync/sync-database! (:id database))
                 (testing "only fullaccess table has writeable permissions"
                   (is (= {"readonly_table"   false
                           "readwrite_table"  false
@@ -2328,7 +2329,7 @@
                 (testing "After granting full access to all tables and re-syncing"
                   (doseq [table-name ["readonly_table" "readwrite_table"]]
                     (jdbc/execute! conn (format "GRANT INSERT, UPDATE, DELETE ON sync_test_schema.%s TO sync_writable_test_user" table-name)))
-                  (sync/sync-database! database)
+                  (sync/sync-database! (:id database))
                   (is (= {"readonly_table"   true
                           "readwrite_table"  true
                           "fullaccess_table" true}
@@ -2705,6 +2706,6 @@
       ;; streaming the JDBC driver buffers the whole ResultSet (~2.1B rows) and OOMs at any heap size.
       (let [n      Integer/MAX_VALUE
             result (sql-jdbc.execute/reducible-query
-                    (mt/db) [(format "SELECT generate_series(1, %d) AS i" n)])]
+                    (lib.metadata/database (mt/metadata-provider)) [(format "SELECT generate_series(1, %d) AS i" n)])]
         (testing "only the first rows are pulled, not all ~2 billion"
           (is (= [1 2 3] (into [] (comp (take 3) (map :i)) result))))))))

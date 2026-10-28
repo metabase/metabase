@@ -193,12 +193,20 @@
       (throw (InterruptedException. (format "Row sample for table %d interrupted" (:id table)))))
     result))
 
+(defn- routed?
+  [database]
+  (database-routing/db-routing-enabled? (driver.u/lib-database (:id database))))
+
 (defn- sample-values
   "Runs the row sample and transposes it into a map of field id -> up to `sample-values-cap` distinct values as
   strings. Returns `{:values {...} :error nil}`, or `{:values nil :error message}` when the query fails. Throws an
-  `InterruptedException` when the sample was cancelled; see [[run-sample]]."
+  `InterruptedException` when the sample was cancelled; see [[run-sample]]. A routed database is sampled at the router
+  itself; only a superuser gets values from one (see [[values-restriction]])."
   [database table fields {:keys [truncation sample-values-cap] :as opts}]
-  (let [{:keys [rows exception]} (run-sample database table fields opts)]
+  (let [{:keys [rows exception]} (if (routed? database)
+                                   (database-routing/with-anonymous-router-access
+                                     (run-sample database table fields opts))
+                                   (run-sample database table fields opts))]
     (if exception
       (do (log/warnf exception "Failed to sample rows for table %d" (:id table))
           {:values nil :error (ex-message exception)})
@@ -231,7 +239,7 @@
     (perms/impersonation-enforced-for-db? database)
     "connection impersonation applies to this database for the current user"
 
-    (database-routing/db-routing-enabled? database)
+    (routed? database)
     "this database uses database routing"))
 
 (defn- field-entry
@@ -270,8 +278,8 @@
   "Build the classification packet for `table` of `database`, over the fields of [[db/active-fields]]: retired,
   sensitive, hidden and inactive fields are not in it. Values are read as the current user: when
   [[values-restriction]] gives a reason, no values are read and `[:sample :error]` carries it. The row sample runs
-  through the query processor with the permissions of the current user. A superuser on a routed database samples the router database only inside
-  `database-routing/with-database-routing-off`."
+  through the query processor with the permissions of the current user. A superuser on a routed database samples the
+  router database."
   [database :- (ms/InstanceOf :model/Database)
    table    :- (ms/InstanceOf :model/Table)
    & {:as opts} :- [:maybe ::options]]

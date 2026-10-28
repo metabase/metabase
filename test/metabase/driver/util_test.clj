@@ -885,9 +885,9 @@
           (try
             (testing "an attached DWH on a private address still gets a connection pool"
               ;; fetch by id so the database takes the metadata-provider path, which must carry `is-attached-dwh`
-              (is (some? (sql-jdbc.conn/db->pooled-connection-spec (u/the-id database)))))
+              (is (some? (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (u/the-id database))))))
             (finally
-              (sql-jdbc.conn/invalidate-pool-for-db! database))))))
+              (sql-jdbc.conn/invalidate-pool-for-db! (:id database)))))))
     ;; write the ordinary row under allow-all, the way a formerly-lax instance would have, then flip the policy
     (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-all"]
       (mt/with-temp [:model/Database database {:engine  :postgres
@@ -897,7 +897,7 @@
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"private or internal network address"
-                 (sql-jdbc.conn/db->pooled-connection-spec (u/the-id database))))))))))
+                 (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (u/the-id database)))))))))))
 
 (deftest warehouse-allowed-networks-default-test
   (testing "self-hosted, with nothing configured, all networks are allowed"

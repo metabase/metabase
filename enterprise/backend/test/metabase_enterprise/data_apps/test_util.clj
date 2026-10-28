@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase-enterprise.data-apps.apps :as data-apps.apps]
    [metabase-enterprise.data-studio.db :as data-studio.db]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase-enterprise.serialization.dump :as serialization.dump]
@@ -19,6 +20,11 @@
    (java.security MessageDigest)))
 
 (set! *warn-on-reflection* true)
+
+(defn app-url
+  "The API URL of the data `app`, followed by `parts`."
+  [{app-name :name} & parts]
+  (str/join "/" (list* "ee/apps" app-name parts)))
 
 (defn collection-entity-id
   "A stable resource collection entity ID for the app in `data_apps/<slug>`."
@@ -59,7 +65,7 @@
         :as   options}]
   (let [entity-id       (or entity_id (app-entity-id dir))
         collection      (if (contains? options :collection) collection (collection-entity-id dir))
-        collection-name (str "Data App: " slug)
+        collection-name (data-apps.apps/collection-name slug)
         resources       (if (contains? options :resources)
                           resources
                           (when collection {(collection-path collection-name) (collection-file collection collection-name)}))]

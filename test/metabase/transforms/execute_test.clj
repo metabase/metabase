@@ -144,7 +144,7 @@
         (mt/as-admin
           (testing "create-table-from-schema! should create the table successfully"
             (transforms-base.u/create-table-from-schema! driver db-id table-schema)
-            (let [table-exists? (driver/table-exists? driver (mt/db) {:schema schema-name :name table-name})]
+            (let [table-exists? (driver/table-exists? driver (lib.metadata/database (mt/metadata-provider)) {:schema schema-name :name table-name})]
               (is (true? table-exists?) "Table should exist in the database schema")
               (driver/drop-table! driver db-id (:name table-schema)))))))))
 
@@ -191,7 +191,7 @@
       (let [details (:details (mt/db))
             password (:password details)
             no-schema-user (u/lower-case-en (mt/random-name))
-            spec (sql-jdbc.conn/db->pooled-connection-spec (mt/id))]
+            spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))]
         (try
           (driver/execute-raw-queries! driver/*driver* spec
                                        [[(format "CREATE ROLE %s WITH LOGIN PASSWORD '%s';" no-schema-user password)]
@@ -203,7 +203,7 @@
                                              :details (assoc details
                                                              :user no-schema-user)}]
             (mt/with-db db
-              (sync/sync-database! db {:scan :schema})
+              (sync/sync-database! (:id db) {:scan :schema})
               (let [mp (mt/metadata-provider)
                     transforms-products (lib.metadata/table mp (mt/id :transforms_products))
                     products-category (lib.metadata/field mp (mt/id :transforms_products :category))
@@ -444,7 +444,7 @@
           (let [details       (:details (mt/db))
                 password      (:password details)
                 readonly-user (u/lower-case-en (mt/random-name))
-                spec          (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
+                spec          (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                 schema        (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
                 make-widget-query
                 (fn [mp]
@@ -473,7 +473,7 @@
                     (fn [db-opts target-name]
                       (mt/with-temp [:model/Database db (merge {:engine :postgres} db-opts)]
                         (mt/with-db db
-                          (sync/sync-database! db {:scan :schema})
+                          (sync/sync-database! (:id db) {:scan :schema})
                           (let [query (make-widget-query (mt/metadata-provider))]
                             (with-transform-cleanup! [target-table {:type   "table"
                                                                     :schema schema
@@ -522,7 +522,7 @@
             (when-not old-write-details
               (t2/update! :model/Database db-id {:write_data_details (:details (mt/db))}))
             (try
-              (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
+              (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))
               (testing "transform pool does not exist before transform execution"
                 (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool transform-cache-key))))
               (with-transform-cleanup! [target-table {:type   "table"
@@ -543,7 +543,7 @@
                       (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool transform-cache-key))))))
               (finally
                 (t2/update! :model/Database db-id {:write_data_details old-write-details})
-                (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))))))))))
+                (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))))))))))
 
 (deftest transform-run-refreshes-target-stats-test
   (testing "completing a transform run leaves its target table analyzed, so a dependent transform plans
@@ -553,7 +553,7 @@
       (mt/dataset transforms-dataset/transforms-test
         (let [schema      (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
               source-name (t2/select-one-fn :name :model/Table (mt/id :transforms_products))
-              admin-spec  (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+              admin-spec  (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
               ;; A table has one pg_statistic row per analyzed column; a never-analyzed CTAS table has none.
               analyzed-column-count
               (fn [table-name]

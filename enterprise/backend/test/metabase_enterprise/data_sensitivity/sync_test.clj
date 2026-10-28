@@ -31,7 +31,7 @@
 (defn- execute-h2! [& sqls]
   (sql-jdbc.execute/do-with-connection-with-options
    :h2
-   (mt/db)
+   (mt/id)
    {}
    (fn [conn]
      (doseq [sql sqls]
@@ -81,7 +81,7 @@
                               [{:field-name "org_id" :base-type :type/Integer}]
                               [[1]]]]
       (try
-        (sync/sync-database! (mt/db))
+        (sync/sync-database! (mt/id))
         (let [field-id    (mt/id :users :org_id)
               proposal-id (insert-semantic-type-proposal! (mt/id :users) field-id)]
           (field-user-settings/set-ai-values-for-fields! {field-id {:semantic_type :type/Category}})
@@ -102,7 +102,7 @@
                               [{:field-name "code" :base-type :type/Integer :not-null? true}]
                               [[1]]]]
       (try
-        (sync/sync-database! (mt/db))
+        (sync/sync-database! (mt/id))
         (let [field-id    (mt/id :things :code)
               proposal-id (insert-semantic-type-proposal! (mt/id :things) field-id)]
           (is (nil? (t2/select-one-fn :semantic_type :model/Field :id field-id)))

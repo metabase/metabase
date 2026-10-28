@@ -27,7 +27,6 @@
    [metabase-enterprise.data-sensitivity.llm :as llm]
    [metabase-enterprise.data-sensitivity.models.metadata-generation-proposal :as proposal]
    [metabase-enterprise.data-sensitivity.models.metadata-generation-run :as run]
-   [metabase.database-routing.core :as database-routing]
    [metabase.metabot.core :as metabot]
    [metabase.request.core :as request]
    [metabase.run-tracking.core :as rt]
@@ -284,8 +283,7 @@
   result. On a failure or stop, puts the model, the usage of the chunks that finished and the slow calls in the
   `:spent` volatile of `ctx`, then rethrows."
   [{:keys [attributes] :as ctx} database table packet-opts]
-  (let [packet (database-routing/with-database-routing-off
-                 (context/table-packet database table packet-opts))]
+  (let [packet (context/table-packet database table packet-opts)]
     (core/assert-unique-names! table (:fields packet))
     (check-stop! ctx)
     (let [submitted (metabot/do-with-all-metabot-permissions #(llm/submit-packet packet :attributes attributes))]

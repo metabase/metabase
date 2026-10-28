@@ -186,16 +186,27 @@
           (is (contains? tools "edit_sql_query"))
           (is (contains? tools "replace_sql_query")))))))
 
+(defn- metabot-row
+  "The Metabot whose entity ID is `entity-id`."
+  [entity-id]
+  (t2/select-one :model/Metabot :entity_id entity-id))
+
+(defn- internal-metabot
+  "The internal Metabot, which offers run_query."
+  []
+  (metabot-row metabot.config/internal-metabot-id))
+
 (defn- run-query-offered-at-turn-start
   "Whether the turn starts with `run_query` among its tools, whether its system message says results can be read, and
    whether it declares `show_chart` on construct_notebook_query. Reads them where the decision is made rather than
    running a turn. The bindings stand in for the ones the agent loop makes."
-  [conversation-id capabilities]
+  [conversation-id capabilities metabot profile-id]
   (let [{:keys [tools system-msg]}
         (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions
                   scope/*current-user-scope*               (scope/user-metabot-perms->scopes scope/all-yes-permissions)]
           (#'agent/init-agent {:messages        [{:role :user :content "How many orders?"}]
-                               :profile-id      :internal
+                               :metabot         metabot
+                               :profile-id      profile-id
                                :conversation-id conversation-id
                                :context         {:capabilities capabilities}}))]
     {:tool?       (contains? tools "run_query")
@@ -209,17 +220,19 @@
 (deftest client-claimed-feature-capability-cannot-override-settings-test
   ;; In a conversation the user owns, so the setting decides and not the rule for shared conversations.
   (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :crowberto)}]
-    (mt/with-current-user (mt/user->id :crowberto)
-      (testing "a request claiming feature:query_execution gets no run_query while an admin has it turned off"
-        (mt/with-temporary-setting-values [metabot-query-execution-enabled? false]
-          (is (not (:tool? (run-query-offered-at-turn-start conversation-id ["feature:query_execution"]))))))
-      (testing "the same request gets run_query once the admin turns it on"
-        (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
-          (is (:tool? (run-query-offered-at-turn-start conversation-id ["feature:query_execution"]))))))))
+    (let [offered? #(:tool? (run-query-offered-at-turn-start conversation-id ["feature:query_execution"]
+                                                             (internal-metabot) :internal))]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (testing "a request claiming feature:query_execution gets no run_query while an admin has it turned off"
+          (mt/with-temporary-setting-values [metabot-query-execution-enabled? false]
+            (is (not (offered?)))))
+        (testing "the same request gets run_query once the admin turns it on"
+          (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+            (is (offered?))))))))
 
 (deftest run-query-not-offered-where-others-can-read-the-conversation-test
   (let [rasta   (mt/user->id :rasta)
-        offered #(run-query-offered-at-turn-start % [])]
+        offered #(run-query-offered-at-turn-start % [] (internal-metabot) :internal)]
     (mt/with-temp [:model/MetabotConversation {own :id}     {:user_id rasta}
                    :model/MetabotConversation {thread :id}  {:user_id rasta, :slack_thread_ts "1.2"}
                    :model/MetabotConversation {someone :id} {:user_id (mt/user->id :crowberto)}]
@@ -234,6 +247,22 @@
               (is (= {:tool? false, :prompt? false, :show-chart? false} (offered someone)))))
           (testing "no conversation does none of them"
             (is (= {:tool? false, :prompt? false, :show-chart? false} (offered nil)))))))))
+
+(deftest run-query-not-offered-to-embedded-metabot-test
+  ;; The request names the profile, so an embedded Metabot can ask for one that offers run_query.
+  (let [rasta    (mt/user->id :rasta)
+        embedded (metabot-row metabot.config/embedded-metabot-id)
+        internal (internal-metabot)]
+    (mt/with-temp [:model/MetabotConversation {own :id} {:user_id rasta}]
+      (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+        (mt/with-current-user rasta
+          (doseq [profile-id [:nlq :internal]]
+            (testing profile-id
+              (testing "the internal Metabot offers run_query"
+                (is (:tool? (run-query-offered-at-turn-start own [] internal profile-id))))
+              (testing "the embedded Metabot does not, and its prompt does not promise results"
+                (is (=? {:tool? false, :prompt? false}
+                        (run-query-offered-at-turn-start own [] embedded profile-id)))))))))))
 
 (deftest document-sql-chart-tool-requires-native-permission-test
   (mt/with-no-data-perms-for-all-users!
@@ -344,7 +373,7 @@
       (perms/set-database-permission! (perms-group/all-users) builder-db :perms/create-queries :query-builder)
       (perms/set-database-permission! (perms-group/all-users) unreadable-db :perms/create-queries :no)
       (mt/with-current-user (mt/user->id :rasta)
-        (testing ":sql forbids the model from answering in text, so the loop stops on the denial"
+        (testing ":sql has no notebook builder to fall back to, so the loop stops on the denial"
           (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :sql builder-db)]
             (is (= 1 llm-calls)
                 "one call, not the profile's 20 iterations")
@@ -355,19 +384,20 @@
                 "the refusal is emitted as assistant text — a tool result is not rendered to the user")
             (is (some #(= :data (:type %)) parts)
                 "state data part still closes the turn")))
-        (testing (str ":internal stops on the same denial. The class decides, not the profile: only "
-                      "the user can grant this permission, so there is nothing for the agent to do "
-                      "with the turn. This used to continue, and the model paraphrased the refusal "
-                      "in its own words — nicer wording, bought with an extra LLM call, a profile "
-                      "exception, and a model that might have said something else entirely.")
+        (testing (str ":internal has the notebook builder, so the agent is told to build the question "
+                      "there and the turn continues")
           (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :internal builder-db)]
-            (is (= 1 llm-calls)
-                "one call, where the profile gate used to allow a second")
-            (is (= :terminal-error (:finish-reason (last parts))))
-            (is (some #(and (= :text (:type %))
-                            (str/includes? (:text %) "do not have permission"))
-                      parts)
-                "the tool's own `:user-message`, which is authored and specific")))
+            (is (= 2 llm-calls))
+            (is (=? {:type   :tool-output
+                     :result {:error  {:class :recoverable}
+                              :output #"(?s).*Build the question with `construct_notebook_query`.*"}}
+                    (some #(when (= :tool-output (:type %)) %) parts)))
+            (is (not= :terminal-error (:finish-reason (last parts))))))
+        (testing ":internal-sql is :internal without the notebook builder, so the turn stops on the denial"
+          (mt/with-temp-env-var-value! [mb-metabot-eval-profiles-enabled true]
+            (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :internal-sql builder-db)]
+              (is (= 1 llm-calls))
+              (is (= :terminal-error (:finish-reason (last parts)))))))
         (testing "a database the user cannot read at all stops the turn the same way"
           (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :sql unreadable-db)]
             (is (= 1 llm-calls)
@@ -381,7 +411,8 @@
             (is (= :terminal-tool (:finish-reason (last parts))))))))))
 
 (deftest blank-replacement-after-edit-test
-  (mt/as-admin
+  ;; A real user, not `mt/as-admin`: the SQL tools refuse a caller without a user id.
+  (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
       (mt/with-temporary-setting-values [llm-providers llm.tu/default-connections
                                          llm-metabot-provider test-provider]

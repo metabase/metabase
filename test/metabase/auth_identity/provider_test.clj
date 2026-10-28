@@ -344,3 +344,63 @@
           "Authentication should fail")
       (is (= :invalid-credentials (:error result))
           "Should have original error, not expiration error"))))
+
+;;; Provisions whatever `*sso-user-data*` holds, so tests can drive the real `login!` pipeline.
+(def ^:private ^:dynamic *sso-user-data* nil)
+
+(methodical/defmethod provider/authenticate :provider/test-sso-notify
+  [_provider _request]
+  {:success? true :user-data *sso-user-data*})
+
+;;; Fails after provisioning, the way a rejected group sync would, so the whole login rolls back.
+(methodical/defmethod provider/login! :after :provider/test-sso-notify-rollback
+  [_provider _result]
+  (throw (ex-info "group sync failed" {})))
+
+(defn- do-with-test-sso-providers!
+  "Run `thunk` with `:provider/test-sso-notify` and `:provider/test-sso-notify-rollback` in the auth-identity
+  hierarchy, removing them afterwards so tests that check every registered provider (e.g. the MFA gate's) never see
+  them."
+  [thunk]
+  (let [edges [[:provider/test-sso-notify ::provider/provider]
+               [:provider/test-sso-notify ::provider/create-user-if-not-exists]
+               [:provider/test-sso-notify-rollback :provider/test-sso-notify]]]
+    (doseq [[tag parent] edges]
+      (auth-identity/derive! tag parent))
+    (try
+      (thunk)
+      (finally
+        (doseq [[tag parent] (reverse edges)]
+          (auth-identity/underive! tag parent))))))
+
+(defn- sso-login-and-check-inboxes!
+  "Log in through `:provider/test-sso-notify` as `email` and return the subjects of the emails `admin-email` got."
+  [admin-email email]
+  (mt/with-fake-inbox
+    (binding [*sso-user-data* {:email email :first_name "Sso" :last_name "User" :sso_source :jwt}]
+      (provider/login! :provider/test-sso-notify {:session/skip? true}))
+    (map :subject (get @mt/inbox admin-email))))
+
+(deftest sso-provisioning-notifies-admins-test
+  (do-with-test-sso-providers!
+   (fn []
+     (mt/with-temporary-setting-values [site-name "Metabase"]
+       (mt/with-temporary-raw-setting-values [send-new-sso-user-admin-email? "true"]
+         (mt/with-temp [:model/User admin {:is_superuser true :last_login :%now}]
+           (let [email (mt/random-email)]
+             (try
+               (testing "provisioning a new user emails admins"
+                 (is (= ["Sso User created a Metabase account"]
+                        (sso-login-and-check-inboxes! (:email admin) email))))
+               (testing "a later login by the same user does not"
+                 (is (empty? (sso-login-and-check-inboxes! (:email admin) email))))
+               (finally
+                 (t2/delete! :model/User :email email))))
+           (testing "no email goes out when provisioning rolls back"
+             (let [email (mt/random-email)]
+               (mt/with-fake-inbox
+                 (binding [*sso-user-data* {:email email :first_name "Sso" :last_name "User" :sso_source :jwt}]
+                   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"group sync failed"
+                                         (provider/login! :provider/test-sso-notify-rollback {:session/skip? true}))))
+                 (is (not (t2/exists? :model/User :email email)))
+                 (is (empty? (get @mt/inbox (:email admin)))))))))))))

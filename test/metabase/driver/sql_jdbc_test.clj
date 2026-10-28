@@ -31,14 +31,14 @@
                                      "ORDERS" "PEOPLE" "PRODUCTS" "REVIEWS"]]
                           {:name table, :schema "PUBLIC",
                            :description nil, :is_writable true}))
-                   (into #{} (:tables (driver/describe-database :h2 (mt/db)))))))
+                   (into #{} (:tables (driver/describe-database :h2 (lib.metadata/database (mt/metadata-provider))))))))
 
 (deftest describe-fields-sync-with-composite-pks-test
   (testing "Make sure syncing a table that has a composite pks works"
     (mt/test-driver (mt/normal-drivers-with-feature :describe-fields)
       (mt/dataset dataset-definition-test/composite-pk
         (let [songs (t2/select-one :model/Table (mt/id :songs))
-              fk-metadata (driver/describe-fields driver/*driver* (mt/db)
+              fk-metadata (driver/describe-fields driver/*driver* (lib.metadata/database (mt/metadata-provider))
                                                   :table-names [(:name songs)]
                                                   :schema-names [(:schema songs)])]
           (is (= #{{:name "song_id", :pk? true} {:name "artist_id", :pk? true}}
@@ -68,7 +68,7 @@
             {:name "Wurstküche", :price 2, :category_id 29, :id 4}
             {:name "Brite Spot Family Restaurant", :price 2, :category_id 20, :id 5}]
            (for [row (take 5 (sort-by :id (driver/table-rows-seq driver/*driver*
-                                                                 (mt/db)
+                                                                 (lib.metadata/database (mt/metadata-provider))
                                                                  (t2/select-one :model/Table :id (mt/id :venues)))))]
              ;; different DBs use different precisions for these
              (-> (dissoc row :latitude :longitude)
@@ -238,7 +238,7 @@
                                                                              (eduction
                                                                               cat
                                                                               [(orig metadata) [fake-schema-name]])))]
-        (let [syncable (driver/syncable-schemas driver/*driver* (mt/db))]
+        (let [syncable (driver/syncable-schemas driver/*driver* (lib.metadata/database (mt/metadata-provider)))]
           (is (contains? syncable "public"))
           (is (contains? syncable fake-schema-name))))
       (let [driver             (driver.u/database->driver (mt/db))
@@ -251,14 +251,14 @@
                                   (update :details assoc filter-type-prop "inclusion", patterns-type-prop "public")
                                   ;; so we don't stomp on the connection pool for the normal test DB.
                                   (assoc :id Integer/MAX_VALUE))
-                  syncable    (driver/syncable-schemas driver/*driver* db-filtered)]
+                  syncable    (driver/syncable-schemas driver/*driver* (driver.u/ensure-lib-database db-filtered))]
               (is      (contains? syncable "public"))
               (is (not (contains? syncable fake-schema-name)))))
           (testing "with an exclusion filter"
             (let [db-filtered (-> (mt/db)
                                   (update :details assoc filter-type-prop "exclusion", patterns-type-prop "public")
                                   (assoc :id Integer/MAX_VALUE))
-                  syncable (driver/syncable-schemas driver/*driver* db-filtered)]
+                  syncable (driver/syncable-schemas driver/*driver* (driver.u/ensure-lib-database db-filtered))]
               (is (not (contains? syncable "public")))
               (is (not (contains? syncable fake-schema-name))))))))))
 
@@ -348,8 +348,8 @@
 (defn- table-rows
   "Helper function to get table rows for testing"
   [qualified-table-name]
-  (->> (driver/table-rows-seq driver/*driver* (mt/db) {:name (name qualified-table-name)
-                                                       :schema (namespace qualified-table-name)})
+  (->> (driver/table-rows-seq driver/*driver* (lib.metadata/database (mt/metadata-provider)) {:name (name qualified-table-name)
+                                                                                              :schema (namespace qualified-table-name)})
        (map #(vector (:id %) (:name %)))
        sort))
 
@@ -381,10 +381,10 @@
               (driver/rename-tables! driver db-id
                                      {qualified-table-1 qualified-temp-1
                                       qualified-table-2 qualified-temp-2})
-              (is (driver/table-exists? driver (mt/db) {:name temp-table-1 :schema schema}))
-              (is (driver/table-exists? driver (mt/db) {:name temp-table-2 :schema schema}))
-              (is (not (driver/table-exists? driver (mt/db) {:name test-table-1 :schema schema})))
-              (is (not (driver/table-exists? driver (mt/db) {:name test-table-2 :schema schema})))
+              (is (driver/table-exists? driver (lib.metadata/database (mt/metadata-provider)) {:name temp-table-1 :schema schema}))
+              (is (driver/table-exists? driver (lib.metadata/database (mt/metadata-provider)) {:name temp-table-2 :schema schema}))
+              (is (not (driver/table-exists? driver (lib.metadata/database (mt/metadata-provider)) {:name test-table-1 :schema schema})))
+              (is (not (driver/table-exists? driver (lib.metadata/database (mt/metadata-provider)) {:name test-table-2 :schema schema})))
               (is (= test-data-1 (table-rows qualified-temp-1)))
               (is (= test-data-2 (table-rows qualified-temp-2)))
               (driver/rename-tables! driver db-id
@@ -400,11 +400,11 @@
                                                       {qualified-table-1 qualified-temp-1
                                                        qualified-table-2 qualified-conflict})))
                   (testing "original tables should still exist after failed atomic rename"
-                    (is (driver/table-exists? driver (mt/db) {:name test-table-1 :schema schema}))
-                    (is (driver/table-exists? driver (mt/db) {:name test-table-2 :schema schema})))
+                    (is (driver/table-exists? driver (lib.metadata/database (mt/metadata-provider)) {:name test-table-1 :schema schema}))
+                    (is (driver/table-exists? driver (lib.metadata/database (mt/metadata-provider)) {:name test-table-2 :schema schema})))
                   (testing "temp tables should not exist after failed atomic rename"
-                    (is (not (driver/table-exists? driver (mt/db) {:name temp-table-1 :schema schema})))
-                    (is (not (driver/table-exists? driver (mt/db) {:name temp-table-2 :schema schema}))))
+                    (is (not (driver/table-exists? driver (lib.metadata/database (mt/metadata-provider)) {:name temp-table-1 :schema schema})))
+                    (is (not (driver/table-exists? driver (lib.metadata/database (mt/metadata-provider)) {:name temp-table-2 :schema schema}))))
                   (testing "original data should be intact after failed atomic rename"
                     (is (= test-data-1 (table-rows qualified-table-1)))
                     (is (= test-data-2 (table-rows qualified-table-2))))
@@ -431,14 +431,14 @@
           (try
             (testing "single table rename works correctly"
               (driver/rename-table! driver db-id qualified-table qualified-renamed)
-              (is (driver/table-exists? driver (mt/db) {:name renamed-table :schema schema})
+              (is (driver/table-exists? driver (lib.metadata/database (mt/metadata-provider)) {:name renamed-table :schema schema})
                   "Renamed table should exist")
-              (is (not (driver/table-exists? driver (mt/db) {:name test-table :schema schema}))
+              (is (not (driver/table-exists? driver (lib.metadata/database (mt/metadata-provider)) {:name test-table :schema schema}))
                   "Original table should not exist"))
             (finally
-              (when (driver/table-exists? driver (mt/db) {:name renamed-table :schema schema})
+              (when (driver/table-exists? driver (lib.metadata/database (mt/metadata-provider)) {:name renamed-table :schema schema})
                 (driver/drop-table! driver db-id qualified-renamed))
-              (when (driver/table-exists? driver (mt/db) {:name test-table :schema schema})
+              (when (driver/table-exists? driver (lib.metadata/database (mt/metadata-provider)) {:name test-table :schema schema})
                 (driver/drop-table! driver db-id qualified-table)))))))))
 
 (defn- sql-jdbc-drivers

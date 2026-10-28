@@ -312,7 +312,7 @@
 
 (deftest default-schema-test
   (mt/test-driver :sqlite
-    (is (nil? (driver.sql/default-schema :sqlite (mt/db))))))
+    (is (nil? (driver.sql/default-schema :sqlite (lib.metadata/database (mt/metadata-provider)))))))
 
 (deftest ^:parallel database-error-while-reading-rows-is-invalid-query-test
   (mt/test-driver :sqlite
@@ -356,7 +356,7 @@
 (deftest ^:parallel timezone-id-test
   (mt/test-driver :sqlite
     (is (= "UTC"
-           (driver/db-default-timezone :sqlite (mt/db))))))
+           (driver/db-default-timezone :sqlite (lib.metadata/database (mt/metadata-provider)))))))
 
 (deftest ^:parallel hour-bucketing-time-without-database-type-test
   (testing (str "Hour bucketing on a TIME-typed expression without `:database-type` (as happens for "
@@ -417,7 +417,7 @@
                    (map (fn [m] [(:table m) m])
                         (sql-jdbc.sync/current-user-table-privileges
                          :sqlite
-                         (sql-jdbc.conn/db->pooled-connection-spec (mt/db))))))))))
+                         (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))))))))))
 
 (deftest ^:parallel filter-by-date-test
   (testing "Make sure filtering against a LocalDate works correctly in SQLite"
@@ -460,7 +460,7 @@
                              "create view if not exists v_src as select id, strftime('%s', time) as time from src;"
                              "insert into src values(1, '2020-03-01 12:20:35');"]]
             (jdbc/execute! spec [statement]))
-          (sync/sync-database! database)
+          (sync/sync-database! (:id database))
           (is (= [{:name "src"
                    :fields [{:name      "id"
                              :base_type :type/Integer}
@@ -492,7 +492,7 @@
                               GROUP BY symbol
                               ORDER by dt;"]]
             (jdbc/execute! spec [statement]))
-          (sync/sync-database! database)
+          (sync/sync-database! (:id database))
           (is (= [{:name "groupby_test"
                    :fields [{:name      "id"
                              :base_type :type/Integer}
@@ -529,12 +529,12 @@
           (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver details)
                          [stmt]))
         (mt/with-temp [:model/Database db {:engine driver :details (assoc details :dbname db-name)}]
-          (sync/sync-database! db)
+          (sync/sync-database! (:id db))
           (mt/with-db db
             (testing "timestamp columns"
               (testing "database should be synced"
                 (is (= (set (map default-table-result ["timestamp_table"]))
-                       (into #{} (:tables (driver/describe-database driver db))))))
+                       (into #{} (:tables (driver/describe-database driver (driver.u/ensure-lib-database db)))))))
               (testing "timestamp column should exist"
                 (is (=? {:name "timestamp_table"
                          :schema nil
@@ -547,7 +547,7 @@
                                    :database-is-auto-increment false
                                    :database-is-nullable       true
                                    :database-is-generated      false}]}
-                        (-> (driver/describe-table driver db (t2/select-one :model/Table :id (mt/id :timestamp_table)))
+                        (-> (driver/describe-table driver (driver.u/ensure-lib-database db) (t2/select-one :model/Table :id (mt/id :timestamp_table)))
                             (update :fields (partial sort-by :name)))))))))))))
 
 (deftest select-query-datetime
@@ -570,7 +570,7 @@
         (jdbc/execute! (sql-jdbc.conn/connection-details->spec :sqlite details)
                        [stmt]))
       (mt/with-temp [:model/Database db {:engine :sqlite :details (assoc details :dbname db-name)}]
-        (sync/sync-database! db)
+        (sync/sync-database! (:id db))
         ;; In SQLite, you can actually store any value in any date/timestamp column,
         ;; let's test only values we'd reasonably run into.
         ;; Caveat: TIMESTAMP stored as string doesn't get parsed and is returned as-is by the driver,

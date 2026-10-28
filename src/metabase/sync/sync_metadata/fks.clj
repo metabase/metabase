@@ -9,8 +9,7 @@
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.warehouse-schema.models.table :as table]))
+   [metabase.util.malli :as mu]))
 
 (mu/defn- mark-fk!
   "Updates the `fk_target_field_id` of a Field, and drops its AI `semantic_type` and its pending `semantic_type`
@@ -35,7 +34,7 @@
 (mu/defn sync-fks-for-table!
   "Sync the foreign keys for a specific `table`."
   ([table :- i/TableInstance]
-   (sync-fks-for-table! (table/database table) table))
+   (sync-fks-for-table! (driver.u/lib-database (:db_id table)) table))
 
   ([database :- i/DatabaseInstance
     table    :- i/TableInstance]

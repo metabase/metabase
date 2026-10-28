@@ -385,7 +385,9 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                       {modalRoute("archive", ArchiveCollectionModal, {
                         noWrap: true,
                       })}
-                      {modalRoute("permissions", CollectionPermissionsModal)}
+                      {modalRoute("permissions", CollectionPermissionsModal, {
+                        noWrap: true,
+                      })}
                       {modalRoute(
                         "move-questions-dashboard",
                         MoveQuestionsIntoDashboardsModal,
@@ -411,6 +413,11 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                       name: "tab",
                       resourceType: "dashboard-tab",
                       type: "search",
+                    },
+                    {
+                      name: "scrollTo",
+                      resourceType: "dashboard-card",
+                      type: "hash",
                     },
                   ],
                 }),
