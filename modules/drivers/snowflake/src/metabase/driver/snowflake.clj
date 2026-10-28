@@ -236,12 +236,29 @@
       (some-> (json/decode+kw json-str) :exp long (* 1000)))
     (catch Throwable _ nil)))
 
+(def ^:private hosted-allowed-wif-providers
+  ;; OIDC is the only WIF mode on Metabase Cloud where the identity is admin-supplied (a token or a
+  ;; token file). Every other provider — AWS/AZURE/GCP today, and anything the Snowflake JDBC
+  ;; driver adds later — pulls an attestation from the host's cloud metadata and would silently
+  ;; authenticate as the Metabase host. A blank provider also falls through to auto-detect, which
+  ;; walks the same ambient paths. Whitelisting here fails closed on both.
+  #{"OIDC"})
+
 (defn- wif-jdbc-properties
   "Return the Snowflake JDBC WIF connection properties for the given WIF details. For OIDC, a
   `:wif-token-file-path` is slurped and wins over an inline `:wif-token`. When the resulting
   token carries an `exp` claim, the returned map includes `:password-expiry-timestamp`."
   [{:keys [wif-provider wif-token wif-token-file-path]}]
   (let [provider  (some-> wif-provider u/upper-case-en)
+        _         (when (and (driver-api/is-hosted?)
+                             (not (contains? hosted-allowed-wif-providers provider)))
+                    (throw (ex-info (if (str/blank? provider)
+                                      (tru (str "A workload-identity provider is required on Metabase Cloud. "
+                                                "Use OIDC with an explicit token."))
+                                      (tru (str "Workload identity federation with the {0} provider is not available "
+                                                "on Metabase Cloud. Use OIDC with an explicit token.")
+                                           provider))
+                                    {:wif-provider provider})))
         token     (when (= "OIDC" provider)
                     (cond
                       (not (str/blank? wif-token-file-path))

@@ -878,11 +878,19 @@
         (sort-dependents sort-column sort-direction))))
 
 (api.macros/defendpoint :get "/backfill-status" :- [:map
-                                                    [:complete :boolean]]
-  "Whether no entity awaits the computation of its dependencies, as `complete`, for superusers."
+                                                    [:complete :boolean]
+                                                    [:failed [:sequential [:map
+                                                                           [:type ::deps.dependency-types/dependency-types]
+                                                                           [:id   ms/PositiveInt]]]]]
+  "Whether no entity awaits the computation of its dependencies, as `complete`, and the entities whose dependencies
+  the job gave up computing until they change, as `failed`, for superusers. Those don't count as awaiting, so the
+  graph is only whole when `complete` is true and `failed` is empty."
   [_route-params _query-params]
   (api/check-superuser)
-  {:complete (not (deps.dependency-status/has-pending-entities?))})
+  ;; Unpaged, assuming the job gives up on few entities. Page `failed` if instances with many show up.
+  {:complete (not (deps.dependency-status/has-pending-entities?))
+   :failed   (mapv (fn [{:keys [entity_type entity_id]}] {:type entity_type :id entity_id})
+                   (dependencies.db/given-up-dependency-statuses))})
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/dependencies` routes."

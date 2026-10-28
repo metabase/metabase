@@ -1005,6 +1005,13 @@
    max-failures :- ms/PositiveInt]
   (record-failure! :model/DependencyStatus entity-type entity-id max-failures))
 
+(mu/defn given-up-dependency-statuses :- [:sequential [:map
+                                                       [:entity_type ::deps.dependency-types/dependency-types]
+                                                       [:entity_id   ms/PositiveInt]]]
+  "The entities whose dependencies the dependency job gave up computing until a write changes them."
+  []
+  (t2/select [:model/DependencyStatus :entity_type :entity_id] :terminal true))
+
 (mu/defn clear-dependency-status! :- :boolean
   "Record that the dependency job computed the dependencies of the entity `entity-type` `entity-id` with the analysis
   of `current-version`, clearing its count of `stale` writes unless a write raised it, returning whether it cleared it."
