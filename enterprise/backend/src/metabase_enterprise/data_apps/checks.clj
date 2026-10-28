@@ -230,3 +230,13 @@
     (throw (data-app-error (tru "A data app can see only the Library and its collections, not the collection {0}."
                                 (str collection-id)))))
   nil)
+
+(defenterprise-schema check-dashboard :- :nil
+  "Throws a 400 unless the dashboard with `dashboard-id` is in the Library, after a read check of the dashboard."
+  :feature :data-apps
+  [_data-app    :- ::data-apps.schema/data-app
+   dashboard-id :- ::lib.schema.id/dashboard]
+  (when-not (in-library? (api/read-check :model/Dashboard dashboard-id))
+    (throw (data-app-error (tru "A data app can use only the dashboards in the Library, not the dashboard {0}."
+                                (str dashboard-id)))))
+  nil)

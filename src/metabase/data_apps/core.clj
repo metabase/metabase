@@ -148,3 +148,11 @@
   [_data-app      :- ::data-apps.schema/data-app
    _collection-id :- ::lib.schema.id/collection]
   nil)
+
+(defenterprise-schema check-dashboard :- :nil
+  "Throws a 400 unless `data-app` may use the dashboard with `dashboard-id`, after a read check of the dashboard; does
+  nothing without the data-apps feature."
+  metabase-enterprise.data-apps.checks
+  [_data-app     :- ::data-apps.schema/data-app
+   _dashboard-id :- ::lib.schema.id/dashboard]
+  nil)
