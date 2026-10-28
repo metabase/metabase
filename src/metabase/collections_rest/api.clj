@@ -433,7 +433,7 @@
         options         {:archived?                   (boolean archived)
                          :show-dashboard-questions?   (boolean show-dashboard-questions)
                          :show-exploration-documents? (boolean show-exploration-documents)
-                         :collection-types            (or (some-> data-app data-apps/data-app-collection-types) collection-type)
+                         :collection-types            (or (some-> data-app data-apps/data-app-collection-types) (some-> collection-type hash-set))
                          :include-library?            (or include-library (some? data-app))
                          :models                      (if (or data-app
                                                               (not (contains? collections.children/namespaces-holding-non-collection-types namespace)))
@@ -476,7 +476,7 @@
                                {:archived?                   (boolean archived)
                                 :show-dashboard-questions?   (boolean show-dashboard-questions)
                                 :show-exploration-documents? (boolean show-exploration-documents)
-                                :collection-types            collection-type
+                                :collection-types            (some-> collection-type hash-set)
                                 :include-library?            include-library
                                 :pinned-state                (keyword pinned-state)
                                 :sort-info                   {:sort-column                 :name

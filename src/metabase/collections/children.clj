@@ -64,6 +64,25 @@
                                  (personal-ids first-parent-collection-id)))]
     (remove personal-descendant? collections)))
 
+(def CollectionType
+  "Collection types that the root/items endpoint can filter on"
+  [:enum "remote-synced"])
+
+(def ^:private FilterableCollectionType
+  "Collection types that [[collection-children]] and [[select-collections]] can filter on: remote-synced collections,
+  or those of a Library type."
+  (into [:enum "remote-synced"] (sort collection/library-collection-types)))
+
+(defn- collection-types-clause
+  "A HoneySQL clause that keeps the collections of one of `collection-types`, \"remote-synced\" meaning the
+  remote-synced ones, or nil when there are none."
+  [collection-types]
+  (when (seq collection-types)
+    (into [:or] (for [collection-type (sort collection-types)]
+                  (if (= collection-type "remote-synced")
+                    [:= :is_remote_synced true]
+                    [:= :type collection-type])))))
+
 (defn select-collections
   "Select collections based off certain parameters. If `shallow` is true, we select only the requested collection (or
   the root, if `collection-id` is `nil`) and its immediate children, to avoid reading the entire collection tree when it
@@ -97,8 +116,7 @@
                (location-from-collection-id-clause collection-id))
              (when personal-only
                [:!= :personal_owner_id nil])
-             (when collection-types
-               [:in :type (vec collection-types)])
+             (collection-types-clause collection-types)
              (when exclude-other-user-collections
                [:or [:= :personal_owner_id nil] [:= :personal_owner_id api/*current-user-id*]])
              (when-not include-library?
@@ -198,16 +216,12 @@
   [w]
   (when w (keyword (str/replace w #"_" "-"))))
 
-(def CollectionType
-  "Collection types that the root/items endpoint can filter on"
-  [:enum "remote-synced"])
-
 (def CollectionChildrenOptions
   "The `options` map accepted by [[collection-children]] and [[collection-filter-metadata]]."
   [:map {:closed true}
    [:show-dashboard-questions?     :boolean]
    [:show-exploration-documents?   {:optional true} [:maybe :boolean]]
-   [:collection-types {:optional true} [:maybe [:or CollectionType [:set :string]]]]
+   [:collection-types {:optional true} [:maybe [:set FilterableCollectionType]]]
    [:archived?                     :boolean]
    [:include-library?               {:optional true} [:maybe :boolean]]
    [:pinned-state {:optional true} [:maybe (into [:enum] (map keyword) valid-pinned-state-values)]]
@@ -725,10 +739,7 @@
         collection
         {:cte-name :visible_collection_ids}
         [:and
-         (when collection-types
-           (if (= collection-types "remote-synced")
-             [:= :is_remote_synced true]
-             [:in :type (vec collection-types)]))
+         (collection-types-clause collection-types)
          (when-not include-library?
            [:or [:= nil :type]
             [:not [:in :type (vec collection/library-collection-types)]]])
