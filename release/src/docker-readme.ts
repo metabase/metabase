@@ -7,11 +7,7 @@ import {
   getOSSVersion,
   getRollingTagsForVersion,
 } from "./version-helpers";
-import {
-  getSupportedMajorVersions,
-  getVersionInfoUrl,
-  isLtsVersion,
-} from "./version-info";
+import { getSupportedMajorVersions, getVersionInfoUrl } from "./version-info";
 
 export const SUPPORTED_TAGS_PLACEHOLDER = "{{SUPPORTED_TAGS_TABLE}}";
 
@@ -119,7 +115,9 @@ export async function getDockerTagRows({
 
     const version = getCanonicalVersion(ossVersion, edition);
 
-    const lts = await isLtsVersion({ version });
+    const lts = !!versionInfo.major_version_support?.some(
+      (line) => line.major === major && line.lts,
+    );
     const status = getDockerTagRowStatus({ version, lts });
 
     rows.push({

@@ -59,7 +59,7 @@ describe("docker-readme", () => {
       "v0.58.37",
     ];
 
-    const github = {
+    const makeGithub = (tags: string[]) => ({
       rest: { git: { listMatchingRefs: "listMatchingRefs" } },
       paginate: jest.fn((_fn: unknown, { ref }: { ref: string }) =>
         Promise.resolve(
@@ -68,7 +68,9 @@ describe("docker-readme", () => {
             .map((tag) => ({ ref: `refs/tags/${tag}` })),
         ),
       ),
-    };
+    });
+
+    const github = makeGithub(tags);
 
     const line = (major: number, lts: boolean, eol: string) => ({
       major,
@@ -118,11 +120,11 @@ describe("docker-readme", () => {
             "Footer",
           ].join("\n"),
         );
+        expect(mockFetch).toHaveBeenCalledTimes(1);
       },
     );
 
     it("adds the -lts tag to an LTS major version that is still in beta", async () => {
-      tags.push("v0.66.0.3");
       mockFetch.mockResolvedValue(
         response(true, {
           major_version_support: [line(66, true, "2028-01-01")],
@@ -130,7 +132,7 @@ describe("docker-readme", () => {
       );
 
       const readme = await generateDockerReadme({
-        github: github as any,
+        github: makeGithub([...tags, "v0.66.0.3"]) as any,
         owner: "metabase",
         repo: "metabase",
         latestMajorVersion: "65",
@@ -138,7 +140,6 @@ describe("docker-readme", () => {
         today: "2026-10-21",
         template: SUPPORTED_TAGS_PLACEHOLDER,
       });
-      tags.pop();
 
       expect(readme).toContain(
         "| 66 | Beta | `v0.66-lts`, `v0.66.x`, `v0.66.0.x`, `v0.66.0.3` |",

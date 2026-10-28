@@ -458,6 +458,8 @@ jobs:
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
       - name: Update Docker Hub README (${{ matrix.edition }})
+        id: update-readme
+        continue-on-error: true
         working-directory: release
         env:
           GITHUB_TOKEN: ${{ github.token }}
@@ -475,6 +477,24 @@ jobs:
             --template "$TEMPLATE" \
             --repository "$REPOSITORY" \
             --publish
+      - name: Send Docker Hub README failure message
+        if: steps.update-readme.outcome == 'failure'
+        uses: actions/github-script@v9
+        env:
+          SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          script: | # js
+            const { sendDockerReadmeFailureMessage } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            await sendDockerReadmeFailureMessage({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              version: '${{ inputs.version }}',
+              runId: context.runId,
+              channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
+              edition: '${{ matrix.edition }}',
+            }).catch(console.error);
 
   trigger-cloud-issues:
     # Only create issues in the cloud ops repository if this release happens in https://github.com/metabase/metabase.
