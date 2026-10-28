@@ -669,6 +669,7 @@
            api-scope
            api.eid-translation
            collections
+           data-apps
            documents
            events
            lib.schema
@@ -831,6 +832,7 @@
            channel
            collections
            dashboards
+           data-apps
            embedding
            events
            lib
@@ -3218,6 +3220,7 @@
            metabase.user-key-value.init}
    :uses #{api
            api-scope
+           data-apps
            lib.schema
            util
            util.config}}
@@ -3873,6 +3876,7 @@
    :model-imports #{:model/Action
                     :model/Card
                     :model/Collection
+                    :model/Dashboard
                     :model/DataPermissions
                     :model/Database
                     :model/Field
