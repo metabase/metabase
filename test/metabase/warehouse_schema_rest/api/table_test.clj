@@ -1426,4 +1426,26 @@
       (testing "but the Table has not been published into the collection"
         (is (nil? (t2/select-one-fn :collection_id :model/Table :id table-id)))))))
 
+(deftest bulk-update-tables-field-order-persists-test
+  (testing "PUT /api/table with an ids vector sets field_order on every listed table"
+    (mt/with-temp [:model/Table {t1 :id} {:db_id (mt/id)}
+                   :model/Table {t2 :id} {:db_id (mt/id)}
+                   :model/Field _        {:table_id t1 :name "b" :database_position 0 :position 0}
+                   :model/Field _        {:table_id t1 :name "a" :database_position 1 :position 1}
+                   :model/Field _        {:table_id t2 :name "d" :database_position 0 :position 0}
+                   :model/Field _        {:table_id t2 :name "c" :database_position 1 :position 1}]
+      (let [response (mt/user-http-request :crowberto :put 200 "table"
+                                           {:ids [t1 t2] :field_order "alphabetical"})]
+        (is (= [:alphabetical :alphabetical]
+               (map #(t2/select-one-fn :field_order :model/Table :id %) [t1 t2])))
+        (testing "the response lists each table's fields in the new order"
+          (is (= {t1 ["a" "b"] t2 ["c" "d"]}
+                 (into {} (map (juxt :id #(map :name (:fields %)))) response))))
+        (testing "the new positions are stored"
+          (is (= [["a" "b"] ["c" "d"]]
+                 (for [table-id [t1 t2]]
+                   (->> (t2/hydrate (t2/select-one :model/Table :id table-id) :fields)
+                        :fields
+                        (map :name))))))))))
+
 ;;; ---------------------------------------- can-query and can-write filter tests ----------------------------------------

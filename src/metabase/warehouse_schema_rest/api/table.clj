@@ -179,6 +179,32 @@
                                (fn [response]
                                  (dissoc response :json_query :context :cached :average_execution_time))))))))))
 
+(def ^:private table-update-entries
+  "User-settable Table columns, as optional `:map` entries."
+  [[:display_name            {:optional true} [:maybe ms/NonBlankString]]
+   [:entity_type             {:optional true} [:maybe ms/EntityTypeKeywordOrString]]
+   [:visibility_type         {:optional true} [:maybe TableVisibilityType]]
+   [:description             {:optional true} [:maybe :string]]
+   [:caveats                 {:optional true} [:maybe :string]]
+   [:points_of_interest      {:optional true} [:maybe :string]]
+   [:show_in_getting_started {:optional true} [:maybe :boolean]]
+   [:field_order             {:optional true} [:maybe FieldOrder]]
+   [:data_authority          {:optional true} [:maybe ::data-authority-write]]
+   [:data_source             {:optional true} [:maybe :string]]
+   [:data_layer              {:optional true} [:maybe :string]]
+   [:owner_email             {:optional true} [:maybe :string]]
+   [:owner_user_id           {:optional true} [:maybe :int]]])
+
+(def ^:private TableUpdateBodySingle
+  "Body of `PUT /api/table/:id`."
+  (into [:map] table-update-entries))
+
+(def ^:private TableUpdateBodyBulk
+  "Body of the deprecated `PUT /api/table/`."
+  (into [:map
+         [:ids [:sequential ms/PositiveInt]]]
+        table-update-entries))
+
 (mu/defn ^:private update-table!*
   "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`
   if field positions have changed."
@@ -241,20 +267,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]
    _query-params
-   body :- [:map
-            [:display_name            {:optional true} [:maybe ms/NonBlankString]]
-            [:entity_type             {:optional true} [:maybe ms/EntityTypeKeywordOrString]]
-            [:visibility_type         {:optional true} [:maybe TableVisibilityType]]
-            [:description             {:optional true} [:maybe :string]]
-            [:caveats                 {:optional true} [:maybe :string]]
-            [:points_of_interest      {:optional true} [:maybe :string]]
-            [:show_in_getting_started {:optional true} [:maybe :boolean]]
-            [:field_order             {:optional true} [:maybe FieldOrder]]
-            [:data_authority          {:optional true} [:maybe ::data-authority-write]]
-            [:data_source             {:optional true} [:maybe :string]]
-            [:data_layer              {:optional true} [:maybe :string]]
-            [:owner_email             {:optional true} [:maybe :string]]
-            [:owner_user_id           {:optional true} [:maybe :int]]]]
+   body :- TableUpdateBodySingle]
   (first (update-tables! [id] body)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -264,23 +277,10 @@
 (api.macros/defendpoint :put "/"
   "Update all `Table` in `ids`.
 
-  Deprecated, should use PUT /table/edit from now on."
+  Deprecated: use `POST /api/data-studio/table/edit`."
   [_route-params
    _query-params
-   {:keys [ids], :as body} :- [:map
-                               [:ids                                      [:sequential ms/PositiveInt]]
-                               [:display_name            {:optional true} [:maybe ms/NonBlankString]]
-                               [:entity_type             {:optional true} [:maybe ms/EntityTypeKeywordOrString]]
-                               [:visibility_type         {:optional true} [:maybe TableVisibilityType]]
-                               [:description             {:optional true} [:maybe :string]]
-                               [:caveats                 {:optional true} [:maybe :string]]
-                               [:points_of_interest      {:optional true} [:maybe :string]]
-                               [:show_in_getting_started {:optional true} [:maybe :boolean]]
-                               [:data_authority          {:optional true} [:maybe ::data-authority-write]]
-                               [:data_source             {:optional true} [:maybe :string]]
-                               [:data_layer              {:optional true} [:maybe :string]]
-                               [:owner_email             {:optional true} [:maybe :string]]
-                               [:owner_user_id           {:optional true} [:maybe :int]]]]
+   {:keys [ids], :as body} :- TableUpdateBodyBulk]
   (update-tables! ids body))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
