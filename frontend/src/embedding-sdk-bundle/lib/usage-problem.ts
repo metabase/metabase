@@ -8,6 +8,8 @@ import type {
 import { isHostAppInDevMode } from "embedding-sdk-shared/lib/is-host-app-in-dev-mode";
 import {
   EMBEDDING_SDK_CONFIG,
+  isDataApp,
+  isDataAppDev,
   isEmbeddingEajs,
 } from "metabase/embedding-sdk/config";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
@@ -130,6 +132,7 @@ export function getSdkUsageProblem(
       isDevelopmentHost,
       hostReactMajorVersion: getHostReactMajorVersion(),
       isEajs: isEmbeddingEajs(),
+      isServedDataApp: isDataApp() && !isDataAppDev(),
     })
       // MCP Apps uses temporary sessions created by MCP backend.
       .with({ isMcpApp: true }, () => null)
@@ -148,10 +151,17 @@ export function getSdkUsageProblem(
       .with({ isApiKey: true, hasTokenFeature: true, isLocalhost: false }, () =>
         toError("API_KEYS_WITH_LICENSE"),
       )
-      // The iframe embed renders with the React shipped by Metabase, so the
-      // host app's React version is not the customer's to upgrade there.
+      // The iframe embed and served data apps render with the React shipped by
+      // Metabase, so the host app's React version is not the customer's to
+      // upgrade there. The data app dev preview runs the developer's own React,
+      // so it keeps the warning.
       .with(
-        { hostReactMajorVersion: 18, isDevelopmentHost: true, isEajs: false },
+        {
+          hostReactMajorVersion: 18,
+          isDevelopmentHost: true,
+          isEajs: false,
+          isServedDataApp: false,
+        },
         () => toWarning("REACT_18_DEPRECATED"),
       )
       // For API keys, we allow evaluation usage without a license in localhost.
