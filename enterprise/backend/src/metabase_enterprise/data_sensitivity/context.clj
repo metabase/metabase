@@ -193,31 +193,35 @@
       (throw (InterruptedException. (format "Row sample for table %d interrupted" (:id table)))))
     result))
 
-(defn- routed?
+(defn- routing-enabled?
   [database]
   (database-routing/db-routing-enabled? (driver.u/lib-database (:id database))))
+
+(def ^:private routing-reason "this database uses database routing")
 
 (defn- sample-values
   "Runs the row sample and transposes it into a map of field id -> up to `sample-values-cap` distinct values as
   strings. Returns `{:values {...} :error nil}`, or `{:values nil :error message}` when the query fails. Throws an
-  `InterruptedException` when the sample was cancelled; see [[run-sample]]. A routed database is sampled at the router
-  itself; only a superuser gets values from one (see [[values-restriction]])."
-  [database table fields {:keys [truncation sample-values-cap] :as opts}]
-  (let [{:keys [rows exception]} (if (routed? database)
-                                   (database-routing/with-anonymous-router-access
-                                     (run-sample database table fields opts))
-                                   (run-sample database table fields opts))]
-    (if exception
-      (do (log/warnf exception "Failed to sample rows for table %d" (:id table))
-          {:values nil :error (ex-message exception)})
-      (let [columns (if (seq rows)
-                      (apply map vector rows)
-                      (repeat (count fields) []))]
-        {:values (into {} (map (fn [field column]
-                                 [(:id field) (distinct-strings sample-values-cap truncation column)])
-                               fields
-                               columns))
-         :error  nil}))))
+  `InterruptedException` when the sample was cancelled; see [[run-sample]]. When `routed?`, a superuser samples the
+  router database with no current user, and any other user gets no values."
+  [database table fields routed? {:keys [truncation sample-values-cap] :as opts}]
+  (if (and routed? (not api/*is-superuser?*))
+    {:values nil :error routing-reason}
+    (let [{:keys [rows exception]} (if routed?
+                                     (database-routing/with-anonymous-router-access
+                                       (run-sample database table fields opts))
+                                     (run-sample database table fields opts))]
+      (if exception
+        (do (log/warnf exception "Failed to sample rows for table %d" (:id table))
+            {:values nil :error (ex-message exception)})
+        (let [columns (if (seq rows)
+                        (apply map vector rows)
+                        (repeat (count fields) []))]
+          {:values (into {} (map (fn [field column]
+                                   [(:id field) (distinct-strings sample-values-cap truncation column)])
+                                 fields
+                                 columns))
+           :error  nil})))))
 
 (defn- values-restriction
   "Why the current user may not send the values of `table` to the model, or nil when they may. A superuser may. Other
@@ -225,7 +229,7 @@
   table, no connection impersonation applies to the database, and the database uses no database routing. A
   sandbox, an impersonation role, or a routing destination shows only part of the data, and the labels apply to all
   of it, so such tables are classified on metadata alone. Fails closed when no user is bound."
-  [database table]
+  [database table routed?]
   (cond
     api/*is-superuser?*
     nil
@@ -239,8 +243,8 @@
     (perms/impersonation-enforced-for-db? database)
     "connection impersonation applies to this database for the current user"
 
-    (routed? database)
-    "this database uses database routing"))
+    routed?
+    routing-reason))
 
 (defn- field-entry
   "The packet entry for `field`, with the user-settings values a person set taking precedence over the Field row, a
@@ -278,23 +282,25 @@
   "Build the classification packet for `table` of `database`, over the fields of [[db/active-fields]]: retired,
   sensitive, hidden and inactive fields are not in it. Values are read as the current user: when
   [[values-restriction]] gives a reason, no values are read and `[:sample :error]` carries it. The row sample runs
-  through the query processor with the permissions of the current user. A superuser on a routed database samples the
-  router database."
+  through the query processor with the permissions of the current user, except that a superuser on a routed database
+  samples the router database with no current user."
   [database :- (ms/InstanceOf :model/Database)
    table    :- (ms/InstanceOf :model/Table)
    & {:as opts} :- [:maybe ::options]]
   (let [{:keys [include-values? sample-rows truncation cached-values-cap] :as opts}
         (with-defaults opts)
 
+        routed?         (when include-values?
+                          (routing-enabled? database))
         restriction     (when include-values?
-                          (values-restriction database table))
+                          (values-restriction database table routed?))
         include-values? (and include-values? (nil? restriction))
         fields    (db/active-fields (:id table))
         field-ids (map :id fields)
         cached    (when include-values?
                     (cached-values field-ids cached-values-cap truncation))
         {sampled :values sample-error :error} (when include-values?
-                                                (sample-values database table fields opts))
+                                                (sample-values database table fields routed? opts))
         ctx       {:user-settings (db/user-settings-by-field field-ids)
                    :fk-targets    (fk-targets fields)
                    :cached        cached
