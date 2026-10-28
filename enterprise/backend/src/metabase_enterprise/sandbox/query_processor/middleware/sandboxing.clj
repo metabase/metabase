@@ -145,11 +145,11 @@
   "ex-data for an error about attribute `attr-name` of `sandbox`. The ids go to the error log line (`:log/keys`), so an
   admin can find the user and sandbox to fix; the attribute's value does not."
   [sandbox attr-name]
-  (let [log-data (m/assoc-some {:attribute-name (name attr-name)}
-                               :user-id          *current-user-id*
-                               :sandbox-id       (:id sandbox)
-                               :sandbox-table-id (:table_id sandbox))]
-    (assoc log-data :log/keys (set (keys log-data)))))
+  (m/assoc-some {:attribute-name (name attr-name)
+                 :log/keys       #{:attribute-name :user-id :sandbox-id :sandbox-table-id}}
+                :user-id          *current-user-id*
+                :sandbox-id       (:id sandbox)
+                :sandbox-table-id (:table_id sandbox)))
 
 (defn- attr-remapping->parameter [metadata-providerable sandbox login-attributes [attr-name target]]
   (let [error-data      (attribute-error-data sandbox attr-name)

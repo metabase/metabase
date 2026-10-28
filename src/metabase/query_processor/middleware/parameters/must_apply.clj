@@ -24,14 +24,13 @@
   why."
   [param reason]
   (when (:lib/must-apply? param)
-    (let [param-id (or (:id param) (:name param))
-          log-data (m/assoc-some {:parameter-id param-id}
-                                 :user-id api/*current-user-id*)]
+    (let [param-id (or (:id param) (:name param))]
       (throw (ex-info (tru "Filter `{0}` must be applied, but it could not be: {1}" param-id reason)
-                      (assoc log-data
-                             :type     qp.error-type/invalid-parameter
-                             ::failure true
-                             :log/keys (set (keys log-data))))))))
+                      (m/assoc-some {:type         qp.error-type/invalid-parameter
+                                     :parameter-id param-id
+                                     ::failure     true
+                                     :log/keys     #{:parameter-id :user-id}}
+                                    :user-id api/*current-user-id*))))))
 
 (defn with-query-ids
   "Add the card and dashboard ids in query `info` to `e`'s error log line, if `e` is a must-apply failure, so an admin
