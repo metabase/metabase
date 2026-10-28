@@ -672,6 +672,31 @@
          (is (= (format "A data app can read only databases with tables published to the Library, not the database %d." (:id db))
                 (mt/user-http-request :crowberto :get 400 (format "database/%d" (:id db)) as-data-app))))))))
 
+(deftest database-autocomplete-endpoints-suggest-only-published-tables-test
+  (do-with-app-collection
+   (fn [_collection-id]
+     (mt/with-temp [:model/Database db                 {:engine :h2 :details {}}
+                    :model/Table    published          {:db_id (:id db) :name "ZEBRA_PUBLISHED"}
+                    :model/Table    unpublished        {:db_id (:id db) :name "ZEBRA_UNPUBLISHED"}
+                    :model/Field    _published-field   {:table_id (:id published) :name "ZEBRA_SEEN"}
+                    :model/Field    _unpublished-field {:table_id (:id unpublished) :name "ZEBRA_HIDDEN"}
+                    :model/Card     card               {:name "Zebra autocomplete card"}]
+       (data-apps.tu/with-published-tables! [(:id published)]
+         (let [url (format "database/%d/autocomplete_suggestions" (:id db))]
+           (testing "table and field suggestions hold only published tables and their fields"
+             (is (= #{"ZEBRA_PUBLISHED" "ZEBRA_SEEN"}
+                    (set (map first (mt/user-http-request :crowberto :get 200 url as-data-app :prefix "zebra")))))
+             (is (= #{"ZEBRA_PUBLISHED" "ZEBRA_SEEN"}
+                    (set (map first (mt/user-http-request :crowberto :get 200 url as-data-app :substring "ebra"))))))
+           (testing "a request that is not a data app's still suggests unpublished tables and their fields"
+             (is (= #{"ZEBRA_PUBLISHED" "ZEBRA_UNPUBLISHED" "ZEBRA_SEEN" "ZEBRA_HIDDEN"}
+                    (set (map first (mt/user-http-request :crowberto :get 200 url :prefix "zebra"))))))))
+       (let [url (format "database/%d/card_autocomplete_suggestions" (mt/id))]
+         (testing "card suggestions are empty"
+           (is (= [] (mt/user-http-request :crowberto :get 200 url as-data-app :query "zebra autocomplete"))))
+         (testing "a request that is not a data app's still suggests cards"
+           (is (some #(= (:id card) (:id %)) (mt/user-http-request :crowberto :get 200 url :query "zebra autocomplete")))))))))
+
 (defn- do-with-zebras!
   "Call `f` with a temp table published to the Library, one unpublished, a metric in the Library and one outside it, all
   named Zebra, as `{:published :unpublished :metric :outside-metric}`."
