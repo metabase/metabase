@@ -4222,6 +4222,20 @@
            (base-type (get-in (repair* (first-orders-filtering (typed (join-ref "First" "min") "type/Text")))
                               ["stages" 0 "filters" 0 2]))))))
 
+(deftest ^:parallel join-alias-field-type-nested-join-column-names-test
+  (let [self-joined [(orders-stage {"joins" [(assoc (join "Self" [(orders-stage {})]) "fields" "all")]})]
+        filtering   (fn [field-ref] (query (orders-stage {"joins"   [(join "Outer" self-joined)]
+                                                          "filters" [["not-null" {} field-ref]]})))
+        filtered    (fn [field-ref] (get-in (repair* (filtering field-ref)) ["stages" 0 "filters" 0 2]))]
+    (testing "a nested join's column is typed by each name lib resolves, and kept as written"
+      (doseq [column-name ["Self__TOTAL" "TOTAL_2"]]
+        (is (= (typed (join-ref "Outer" column-name) "type/Float")
+               (filtered (join-ref "Outer" column-name))))))
+    (testing "a ref the LLM typed itself by the desired alias is accepted"
+      (is (= "type/Number" (base-type (filtered (typed (join-ref "Outer" "Self__TOTAL") "type/Number"))))))
+    (testing "a name the join doesn't return is still reported"
+      (is (= [[0 "Outer" ["Self__NOPE"]]] (join-problems (filtering (join-ref "Outer" "Self__NOPE"))))))))
+
 (deftest ^:parallel join-alias-field-type-unknown-column-quotes-available-columns-test
   (testing "the names of the columns a join returns reach the message quoted"
     (let [narrow (orders-stage {"fields" [(orders-col "USER_ID") (orders-col odd-column-name)]})

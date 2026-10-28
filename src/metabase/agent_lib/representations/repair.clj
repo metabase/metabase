@@ -2729,16 +2729,19 @@
 
 (defn- column-descriptors
   "Build the cross-stage match oracle from a `lib/returned-columns` sequence: a vector of
-  `{:name <machine-name>, :display-name <display-name>, :id <field-id>|nil, :types {\"base-type\" …}|nil}`
-  descriptors. `:types` is nil when the column exposes no usable `base-type`. Carrying the
-  `:display-name` lets [[match-cross-stage-column]] recover a ref the LLM wrote with the UI label
-  (e.g. `\"Max of Instance Has SC\"`) instead of the machine name (`max`)."
+  `{:name <machine-name>, :desired-alias <alias>, :deduplicated-name <name>, :display-name <display-name>,
+  :id <field-id>|nil, :types {\"base-type\" …}|nil}` descriptors. `:types` is nil when the column exposes
+  no usable `base-type`. The desired alias and the deduplicated name are what lib resolves a by-name
+  ref against. Carrying the `:display-name` lets [[match-cross-stage-column]] recover a ref the LLM
+  wrote with the UI label (e.g. `\"Max of Instance Has SC\"`) instead of the machine name (`max`)."
   [cols]
   (mapv (fn [col]
-          {:name         (:name col)
-           :display-name (:display-name col)
-           :id           (:id col)
-           :types        (types-from-column col)})
+          {:name              (:name col)
+           :desired-alias     (:lib/desired-column-alias col)
+           :deduplicated-name (:lib/deduplicated-name col)
+           :display-name      (:display-name col)
+           :id                (:id col)
+           :types             (types-from-column col)})
         cols))
 
 (defn- resolved-columns
@@ -2792,7 +2795,9 @@
   refers to. Returns `[canonical-machine-name types]` or `nil` when no column matches.
 
   Tries, in order:
-    1. an exact `:name` match;
+    1. an exact match on the desired alias, then the deduplicated name (lib's order), then
+       `:name`, kept as written - a nested join's column is `P__NAME` to lib even when its `:name`
+       is `NAME`;
     2. the double-quote-stripped `:name` (only when stripping actually resolves);
     3. a loose `:name` match that folds case and hyphens/whitespace to underscores, but **only
        when exactly one** real column matches - so `count-where` resolves to `count_where`;
@@ -2802,20 +2807,22 @@
   Genuine ambiguity (more than one loose hit) is left unmatched at each layer. A column whose
   name legitimately needs quotes (vanishingly rare) is never clobbered."
   [cols col-name]
-  (let [stripped   (strip-surrounding-double-quotes col-name)
-        exact      (fn [n] (some #(when (= n (:name %)) %) cols))
-        loose-on   (fn [key-fn raw]
-                     (let [target (normalize-col-key raw)
-                           hits   (when target
-                                    (filter #(= target (normalize-col-key (key-fn %))) cols))]
-                       (when (= 1 (count hits))
-                         (first hits))))
-        match      (or (exact col-name)
-                       (when (not= stripped col-name) (exact stripped))
-                       (loose-on :name stripped)
-                       (loose-on :display-name stripped))]
-    (when match
-      [(:name match) (:types match)])))
+  (let [stripped (strip-surrounding-double-quotes col-name)
+        exact    (fn [n] (some #(when (= n (:name %)) %) cols))
+        lib-name (fn [n] (some (fn [k] (some #(when (= n (k %)) %) cols))
+                               [:desired-alias :deduplicated-name :name]))
+        loose-on (fn [key-fn raw]
+                   (let [target (normalize-col-key raw)
+                         hits   (when target
+                                  (filter #(= target (normalize-col-key (key-fn %))) cols))]
+                     (when (= 1 (count hits))
+                       (first hits))))]
+    (if-let [match (lib-name col-name)]
+      [col-name (:types match)]
+      (when-let [match (or (when (not= stripped col-name) (exact stripped))
+                           (loose-on :name stripped)
+                           (loose-on :display-name stripped))]
+        [(:name match) (:types match)]))))
 
 (defn- maybe-fill-cross-stage-types
   "Given a cross-stage field clause and a name→types map, return the clause with its column name
