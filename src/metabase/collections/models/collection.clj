@@ -657,6 +657,13 @@
   [_old-collection-id _new-collection-id]
   true)
 
+(defenterprise check-library-card-move
+  "Checks that `card`, as it will be saved, may move from the collection `old-collection-id` to its `:collection_id`.
+  The OSS implementation is a no-op."
+  metabase-enterprise.library.validation
+  [_card _old-collection-id]
+  true)
+
 ;; This function is defined later after children-location is available
 
 (def ^:private CollectionWithLocationOrRoot

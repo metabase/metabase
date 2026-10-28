@@ -23,6 +23,7 @@
   assert-remote-syncable
   has-remote-synced-collection?
   check-for-remote-sync-update
+  check-library-card-move
   check-library-dashboard-cards
   check-library-dashboard-move
   check-library-dashcard-series-cards

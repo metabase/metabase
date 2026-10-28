@@ -341,6 +341,11 @@
 (def ^:private library-dashboard-move-msg
   "Dashboards can't be moved into the Library. Duplicate the dashboard into the Library instead.")
 
+(defn- library-card-move-msg [subject & dashboard-names]
+  (str "This " subject " can't be moved out of the Library because these Library dashboards use it: "
+       (str/join ", " dashboard-names)
+       ". Remove it from them first."))
+
 (deftest library-dashboard-only-accepts-library-cards-test
   (let [msg library-card-msg]
     (mt/with-premium-features #{:library}
@@ -697,6 +702,96 @@
         (testing "without the library feature nothing is checked"
           (mt/with-premium-features #{}
             (is (= 1 (t2/update! :model/Dashboard (:id root-dash) {:collection_id (:id allow-dashboards)})))))))))
+
+(deftest move-library-dashboard-out-of-library-test
+  (mt/with-premium-features #{:library}
+    (mt/with-temp [:model/Collection allow-dashboards {:name "Test Dashboards" :type collection/library-dashboards-collection-type}
+                   :model/Collection regular          {:name "Regular Collection"}
+                   :model/Dashboard  library-dash     {:collection_id (:id allow-dashboards)}
+                   :model/Card       dash-question    {:dashboard_id (:id library-dash) :type :question}
+                   :model/DashboardCard _             {:dashboard_id (:id library-dash) :card_id (:id dash-question)}]
+      (testing "moving a Library dashboard out takes its questions along"
+        (mt/user-http-request :crowberto :put 200 (str "dashboard/" (:id library-dash)) {:collection_id (:id regular)})
+        (is (= (:id regular) (t2/select-one-fn :collection_id :model/Card (:id dash-question))))))))
+
+(deftest move-library-card-out-of-library-test
+  (mt/with-premium-features #{:library}
+    (mt/with-temp [:model/Collection allow-dashboards {:name "Test Dashboards" :type collection/library-dashboards-collection-type}
+                   :model/Collection allow-metrics    {:name "Test Metrics" :type collection/library-metrics-collection-type}
+                   :model/Collection regular          {:name "Regular Collection"}
+                   :model/Dashboard  library-dash     {:name "Alpha library dash" :collection_id (:id allow-dashboards)}
+                   :model/Dashboard  library-dash-2   {:name "Beta library dash" :collection_id (:id allow-dashboards)}
+                   :model/Dashboard  regular-dash     {:collection_id (:id regular)}
+                   :model/Card       metric           {:collection_id (:id allow-metrics) :type :metric}
+                   :model/Card       series-metric    {:collection_id (:id allow-metrics) :type :metric}
+                   :model/Card       unused-metric    {:collection_id (:id allow-metrics) :type :metric}
+                   :model/Card       dash-question    {:dashboard_id (:id library-dash) :type :question}]
+      (let [library-dc  (insert-legacy-dashcard! (:id library-dash) (:id metric))
+            _           (insert-legacy-dashcard! (:id library-dash-2) (:id metric))
+            _           (insert-legacy-series! library-dc (:id series-metric))
+            _           (insert-legacy-dashcard! (:id library-dash) (:id dash-question))
+            collection-of #(t2/select-one-fn :collection_id :model/Card (:id %))]
+        (testing "a metric used by Library dashboards can't leave the Library, and the dashboards are named"
+          (is (= (library-card-move-msg "metric" "Alpha library dash" "Beta library dash")
+                 (try (t2/update! :model/Card (:id metric) {:collection_id (:id regular)})
+                      (catch clojure.lang.ExceptionInfo e (ex-message e)))))
+          (is (= (:id allow-metrics) (collection-of metric))))
+        (testing "through the API"
+          (is (= (library-card-move-msg "metric" "Alpha library dash" "Beta library dash")
+                 (mt/user-http-request :crowberto :put 400 (str "card/" (:id metric)) {:collection_id nil}))))
+        (testing "a series reference counts too"
+          (is (= (library-card-move-msg "metric" "Alpha library dash")
+                 (mt/user-http-request :crowberto :put 400 (str "card/" (:id series-metric)) {:collection_id (:id regular)}))))
+        (testing "a metric used by no Library dashboard can move"
+          (is (= 1 (t2/update! :model/Card (:id unused-metric) {:collection_id (:id regular)}))))
+        (testing "a dashboard question can't leave while its Library dashboard still shows it"
+          (is (= (library-card-move-msg "question" "Alpha library dash")
+                 (mt/user-http-request :crowberto :put 400 (str "card/" (:id dash-question))
+                                       {:dashboard_id nil :collection_id (:id regular)})))
+          (is (= (:id library-dash) (t2/select-one-fn :dashboard_id :model/Card (:id dash-question)))))
+        (testing "but it can when the move removes it from the dashboard"
+          (mt/user-http-request :crowberto :put 200 (str "card/" (:id dash-question))
+                                {:dashboard_id nil :collection_id (:id regular)}
+                                :delete_old_dashcards true)
+          (is (= (:id regular) (collection-of dash-question)))
+          (is (not (t2/exists? :model/DashboardCard :dashboard_id (:id library-dash) :card_id (:id dash-question)))))
+        (testing "deserializing bypasses the check"
+          (binding [mi/*deserializing?* true]
+            (is (= 1 (t2/update! :model/Card (:id metric) {:collection_id (:id regular)}))))
+          (binding [mi/*deserializing?* true]
+            (t2/update! :model/Card (:id metric) {:collection_id (:id allow-metrics)})))
+        (testing "without the library feature nothing is checked"
+          (mt/with-premium-features #{}
+            (is (= 1 (t2/update! :model/Card (:id metric) {:collection_id (:id regular)})))))
+        (testing "a regular dashboard is unaffected"
+          (is (some? (insert-legacy-dashcard! (:id regular-dash) (:id series-metric)))))))))
+
+(deftest trashed-library-dashboard-keeps-its-cards-in-the-library-test
+  (testing "trashing a Library dashboard, then moving its metric out and restoring it, can't leave a non-Library card on it"
+    (mt/with-premium-features #{:library}
+      (mt/with-temp [:model/Collection allow-dashboards {:name "Test Dashboards" :type collection/library-dashboards-collection-type}
+                     :model/Collection sub-dashboards   {:name     "Sub dashboards"
+                                                         :type     collection/library-dashboards-collection-type
+                                                         :location (str "/" (:id allow-dashboards) "/")}
+                     :model/Collection allow-metrics    {:name "Test Metrics" :type collection/library-metrics-collection-type}
+                     :model/Collection regular          {:name "Regular Collection"}
+                     :model/Dashboard  library-dash     {:name "Direct dash" :collection_id (:id allow-dashboards)}
+                     :model/Dashboard  sub-dash         {:name "Sub dash" :collection_id (:id sub-dashboards)}
+                     :model/Card       metric           {:collection_id (:id allow-metrics) :type :metric}
+                     :model/Card       sub-metric       {:collection_id (:id allow-metrics) :type :metric}]
+        (insert-legacy-dashcard! (:id library-dash) (:id metric))
+        (insert-legacy-dashcard! (:id sub-dash) (:id sub-metric))
+        (testing "when the dashboard itself is trashed"
+          (mt/user-http-request :crowberto :put 200 (str "dashboard/" (:id library-dash)) {:archived true})
+          (is (= (library-card-move-msg "metric" "Direct dash (in the trash)")
+                 (mt/user-http-request :crowberto :put 400 (str "card/" (:id metric)) {:collection_id (:id regular)})))
+          (is (= (:id allow-metrics) (t2/select-one-fn :collection_id :model/Card (:id metric)))))
+        (testing "when its Library dashboards subcollection is trashed"
+          (mt/user-http-request :crowberto :put 200 (str "collection/" (:id sub-dashboards)) {:archived true})
+          (is (true? (t2/select-one-fn :archived :model/Dashboard (:id sub-dash))))
+          (is (= (library-card-move-msg "metric" "Sub dash (in the trash)")
+                 (mt/user-http-request :crowberto :put 400 (str "card/" (:id sub-metric)) {:collection_id (:id regular)})))
+          (is (= (:id allow-metrics) (t2/select-one-fn :collection_id :model/Card (:id sub-metric)))))))))
 
 (deftest move-dashboard-question-between-dashboards-test
   (mt/with-premium-features #{:library}

@@ -96,6 +96,33 @@
                         {:status-code 400})))))
   true)
 
+(defn- dashboard-label
+  [{:keys [name archived]}]
+  (if archived
+    (tru "{0} (in the trash)" name)
+    name))
+
+(defenterprise check-library-card-move
+  "Throws if `card`, as it will be saved, would leave the Library Collection `old-collection-id` for a non-Library
+  Collection while a Library dashboard, trashed or not, other than its own Dashboard uses it."
+  metabase-enterprise.library.validation
+  :feature :library
+  [{card-id :id card-type :type dashboard-id :dashboard_id new-collection-id :collection_id} old-collection-id]
+  (when old-collection-id
+    (let [library-ids (library.db/collection-ids-of-types (filterv some? [old-collection-id new-collection-id])
+                                                          (vec collection/library-collection-types))]
+      (when (and (contains? library-ids old-collection-id)
+                 (not (contains? library-ids new-collection-id)))
+        ;; a dashboard question follows its dashboard out of the Library, so its own dashboard doesn't count
+        (when-let [dashboards (seq (remove #(= dashboard-id (:id %))
+                                           (library.db/library-dashboards-referencing-card card-id)))]
+          (let [names (str/join ", " (map dashboard-label dashboards))]
+            (throw (ex-info (if (= :metric (keyword card-type))
+                              (tru "This metric can''t be moved out of the Library because these Library dashboards use it: {0}. Remove it from them first." names)
+                              (tru "This question can''t be moved out of the Library because these Library dashboards use it: {0}. Remove it from them first." names))
+                            {:status-code 400})))))))
+  true)
+
 (defenterprise check-library-update
   "Checks that a collection of type `:library` only contains allowed content."
   metabase-enterprise.library.validation
