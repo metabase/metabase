@@ -191,7 +191,7 @@ describe("QueryVisualization", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows the goal warning next to other warnings", async () => {
+  it("shows the goal warning together with the truncation warning", async () => {
     await setup({
       referencedEntities: createMockFailedReferencedEntitiesResults(),
       rowsTruncated: 2,
