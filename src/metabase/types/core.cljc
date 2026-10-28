@@ -142,8 +142,10 @@
 ;;; Binary Types
 
 ;; Raw bytes: Postgres `bytea`, MySQL `BLOB`, SQL Server `varbinary`. Like Mongo's binData (below), blobs are files,
-;; images or ciphertext, so sampling them for a fingerprint costs a lot of memory for no useful result.
+;; images or ciphertext, so sampling them for a fingerprint costs a lot of memory for no useful result, and a list of
+;; their distinct values is useless as a filter widget.
 (derive :type/Binary :type/fingerprint-unsupported)
+(derive :type/Binary :type/field-values-unsupported)
 
 ;;; Text Types
 

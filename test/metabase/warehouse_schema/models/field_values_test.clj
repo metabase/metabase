@@ -60,6 +60,7 @@
     :type/HasTime
     :type/CreationTimestamp
     :type/Large
+    :type/Binary
     :type/JoinTime
     :type/CreationTime
     :type/DateTimeWithTZ
