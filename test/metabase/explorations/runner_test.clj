@@ -15,6 +15,7 @@
    [metabase.metabot.self.claude]
    [metabase.metabot.usage]
    [metabase.permissions.core :as perms]
+   [metabase.queries.db :as queries.db]
    [metabase.query-processor.core :as qp]
    [metabase.test :as mt]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
@@ -96,7 +97,7 @@
         (is (some? result))
         (is (some? (:stored_result_id result)))
         (is (some? sr))
-        (is (pos? (count (:result_data sr))))
+        (is (pos? (count (queries.db/stored-result-data (:id sr)))))
         (is (= 1 (:row_count sr))
             "the QP's top-level :row_count (1 row for an unbucketed count) is persisted on the snapshot")))))
 
@@ -153,7 +154,7 @@
             (is (= "done" (:status final)))
             (is (some? result))
             (is (some? sr))
-            (is (pos? (count (:result_data sr))))
+            (is (pos? (count (queries.db/stored-result-data (:id sr)))))
             (is (nil? (:interestingness_score result)))))))))
 
 (deftest run-one-iteration-writes-contextual-score-test
@@ -228,7 +229,7 @@
             (is (= "done" (:status final)))
             (is (some? result))
             (is (some? sr))
-            (is (pos? (count (:result_data sr))))
+            (is (pos? (count (queries.db/stored-result-data (:id sr)))))
             (is (nil? (:contextual_interestingness_score result)))
             (is (double? (:interestingness_score result))
                 "heuristic score still computed when contextual fails")))))))

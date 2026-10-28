@@ -204,7 +204,7 @@
   (when bundle_hash
     (let [dir (plugin-cache-dir id bundle_hash)]
       (when-not (u.files/exists? dir)
-        (when-let [bundle-bytes (:bundle (custom-viz-plugin.db/custom-viz-plugin id))]
+        (when-let [bundle-bytes (custom-viz-plugin.db/plugin-bundle id)]
           (let [actual-hash (bytes-hash bundle-bytes)]
             (when-not (= actual-hash bundle_hash)
               (throw (ex-info "Bundle integrity check failed: stored bytes do not match bundle_hash"
@@ -253,7 +253,7 @@
   [{:keys [id]} validated]
   (custom-viz-plugin.db/update-plugin! id (derived-columns validated))
   (purge-plugin-cache! {:id id})
-  (custom-viz-plugin.db/non-blob-plugin id))
+  (custom-viz-plugin.db/custom-viz-plugin id))
 
 (defn insert-bundle!
   "Insert a new plugin row from a validated bundle and an `:identifier`. Returns

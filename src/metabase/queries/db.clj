@@ -22,6 +22,11 @@
   [stored-result-id :- ms/PositiveInt]
   (t2/select-one :model/StoredResult :id [:auto/param stored-result-id]))
 
+(mu/defn stored-result-data
+  "The serialized result bytes of the StoredResult with `stored-result-id`, or nil."
+  [stored-result-id :- ms/PositiveInt]
+  (t2/select-one-fn :result_data [:model/StoredResult :result_data] :id [:auto/param stored-result-id]))
+
 ;;; ------------------------------------------------ Cards ------------------------------------------------
 
 (def ^:private not-in-exploration-document

@@ -919,7 +919,7 @@
         ;; creator included, whose own permissions may have narrowed since the snapshot — against the
         ;; stored data-access token (sandbox/impersonation/routing) + basic data perms.
         (queries/assert-can-view-cached-result! sr)
-        (stream-stored-result format (:result_data sr)))
+        (stream-stored-result format (queries.db/stored-result-data (:id sr))))
 
       ;; Pending / errored: no result blob exists. The status payload (id/status/timestamps) rides
       ;; the exploration's collection perms (already enforced by `get-exploration-query-or-404`'s
