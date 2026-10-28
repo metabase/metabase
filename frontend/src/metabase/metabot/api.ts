@@ -18,6 +18,8 @@ import type {
   MetabotStateContext,
   RegenerateSuggestedMetabotPromptsResponse,
   SaveMetabotEntityRequest,
+  SuggestSummaryFormulaRequest,
+  SuggestSummaryFormulaResponse,
   SuggestedMetabotPromptsRequest,
   SuggestedMetabotPromptsResponse,
   UserMetabotPermissionsResponse,
@@ -165,6 +167,16 @@ export const metabotApi = Api.injectEndpoints({
         body: params,
       }),
     }),
+    suggestSummaryFormula: builder.mutation<
+      SuggestSummaryFormulaResponse,
+      SuggestSummaryFormulaRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/metabot/summary-formula",
+        body,
+      }),
+    }),
     updateMetabotSlackSettings: builder.mutation<
       { ok: boolean },
       MetabotSlackSettings
@@ -203,5 +215,6 @@ export const {
   useSubmitMetabotFeedbackMutation,
   useSubmitMetabotSourceFeedbackMutation,
   useUpdateMetabotSlackSettingsMutation,
+  useSuggestSummaryFormulaMutation,
   useGetUserMetabotPermissionsQuery,
 } = metabotApi;
