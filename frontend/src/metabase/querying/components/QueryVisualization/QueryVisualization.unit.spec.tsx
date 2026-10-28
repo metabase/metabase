@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { createMockMetadataFromState } from "__support__/metadata";
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import { act, renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen, within } from "__support__/ui";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { OnOpenChartSettings } from "metabase/visualizations/types";
 import { loadVisualizationComponents } from "metabase/viz-core";
@@ -47,6 +47,15 @@ const GOAL_SETTINGS: VisualizationSettings = {
   "graph.show_goal": true,
   "graph.goal_value": { type: "card", id: 9, column: "goal" },
 };
+
+const ANSWERED = createMockReferencedEntitiesResults({
+  column: "goal",
+  value: 250,
+});
+
+const GOAL_WARNING = "Couldn't get the goal value. Click to open settings.";
+const TRUNCATION_WARNING = "Data truncated to 2 rows.";
+const NEGATIVE_COLOR = "var(--mantine-color-feedback-negative-text)";
 
 type ResultOpts = {
   referencedEntities?: DatasetData["referenced_entities"];
@@ -108,15 +117,14 @@ describe("QueryVisualization", () => {
     jest.useRealTimers();
   });
 
-  it("shows a goal warning that opens the display settings when the goal value cannot be resolved", async () => {
+  it("shows a red warning that opens the display settings when the goal value cannot be resolved", async () => {
     const { onOpenChartSettings } = await setup({
       referencedEntities: createMockFailedReferencedEntitiesResults(),
     });
 
-    const warning = screen.getByRole("button", { name: "Goal warning" });
-    expect(warning).toHaveAccessibleDescription(
-      "Couldn't get the goal value. Click to open settings.",
-    );
+    const warning = getWarningsButton();
+    expect(warning).toHaveAccessibleDescription(GOAL_WARNING);
+    expect(getWarningIcon()).toHaveStyle({ color: NEGATIVE_COLOR });
 
     await userEvent.click(warning);
 
@@ -126,57 +134,67 @@ describe("QueryVisualization", () => {
     });
   });
 
+  it("combines the goal warning with other warnings in one red icon", async () => {
+    await setup({
+      referencedEntities: createMockFailedReferencedEntitiesResults(),
+      rowsTruncated: 2,
+    });
+
+    expect(screen.getAllByLabelText("warning icon")).toHaveLength(1);
+    expect(getWarningIcon()).toHaveStyle({ color: NEGATIVE_COLOR });
+
+    await userEvent.hover(getWarningsButton());
+
+    const tooltip = await screen.findByRole("tooltip");
+    expect(within(tooltip).getByText(GOAL_WARNING)).toBeInTheDocument();
+    expect(within(tooltip).getByText(TRUNCATION_WARNING)).toBeInTheDocument();
+  });
+
+  it("shows other warnings in a gray icon that opens nothing when the goal value resolves", async () => {
+    await setup({
+      referencedEntities: ANSWERED,
+      rowsTruncated: 2,
+    });
+
+    expect(queryWarningsButton()).not.toBeInTheDocument();
+    expect(getWarningIcon()).not.toHaveStyle({ color: NEGATIVE_COLOR });
+
+    await userEvent.hover(getWarningIcon());
+
+    const tooltip = await screen.findByRole("tooltip");
+    expect(within(tooltip).getByText(TRUNCATION_WARNING)).toBeInTheDocument();
+    expect(within(tooltip).queryByText(GOAL_WARNING)).not.toBeInTheDocument();
+  });
+
   it("hides the goal warning once the goal value resolves", async () => {
     const { rerenderWithResult } = await setup({
       referencedEntities: createMockFailedReferencedEntitiesResults(),
     });
-    expect(
-      screen.getByRole("button", { name: "Goal warning" }),
-    ).toBeInTheDocument();
+    expect(getWarningsButton()).toBeInTheDocument();
 
-    await rerenderWithResult(
-      createResult({
-        referencedEntities: createMockReferencedEntitiesResults({
-          column: "goal",
-          value: 250,
-        }),
-      }),
-    );
+    await rerenderWithResult(createResult({ referencedEntities: ANSWERED }));
 
     expect(screen.getByText("Jan")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Goal warning" }),
-    ).not.toBeInTheDocument();
+    expect(queryWarningIcon()).not.toBeInTheDocument();
   });
 
   it("hides the goal warning when the query fails and the chart goes away", async () => {
     const { rerenderWithResult } = await setup({
       referencedEntities: createMockFailedReferencedEntitiesResults(),
     });
-    expect(
-      screen.getByRole("button", { name: "Goal warning" }),
-    ).toBeInTheDocument();
+    expect(getWarningsButton()).toBeInTheDocument();
 
     await rerenderWithResult(createMockDataset({ error: "Query failed" }));
 
     expect(screen.queryByText("Jan")).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Goal warning" }),
-    ).not.toBeInTheDocument();
+    expect(queryWarningIcon()).not.toBeInTheDocument();
   });
 
-  it("shows no goal warning when the goal value resolves", async () => {
-    await setup({
-      referencedEntities: createMockReferencedEntitiesResults({
-        column: "goal",
-        value: 250,
-      }),
-    });
+  it("shows no warning when the goal value resolves", async () => {
+    await setup({ referencedEntities: ANSWERED });
 
     expect(screen.getByText("Jan")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Goal warning" }),
-    ).not.toBeInTheDocument();
+    expect(queryWarningIcon()).not.toBeInTheDocument();
   });
 
   it("shows no goal warning when the chart settings cannot be opened", async () => {
@@ -186,21 +204,7 @@ describe("QueryVisualization", () => {
     });
 
     expect(screen.getByText("Jan")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Goal warning" }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("shows the goal warning together with the truncation warning", async () => {
-    await setup({
-      referencedEntities: createMockFailedReferencedEntitiesResults(),
-      rowsTruncated: 2,
-    });
-
-    expect(
-      screen.getByRole("button", { name: "Goal warning" }),
-    ).toBeInTheDocument();
-    expect(getWarningIcons()).toHaveLength(2);
+    expect(queryWarningIcon()).not.toBeInTheDocument();
   });
 });
 
@@ -228,6 +232,18 @@ async function waitForChartSize() {
   });
 }
 
-function getWarningIcons() {
-  return screen.getAllByLabelText("warning icon");
+function getWarningsButton() {
+  return screen.getByRole("button", { name: "Warnings" });
+}
+
+function queryWarningsButton() {
+  return screen.queryByRole("button", { name: "Warnings" });
+}
+
+function getWarningIcon() {
+  return screen.getByLabelText("warning icon");
+}
+
+function queryWarningIcon() {
+  return screen.queryByLabelText("warning icon");
 }

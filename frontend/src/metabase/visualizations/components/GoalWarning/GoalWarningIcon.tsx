@@ -10,15 +10,10 @@ type GoalWarningSource = "goal" | "color-ranges";
 
 type GoalWarningIconProps = {
   source: GoalWarningSource;
-  size?: number;
   onClick: () => void;
 };
 
-export function GoalWarningIcon({
-  source,
-  size = GOAL_WARNING_ICON_SIZE,
-  onClick,
-}: GoalWarningIconProps) {
+export function GoalWarningIcon({ source, onClick }: GoalWarningIconProps) {
   const messageId = useId();
 
   return (
@@ -36,14 +31,14 @@ export function GoalWarningIcon({
           c="feedback-negative"
           display="block"
           name="warning"
-          size={size}
+          size={GOAL_WARNING_ICON_SIZE}
         />
       </UnstyledButton>
     </Tooltip>
   );
 }
 
-function getGoalWarningMessage(source: GoalWarningSource) {
+export function getGoalWarningMessage(source: GoalWarningSource) {
   return match(source)
     .with("goal", () => t`Couldn't get the goal value. Click to open settings.`)
     .with(
