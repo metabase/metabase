@@ -2426,7 +2426,7 @@
                         :can_delete  true}]
                       (->> (mt/user-http-request user :get 200 (format "collection/%d/items" trash-id))
                            :data
-                           (filter #(= "transform" (:model %)))))))
+                           (filter #(and (= "transform" (:model %)) (= transform-id (:id %))))))))
             (testing "its folder no longer lists it"
               (is (not (contains? (item-ids user folder-id) transform-id))))
             (testing "a user without transform access does not see it in the Trash"
