@@ -4,7 +4,11 @@
 (set! *warn-on-reflection* true)
 
   These describe the *input* contract, not the converter's intermediate representation. They cover manifest schema
-  v12 (dbt 1.12), and only the keys the converter looks at. Undeclared keys pass through untouched.
+  v12 as written by dbt 1.12 and later, and only the keys the converter looks at. Undeclared keys pass through
+  untouched. Older dbt releases are not supported: dbt 1.8 to 1.11 also write schema v12 but without the
+  `type_params` keys the inline spec added (`fill_nulls_with`, `cumulative_type_params`, …), and v10 and v11 have
+  fewer still. [[decode-manifest]] rejects anything but v12 from dbt 1.12+ up front, by `metadata`, rather than
+  failing deeper in with a key-by-key explanation.
 
   Decode with [[decode-manifest]], which expects the JSON parsed with *string* keys ([[metabase.util.json/decode]]
   without keywordization). The transformer then:
@@ -26,20 +30,21 @@
    [malli.core :as mc]
    [malli.error :as me]
    [malli.transform :as mtx]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::aggregation-type
   "`measures[].agg`. Mirrors `dbt_semantic_interfaces.type_enums.AggregationType`, a closed set the manifest JSON
-  schema also fixes (v10 to v12). The converter can turn every one of these into an MBQL aggregation."
+  schema also fixes. The converter can turn every one of these into an MBQL aggregation."
   [:enum :sum :min :max :count_distinct :sum_boolean :average :percentile :median :count])
 
 (mr/def ::metric-type
-  "`metrics[].type`. A closed set in the manifest JSON schema; `:conversion` arrived with v11. Only `:simple` is
-  handled by QRES-1; the rest are QRES-5."
+  "`metrics[].type`. A closed set in the manifest JSON schema. Only `:simple` is handled by QRES-1; the rest are
+  QRES-5."
   [:enum :simple :ratio :cumulative :derived :conversion])
 
 (mr/def ::entity-type
-  "`semantic_models[].entities[].type`. A closed set in the manifest JSON schema, unchanged from v10 to v12."
+  "`semantic_models[].entities[].type`. A closed set in the manifest JSON schema."
   [:enum :primary :unique :foreign :natural])
 
 (mr/def ::dimension-type
@@ -48,9 +53,8 @@
 
 (mr/def ::time-granularity
   "The granularity of a time dimension, `dimensions[].type_params.time_granularity`: a closed set of standard units
-  in the manifest JSON schema (v12; older versions have fewer). Custom granularities from a custom calendar on the
-  time spine (dbt 1.9+) never appear here, only in the free-form string fields `metrics[].time_granularity`,
-  `MetricTimeWindow.granularity` and `offset_to_grain`."
+  in the manifest JSON schema. Custom granularities from a custom calendar on the time spine never appear here, only
+  in the free-form string fields `metrics[].time_granularity`, `MetricTimeWindow.granularity` and `offset_to_grain`."
   [:enum :nanosecond :microsecond :millisecond :second :minute :hour :day :week :month :quarter :year])
 
 (mr/def ::where-filter
@@ -300,11 +304,36 @@
    [:description   [:maybe :string]]
    [:columns       [:map-of :string ::column]]])
 
+(def ^:private minimum-dbt-version
+  "The oldest dbt release whose manifests the converter accepts, as `[major minor]`. dbt 1.12 is where the inline
+  spec and the `type_params` keys that go with it (`fill_nulls_with`, `cumulative_type_params`,
+  `metric_aggregation_params`) arrived; the schemas here require them."
+  [1 12])
+
+(mu/defn- supported-dbt-version? :- :boolean
+  "Whether `dbt_version`, a string like `1.12.6` or `1.13.0-b2`, is [[minimum-dbt-version]] or later."
+  [dbt-version :- :string]
+  (boolean (when-let [[_ major minor] (re-find #"^(\d+)\.(\d+)" dbt-version)]
+             (not (neg? (compare [(parse-long major) (parse-long minor)] minimum-dbt-version))))))
+
+(mr/def ::dbt-version
+  "`metadata.dbt_version`: the release of dbt that wrote the manifest. Must be [[minimum-dbt-version]] or later."
+  [:and
+   :string
+   [:fn {:error/message "only manifests written by dbt 1.12 or later are supported"} supported-dbt-version?]])
+
+(mr/def ::dbt-schema-version
+  "`metadata.dbt_schema_version`: the URL of the manifest JSON schema. Only v12, the version dbt 1.12+ writes, is
+  supported."
+  [:re {:error/message "only manifest schema v12 is supported"}
+   #"^https://schemas\.getdbt\.com/dbt/manifest/v12\.json$"])
+
 (mr/def ::metadata
-  "`metadata`. Only v12 has been tested; v10 and v11 share this structure for the parts we read but are unverified."
+  "`metadata`. The two version fields are what [[decode-manifest]] checks first, so that an old manifest is rejected
+  with a message about its version rather than about the `type_params` keys it lacks."
   [:map
-   [:dbt_schema_version [:re #"^https://schemas\.getdbt\.com/dbt/manifest/v1[0-2]\.json$"]]
-   [:dbt_version        :string]
+   [:dbt_schema_version ::dbt-schema-version]
+   [:dbt_version        ::dbt-version]
    [:project_name       {:optional true} :string]
    [:adapter_type       {:optional true} :string]
    [:generated_at       {:optional true} :string]])
@@ -325,15 +354,24 @@
 
 (defn decode-manifest
   "Decode a manifest parsed from JSON *with string keys* into the shape described by `::manifest`, and validate it.
-  Throws with the humanized explanation when the manifest does not match, e.g. an unsupported schema version or an
-  unknown `agg`.
+  Throws `Unsupported dbt manifest` when `metadata` says it was written by a dbt release before 1.12 or on a manifest
+  schema other than v12, and `Invalid dbt manifest` with the humanized explanation when anything else does not match,
+  e.g. an unknown `agg`.
 
     (decode-manifest (with-open [r (io/reader \"target/manifest.json\")]
                        (json/decode r)))"
   [manifest]
   ;; the decoder is cached under a namespaced key and rebuilt only when a schema is defined again with [[mr/def]]
-  (let [decoder (mr/cached ::decoder ::manifest (fn [] (mc/decoder ::manifest transformer)))
-        decoded (decoder manifest)]
+  (let [decoder  (mr/cached ::decoder ::manifest (fn [] (mc/decoder ::manifest transformer)))
+        decoded  (decoder manifest)
+        metadata (:metadata decoded)]
+    (when-let [error (when (map? metadata) (mr/explain ::metadata metadata))]
+      (throw (ex-info (str "Unsupported dbt manifest: the converter reads manifests written by dbt 1.12 or later"
+                           " (manifest schema v12), this one says dbt " (pr-str (:dbt_version metadata))
+                           " and " (pr-str (:dbt_schema_version metadata)))
+                      {:dbt-version        (:dbt_version metadata)
+                       :dbt-schema-version (:dbt_schema_version metadata)
+                       :errors             (me/humanize error)})))
     (if-let [error (mr/explain ::manifest decoded)]
       (throw (ex-info "Invalid dbt manifest" {:errors (me/humanize error)}))
       decoded)))
