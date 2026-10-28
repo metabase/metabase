@@ -3,14 +3,7 @@ import type { KeyboardEvent, ReactNode, Ref } from "react";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import {
-  Checkbox,
-  Combobox,
-  Flex,
-  Icon,
-  TextInput,
-  useCombobox,
-} from "metabase/ui";
+import { Checkbox, Combobox, Flex, Icon, useCombobox } from "metabase/ui";
 
 import S from "./KeyboardFilterRow.module.css";
 import { UNSCORED, getOptionScores } from "./fuzzy-search";
@@ -20,9 +13,6 @@ const DEFAULT_DROPDOWN_WIDTH = 280;
 
 interface SuggestionInputProps {
   inputRef?: Ref<HTMLInputElement>;
-  /** A search box at the top of the dropdown that mirrors the input. */
-  withSearchBox?: boolean;
-  searchInputRef?: Ref<HTMLInputElement>;
   groups: SuggestionGroup[];
   text: string;
   placeholder: string;
@@ -67,8 +57,6 @@ interface SuggestionInputProps {
  */
 export function SuggestionInput({
   inputRef,
-  withSearchBox = false,
-  searchInputRef,
   groups,
   text,
   placeholder,
@@ -183,30 +171,6 @@ export function SuggestionInput({
     }
   };
 
-  // The search box handles the same keys as the input, and moves in the list
-  // like the input does.
-  const handleSearchBoxKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-      event.preventDefault();
-      if (event.key === "ArrowDown") {
-        combobox.selectNextOption();
-      } else {
-        combobox.selectPreviousOption();
-      }
-      return;
-    }
-    const hasSelectedOption = combobox.getSelectedOptionIndex() !== -1;
-    handleKeyDown(event);
-    if (
-      event.key === "Enter" &&
-      hasSelectedOption &&
-      !event.isPropagationStopped()
-    ) {
-      event.preventDefault();
-      combobox.clickSelectedOption();
-    }
-  };
-
   const renderOption = (option: SuggestionOption) => {
     if (isTiles) {
       return (
@@ -304,20 +268,6 @@ export function SuggestionInput({
                   }
                 }}
               >
-                {withSearchBox && (
-                  <TextInput
-                    ref={searchInputRef}
-                    mb="sm"
-                    value={text}
-                    placeholder={t`Search`}
-                    leftSection={<Icon name="search" />}
-                    onChange={(event) => {
-                      onTextChange(event.currentTarget.value);
-                      combobox.openDropdown();
-                    }}
-                    onKeyDown={handleSearchBoxKeyDown}
-                  />
-                )}
                 {header}
               </div>
             )}

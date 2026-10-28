@@ -24,7 +24,7 @@ import {
   useNumberColumnStats,
   useValueCounts,
 } from "metabase/querying/filters/components/FilterPicker/NumberFilterPicker/NumberColumnStats";
-import { Icon, Loader, Popover, Stack, Tooltip } from "metabase/ui";
+import { Icon, Loader, Popover, Tooltip } from "metabase/ui";
 import { parseNumber } from "metabase/utils/number";
 import * as Lib from "metabase-lib";
 
@@ -42,11 +42,7 @@ import {
   isAiFiltersPrompt,
   useAiFilters,
 } from "./ai-filters";
-import {
-  type ColumnPickerMode,
-  ColumnPickerModeControl,
-  useColumnSuggestions,
-} from "./column-picker";
+import { useColumnSuggestions } from "./column-picker";
 import { useSemanticColumnMatches } from "./semantic-column-search";
 import type { DraftOperator, DraftState, SuggestionGroup } from "./types";
 import {
@@ -629,30 +625,14 @@ function ColumnInput({
   onAskAi,
   onKeyDown,
 }: ColumnInputProps) {
-  const [mode, setMode] = useState<ColumnPickerMode>("auto");
-  const columnInputRef = useRef<HTMLInputElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const focusedInputRef = useRef<HTMLInputElement | null>(null);
-
-  const handleModeChange = (newMode: ColumnPickerMode) => {
-    setMode(newMode);
-    // The mode control takes the focus, but typing goes to the input that
-    // had the focus before.
-    requestAnimationFrame(() =>
-      (focusedInputRef.current ?? columnInputRef.current)?.focus(),
-    );
-  };
-
   const columnGroups = useMemo(
     () => getColumnGroups(query, stageIndex),
     [query, stageIndex],
   );
-  const { groups: modeGroups, getItem } = useColumnSuggestions(
+  const { groups: columnSuggestionGroups, getItem } = useColumnSuggestions(
     query,
     stageIndex,
     columnGroups,
-    mode,
-    text.trim().length > 0,
   );
   const relatedGroup = useRelatedColumnGroup(
     columnGroups,
@@ -661,7 +641,9 @@ function ColumnInput({
   const isAiAvailable = onAskAi != null;
   const groups = useMemo(() => {
     const searchGroups =
-      relatedGroup != null ? [...modeGroups, relatedGroup] : modeGroups;
+      relatedGroup != null
+        ? [...columnSuggestionGroups, relatedGroup]
+        : columnSuggestionGroups;
     const trimmedText = text.trim();
     if (!isAiAvailable || trimmedText.length === 0) {
       return searchGroups;
@@ -683,7 +665,7 @@ function ColumnInput({
     return isAiFiltersPrompt(trimmedText)
       ? [aiGroup, ...searchGroups]
       : [...searchGroups, aiGroup];
-  }, [modeGroups, relatedGroup, text, isAiAvailable]);
+  }, [columnSuggestionGroups, relatedGroup, text, isAiAvailable]);
 
   const handleSelect = (key: string) => {
     if (key === AI_FILTERS_OPTION) {
@@ -701,31 +683,11 @@ function ColumnInput({
   return (
     <SuggestionInput
       groups={isAiMode ? NO_GROUPS : groups}
-      inputRef={columnInputRef}
-      searchInputRef={searchInputRef}
-      withSearchBox={!isAiMode}
-      header={
-        isAiMode ? undefined : (
-          <Stack
-            gap="sm"
-            onMouseDownCapture={() => {
-              focusedInputRef.current =
-                document.activeElement === searchInputRef.current
-                  ? searchInputRef.current
-                  : columnInputRef.current;
-            }}
-          >
-            <ColumnPickerModeControl value={mode} onChange={handleModeChange} />
-          </Stack>
-        )
-      }
       dropdownWidth={COLUMN_DROPDOWN_WIDTH}
       optionsMaxHeight={COLUMN_OPTIONS_MAX_HEIGHT}
       text={text}
       placeholder={placeholder}
-      emptyMessage={
-        mode === "popular" ? t`No popular columns yet` : t`No results`
-      }
+      emptyMessage={t`No results`}
       onTextChange={onTextChange}
       onOptionSubmit={handleSelect}
       onKeyDown={onKeyDown}
