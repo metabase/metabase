@@ -6,6 +6,8 @@
 
   &.rightSide {
     border-left: none;
+    /* Above the floating Metabot button (z-index 1) in the main content */
+    z-index: 2;
 
     &.isOpen {
       border-left: 1px solid var(--mb-color-border-neutral);

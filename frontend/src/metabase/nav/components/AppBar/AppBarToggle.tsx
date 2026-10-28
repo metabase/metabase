@@ -76,7 +76,7 @@ export function AppBarToggle({
           <Icon
             className={cx({ [S.toggleIconDimmed]: !isLogoVisible })}
             c={isLogoVisible ? "core-brand" : undefined}
-            size={20}
+            size={16}
             name={isNavBarOpen ? "sidebar_closed" : "sidebar_open"}
           />
         </Flex>

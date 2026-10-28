@@ -1,28 +1,11 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
 
-import { ErrorDiagnosticModalWrapper } from "metabase/common/components/ErrorPages/ErrorDiagnosticModal";
-import { trackErrorDiagnosticModalOpened } from "metabase/common/components/ErrorPages/analytics";
-import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { ForwardRefLink } from "metabase/common/components/Link";
-import { trackDataStudioOpened } from "metabase/common/data-studio/analytics";
-import { canAccessDataStudio as canAccessDataStudioSelector } from "metabase/common/data-studio/selectors";
-import { canAccessEmbeddingHub as canAccessEmbeddingHubSelector } from "metabase/common/embedding-hub/selectors";
-import { useHelpLink } from "metabase/common/hooks";
-import { trackMonitorOpened } from "metabase/common/monitor/analytics";
-import { canAccessMonitor as canAccessMonitorSelector } from "metabase/common/monitor/selectors";
 import { prepareInitials } from "metabase/common/utils/user";
 import { getUser } from "metabase/current-user";
 import { useDispatch, useSelector } from "metabase/redux";
-import { openDiagnostics } from "metabase/redux/app";
 import { logout } from "metabase/redux/auth";
-import { setOpenModal } from "metabase/redux/ui";
-import { getAdminPaths } from "metabase/selectors/admin";
-import {
-  getCanAccessOnboardingPage,
-  getIsNewInstance,
-} from "metabase/selectors/onboarding";
-import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   ActionIcon,
   Avatar,
@@ -34,175 +17,28 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import type { ColorName } from "metabase/ui/colors/types";
 import * as Urls from "metabase/urls";
-import type { IconName } from "metabase-types/api";
 
 import { AboutModal } from "../AboutModal/AboutModal";
 
 import S from "./AppSwitcher.module.css";
+import { HelpSubmenu, useAppMenuItems } from "./menu-items";
 import { useGetCurrentApp } from "./useGetCurrentApp";
 
-const CURRENT_APP_ICON_OVERRIDES: {
-  name: IconName;
-  c: ColorName;
-} = { name: "check_filled", c: "core-brand" };
-
 export const AppSwitcher = ({ className }: { className?: string }) => {
-  const [modalOpen, setModalOpen] = useState<string | null>(null);
-
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
   const dispatch = useDispatch();
-
   const user = useSelector(getUser);
-  const applicationName = useSelector(getApplicationName);
-
-  // generate the proper set of list items for the current user
-  // based on whether they're an admin or not
-  const adminItems = useSelector(getAdminPaths);
-  const canAccessOnboardingPage = useSelector(getCanAccessOnboardingPage);
-  const canAccessDataStudio = useSelector(canAccessDataStudioSelector);
-  const canAccessMonitor = useSelector(canAccessMonitorSelector);
-  const canAccessEmbeddingHub = useSelector(canAccessEmbeddingHubSelector);
-  const isNewInstance = useSelector(getIsNewInstance);
-  const helpLink = useHelpLink();
-
-  const openModal = (modalName: string) => {
-    setModalOpen(modalName);
-  };
-
-  const closeModal = () => {
-    setModalOpen(null);
-  };
-
   const currentApp = useGetCurrentApp();
-
-  const appsSection = useMemo(() => {
-    const showAdminSettingsItem = adminItems?.length > 0;
-
-    if (
-      !canAccessDataStudio &&
-      !canAccessMonitor &&
-      !canAccessEmbeddingHub &&
-      !showAdminSettingsItem
-    ) {
-      return null;
-    }
-
-    const items: React.ReactNode[] = [
-      <Menu.Item
-        key="main-app-link"
-        component={ForwardRefLink}
-        to="/"
-        leftSection={
-          <Icon
-            name="dashboard"
-            {...(currentApp === "main" ? CURRENT_APP_ICON_OVERRIDES : null)}
-          />
-        }
-      >
-        {t`Main app`}
-      </Menu.Item>,
-    ];
-
-    if (showAdminSettingsItem) {
-      items.push(
-        <Menu.Item
-          key="admin-app-link"
-          component={ForwardRefLink}
-          to={"/admin"}
-          leftSection={
-            <Icon
-              name="io"
-              {...(currentApp === "admin" ? CURRENT_APP_ICON_OVERRIDES : null)}
-            />
-          }
-        >{t`Admin`}</Menu.Item>,
-      );
-    }
-    if (canAccessDataStudio) {
-      items.push(
-        <Menu.Item
-          key="data-studio-app-link"
-          component={ForwardRefLink}
-          to={Urls.dataStudio()}
-          onAuxClick={trackDataStudioOpened}
-          onClickCapture={trackDataStudioOpened}
-          leftSection={
-            <Icon
-              name="table"
-              {...(currentApp === "data-studio"
-                ? CURRENT_APP_ICON_OVERRIDES
-                : null)}
-            />
-          }
-        >
-          {t`Data studio`}
-        </Menu.Item>,
-      );
-    }
-    if (canAccessMonitor) {
-      items.push(
-        <Menu.Item
-          key="monitor-app-link"
-          component={ForwardRefLink}
-          to={Urls.monitor()}
-          onAuxClick={trackMonitorOpened}
-          onClickCapture={trackMonitorOpened}
-          leftSection={
-            <Icon
-              name="pulse"
-              {...(currentApp === "monitor"
-                ? CURRENT_APP_ICON_OVERRIDES
-                : null)}
-            />
-          }
-        >
-          {t`Monitor`}
-        </Menu.Item>,
-      );
-    }
-    if (canAccessEmbeddingHub) {
-      items.push(
-        <Menu.Item
-          key="embedding-hub-link"
-          component={ForwardRefLink}
-          to={Urls.embeddingHub()}
-          leftSection={
-            <Icon
-              name="embed"
-              {...(currentApp === "embedding-hub"
-                ? CURRENT_APP_ICON_OVERRIDES
-                : null)}
-            />
-          }
-        >
-          {t`Embedding hub`}
-        </Menu.Item>,
-      );
-    }
-
-    return (
-      <>
-        <Divider key="app-sectiondivider" w="100%" my="sm" />
-        <Box px="lg">{items}</Box>
-      </>
-    );
-  }, [
-    canAccessDataStudio,
-    canAccessMonitor,
-    canAccessEmbeddingHub,
-    adminItems,
-    currentApp,
-  ]);
-
-  // If the instance is not new, we remove the link from the sidebar automatically and show it here instead!
-  const showOnboardingLink = !isNewInstance && canAccessOnboardingPage;
+  const appItems = useAppMenuItems();
+  // Only the main app is available: no apps section, the avatar is the target
+  const hasOtherApps = appItems.length > 1;
 
   return (
     <>
       <Menu position="bottom-end" shadow="sm" width={200} offset={9}>
         <Menu.Target>
-          {appsSection ? (
+          {hasOtherApps ? (
             <ActionIcon
               variant={currentApp === "admin" ? "on-dark-secondary" : "default"}
               radius="xl"
@@ -247,43 +83,17 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
           </Box>
 
           {/* Apps */}
-          {appsSection}
+          {hasOtherApps && (
+            <>
+              <Divider w="100%" my="sm" />
+              <Box px="lg">{appItems}</Box>
+            </>
+          )}
 
           {/* Logout and Help */}
           <Divider w="100%" my="sm" />
           <Box px="lg">
-            <Menu.Sub position="left-start" offset={20} closeDelay={350}>
-              <Menu.Sub.Target>
-                <Menu.Sub.Item>{t`Help`}</Menu.Sub.Item>
-              </Menu.Sub.Target>
-              <Menu.Sub.Dropdown data-testid="help-submenu">
-                {helpLink.visible && (
-                  <Menu.Item component={ExternalLink} href={helpLink.href}>
-                    {t`Get help`}
-                  </Menu.Item>
-                )}
-                {showOnboardingLink && (
-                  <Menu.Item component={ForwardRefLink} to="/getting-started">
-                    {/* eslint-disable-next-line metabase/no-literal-metabase-strings -- This string only shows for non-whitelabeled instances */}
-                    {t`How to use Metabase`}
-                  </Menu.Item>
-                )}
-
-                <Menu.Item
-                  onClick={() => dispatch(setOpenModal("help"))}
-                >{t`Keyboard shortcuts`}</Menu.Item>
-
-                <Menu.Item
-                  onClick={() => {
-                    trackErrorDiagnosticModalOpened("profile-menu");
-                    dispatch(openDiagnostics());
-                  }}
-                >{t`Download diagnostics`}</Menu.Item>
-                <Menu.Item onClick={() => openModal("about")}>
-                  {t`About ${applicationName}`}
-                </Menu.Item>
-              </Menu.Sub.Dropdown>
-            </Menu.Sub>
+            <HelpSubmenu onOpenAbout={() => setIsAboutOpen(true)} />
             <Menu.Item
               onClick={() => dispatch(logout())}
             >{t`Sign out`}</Menu.Item>
@@ -291,10 +101,7 @@ export const AppSwitcher = ({ className }: { className?: string }) => {
         </Menu.Dropdown>
       </Menu>
 
-      <AboutModal onClose={closeModal} opened={modalOpen === "about"} />
-      {modalOpen === "diagnostic" && (
-        <ErrorDiagnosticModalWrapper isModalOpen={true} onClose={closeModal} />
-      )}
+      <AboutModal onClose={() => setIsAboutOpen(false)} opened={isAboutOpen} />
     </>
   );
 };

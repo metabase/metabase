@@ -1,4 +1,5 @@
 import { AppBarToggle } from "metabase/nav/components/AppBar";
+import { NAV_TOGGLE_INSET } from "metabase/nav/constants";
 import { useDispatch } from "metabase/redux";
 import { toggleNavbar } from "metabase/redux/app";
 import { Box } from "metabase/ui";
@@ -14,7 +15,12 @@ export function CollapsedNavbarToggle() {
   const dispatch = useDispatch();
 
   return (
-    <Box className={S.toggle} px="md" data-testid="collapsed-navbar-toggle">
+    <Box
+      className={S.toggle}
+      pl={NAV_TOGGLE_INSET}
+      pr="md"
+      data-testid="collapsed-navbar-toggle"
+    >
       <AppBarToggle
         isNavBarEnabled
         isNavBarOpen={false}

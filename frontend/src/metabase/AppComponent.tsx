@@ -27,6 +27,7 @@ import { ContentViewportContext } from "metabase/common/context/ContentViewportC
 import CS from "metabase/css/core/index.css";
 import { EmbedSetupModals } from "metabase/embedding/embedding-iframe-sdk-setup/components/EmbedSetupModals";
 import { usePageTitle } from "metabase/hooks/use-page-title";
+import { MetabotFloatingButton } from "metabase/metabot/components/MetabotFloatingButton";
 import { useDispatch, useSelector } from "metabase/redux";
 import { setErrorPage } from "metabase/redux/app";
 import type { AppErrorDescriptor } from "metabase/redux/store";
@@ -35,6 +36,7 @@ import { getErrorPage, getIsNavbarOpen } from "metabase/selectors/app";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { useGetSettingsQuery, useTokenRefresh } from "metabase/settings";
 import { StatusListing } from "metabase/status/components/StatusListing";
+import { Box } from "metabase/ui";
 import { initializeIframeResizer } from "metabase/utils/dom";
 
 import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
@@ -125,17 +127,20 @@ export function App() {
             <AppContentContainer isAdminApp={isAdminApp}>
               {isCollapsedNavbarToggleVisible && <CollapsedNavbarToggle />}
               {isNavBarEnabled && <Navbar />}
-              <AppContent ref={setViewportElement}>
-                <ContentViewportContext.Provider
-                  value={viewportElement ?? null}
-                >
-                  <PageBreadcrumbsContext.Provider
-                    value={isAppBarVisible ? <AppBreadcrumbs /> : null}
+              <Box pos="relative" flex="1 1 0" miw={0} mih={0} h="100%">
+                <AppContent ref={setViewportElement}>
+                  <ContentViewportContext.Provider
+                    value={viewportElement ?? null}
                   >
-                    {errorPage ? getErrorComponent(errorPage) : <Outlet />}
-                  </PageBreadcrumbsContext.Provider>
-                </ContentViewportContext.Provider>
-              </AppContent>
+                    <PageBreadcrumbsContext.Provider
+                      value={isAppBarVisible ? <AppBreadcrumbs /> : null}
+                    >
+                      {errorPage ? getErrorComponent(errorPage) : <Outlet />}
+                    </PageBreadcrumbsContext.Provider>
+                  </ContentViewportContext.Provider>
+                </AppContent>
+                {isAppBarVisible && <MetabotFloatingButton />}
+              </Box>
               <UndoListing />
               <StatusListing />
               <NewModals />
