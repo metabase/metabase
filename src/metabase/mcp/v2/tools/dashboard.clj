@@ -4,9 +4,9 @@
 
    An update applies its ops as one save. A create writes the dashboard row, then applies the ops
    to it in a second save, both in one transaction. The ops are compiled against a blank dashboard
-   first so a malformed one fails before anything is written; the transaction covers what that
-   cannot catch, such as per-field parameter-mapping permission checks, which run only on the real
-   save. Either way a failed call leaves nothing behind.
+   first, so a malformed op fails before anything is written. The transaction covers failures that
+   compiling cannot catch, such as the per-field parameter-mapping permission checks that run only
+   on the real save. Either way a failed call leaves nothing behind.
 
    A whole dashboard's JSON cannot survive a round trip through model context, so callers send
    *ops*. This namespace reads current state, hands it to the pure compiler in

@@ -250,9 +250,8 @@
     :inline_parameters (not-empty (:inline_parameters dc))}))
 
 (defn- dashboard-parameters-summary
-  "One row per dashboard parameter: id, name, type, default, whether it is required, its value source, and the
-   ids of the dashcards it is wired to through their `:parameter_mappings`, including the negative ids of a dry
-   run's unsaved dashcards. The default and value source are echoed so an agent can see what it wrote."
+  "One row per dashboard parameter: id, name, type, default, required flag, value source, and wired dashcard ids.
+   The ids come from `:parameter_mappings`, so a dry run's unsaved dashcards appear under their negative ids."
   [dash]
   (let [param-id->dashcard-ids (reduce (fn [acc {dashcard-id :id :keys [parameter_mappings]}]
                                          (reduce #(update %1 (u/qualified-name (:parameter_id %2)) (fnil conj #{}) dashcard-id)
@@ -266,12 +265,16 @@
              {:id                   param-id
               :name                 (:name param)
               :type                 (:type param)
+              ;; Echoed so an agent can see the default and value source it just wrote.
               :default              (:default param)
               :required             (:required param)
               :values_source_type   (:values_source_type param)
               :values_source_config (:values_source_config param)
-              :dashcard_ids         (not-empty
-                                     (vec (sort (remove nil? (get param-id->dashcard-ids (u/qualified-name param-id))))))}))
+              :dashcard_ids         (->> (get param-id->dashcard-ids (u/qualified-name param-id))
+                                         (remove nil?)
+                                         sort
+                                         vec
+                                         not-empty)}))
           (:parameters dash))))
 
 (defn dashboard-row
@@ -297,9 +300,14 @@
 (def ^:private dashboard-sample
   (-> (zipmap dashboard-detailed-keys (repeat "x"))
       (assoc :tabs [{:id 1 :name "x"}]
-             :parameters [{:id "x" :name "x" :type "x" :default "x" :required true
-                           :values_source_type "x" :values_source_config {:values ["x"]}
-                           :dashcard_ids [1]}]
+             :parameters [{:id                   "x"
+                           :name                 "x"
+                           :type                 "x"
+                           :default              "x"
+                           :required             true
+                           :values_source_type   "x"
+                           :values_source_config {:values ["x"]}
+                           :dashcard_ids         [1]}]
              :dashcards [{:id 1 :kind "x" :card {:id 1 :name "x"} :text "x" :dashboard_tab_id 1
                           :row 0 :col 0 :size_x 1 :size_y 1 :series [{:id 1 :name "x"}]
                           :inline_parameters ["x"]}])))
