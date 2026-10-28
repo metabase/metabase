@@ -9,6 +9,7 @@
    [dev.dbt-import.schemas.resolved :as resolved]
    [dev.dbt-import.test-util :as tu :refer [fld]]
    [medley.core :as m]
+   [metabase.util.log.capture :as log.capture]
    [metabase.util.malli.registry :as mr])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -88,6 +89,28 @@
     (testing "entity ids are stable across runs"
       (is (= (map :entity-id (:metrics resolved))
              (map :entity-id (:metrics (resolve/resolve-manifest config (flexanalytics-ir)))))))))
+
+(deftest ^:parallel resolve-error-test
+  (testing "an exception while resolving one metric is logged and reported, and the other metrics are still converted"
+    ;; an integer literal wider than a Long is not a construct the SQL converter reports: `parse-number` throws
+    (let [bad-measure (assoc (tu/base-measure) :name "bad", :expr "sales * 99999999999999999999")
+          bad-metric  (fn [manifest]
+                        (-> (get-in manifest [:metrics "metric.p.m"])
+                            (assoc :name "bad", :unique_id "metric.p.bad")
+                            (assoc-in [:type_params :measure] (tu/input-measure {:name "bad"}))
+                            (assoc-in [:type_params :input_measures] [(tu/input-measure {:name "bad"})])))
+          manifest    (tu/build-manifest {:measures [(tu/base-measure) bad-measure]
+                                          :edit     #(assoc-in % [:metrics "metric.p.bad"] (bad-metric %))})]
+      (log.capture/with-log-messages-for-level [messages [dev.dbt-import.resolve :error]]
+        (let [resolved (tu/resolve-manifest-map manifest)]
+          (is (= ["m"] (map (comp :name :metric) (:metrics resolved))))
+          (is (= ["bad"] (map :name (:unsupported resolved))))
+          (is (re-find #"^error resolving metric \(java\.lang\.NumberFormatException\): For input string"
+                       (-> resolved :unsupported first :reason)))
+          (testing "the log carries the exception, with its stack"
+            (is (= [{:level :error, :message "Error resolving metric \"bad\""}]
+                   (map #(select-keys % [:level :message]) (messages))))
+            (is (instance? NumberFormatException (-> (messages) first :e)))))))))
 
 (deftest ^:parallel resolve-metric-test
   (let [ir              (flexanalytics-ir)

@@ -797,7 +797,11 @@
 (mu/defn resolve-metric :- [:or ::schemas.resolved/metric ::schemas.ir/unsupported]
   "Resolve one IR metric against the IR `semantic-models` (keyed by name), the metadata `providers` (keyed by Metabase
   database name, see [[metadata/providers]]) and `config`, or explain why it cannot be a Metabase metric. `inputs` is
-  what the metrics a ratio or derived metric refers to became (see [[resolve-manifest]]); a simple metric needs none."
+  what the metrics a ratio or derived metric refers to became (see [[resolve-manifest]]); a simple metric needs none.
+
+  A metric the converter does not support is reported with the reason (see [[sql/unsupported]]). Any other exception
+  while resolving a metric is a bug in the converter or an input it did not anticipate; it is logged with its stack
+  and reported the same way, so one bad metric does not stop the others from being written."
   ([config          :- ::schemas.resolved/config
     providers       :- [:map-of :string ::lib.schema.metadata/metadata-provider]
     semantic-models :- [:map-of :string ::schemas.ir/semantic-model]
@@ -813,12 +817,14 @@
      (case (:type metric)
        (:simple :cumulative) (resolve-simple config providers semantic-models metric)
        (:ratio :derived)     (resolve-composed config providers semantic-models inputs metric))
-     (catch ExceptionInfo e
-       (if (sql/unsupported? e)
-         {:name      (:name metric)
-          :unique-id (:unique-id metric)
-          :reason    (ex-message e)}
-         (throw e))))))
+     (catch Exception e
+       (when-not (sql/unsupported? e)
+         (log/errorf e "Error resolving metric %s" (pr-str (:name metric))))
+       {:name      (:name metric)
+        :unique-id (:unique-id metric)
+        :reason    (if (sql/unsupported? e)
+                     (ex-message e)
+                     (format "error resolving metric (%s): %s" (pr-str (class e)) (ex-message e)))}))))
 
 (mu/defn- order-metrics :- [:map
                             [:ordered [:sequential ::schemas.ir/metric]]
