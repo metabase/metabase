@@ -161,11 +161,12 @@
       (message/msg ["%s"] detail))))
 
 (defn compile-ops
-  "[[dashboard-ops/compile-ops]], with its errors rethrown as MCP teaching errors."
+  "[[dashboard-ops/compile-ops]], with its errors rethrown as MCP teaching errors.
+   Each teaching error keeps the compiler's error as its cause."
   [current ops cards]
   (try
     (dashboard-ops/compile-ops current ops cards)
     (catch clojure.lang.ExceptionInfo e
       (if-let [data (dashboard-ops/error-data e)]
-        (common/throw-teaching-error (error-message data))
+        (throw (common/message-ex-info (error-message data) {:status-code 400} e))
         (throw e)))))
