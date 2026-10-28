@@ -13,37 +13,50 @@ summary: Data apps are custom apps that an AI coding agent builds on your semant
 
 Data apps are custom apps that you build on your Metabase data. Like a dashboard, a data app shows charts and tables from your [semantic layer](../data-modeling/semantic-layer/library.md). But an app isn't limited to cards and filters on a grid: an app can have its own layout, its own pages, and forms that add, edit, or delete rows in your database. You can build apps like portals, review queues, and forms, without having to stand up a separate app and backend.
 
+A data app runs with the permissions of the person who opens it, so people see only the data that they're allowed to see. And an app can read and write data only through the questions, metrics, and actions in its own collection. See [what a data app can read and write](#what-a-data-app-can-read-and-write).
+
 ## How data apps work
 
-You build and maintain data apps with an AI agent locally with a development Metabase connected to your data warehouse. Check the app's code and bundle into your remote sync repository. Pull the changes into production, and then set up permissions.
+You build and maintain data apps with an AI agent locally with a development Metabase connected to your data warehouse. Check the app's code and bundle into your Remote Sync repository. Pull the changes into production, and then set up permissions.
 
 Your agent does most of the work, but here's an overview of the end-to-end process.
 
-1. Clone your [remote sync](../installation-and-operation/remote-sync.md) directory and create a new branch.
-2. Describe the app to an AI coding agent, like Claude Code or Codex, on your computer. "Create a Metabae data app to add, update, and delete products from the products table."
+1. Clone your [Remote Sync](../installation-and-operation/remote-sync.md) repository and create a new branch.
+2. Describe the app to an AI coding agent, like Claude Code or Codex, on your computer. "Create a Metabase data app to add, update, and delete products from the products table."
 3. The agent uses the [Metabase CLI](../installation-and-operation/metabase-cli.md) to create the app on your Metabase. The agent saves the questions and actions that the app runs to the [app's collection](#what-a-data-app-can-read-and-write).
-4. The agent writes the app's code in your remote sync directory on your computer. While the agent works, you [preview the app](#preview-the-app-on-your-computer) in your browser.
+4. The agent writes the app's code in your local clone of your Remote Sync repository. While the agent works, you [preview the app](#preview-the-app-on-your-computer) in your browser.
 5. The agent builds the app and uploads it to your Metabase. People open the app on your Metabase at `/apps/<slug>`.
-6. Commit your changes to your remote sync repository so that you (and other admins) can edit the app later.
+6. Commit your changes to your Remote Sync repository so that you (and other admins) can edit the app later.
 7. Pull the changes into your production Metabase.
-8. [Chooses which groups can open the app](./manage.md#choose-who-can-open-an-app). People see only the data that their permissions let them see.
-Only admins can edit an app's collection. You can't move the app's collection, move it to the trash, or make it official.
+8. [Choose which groups can open the app](./manage.md#choose-who-can-open-an-app). People see only the data that their permissions let them see.
 
 ## Requirements for data apps
 
 - A Pro or Enterprise plan.
 - An admin account. Only admins can create and manage apps.
 - An AI coding agent, like Claude Code or Codex.
-- `mb` CLI
+- The [Metabase CLI](../installation-and-operation/metabase-cli.md) (`mb`).
 - Node.js 22.12 or later on your computer.
 - A [semantic layer](../data-modeling/semantic-layer/library.md) with the [published tables](../data-modeling/semantic-layer/published-tables.md) and metrics that your apps will read. Your agent can do this for you when it's building the app, but ideally you only create data apps based on trusted data.
 - [Remote Sync](../installation-and-operation/remote-sync.md), to keep the source code, bundle, and collection for the data apps.
 - A development instance of Metabase, connected to your data warehouse, for you to build the app with.
-- OPTIONAL [Actions enabled](../data-modeling/models/actions/introduction.md#enabling-actions-for-a-database) on the databases that your apps write to.
+- [Actions enabled](../data-modeling/models/actions/introduction.md#enabling-actions-for-a-database) on the databases that your apps write to, if your apps write data.
+
+## What a data app can read and write
+
+A data app runs with the permissions of the person who opens it. Their [data permissions](../permissions/data.md), including [row and column security](../permissions/row-and-column-security.md), apply to everything the app reads. If row and column security applies to a person on any table in a database, that person can't run the app's actions on that database.
+
+An app runs only the items in its own collection, and the collection can hold only questions, metrics, and actions. When your agent saves an item to the collection, Metabase refuses the item if it breaks a rule. The main rules are:
+
+- Questions must be built with the query builder, not SQL. Questions can read only [published tables](../data-modeling/semantic-layer/published-tables.md) and metrics from your semantic layer, and the [segments](../data-modeling/semantic-layer/segments.md) and [measures](../data-modeling/semantic-layer/measures.md) of published tables. So questions can't start from or join another saved question or model.
+- Actions can be table actions, which insert, update, or delete one row of a published table, or SQL actions.
+- Items in the collection can't be archived or made public. Questions and metrics in the collection can't be embedded.
+
+Only admins can edit an app's collection. You can't move the app's collection, move it to the trash, or make it official.
 
 ## Set up your agent
 
-1. [Install the Metabase CLI](../installation-and-operation/metabase-cli.md#install-the-cli), and [log the CLI in](../installation-and-operation/metabase-cli.md#authenticate-the-cli) an admin to the Metabase where you build the app.
+1. [Install the Metabase CLI](../installation-and-operation/metabase-cli.md#install-the-cli), and [log the CLI in](../installation-and-operation/metabase-cli.md#authenticate-the-cli) as an admin to the Metabase where you build the app.
 2. Install the [metabase-cli skill](../installation-and-operation/metabase-cli.md#the-metabase-cli-skill) for your agent.
 
 The Metabase CLI comes with its own skills for building data apps.
@@ -85,8 +98,8 @@ Delete the key when you no longer need the preview.
 
 To change an app:
 
-1. Check out a new branch in your dev Metabase.
-2. Start your agent in a local clone of your remote sync repository, and check out that same branch.
+1. Check out a new branch in your development Metabase.
+2. Start your agent in a local clone of your Remote Sync repository, and check out that same branch.
 3. Ask for the change. The agent updates the code, builds the app again, and uploads the new version to the Metabase where you build the app.
 4. From your Metabase, push the changes to a remote branch.
 5. Stash your local changes.
@@ -96,7 +109,7 @@ To change an app:
 9. Merge the pull request.
 10. If your production Metabase isn't set up to auto-pull from your main branch, pull the changes manually.
 
-If you allow your agent to use git and manage commits, the agent can handle this git-wrangling for you.
+If you allow your agent to use Git and manage commits, the agent can handle this git-wrangling for you.
 
 Metabase keeps only the latest bundle for each app, so it has no version history for the app. To go back to an earlier version, ask your agent to build the app from an earlier version of the source code, and upload it again.
 
@@ -163,16 +176,6 @@ mb data-app update <slug> --body '{"allowed_hosts":["https://api.example.com"]}'
 The list replaces the app's allowed hosts, so include every origin that the app needs. Your agent can also change the list for you.
 
 The app can then get data from the site with `fetch`. The app can also show the site's images, embed the site's pages, and submit forms to the site. An origin that starts with `*.`, like `https://*.example.com`, matches subdomains, but not the domain itself.
-
-## What a data app can read and write
-
-A data app runs with the permissions of the person who opens it. Their [data permissions](../permissions/data.md), including [row and column security](../permissions/row-and-column-security.md), apply to everything the app reads. If row and column security applies to a person on any table in a database, that person can't run the app's actions on that database.
-
-An app runs only the items in its own collection, and the collection can hold only questions, metrics, and actions. When your agent saves an item to the collection, Metabase refuses the item if it breaks a rule. The main rules are:
-
-- Questions must be built with the query builder, not SQL. Questions can read only [published tables](../data-modeling/semantic-layer/published-tables.md) and metrics from your semantic layer, and the [segments](../data-modeling/semantic-layer/segments.md) and [measures](../data-modeling/semantic-layer/measures.md) of published tables. So questions can't start from or join another saved question or model.
-- Actions can be table actions, which insert, update, or delete one row of a published table, or SQL actions.
-- Items in the collection can't be archived or made public. Questions and metrics in the collection can't be embedded.
 
 ## Have fun
 

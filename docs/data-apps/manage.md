@@ -22,12 +22,7 @@ To open a live app, click the **three dots** on the app's row and select **Open 
 
 ## See what an app reads and writes
 
-In Data Studio, in the list of data apps, click the app's name. The app's page shows:
-
-- **Overview**: A preview of the app, and the app's status, address, and group access.
-- **Questions**: The questions that the app reads, but not its metrics.
-- **Actions**: The actions that the app uses to write data, with each action's definition and fields.
-- **Permissions**: The groups that can open the app.
+Before you let more people open an app, check which data the app reads and writes. In the list of data apps, click the app to see the questions that the app reads, the actions that the app uses to write data, and the groups that can open the app. The list of questions doesn't include the app's metrics. The app's **Overview** tab also has a preview of the app.
 
 ![Data app Overview tab](./images/data-apps-overview-tab.png)
 
