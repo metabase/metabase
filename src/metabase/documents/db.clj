@@ -15,7 +15,7 @@
 (mu/defn document :- [:maybe ::documents.schema/document]
   "The ::documents.schema/document with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/Document :id id))
+  (t2/select-one :model/Document :id [:auto/param id]))
 
 (mu/defn visible-unarchived-documents
   "The unarchived Documents not attached to an Exploration, in a Collection visible to the current user."

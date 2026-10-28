@@ -19,7 +19,7 @@
 (mu/defn notification-card :- [:maybe ::notification.schema/notification-card]
   "The ::notification.schema/notification-card with `notification-card-id`, or nil."
   [notification-card-id :- ms/PositiveInt]
-  (t2/select-one :model/NotificationCard :id notification-card-id))
+  (t2/select-one :model/NotificationCard :id [:auto/param notification-card-id]))
 
 (def ^:private NotificationRow
   "A whole Notification row for insert."
@@ -90,7 +90,7 @@
 (mu/defn notification :- [:maybe ::notification.schema/notification]
   "The ::notification.schema/notification with `notification-id`, or nil."
   [notification-id :- ms/PositiveInt]
-  (t2/select-one :model/Notification notification-id))
+  (t2/select-one :model/Notification :id [:auto/param notification-id]))
 
 (mu/defn notification-by-internal-id
   "The seeded Notification with `internal-id`, or nil."
@@ -258,7 +258,7 @@
 (mu/defn notification-subscription :- [:maybe ::notification.schema/notification-subscription]
   "The ::notification.schema/notification-subscription with `subscription-id`, or nil."
   [subscription-id :- ms/PositiveInt]
-  (t2/select-one :model/NotificationSubscription subscription-id))
+  (t2/select-one :model/NotificationSubscription :id [:auto/param subscription-id]))
 
 (mu/defn subscriptions-for-notifications
   "The NotificationSubscriptions of the Notifications with `notification-ids` (nil entries are ignored)."

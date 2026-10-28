@@ -20,7 +20,7 @@
 (mu/defn stored-result :- [:maybe ::queries.schema/stored-result]
   "The ::queries.schema/stored-result with `stored-result-id`, or nil."
   [stored-result-id :- ms/PositiveInt]
-  (t2/select-one :model/StoredResult :id stored-result-id))
+  (t2/select-one :model/StoredResult :id [:auto/param stored-result-id]))
 
 ;;; ------------------------------------------------ Cards ------------------------------------------------
 
@@ -62,7 +62,7 @@
 (mu/defn card :- [:maybe ::queries.schema/card]
   "The ::queries.schema/card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))
+  (t2/select-one :model/Card :id [:auto/param card-id]))
 
 (mu/defn cards
   "The Cards with `card-ids` (nil entries, e.g. from virtual dashcards, are ignored)."

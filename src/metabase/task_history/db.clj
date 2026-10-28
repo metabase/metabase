@@ -107,7 +107,7 @@
 (mu/defn task-run :- [:maybe ::task-history.schema/task-run]
   "The ::task-history.schema/task-run with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/TaskRun :id id))
+  (t2/select-one :model/TaskRun :id [:auto/param id]))
 
 (mu/defn tasks-for-run
   "The TaskHistory rows of the TaskRun with `run-id`, oldest first."

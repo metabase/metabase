@@ -12,7 +12,7 @@
 (mu/defn channel-template :- [:maybe ::channel.schema/channel-template]
   "The ::channel.schema/channel-template with `channel-template-id`, or nil."
   [channel-template-id :- ms/PositiveInt]
-  (t2/select-one :model/ChannelTemplate :id channel-template-id))
+  (t2/select-one :model/ChannelTemplate :id [:auto/param channel-template-id]))
 
 (def ^:private ChannelRow
   "A whole Channel row for insert or update."
@@ -41,7 +41,7 @@
 (mu/defn channel :- [:maybe ::channel.schema/channel]
   "The ::channel.schema/channel with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/Channel id))
+  (t2/select-one :model/Channel :id [:auto/param id]))
 
 (mu/defn update-channel!
   "Apply `changes` to the Channel with `id`, returning the number updated."

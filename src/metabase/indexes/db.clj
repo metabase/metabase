@@ -11,7 +11,7 @@
 (mu/defn table-index :- [:maybe ::indexes.schema/table-index]
   "The ::indexes.schema/table-index with `table-index-id`, or nil."
   [table-index-id :- ms/PositiveInt]
-  (t2/select-one :model/TableIndex :id table-index-id))
+  (t2/select-one :model/TableIndex :id [:auto/param table-index-id]))
 
 (def ^:private Status
   "Lifecycle states for a table index request. Mirrors `metabase.indexes.schema/statuses`; duplicated here (rather

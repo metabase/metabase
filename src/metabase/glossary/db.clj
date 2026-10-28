@@ -28,7 +28,7 @@
 (mu/defn glossary :- [:maybe ::glossary.schema/glossary]
   "The ::glossary.schema/glossary with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/Glossary :id id))
+  (t2/select-one :model/Glossary :id [:auto/param id]))
 
 (mu/defn update-glossary-entry!
   "Set the term and definition of the Glossary entry with `id`."

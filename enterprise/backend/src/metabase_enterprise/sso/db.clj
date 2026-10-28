@@ -10,7 +10,7 @@
 (mu/defn sso-relay-state :- [:maybe ::sso.schema/sso-relay-state]
   "The ::sso.schema/sso-relay-state with `hashed-key`, or nil."
   [hashed-key :- :string]
-  (t2/select-one :model/SsoRelayState :id hashed-key))
+  (t2/select-one :model/SsoRelayState :id [:auto/param hashed-key]))
 
 (mu/defn session-user-email-and-source
   "The email and SSO source of the Session with `session-key-hashed`, plus the identifiers the IdP

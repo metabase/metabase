@@ -58,6 +58,6 @@
    slack-msg-id :- :string]
   (t2/select-one-fn :user_id
                     :model/MetabotMessage
-                    :channel_id   channel-id
-                    :slack_msg_id slack-msg-id
+                    :channel_id   [:auto/param channel-id]
+                    :slack_msg_id [:auto/param slack-msg-id]
                     :role         "assistant"))

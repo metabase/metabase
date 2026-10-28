@@ -20,12 +20,12 @@
 (mu/defn permissions-group-membership :- [:maybe ::permissions.schema/permissions-group-membership]
   "The ::permissions.schema/permissions-group-membership with `permissions-group-membership-id`, or nil."
   [permissions-group-membership-id :- ms/PositiveInt]
-  (t2/select-one :model/PermissionsGroupMembership :id permissions-group-membership-id))
+  (t2/select-one :model/PermissionsGroupMembership :id [:auto/param permissions-group-membership-id]))
 
 (mu/defn permissions-group :- [:maybe ::permissions.schema/permissions-group]
   "The ::permissions.schema/permissions-group with `permissions-group-id`, or nil."
   [permissions-group-id :- ms/PositiveInt]
-  (t2/select-one :model/PermissionsGroup :id permissions-group-id))
+  (t2/select-one :model/PermissionsGroup :id [:auto/param permissions-group-id]))
 
 ;;; --------------------------------------------- DataPermissions ---------------------------------------------
 

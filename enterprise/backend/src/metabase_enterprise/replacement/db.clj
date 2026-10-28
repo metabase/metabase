@@ -19,7 +19,7 @@
 (mu/defn replacement-run :- [:maybe ::replacement.schema/replacement-run]
   "The ::replacement.schema/replacement-run with `run-id`, or nil."
   [run-id :- ms/PositiveInt]
-  (t2/select-one :model/ReplacementRun :id run-id))
+  (t2/select-one :model/ReplacementRun :id [:auto/param run-id]))
 
 (mu/defn runs
   "The ReplacementRuns, newest first, restricted to the `is-active` flag when given."

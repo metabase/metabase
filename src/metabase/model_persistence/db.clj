@@ -95,7 +95,7 @@
 (mu/defn persisted-info :- [:maybe ::model-persistence.schema/persisted-info]
   "The ::model-persistence.schema/persisted-info with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/PersistedInfo :id id))
+  (t2/select-one :model/PersistedInfo :id [:auto/param id]))
 
 (mu/defn persisted-info-for-card
   "The PersistedInfo of the Card with `card-id`, or nil."

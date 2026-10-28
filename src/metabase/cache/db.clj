@@ -38,7 +38,7 @@
 (mu/defn cache-config :- [:maybe ::cache.schema/cache-config]
   "The ::cache.schema/cache-config with `pk`, or nil."
   [pk :- ms/PositiveInt]
-  (t2/select-one :model/CacheConfig pk))
+  (t2/select-one :model/CacheConfig :id [:auto/param pk]))
 
 (mu/defn root-ttl-cache-config
   "The root TTL CacheConfig, or nil."

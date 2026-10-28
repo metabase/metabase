@@ -17,12 +17,12 @@
 (mu/defn transform-job-run :- [:maybe ::transforms.schema/transform-job-run]
   "The ::transforms.schema/transform-job-run with `transform-job-run-id`, or nil."
   [transform-job-run-id :- ms/PositiveInt]
-  (t2/select-one :model/TransformJobRun :id transform-job-run-id))
+  (t2/select-one :model/TransformJobRun :id [:auto/param transform-job-run-id]))
 
 (mu/defn transform-dag-run :- [:maybe ::transforms.schema/transform-dag-run]
   "The ::transforms.schema/transform-dag-run with `transform-dag-run-id`, or nil."
   [transform-dag-run-id :- ms/PositiveInt]
-  (t2/select-one :model/TransformDagRun :id transform-dag-run-id))
+  (t2/select-one :model/TransformDagRun :id [:auto/param transform-dag-run-id]))
 
 (def ^:private no-active-run-clause
   "Honey SQL clause matching TransformRunCancelation rows whose run is no longer active."
@@ -38,7 +38,7 @@
 (mu/defn transform :- [:maybe ::transforms.schema/transform]
   "The ::transforms.schema/transform with `transform-id`, or nil."
   [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one :model/Transform :id transform-id))
+  (t2/select-one :model/Transform :id [:auto/param transform-id]))
 
 (mu/defn transforms
   "The Transforms with `transform-ids`."
@@ -90,7 +90,7 @@
 (mu/defn transform-tag :- [:maybe ::transforms.schema/transform-tag]
   "The ::transforms.schema/transform-tag with `tag-id`, or nil."
   [tag-id :- ms/PositiveInt]
-  (t2/select-one :model/TransformTag :id tag-id))
+  (t2/select-one :model/TransformTag :id [:auto/param tag-id]))
 
 (mu/defn existing-tag-ids
   "The subset of `tag-ids` that exist."
@@ -172,7 +172,7 @@
 (mu/defn transform-job :- [:maybe ::transforms.schema/transform-job]
   "The ::transforms.schema/transform-job with `job-id`, or nil."
   [job-id :- ms/PositiveInt]
-  (t2/select-one :model/TransformJob :id job-id))
+  (t2/select-one :model/TransformJob :id [:auto/param job-id]))
 
 (mu/defn active-jobs
   "The active TransformJobs."
@@ -228,7 +228,7 @@
 (mu/defn transform-run :- [:maybe ::transforms.schema/transform-run]
   "The ::transforms.schema/transform-run with `run-id`, or nil."
   [run-id :- ms/PositiveInt]
-  (t2/select-one :model/TransformRun :id run-id))
+  (t2/select-one :model/TransformRun :id [:auto/param run-id]))
 
 (mu/defn runs
   "The TransformRuns with `run-ids`."

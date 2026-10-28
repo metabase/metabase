@@ -21,7 +21,7 @@
 (mu/defn data-app :- [:maybe ::data-apps.schema/data-app]
   "The ::data-apps.schema/data-app with `data-app-id`, or nil."
   [data-app-id :- ms/PositiveInt]
-  (t2/select-one :model/DataApp :id data-app-id))
+  (t2/select-one :model/DataApp :id [:auto/param data-app-id]))
 
 (mu/defn data-app-by-slug
   "The DataApp named `slug` without its bundle, or nil."

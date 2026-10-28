@@ -24,7 +24,7 @@
 (mu/defn python-library :- [:maybe ::transforms-python.schema/python-library]
   "The ::transforms-python.schema/python-library with `library-id`, or nil."
   [library-id :- ms/PositiveInt]
-  (t2/select-one :model/PythonLibrary library-id))
+  (t2/select-one :model/PythonLibrary :id [:auto/param library-id]))
 
 (mu/defn python-library-by-path
   "The PythonLibrary at `path`, or nil."

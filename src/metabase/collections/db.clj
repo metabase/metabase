@@ -27,12 +27,12 @@
 (mu/defn collection :- [:maybe ::collections.schema/collection]
   "The ::collections.schema/collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one :model/Collection :id collection-id))
+  (t2/select-one :model/Collection :id [:auto/param collection-id]))
 
 (mu/defn collection-location-columns
   "The location, id, and type of the Collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one [:model/Collection :location :id :type] :id collection-id))
+  (t2/select-one [:model/Collection :location :id :type] :id [:auto/param collection-id]))
 
 (mu/defn collection-of-type
   "The ::collections.schema/collection of `type`, or nil."

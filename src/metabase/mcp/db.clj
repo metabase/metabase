@@ -19,7 +19,7 @@
 (mu/defn mcp-session-log :- [:maybe ::mcp.schema/mcp-session-log]
   "The ::mcp.schema/mcp-session-log with `mcp-session-log-id`, or nil."
   [mcp-session-log-id :- :string]
-  (t2/select-one :model/McpSessionLog :id mcp-session-log-id))
+  (t2/select-one :model/McpSessionLog :id [:auto/param mcp-session-log-id]))
 
 (defn select-one-by-id
   "The `model` row with primary key `id`, or nil. `id` must already be an integer - ids arriving from an agent

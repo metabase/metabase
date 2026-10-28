@@ -86,7 +86,7 @@
 (mu/defn revision :- [:maybe ::revisions.schema/revision]
   "The ::revisions.schema/revision with `revision-id`, or nil."
   [revision-id :- ms/PositiveInt]
-  (t2/select-one :model/Revision :id revision-id))
+  (t2/select-one :model/Revision :id [:auto/param revision-id]))
 
 (mu/defn dashcards
   "The DashboardCards of the Dashboard with `dashboard-id`."

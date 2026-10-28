@@ -26,7 +26,7 @@
 (mu/defn segment :- [:maybe ::segments.schema/segment]
   "The ::segments.schema/segment with `id`, or nil."
   [id :- ::lib.schema.id/segment]
-  (t2/select-one :model/Segment :id id))
+  (t2/select-one :model/Segment :id [:auto/param id]))
 
 (mu/defn unarchived-segments
   "The unarchived Segments, in case-insensitive name order."

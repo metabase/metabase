@@ -22,7 +22,7 @@
 (mu/defn exploration :- [:maybe ::explorations.schema/exploration]
   "The ::explorations.schema/exploration with `exploration-id`, or nil."
   [exploration-id :- ms/PositiveInt]
-  (t2/select-one :model/Exploration :id exploration-id))
+  (t2/select-one :model/Exploration :id [:auto/param exploration-id]))
 
 (defn- my-explorations-query
   "The query for the Explorations `user-id` created or edited, ordered by that user's most-recent
@@ -113,7 +113,7 @@
 (mu/defn exploration-thread :- [:maybe ::explorations.schema/exploration-thread]
   "The ::explorations.schema/exploration-thread with `thread-id`, or nil."
   [thread-id :- ms/PositiveInt]
-  (t2/select-one :model/ExplorationThread :id thread-id))
+  (t2/select-one :model/ExplorationThread :id [:auto/param thread-id]))
 
 (mu/defn thread-in-exploration?
   "Whether the ExplorationThread with `thread-id` belongs to the Exploration with `exploration-id`."
@@ -226,7 +226,7 @@
 (mu/defn exploration-block :- [:maybe ::explorations.schema/exploration-block]
   "The ::explorations.schema/exploration-block with `block-id`, or nil."
   [block-id :- ms/PositiveInt]
-  (t2/select-one :model/ExplorationBlock :id block-id))
+  (t2/select-one :model/ExplorationBlock :id [:auto/param block-id]))
 
 (mu/defn block-for-page
   "The ExplorationBlock owning the ExplorationPage with `page-id`, or nil."
@@ -279,7 +279,7 @@
 (mu/defn exploration-page :- [:maybe ::explorations.schema/exploration-page]
   "The ::explorations.schema/exploration-page with `page-id`, or nil."
   [page-id :- ms/PositiveInt]
-  (t2/select-one :model/ExplorationPage :id page-id))
+  (t2/select-one :model/ExplorationPage :id [:auto/param page-id]))
 
 (mu/defn page-id-for-key
   "The ID of the ExplorationPage of the given block, Card, dimension, and query type, or nil."
@@ -343,7 +343,7 @@
 (mu/defn exploration-query :- [:maybe ::explorations.schema/exploration-query]
   "The ::explorations.schema/exploration-query with `query-id`, or nil."
   [query-id :- ms/PositiveInt]
-  (t2/select-one :model/ExplorationQuery :id query-id))
+  (t2/select-one :model/ExplorationQuery :id [:auto/param query-id]))
 
 (mu/defn runnable-query
   "The pending ExplorationQuery with `query-id` on an uncanceled thread, or nil."

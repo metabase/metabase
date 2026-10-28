@@ -29,7 +29,7 @@
 (mu/defn metabot :- [:maybe ::metabot.schema/metabot]
   "The ::metabot.schema/metabot with `metabot-id`, or nil."
   [metabot-id :- ms/PositiveInt]
-  (t2/select-one :model/Metabot :id metabot-id))
+  (t2/select-one :model/Metabot :id [:auto/param metabot-id]))
 
 (mu/defn metabot-by-entity-id
   "The Metabot with `entity-id`, or nil."
@@ -146,7 +146,7 @@
 (mu/defn metabot-conversation :- [:maybe ::metabot.schema/metabot-conversation]
   "The ::metabot.schema/metabot-conversation with `conversation-id`, or nil."
   [conversation-id :- :string]
-  (t2/select-one :model/MetabotConversation :id conversation-id))
+  (t2/select-one :model/MetabotConversation :id [:auto/param conversation-id]))
 
 (mu/defn lock-conversation
   "The MetabotConversation with `conversation-id`, locked for update."

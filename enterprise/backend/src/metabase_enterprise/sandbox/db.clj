@@ -18,7 +18,7 @@
 (mu/defn sandbox :- [:maybe ::sandbox.schema/sandbox]
   "The ::sandbox.schema/sandbox with `sandbox-id`, or nil."
   [sandbox-id :- ::lib.schema.id/sandbox]
-  (t2/select-one :model/Sandbox :id sandbox-id))
+  (t2/select-one :model/Sandbox :id [:auto/param sandbox-id]))
 
 (mu/defn sandboxes
   "Every Sandbox, in ID order."

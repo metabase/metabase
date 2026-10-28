@@ -13,7 +13,7 @@
 (mu/defn tenant :- [:maybe ::tenants.schema/tenant]
   "The ::tenants.schema/tenant with `tenant-id`, or nil."
   [tenant-id :- ms/PositiveInt]
-  (t2/select-one :model/Tenant :id tenant-id))
+  (t2/select-one :model/Tenant :id [:auto/param tenant-id]))
 
 (mu/defn tenant-by-slug
   "The Tenant with `slug`, or nil."

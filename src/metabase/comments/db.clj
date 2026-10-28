@@ -54,7 +54,7 @@
 (mu/defn comment :- [:maybe ::comments.schema/comment]
   "The ::comments.schema/comment with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/Comment :id id))
+  (t2/select-one :model/Comment :id [:auto/param id]))
 
 (mu/defn comment-recipient-emails
   "The emails of the Users to notify about a comment: the authors of the Comment with `parent-comment-id` and of its
