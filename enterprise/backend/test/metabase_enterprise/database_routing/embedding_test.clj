@@ -3,7 +3,7 @@
   (:require
    [buddy.sign.jwt :as jwt]
    [clojure.test :refer [deftest is testing]]
-   [metabase-enterprise.database-routing.e2e-test :refer [execute-statement! with-routing-setup!]]
+   [metabase-enterprise.database-routing.test-util :refer [execute-statement! with-routing-setup!]]
    [metabase-enterprise.test :as met]
    [metabase.driver.settings :as driver.settings]
    [metabase.test :as mt]

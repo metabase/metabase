@@ -3,12 +3,15 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-sensitivity.context :as context]
+   [metabase-enterprise.database-routing.test-util :as routing.tu]
    [metabase-enterprise.impersonation.util-test :as impersonation.util-test]
    [metabase-enterprise.sandbox.test-util :as met]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
+   [metabase.driver.settings :as driver.settings]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
 
@@ -324,3 +327,16 @@
         (is (= "this database uses database routing" (get-in result [:packet :sample :error])))))
     (testing "a superuser on a routed database gets values"
       (is (values-sent? (:packet (mt/with-current-user (mt/user->id :crowberto) (current-user-packet!))))))))
+
+(deftest routed-database-superuser-samples-router-test
+  (mt/with-premium-features #{:database-routing}
+    (binding [driver.settings/*allow-testing-h2-connections* true]
+      (routing.tu/with-routing-setup! [router-db [[dest-1 "destination-db-1"]]]
+        (mt/with-temp [:model/DatabaseRouter _ {:database_id (u/the-id router-db) :user_attribute "db_name"}]
+          (routing.tu/execute-statement! router-db "INSERT INTO \"my_database_name\" (str) VALUES ('router-marker')")
+          (routing.tu/execute-statement! dest-1 "INSERT INTO \"my_database_name\" (str) VALUES ('destination-marker')")
+          (met/with-user-attributes! :crowberto {"db_name" "destination-db-1"}
+            (testing "a superuser whose routing attribute names a destination gets the router's rows in the packet"
+              (let [packet (table-packet (t2/select-one :model/Table :db_id (u/the-id router-db)))]
+                (is (nil? (get-in packet [:sample :error])))
+                (is (= [["router-marker"]] (mapv :sample_values (:fields packet))))))))))))

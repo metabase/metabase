@@ -1,4 +1,4 @@
-(ns macros.metabase-enterprise.database-routing.e2e-test)
+(ns macros.metabase-enterprise.database-routing.test-util)
 
 (defmacro with-temp-dbs! [bindings & body]
   `(let [~@(interleave bindings (repeat nil))]
