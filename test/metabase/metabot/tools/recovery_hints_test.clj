@@ -59,9 +59,7 @@
                                             :source-table     42})]
     (is (= (str "Call `read_resource` with `metabase://model/7/fields` to list the foreign-key columns "
                 "this model returns.")
-           hint))
-    (is (not (str/includes? hint "<numeric id>")))
-    (is (not (str/includes? hint "metabase://table/")))))
+           hint))))
 
 (deftest ^:parallel hints-keep-the-placeholder-without-an-id-test
   (doseq [[data expected] [[{:error :unknown-table}                  list-tables-hint]
