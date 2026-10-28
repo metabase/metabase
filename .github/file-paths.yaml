@@ -293,7 +293,7 @@ e2e_infra: &e2e_infra
   - "e2e/**/!(*.cy.spec.@(js|jsx|ts|tsx))"
   - "frontend/build/**"
   - "patches/**"
-  - ".github/scripts/build-e2e-matrix.js"
+  - ".github/scripts/build-e2e-matrix.ts"
   - ".github/file-paths.yaml"
 
 e2e_all: &e2e_all

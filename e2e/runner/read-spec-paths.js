@@ -1,5 +1,9 @@
 const { readFileSync } = require("node:fs");
 
+/**
+ * @param {string | undefined} pathsFile
+ * @returns {string[] | null} null when no paths file is given
+ */
 function readSpecPaths(pathsFile) {
   if (!pathsFile) {
     return null;
