@@ -137,6 +137,22 @@ describe("data app embedding setup", () => {
     expect(screen.queryByTitle("Data app preview")).not.toBeInTheDocument();
   });
 
+  it("clears a missing preselected app when the loaded app list is empty", async () => {
+    setupDataApps({ resourceType: "data-app", resourceId: "removed-app" }, []);
+
+    await waitFor(() =>
+      expect(screen.getByRole("textbox", { name: "Data app" })).toBeEnabled(),
+    );
+
+    expect(screen.getByRole("textbox", { name: "Data app" })).toHaveValue("");
+    await waitFor(
+      () =>
+        expect(screen.getByRole("button", { name: "Get code" })).toBeDisabled(),
+      { timeout: 1000 },
+    );
+    expect(screen.queryByTitle("Data app preview")).not.toBeInTheDocument();
+  });
+
   it("hides the data app option without the data apps feature", async () => {
     setup();
 
