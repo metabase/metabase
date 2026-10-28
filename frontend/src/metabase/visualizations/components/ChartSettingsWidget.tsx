@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { CSSProperties, ComponentType } from "react";
+import type { CSSProperties, ComponentType, ReactNode } from "react";
 
 import FormS from "metabase/css/components/form.module.css";
 import { PLUGIN_CUSTOM_VIZ } from "metabase/plugins";
@@ -16,6 +16,8 @@ type Props = {
   title?: string;
   description?: string;
   hint?: string;
+  /** At the far end of the title's row, e.g. a button that serves the widget. */
+  titleAction?: ReactNode;
   hidden?: boolean;
   widget?:
     | string
@@ -36,6 +38,7 @@ const ChartSettingsWidget = ({
   title,
   description,
   hint,
+  titleAction,
   hidden,
   variant = "default",
   inline = false,
@@ -77,6 +80,7 @@ const ChartSettingsWidget = ({
               <Icon name="info" size={14} />
             </Tooltip>
           )}
+          {titleAction !== undefined && <Box ml="auto">{titleAction}</Box>}
         </Group>
       )}
       {description && (

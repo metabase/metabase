@@ -38,6 +38,8 @@ export type SettingDefinition<
   getTitle?: (context: TContext, settings: S) => string;
   /** Shown in a tooltip on an info icon next to the title. */
   getHint?: () => string;
+  /** Shown at the far end of the title's row, e.g. a button the widget relies on. */
+  TitleAction?: ComponentType;
   group?: SettingGroup;
   /** Renders the title and widget on one line. */
   inline?: boolean;
@@ -78,6 +80,7 @@ export type SettingWidget = {
   secondary?: boolean;
   title?: string;
   hint?: string;
+  TitleAction?: ComponentType;
   hidden: boolean;
   value: unknown;
   props: Record<string, unknown>;

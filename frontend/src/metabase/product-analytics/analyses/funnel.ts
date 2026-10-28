@@ -6,6 +6,7 @@ import type { ColorName } from "metabase/ui/colors/types";
 import * as Lib from "metabase-lib";
 import type { VisualizationSettings } from "metabase-types/api";
 
+import { EventSegmentsToggle } from "../components/events/EventSegmentsToggle";
 import { DisqualifierListWidget } from "../components/settings/DisqualifierListWidget";
 import { DurationWidget } from "../components/settings/DurationWidget";
 import { EventDefinitionListWidget } from "../components/settings/EventDefinitionListWidget";
@@ -130,6 +131,7 @@ const SETTINGS: AnalysisSettingDefinitions<FunnelSettings> = {
   },
   "funnel.steps": withWidgetProps({
     getTitle: () => t`The journey you want people to complete`,
+    TitleAction: EventSegmentsToggle,
     getSection: () => "setup",
     widget: EventDefinitionListWidget,
     getDefault: () => [],

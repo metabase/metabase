@@ -41,7 +41,7 @@ type EventDefinitionListWidgetProps = SettingWidgetProps<EventDefinition[]> & {
   table: Table | undefined;
   addLabel?: string;
   dropLabel?: string;
-  /** Empty slots shown until the list has this many events. */
+  /** Empty slots to open with, until the list has this many events. */
   minSlots?: number;
 };
 
@@ -51,10 +51,10 @@ type EventDefinitionListWidgetProps = SettingWidgetProps<EventDefinition[]> & {
  * edit first, or discards it when it can't be submitted. Nothing can be
  * dragged during an edit.
  *
- * The add button adds an empty slot, to click and define or drop a segment
- * on. A palette segment dropped on an item becomes one more of its
- * conditions; dropped on an empty slot or the zone below the list, it's a
- * new event.
+ * The list opens with empty slots up to `minSlots`, and the add button adds
+ * one more and opens its editor right away; any empty slot can be removed.
+ * A palette segment dropped on an item becomes one more of its conditions;
+ * dropped on an empty slot or the zone below the list, it's a new event.
  */
 export const EventDefinitionListWidget = ({
   id,
@@ -72,15 +72,15 @@ export const EventDefinitionListWidget = ({
   const sensors = useDndSensors({ distance: DRAG_DISTANCE });
   // `value.length` while adding a new event.
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  // Empty slots added with the add button, beyond the `minSlots` ones.
-  const [addedSlotCount, setAddedSlotCount] = useState(0);
+  // Empty slots, the new event's included while it's being added. The list
+  // opens with enough to reach `minSlots`; each can be filled or removed.
+  const [slotCount, setSlotCount] = useState(() =>
+    Math.max(0, minSlots - value.length),
+  );
   const isAdding = editingIndex === value.length;
   const isDragDisabled = editingIndex !== null;
   // The editor for a new event takes the first empty slot's place.
-  const emptySlotCount = Math.max(
-    0,
-    Math.max(0, minSlots - value.length) + addedSlotCount - (isAdding ? 1 : 0),
-  );
+  const emptySlotCount = Math.max(0, slotCount - (isAdding ? 1 : 0));
   const emptySlotLabel = isPaletteOpen
     ? t`Drag an event segment here`
     : t`Click to define this step`;
@@ -90,17 +90,12 @@ export const EventDefinitionListWidget = ({
     [value],
   );
 
-  // A new event fills the first empty slot: a `minSlots` one while there are
-  // any, then one that was added.
-  const fillSlot = () => {
-    if (value.length >= minSlots) {
-      setAddedSlotCount((count) => Math.max(0, count - 1));
-    }
-  };
+  // A slot goes when a new event fills it or it's removed.
+  const removeSlot = () => setSlotCount((count) => Math.max(0, count - 1));
 
   const handleSubmit = (event: EventDefinition) => {
     if (isAdding) {
-      fillSlot();
+      removeSlot();
     }
     onChange(
       isAdding
@@ -141,7 +136,7 @@ export const EventDefinitionListWidget = ({
       return;
     }
     if (atIndex >= value.length) {
-      fillSlot();
+      removeSlot();
     }
     onChange(
       atIndex >= value.length
@@ -226,6 +221,7 @@ export const EventDefinitionListWidget = ({
                 onDrop: (segment) => handleDropSegment(segment, value.length),
               }}
               onEdit={() => setEditingIndex(value.length)}
+              onRemove={removeSlot}
             />
           </ListRow>
         );
@@ -245,7 +241,10 @@ export const EventDefinitionListWidget = ({
           variant="light"
           leftSection={<Icon name="add" />}
           disabled={tableQuery === undefined}
-          onClick={() => setAddedSlotCount((count) => count + 1)}
+          onClick={() => {
+            setSlotCount((count) => count + 1);
+            setEditingIndex(value.length);
+          }}
         >
           {addLabel}
         </Button>

@@ -110,13 +110,18 @@ const SectionWidgets = ({ widgets, section }: SectionWidgetsProps) => {
   const secondary = visible.filter((widget) => widget.secondary);
   return (
     <>
-      {primary.map((widget) => (
-        <ChartSettingsWidget key={widget.id} {...widget} style={WIDGET_STYLE} />
-      ))}
+      {primary.map(renderWidget)}
       {secondary.length > 0 && <Divider mb="xl" />}
-      {secondary.map((widget) => (
-        <ChartSettingsWidget key={widget.id} {...widget} style={WIDGET_STYLE} />
-      ))}
+      {secondary.map(renderWidget)}
     </>
   );
 };
+
+const renderWidget = ({ TitleAction, ...widget }: SettingWidget) => (
+  <ChartSettingsWidget
+    key={widget.id}
+    {...widget}
+    titleAction={TitleAction !== undefined ? <TitleAction /> : undefined}
+    style={WIDGET_STYLE}
+  />
+);
