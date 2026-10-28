@@ -208,7 +208,7 @@ describe("useRegisterShortcut", () => {
     expect(trackKeyboardShortcutPerformed).not.toHaveBeenCalled();
   });
 
-  it("registers nothing without a kbar provider", () => {
+  it("does not throw without a kbar provider", () => {
     const perform = mockPerform();
 
     expect(() =>
