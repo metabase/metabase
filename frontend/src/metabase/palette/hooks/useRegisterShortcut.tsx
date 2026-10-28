@@ -1,5 +1,6 @@
 import { type ActionImpl, KBarContext, useRegisterActions } from "kbar";
 import { type DependencyList, useContext } from "react";
+import { useLatest } from "react-use";
 
 import { type KeyboardShortcutId, shortcuts } from "../shortcuts";
 import type { ShortcutAction } from "../types";
@@ -34,6 +35,15 @@ export const composeKeywords = (
     .join(", ");
 };
 
+/**
+ * Registers keyboard shortcuts with kbar, when a kbar provider is present.
+ *
+ * `deps` must cover the inputs of every field other than `perform`, such as
+ * `name`, `section`, `icon`, `keywords` and `shortcut`. A shortcut always runs the
+ * `perform` from the latest render, so `perform` needs no deps. A change in the
+ * list of ids registers the shortcuts again. Without a kbar provider, the hook
+ * registers nothing.
+ */
 export const useRegisterShortcut = (
   shortcutsToRegister: RegisterShortcutProps[],
   deps: DependencyList = [],
@@ -45,9 +55,24 @@ export const useRegisterShortcut = (
   // side effects
 
   const ctx = useContext(KBarContext);
+  const latestShortcuts = useLatest(shortcutsToRegister);
+  const ids = shortcutsToRegister.map(({ id }) => id).join(",");
+
+  // kbar keeps the last action of a repeated id, so the last entry wins here too.
+  // https://github.com/timc1/kbar/blob/v0.1.0-beta.45/src/action/ActionInterface.ts
+  const performLatest = (
+    id: KeyboardShortcutId,
+    action: ActionImpl,
+    event?: KeyboardEvent,
+  ) => {
+    const shortcut = latestShortcuts.current.findLast(
+      (candidate) => candidate.id === id,
+    );
+    shortcut?.perform(action, event);
+  };
 
   const actions = ctx.query
-    ? shortcutsToRegister.map(({ id, perform, ...rest }) => {
+    ? shortcutsToRegister.map(({ id, perform: _perform, ...rest }) => {
         const shortcutDef = shortcuts[id];
 
         if (shortcutDef === undefined && !rest.shortcut) {
@@ -60,7 +85,7 @@ export const useRegisterShortcut = (
           ...shortcutDef,
           id,
           perform: (action: ActionImpl, event?: KeyboardEvent) => {
-            perform(action, event);
+            performLatest(id, action, event);
             if (event) {
               trackKeyboardShortcutPerformed(id);
             }
@@ -71,5 +96,5 @@ export const useRegisterShortcut = (
       })
     : [];
 
-  useRegisterActions(actions, [...deps]);
+  useRegisterActions(actions, [...deps, ids, ctx.query]);
 };
