@@ -3130,6 +3130,56 @@
   query)
 
 ;;; ============================================================
+;;; Passes 4.5 to 5.7 over every join's own stages
+;;;
+;;; A join's `stages` are a query of their own, with the same kinds of by-name refs. Until they
+;;; are typed, the join can't be resolved, so Pass 4.7 can't type or check refs to its columns
+;;; either. The passes run over each join's stages first, innermost join first, and an agent
+;;; error raised inside a join says which one.
+;;; ============================================================
+
+(declare infer-field-types*)
+
+(defn- infer-join-field-types
+  "`join` with Passes 4.5 to 5.7 run over its own `stages`, as a query against `database`."
+  [join database mp content-store stage-idx]
+  (if-not (and (map? join) (vector? (get join "stages")))
+    join
+    (try
+      (assoc join "stages" (-> (cond-> {"lib/type" "mbql/query" "stages" (get join "stages")}
+                                 database (assoc "database" database))
+                               (infer-field-types* mp content-store)
+                               (get "stages")))
+      (catch clojure.lang.ExceptionInfo e
+        (if (:agent-error? (ex-data e))
+          (let [alias (get join "alias")]
+            (throw (ex-info (format "In join %s of stage %d: %s" (quoting/quoted alias) stage-idx (ex-message e))
+                            (assoc (ex-data e) :join-alias alias :join-stage stage-idx)
+                            e)))
+          (throw e))))))
+
+(defn- infer-field-types*
+  "Passes 4.5, 4.7, 5 and 5.7, after running them over every join's own stages. No-op without `mp`."
+  [query mp content-store]
+  (if-not (and mp (map? query) (vector? (get query "stages")))
+    query
+    (-> query
+        (update "stages" (fn [stages]
+                           (into []
+                                 (map-indexed
+                                  (fn [idx stage]
+                                    (let [stage-idx (repr/original-stage-index query idx)
+                                          typed     #(infer-join-field-types % (get query "database") mp content-store stage-idx)]
+                                      (cond-> stage
+                                        (and (map? stage) (sequential? (get stage "joins")))
+                                        (update "joins" (partial mapv typed))))))
+                                 stages)))
+        (infer-source-card-field-types* mp content-store)
+        (repair-join-alias-refs* mp content-store)
+        (infer-cross-stage-field-types* mp content-store)
+        (assert-cross-stage-refs-resolved* mp content-store))))
+
+;;; ============================================================
 ;;; Pass 6 -- friendly error messages for silently-accepted-but-wrong shapes.
 ;;;
 ;;; lib's schema is intentionally shape-only and does not catch a number of patterns where
@@ -3469,6 +3519,8 @@
        LLM naming a column that doesn't exist (often a display label); raise an `:agent-error?`
        naming it and listing the valid columns, instead of letting it pass through into a
        schema-invalid, non-runnable query (BOT-1442).
+    Passes 4.5 to 5.7 run over every join's own stages first, innermost first, since a join
+    can't be resolved until its own by-name refs are typed.
 
   Pass 4, Pass 4.5, Pass 4.7, Pass 5, and Pass 5.7 require `mp` (a `MetadataProvider`); they are
   best-effort no-ops when `mp` can't resolve the relevant pieces (so the subsequent
@@ -3510,10 +3562,7 @@
        hoist-temporal-buckets*
        (resolve-source-field-join-alias* mp content-store)
        (resolve-implicit-joins* mp content-store)
-       (infer-source-card-field-types* mp content-store)
-       (repair-join-alias-refs* mp content-store)
-       (infer-cross-stage-field-types* mp content-store)
-       (assert-cross-stage-refs-resolved* mp content-store)
+       (infer-field-types* mp content-store)
        friendly-errors*)))
 
 ;;; ============================================================

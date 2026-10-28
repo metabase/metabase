@@ -4145,6 +4145,27 @@
     (testing "the ref isn't typed from the previous stage's same-named column, and nothing is raised"
       (is (= min-ref (get-in (repair* q) ["stages" 1 "filters" 0 2]))))))
 
+(deftest ^:parallel join-stages-field-types-test
+  (let [two-stage (fn [column] [first-orders-stage (stage {"filters" [["not-null" {} ["field" {} column]]]})])
+        joined    (fn [join-stages field-ref] (query (orders-stage {"joins"   [(join "Two" join-stages)]
+                                                                    "filters" [["not-null" {} field-ref]]})))]
+    (testing "a by-name ref in a join's second stage is typed, so a ref to the join's column is too"
+      (let [out (repair* (joined (two-stage "min") (join-ref "Two" "min")))]
+        (is (= "type/Date" (base-type (get-in out ["stages" 0 "joins" 0 "stages" 1 "filters" 0 2]))))
+        (is (= "type/Date" (base-type (get-in out ["stages" 0 "filters" 0 2]))))
+        (is (= out (repair* out)))))
+    (testing "a by-name ref to a nested join's column is typed, and so is the ref to the outer join"
+      (let [inner (orders-stage {"joins"   [(join "First" [first-orders-stage])]
+                                 "filters" [["not-null" {} (join-ref "First" "min")]]})
+            out   (repair* (query (orders-stage {"joins"   [(join "Outer" [inner])]
+                                                 "filters" [["not-null" {} (join-ref "Outer" "TOTAL")]]})))]
+        (is (= "type/Date" (base-type (get-in out ["stages" 0 "joins" 0 "stages" 0 "filters" 0 2]))))
+        (is (= "type/Float" (base-type (get-in out ["stages" 0 "filters" 0 2]))))))
+    (testing "a bad name inside a join is reported with the join it is in"
+      (let [e (repair-error (joined (two-stage "nope") (join-ref "Two" "min")))]
+        (is (=? {:error :unresolved-cross-stage-field :join-alias "Two" :join-stage 0 :stage 1} e))
+        (is (str/starts-with? (:message e) "In join \"Two\" of stage 0: No column named \"nope\""))))))
+
 (deftest ^:parallel previous-stage-ref-in-join-condition-test
   (let [joined-on (fn [lhs] (query first-orders-stage (stage {"joins" [(join "First" [first-orders-stage] :lhs lhs)]})))]
     (testing "a by-name ref to the previous stage in a join's conditions is typed from that stage"
