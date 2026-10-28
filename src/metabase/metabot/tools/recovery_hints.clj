@@ -60,8 +60,8 @@
 (defn- placeholder-hint
   "The v1 recovery sentence for an agent error's `ex-data`, or nil.
 
-  Some hints keep a `<numeric id>` placeholder. [[recovery-hint]] fills it only for the codes in
-  `hint-id-fns`, and only when that code's function reads a `pos-int?` id from `data`."
+  Some hints keep a `<numeric id>` placeholder. [[recovery-hint]] fills it only when
+  [[recoverable.pipeline/error-ids]] reads a `pos-int?` id for the code from `data`."
   [{:keys [error entity-type entity-id humanized] :as data}]
   (case error
     :invalid-representations-query
@@ -121,22 +121,11 @@
 
     nil))
 
-(def ^:private hint-id-fns
-  "For each code whose hint can name a real id, the function that reads that id from the `ex-data`."
-  ;; Repair and resolve throw these errors. The permission sweep query-checks the tables of
-  ;; `:table-id` and `:source-table` before repair and resolve run.
-  {:unknown-table   recoverable.pipeline/readable-database-id
-   :ambiguous-table recoverable.pipeline/readable-database-id
-   :unknown-field   :table-id
-   :ambiguous-fk    :source-table})
-
 (defn- hint-id
   "The id that the hint for `data` names, or nil when its code names none or the id is not a `pos-int?`."
   [{:keys [error] :as data}]
-  (when-let [id-fn (hint-id-fns error)]
-    (let [id (id-fn data)]
-      (when (pos-int? id)
-        id))))
+  (let [{:keys [table-id database-id]} (recoverable.pipeline/error-ids error data)]
+    (some #(when (pos-int? %) %) [table-id database-id])))
 
 (defn- with-id
   "`hint` with its `<numeric id>` replaced by `id`, or unchanged when either is nil."
