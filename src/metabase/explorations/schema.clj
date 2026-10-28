@@ -58,15 +58,24 @@
   [:map {:closed true}
    [:dimension-id   ms/UUIDString]
    [:display-name   {:optional true} [:maybe :string]]
-   [:effective-type {:optional true} [:maybe [:or :keyword :string]]]
-   [:semantic-type  {:optional true} [:maybe [:or :keyword :string]]]])
+   [:effective-type {:optional true} [:maybe :string]]
+   [:semantic-type  {:optional true} [:maybe :string]]])
+
+(mr/def ::exploration-block.selected-dimension
+  "One entry of the `:dimensions` column of a ExplorationBlock as selected, with the types read back as keywords."
+  [:merge
+   ::exploration-block.dimension
+   [:map {:closed true}
+    [:effective-type {:optional true} [:maybe :keyword]]
+    [:semantic-type  {:optional true} [:maybe :keyword]]]])
 
 (mr/def ::exploration-block
   "A ExplorationBlock as selected from the app DB: every column of `:exploration_block`."
   [:merge
    ::exploration-block.update
    [:map {:closed true}
-    [:id                    ms/PositiveInt]]])
+    [:id                    ms/PositiveInt]
+    [:dimensions            {:optional true} [:maybe [:sequential ::exploration-block.selected-dimension]]]]])
 
 (mr/def ::exploration-block.update
   "What an update (or insert) of a ExplorationBlock accepts: every column of `:exploration_block` except `id`, all optional."
