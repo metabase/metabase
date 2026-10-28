@@ -221,6 +221,16 @@
       (is (= ::sql.edit/edit-not-found (get-in result [:error :code])))
       (is (str/includes? (:output result) "SQL for this edit: \"SELECT 'owl'\\n-- \\u001b[4mnotes\"")))))
 
+(def ^:private native-refusal
+  {:class        :unrecoverable
+   :code         ::sql.common/no-native-permission
+   :user-message (str "You do not have permission to write SQL queries against this database."
+                      " Native query permissions are required.")})
+
+(def ^:private notebook-fallback
+  {:class :recoverable
+   :code  ::sql/no-native-permission-with-notebook-fallback})
+
 (deftest sql-edit-permission-error-test
   (mt/with-temp [:model/Database {db-id :id :as db} {:engine :h2}]
     (mt/with-no-data-perms-for-all-users!
@@ -235,16 +245,11 @@
                                                     :new_query "SELECT 2"})]]
               (testing (str tool-name " without the notebook builder")
                 (let [result (invoke :sql)]
-                  (is (= {:class :unrecoverable
-                          :code ::sql.common/no-native-permission
-                          :user-message "You do not have permission to write SQL queries against this database. Native query permissions are required."}
-                         (:error result)))
+                  (is (= native-refusal (:error result)))
                   (is (str/includes? (:output result) "Don't retry"))))
               (testing (str tool-name " with the notebook builder")
                 (let [result (invoke :internal)]
-                  (is (= {:class :recoverable
-                          :code  ::sql/no-native-permission-with-notebook-fallback}
-                         (:error result)))
+                  (is (= notebook-fallback (:error result)))
                   (is (str/includes? (:output result) "Build the question with `construct_notebook_query`")))))))))))
 
 (deftest missing-sql-editor-test
@@ -283,20 +288,16 @@
   (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
     (mt/with-no-data-perms-for-all-users!
       (perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
-      (doseq [[permission profile expected-error]
+      (doseq [:let [access-denied {:class        :unrecoverable
+                                   :code         ::sql.create/database-access-denied
+                                   :user-message "You do not have access to this database."}]
+              [permission profile expected-error]
               [[:query-builder-and-native :internal nil]
-               [:query-builder-and-native :sql nil]
-               [:query-builder :internal {:class :recoverable
-                                          :code ::sql/no-native-permission-with-notebook-fallback}]
-               [:query-builder :sql {:class :unrecoverable
-                                     :code ::sql.common/no-native-permission
-                                     :user-message "You do not have permission to write SQL queries against this database. Native query permissions are required."}]
-               [:no :internal {:class :unrecoverable
-                               :code ::sql.create/database-access-denied
-                               :user-message "You do not have access to this database."}]
-               [:no :sql {:class :unrecoverable
-                          :code ::sql.create/database-access-denied
-                          :user-message "You do not have access to this database."}]]]
+               [:query-builder-and-native :sql      nil]
+               [:query-builder            :internal notebook-fallback]
+               [:query-builder            :sql      native-refusal]
+               [:no                       :internal access-denied]
+               [:no                       :sql      access-denied]]]
         (perms/set-database-permission! (perms-group/all-users) db-id :perms/create-queries permission)
         (mt/with-current-user (mt/user->id :rasta)
           (testing (str permission " " profile)
