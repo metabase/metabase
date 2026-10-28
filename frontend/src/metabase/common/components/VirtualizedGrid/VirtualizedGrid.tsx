@@ -6,13 +6,15 @@ import _ from "underscore";
 import { Box, type BoxProps, SimpleGrid, useMatches } from "metabase/ui";
 import type { BreakpointName } from "metabase/ui/theme";
 
+export type GridItemOrder = "row" | "column";
+
 type VirtualizedGridProps<T> = {
   items: T[];
   keyExtractor: (item: T) => Key;
   renderItem: (item: T) => ReactNode;
   columnsPerRow: Record<BreakpointName, number>;
   estimatedRowHeight: number;
-  itemOrder?: "row" | "column";
+  itemOrder?: GridItemOrder;
   overscan?: number;
 } & Omit<BoxProps, "children">;
 
