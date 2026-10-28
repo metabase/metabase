@@ -114,6 +114,24 @@
              (mapv fixup
                    (recent-views (mt/user->id :rasta))))))))
 
+(deftest parent-collection-type-test
+  (testing "recent cards and dashboards carry their parent collection's type, when it has one"
+    (mt/with-temp
+      [:model/Collection {library-coll-id :id} {:name "Library dashboards" :type collection/library-dashboards-collection-type}
+       :model/Collection {regular-coll-id :id} {:name "regular"}
+       :model/Dashboard  {library-dash-id :id} {:name "library dash" :collection_id library-coll-id}
+       :model/Dashboard  {regular-dash-id :id} {:name "regular dash" :collection_id regular-coll-id}
+       :model/Card       {dq-id :id}           {:name "dashboard question" :dashboard_id library-dash-id}]
+      (doseq [[model id] [[:model/Dashboard library-dash-id] [:model/Dashboard regular-dash-id] [:model/Card dq-id]]]
+        (recent-views/update-users-recent-views! (mt/user->id :rasta) model id :view))
+      (is (= {[:dashboard library-dash-id] {:id library-coll-id :name "Library dashboards" :authority_level nil :type "library-dashboards"}
+              [:dashboard regular-dash-id] {:id regular-coll-id :name "regular" :authority_level nil}
+              [:card dq-id]                {:id library-coll-id :name "Library dashboards" :authority_level nil :type "library-dashboards"}}
+             (mt/with-test-user :rasta
+               (into {}
+                     (map (juxt (juxt :model :id) #(into {} (:parent_collection %))))
+                     (recent-views (mt/user->id :rasta)))))))))
+
 (deftest simple-get-list-dashboard-test
   (mt/with-temp
     [:model/Collection {coll-id :id} {:name "my coll"}
