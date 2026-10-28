@@ -4145,6 +4145,15 @@
     (testing "the ref isn't typed from the previous stage's same-named column, and nothing is raised"
       (is (= min-ref (get-in (repair* q) ["stages" 1 "filters" 0 2]))))))
 
+(deftest ^:parallel previous-stage-ref-in-join-condition-test
+  (let [joined-on (fn [lhs] (query first-orders-stage (stage {"joins" [(join "First" [first-orders-stage] :lhs lhs)]})))]
+    (testing "a by-name ref to the previous stage in a join's conditions is typed from that stage"
+      (is (= "type/Integer"
+             (base-type (get-in (repair* (joined-on ["field" {} "USER_ID"])) ["stages" 1 "joins" 0 "conditions" 0 2])))))
+    (testing "a bad name there raises the cross-stage error"
+      (is (=? {:error :unresolved-cross-stage-field :clause ["field" {} "nope"]}
+              (repair-error (joined-on ["field" {} "nope"])))))))
+
 (deftest ^:parallel join-alias-field-type-runs-before-cross-stage-inference-test
   (testing "a stage carrying a join-alias ref still resolves as the next stage's prefix"
     (let [out (repair* (query (orders-stage {"joins"       [(join "First" [first-orders-stage])]
