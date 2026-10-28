@@ -248,6 +248,17 @@ export interface MetabotEmbedOptions {
   token?: never;
 }
 
+export interface DataAppEmbedOptions {
+  componentName: "metabase-data-app";
+  path: string;
+
+  theme?: never;
+  template?: never;
+  questionId?: never;
+  dashboardId?: never;
+  token?: never;
+}
+
 type CollectionBrowserEntityTypes =
   | "collection"
   | "dashboard"
@@ -310,7 +321,8 @@ export type SdkIframeEmbedTemplateSettings =
   | QuestionEmbedOptions
   | ExplorationEmbedOptions
   | BrowserEmbedOptions
-  | MetabotEmbedOptions;
+  | MetabotEmbedOptions
+  | DataAppEmbedOptions;
 
 /** Settings used by the sdk embed route */
 export type SdkIframeEmbedSettings = Omit<
