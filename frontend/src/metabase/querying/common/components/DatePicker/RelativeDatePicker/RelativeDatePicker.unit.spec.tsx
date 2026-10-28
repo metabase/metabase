@@ -104,6 +104,26 @@ describe("RelativeDatePicker", () => {
     });
   });
 
+  it("should not lose the 'Include current' switch state when navigating from Past to Next tab", async () => {
+    setup({
+      value: {
+        type: "relative",
+        value: -30,
+        unit: "day",
+        options: { includeCurrent: true },
+      },
+    });
+
+    expect(screen.getByRole("tab", { name: "Previous" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    expect(screen.getByLabelText("Include today")).toBeChecked();
+
+    await userEvent.click(screen.getByRole("tab", { name: "Next" }));
+    expect(screen.getByLabelText("Include today")).toBeChecked();
+  });
+
   it("should not lose values when navigating from Past to Next tab", async () => {
     setup();
 
