@@ -14,7 +14,7 @@ const {
   REVIEWS_ID,
 } = SAMPLE_DATABASE;
 
-describe("scenarios > filters > smoke", () => {
+describe("scenarios > filters", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -104,6 +104,47 @@ describe("scenarios > filters > smoke", () => {
       cy.findByText("4,784").should("be.visible"); // Gizmo
       cy.findByText("Doohickey").should("not.exist");
     });
+  });
+
+  it("should add a filter to the first stage of a question summarized twice (metabase#15620)", () => {
+    H.visitQuestionAdhoc({
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-query": {
+            "source-table": PRODUCTS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              ["field", PRODUCTS.CREATED_AT, { "temporal-unit": "month" }],
+            ],
+          },
+          aggregation: [
+            ["avg", ["field", "count", { "base-type": "type/Integer" }]],
+          ],
+        },
+      },
+    });
+
+    cy.findByTestId("scalar-value").contains("5.41");
+    H.filter();
+    H.popover().within(() => {
+      cy.findByText("Category").click();
+      cy.findByText("Gizmo").click();
+      cy.button("Apply filter").click();
+    });
+    H.openNotebook();
+
+    H.verifyNotebookQuery("Products", [
+      {
+        filters: ["Category is Gizmo"],
+        aggregations: ["Count"],
+        breakouts: ["Created At: Month"],
+      },
+      {
+        aggregations: ["Average of Count"],
+      },
+    ]);
   });
 
   it("should combine GUI and custom expression filters in the notebook and remove one of them (metabase#16198)", () => {
@@ -283,6 +324,25 @@ describe("scenarios > filters > smoke", () => {
     H.popover().contains("isEmpty([Reviewer])");
     H.CustomExpressionEditor.clear().type("NOT IsEmpty([Reviewer])").blur();
     cy.button("Update").click();
+    H.queryBuilderMain().contains("Showing 1,112 rows");
+
+    cy.log("is empty on a numeric column converts to isNull");
+    H.tableHeaderClick("Rating");
+    H.popover().findByText("Filter by this column").click();
+    H.selectFilterOperator("Is empty");
+    H.popover().button("Add filter").click();
+    H.queryBuilderMain().contains("Showing 0 rows");
+
+    H.queryBuilderFiltersPanel().findByText("Rating is empty").click();
+    H.popover().within(() => {
+      cy.icon("chevronleft").click();
+      cy.findByText("Custom Expression").click();
+    });
+    H.popover().contains("isNull([Rating])");
+    H.CustomExpressionEditor.clear()
+      .type("NOT IsNull([Rating])", { delay: 50 })
+      .blur();
+    cy.button("Update").should("not.be.disabled").click();
     H.queryBuilderMain().contains("Showing 1,112 rows");
 
     cy.log("case-insensitive filters keep their option");

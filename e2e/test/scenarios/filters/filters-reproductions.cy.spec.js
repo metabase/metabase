@@ -947,3 +947,42 @@ describe("issue QUE-2567", () => {
     });
   });
 });
+
+describe("issue 14307", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("user shouldn't need to scroll to add filter (metabase#14307)", () => {
+    cy.viewport(1280, 720);
+    H.openPeopleTable({ mode: "notebook" });
+    H.filter({ mode: "notebook" });
+    H.popover().findByText("State").click({ force: true });
+    H.popover().findByText("AL").click();
+    cy.button("Add filter").isVisibleInPopover();
+  });
+});
+
+describe("filter picker keyboard navigation", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should render the selected item in view", () => {
+    cy.viewport(1280, 320);
+    H.openReviewsTable({ mode: "notebook" });
+    H.filter({ mode: "notebook" });
+
+    Cypress._.times(7, () => cy.realPress("ArrowDown"));
+
+    H.popover()
+      .findByRole("tree")
+      .then((el) => {
+        cy.wrap(el[0].scrollTop).should("be.greaterThan", 0);
+      });
+
+    H.popover().findByText("Created At").should("be.visible");
+  });
+});
