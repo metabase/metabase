@@ -243,6 +243,8 @@ categories:
             url: "data-modeling/tools/graph"
           - name: "Replace data sources"
             url: "data-modeling/tools/replace-data-sources"
+      - name: "Data actions"
+        url: "data-modeling/data-actions"
       - name: "Editable tables"
         url: "data-modeling/editable-tables"
       - name: "Models"
