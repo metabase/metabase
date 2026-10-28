@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { useListRecentsQuery, useSearchQuery } from "metabase/api";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Box, Flex, Skeleton } from "metabase/ui";
 import {
@@ -61,6 +62,7 @@ interface DatasetsListProps {
    * that belong to other dashboards.
    */
   dashboardId: DashboardId | undefined;
+  isLibraryDashboard: boolean;
 }
 
 export function DatasetsList({
@@ -69,6 +71,7 @@ export function DatasetsList({
   style,
   muted,
   dashboardId,
+  isLibraryDashboard: isLibraryScoped,
 }: DatasetsListProps) {
   const dispatch = useDispatch();
   const dataSources = useSelector(getDataSources);
@@ -108,10 +111,19 @@ export function DatasetsList({
     [dispatch, setDataSourceCollapsed],
   );
 
+  // a library dashboard may only reference library questions, so its search is
+  // confined to the Library (its metrics plus this dashboard's own questions)
+  // and recents, which can come from anywhere, are not offered
+  const { data: libraryCollection, isLoading: isLibraryLoading } =
+    PLUGIN_LIBRARY.useGetLibraryCollection({ skip: !isLibraryScoped });
+  const isLibraryUnavailable =
+    isLibraryScoped && !isLibraryLoading && libraryCollection == null;
+
   const { data: allRecents, isFetching: isListRecentsFetching } =
     useListRecentsQuery(
       { include_metadata: true },
       {
+        skip: isLibraryScoped,
         refetchOnMountOrArgChange: true,
       },
     );
@@ -122,18 +134,20 @@ export function DatasetsList({
         q: search.length > 0 ? search : undefined,
         limit: search.length > 0 ? SEARCH_LIMIT : NO_QUERY_SEARCH_LIMIT,
         models: ["card", "dataset", "metric"],
+        ...(isLibraryScoped &&
+          libraryCollection != null && { collection: libraryCollection.id }),
         include_dashboard_questions: true,
         include_metadata: true,
         context: "data-picker",
       },
       {
-        skip: muted,
+        skip: muted || isLibraryLoading || isLibraryUnavailable,
         refetchOnMountOrArgChange: true,
       },
     );
 
   const debouncedIsFetching = useDebouncedValue(
-    isSearchFetching || isListRecentsFetching,
+    isSearchFetching || isListRecentsFetching || isLibraryLoading,
     300, // Adjust debounce duration as needed
     (_lastValue, newValue) => newValue === true, // We want instant updates when loading ends
   );
@@ -151,7 +165,15 @@ export function DatasetsList({
   );
 
   const items: Item[] | undefined = useMemo(() => {
-    if (!search && dataSources.length === 0) {
+    if (isLibraryLoading) {
+      return;
+    }
+
+    if (isLibraryUnavailable) {
+      return [];
+    }
+
+    if (!search && dataSources.length === 0 && !isLibraryScoped) {
       if (!allRecents) {
         return;
       }
@@ -225,6 +247,9 @@ export function DatasetsList({
     allRecents,
     search,
     dataSources.length,
+    isLibraryScoped,
+    isLibraryLoading,
+    isLibraryUnavailable,
   ]);
 
   if (muted) {

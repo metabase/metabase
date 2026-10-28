@@ -9,6 +9,7 @@ import {
 } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { Api } from "metabase/api";
+import { undoReducer } from "metabase/redux/undo";
 import {
   createMockCard,
   createMockDashboard,
@@ -25,7 +26,11 @@ const NEW_DASHCARD_TEMP_ID = -1;
 const NEW_DASHCARD_REAL_ID = 99;
 const CARD_ID = 1;
 
-function setup() {
+interface SetupOpts {
+  saveError?: { status: number; body: unknown };
+}
+
+function setup({ saveError }: SetupOpts = {}) {
   const database = createSampleDatabase();
 
   // The card the user added during editing only exists locally, with a
@@ -80,12 +85,13 @@ function setup() {
       dashboard: dashboardReducers,
       entities: (state = {}) => state,
       settings: (state = {}) => state,
+      undo: undoReducer,
     },
     state,
     [Api.middleware],
   );
 
-  fetchMock.put("path:/api/dashboard/1", savedDashboard);
+  fetchMock.put("path:/api/dashboard/1", saveError ?? savedDashboard);
   setupDashboardQueryMetadataEndpoint(
     savedDashboard,
     createMockDashboardQueryMetadata({ databases: [database] }),
@@ -117,5 +123,29 @@ describe("updateDashboardAndCards", () => {
     expect(
       fetchMock.callHistory.called("path:/api/dashboard/1", { method: "GET" }),
     ).toBe(false);
+    expect(store.getState().undo).toEqual([]);
   });
+
+  it.each([
+    {
+      status: 400,
+      body: { message: "Only Library questions fit here." },
+      message: "Only Library questions fit here.",
+    },
+    { status: 500, body: {}, message: "Couldn't save the dashboard" },
+  ])(
+    "shows a $status save failure as a toast and rethrows it",
+    async ({ status, body, message }) => {
+      const { store } = setup({ saveError: { status, body } });
+
+      await expect(store.dispatch(updateDashboardAndCards())).rejects.toEqual(
+        expect.objectContaining({ status }),
+      );
+
+      expect(store.getState().undo).toEqual([
+        expect.objectContaining({ message, icon: "warning" }),
+      ]);
+      expect(store.getState().dashboard.editingDashboard).not.toBeNull();
+    },
+  );
 });

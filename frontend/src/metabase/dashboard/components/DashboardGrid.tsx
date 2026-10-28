@@ -5,16 +5,9 @@ import type { ConnectedProps } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { isLibraryDashboard } from "metabase/common/collections/utils";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
-import {
-  type OmniPickerItem,
-  type OmniPickerQuestionItem,
-  isInCollectionTree,
-} from "metabase/common/components/Pickers";
-import {
-  QuestionPickerModal,
-  getQuestionPickerValue,
-} from "metabase/common/components/Pickers/QuestionPicker";
+import type { OmniPickerQuestionItem } from "metabase/common/components/Pickers";
 import { ContentViewportContext } from "metabase/common/context/ContentViewportContext";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { getVisibleCardIds } from "metabase/dashboard/utils";
@@ -71,6 +64,7 @@ import { DashCard } from "./DashCard/DashCard";
 import DashCardS from "./DashCard/DashCard.module.css";
 import { FIXED_WIDTH } from "./Dashboard/DashboardComponents";
 import S from "./DashboardGrid.module.css";
+import { ReplaceCardModal } from "./ReplaceCardModal";
 import { GridLayout } from "./grid/GridLayout";
 
 type GridBreakpoint = "desktop" | "mobile";
@@ -389,20 +383,6 @@ class DashboardGridInner extends Component<
       handleClose();
     };
 
-    const shouldDisableItem = (item: OmniPickerItem) => {
-      // don't allow adding items that are already saved in a different dashboard
-      // proably only applicable to search and recents
-      if (isInCollectionTree(item) && item.dashboard_id) {
-        if (item.dashboard_id !== dashboard.id) {
-          return true;
-        }
-      }
-      if (item.model === "dashboard" && item.id !== dashboard.id) {
-        return true;
-      }
-      return false;
-    };
-
     const handleClose = () => {
       this.setState({ replaceCardModalDashCard: null });
     };
@@ -412,18 +392,11 @@ class DashboardGridInner extends Component<
     }
 
     return (
-      <QuestionPickerModal
-        title={t`Pick what you want to replace this with`}
-        value={
-          replaceCardModalDashCard.card.id
-            ? getQuestionPickerValue(replaceCardModalDashCard.card)
-            : undefined
-        }
-        models={["card", "dataset", "metric", "dashboard"]}
-        options={{ hasConfirmButtons: false }}
-        onChange={handleSelect}
+      <ReplaceCardModal
+        dashboard={dashboard}
+        dashcard={replaceCardModalDashCard}
+        onSelect={handleSelect}
         onClose={handleClose}
-        isDisabledItem={shouldDisableItem}
       />
     );
   }
@@ -550,6 +523,7 @@ class DashboardGridInner extends Component<
         saveLabel={t`Save`}
         allowSaveWhenPristine={allowSaveWhenPristine}
         dashboardId={this.props.dashboard.id}
+        isLibraryDashboard={isLibraryDashboard(this.props.dashboard)}
       />
     );
   }

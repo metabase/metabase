@@ -1,12 +1,9 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import type { OmniPickerItem } from "metabase/common/components/Pickers";
-import {
-  QuestionPickerModal,
-  isInCollectionTree,
-} from "metabase/common/components/Pickers";
+import type { OmniPickerQuestionItem } from "metabase/common/components/Pickers";
 import { replaceCard } from "metabase/dashboard/actions";
+import { ReplaceCardModal } from "metabase/dashboard/components/ReplaceCardModal";
 import { useDispatch } from "metabase/redux";
 import { Button, Flex } from "metabase/ui";
 import type { VisualizationProps } from "metabase/visualizations/types";
@@ -29,7 +26,7 @@ function DashCardPlaceholderInner({
   const [isQuestionPickerOpen, setQuestionPickerOpen] = useState(false);
   const dispatch = useDispatch();
 
-  const handleSelectQuestion = (nextCard: OmniPickerItem) => {
+  const handleSelectQuestion = (nextCard: OmniPickerQuestionItem) => {
     if (typeof nextCard.id === "number") {
       dispatch(
         replaceCard({ dashcardId: dashcard.id, nextCardId: nextCard.id }),
@@ -43,20 +40,6 @@ function DashCardPlaceholderInner({
   }
 
   const pointerEvents = isEditingParameter ? "none" : "all";
-
-  const shouldDisableItem = (item: OmniPickerItem) => {
-    // don't allow adding items that are already saved in a different dashboard
-    // proably only applicable to search and recents
-    if (isInCollectionTree(item) && item.dashboard_id) {
-      if (item.dashboard_id !== dashboard.id) {
-        return true;
-      }
-    }
-    if (item.model === "dashboard" && item.id !== dashboard.id) {
-      return true;
-    }
-    return false;
-  };
 
   return (
     <>
@@ -88,23 +71,12 @@ function DashCardPlaceholderInner({
           onMouseDown={preventDragging}
           onPointerDown={preventDragging}
         >
-          <QuestionPickerModal
-            title={t`Pick what you want to replace this with`}
-            value={
-              dashboard.collection_id
-                ? {
-                    id: dashboard.collection_id,
-                    model: "collection",
-                  }
-                : undefined
-            }
-            options={{ hasConfirmButtons: false }}
-            // TODO: account for restrictions on adding personal
-            // questions to public dashboards
-            models={["card", "dataset", "metric", "dashboard"]}
-            onChange={handleSelectQuestion}
+          <ReplaceCardModal
+            dashboard={dashboard}
+            dashcard={dashcard}
+            title={t`Pick a question`}
+            onSelect={handleSelectQuestion}
             onClose={() => setQuestionPickerOpen(false)}
-            isDisabledItem={shouldDisableItem}
           />
         </div>
       )}

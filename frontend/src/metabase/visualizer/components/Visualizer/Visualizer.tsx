@@ -72,6 +72,7 @@ interface VisualizerProps {
    * dashboard questions that belong to other dashboards.
    */
   dashboardId: DashboardId | undefined;
+  isLibraryDashboard?: boolean;
 }
 
 const VisualizerInner = (props: VisualizerProps) => {
@@ -82,6 +83,7 @@ const VisualizerInner = (props: VisualizerProps) => {
     allowSaveWhenPristine,
     onClose,
     dashboardId,
+    isLibraryDashboard = false,
   } = props;
 
   const { canUndo, canRedo, undo, redo } = useVisualizerHistory();
@@ -176,6 +178,7 @@ const VisualizerInner = (props: VisualizerProps) => {
           <DataImporter
             className={S.dataSidebarContent}
             dashboardId={dashboardId}
+            isLibraryDashboard={isLibraryDashboard}
           />
         </Box>
 

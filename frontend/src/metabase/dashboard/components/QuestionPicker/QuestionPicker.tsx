@@ -4,8 +4,13 @@ import { t } from "ttag";
 import { useListCollectionsQuery } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import getExpandedCollectionsById from "metabase/common/collections/getExpandedCollectionsById";
-import { isPublicCollection } from "metabase/common/collections/utils";
+import {
+  isLibraryDashboard,
+  isPublicCollection,
+} from "metabase/common/collections/utils";
 import { Breadcrumbs } from "metabase/common/components/Breadcrumbs";
+import { EmptyState } from "metabase/common/components/EmptyState";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { SelectList } from "metabase/common/components/SelectList";
 import type { BaseSelectListItemProps } from "metabase/common/components/SelectList/BaseSelectListItem";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
@@ -21,14 +26,16 @@ import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
-import { Button, Flex, Icon, Input, TextInput } from "metabase/ui";
+import type { ExpandedCollection } from "metabase/redux/store";
+import { Box, Button, Flex, Icon, Input, TextInput } from "metabase/ui";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
-import type { CollectionId } from "metabase-types/api";
+import type { Collection, CollectionId } from "metabase-types/api";
 
 import { QuestionList } from "./QuestionList";
 import S from "./QuestionPicker.module.css";
 import { addDashboardQuestion } from "./actions";
 import { useCollectionsWithTenants } from "./hooks/use-collections-with-tenants";
+import { getLibraryEmptyStateMessage } from "./utils/library";
 import {
   COLLECTIONS_TOP_LEVEL_ID,
   SHARED_TENANT_COLLECTIONS_ROOT_ID,
@@ -40,7 +47,8 @@ interface QuestionPickerProps {
 }
 
 export function QuestionPicker({ onSelect }: QuestionPickerProps) {
-  const { data: allCollectionsList = [] } = useListCollectionsQuery();
+  const { data: allCollectionsList = [], isLoading: isLoadingCollections } =
+    useListCollectionsQuery();
   const userPersonalCollectionId = useSelector(getUserPersonalCollectionId);
   const baseCollectionsById = useMemo(
     () =>
@@ -51,9 +59,18 @@ export function QuestionPicker({ onSelect }: QuestionPickerProps) {
   const dispatch = useDispatch();
   const dashboard = useSelector(getDashboard);
   const dashboardCollection = dashboard?.collection ?? ROOT_COLLECTION;
-  const [currentCollectionId, setCurrentCollectionId] = useState<CollectionId>(
-    dashboardCollection.id,
-  );
+  // a library dashboard may only reference library questions, so it browses
+  // and searches the Library's Metrics collection instead of its own tree
+  const isLibraryScoped = dashboard != null && isLibraryDashboard(dashboard);
+  const libraryMetricsCollection = isLibraryScoped
+    ? allCollectionsList.find(isLibraryMetricsRootCollection)
+    : undefined;
+  const browseRootCollectionId = isLibraryScoped
+    ? libraryMetricsCollection?.id
+    : dashboardCollection.id;
+  const [selectedCollectionId, setSelectedCollectionId] =
+    useState<CollectionId>();
+  const currentCollectionId = selectedCollectionId ?? browseRootCollectionId;
   const [searchText, setSearchText] = useState("");
   const debouncedSearchText = useDebouncedValue(
     searchText,
@@ -76,12 +93,23 @@ export function QuestionPicker({ onSelect }: QuestionPickerProps) {
     currentCollectionId === SHARED_TENANT_COLLECTIONS_ROOT_ID;
   const isAtTenantSpecificRoot =
     currentCollectionId === TENANT_SPECIFIC_COLLECTIONS_ROOT_ID;
-  const collection = collectionsById[currentCollectionId];
+  const collection =
+    currentCollectionId != null
+      ? collectionsById[currentCollectionId]
+      : undefined;
   const crumbs = getCollectionBreadCrumbs(
-    collection,
+    libraryMetricsCollection
+      ? scopeCollectionPath(
+          collection,
+          libraryMetricsCollection.id,
+          collectionsById,
+        )
+      : collection,
     collectionsById,
-    setCurrentCollectionId,
+    setSelectedCollectionId,
   );
+  const isWaitingForLibrary = isLibraryScoped && isLoadingCollections;
+  const canBrowse = currentCollectionId != null;
 
   const handleSearchTextChange: React.ChangeEventHandler<HTMLInputElement> = (
     e,
@@ -141,7 +169,15 @@ export function QuestionPicker({ onSelect }: QuestionPickerProps) {
         </Flex>
       )}
 
-      {!debouncedSearchText && (
+      {isWaitingForLibrary && <LoadingAndErrorWrapper loading />}
+
+      {!isWaitingForLibrary && !canBrowse && (
+        <Box my="4rem">
+          <EmptyState message={getLibraryEmptyStateMessage()} icon="folder" />
+        </Box>
+      )}
+
+      {canBrowse && !debouncedSearchText && (
         <>
           <div className={S.breadcrumbsWrapper}>
             <Breadcrumbs crumbs={crumbs} />
@@ -167,7 +203,7 @@ export function QuestionPicker({ onSelect }: QuestionPickerProps) {
                     }}
                     rightIcon="chevronright"
                     onSelect={(collectionId) =>
-                      setCurrentCollectionId(collectionId)
+                      setSelectedCollectionId(collectionId)
                     }
                   />
                 );
@@ -180,16 +216,41 @@ export function QuestionPicker({ onSelect }: QuestionPickerProps) {
       {/* Hide the question list at top-level "Collections" and tenant roots.
           These have fake IDs that don't map to real collections, so querying
           questions against them would fail. */}
-      {((!isAtSharedTenantRoot && !isAtTenantSpecificRoot && !isAtTopLevel) ||
-        debouncedSearchText) && (
-        <QuestionList
-          hasCollections={collections.length > 0}
-          searchText={debouncedSearchText}
-          collectionId={currentCollectionId}
-          onSelect={onSelect}
-          showOnlyPublicCollections={showOnlyPublicCollections}
-        />
-      )}
+      {canBrowse &&
+        ((!isAtSharedTenantRoot && !isAtTenantSpecificRoot && !isAtTopLevel) ||
+          debouncedSearchText) && (
+          <QuestionList
+            hasCollections={collections.length > 0}
+            searchText={debouncedSearchText}
+            collectionId={currentCollectionId}
+            searchCollectionId={libraryMetricsCollection?.id}
+            onSelect={onSelect}
+            showOnlyPublicCollections={showOnlyPublicCollections}
+          />
+        )}
     </div>
   );
+}
+
+function isLibraryMetricsRootCollection(collection: Collection) {
+  return collection.type === "library-metrics" && !!collection.is_library_root;
+}
+
+// crumbs above the root would let the user browse out of the library, so the
+// path is cut at the root; the root itself is not in its own path
+function scopeCollectionPath(
+  collection: ExpandedCollection | undefined,
+  rootCollectionId: CollectionId,
+  collectionsById: Partial<Record<CollectionId, ExpandedCollection>>,
+): ExpandedCollection | undefined {
+  if (!collection?.path) {
+    return collection;
+  }
+  const rootIndex = collection.path.findIndex(
+    (id) => collectionsById[id]?.id === rootCollectionId,
+  );
+  return {
+    ...collection,
+    path: rootIndex === -1 ? [] : collection.path.slice(rootIndex),
+  };
 }
