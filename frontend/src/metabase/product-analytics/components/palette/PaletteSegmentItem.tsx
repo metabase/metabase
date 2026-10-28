@@ -37,8 +37,6 @@ export type SavedSegmentActions = {
 
 type PaletteSegmentItemProps = {
   segment: PaletteSegment;
-  /** Makes a click use the segment, as a drop would. */
-  onSelect?: () => void;
   onEditDraft?: () => void;
   onSaveDraft?: () => void;
   onDiscardDraft?: () => void;
@@ -49,12 +47,11 @@ type PaletteSegmentItemProps = {
 
 /**
  * A segment in the palette, dragged by its whole row. A click on a saved
- * segment shows its definition, read-only, and another hides it, unless the
- * click uses the segment; then its menu shows the definition.
+ * segment shows its definition, read-only, and another hides it; a click on
+ * a draft edits it.
  */
 export const PaletteSegmentItem = ({
   segment,
-  onSelect,
   onEditDraft,
   onSaveDraft,
   onDiscardDraft,
@@ -64,9 +61,13 @@ export const PaletteSegmentItem = ({
   const [isExpanded, setIsExpanded] = useState(false);
   const hasDefinition = definition !== undefined;
   const toggleExpanded = () => setIsExpanded((expanded) => !expanded);
-  const handleClick = onSelect ?? (hasDefinition ? toggleExpanded : undefined);
-  const { dragging, hovering, startDrag, endDrag, setHovering } =
-    useSegmentDrag();
+  const handleClick =
+    segment.status === "draft"
+      ? onEditDraft
+      : hasDefinition
+        ? toggleExpanded
+        : undefined;
+  const { dragging, startDrag, endDrag } = useSegmentDrag();
   const isDragging =
     dragging?.kind === "segment" && dragging.segment.key === segment.key;
 
@@ -86,19 +87,10 @@ export const PaletteSegmentItem = ({
           handleClick();
         }
       }}
-      onMouseEnter={() => setHovering(segment)}
-      onMouseLeave={() => {
-        if (hovering?.key === segment.key) {
-          setHovering(null);
-        }
-      }}
       gap={0}
       bdrs="md"
       onDragStart={(event) => startDrag(segment, event)}
-      onDragEnd={() => {
-        endDrag();
-        setHovering(null);
-      }}
+      onDragEnd={endDrag}
     >
       <Group gap="sm" wrap="nowrap" p="xs">
         <Box c="text-disabled" display="flex" style={{ flexShrink: 0 }}>
@@ -151,15 +143,7 @@ export const PaletteSegmentItem = ({
           </RowMenu>
         )}
         {segment.status === "saved" && (
-          <SavedSegmentMenu
-            actions={savedActions}
-            // The row's click uses the segment, so the menu shows it instead.
-            definitionToggle={
-              hasDefinition && onSelect !== undefined
-                ? { isExpanded, onToggle: toggleExpanded }
-                : undefined
-            }
-          />
+          <SavedSegmentMenu actions={savedActions} />
         )}
       </Group>
       {hasDefinition && isExpanded && (
@@ -204,17 +188,14 @@ const RowMenu = ({ label, children }: RowMenuProps) => (
 
 type SavedSegmentMenuProps = {
   actions: SavedSegmentActions;
-  definitionToggle?: { isExpanded: boolean; onToggle: () => void };
 };
 
 const SavedSegmentMenu = ({
   actions: { editUrl, revisionsUrl, dataStudioUrl, onRemove },
-  definitionToggle,
 }: SavedSegmentMenuProps) => {
   const [isConfirmOpen, { open: openConfirm, close: closeConfirm }] =
     useDisclosure();
   if (
-    definitionToggle === undefined &&
     [editUrl, revisionsUrl, dataStudioUrl, onRemove].every(
       (action) => action === undefined,
     )
@@ -225,20 +206,6 @@ const SavedSegmentMenu = ({
   return (
     <>
       <RowMenu label={t`Segment actions`}>
-        {definitionToggle !== undefined && (
-          <Menu.Item
-            leftSection={
-              <Icon
-                name={definitionToggle.isExpanded ? "chevronup" : "chevrondown"}
-              />
-            }
-            onClick={definitionToggle.onToggle}
-          >
-            {definitionToggle.isExpanded
-              ? t`Hide definition`
-              : t`Show definition`}
-          </Menu.Item>
-        )}
         {editUrl !== undefined && (
           <NewTabMenuItem to={editUrl} icon="pencil">
             {t`Edit segment`}

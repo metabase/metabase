@@ -1,13 +1,15 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { ListSearchField } from "metabase/common/components/ListSearchField";
 import { useMetadataProvider } from "metabase/metadata-store";
 import {
   FilterColumnPicker,
+  isCustomListItem,
   isSegmentListItem,
 } from "metabase/querying/filters/components/FilterPicker/FilterColumnPicker";
 import type {
+  ColumnGroupItemsContext,
   ColumnListItem,
   SegmentListItem,
 } from "metabase/querying/filters/components/FilterPicker/types";
@@ -17,8 +19,10 @@ import type { IconName, Table } from "metabase-types/api";
 
 import type { Breakout } from "../../analyses/breakout";
 import { toPeopleSegmentRef } from "../../segments/people-segment-ref";
+import { toSegmentPickerItem } from "../../segments/picker-items";
 import type { PeopleSegmentRef } from "../../segments/types";
 import { usePaletteSegments } from "../../segments/use-palette-segments";
+import { useSegmentDrafts } from "../../segments/use-segment-drafts";
 import type { SettingWidgetProps } from "../../settings/types";
 
 import S from "./BreakoutMenu.module.css";
@@ -156,8 +160,9 @@ type UsersTablePickerProps = {
 };
 
 /**
- * The filter popover's column picker on the users table: its segments, then
- * its fields. Mounted with the dropdown, so it lists the current segments.
+ * The filter popover's column picker on the users table: its segments and
+ * this session's drafts of them, then its fields. Mounted with the dropdown,
+ * so it lists the current segments.
  */
 const UsersTablePicker = ({
   usersTable,
@@ -173,8 +178,19 @@ const UsersTablePicker = ({
       : undefined;
   }, [metadataProvider, usersTable.id]);
   // The picker's segments carry no id; the saved segments, matched by name, do.
-  const { saved } = usePaletteSegments(usersTable.id, "people", []);
+  const drafts = useSegmentDrafts(usersTable.id).drafts;
+  const { saved, drafted } = usePaletteSegments(
+    usersTable.id,
+    "people",
+    drafts,
+  );
   const pickedSegments = value?.type === "cohorts" ? value.segments : [];
+  // This session's drafts follow the table's segments.
+  const getGroupItems = useCallback(
+    ({ info }: ColumnGroupItemsContext) =>
+      info.isSourceTable ? drafted.map(toSegmentPickerItem) : [],
+    [drafted],
+  );
 
   const findSegmentRef = (
     item: SegmentListItem,
@@ -183,8 +199,7 @@ const UsersTablePicker = ({
     return segment !== undefined ? toPeopleSegmentRef(segment) : undefined;
   };
 
-  const handleSegmentSelect = (item: SegmentListItem) => {
-    const ref = findSegmentRef(item);
+  const toggleSegment = (ref: PeopleSegmentRef | undefined) => {
     if (ref === undefined) {
       return;
     }
@@ -221,12 +236,21 @@ const UsersTablePicker = ({
           ? pickedSegments.some(
               (picked) => picked.key === findSegmentRef(item)?.key,
             )
-          : "column" in item &&
-            value?.type === "property" &&
-            item.name === value.column
+          : isCustomListItem(item)
+            ? pickedSegments.some((picked) => picked.key === item.key)
+            : "column" in item &&
+              value?.type === "property" &&
+              item.name === value.column
       }
       onColumnSelect={handleColumnSelect}
-      onSegmentSelect={handleSegmentSelect}
+      onSegmentSelect={(item) => toggleSegment(findSegmentRef(item))}
+      getGroupItems={getGroupItems}
+      onCustomItemSelect={(item) => {
+        const draft = drafted.find((segment) => segment.key === item.key);
+        toggleSegment(
+          draft !== undefined ? toPeopleSegmentRef(draft) : undefined,
+        );
+      }}
       withCustomExpression={false}
     />
   );

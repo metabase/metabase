@@ -10,6 +10,9 @@ const STORAGE_KEY = "metabase.product-analytics.segment-drafts";
 
 type DraftsByTable = Record<string, SegmentDraft[]>;
 
+// One empty list, so lists built from a table without drafts stay put.
+const NO_DRAFTS: SegmentDraft[] = [];
+
 const isDraft = (value: unknown): value is SegmentDraft =>
   isRecord(value) &&
   typeof value.id === "string" &&
@@ -50,7 +53,8 @@ const writeDrafts = (drafts: DraftsByTable) => {
 export const useSegmentDrafts = (tableId: TableId | undefined) => {
   const [draftsByTable, setDraftsByTable] = useState(readDrafts);
   const key = tableId !== undefined ? String(tableId) : undefined;
-  const drafts = key !== undefined ? (draftsByTable[key] ?? []) : [];
+  const drafts =
+    (key !== undefined ? draftsByTable[key] : undefined) ?? NO_DRAFTS;
 
   const update = useCallback(
     (updater: (drafts: SegmentDraft[]) => SegmentDraft[]) => {

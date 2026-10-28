@@ -182,7 +182,10 @@ export const commonSettings = ({
     widget: AddFilterButton,
     getDefault: () => NO_FILTERS,
     isValid: (value) => isAnalysisFilters(value),
-    getProps: (context) => ({ table: context.table }),
+    getProps: (context) => ({
+      table: context.table,
+      usersTable: context.usersTable,
+    }),
   }),
   "columns.timestamp": columnRoleSetting(
     "timestamp",

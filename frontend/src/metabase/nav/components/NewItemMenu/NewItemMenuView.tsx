@@ -92,19 +92,6 @@ export const NewItemMenuView = ({
     if (hasDataAccess) {
       items.push(
         <Menu.Item
-          key="product-analysis"
-          closeMenuOnClick={false}
-          onClick={() => setIsPickingAnalysisKind(true)}
-          leftSection={<Icon name="funnel" />}
-        >
-          {t`Product analysis`}
-        </Menu.Item>,
-      );
-    }
-
-    if (hasDataAccess) {
-      items.push(
-        <Menu.Item
           key="question"
           component={ForwardRefLink}
           to={Urls.newQuestion({
@@ -137,6 +124,19 @@ export const NewItemMenuView = ({
           leftSection={<Icon name="sql" />}
         >
           {hasDatabaseWithJsonEngine ? t`Native query` : t`SQL query`}
+        </Menu.Item>,
+      );
+    }
+
+    if (hasDataAccess) {
+      items.push(
+        <Menu.Item
+          key="product-analysis"
+          closeMenuOnClick={false}
+          onClick={() => setIsPickingAnalysisKind(true)}
+          leftSection={<Icon name="funnel" />}
+        >
+          {t`Product analysis`}
         </Menu.Item>,
       );
     }

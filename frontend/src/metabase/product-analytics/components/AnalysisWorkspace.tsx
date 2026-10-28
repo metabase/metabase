@@ -364,7 +364,6 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
               source="event"
               table={table}
               usersTable={usersTable}
-              onSelectPeopleSegment={handleAddPeopleFilter}
               isHinted={isSegmentsHinted}
               onClose={() => setIsSegmentsOpen(false)}
             />
@@ -374,7 +373,6 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
               source="people"
               table={table}
               usersTable={usersTable}
-              onSelectPeopleSegment={handleAddPeopleFilter}
               isHinted={isPeopleSegmentsHinted}
               onClose={() => setIsPeopleSegmentsOpen(false)}
             />

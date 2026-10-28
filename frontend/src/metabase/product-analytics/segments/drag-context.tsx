@@ -24,16 +24,13 @@ type SegmentDragState = {
   /** Shows the palette if it's hidden, and hides it if it's showing. */
   onTogglePalette: () => void;
   dragging: DragItem | null;
-  /** The palette item under the pointer, so targets can hint before a drag. */
-  hovering: PaletteSegment | null;
   startDrag: (segment: PaletteSegment, event: DragEvent<HTMLElement>) => void;
   startEventDrag: (
     definition: EventDefinition,
     event: DragEvent<HTMLElement>,
   ) => void;
   endDrag: () => void;
-  setHovering: (segment: PaletteSegment | null) => void;
-  /** Uses a people segment as a filter, from a drop or a click. */
+  /** Uses a people segment as a filter, from a drop. */
   onPeopleSegment: (segment: PaletteSegment) => void;
 };
 
@@ -41,11 +38,9 @@ const SegmentDragContext = createContext<SegmentDragState>({
   isPaletteOpen: false,
   onTogglePalette: () => undefined,
   dragging: null,
-  hovering: null,
   startDrag: () => undefined,
   startEventDrag: () => undefined,
   endDrag: () => undefined,
-  setHovering: () => undefined,
   onPeopleSegment: () => undefined,
 });
 
@@ -70,7 +65,6 @@ export const SegmentDragProvider = ({
   children,
 }: SegmentDragProviderProps) => {
   const [dragging, setDragging] = useState<DragItem | null>(null);
-  const [hovering, setHovering] = useState<PaletteSegment | null>(null);
 
   const begin = useCallback(
     (item: DragItem, key: string, event: DragEvent<HTMLElement>) => {
@@ -98,18 +92,15 @@ export const SegmentDragProvider = ({
       isPaletteOpen,
       onTogglePalette,
       dragging,
-      hovering,
       startDrag,
       startEventDrag,
       endDrag,
-      setHovering,
       onPeopleSegment,
     }),
     [
       isPaletteOpen,
       onTogglePalette,
       dragging,
-      hovering,
       startDrag,
       startEventDrag,
       endDrag,

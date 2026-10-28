@@ -58,8 +58,6 @@ type SegmentsPanelProps = {
   source: SegmentSource;
   table: Table | undefined;
   usersTable: UsersTable | undefined;
-  /** A click on a people segment, which adds it as a filter. */
-  onSelectPeopleSegment: (segment: PaletteSegment) => void;
   /** The toolbar button that hides this panel is hovered. */
   isHinted?: boolean;
   onClose: () => void;
@@ -75,7 +73,6 @@ export const SegmentsPanel = ({
   source,
   table,
   usersTable,
-  onSelectPeopleSegment,
   isHinted = false,
   onClose,
 }: SegmentsPanelProps) => {
@@ -110,7 +107,6 @@ export const SegmentsPanel = ({
             table={usersTable?.table}
             samples={usersTable === undefined ? getSamplePeopleSegments() : []}
             emptyMessage={t`No segments on this table yet.`}
-            onSelect={onSelectPeopleSegment}
           />
         ) : (
           <PaletteSection
@@ -130,8 +126,6 @@ type PaletteSectionProps = {
   table: Table | undefined;
   samples?: SamplePaletteSegment[];
   emptyMessage: string;
-  /** When given, clicking a segment uses it. */
-  onSelect?: (segment: PaletteSegment) => void;
 };
 
 type ModalState = { draft: SegmentDraft } | null;
@@ -141,7 +135,6 @@ const PaletteSection = ({
   table,
   samples = [],
   emptyMessage,
-  onSelect,
 }: PaletteSectionProps) => {
   const [sendToast] = useToast();
   const tableQuery = useTableQuery(table);
@@ -262,17 +255,6 @@ const PaletteSection = ({
             />
           );
         }
-        // A click on an event draft reopens it; people segments have their
-        // own click, so their drafts are edited from the menu.
-        const handleSelect = (() => {
-          if (onSelect !== undefined) {
-            return () => onSelect(segment);
-          }
-          if (segment.status === "draft") {
-            return () => setEditingDraftId(segment.key);
-          }
-          return undefined;
-        })();
         return (
           <PaletteSegmentItem
             key={segment.key}
@@ -282,7 +264,6 @@ const PaletteSection = ({
                 <SegmentDefinition segment={segment.segment} table={table} />
               ) : undefined
             }
-            onSelect={handleSelect}
             savedActions={
               segment.status === "saved"
                 ? getSavedActions(segment.segment)

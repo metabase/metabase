@@ -49,7 +49,7 @@ type CountingMenuProps = SettingWidgetProps<Grain> & {
 
 /**
  * Also where a people segment from the palette lands: the button lights up
- * while one is hovered or dragged, and takes the drop.
+ * while one is dragged, and takes the drop.
  */
 export const CountingMenu = ({
   value,
@@ -57,12 +57,11 @@ export const CountingMenu = ({
   options = [],
   isDisabled = false,
 }: CountingMenuProps) => {
-  const { hovering, onPeopleSegment } = useSegmentDrag();
-  const { isActive, dropProps } = useSegmentDropTarget({
+  const { onPeopleSegment } = useSegmentDrag();
+  const { isActive: isHinted, dropProps } = useSegmentDropTarget({
     accepts: isPeopleSegment,
     onDrop: onPeopleSegment,
   });
-  const isHinted = isActive || (hovering !== null && isPeopleSegment(hovering));
 
   const hasChoice = options.length > 1;
   const button = (

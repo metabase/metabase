@@ -27,7 +27,7 @@ export const isPeopleSegment = (segment: PaletteSegment): boolean =>
  * What to add to a query to require the segment: the segment clause itself
  * when the table's metadata knows it, else the segment's own conditions.
  */
-const segmentFilterables = (
+export const segmentFilterables = (
   tableQuery: Lib.Query,
   metadataProvider: Lib.MetadataProvider,
   segment: PaletteSegment,
