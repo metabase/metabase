@@ -67,7 +67,7 @@
 (mu/defn transform-last-checkpoint-value
   "The last checkpoint value of the Transform with `transform-id`."
   [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one-fn :last_checkpoint_value [:model/Transform :last_checkpoint_value] transform-id))
+  (t2/select-one-fn :last_checkpoint_value [:model/Transform :last_checkpoint_value] :id transform-id))
 
 (mu/defn transform-collection-id
   "The Collection ID of the Transform with `transform-id`."
@@ -83,12 +83,12 @@
   "Apply `changes` to the Transform with `transform-id`."
   [transform-id :- ::lib.schema.id/transform
    changes      :- ::transforms.schema/transform.update]
-  (t2/update! :model/Transform transform-id changes))
+  (t2/update! :model/Transform :id transform-id changes))
 
 (mu/defn delete-transform!
   "Delete the Transform with `transform-id`."
   [transform-id :- ::lib.schema.id/transform]
-  (t2/delete! :model/Transform transform-id))
+  (t2/delete! :model/Transform :id transform-id))
 
 ;;; ---------------------------------------------- Transform tags ----------------------------------------------
 
@@ -466,7 +466,7 @@
   [transform-ids :- [:maybe [:or
                              [:set ::lib.schema.id/transform]
                              [:sequential ::lib.schema.id/transform]]]]
-  (t2/select :model/TransformRun (latest-run-start-times-query transform-ids)))
+  (t2/select :model/TransformRun (h2x/assert-map-or-nil! (latest-run-start-times-query transform-ids))))
 
 (mu/defn insert-run!
   "Insert `run` and return the new instance."
@@ -820,7 +820,7 @@
 (mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database database-id))
+  (t2/select-one :model/Database :id database-id))
 
 (mu/defn table
   "The Table with `table-id`, or nil."

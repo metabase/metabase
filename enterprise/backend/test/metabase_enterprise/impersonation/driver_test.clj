@@ -922,7 +922,7 @@
             (mt/as-admin (persist-models!))
             (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                            :attributes     {"impersonation_attr" "impersonation_role"}}
-              (let [details (t2/select-one-fn :details :model/Database (mt/id))
+              (let [details (t2/select-one-fn :details :model/Database :id (mt/id))
                     spec    (sql-jdbc.conn/connection-details->spec :postgres details)]
                 ;; Create impersonation_role on test DB so that the non-admin can execute queries
                 (doseq [statement ["DROP ROLE IF EXISTS \"impersonation_role\";"
@@ -1030,7 +1030,7 @@
             (with-impersonation-db!
               (let [tables-set #(->> (driver/describe-database
                                       driver/*driver*
-                                      (driver.u/ensure-lib-database (t2/select-one :model/Database (mt/id))))
+                                      (driver.u/ensure-lib-database (t2/select-one :model/Database :id (mt/id))))
                                      :tables
                                      (into #{}))
                     default-table-set (tables-set)]

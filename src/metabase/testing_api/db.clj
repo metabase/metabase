@@ -95,7 +95,7 @@
   "Set the `tenant_id` of the User with `user-id`."
   [user-id   :- ::lib.schema.id/user
    tenant-id :- ms/PositiveInt]
-  (t2/update! :model/User user-id {:tenant_id tenant-id}))
+  (t2/update! :model/User :id user-id {:tenant_id tenant-id}))
 
 (mu/defn delete-ai-usage-logs-for-user-and-source!
   "Delete the AiUsageLog rows of the User with `user-id` from `source`, returning the number deleted."

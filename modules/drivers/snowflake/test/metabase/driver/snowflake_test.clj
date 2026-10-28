@@ -789,7 +789,7 @@
                      [(format "CREATE OR REPLACE DYNAMIC TABLE \"%s\".\"PUBLIC\".\"metabase_fan\" target_lag = DOWNSTREAM warehouse = 'COMPUTE_WH' AS
                               SELECT * FROM \"%s\".\"PUBLIC\".\"metabase_users\" WHERE \"%s\".\"PUBLIC\".\"metabase_users\".\"name\" LIKE 'MB_%%';"
                               db-name db-name db-name)])
-      (sync/sync-database! (:id (t2/select-one :model/Database (mt/id))) {:scan :schema})
+      (sync/sync-database! (:id (t2/select-one :model/Database :id (mt/id))) {:scan :schema})
       (thunk))))
 
 (defmacro with-dynamic-table!
@@ -993,7 +993,7 @@
             (let [pre-coerce-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)
                   pre-coerce-field (t2/select-one :model/Field :table_id (:id pre-coerce-table) :name "text_column")]
               ;; user enables coercion: this TEXT column is really an integer
-              (t2/update! :model/Field (:id pre-coerce-field)
+              (t2/update! :model/Field :id (:id pre-coerce-field)
                           {:coercion_strategy :Coercion/String->Integer
                            :effective_type    :type/Integer})
               (run-sql! [(format (str "CREATE OR REPLACE TABLE %s AS "
@@ -1027,7 +1027,7 @@
               (field-user-settings/upsert-user-settings v4-field
                                                         {:coercion_strategy :Coercion/String->Integer
                                                          :effective_type    :type/Integer})
-              (t2/update! :model/Field (:id v4-field)
+              (t2/update! :model/Field :id (:id v4-field)
                           {:coercion_strategy :Coercion/String->Integer
                            :effective_type    :type/Integer})
               (run-sql! [(format (str "CREATE OR REPLACE TABLE %s AS "
@@ -1261,12 +1261,12 @@
                   (testing (format "use-password: %s private-key-options: %s uses-secret? %s" use-password options uses-secret?)
                     (spit pk-path pk-key)
                     (is (= 3 (count all-possible-details)))
-                    (t2/update! (t2/table-name :model/Database) (mt/id) {:details (json/encode details)})
+                    (t2/update! (t2/table-name :model/Database) :id (mt/id) {:details (json/encode details)})
                     (testing "Connection succeeds and migration occurs"
                       (log/with-no-logs
                         (log.capture/with-log-messages-for-level [messages [metabase.warehouses.models.database :info]]
                           (is (= details-to-succeed
-                                 (database/maybe-test-and-migrate-details! (assoc (t2/select-one :model/Database (mt/id))
+                                 (database/maybe-test-and-migrate-details! (assoc (t2/select-one :model/Database :id (mt/id))
                                                                                   :details details))))
                           (let [success-re #"^Successfully connected, migrating to: (.*)"
                                 msgs (messages)
@@ -1279,7 +1279,7 @@
                             (is (= {:keys success-keys
                                     :keys-removed keys-removed}
                                    migrating-to))))
-                        (let [migrated-details (:details (t2/select-one :model/Database (mt/id)))
+                        (let [migrated-details (:details (t2/select-one :model/Database :id (mt/id)))
                               expected-migrated (cond-> details-to-succeed
                                                   uses-secret? (assoc :private-key-id secret-id)
                                                   :always (dissoc :private-key-options :private-key-value :private-key-path))]
@@ -1352,8 +1352,8 @@
                                              :type :query
                                              :query {:source-table (:id table)}})))))
         ;; Cleanup
-        (u/ignore-exceptions (t2/delete! :model/Database (:id db)))
-        (u/ignore-exceptions (t2/delete! :model/Table (:id table)))
+        (u/ignore-exceptions (t2/delete! :model/Database :id (:id db)))
+        (u/ignore-exceptions (t2/delete! :model/Table :id (:id table)))
         (u/ignore-exceptions (t2/delete! :model/Field :id [:in (map :id fields)]))
         (u/ignore-exceptions (t2/delete! :model/FieldValues :field_id [:in (map :id fields)]))))))
 
@@ -1400,8 +1400,8 @@
                                              :type :query
                                              :query {:source-table (:id table)}})))))
         ;; Cleanup
-        (u/ignore-exceptions (t2/delete! :model/Database (:id db)))
-        (u/ignore-exceptions (t2/delete! :model/Table (:id table)))
+        (u/ignore-exceptions (t2/delete! :model/Database :id (:id db)))
+        (u/ignore-exceptions (t2/delete! :model/Table :id (:id table)))
         (u/ignore-exceptions (t2/delete! :model/Field :id [:in (map :id fields)]))
         (u/ignore-exceptions (t2/delete! :model/FieldValues :field_id [:in (map :id fields)]))))))
 
@@ -1912,7 +1912,7 @@
 
 (deftest have-select-privelege?-timeout-test
   (mt/test-driver :snowflake
-    (let [{schema :schema, table-name :name} (t2/select-one :model/Table (mt/id :checkins))]
+    (let [{schema :schema, table-name :name} (t2/select-one :model/Table :id (mt/id :checkins))]
       (qp.store/with-metadata-provider (mt/id)
         (testing "checking select privilege defaults to allow on timeout (#56737)"
           (mt/with-dynamic-fn-redefs [sql-jdbc.describe-database/simple-select-probe-query (constantly ["SELECT SYSTEM$WAIT(3, 'SECONDS')"])]
@@ -1974,9 +1974,9 @@
             (mt/with-temp [:model/Database rsa-db {:engine :snowflake :details rsa-details}]
               (let [original-priv-key (get-db-priv-key rsa-db)
                     updating-rsa-db (merge rsa-db {:details rsa-details-2})
-                    _ (t2/update! :model/Database (:id rsa-db) updating-rsa-db)
+                    _ (t2/update! :model/Database :id (:id rsa-db) updating-rsa-db)
                     details-changed? (not= (:details rsa-db) (:details updating-rsa-db))
-                    new-rsa-db (t2/select-one :model/Database (:id rsa-db))
+                    new-rsa-db (t2/select-one :model/Database :id (:id rsa-db))
                     priv-key-after-update (get-db-priv-key new-rsa-db)
                     _ (events/publish-event! :event/database-update {:object new-rsa-db
                                                                      :user-id 1

@@ -573,7 +573,7 @@
   (testing "PUT /api/table/:id"
     (testing "Table should get synced when it gets unhidden"
       (mt/with-temp [:model/Database db    {:details (:details (mt/db))}
-                     :model/Table    table (-> (t2/select-one :model/Table (mt/id :venues))
+                     :model/Table    table (-> (t2/select-one :model/Table :id (mt/id :venues))
                                                (dissoc :id :entity_id)
                                                (assoc :db_id (:id db)))]
         (let [called (atom 0)
@@ -1526,7 +1526,7 @@
         []]]
       (let [db (mt/db)
             db-spec (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database db))
-            get-fk-target #(t2/select-one-fn :fk_target_field_id :model/Field (mt/id :country :continent_id))]
+            get-fk-target #(t2/select-one-fn :fk_target_field_id :model/Field :id (mt/id :country :continent_id))]
         ;; 1. add FK relationship in the database targeting continent_1
         (jdbc/execute! db-spec "ALTER TABLE country ADD CONSTRAINT country_continent_id_fkey FOREIGN KEY (continent_id) REFERENCES continent(id);")
         (sync/sync-database! (:id db) {:scan :schema})
