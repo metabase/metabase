@@ -46,6 +46,7 @@ const baseConfig = {
     main: "./index.ts",
     "data-app": "./data-app.ts",
     testing: "./testing.ts",
+    "data-app-testing": "./data-app-testing.ts",
   },
 
   output: {
@@ -116,6 +117,7 @@ const esmConfig = {
     "main.esm": "./index.ts",
     "data-app.esm": "./data-app.ts",
     "testing.esm": "./testing.ts",
+    "data-app-testing.esm": "./data-app-testing.ts",
     "data-app-dev": "./data-app-dev.ts",
   },
 

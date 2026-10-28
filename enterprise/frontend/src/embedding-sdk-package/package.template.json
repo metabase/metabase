@@ -28,6 +28,11 @@
       "require": "./dist/data-app.cjs",
       "import": "./dist/data-app.js"
     },
+    "./data-app/testing": {
+      "types": "./dist/data-app-testing.d.ts",
+      "require": "./dist/data-app-testing.cjs",
+      "import": "./dist/data-app-testing.js"
+    },
     "./testing": {
       "types": "./dist/testing.d.ts",
       "require": "./dist/testing.cjs",
