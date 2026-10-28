@@ -710,9 +710,12 @@ export class UnconnectedDataSelector extends Component<
       step = PARENT_STEP[step];
     }
     // Except a saved entity with no bucket step to return to (reopened on a card
-    // with only tables allowed): it goes back to the databases.
+    // when the bucket step has no choice, as with nested queries disabled): it
+    // goes back to the databases, or past them when there is only one. Without
+    // tables, as with `["model"]`, it has no back link.
     if (
       step === null &&
+      this.props.canSelectTable &&
       SAVED_ENTITY_TYPE_BY_STEP[activeStep] &&
       steps.includes(DATABASE_STEP)
     ) {
@@ -724,8 +727,7 @@ export class UnconnectedDataSelector extends Component<
   hasStepChoice(step: DataSelectorStep): boolean {
     switch (step) {
       case DATA_BUCKET_STEP:
-        // data bucket step doesn't make a lot of sense when there're no models, saved questions, metrics, or Library
-        return this.hasUsableSavedEntities();
+        return this.hasDataBucketChoice();
       case DATABASE_STEP:
         return true;
       case SCHEMA_STEP:
@@ -1101,7 +1103,7 @@ export class UnconnectedDataSelector extends Component<
             tableId={selectedTable?.id}
             databaseId={currentDatabaseId}
             onSelect={this.handleSavedEntitySelect}
-            onBack={this.previousStep}
+            onBack={this.getPreviousStep() ? this.previousStep : undefined}
           />
         );
       }
