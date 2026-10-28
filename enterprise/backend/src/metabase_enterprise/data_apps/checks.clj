@@ -213,3 +213,30 @@
     (throw (data-app-error (tru "A data app can use only the user key-values of the SDK, not the key {0} in the namespace {1}."
                                 k nmspace))))
   nil)
+
+(defenterprise-schema data-app-collection-types :- [:maybe [:set :string]]
+  "The types of the Library and of its collections, which their subcollections inherit."
+  :feature :data-apps
+  [_data-app :- ::data-apps.schema/data-app]
+  collections/library-collection-types)
+
+(defenterprise-schema check-collection :- :nil
+  "Throws a 400 unless the collection with `collection-id` is of a type in [[data-app-collection-types]], after a read
+  check of the collection."
+  :feature :data-apps
+  [data-app      :- ::data-apps.schema/data-app
+   collection-id :- ::lib.schema.id/collection]
+  (when-not (contains? (data-app-collection-types data-app) (:type (api/read-check :model/Collection collection-id)))
+    (throw (data-app-error (tru "A data app can see only the Library and its collections, not the collection {0}."
+                                (str collection-id)))))
+  nil)
+
+(defenterprise-schema check-dashboard :- :nil
+  "Throws a 400 unless the dashboard with `dashboard-id` is in the Library, after a read check of the dashboard."
+  :feature :data-apps
+  [_data-app    :- ::data-apps.schema/data-app
+   dashboard-id :- ::lib.schema.id/dashboard]
+  (when-not (in-library? (api/read-check :model/Dashboard dashboard-id))
+    (throw (data-app-error (tru "A data app can use only the dashboards in the Library, not the dashboard {0}."
+                                (str dashboard-id)))))
+  nil)
