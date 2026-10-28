@@ -188,19 +188,19 @@
                            (assoc viz :graph.show_goal show-goal) referenced-entities))
         false
         nil))
-    (testing "and falls back to 0 once the goal line is shown"
-      (is (= 0 (:graph.goal_value (dynamic-goals/resolve-dynamic-goals
-                                   (assoc viz :graph.show_goal true) referenced-entities)))))
+    (testing "and keeps its reference once the goal line is shown"
+      (is (= ref (:graph.goal_value (dynamic-goals/resolve-dynamic-goals
+                                     (assoc viz :graph.show_goal true) referenced-entities)))))
     (testing "toggles can come from a separate effective-settings map"
       (is (= (assoc viz :gauge.segments [{:min 0 :max 100}])
              (dynamic-goals/resolve-dynamic-goals viz referenced-entities {:graph.show_goal false})))
-      (is (= 0 (:graph.goal_value (dynamic-goals/resolve-dynamic-goals
-                                   viz referenced-entities {:graph.show_goal true})))))))
+      (is (= ref (:graph.goal_value (dynamic-goals/resolve-dynamic-goals
+                                     viz referenced-entities {:graph.show_goal true})))))))
 
 (deftest ^:parallel resolve-dynamic-goals-unresolved-test
   (let [failed {:id 2 :type "card" :column "total"}]
-    (testing "a goal value that can't resolve falls back to 0, so the chart still renders"
-      (is (= {:graph.show_goal true :graph.goal_value 0 :progress.goal 0}
+    (testing "a graph goal value that can't resolve keeps its reference, any other falls back to 0"
+      (is (= {:graph.show_goal true :graph.goal_value failed :progress.goal 0}
              (dynamic-goals/resolve-dynamic-goals
               {:graph.show_goal true :graph.goal_value failed :progress.goal {:id 9 :type "card" :column "x"}}
               referenced-entities))))

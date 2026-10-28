@@ -768,10 +768,10 @@
     {:html html, :viz-settings @captured}))
 
 (deftest ^:parallel render-failed-dynamic-goal-test
-  (testing "a failed referenced query still renders the chart, with the goal line at 0"
+  (testing "a failed referenced query still renders the chart, keeping the goal reference for the JS renderer to hide"
     (let [{:keys [html viz-settings]} (render-broken-goal true)]
       (is (not (str/includes? html render-error-box)))
-      (is (= 0 (:graph.goal_value viz-settings))))))
+      (is (= goal-ref (:graph.goal_value viz-settings))))))
 
 (deftest ^:parallel render-hidden-failed-dynamic-goal-test
   (testing "a goal line the card doesn't show is left as-is: nothing renders that value"
