@@ -93,18 +93,18 @@
   ;; NoClassDefFoundError when tracing starts. Bump these together; see metabase.tracing.otlp-export-test.
   io.opentelemetry/opentelemetry-api        {:mvn/version "1.62.0"}             ; also fixes W3CBaggagePropagator DoS vuln in 1.54.1
   io.opentelemetry/opentelemetry-api-incubator {:mvn/version "1.62.0-alpha"}
-  io.opentelemetry/opentelemetry-context    {:mvn/version "1.62.0"}
   io.opentelemetry/opentelemetry-common     {:mvn/version "1.62.0"}
-  io.opentelemetry/opentelemetry-sdk        {:mvn/version "1.62.0"}
-  io.opentelemetry/opentelemetry-sdk-common {:mvn/version "1.62.0"}
-  io.opentelemetry/opentelemetry-sdk-trace  {:mvn/version "1.62.0"}
-  io.opentelemetry/opentelemetry-sdk-metrics {:mvn/version "1.62.0"}
-  io.opentelemetry/opentelemetry-sdk-logs   {:mvn/version "1.62.0"}
-  io.opentelemetry/opentelemetry-sdk-extension-autoconfigure-spi {:mvn/version "1.62.0"}
+  io.opentelemetry/opentelemetry-context    {:mvn/version "1.62.0"}
   io.opentelemetry/opentelemetry-exporter-common {:mvn/version "1.62.0"}
   io.opentelemetry/opentelemetry-exporter-otlp {:mvn/version "1.62.0"}
   io.opentelemetry/opentelemetry-exporter-otlp-common {:mvn/version "1.62.0"}
   io.opentelemetry/opentelemetry-exporter-sender-okhttp {:mvn/version "1.62.0"}
+  io.opentelemetry/opentelemetry-sdk        {:mvn/version "1.62.0"}
+  io.opentelemetry/opentelemetry-sdk-common {:mvn/version "1.62.0"}
+  io.opentelemetry/opentelemetry-sdk-extension-autoconfigure-spi {:mvn/version "1.62.0"}
+  io.opentelemetry/opentelemetry-sdk-logs   {:mvn/version "1.62.0"}
+  io.opentelemetry/opentelemetry-sdk-metrics {:mvn/version "1.62.0"}
+  io.opentelemetry/opentelemetry-sdk-trace  {:mvn/version "1.62.0"}
   io.prometheus/simpleclient_hotspot        {:mvn/version "0.16.0"}             ; prometheus jvm collector
   junegunn/grouper                          {:mvn/version "0.1.1"}              ; Batch processing helper
   kixi/stats                                {:mvn/version "0.5.9"               ; Various statistic measures implemented as transducers
