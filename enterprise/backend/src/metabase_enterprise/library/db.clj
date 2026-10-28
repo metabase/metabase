@@ -48,6 +48,14 @@
                                         [:= :id [:auto/param dashboard-id]]
                                         [:in :id library-dashboard-ids-subquery]]}))
 
+(mu/defn library-dashcard-dashboard-id
+  "The Dashboard id of the DashboardCard with `dashcard-id`, if that Dashboard is in a Library dashboards Collection."
+  [dashcard-id :- ::lib.schema.id/dashcard]
+  (t2/select-one-fn :dashboard_id [:model/DashboardCard :dashboard_id]
+                    {:where [:and
+                             [:= :id [:auto/param dashcard-id]]
+                             [:in :dashboard_id library-dashboard-ids-subquery]]}))
+
 (mu/defn dashboard-referenced-card-ids
   "The ids among `card-ids` that the Dashboard with `dashboard-id` already references, as a DashboardCard's Card or as
   a series."

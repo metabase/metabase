@@ -231,15 +231,17 @@
   (t2/delete! :model/PulseCard :dashboard_card_id [:in dashcard-ids]))
 
 (mu/defn delete-series-for-dashcards!
-  "Delete the DashboardCardSeries of the DashboardCards with `dashcard-ids`, returning the number deleted."
-  [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
-  (t2/delete! :model/DashboardCardSeries :dashboardcard_id [:in dashcard-ids]))
+  "Delete the DashboardCardSeries of the DashboardCards with `dashcard-ids`, except those with `keep-series-ids`,
+  returning the number deleted."
+  [dashcard-ids    :- [:sequential ::lib.schema.id/dashcard]
+   keep-series-ids :- [:sequential ms/PositiveInt]]
+  (t2/delete! :model/DashboardCardSeries :dashboardcard_id [:in dashcard-ids] :id [:not-in keep-series-ids]))
 
 (mu/defn insert-dashcard-series!
-  "Insert the DashboardCardSeries `rows`, returning the number inserted."
+  "Insert the DashboardCardSeries `rows`, returning their ids."
   [rows :- [:sequential
             (mut/select-keys ::dashboards.schema/dashboard-card-series.update [:dashboardcard_id :card_id :position])]]
-  (t2/insert! :model/DashboardCardSeries rows))
+  (t2/insert-returning-pks! :model/DashboardCardSeries rows))
 
 (defn parameter-card-card-ids
   "The Card ids referenced by the ParameterCards of the Dashboard with `dashboard-id`."

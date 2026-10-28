@@ -644,6 +644,12 @@
   [_dashboard-id _card-ids]
   true)
 
+(defenterprise check-library-dashcard-series-cards
+  "Checks that the series cards `card-ids` may appear on the dashcard `dashcard-id`. The OSS implementation is a no-op."
+  metabase-enterprise.library.validation
+  [_dashcard-id _card-ids]
+  true)
+
 ;; This function is defined later after children-location is available
 
 (def ^:private CollectionWithLocationOrRoot

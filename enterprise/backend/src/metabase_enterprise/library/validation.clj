@@ -70,6 +70,17 @@
       (check-library-dashboard-card-ids dashboard-id card-ids)))
   true)
 
+(defenterprise check-library-dashcard-series-cards
+  "[[check-library-dashboard-cards]] for series `card-ids` of the DashboardCard `dashcard-id`."
+  metabase-enterprise.library.validation
+  :feature :library
+  [dashcard-id card-ids]
+  (let [card-ids (set (remove nil? card-ids))]
+    (when-let [dashboard-id (when (and dashcard-id (seq card-ids))
+                              (library.db/library-dashcard-dashboard-id dashcard-id))]
+      (check-library-dashboard-card-ids dashboard-id card-ids)))
+  true)
+
 (defenterprise check-library-update
   "Checks that a collection of type `:library` only contains allowed content."
   metabase-enterprise.library.validation
