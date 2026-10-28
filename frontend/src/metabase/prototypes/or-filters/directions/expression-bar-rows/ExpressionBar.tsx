@@ -44,6 +44,7 @@ import {
   removeTokenAt,
   replaceTokenAt,
   toggleOperator,
+  writeAndContext,
   writeTokens,
 } from "../expression-bar-2/tokens";
 import {
@@ -111,20 +112,30 @@ export function ExpressionBar({
   const isPointerInBarRef = useRef(false);
   const [openPillCount, setOpenPillCount] = useState(0);
 
-  // External query changes (drills, examples) reset the draft; our own
-  // notebook commits keep the caret where it is. Adjusted during render rather
-  // than in an effect: an effect would leave one pass where the draft is stale
-  // but not edited, and the notebook auto-commit below would write that stale
-  // draft back over the new query, which the reset then undoes, forever.
+  // External changes to this stage's filters (drills, examples) reset the
+  // draft; our own notebook commits keep the caret where it is. A change
+  // elsewhere in the query, like a summary edit, keeps an unfinished draft.
+  // Adjusted during render rather than in an effect: an effect would leave one
+  // pass where the draft is stale but not edited, and the notebook auto-commit
+  // below would write that stale draft back over the new query, which the
+  // reset then undoes, forever.
   const isSelfCommitRef = useRef(false);
-  const [syncedTokens, setSyncedTokens] = useState(committedTokens);
-  if (syncedTokens !== committedTokens) {
-    setSyncedTokens(committedTokens);
-    setTokens(committedTokens);
-    if (isSelfCommitRef.current) {
-      isSelfCommitRef.current = false;
-    } else {
-      setCaret(committedTokens.length);
+  const committedKey = getTokensKey(query, stageIndex, committedTokens);
+  const [synced, setSynced] = useState({
+    tokens: committedTokens,
+    key: committedKey,
+  });
+  if (synced.tokens !== committedTokens) {
+    const hasDraft = tokens !== synced.tokens;
+    const isSameExpression = synced.key === committedKey;
+    const isSelfCommit = isSelfCommitRef.current;
+    isSelfCommitRef.current = false;
+    setSynced({ tokens: committedTokens, key: committedKey });
+    if (!hasDraft || !isSameExpression) {
+      setTokens(committedTokens);
+      if (!isSelfCommit) {
+        setCaret(committedTokens.length);
+      }
     }
   }
 
@@ -144,7 +155,33 @@ export function ExpressionBar({
   const parsed = useMemo(() => parseTokens(tokens), [tokens]);
   const errorPosition = parsed.ok ? undefined : parsed.position;
   const parenDepths = useMemo(() => getParenDepths(tokens), [tokens]);
-  const isExpanded = hasFocus || isOpen || openPillCount > 0;
+  const isPillOpen = openPillCount > 0;
+  const isExpanded = hasFocus || isOpen || isPillOpen;
+
+  // An open pill's stats count the rows of the draft, not of the applied query.
+  const pickerQueries = useMemo(() => {
+    if (!isPillOpen) {
+      return undefined;
+    }
+    const contextTokens = parsed.ok ? tokens : committedTokens;
+    return new Map(
+      tokens.flatMap((token): [Lib.FilterClause, Lib.Query][] =>
+        token.type === "filter"
+          ? [
+              [
+                token.clause,
+                writeAndContext(
+                  query,
+                  stageIndex,
+                  contextTokens,
+                  token.clause,
+                ) ?? query,
+              ],
+            ]
+          : [],
+      ),
+    );
+  }, [isPillOpen, parsed.ok, tokens, committedTokens, query, stageIndex]);
   const nesting = Math.max(
     0,
     ...tokens.map((token, index) =>
@@ -245,11 +282,22 @@ export function ExpressionBar({
     onChange,
   ]);
 
+  // Like the formula editor: an expression with an error keeps focus, so it can be fixed.
   const commit = () => {
-    if (parsed.ok && isDirty) {
+    close();
+    if (!parsed.ok) {
+      return;
+    }
+    if (isDirty) {
       onChange(writeTokens(query, stageIndex, tokens));
     }
+    inputRef.current?.blur();
+  };
+
+  const discard = () => {
     close();
+    setTokens(committedTokens);
+    setCaret(committedTokens.length);
     inputRef.current?.blur();
   };
 
@@ -264,6 +312,12 @@ export function ExpressionBar({
     if (event.key === " " && logicMatch) {
       event.preventDefault();
       insert(logicMatch.token);
+      return;
+    }
+    // ⌘/Ctrl+Enter, the query builder's run shortcut, applies even over the list.
+    if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+      event.preventDefault();
+      commit();
       return;
     }
     if (event.key === "Enter") {
@@ -304,14 +358,13 @@ export function ExpressionBar({
       forwardKey(listRef, event.key);
       return;
     }
+    // Esc closes the list first, then discards what isn't applied, like the formula editor.
     if (event.key === "Escape") {
       event.preventDefault();
-      if (text.length > 0) {
-        resetDraft();
-      } else if (isOpen) {
+      if (text.length > 0 || isOpen) {
         close();
       } else {
-        input.blur();
+        discard();
       }
       return;
     }
@@ -492,6 +545,11 @@ export function ExpressionBar({
             <TokenView
               key={`token-${index}`}
               query={query}
+              pickerQuery={
+                token.type === "filter"
+                  ? pickerQueries?.get(token.clause)
+                  : undefined
+              }
               stageIndex={stageIndex}
               token={token}
               isInNotebook={isInNotebook}
@@ -758,6 +816,26 @@ export function forwardKey(
   );
 }
 
+/** The expression the tokens spell, equal for equal filters in different query objects. */
+function getTokensKey(
+  query: Lib.Query,
+  stageIndex: number,
+  tokens: readonly Token[],
+): string {
+  return JSON.stringify(
+    tokens.map((token) => {
+      switch (token.type) {
+        case "filter":
+          return getFilterLabel(query, stageIndex, token.clause);
+        case "op":
+          return token.op;
+        case "paren":
+          return token.side;
+      }
+    }),
+  );
+}
+
 /** Nesting depth per token, so nested parens fade. */
 function getParenDepths(tokens: Token[]): number[] {
   let depth = 0;
@@ -811,6 +889,8 @@ function useFlashedLabels(
 
 type TokenViewProps = {
   query: Lib.Query;
+  /** The query a filter pill's picker sees: the draft's other filters. */
+  pickerQuery?: Lib.Query;
   stageIndex: number;
   token: Token;
   isInNotebook: boolean;
@@ -824,6 +904,7 @@ type TokenViewProps = {
 
 function TokenView({
   query,
+  pickerQuery,
   stageIndex,
   token,
   isInNotebook,
@@ -866,6 +947,7 @@ function TokenView({
   return (
     <FilterTokenView
       query={query}
+      pickerQuery={pickerQuery ?? query}
       stageIndex={stageIndex}
       clause={token.clause}
       isInNotebook={isInNotebook}
@@ -881,6 +963,7 @@ function TokenView({
 
 type FilterTokenViewProps = {
   query: Lib.Query;
+  pickerQuery: Lib.Query;
   stageIndex: number;
   clause: Lib.FilterClause;
   isInNotebook: boolean;
@@ -892,6 +975,7 @@ type FilterTokenViewProps = {
 
 function FilterTokenView({
   query,
+  pickerQuery,
   stageIndex,
   clause,
   isInNotebook,
@@ -963,7 +1047,7 @@ function FilterTokenView({
       <Popover.Dropdown data-testid="filter-picker-dropdown">
         <FilterAutoApplyContext.Provider value={tokenAutoApply}>
           <FilterPicker
-            query={query}
+            query={pickerQuery}
             stageIndex={stageIndex}
             filter={clause}
             onSelect={(filterable) => {

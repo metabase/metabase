@@ -10,10 +10,26 @@ import {
   getSummaryBase,
 } from "./utils";
 
-/** A filter on the summary's output, e.g. Count > 10, with the column it filters when it has one. */
-type SummaryOutputFilter = {
+/** A column a summary-output filter reads, with its name when the filter was made. */
+type OutputFilterColumn = {
+  column: Lib.ColumnMetadata;
+  displayName: string;
+};
+
+/**
+ * A filter on the summary's output, e.g. Count > 10 OR Sum of Total > 5, with every column it
+ * reads, so it applies only while the summary outputs all of them.
+ */
+export type SummaryOutputFilter = {
   clause: Lib.FilterClause;
-  column: Lib.ColumnMetadata | null;
+  displayName: string;
+  columns: readonly OutputFilterColumn[];
+};
+
+/** An output filter left out of the summary, because the summary no longer outputs some of its columns. */
+export type StaleOutputFilter = {
+  filter: SummaryOutputFilter;
+  missingColumnNames: string[];
 };
 
 /**
@@ -41,9 +57,29 @@ export function rememberSummarySession(session: SummarySession) {
   lastSession = session;
 }
 
+/** The names of the columns `filter` reads that the stage after `summaryQuery` can't filter on. */
+function getMissingColumnNames(
+  summaryQuery: Lib.Query,
+  filter: SummaryOutputFilter,
+): string[] {
+  const query = Lib.appendStage(summaryQuery);
+  const columns = Lib.filterableColumns(query, -1);
+  // a name check too: a replaced aggregation can keep the old one's column name, e.g. `sum`
+  const isOutput = ({ column, displayName }: OutputFilterColumn) => {
+    const match = Lib.findMatchingColumn(query, -1, column, columns);
+    return (
+      match != null &&
+      Lib.displayInfo(query, -1, match).displayName === displayName
+    );
+  };
+  return filter.columns
+    .filter((column) => !isOutput(column))
+    .map(({ displayName }) => displayName);
+}
+
 /**
  * `summaryQuery` with the output filters that still apply, in a stage of their own: a filter on a
- * column the summary no longer outputs, like a replaced breakout, is left out.
+ * column the summary no longer outputs, like a replaced breakout or a removed value, is left out.
  */
 function withOutputFilters(
   summaryQuery: Lib.Query,
@@ -52,17 +88,54 @@ function withOutputFilters(
   if (outputFilters.length === 0) {
     return summaryQuery;
   }
-  let query = Lib.appendStage(summaryQuery);
-  const columns = Lib.filterableColumns(query, -1);
-  for (const { clause, column } of outputFilters) {
-    if (
-      column == null ||
-      Lib.findMatchingColumn(query, -1, column, columns) != null
-    ) {
-      query = Lib.filter(query, -1, clause);
-    }
-  }
+  const query = outputFilters
+    .filter(
+      (filter) => getMissingColumnNames(summaryQuery, filter).length === 0,
+    )
+    .reduce(
+      (nextQuery, { clause }) => Lib.filter(nextQuery, -1, clause),
+      Lib.appendStage(summaryQuery),
+    );
   return Lib.dropEmptyStages(query);
+}
+
+/**
+ * The session's output filters that its summary leaves out, each with the columns it misses. They
+ * stay in the session, and apply again once the summary outputs those columns again.
+ */
+export function getStaleOutputFilters({
+  base,
+  definition,
+  outputFilters,
+}: SummarySession): StaleOutputFilter[] {
+  if (outputFilters.length === 0) {
+    return [];
+  }
+  const summaryQuery = buildSummaryQuery(base, definition);
+  return outputFilters
+    .map((filter) => ({
+      filter,
+      missingColumnNames:
+        summaryQuery != null && hasSummary(definition)
+          ? getMissingColumnNames(summaryQuery, filter)
+          : filter.columns.map(({ displayName }) => displayName),
+    }))
+    .filter(({ missingColumnNames }) => missingColumnNames.length > 0);
+}
+
+/** `session` without `filter`, e.g. a stale output filter the user dismissed. */
+export function removeOutputFilter(
+  session: SummarySession,
+  filter: SummaryOutputFilter,
+): SummarySession {
+  return {
+    ...session,
+    outputFilters: session.outputFilters.filter((item) => item !== filter),
+  };
+}
+
+function hasSummary({ rows, columns, values }: SummaryDefinition): boolean {
+  return rows.length > 0 || columns.length > 0 || values.length > 0;
 }
 
 /**
@@ -80,7 +153,7 @@ export function getSummaryQuestion({
   const hasRows = definition.rows.length > 0;
   const hasColumns = definition.columns.length > 0;
   const hasValues = definition.values.length > 0;
-  if (!hasRows && !hasColumns && !hasValues) {
+  if (!hasSummary(definition)) {
     return sourceQuestion;
   }
 
@@ -108,7 +181,16 @@ export function getSummaryQuestion({
     });
 }
 
-/** The filters in the stage right after the summary, each with the column it filters. */
+function getPartsColumns(parts: Lib.ExpressionParts): Lib.ColumnMetadata[] {
+  return parts.args.flatMap((arg) => {
+    if (Lib.isColumnMetadata(arg)) {
+      return [arg];
+    }
+    return Lib.isExpressionParts(arg) ? getPartsColumns(arg) : [];
+  });
+}
+
+/** The filters in the stage right after the summary, each with every column it reads. */
 function getOutputFilters(
   query: Lib.Query,
   summaryStageIndex: number,
@@ -119,7 +201,13 @@ function getOutputFilters(
   }
   return Lib.filters(query, stageIndex).map((clause) => ({
     clause,
-    column: Lib.filterParts(query, stageIndex, clause)?.column ?? null,
+    displayName: Lib.displayInfo(query, stageIndex, clause).longDisplayName,
+    columns: getPartsColumns(
+      Lib.expressionParts(query, stageIndex, clause),
+    ).map((column) => ({
+      column,
+      displayName: Lib.displayInfo(query, stageIndex, column).displayName,
+    })),
   }));
 }
 
@@ -205,7 +293,11 @@ function rebaseSummarySession(
     sourceQuestion: nextSourceQuestion,
     base: nextBase,
     definition,
-    outputFilters: getOutputFilters(query, stageIndex),
+    // stale filters aren't in `question`; keep them, so they can still apply again
+    outputFilters: [
+      ...getOutputFilters(query, stageIndex),
+      ...getStaleOutputFilters(session).map(({ filter }) => filter),
+    ],
   };
 }
 

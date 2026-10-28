@@ -3,7 +3,7 @@ import { match } from "ts-pattern";
 import { useSetting } from "metabase/settings";
 import type Question from "metabase-lib/v1/Question";
 
-import { readsSlowTable } from "../../FilterAutoApply/utils";
+import { getQueryUpdateOptions } from "../../FilterAutoApply/utils";
 import { SummarySidebar } from "../../SummarySidebar";
 import { QuestionInfoSidebar } from "../../sidebars/QuestionInfoSidebar";
 import { QuestionSettingsSidebar } from "../../sidebars/QuestionSettingsSidebar";
@@ -43,16 +43,12 @@ export const StructuredQueryRightSidebar = ({
     .with({ isShowingSummarySidebar: true }, () => (
       <SummarySidebar
         question={question}
-        onQuestionChange={(nextQuestion) => {
-          const isSlowData = readsSlowTable(
-            nextQuestion.query(),
-            prototypeData,
-          );
-          updateQuestion(nextQuestion, {
-            run: !isSlowData,
-            shouldUpdateUrl: isSlowData,
-          });
-        }}
+        onQuestionChange={(nextQuestion) =>
+          updateQuestion(
+            nextQuestion,
+            getQueryUpdateOptions(nextQuestion.query(), prototypeData),
+          )
+        }
       />
     ))
     .with({ isShowingTimelineSidebar: true }, () => <TimelineSidebar />)
