@@ -14,6 +14,7 @@
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.data-apps.core :as data-apps]
    [metabase.documents.core :as documents]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
@@ -409,21 +410,26 @@
                                                                        [:show-dashboard-questions    {:optional true} [:maybe ms/MaybeBooleanValue]]
                                                                        [:q                           {:optional true} [:maybe :string]]
                                                                        [:include-available-models    {:default false} [:maybe ms/BooleanValue]]
-                                                                       [:show-exploration-documents  {:optional true} [:maybe ms/MaybeBooleanValue]]]]
+                                                                       [:show-exploration-documents  {:optional true} [:maybe ms/MaybeBooleanValue]]]
+   _body
+   request]
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
-  (let [root-collection (assoc collection/root-collection :namespace namespace)
+  (let [data-app        (data-apps/request-data-app request)
+        root-collection (assoc collection/root-collection :namespace namespace)
         model-set       (set (map keyword (u/one-or-many models)))
         model-kwds      (collections.children/visible-model-kwds root-collection model-set)
-        restrict-models (when (or (not (contains? collections.children/namespaces-holding-non-collection-types namespace))
+        restrict-models (when (or data-app
+                                  (not (contains? collections.children/namespaces-holding-non-collection-types namespace))
                                   (not (mi/can-read? root-collection)))
                           #{:collection})
         options         {:archived?                   (boolean archived)
                          :show-dashboard-questions?   (boolean show-dashboard-questions)
                          :show-exploration-documents? (boolean show-exploration-documents)
-                         :collection-type             collection-type
-                         :include-library?            include-library
-                         :models                      (if-not (contains? collections.children/namespaces-holding-non-collection-types namespace)
+                         :collection-type             (or (some-> data-app data-apps/data-app-collection-types) collection-type)
+                         :include-library?            (or include-library (some? data-app))
+                         :models                      (if (or data-app
+                                                              (not (contains? collections.children/namespaces-holding-non-collection-types namespace)))
                                                         #{:collection}
                                                         model-kwds)
                          :pinned-state                (keyword pinned-state)
@@ -597,8 +603,12 @@
   "Fetch a specific Collection with standard details added"
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
+                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
+   _query-params
+   _body
+   request]
   (let [resolved-id (eid-translation/->id-or-404 :collection id)]
+    (some-> (data-apps/request-data-app request) (data-apps/check-collection resolved-id))
     (collection-detail (api/read-check :model/Collection resolved-id))))
 
 (api.macros/defendpoint :put "/:id" :- ::Collection
@@ -665,13 +675,18 @@
                                             [:show-dashboard-questions    {:default false} [:maybe ms/BooleanValue]]
                                             [:show-exploration-documents  {:default false} [:maybe ms/BooleanValue]]
                                             [:q                           {:optional true} [:maybe :string]]
-                                            [:include-available-models    {:default false} [:maybe ms/BooleanValue]]]]
+                                            [:include-available-models    {:default false} [:maybe ms/BooleanValue]]]
+   _body
+   request]
   (let [resolved-id (eid-translation/->id-or-404 :collection id)
+        data-app    (data-apps/request-data-app request)
+        _           (some-> data-app (data-apps/check-collection resolved-id))
         model-kwds  (set (map keyword (u/one-or-many models)))
         collection  (api/read-check :model/Collection resolved-id)
         options     {:show-dashboard-questions?   show-dashboard-questions
                      :show-exploration-documents? show-exploration-documents
                      :models                      model-kwds
+                     :collection-type             (some-> data-app data-apps/data-app-collection-types)
                      :include-library?            true
                      :archived?                   (or archived (:archived collection) (collection/is-trash? collection))
                      :pinned-state                (keyword pinned-state)

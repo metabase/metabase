@@ -767,6 +767,53 @@
                   (apply mt/user-http-request :crowberto method 400 other as-data-app (when body [body])))
                (name method))))))))
 
+(defn- item-ids
+  "The `[model id]` pairs of the items that the request to `endpoint` with `options` finds."
+  [options endpoint]
+  (set (map (juxt :model :id) (:data (mt/user-http-request :crowberto :get 200 endpoint options)))))
+
+(deftest collection-endpoints-show-only-library-data-and-metrics-test
+  (do-with-app-collection
+   (fn [_collection-id]
+     (data-apps.tu/do-with-library!
+      (fn [{:keys [data-id metrics-id]}]
+        (let [library-id    (:id (collections/library-collection))
+              dashboards-id (t2/select-one-pk :model/Collection
+                                              :location (str "/" library-id "/")
+                                              :type     collections/library-dashboards-collection-type)]
+          (mt/with-temp [:model/Collection data-child    {:name     "Birds data"
+                                                          :type     collections/library-data-collection-type
+                                                          :location (str "/" library-id "/" data-id "/")}
+                         :model/Collection metrics-child {:name     "Birds metrics"
+                                                          :type     collections/library-metrics-collection-type
+                                                          :location (str "/" library-id "/" metrics-id "/")}
+                         :model/Collection outside       {:name "Birds outside"}
+                         :model/Card       root-card     {:name "Birds root card"}]
+            (testing "the root items of a data app are the Library alone"
+              (let [found (item-ids as-data-app "collection/root/items")]
+                (is (contains? found ["collection" library-id]))
+                (is (not-any? found [["collection" (:id outside)] ["card" (:id root-card)]]))))
+            (testing "the Library holds only its Data and Metrics collections, which hold their subcollections"
+              (let [found (item-ids as-data-app (str "collection/" library-id "/items"))]
+                (is (contains? found ["collection" data-id]))
+                (is (contains? found ["collection" metrics-id]))
+                (is (not (contains? found ["collection" dashboards-id]))))
+              (is (contains? (item-ids as-data-app (str "collection/" data-id "/items")) ["collection" (:id data-child)]))
+              (is (contains? (item-ids as-data-app (str "collection/" metrics-id "/items")) ["collection" (:id metrics-child)])))
+            (testing "a data app reads the Library, its Data and Metrics collections and their subcollections"
+              (doseq [id [library-id data-id metrics-id (:id data-child) (:id metrics-child)]]
+                (is (= id (:id (mt/user-http-request :crowberto :get 200 (str "collection/" id) as-data-app))))))
+            (testing "a data app is refused any other collection and its items"
+              (doseq [id [(:id outside) dashboards-id]
+                      endpoint [(str "collection/" id) (str "collection/" id "/items")]]
+                (is (= (format "A data app can see only the Library, its Data and Metrics collections and their subcollections, not the collection %s." id)
+                       (mt/user-http-request :crowberto :get 400 endpoint as-data-app))
+                    endpoint)))
+            (testing "a request that is not a data app's finds the other collection and the root card"
+              (let [found (item-ids {} "collection/root/items")]
+                (is (contains? found ["collection" (:id outside)]))
+                (is (contains? found ["card" (:id root-card)])))))))))))
+
 (deftest without-data-apps-feature-test
   (testing "without the data-apps feature a data app's queries are not checked"
     (mt/with-premium-features #{}

@@ -134,3 +134,17 @@
    _nmspace  :- :string
    _k        :- :string]
   nil)
+
+(defenterprise-schema data-app-collection-types :- [:maybe [:set :string]]
+  "The types of the collections that `data-app` may see, or nil, meaning any, without the data-apps feature."
+  metabase-enterprise.data-apps.checks
+  [_data-app :- ::data-apps.schema/data-app]
+  nil)
+
+(defenterprise-schema check-collection :- :nil
+  "Throws a 400 unless `data-app` may see the collection with `collection-id`, after a read check of the collection;
+  does nothing without the data-apps feature."
+  metabase-enterprise.data-apps.checks
+  [_data-app      :- ::data-apps.schema/data-app
+   _collection-id :- ::lib.schema.id/collection]
+  nil)

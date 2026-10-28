@@ -202,7 +202,7 @@
   [:map {:closed true}
    [:show-dashboard-questions?     :boolean]
    [:show-exploration-documents?   {:optional true} [:maybe :boolean]]
-   [:collection-type {:optional true} [:maybe CollectionType]]
+   [:collection-type {:optional true} [:maybe [:or CollectionType [:set :string]]]]
    [:archived?                     :boolean]
    [:include-library?               {:optional true} [:maybe :boolean]]
    [:pinned-state {:optional true} [:maybe (into [:enum] (map keyword) valid-pinned-state-values)]]
@@ -723,7 +723,7 @@
          (when collection-type
            (if (= collection-type "remote-synced")
              [:= :is_remote_synced true]
-             [:= :type collection-type]))
+             [:in :type (vec collection-type)]))
          (when-not include-library?
            [:or [:= nil :type]
             [:not [:in :type (vec collection/library-collection-types)]]])
