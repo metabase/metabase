@@ -150,9 +150,11 @@ listed under "Filters and SQL expressions"; everything outside it is reported, n
 | -- | -- | -- | -- |
 | a function with no MBQL expression function of the same meaning | `greatest(a, b)`, `regexp_replace(x, 'a', 'b')`, `to_char(d, 'YYYY')`, `ln(x)`, `log(2, x)`, `dateadd(day, 1, d)`, `extract(dow from d)`, `trim('x' from s)`, `round(x, -1)`, `date_trunc('decade', d)`, `date_trunc('month', d + 1)` | The functions that have an MBQL expression function with the same meaning are mapped (the list is under "Filters and SQL expressions"); the rest have nothing to map onto. `round` to a number of decimals is `round(x * 10^n) / 10^n`, so the decimals have to be a literal. `date_trunc` is a temporal bucket on a column ref, so there is nothing to bucket when its argument is an expression, and nothing for a unit Metabase does not have. | Extend the converter where MBQL has an equivalent under another shape (`dateadd` as `datetime-add`, `greatest` as a `case`); extend MBQL with the rest (a regex replace, a date format, a natural log, week and day-of-week extraction that agrees on the first day of the week). |
 | a `CAST` to anything but an integer, decimal, float, text, date or timestamp type | `cast(x as boolean)`, `x::uuid`, `cast(x as interval)` | MBQL's conversions are `integer`, `float`, `text`, `date` and `datetime`, and the common SQL spellings of those types map onto them (`cast(amount_cents as decimal) / 100` converts). | Extend MBQL with the missing conversions. |
+| a comparison, `IN` or `BETWEEN` with a `NULL` literal as an operand | `{{ Dimension('order__status') }} = NULL`, `status IN ('a', NULL)` | In SQL the comparison is null, so never true. Lib reads a nil operand of `=`, `!=` or `in` as a null check, so `[:= x nil]` would match the null rows, the opposite of what was written. | Nothing: `IS [NOT] NULL` converts. |
 | a `LIKE`, `SIMILAR TO` or regex pattern that is not a string literal | `like {{ Dimension('order__prefix') }} \|\| '%'`, `~ {{ Dimension('order__pattern') }}` | A pattern that is a column or an expression cannot be taken apart into Lib's string filters, and the regex fallback needs the regex as a literal too. | Extend MBQL with a `like` clause taking an expression as the pattern. |
 | a custom calendar granularity | `TimeDimension('order__ordered_at', 'retail_month')`, defined on the project's time spine | Metabase buckets by its standard truncation units, `minute` through `year`. `fiscal_quarter` is read as `quarter` until custom calendars are supported. | Custom calendars in Metabase, then a mapping from a dbt custom granularity onto one. |
 | a dimension reached through two entities | `Dimension('order__customer__region')` | A dimension mapping is one implicit join, a foreign key on the metric's table to the joined table's key. A two-hop path has no representation. | Extend Metabase metrics so a dimension mapping can carry a multi-hop join path, or so a metric query can hold explicit joins. |
+| an `entity_path` argument on a reference | `Dimension('customer__region', entity_path=['order'])` | The converter reaches a dimension through the entity named in the reference, as the one implicit join above. A path through other entities is the same multi-hop join, and the argument is reported rather than dropped so that the filter is not resolved against the wrong entity. | The same multi-hop join path as above. |
 
 ### Dimensions and joins
 
@@ -276,7 +278,9 @@ MetricFlow references around SQL. Both go through sqlglot (`metabase.sql-parsing
 `dev.dbt-import.sql`), which parses an expression on its own in the dialect of the config's `:driver`, and a subset
 of SQL maps onto MBQL:
 
-- column references, literals, `+ - * /` and `^`, comparisons, `AND`/`OR`/`NOT`, `IN`, `BETWEEN`;
+- column references, literals, `+ - * /` and `^`, comparisons, `AND`/`OR`/`NOT`, `IN`, `BETWEEN`. A comparison, `IN`
+  or `BETWEEN` with a `NULL` literal as an operand is reported: in SQL it is null, so never true, while the
+  `[:= x nil]` it would become is a null check that matches the null rows;
 - `IS [NOT] NULL`, `IS [NOT] TRUE` and `IS [NOT] FALSE`, the negated boolean forms as `!= ... OR IS NULL` so that
   they still hold for a null column;
 - `IS [NOT] DISTINCT FROM`, the null-safe comparison. Against a literal it is `=` or `!=`: `=` is null, so false in a
@@ -317,7 +321,9 @@ semantic model's primary entity, and `TimeDimension(..., '<grain>')` additionall
 temporal unit; `metric_time` is the measure's `agg_time_dimension` and `Entity('<name>')` is that entity's column. A
 dimension reached through a foreign entity is on the semantic model that entity is primary for, and resolves to that
 model's column joined implicitly through the entity's column (see "Entities and dimensions"). `Metric(...)` references
-are reported (see "Limitations").
+are reported (see "Limitations"), and so is a reference with any argument beyond its name and grain, such as
+`Dimension('customer__region', entity_path=['order'])`: the converter reaches a dimension through the entity named in
+the reference and cannot follow another path.
 
 ## Advanced metric types
 

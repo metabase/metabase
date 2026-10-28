@@ -547,7 +547,10 @@
       "sum"            "2"    #"sum over the literal 2"
       "sum"            "01"   #"literal 01"
       "sum"            "true" #"literal true"
-      "sum"            "NULL" #"literal NULL")))
+      "sum"            "NULL" #"literal NULL"))
+  (testing "a comparison against NULL inside an expression is never true in SQL, so it is reported, not made IS NULL"
+    (is (re-find #"sales = NULL \(EQ\) compares against NULL"
+                 (expr-reason "CASE WHEN sales = NULL THEN 1 ELSE 0 END")))))
 
 (deftest ^:parallel count-test
   (is (= [:count-where {} [:not-null {} (fld "sales" :type/Float)]] (aggregation-of-expr "sales" :agg "count"))
@@ -894,6 +897,36 @@
              (filter-of "{{ Dimension('fact_sales_key__status') }} IS DISTINCT FROM {{ Entity('customer') }}"))))
     (testing "two literals compare nothing"
       (is (re-find #"compares two literals" (filter-reason "{{ Dimension('fact_sales_key__status') }} = 'x' AND 1 IS DISTINCT FROM 2"))))))
+
+(deftest ^:parallel filter-null-comparison-test
+  (testing "a comparison against the literal NULL is null, so never true, in SQL; Lib would read the nil as IS NULL"
+    (are [template] (re-find #"compares against NULL, which is never true in SQL" (filter-reason template))
+      "{{ Dimension('fact_sales_key__status') }} = NULL"
+      "{{ Dimension('fact_sales_key__status') }} != NULL"
+      "{{ Dimension('fact_sales_key__status') }} <> NULL"
+      "NULL = {{ Dimension('fact_sales_key__status') }}"
+      "{{ Dimension('fact_sales_key__amount') }} > (NULL)"
+      "{{ Dimension('fact_sales_key__amount') }} <= NULL"
+      "NOT ({{ Dimension('fact_sales_key__status') }} = NULL)"
+      "{{ Dimension('fact_sales_key__status') }} IN ('Shipped', NULL)"
+      "{{ Dimension('fact_sales_key__status') }} NOT IN (NULL)"
+      "{{ Dimension('fact_sales_key__amount') }} BETWEEN NULL AND 100"
+      "{{ Dimension('fact_sales_key__amount') }} BETWEEN 0 AND NULL"
+      "{{ Dimension('fact_sales_key__status') }} = 'Shipped' OR {{ Dimension('fact_sales_key__amount') }} = NULL"
+      "CASE WHEN {{ Dimension('fact_sales_key__status') }} = NULL THEN 1 ELSE 0 END = 1"))
+  (testing "NULL as a value, rather than compared against, is fine"
+    (is (= [:= {} [:case {} [[[:= {} status "x"] nil]] status] "y"]
+           (filter-of "nullif({{ Dimension('fact_sales_key__status') }}, 'x') = 'y'")))))
+
+(deftest ^:parallel filter-reference-arguments-test
+  (testing "entity_path picks a join path the converter cannot follow, so it is reported rather than dropped"
+    (are [template] (re-find #"has the argument entity_path=\['order'\]" (filter-reason template))
+      "{{ Dimension('fact_sales_key__status', entity_path=['order']) }} = 'Shipped'"
+      "{{ Dimension('fact_sales_key__status' , entity_path=['order'] ) }} = 'Shipped'"
+      "{{ TimeDimension('metric_time', 'day', entity_path=['order']) }} >= '2024-01-01'"
+      "{{ Entity('customer', entity_path=['order']) }} IS NOT NULL"))
+  (testing "whitespace around the name is not an argument"
+    (is (= [:= {} status "Shipped"] (filter-of "{{ Dimension( 'fact_sales_key__status' ) }} = 'Shipped'")))))
 
 (deftest ^:parallel filter-unsupported-sql-test
   (are [template reason] (re-find reason (filter-reason template))
