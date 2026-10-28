@@ -7,7 +7,7 @@
   The default backend is `db`, which uses the application database; this value can be changed by setting the env var
   `MB_QP_CACHE_BACKEND`. Refer to [[metabase.query-processor.middleware.cache-backend.interface]] for more details
   about how the cache backends themselves."
-  (:refer-clojure :exclude [get-in])
+  (:refer-clojure :exclude [get-in mapv])
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
@@ -27,7 +27,7 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.performance :refer [get-in]])
+   [metabase.util.performance :refer [get-in mapv]])
   (:import
    (org.eclipse.jetty.io EofException)))
 
@@ -155,13 +155,19 @@
 
 ;;; ----------------------------------------------------- Fetch ------------------------------------------------------
 
+(defn- remove-internal-remaps
+  "Older cached results kept an internal remap with every value of the column on their cols; readers can be sandboxed."
+  [cols]
+  (mapv #(dissoc % :lib/internal-remap) cols))
+
 (mu/defn- cached-results-rff :- ::qp.schema/rff
   "Reducing function for cached results. Merges the final object in the cached results, the `final-metdata` map, with
   the reduced value assuming it is a normal metadata map."
   [rff        :- ::qp.schema/rff
    query-hash :- bytes?]
   (fn [{:keys [last-ran], :as metadata}]
-    (let [metadata       (dissoc metadata :last-ran :cache-version)
+    (let [metadata       (-> (dissoc metadata :last-ran :cache-version)
+                             (m/update-existing :cols remove-internal-remaps))
           rf             (rff metadata)
           final-metadata (volatile! nil)]
       (fn
@@ -184,7 +190,11 @@
            ;; acc (returning `row` would clobber anything middlewares wrote at init,
            ;; e.g. :viz-settings). `unreduced` strips any reduced marker so it doesn't
            ;; leak out through the stashed handoff.
-           (do (vreset! final-metadata row) (unreduced acc))
+           (do (vreset! final-metadata (-> row
+                                           (m/update-existing-in [:data :cols] remove-internal-remaps)
+                                           (m/update-existing-in [:data :results_metadata :columns]
+                                                                 remove-internal-remaps)))
+               (unreduced acc))
            ;; `reducible-rows` keeps reading past a reduced acc (see cache/impl.clj);
            ;; propagate it here instead of calling `rf` past the short-circuit.
            (if (reduced? acc)

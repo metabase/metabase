@@ -624,9 +624,12 @@
    remapping-dimensions                                 :- [:maybe [:sequential ::external-remapping]]
    {:keys [internal-only-cols], :as internal-cols-info} :- [:maybe ::internal-columns-info]]
   (update metadata :cols (fn [cols]
-                           (-> cols
-                               (add-remapping-info remapping-dimensions internal-cols-info)
-                               (concat internal-only-cols)))))
+                           (concat
+                            ;; The remap lists every value of the column, including rows the user can't see. The
+                            ;; added column carries the labels the rows need, so the remap stays off the results.
+                            (map #(dissoc % :lib/internal-remap)
+                                 (add-remapping-info cols remapping-dimensions internal-cols-info))
+                            internal-only-cols))))
 
 (mu/defn- remap-results-xform
   "Munges results for remapping after the query has been executed. For internal remappings, a new column needs to be

@@ -586,6 +586,23 @@
                   [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 "Burger"]]
                  (mt/rows results))))))))
 
+(deftest ^:parallel internal-remap-values-not-in-result-cols-test
+  (testing "Result cols do not carry the column's whole FieldValues remap; the rows already hold the labels"
+    (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
+                                      (mt/metadata-provider)
+                                      (mt/id :venues :category_id)
+                                      {4 "Asian", 11 "Burger", 50 "HIDDEN"})
+      (let [query   (mt/mbql-query venues {:fields [$id $category_id], :order-by [[:asc $id]], :limit 2})
+            results (qp/process-query query)]
+        (is (= [[1 4 "Asian"] [2 11 "Burger"]]
+               (mt/rows results)))
+        (is (=? [{:remapped_to "Category ID [internal remap]"}]
+                (filter :remapped_to (mt/cols results))))
+        (is (not-any? :lib/internal-remap (mt/cols results)))
+        (is (not-any? :lib/internal-remap (get-in results [:data :results_metadata :columns])))
+        (testing "expected cols"
+          (is (not-any? :lib/internal-remap (qp.preprocess/query->expected-cols query))))))))
+
 (deftest ^:parallel different-id-types-test
   (testing "Make sure different ID types like Integers vs BigDecimals (Oracle) are handled correctly\n"
     (doseq [{:keys [base-type cast-fn]} [{:base-type :type/Integer,    :cast-fn int}

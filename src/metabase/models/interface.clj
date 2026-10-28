@@ -234,7 +234,8 @@
   [metadata]
   ;; TODO -- can we make this whole thing a lazy seq?
   (when-let [metadata (not-empty (json-out-with-keywordization metadata))]
-    (not-empty (mapv lib/normalize-result-metadata-column metadata))))
+    ;; older results saved an internal remap with every value of the column; readers can be sandboxed
+    (not-empty (mapv #(dissoc (lib/normalize-result-metadata-column %) :lib/internal-remap) metadata))))
 
 (def transform-result-metadata
   "Transform for card.result_metadata like columns."

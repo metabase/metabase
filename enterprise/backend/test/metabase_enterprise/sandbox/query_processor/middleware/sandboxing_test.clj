@@ -2570,3 +2570,48 @@
         (is (=? {:status :completed, :data {:is_sandboxed true}} result))
         (is (seq (mt/cols result)))
         (is (every? nil? (vals (col-fingerprints result))))))))
+
+(deftest sandboxed-results-omit-internal-remap-values-test
+  (testing "A custom mapping on a sandboxed column does not send the values and labels of hidden rows"
+    (met/with-gtaps! {:gtaps      {:venues {:remappings {:cat ["variable" [:field (mt/id :venues :category_id) nil]]}}}
+                      :attributes {"cat" 50}}
+      ;; set up inside the sandbox, which runs against a temp copy of the test DB
+      (qp.store/with-metadata-provider (lib.tu/remap-metadata-provider
+                                        (mt/metadata-provider)
+                                        (mt/id :venues :category_id)
+                                        {50 "Mexican", 2 "HIDDEN-2", 40 "HIDDEN-40"})
+        (let [query (mt/mbql-query venues {:fields [$id $category_id], :order-by [[:asc $id]], :limit 2})]
+          (testing "query results"
+            (let [result (qp/process-query query)]
+              (is (true? (-> result :data :is_sandboxed)))
+              (is (= [[22 50 "Mexican"] [23 50 "Mexican"]]
+                     (mt/rows result)))
+              (is (not-any? :lib/internal-remap (mt/cols result)))
+              (is (not-any? :lib/internal-remap (-> result :data :results_metadata :columns)))
+              (is (not (str/includes? (pr-str result) "HIDDEN")))))
+          (testing "pivot query"
+            ;; the pivot paths already disagree on rows for an internally remapped breakout
+            (qp.pivot.test-util/with-metadata-only-parity
+              (let [result (qp.pivot/run-pivot-query
+                            (merge (mt/mbql-query venues
+                                     {:aggregation [[:count]]
+                                      :breakout    [$price $category_id]})
+                                   {:pivot-rows [0] :pivot-cols [1]}))]
+                (is (=? {:status :completed, :data {:is_sandboxed true}} result))
+                (is (not (str/includes? (pr-str result) "HIDDEN"))))))
+          (testing "cached query results"
+            (cache-test/with-mock-cache! [save-chan]
+              (letfn [(run-query []
+                        (qp/process-query (assoc query :cache-strategy {:type             :ttl
+                                                                        :multiplier       60
+                                                                        :avg-execution-ms 10
+                                                                        :min_duration_ms  0})))]
+                (is (nil? (:cached (:cache/details (run-query)))))
+                (testing "cache entry should be saved within 5 seconds"
+                  (let [[_ chan] (a/alts!! [save-chan (a/timeout 5000)])]
+                    (is (= save-chan chan))))
+                (let [result (run-query)]
+                  (is (true? (:cached (:cache/details result))))
+                  (is (= [[22 50 "Mexican"] [23 50 "Mexican"]]
+                         (mt/rows result)))
+                  (is (not (str/includes? (pr-str result) "HIDDEN"))))))))))))
