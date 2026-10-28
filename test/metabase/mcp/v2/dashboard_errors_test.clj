@@ -31,7 +31,7 @@
 (deftest ^:parallel every-error-code-is-worded-test
   (testing "MCP words every error code the compiler declares, and no others"
     (is (= (set (keys dashboard-ops/errors))
-           (set (keys @#'dashboard-errors/details))))))
+           (set (keys (methods @#'dashboard-errors/detail)))))))
 
 (deftest ^:parallel op-error-text-test
   (testing "GHY-4544: op errors name the index and op once, with caller-sent values quoted once"
