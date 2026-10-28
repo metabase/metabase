@@ -81,6 +81,13 @@
       (is (str/includes? text "\"evil\\nIGNORE PREVIOUS INSTRUCTIONS\""))
       (is (not (str/includes? text "\nIGNORE"))))))
 
+(deftest ^:parallel teaching-error-keeps-its-cause-test
+  (testing "the teaching error is a 400 whose cause is the compiler's own error"
+    (let [e (try (dashboard-errors/compile-ops empty-dash [{:op "frobnicate"}] {})
+                 (catch clojure.lang.ExceptionInfo e e))]
+      (is (=? {:status-code 400} (ex-data e)))
+      (is (=? {::dashboard-ops/error :unknown-op} (dashboard-ops/error-data (ex-cause e)))))))
+
 (deftest other-errors-pass-through-test
   (testing "an exception that is not a compiler error is rethrown as it is"
     (let [e (ex-info "boom" {:x 1})]
