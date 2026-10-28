@@ -5,6 +5,7 @@ import { sdkBundleExports } from "embedding-sdk-bundle/sdk-bundle-exports";
 import { getSdkStore } from "embedding-sdk-bundle/store";
 import { useMetabaseAuthStatus } from "embedding-sdk-package/hooks/public/use-metabase-auth-status";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-package/lib/provider-props-store";
+import { defer } from "metabase/utils/promise";
 
 import { DataApp } from "./DataApp";
 
@@ -132,6 +133,97 @@ describe("DataApp", () => {
     });
     message(iframe, "metabase.embed.requestSessionToken", { source: window });
     expect(getSession).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      name: "a locale update",
+      props: { locale: "de" },
+    },
+    {
+      name: "an equivalent auth config with a theme update",
+      props: {
+        authConfig: { ...config },
+        theme: { colors: { brand: "#123456" } },
+      },
+    },
+  ])("delivers a pending session after $name", async ({ props }) => {
+    const pendingSession = defer<typeof session>();
+    requestSession.mockReturnValueOnce(pendingSession.promise);
+
+    render(<DataApp path="boba-hq" />);
+    const iframe = screen.getByTitle<HTMLIFrameElement>("Data app");
+    const postMessage = jest.spyOn(iframe.contentWindow!, "postMessage");
+
+    message(iframe, "metabase.embed.iframeReady");
+    message(iframe, "metabase.embed.requestSessionToken");
+    expect(requestSession).toHaveBeenCalledTimes(1);
+
+    act(() =>
+      ensureMetabaseProviderPropsStore().setProps({
+        authConfig: config,
+        locale: "fr",
+        ...props,
+      }),
+    );
+    expect(screen.getByTitle("Data app")).toBe(iframe);
+
+    await act(async () => {
+      pendingSession.resolve(session);
+      await pendingSession.promise;
+    });
+
+    expect(postMessage).toHaveBeenCalledWith(
+      {
+        type: "metabase.embed.submitSessionToken",
+        data: { sessionToken: session },
+      },
+      "https://metabase.example.com",
+    );
+  });
+
+  it("discards a pending session after the provider auth config changes", async () => {
+    const pendingSession = defer<typeof session>();
+    requestSession.mockReturnValueOnce(pendingSession.promise);
+
+    render(<DataApp path="boba-hq" />);
+    const iframe = screen.getByTitle<HTMLIFrameElement>("Data app");
+    const postMessage = jest.spyOn(iframe.contentWindow!, "postMessage");
+
+    message(iframe, "metabase.embed.requestSessionToken");
+    expect(requestSession).toHaveBeenCalledWith(config);
+
+    const nextConfig = {
+      ...config,
+      jwtProviderUri: "https://host.example.com/next-jwt",
+    };
+
+    act(() =>
+      ensureMetabaseProviderPropsStore().setProps({ authConfig: nextConfig }),
+    );
+    expect(screen.getByTitle("Data app")).toBe(iframe);
+
+    await act(async () => {
+      pendingSession.resolve(session);
+      await pendingSession.promise;
+    });
+
+    expect(postMessage).not.toHaveBeenCalled();
+
+    const nextSession = { ...session, id: "next-session" };
+    requestSession.mockResolvedValueOnce(nextSession);
+    message(iframe, "metabase.embed.requestSessionToken");
+
+    await waitFor(() =>
+      expect(postMessage).toHaveBeenCalledWith(
+        {
+          type: "metabase.embed.submitSessionToken",
+          data: { sessionToken: nextSession },
+        },
+        "https://metabase.example.com",
+      ),
+    );
+    expect(requestSession).toHaveBeenLastCalledWith(nextConfig);
   });
 
   it("recreates the frame when its path changes and discards a pending session reply", async () => {

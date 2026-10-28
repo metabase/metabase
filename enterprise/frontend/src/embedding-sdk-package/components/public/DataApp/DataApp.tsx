@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { isEqual } from "underscore";
 
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import { ClientSideOnlyWrapper } from "embedding-sdk-package/components/private/ClientSideOnlyWrapper/ClientSideOnlyWrapper";
@@ -126,10 +127,15 @@ function DataAppFrame({
   style,
 }: DataAppFrameProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const currentAuthRef = useRef({ authConfig, store });
   const readyRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const getSession =
     getWindow()?.METABASE_EMBEDDING_SDK_BUNDLE?.getDataAppSession;
+
+  useLayoutEffect(() => {
+    currentAuthRef.current = { authConfig, store };
+  }, [authConfig, store]);
 
   useLayoutEffect(() => {
     const iframe = iframeRef.current;
@@ -138,9 +144,13 @@ function DataAppFrame({
       return;
     }
 
-    let active = true;
+    const isCurrentAuthRequest = () =>
+      iframeRef.current === iframe &&
+      currentAuthRef.current.store === store &&
+      isEqual(currentAuthRef.current.authConfig, authConfig);
+
     const send = (message: SdkIframeEmbedMessage) => {
-      if (active) {
+      if (iframeRef.current === iframe) {
         iframe.contentWindow?.postMessage(message, origin);
       }
     };
@@ -164,12 +174,15 @@ function DataAppFrame({
         }
 
         const sessionToken = await getSession(store)(authConfig);
-        send({
-          type: "metabase.embed.submitSessionToken",
-          data: { sessionToken },
-        });
+
+        if (isCurrentAuthRequest()) {
+          send({
+            type: "metabase.embed.submitSessionToken",
+            data: { sessionToken },
+          });
+        }
       } catch (error) {
-        if (active) {
+        if (isCurrentAuthRequest()) {
           const message =
             typeof error === "object" && error !== null && "message" in error
               ? String(error.message)
@@ -203,7 +216,6 @@ function DataAppFrame({
     }
 
     return () => {
-      active = false;
       window.removeEventListener("message", onMessage);
     };
   }, [origin, path, authConfig, store, locale, getSession, error]);
