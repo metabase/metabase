@@ -31,7 +31,7 @@ The first time you open Data Studio, you'll land on the **Guide**: a quick tour 
 ### Library
 
 - **[Semantic layer](semantic-layer/library.md)**\*: A curated space for your organization's most trusted analytics content—tables, metrics, dashboards, and SQL snippets that your data team recommends.
-- **[Data actions](./data-actions.md)**: Create actions without a model, from a SQL query or a table, and organize them in folders.
+- **[Data actions](./data-actions.md)**: Set up the inserts, updates, and deletes that data apps use to write to your database.
 - **[Glossary](./semantic-layer/glossary.md)**: Define terms relevant to your business, both for people and agents trying to understand your data.
 
 ### Tools

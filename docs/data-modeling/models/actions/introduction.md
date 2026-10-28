@@ -22,7 +22,7 @@ Here are a few ideas for what you can do with actions:
 - Let team members remove redundant data.
 - Create a customer feedback form and embed it on your website.
 
-Actions can belong to a [model](../../../data-modeling/models/models.md), or live in Data Studio without a model as [data actions](../../data-actions.md). Either way, actions only run on the raw tables in your database (so actions will never edit your [model definition](../../../data-modeling/models/models.md#edit-a-models-query)).
+Actions can belong to a [model](../../../data-modeling/models/models.md), or stand on their own as [data actions](../../data-actions.md). Either way, actions only run on the raw tables in your database (so actions will never edit your [model definition](../../../data-modeling/models/models.md#edit-a-models-query)).
 
 If you're an admin who just wants to edit data in your tables, check out [Editable table data](../../../data-modeling/editable-tables.md).
 
@@ -52,7 +52,7 @@ There are multiple ways to run actions:
 - [From the model details page](../../../data-modeling/models/models.md#model-details) by clicking the **run** button.
 - From a [public form](./custom.md#make-public) of an action.
 - From a [button on dashboard](../../../dashboards/actions.md).
-- From the **Run** tab of a [data action](../../data-actions.md#edit-and-run-a-data-action) in Data Studio.
+- From the **Run** tab of a [data action](../../data-actions.md#run-a-data-action).
 
 ## Deleting a model deletes its actions
 
@@ -66,7 +66,7 @@ This includes people who aren't admins: anyone with [Curate access](../../../per
 
 Restoring the model from the trash doesn't bring its actions back.
 
-[Data actions](../../data-actions.md) don't belong to a model, so they work differently: when you archive a data actions folder, Metabase archives its actions too, and unarchiving the folder brings them back. See [Organize and archive data actions](../../data-actions.md#organize-and-archive-data-actions).
+[Data actions](../../data-actions.md) don't belong to a model, so they work differently: when you archive a data actions folder, Metabase archives its actions too, and unarchiving the folder brings them back. See [Archive and unarchive data actions](../../data-actions.md#archive-and-unarchive-data-actions).
 
 ## Auditing actions
 
