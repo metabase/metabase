@@ -46,12 +46,6 @@ This opens a canvas view where you can search for and visualize the dependencies
 
 You can also view an item's dependencies from its page in Data Studio. Published tables, metrics, snippets, segments, measures, and transforms have a **Dependencies** tab. For tables in **Connected data**, click the **Dependency graph** button on the table's **Details** tab.
 
-### Data apps in the dependency graph
-
-A [data app](../../data-apps/start.md) depends on the questions and actions in its collection. To see an app's dependencies, type the app's name in the **Pick an item to see its dependencies** box. Or select **Browse all** and open the **Data apps** folder.
-
-To open an app, click the app in the graph, and click the **external link** icon in its info panel. The icon also shows for draft apps, but drafts don't open. The graph doesn't link to the questions and actions in an app's collection.
-
 ## What the dependency graph shows
 
 The dependency graph shows both the content an item relies on and the content that relies on it, displayed as connected items you can explore.

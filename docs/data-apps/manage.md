@@ -22,27 +22,30 @@ To open a live app, click the **three dots** on the app's row and select **Open 
 
 ## See what an app reads and writes
 
-Click an app in the list to see its details. Each app has four tabs:
+In Data Studio, in the list of data apps, click the app's name. The app's page shows:
 
-- **Overview**: A live preview of the app, and the app's **Status**, **Address**, and **Group access**.
-- **Questions**: The questions in the app's collection, but not its metrics. Click a question to see it.
-- **Actions**: The data actions the app uses to write data. Click an action to see its **Definition** and **Fields**.
-- **Permissions**: The groups whose people can open the app.
+- **Overview**: A preview of the app, and the app's status, address, and group access.
+- **Questions**: The questions that the app reads, but not its metrics.
+- **Actions**: The actions that the app uses to write data, with each action's definition and fields.
+- **Permissions**: The groups that can open the app.
 
 ![Data app Overview tab](./images/data-apps-overview-tab.png)
 
-Each question and action also has a **Dependencies** tab. You can also [see the whole app in the dependency graph](../data-modeling/tools/graph.md#data-apps-in-the-dependency-graph).
+To see what a question or action depends on, open the question or action, and go to its **Dependencies** tab. To see the whole app, look up the app in the [dependency graph](../data-modeling/tools/graph.md).
 
 To see the questions and actions that your apps run, who runs them, and what fails, check out [Data app analytics](../monitor/data-app-analytics.md) in Monitor.
 
 ## Make an app live or a draft
 
-New apps start live. To change an app's status:
+An app's status controls whether the app opens at its address:
+
+- **Live**: Admins, and people in the app's groups, can open the app at its address.
+- **Draft**: Nobody can open the app at its address, not even admins. Admins can only preview the app on its **Overview** tab in Data Studio.
+
+New apps start live. Make an app a draft to take it offline, for example while you fix a problem. To change an app's status:
 
 1. In the list of data apps, click the **three dots** on the app's row.
 2. Select **Make draft** (or **Make live**), and confirm.
-
-Nobody can open a draft at its address, not even admins. Admins can preview a draft on its **Overview** tab.
 
 ## Choose who can open an app
 
@@ -52,7 +55,9 @@ On the app's **Permissions** tab:
 2. Search for one or more groups, and select them.
 3. Click **Add**.
 
-You can add any group except [tenant](../embedding/tenants.md) groups. People in tenants can't open data apps. If an app has no groups, only admins can open it.
+Admins can always open live apps, so you can't add the **Administrators** group. If an app has no groups, only admins can open it.
+
+[Tenant users](../embedding/tenants.md#user-types) can't open data apps. You can't add [tenant groups](../embedding/tenants.md#create-tenant-groups) or the **All tenant users** group to an app, and tenant users can't be in the other groups.
 
 ### Check that groups can see the app's data
 

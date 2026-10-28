@@ -4,11 +4,11 @@ title: Data apps overview
 
 # Data apps overview
 
-Data apps are small internal tools, like portals, review queues, and forms, that you build on your Metabase data.
+Data apps are custom apps that you build on your Metabase data with an AI coding agent. Like dashboards, data apps show your data from your semantic layer. But an app can have any layout and its own pages, and people can add, edit, and delete data from the app.
 
 ## [Build a data app](./build.md)
 
-What you need to build an app, how an AI coding agent builds and changes it with the Metabase CLI, and how to ship it to production with Remote Sync.
+What you need to build an app, how an AI coding agent builds and changes it with the Metabase CLI, where to keep the app's source code, and how to ship the app to production with Remote Sync.
 
 ## [Manage data apps](./manage.md)
 

@@ -9,38 +9,24 @@ summary: See the questions and actions that your data apps run, who runs them, a
 
 _Monitor > Data app analytics_
 
-The Data app analytics page logs each question and action that your [data apps](../data-apps/start.md) run: who ran it, how long it took, and whether it failed.
+Data app analytics logs each question and action that your [data apps](../data-apps/start.md) run: which app ran it, who ran it, when it ran, how long it took, and whether it failed. Use data app analytics to see which apps people use, and which questions and actions fail.
 
 To view the analytics:
 
 1. Click the **grid** icon in the upper right and select **Monitor**.
 2. In the left sidebar, under **AI Auditing**, click **Data app analytics**.
 
-Only admins can see the page. Runs from an app's local development preview don't show up on the page.
+Only admins can see data app analytics. Runs from an app's [preview on your computer](../data-apps/build.md#preview-the-app-on-your-computer) aren't logged.
 
-## Filter data app activity
+You can filter the log by app, by person, by time, and to only questions or only actions. By default, the log shows the last 30 days. Apps that you deleted stay in the log, listed by their slug.
 
-Each filter above the log is labeled with its default value:
+## IP addresses and user agents are off by default
 
-- **All data apps**: Pick one app. **Installed** lists your apps by name. **Removed** lists, by slug, apps that no longer exist but have runs in the selected time window.
-- **All entity types**: Pick **Question** or **Action** to see only that kind of run.
-- **All users**: Pick one person.
-- **Last 30 days**: Pick another time window.
-
-## What the log shows for each run
-
-Each row is one question or action run: when it started, who ran it, how long it took, how many rows a question returned, the database it queried, the query it ran, and the error message if the run failed.
-
-A few columns need more explanation:
-
-- **Identifier**: The app's slug, from its address `/apps/<slug>`.
-- **Name**: The app's display name. Empty for apps that no longer exist.
-- **Entity type**: **Question** or **Action**. The **Question** or **Action** column names the one that ran.
-- **User agent**, **Sanitized user agent**, and **IP address**: Only show up if you turn on [`MB_ANALYTICS_PII_RETENTION_ENABLED`](../configuring-metabase/environment-variables.md#mb_analytics_pii_retention_enabled), which is off by default.
+The log shows people's IP addresses and user agents only if you turn on [`MB_ANALYTICS_PII_RETENTION_ENABLED`](../configuring-metabase/environment-variables.md#mb_analytics_pii_retention_enabled).
 
 ## Build your own reports on data app activity
 
-To build your own questions on this activity, click **Query this data**. It opens the query builder on the [query log](../usage-and-performance-tools/usage-analytics-reference.md#query-log), filtered to data app activity.
+To build your own questions about data app activity, click **Query this data**. Metabase opens the query builder on the [query log](../usage-and-performance-tools/usage-analytics-reference.md#query-log), filtered to data app activity.
 
 The questions that an app reads also count as views of those questions in [Usage analytics](../usage-and-performance-tools/usage-analytics.md).
 
