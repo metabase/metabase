@@ -177,14 +177,37 @@
         "msrp"
         "first_order_date")))
   (testing "two semantic models claiming the same primary entity is ambiguous"
-    (let [twin    (assoc (tu/product-semantic-model) :unique_id "semantic_model.p.dim_product_2", :name "dim_product_2")
-          reasons (tu/unsupported-dimensions
-                   {:edit #(assoc-in % [:semantic_models "semantic_model.p.dim_product_2"] twin)})]
-      (are [dimension-name] (re-find #"more than one semantic model has entity \"product\" as its primary entity"
+    (let [twin      (-> (tu/product-semantic-model)
+                        (assoc :unique_id "semantic_model.p.dim_product_2", :name "dim_product_2")
+                        (update :dimensions conj (tu/dimension "twin_only" "categorical")))
+          with-twin (fn [tweaks]
+                      (assoc tweaks :edit #(assoc-in % [:semantic_models "semantic_model.p.dim_product_2"] twin)))
+          reasons   (tu/unsupported-dimensions (with-twin {}))]
+      (are [dimension-name] (re-find #"more than one semantic model has entity \"product\" as its primary entity.*:entity-models"
                                      (reason-for reasons dimension-name))
         "product_category_dim"
         "msrp"
-        "first_order_date"))))
+        "first_order_date"
+        "twin_only")
+      (testing "unless the config's :entity-models says which one the entity joins to"
+        (let [dimensions (tu/dimension-set (with-twin {:config {:entity-models {"product" "dim_product_2"}}}))]
+          (is (contains? dimensions "twin_only"))
+          (is (= {:table-id (tu/portable-table "dim_product")
+                  :target   (tu/joined-fld "product_key" "dim_product" "product_category" :type/Text)}
+                 (select-keys (get dimensions "product_category_dim") [:table-id :target])))
+          (is (not-any? #{"product_category_dim" "msrp" "first_order_date" "twin_only"}
+                        (keys (tu/unsupported-dimensions (with-twin {:config {:entity-models {"product" "dim_product_2"}}})))))
+          (testing "and a filter through the entity joins to the same model"
+            (is (= [[:= {} (tu/joined-fld "product_key" "dim_product" "product_category" :type/Text) "Planes"]]
+                   (tu/filters (with-twin {:config {:entity-models {"product" "dim_product"}}
+                                           :metric {:filter {:where_filters [{:where_sql_template "{{ Dimension('product__product_category_dim') }} = 'Planes'"}]}}})))))))
+      (testing "an :entity-models entry naming a model that is not primary for the entity is reported"
+        (let [reasons (tu/unsupported-dimensions (with-twin {:config {:entity-models {"product" "dim_order"}}}))]
+          (is (re-find #":entity-models names semantic model \"dim_order\" for entity \"product\", but the models with it as their primary entity are \"dim_product\", \"dim_product_2\""
+                       (reason-for reasons "msrp")))))
+      (testing "an entry for an entity exactly one model is primary for changes nothing"
+        (is (= (tu/dimension-set {})
+               (tu/dimension-set {:config {:entity-models {"order" "dim_order"}}})))))))
 
 (deftest ^:parallel dimension-id-test
   (let [{:keys [dimensions dimension-mappings]} (tu/convert {})

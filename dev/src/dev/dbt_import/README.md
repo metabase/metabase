@@ -74,8 +74,10 @@ From a dev REPL (needs the `:ee` alias on the classpath for the serdes YAML writ
 The config's `:databases` is the only mapping the manifest cannot supply: the key is the warehouse database as dbt
 knows it (`node_relation.database` in the manifest), the value is the name of the Metabase Database it is connected
 as. `:driver` picks whose `database-type->base-type` turns the project's declared column types into Metabase base
-types. `:base-types` overrides that for types the driver does not know and `:collection-name` renames the target
-collection; both are optional. A column the project does not document, or documents without a `data_type`, is emitted
+types. `:base-types` overrides that for types the driver does not know, `:collection-name` renames the target
+collection, and `:entity-models` (entity name → semantic model name) says which semantic model a foreign entity joins
+to when more than one semantic model has that entity as its primary entity; all three are optional. A column the
+project does not document, or documents without a `data_type`, is emitted
 without a base type: the instance supplies it when the import binds the field, and a column that does not exist in the
 warehouse fails there.
 
@@ -120,7 +122,7 @@ they are defined on. Saved queries, exports and the time spine are never read.
 | `conversion` metrics | `type: conversion` with `base_measure: visits`, `conversion_measure: purchases`, `entity: user`, `window: 7 days` | A funnel counts, per entity, a base event followed by a conversion event within a window: a self-join with a time condition. A metric is one aggregation over one table. | A new kind of Metabase metric, a funnel over two events of an entity. MBQL has no self-join with a time window to build it on either. |
 | `cumulative` with a `window` | `type: cumulative`, `type_params: {measure: revenue, window: 7 days}` (inline spec: `cumulative_type_params: {window: 7 days}`) | A trailing window is a rolling-window aggregation, which MBQL does not have. The running total minus the running total seven rows back would nest window functions, which SQL does not allow. | Extend MBQL with a windowed cumulative aggregation (`cum-sum` over a trailing span of time), compiled to a window frame. |
 | `cumulative` with `grain_to_date` | `type_params: {measure: revenue, grain_to_date: month}` | A running total that resets each month needs a month breakout, and a metric cannot require one. The query processor does partition a cumulative aggregation by every breakout but the finest temporal one, so a user who breaks out by month *and* day gets month-to-date, but under a day breakout alone `cum-sum` is the all-time running total. | Extend MBQL so a cumulative aggregation can name the grain it resets at, then let a metric definition carry it. |
-| `cumulative` over anything but a `sum` or a row count | `type: cumulative` over a measure with `agg: count_distinct` (or `average`, `min`, `max`, `median`, `percentile`), or `agg: count` with `expr: order_id` | MBQL's only running aggregations are `cum-sum` and `cum-count`. SQL does not allow `DISTINCT` in a window function, and there is no running average, min, max or percentile. `cum-count` counts rows, nulls included, so a running `count` of a column, which skips nulls, is not it either. | A running `count` of a column: extend the converter to write it as `cum-sum` of a `case` that is 1 where the column is not null. Running average, min and max: extend MBQL with the window-function aggregations. A running distinct count cannot be written in SQL at all. |
+| `cumulative` over anything but a `sum` or a `count` | `type: cumulative` over a measure with `agg: count_distinct` (or `average`, `min`, `max`, `median`, `percentile`) | MBQL's only running aggregations are `cum-sum` and `cum-count`. SQL does not allow `DISTINCT` in a window function, and there is no running average, min, max or percentile. (A running `count` of a column, which skips nulls, converts: it is the `cum-sum` of a `case` that is 1 where the column is not null.) | Running average, min and max: extend MBQL with the window-function aggregations. A running distinct count cannot be written in SQL at all. |
 | a `ratio` or `derived` input with `offset_window` | `metrics: [{name: revenue}, {name: revenue, offset_window: 1 month, alias: revenue_last_month}]` | dbt shifts the input by a fixed span of time. MBQL's `offset` is relative to the rows of the result, so its meaning changes with whatever breakout grain the user picks. | Extend MBQL with an `offset` by a span of time rather than a number of rows, then allow it in metric definitions. |
 | a `ratio` or `derived` input with `offset_to_grain` | `metrics: [{name: revenue, offset_to_grain: month, alias: revenue_at_month_start}]` | The value at the start of the current period has no MBQL equivalent at all. | Extend MBQL with a "value at the start of the period" aggregation; in SQL it is a self-join or a window frame bounded at the truncated date. |
 | `ratio` or `derived` inputs on different semantic models | `numerator: {name: order_count}` on `orders`, `denominator: {name: customer_count}` on `customers` | A metric queries one table, and the `[:metric ...]` references in its aggregation have to share it. | Extend Metabase metrics so a `[:metric ...]` reference may point at a card on another table, with the query processor combining the two aggregates. |
@@ -142,11 +144,10 @@ listed under "Filters and SQL expressions"; everything outside it is reported, n
 
 | dbt | Example | Why it is unsupported | What it would take |
 | -- | -- | -- | -- |
-| any function (`NULLIF(x, 0)` as a divisor excepted) | `expr: "coalesce(discount, 0) * price"`, `filter: "lower({{ Dimension('order__status') }}) = 'shipped'"` | There is no general mapping from a warehouse's functions to MBQL expressions, and each dialect has its own. `x / NULLIF(y, 0)` is the one exception, only because Metabase's `/` already returns NULL for a zero divisor. | Extend the converter one function at a time: `coalesce`, `lower`, `upper`, `concat`, `date_trunc`, `round` and others already have MBQL expression functions to map onto. |
-| `CAST` | `expr: "cast(amount_cents as decimal) / 100"` | Casts are not in the subset; the column's declared `data_type` decides its Metabase type. | Extend the converter: MBQL has `integer`, `float`, `text`, `date` and `datetime` casts to map the common SQL targets onto. |
-| a simple `CASE` | `expr: "case status when 'shipped' then 1 else 0 end"` | Only the searched form, `CASE WHEN condition THEN ... END`, maps onto MBQL `case`. | Extend the converter to rewrite `CASE x WHEN v` as `CASE WHEN x = v`. |
-| `IS` anything but `NULL` | `filter: "{{ Dimension('order__is_paid') }} is true"` | Only `IS [NOT] NULL` maps, to `is-null` / `not-null`. Write `= true` instead. | Extend the converter to rewrite `IS [NOT] TRUE` and `IS [NOT] FALSE` as `=` / `!=`. |
-| a `LIKE` pattern other than `%x%`, `x%` or `%x` | `like 'ORD-%-2024'`, `like 'order_'` | Those three patterns are `contains`, `starts-with` and `ends-with`. MBQL has no general pattern match. | Extend MBQL with a `like` or regex filter clause, or extend the converter to split a pattern with several `%` into `and` / `or` of the three it has where that is equivalent. |
+| a function with no MBQL expression function of the same meaning | `greatest(a, b)`, `regexp_replace(x, 'a', 'b')`, `to_char(d, 'YYYY')`, `ln(x)`, `log(2, x)`, `dateadd(day, 1, d)`, `extract(dow from d)`, `trim('x' from s)`, `round(x, -1)`, `date_trunc('decade', d)`, `date_trunc('month', d + 1)` | The functions that have an MBQL expression function with the same meaning are mapped (the list is under "Filters and SQL expressions"); the rest have nothing to map onto. `round` to a number of decimals is `round(x * 10^n) / 10^n`, so the decimals have to be a literal. `date_trunc` is a temporal bucket on a column ref, so there is nothing to bucket when its argument is an expression, and nothing for a unit Metabase does not have. | Extend the converter where MBQL has an equivalent under another shape (`dateadd` as `datetime-add`, `greatest` as a `case`); extend MBQL with the rest (a regex replace, a date format, a natural log, week and day-of-week extraction that agrees on the first day of the week). |
+| a `CAST` to anything but an integer, decimal, float, text, date or timestamp type | `cast(x as boolean)`, `x::uuid`, `cast(x as interval)` | MBQL's conversions are `integer`, `float`, `text`, `date` and `datetime`, and the common SQL spellings of those types map onto them (`cast(amount_cents as decimal) / 100` converts). | Extend MBQL with the missing conversions. |
+| `IS [NOT] DISTINCT FROM`, `LIKE ... ESCAPE`, `SIMILAR TO`, a regex match operator | `filter: "{{ Dimension('order__status') }} is distinct from 'shipped'"`, `like 'a!%' escape '!'`, `~ '^ORD-'` | `IS [NOT] NULL`, `TRUE` and `FALSE` map (the negations as `!=` together with `IS NULL`, to keep their meaning for a null column). Null-safe comparison, escaped wildcards and regular expressions have no MBQL filter. | Extend MBQL with a `like` or regex filter clause and a null-safe equality. |
+| a `LIKE` pattern beyond `%x%`, `x%`, `%x`, `x%y` and one literal with a run of `_` | `like 'a%b%c'`, `like '%a%b'`, `like 'a_c%'`, `like 'a_b_'` | The patterns that map are the ones Lib's string filters express exactly: `contains`, `starts-with` and `ends-with`, plus `length` to keep the two ends of `x%y` from overlapping (`like 'ORD-%-2024'` converts) or to pin the exact length of `order_`. Three literals, or `_` in the middle of one, would need a substring comparison per segment, which MBQL has no clean form for. | Extend MBQL with a `like` or regex filter clause. |
 | a custom calendar granularity | `TimeDimension('order__ordered_at', 'retail_month')`, defined on the project's time spine | Metabase buckets by its standard truncation units, `minute` through `year`. `fiscal_quarter` is read as `quarter` until custom calendars are supported. | Custom calendars in Metabase, then a mapping from a dbt custom granularity onto one. |
 | a dimension reached through two entities | `Dimension('order__customer__region')` | A dimension mapping is one implicit join, a foreign key on the metric's table to the joined table's key. A two-hop path has no representation. | Extend Metabase metrics so a dimension mapping can carry a multi-hop join path, or so a metric query can hold explicit joins. |
 
@@ -159,7 +160,6 @@ them. The same conditions inside a `filter` make the metric itself unsupported, 
 | -- | -- | -- | -- |
 | a dimension whose `expr` is SQL | `dimensions: [{name: is_large_order, type: categorical, expr: "amount > 100"}]`, or any `derived_semantics` dimension | A dimension mapping targets a column of the table or of a joined table. There is no place in it for an expression. | Extend Metabase metrics so a dimension mapping can target an expression, or let a table carry computed columns the mapping can point at. |
 | a foreign entity whose `expr` is SQL, on either side of the join | `entities: [{name: customer, type: foreign, expr: "cast(customer_key as varchar)"}]` | An implicit join is a foreign-key column pointing at a primary-key column (`:source-field`). | Extend Metabase metrics so the join behind a dimension mapping can be an explicit join on an expression. |
-| a foreign entity that more than one semantic model is primary for | `customer` declared `type: primary` on both `dim_customer` and `dim_customer_history` | The join target has to be unambiguous. An entity no model is primary for is just a key and reports nothing. | Extend the converter with a config option naming which model each ambiguous entity joins to. |
 
 ### Manifest and configuration errors
 
@@ -169,6 +169,10 @@ conversion:
 - A warehouse database with no entry in the config's `:databases`.
 - A column whose `data_type` the config's `:driver` does not know; add it to `:base-types`.
 - A metric whose semantic model, measure or input metric is not in the manifest, for example because it is disabled.
+- A foreign entity that more than one semantic model is primary for (`customer` declared `type: primary` on both
+  `dim_customer` and `dim_customer_history`) with no entry in the config's `:entity-models` naming the model it joins
+  to, or an entry naming a model that is not primary for it. An entity no model is primary for is just a key and
+  reports nothing.
 
 ## The end-to-end test
 
@@ -266,11 +270,27 @@ does.
 
 A measure's `expr` may be SQL rather than a column, and a metric or measure may carry a `filter` of Jinja-wrapped
 MetricFlow references around SQL. Both go through sqlglot (`metabase.sql-parsing.core/parse-expression`, used by
-`dev.dbt-import.sql`), which parses an expression on its own in the dialect of the config's `:driver`, and a small
-subset of SQL maps onto MBQL: column references, literals, `+ - * /`, comparisons, `AND`/`OR`/`NOT`,
-`IN`, `BETWEEN`, `IS [NOT] NULL`, `LIKE` with a `%x%`, `x%` or `%x` pattern, and `CASE WHEN ... THEN ... ELSE ... END`.
-`x / NULLIF(y, 0)` is plain division, since Metabase's `/` already returns NULL for a zero divisor. Anything outside
-that subset is reported, naming the construct; see "Limitations".
+`dev.dbt-import.sql`), which parses an expression on its own in the dialect of the config's `:driver`, and a subset
+of SQL maps onto MBQL:
+
+- column references, literals, `+ - * /` and `^`, comparisons, `AND`/`OR`/`NOT`, `IN`, `BETWEEN`;
+- `IS [NOT] NULL`, `IS [NOT] TRUE` and `IS [NOT] FALSE`, the negated boolean forms as `!= ... OR IS NULL` so that
+  they still hold for a null column;
+- `LIKE` and `ILIKE` with a `%x%`, `x%`, `%x` or `x%y` pattern, or a pattern of one literal and a run of `_`
+  (`contains`, `starts-with`, `ends-with`, and `length` where the pattern pins one);
+- both forms of `CASE`, the simple `CASE x WHEN v` as `CASE WHEN x = v`;
+- `CAST` (and `::`) to an integer, decimal, float, text, date or timestamp type, as `integer`, `float`, `text`,
+  `date` and `datetime`;
+- the functions with an MBQL expression function of the same meaning: `coalesce`, `nullif` (as the `CASE` it stands
+  for; `x / NULLIF(y, 0)` is plain division, since Metabase's `/` already returns NULL for a zero divisor), `abs`,
+  `floor`, `ceil`/`ceiling`, `round` (to a literal number of decimals, as `round(x * 10^n) / 10^n`), `sqrt`, `exp`,
+  `log` (base 10, as in Metabase; `ln` does not map), `power`, `lower`, `upper`, `trim`/`ltrim`/`rtrim` (of spaces),
+  `length`/`char_length`, `replace`, `substring`/`substr`, `concat` and `||`, `extract`/`date_part` of `year`,
+  `quarter`, `month`, `day`, `hour`, `minute` or `second`, `now()`/`current_timestamp`, `current_date`, and
+  `date_trunc` over a column to a Metabase temporal unit (`minute` through `year`), which is the column bucketed by
+  that unit.
+
+Anything outside that subset is reported, naming the construct; see "Limitations".
 
 In a filter, `Dimension('<entity>__<dimension>')` resolves to one of the metric's own columns when the entity is the
 semantic model's primary entity, and `TimeDimension(..., '<grain>')` additionally buckets it by the matching Metabase
@@ -289,7 +309,7 @@ metrics they refer to are written before them.
 | `ratio` of `numerator` to `denominator` | one metric card whose aggregation divides `[:metric ...]` references to the input metrics' cards |
 | `derived` with `expr` over `metrics` | the same arithmetic over `[:metric ...]` references, aliases resolved; `x / nullif(y, 0)` is `x / y` |
 | an input (`numerator`, `denominator`, `metrics[]`) with its own `filter` | inlined as `sum-where`, `count-where` or `distinct-where` over the input's measure, with the input's own filters and the reference's combined, so the metric stays one card |
-| `cumulative` with no window over a `sum` or a row count | `cum-sum` / `cum-count`; the metric's filters apply as on a simple metric |
+| `cumulative` with no window over a `sum`, a row count or a `count` of a column | `cum-sum` / `cum-count`, or for a `count` of a column (which skips nulls) `cum-sum` of a `case` that is 1 where the column is not null; the metric's filters apply as on a simple metric |
 | `conversion` | out of scope, reported |
 
 Every other form is reported with the reason: a cumulative `window` or `grain_to_date`, an input with an

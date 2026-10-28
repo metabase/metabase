@@ -235,9 +235,12 @@
   (testing "dividing by NULLIF(x, 0) is plain division, as in a measure"
     (is (= [:/ {} [:metric {} "sales"] [:metric {} "target"]]
            (-> (convert (derived "sales / nullif(target, 0)")) :aggregation (get "m")))))
+  (testing "a function over an input is the same function over its metric reference"
+    (is (= [:- {} [:coalesce {} [:metric {} "sales"] 0] [:metric {} "target"]]
+           (-> (convert (derived "coalesce(sales, 0) - target")) :aggregation (get "m")))))
   (testing "what the expr cannot say in MBQL is reported"
     (are [expr re] (re-find re (-> (convert (derived expr)) :unsupported (get "m")))
-      "coalesce(sales, 0) - target" #"(?i)coalesce"
+      "greatest(sales, 0) - target" #"(?i)greatest"
       "sales - nope"                #"nope"
       "sales - target = 0"          #"(?i)comparison|="))
   (testing "an input with its own filter is inlined, as in a ratio"
@@ -271,6 +274,12 @@
              (tu/aggregation (cumulative {:cumulative_type_params {:window nil, :grain_to_date nil, :period_agg "first"}}))))))
   (testing "over a row count it is a running count"
     (is (= [:cum-count {}] (tu/aggregation (cumulative {:measure (tu/input-measure {:name "row_count"})})))))
+  (testing "over a count of a column, which skips nulls, it is a running sum of 1 where the column is not null"
+    (let [order-key (fld "order_key" :type/Text)]
+      (is (= [:cum-sum {} [:case {} [[[:not-null {} order-key] 1]] 0]]
+             (tu/aggregation (assoc (cumulative {:measure (tu/input-measure {:name "order_key_count"})})
+                                    :measures (conj input-measures
+                                                    (assoc (tu/base-measure) :name "order_key_count" :agg "count" :expr "order_key"))))))))
   (testing "a filter on the metric applies as on a simple one"
     (is (= [[:= {} (fld "status" :type/Text) "Shipped"]]
            (tu/filters (merge (cumulative {})
