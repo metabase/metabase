@@ -15,44 +15,51 @@ import { getMockSdkRegistry } from "./mock-sdk-registry";
 
 type ChildrenProps = { children?: ReactNode };
 
-const EmptyOutput = () => <></>;
+function EmptyOutput() {
+  return <></>;
+}
 
-const createChildrenOutput = () => {
-  const ChildrenOutput = ({ children }: ChildrenProps) => <>{children}</>;
+function createChildrenOutput() {
+  function ChildrenOutput({ children }: ChildrenProps) {
+    return <>{children}</>;
+  }
   return ChildrenOutput;
-};
+}
 
-const createNoMockError = (bundleFunctionName: string) =>
-  new Error(
+function createNoMockError(bundleFunctionName: string) {
+  return new Error(
     `No mock for ${bundleFunctionName}. Mock the data this component requests before rendering it.`,
   );
+}
 
-const rejectWithNoMock = (bundleFunctionName: string) =>
-  Promise.reject(createNoMockError(bundleFunctionName));
+function rejectWithNoMock(bundleFunctionName: string) {
+  return Promise.reject(createNoMockError(bundleFunctionName));
+}
 
-const formatDate = (
+function formatDate(
   value: string | null | undefined,
   { format = DEFAULT_DATE_FORMAT }: FormatDateOptions = {},
-): string => {
+): string {
   if (value == null) {
     return "";
   }
 
   const date = dayjs(value);
   return date.isValid() ? date.format(format) : "";
-};
+}
 
-const formatDateRange = (
+function formatDateRange(
   value: DateRangeValue | null | undefined,
   {
     format = DEFAULT_DATE_FORMAT,
     separator = DEFAULT_DATE_RANGE_SEPARATOR,
   }: FormatDateRangeOptions = {},
-): string =>
-  (value ?? [])
+): string {
+  return (value ?? [])
     .map((date) => formatDate(date, { format }))
     .filter((label) => label !== "")
     .join(separator);
+}
 
 const DEFAULT_DATE_FORMAT = "MMMM D, YYYY";
 const DEFAULT_DATE_RANGE_SEPARATOR = "–";
