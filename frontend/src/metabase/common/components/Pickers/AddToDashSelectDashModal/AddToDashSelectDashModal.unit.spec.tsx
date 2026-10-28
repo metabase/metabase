@@ -1,15 +1,19 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
+  setupLibraryEndpoints,
   setupMostRecentlyViewedDashboard,
   setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,
@@ -19,6 +23,7 @@ import {
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { ROOT_COLLECTION as ROOT } from "metabase/common/collections/constants";
+import { reinitialize } from "metabase/plugins";
 import { Route } from "metabase/router";
 import { checkNotNull, isNotNull } from "metabase/utils/types";
 import type {
@@ -26,6 +31,7 @@ import type {
   Card,
   Collection,
   Dashboard,
+  RecentItem,
   SearchResult,
 } from "metabase-types/api";
 import {
@@ -33,7 +39,9 @@ import {
   createMockCollection,
   createMockCollectionItem,
   createMockDashboard,
+  createMockRecentCollectionItem,
   createMockSearchResult,
+  createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
 
@@ -153,6 +161,74 @@ const DASHBOARD_RESULT_IN_PERSONAL_COLLECTION = createMockSearchResult({
   collection: PERSONAL_COLLECTION,
 });
 
+const LIBRARY_COLLECTION = createMockCollection({
+  id: getNextId(),
+  name: "Library",
+  type: "library",
+  can_write: false,
+  location: "/",
+  effective_location: "/",
+});
+
+const LIBRARY_DASHBOARDS_COLLECTION_ID = getNextId();
+const LIBRARY_DASHBOARDS_COLLECTION = createMockCollection({
+  id: LIBRARY_DASHBOARDS_COLLECTION_ID,
+  name: "Curated dashboards",
+  type: "library-dashboards",
+  can_write: true,
+  location: `/${LIBRARY_COLLECTION.id}/`,
+  effective_location: `/${LIBRARY_COLLECTION.id}/`,
+});
+
+const LIBRARY_METRICS_COLLECTION = createMockCollection({
+  id: getNextId(),
+  name: "Curated metrics",
+  type: "library-metrics",
+  can_write: true,
+  location: `/${LIBRARY_COLLECTION.id}/`,
+  effective_location: `/${LIBRARY_COLLECTION.id}/`,
+});
+
+const COLLECTIONS_WITH_LIBRARY = [
+  ...COLLECTIONS,
+  LIBRARY_COLLECTION,
+  LIBRARY_DASHBOARDS_COLLECTION,
+  LIBRARY_METRICS_COLLECTION,
+];
+
+const LIBRARY_DASHBOARD = createMockDashboard({
+  id: getNextId(),
+  name: "Revenue overview",
+  collection: LIBRARY_DASHBOARDS_COLLECTION,
+  collection_id: LIBRARY_DASHBOARDS_COLLECTION_ID,
+  model: "dashboard",
+});
+
+const LIBRARY_METRIC = createMockCard({
+  id: getNextId(),
+  name: "Library metric",
+  type: "metric",
+  collection: LIBRARY_METRICS_COLLECTION,
+});
+
+const RECENT_LIBRARY_DASHBOARD = createMockRecentCollectionItem({
+  id: getNextId(),
+  name: "Recent library dashboard",
+  model: "dashboard",
+  parent_collection: {
+    id: LIBRARY_DASHBOARDS_COLLECTION_ID,
+    name: LIBRARY_DASHBOARDS_COLLECTION.name,
+    type: "library-dashboards",
+  },
+});
+
+const RECENT_REGULAR_DASHBOARD = createMockRecentCollectionItem({
+  id: getNextId(),
+  name: "Recent regular dashboard",
+  model: "dashboard",
+  parent_collection: { id: null, name: "Our analytics" },
+});
+
 // no `collection` and `collection_id` means it's in the root collection
 const dashboardInRootCollection = createMockDashboard({
   id: getNextId(),
@@ -221,6 +297,8 @@ interface SetupOpts {
   mostRecentlyViewedDashboard?: Dashboard;
   waitForContent?: boolean;
   searchResults?: SearchResult[];
+  recents?: RecentItem[];
+  hasLibraryFeature?: boolean;
 }
 
 const setup = async ({
@@ -230,15 +308,28 @@ const setup = async ({
   error,
   waitForContent = true,
   searchResults = [],
+  recents = [],
+  hasLibraryFeature = false,
 }: SetupOpts = {}) => {
   mockGetBoundingClientRect();
+  const settings = mockSettings({
+    "token-features": createMockTokenFeatures({ library: hasLibraryFeature }),
+  });
+  if (hasLibraryFeature) {
+    setupEnterpriseOnlyPlugin("library");
+    setupLibraryEndpoints(false);
+  }
   const dashboards = Array.from(
-    new Set([...DASHBOARDS, mostRecentlyViewedDashboard].filter(isNotNull)),
+    new Set(
+      [...DASHBOARDS, LIBRARY_DASHBOARD, mostRecentlyViewedDashboard].filter(
+        isNotNull,
+      ),
+    ),
   );
 
   setupCollectionsEndpoints({ collections, rootCollection: ROOT_COLLECTION });
   setupCollectionByIdEndpoint({ collections, error });
-  setupRecentViewsAndSelectionsEndpoints([]);
+  setupRecentViewsAndSelectionsEndpoints(recents);
   setupMostRecentlyViewedDashboard(mostRecentlyViewedDashboard);
   setupSearchEndpoints(searchResults);
   setupDatabasesEndpoints([]);
@@ -258,7 +349,7 @@ const setup = async ({
               entity_id: c.entity_id as BaseEntityId,
               effective_location: c.location || "/",
               location: c.location || "/",
-              type: undefined,
+              type: c.type,
               model: "collection",
               here: ["collection", "dashboard"],
               below: ["collection", "dashboard"],
@@ -303,9 +394,10 @@ const setup = async ({
     />,
     {
       withRouter: true,
-      storeInitialState: {
+      storeInitialState: createMockState({
         currentUser: CURRENT_USER,
-      },
+        settings,
+      }),
     },
   );
 
@@ -319,6 +411,77 @@ const setup = async ({
 describe("AddToDashSelectDashModal", () => {
   afterEach(() => {
     jest.restoreAllMocks();
+    reinitialize();
+  });
+
+  describe("library dashboards", () => {
+    const setupWithLibrary = (opts: SetupOpts = {}) =>
+      setup({
+        hasLibraryFeature: true,
+        collections: COLLECTIONS_WITH_LIBRARY,
+        ...opts,
+      });
+
+    it("should keep library dashboards from a non-library question, and explain why the Library is disabled", async () => {
+      await setupWithLibrary({
+        mostRecentlyViewedDashboard: LIBRARY_DASHBOARD,
+        recents: [RECENT_LIBRARY_DASHBOARD, RECENT_REGULAR_DASHBOARD],
+      });
+
+      await assertPath([ROOT_COLLECTION]);
+      expect(await findPickerItem(LIBRARY_COLLECTION.name)).toHaveAttribute(
+        "data-disabled",
+        "true",
+      );
+      expect(
+        screen.queryByText(LIBRARY_DASHBOARD.name),
+      ).not.toBeInTheDocument();
+      expect(
+        fetchMock.callHistory.called(
+          `path:/api/dashboard/${LIBRARY_DASHBOARD.id}`,
+        ),
+      ).toBe(false);
+
+      await userEvent.hover(await findPickerItem(LIBRARY_COLLECTION.name));
+      expect(
+        await screen.findByRole("tooltip", {
+          name: "Only Library questions can be added to Library dashboards",
+        }),
+      ).toBeInTheDocument();
+
+      await userEvent.click(await screen.findByText("Recent items"));
+      expect(
+        await screen.findByText(RECENT_REGULAR_DASHBOARD.name),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(RECENT_LIBRARY_DASHBOARD.name),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should offer library dashboards to a library metric", async () => {
+      await setupWithLibrary({
+        card: LIBRARY_METRIC,
+        mostRecentlyViewedDashboard: LIBRARY_DASHBOARD,
+        recents: [RECENT_LIBRARY_DASHBOARD, RECENT_REGULAR_DASHBOARD],
+      });
+
+      // the picker loads its preselected dashboard to build the path to it
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called(
+            `path:/api/dashboard/${LIBRARY_DASHBOARD.id}`,
+          ),
+        ).toBe(true);
+      });
+
+      await userEvent.click(await screen.findByText("Recent items"));
+      expect(
+        await screen.findByText(RECENT_LIBRARY_DASHBOARD.name),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(RECENT_REGULAR_DASHBOARD.name),
+      ).toBeInTheDocument();
+    });
   });
 
   it("should show the modal while loading", async () => {

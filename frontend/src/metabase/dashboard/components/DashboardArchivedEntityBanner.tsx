@@ -2,6 +2,8 @@ import { Api, dashboardApi } from "metabase/api";
 import { listTag } from "metabase/api/tags";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner/ArchivedEntityBanner";
+import { isLibraryDashboard } from "metabase/common/collections/utils";
+import { getLibraryMoveRestriction } from "metabase/common/components/Pickers/MoveModal/MoveModal";
 import { useDispatch } from "metabase/redux";
 import type { Dispatch } from "metabase/redux/store";
 
@@ -27,6 +29,9 @@ export const DashboardArchivedEntityBanner = () => {
   const canWrite = Boolean(dashboard?.can_write);
   const canRestore = Boolean(dashboard?.can_restore);
   const canDelete = Boolean(dashboard?.can_delete);
+  const moveRestriction = getLibraryMoveRestriction(
+    isLibraryDashboard(dashboard),
+  );
 
   return (
     <ArchivedEntityBanner
@@ -40,6 +45,8 @@ export const DashboardArchivedEntityBanner = () => {
         invalidateBookmarks();
       }}
       onMove={({ id }) => moveDashboardToCollection({ id })}
+      isDisabledMoveDestination={moveRestriction.isDisabledItem}
+      getMoveDestinationTooltip={moveRestriction.getItemTooltip}
       onDeletePermanently={() => {
         const deleteAction = (innerDispatch: Dispatch) =>
           runRtkEndpoint(

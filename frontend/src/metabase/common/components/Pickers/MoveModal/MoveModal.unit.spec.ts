@@ -4,6 +4,7 @@ import type { OmniPickerCollectionItem } from "../EntityPicker";
 
 import {
   canMoveCollectionToLibraryDestination,
+  getLibraryMoveRestriction,
   isSameDestination,
 } from "./MoveModal";
 
@@ -161,5 +162,38 @@ describe("canMoveCollectionToLibraryDestination", () => {
         makeItem({ model: "collection", type: "library-metrics" }),
       ),
     ).toBe(true);
+  });
+});
+
+describe("getLibraryMoveRestriction", () => {
+  beforeEach(() => {
+    PLUGIN_LIBRARY.isLibraryCollectionType = (type) =>
+      type === "library" || type === "library-dashboards";
+  });
+
+  afterEach(() => {
+    reinitialize();
+  });
+
+  it.each([
+    { type: "library", isDisabled: true },
+    { type: "library-dashboards", isDisabled: true },
+    { type: null, isDisabled: false },
+  ] as const)(
+    "should disable a $type destination, with a reason: $isDisabled",
+    ({ type, isDisabled }) => {
+      const item = makeItem({ model: "collection", type });
+      const { isDisabledItem, getItemTooltip } =
+        getLibraryMoveRestriction(false);
+
+      expect(isDisabledItem?.(item)).toBe(isDisabled);
+      expect(getItemTooltip?.(item)).toBe(
+        isDisabled ? "Dashboards can't be moved into the Library" : undefined,
+      );
+    },
+  );
+
+  it("should not restrict dashboards that may move into the Library", () => {
+    expect(getLibraryMoveRestriction(true)).toEqual({});
   });
 });

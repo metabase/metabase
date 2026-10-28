@@ -13,11 +13,12 @@ import {
   isRootTrashCollection,
 } from "metabase/common/collections/utils";
 import { isMovable } from "metabase/common/hooks";
+import { PLUGIN_LIBRARY } from "metabase/plugins";
 import type { Collection, CollectionItem } from "metabase-types/api";
 
 import { DropArea } from "./DropArea";
 
-import { MoveableDragTypes, isItemDragPayload } from ".";
+import { type ItemDragPayload, MoveableDragTypes, isItemDragPayload } from ".";
 
 const EMPTY_DRAGGED_ITEMS: CollectionItem[] = [];
 
@@ -46,8 +47,21 @@ function getDropTargetCollectionType(
 export function canDropItemsIntoCollection({
   items,
   collection,
-}: CollectionDropTargetOwnProps & { items: CollectionItem[] }): boolean {
+  sourceCollection,
+}: CollectionDropTargetOwnProps &
+  Pick<ItemDragPayload, "items" | "sourceCollection">): boolean {
   if (items.length === 0) {
+    return false;
+  }
+
+  // a dashboard can only join the Library by being duplicated into it
+  const isDashboardJoiningLibrary =
+    PLUGIN_LIBRARY.isLibraryCollectionType(
+      getDropTargetCollectionType(collection),
+    ) &&
+    !PLUGIN_LIBRARY.isLibraryCollectionType(sourceCollection?.type) &&
+    items.some((item) => item.model === "dashboard");
+  if (isDashboardJoiningLibrary) {
     return false;
   }
 
@@ -90,6 +104,7 @@ const dropTargetSpec = {
     }
     return canDropItemsIntoCollection({
       items: payload.items,
+      sourceCollection: payload.sourceCollection,
       collection: props.collection,
     });
   },

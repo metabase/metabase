@@ -3,6 +3,10 @@ import { t } from "ttag";
 
 import { useGetMostRecentlyViewedDashboardQuery } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import {
+  isLibraryCollection,
+  isLibraryDashboard,
+} from "metabase/common/collections/utils";
 import { canPlaceEntityInCollectionOrDescendants } from "metabase/common/data-studio/collection-utils";
 import { getUserPersonalCollectionId } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
@@ -13,7 +17,7 @@ import { DashboardPickerModal } from "../DashboardPicker";
 import { type OmniPickerItem, isInCollectionTree } from "../EntityPicker";
 import { getCollectionType } from "../EntityPicker/utils";
 
-import { isInPersonalCollection } from "./utils";
+import { isInLibrary, isInPersonalCollection } from "./utils";
 
 const getTitle = ({ type }: Card) => {
   if (type === "model") {
@@ -63,9 +67,17 @@ export const AddToDashSelectDashModal = ({
   const isQuestionInPersonalCollection = !!questionCollection.is_personal;
   const isRecentDashboardInPersonalCollection =
     mostRecentlyViewedDashboard?.collection?.is_personal;
+  // library dashboards may only reference library questions
+  const isLibraryQuestion =
+    card.collection != null && isLibraryCollection(card.collection);
+  const isRecentDashboardAllowed =
+    isLibraryQuestion ||
+    mostRecentlyViewedDashboard == null ||
+    !isLibraryDashboard(mostRecentlyViewedDashboard);
 
   const showRecentDashboard =
     mostRecentlyViewedDashboard?.id &&
+    isRecentDashboardAllowed &&
     (!isQuestionInPersonalCollection || isRecentDashboardInPersonalCollection);
 
   const value = useMemo(() => {
@@ -95,6 +107,10 @@ export const AddToDashSelectDashModal = ({
         return true;
       }
 
+      if (!isLibraryQuestion && isInLibrary(item)) {
+        return true;
+      }
+
       if (
         isQuestionInPersonalCollection &&
         personalCollectionId &&
@@ -119,7 +135,7 @@ export const AddToDashSelectDashModal = ({
 
       return false;
     },
-    [isQuestionInPersonalCollection, personalCollectionId],
+    [isQuestionInPersonalCollection, isLibraryQuestion, personalCollectionId],
   );
 
   return (
@@ -131,6 +147,10 @@ export const AddToDashSelectDashModal = ({
       options={{
         hasPersonalCollections: true,
         hasRootCollection: !isQuestionInPersonalCollection,
+        getItemTooltip: (item) =>
+          !isLibraryQuestion && isInLibrary(item)
+            ? t`Only Library questions can be added to Library dashboards`
+            : undefined,
       }}
       searchParams={{
         filter_items_in_personal_collection: isQuestionInPersonalCollection
