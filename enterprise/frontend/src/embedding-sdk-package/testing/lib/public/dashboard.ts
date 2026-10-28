@@ -1,5 +1,7 @@
 import type { MetabaseDashboard } from "embedding-sdk-bundle/types/dashboard";
 
+const MOCK_TIMESTAMP = "2024-01-01T00:00:00Z";
+
 export function createMockDashboard(
   opts?: Partial<MetabaseDashboard>,
 ): MetabaseDashboard {
@@ -21,5 +23,3 @@ export function createMockDashboard(
     ...opts,
   };
 }
-
-const MOCK_TIMESTAMP = "2024-01-01T00:00:00Z";

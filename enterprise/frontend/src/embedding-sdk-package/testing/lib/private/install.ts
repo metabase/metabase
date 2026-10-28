@@ -9,6 +9,13 @@ type MockSdkStore = {
   subscribe: (listener: () => void) => () => void;
 };
 
+const MOCK_SDK_STORE: MockSdkStore = {
+  getState: () => undefined,
+  subscribe: () => () => undefined,
+};
+
+let mountedProviderCount = 0;
+
 function getPropsStore() {
   return ensureMetabaseProviderPropsStore<
     MetabaseProviderPropsStoreExternalProps,
@@ -56,10 +63,3 @@ export function acquireMockSdk(bundle: MetabaseEmbeddingSdkBundleExports) {
     uninstallMockSdk();
   };
 }
-
-const MOCK_SDK_STORE: MockSdkStore = {
-  getState: () => undefined,
-  subscribe: () => () => undefined,
-};
-
-let mountedProviderCount = 0;

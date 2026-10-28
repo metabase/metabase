@@ -19,6 +19,45 @@ import { formatDate, formatDateRange } from "./dates";
 
 type ChildrenProps = { children?: ReactNode };
 
+// eslint-disable-next-line metabase/no-literal-metabase-strings -- the default name a real instance reports
+const DEFAULT_APPLICATION_NAME = "Metabase";
+const NO_FONTS: string[] = [];
+const SIGNED_IN_STATUS: LoginStatus = { status: "success" };
+
+const STATIC_QUESTION_SUBCOMPONENTS = {
+  Filter: EmptyOutput,
+  FilterDropdown: EmptyOutput,
+  ResetButton: EmptyOutput,
+  RefreshButton: EmptyOutput,
+  Title: EmptyOutput,
+  Summarize: EmptyOutput,
+  SummarizeDropdown: EmptyOutput,
+  QuestionVisualization: EmptyOutput,
+  ChartTypeSelector: EmptyOutput,
+  ChartTypeDropdown: EmptyOutput,
+  QuestionSettings: EmptyOutput,
+  QuestionSettingsDropdown: EmptyOutput,
+  Breakout: EmptyOutput,
+  BreakoutDropdown: EmptyOutput,
+  DownloadWidget: EmptyOutput,
+  DownloadWidgetDropdown: EmptyOutput,
+  AlertsButton: EmptyOutput,
+  SqlParametersList: EmptyOutput,
+} satisfies Record<keyof StaticQuestionComponents, unknown>;
+
+const INTERACTIVE_QUESTION_SUBCOMPONENTS = {
+  ...STATIC_QUESTION_SUBCOMPONENTS,
+  BackButton: EmptyOutput,
+  NavigationBackButton: EmptyOutput,
+  Notebook: EmptyOutput,
+  Editor: EmptyOutput,
+  NotebookButton: EmptyOutput,
+  EditorButton: EmptyOutput,
+  VisualizationButton: EmptyOutput,
+  SaveQuestionForm: EmptyOutput,
+  SaveButton: EmptyOutput,
+} satisfies Record<keyof InteractiveQuestionComponents, unknown>;
+
 function EmptyOutput() {
   return <></>;
 }
@@ -114,42 +153,3 @@ export function createMockSdkBundle({
     formatDateRange,
   };
 }
-
-// eslint-disable-next-line metabase/no-literal-metabase-strings -- the default name a real instance reports
-const DEFAULT_APPLICATION_NAME = "Metabase";
-const NO_FONTS: string[] = [];
-const SIGNED_IN_STATUS: LoginStatus = { status: "success" };
-
-const STATIC_QUESTION_SUBCOMPONENTS = {
-  Filter: EmptyOutput,
-  FilterDropdown: EmptyOutput,
-  ResetButton: EmptyOutput,
-  RefreshButton: EmptyOutput,
-  Title: EmptyOutput,
-  Summarize: EmptyOutput,
-  SummarizeDropdown: EmptyOutput,
-  QuestionVisualization: EmptyOutput,
-  ChartTypeSelector: EmptyOutput,
-  ChartTypeDropdown: EmptyOutput,
-  QuestionSettings: EmptyOutput,
-  QuestionSettingsDropdown: EmptyOutput,
-  Breakout: EmptyOutput,
-  BreakoutDropdown: EmptyOutput,
-  DownloadWidget: EmptyOutput,
-  DownloadWidgetDropdown: EmptyOutput,
-  AlertsButton: EmptyOutput,
-  SqlParametersList: EmptyOutput,
-} satisfies Record<keyof StaticQuestionComponents, unknown>;
-
-const INTERACTIVE_QUESTION_SUBCOMPONENTS = {
-  ...STATIC_QUESTION_SUBCOMPONENTS,
-  BackButton: EmptyOutput,
-  NavigationBackButton: EmptyOutput,
-  Notebook: EmptyOutput,
-  Editor: EmptyOutput,
-  NotebookButton: EmptyOutput,
-  EditorButton: EmptyOutput,
-  VisualizationButton: EmptyOutput,
-  SaveQuestionForm: EmptyOutput,
-  SaveButton: EmptyOutput,
-} satisfies Record<keyof InteractiveQuestionComponents, unknown>;
