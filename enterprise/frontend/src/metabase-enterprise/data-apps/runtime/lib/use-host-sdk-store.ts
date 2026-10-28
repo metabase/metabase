@@ -6,23 +6,11 @@ import { initAuth } from "embedding-sdk-bundle/store/auth/auth";
 import { setPluginsReady } from "embedding-sdk-bundle/store/reducer";
 import type { MetabaseProviderProps } from "embedding-sdk-bundle/types/metabase-provider";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
+import { getCurrentMetabaseInstanceUrl } from "embedding-sdk-shared/lib/get-current-metabase-instance-url";
 import { SdkLoadingState } from "embedding-sdk-shared/types/sdk-loading";
 import { loadCurrentUser } from "metabase/current-user";
 
 type SdkStore = ReturnType<typeof getSdkStore>;
-
-/**
- * Same-origin, subpath-aware instance URL (e.g. `https://host/metabase`). The
- * SDK assigns this straight to `api.basename`, so it must keep the Metabase
- * subpath — `window.location.origin` alone would send `/api/...` instead of
- * `/<subpath>/api/...` and break subpath deployments. `MetabaseRoot` is set by
- * the iframe's `index_bootstrap` inline JS; it falls back to `/` if absent.
- */
-function getMetabaseInstanceUrl(): string {
-  const basename = (window.MetabaseRoot ?? "/").replace(/\/+$/, "");
-
-  return `${window.location.origin}${basename}`;
-}
 
 /**
  * Provides the host-backed SDK Redux store the data-app surface runs on.
@@ -52,7 +40,7 @@ export function useHostSdkStore(
     ensureMetabaseProviderPropsStore().setProps({
       authConfig: {
         isGuest: false,
-        metabaseInstanceUrl: getMetabaseInstanceUrl(),
+        metabaseInstanceUrl: getCurrentMetabaseInstanceUrl(),
       },
       ...props,
     });
