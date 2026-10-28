@@ -1975,6 +1975,13 @@
 (deftest update-cards-for-copy-test-2
   (testing "When copy style is deep"
     (let [dashcards [{:card_id 1 :card {:id 1} :series [{:id 2} {:id 3}]}]]
+      (testing "Keeps referenced series cards (e.g. models) and remaps copied ones"
+        (is (= [{:card_id 5 :card {:id 5} :series [{:id 6} {:id 3}]}]
+               (api.dashboard/update-cards-for-copy dashcards
+                                                    {1 {:id 5}
+                                                     2 {:id 6}}
+                                                    {3 {:id 3}}
+                                                    nil))))
       (testing "Can omit series cards"
         (is (= [{:card_id 5 :card {:id 5} :series [{:id 6}]}]
                (api.dashboard/update-cards-for-copy dashcards

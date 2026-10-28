@@ -483,9 +483,8 @@
   Returns a map of {:copied {old-card-id duplicated-card} :uncopied [card]} so that the new dashboard can adjust accordingly.
 
   If `deep-copy?` is `false`, doesn't copy any cards *except* for Dashboard Questions, which must be copied."
-  [deep-copy? new-dashboard old-dashboard dest-coll-id]
+  [deep-copy? dashboards-only? new-dashboard old-dashboard dest-coll-id]
   (let [same-collection?                 (= (:collection_id old-dashboard) dest-coll-id)
-        dashboards-only?                 (collections/library-dashboards-collection? dest-coll-id)
         {:keys [copy discard reference]} (cond-> (cards-to-copy deep-copy? (:dashcards old-dashboard))
                                            dashboards-only? reference-metrics)]
     {:copied     (into {} (for [[id to-copy] copy]
@@ -535,6 +534,16 @@
                             (update-vals cvm #(mapv update-cvm-item %))))]
     (update-cvm col->val-source)))
 
+(defn- remap-series
+  [dashboard-card id->new-card id->referenced-card]
+  (m/update-existing dashboard-card :series
+                     (fn [series]
+                       (keep (fn [card]
+                               (when-let [id' (or (:id (get id->new-card (:id card)))
+                                                  (when (get id->referenced-card (:id card)) (:id card)))]
+                                 (assoc card :id id')))
+                             series))))
+
 (defn update-cards-for-copy
   "Update dashcards in a dashboard for copying.
   If the dashboard has tabs, fix up the tab ids in dashcards to point to the new tabs.
@@ -558,9 +567,9 @@
               (some-> dashboard-card :visualization_settings :virtual_card :display #{"text" "heading"})
               dashboard-card
 
-              ;; referenced cards need no manipulation
+              ;; referenced cards keep their id, but their series may have been copied
               (get id->referenced-card (:card_id dashboard-card))
-              dashboard-card
+              (remap-series dashboard-card id->new-card id->referenced-card)
 
               ;; if we didn't duplicate, it doesn't go in the dashboard
               (not (get id->new-card (:card_id dashboard-card)))
@@ -577,12 +586,7 @@
                                          (keep (fn [pm]
                                                  (m/update-existing pm :card_id new-id))
                                                pms)))
-                    (m/update-existing :series
-                                       (fn [series]
-                                         (keep (fn [card]
-                                                 (when-let [id' (new-id (:id card))]
-                                                   (assoc card :id id')))
-                                               series)))
+                    (remap-series id->new-card id->referenced-card)
                     (m/update-existing-in [:visualization_settings :visualization :columnValuesMapping]
                                           update-colvalmap-setting id->new-card)))))
           dashcards)))
@@ -605,10 +609,12 @@
                                               [:is_deep_copy        {:default false} [:maybe :boolean]]]]
   ;; if we're trying to save the new dashboard in a Collection make sure we have permissions to do that
   (api/create-check :model/Dashboard {:collection_id collection_id})
-  (api/check-400 (not (and (= is_deep_copy false)
-                           (dashboards-rest.db/unarchived-dashboard-question-exists? from-dashboard-id)))
-                 (deferred-tru "You cannot do a shallow copy of this dashboard because it contains Dashboard Questions."))
-  (let [existing-dashboard (get-dashboard from-dashboard-id)
+  (let [dashboards-only?   (collections/library-dashboards-collection? collection_id)
+        deep-copy?         (boolean (or is_deep_copy dashboards-only?))
+        _                  (api/check-400 (not (and (= deep-copy? false)
+                                                    (dashboards-rest.db/unarchived-dashboard-question-exists? from-dashboard-id)))
+                                          (deferred-tru "You cannot do a shallow copy of this dashboard because it contains Dashboard Questions."))
+        existing-dashboard (get-dashboard from-dashboard-id)
         dashboard-data {:name                (or name (:name existing-dashboard))
                         :description         (or description (:description existing-dashboard))
                         :parameters          (or (:parameters existing-dashboard) [])
@@ -626,7 +632,7 @@
                                {id->new-card :copied
                                 id->referenced-card :referenced
                                 uncopied :discarded}
-                               (maybe-duplicate-cards is_deep_copy dash existing-dashboard collection_id)
+                               (maybe-duplicate-cards deep-copy? dashboards-only? dash existing-dashboard collection_id)
 
                                id->new-tab-id (when-let [existing-tabs (seq (:tabs existing-dashboard))]
                                                 (duplicate-tabs dash existing-tabs))]
