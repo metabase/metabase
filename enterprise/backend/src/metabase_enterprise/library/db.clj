@@ -77,6 +77,26 @@
                                                      :from   [(t2/table-name :model/DashboardCard)]
                                                      :where  [:= :dashboard_id dashboard-id]}]})))
 
+(mu/defn library-dashboards-referencing-card
+  "The Dashboards, trashed ones included, in a Library dashboards Collection that reference the Card with `card-id`
+  as a DashboardCard's Card or as a series, ordered by name."
+  [card-id :- ::lib.schema.id/card]
+  (t2/select [:model/Dashboard :id :name :archived]
+             {:where    [:and
+                         [:in :collection_id ^:allow-subquery {:select [:id]
+                                                               :from   [:collection]
+                                                               :where  [:= :type collection/library-dashboards-collection-type]}]
+                         [:or
+                          [:in :id ^:allow-subquery {:select [:dashboard_id]
+                                                     :from   [(t2/table-name :model/DashboardCard)]
+                                                     :where  [:= :card_id [:auto/param card-id]]}]
+                          [:in :id ^:allow-subquery {:select [:dc.dashboard_id]
+                                                     :from   [[(t2/table-name :model/DashboardCardSeries) :s]]
+                                                     :join   [[(t2/table-name :model/DashboardCard) :dc]
+                                                              [:= :dc.id :s.dashboardcard_id]]
+                                                     :where  [:= :s.card_id [:auto/param card-id]]}]]]
+              :order-by [[:name :asc]]}))
+
 (mu/defn library-collections
   "The readable Library Collections, ordered by name."
   []

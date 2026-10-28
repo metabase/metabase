@@ -1174,6 +1174,8 @@
     (when (or (contains? changes :visualization_settings) (contains? changes :display))
       (check-timeline-visibility-permissions! card original))
     (check-allowed-content card changes)
+    (when (and (some #(contains? changes %) [:collection_id :dashboard_id]) (not mi/*deserializing?*))
+      (collections/check-library-card-move (apply-dashboard-question-updates card changes) (:collection_id original)))
     (-> card
         (dissoc :verified-result-metadata?)
         (migrate-schema-governed-columns original changes)
