@@ -33,12 +33,15 @@ import {
   withZoomTimeDrilled,
 } from "./examples";
 
+type FilterTarget = "rows" | "summary" | "none";
+
 type DrillRow = {
   /** The drill's type in `metabase.lib.drill-thru`, e.g. `fk-filter`. */
   drill: string;
   /** Distinguishes rows that exercise the same drill on different shapes. */
   variant?: string;
-  writesFilter: boolean;
+  /** Where the drill's filter lands; `none` when it writes no filter. */
+  filter: FilterTarget;
   /** What the drill does to the query, in a few words. */
   queryChange: string;
   /** The unfiltered query the drill appears on; absent when no shape on Orders offers it. */
@@ -79,7 +82,7 @@ const MONTH_EXTRACTED: Example = {
 const FILTER_DRILLS: DrillRow[] = [
   {
     drill: "quick-filter",
-    writesFilter: true,
+    filter: "rows",
     get queryChange() {
       return t`Adds one filter on the clicked value`;
     },
@@ -101,7 +104,7 @@ const FILTER_DRILLS: DrillRow[] = [
     get variant() {
       return t`on an aggregation`;
     },
-    writesFilter: true,
+    filter: "summary",
     get queryChange() {
       return t`Adds the filter on the stage after the summary`;
     },
@@ -125,7 +128,7 @@ const FILTER_DRILLS: DrillRow[] = [
   },
   {
     drill: "fk-filter",
-    writesFilter: true,
+    filter: "rows",
     get queryChange() {
       return t`Adds FK = value`;
     },
@@ -144,7 +147,7 @@ const FILTER_DRILLS: DrillRow[] = [
   },
   {
     drill: "column-filter",
-    writesFilter: true,
+    filter: "rows",
     get queryChange() {
       return t`Adds the filter picked in the widget`;
     },
@@ -162,8 +165,35 @@ const FILTER_DRILLS: DrillRow[] = [
     },
   },
   {
+    drill: "column-filter",
+    get variant() {
+      return t`on an aggregation`;
+    },
+    filter: "summary",
+    get queryChange() {
+      return t`Adds the picked filter on the stage after the summary`;
+    },
+    start: {
+      get label() {
+        return t`Count by Category`;
+      },
+      load: withCountByCategory,
+    },
+    results: [
+      {
+        get label() {
+          return t`Count > 4939`;
+        },
+        load: withCountFilterDrilled,
+      },
+    ],
+    get howToOpen() {
+      return t`Click the Count header → "Filter by this column"`;
+    },
+  },
+  {
     drill: "underlying-records",
-    writesFilter: true,
+    filter: "rows",
     get queryChange() {
       return t`Drops the summary, adds one filter per breakout value`;
     },
@@ -185,7 +215,7 @@ const FILTER_DRILLS: DrillRow[] = [
     get variant() {
       return t`count-where`;
     },
-    writesFilter: true,
+    filter: "rows",
     get queryChange() {
       return t`Drops the summary, adds the breakout value and the aggregation's own condition`;
     },
@@ -213,7 +243,7 @@ const FILTER_DRILLS: DrillRow[] = [
     get variant() {
       return t`two breakouts`;
     },
-    writesFilter: true,
+    filter: "rows",
     get queryChange() {
       return t`Drops the summary, adds one filter per breakout value, the date one bucketed`;
     },
@@ -238,7 +268,7 @@ const FILTER_DRILLS: DrillRow[] = [
   },
   {
     drill: "zoom-in.timeseries",
-    writesFilter: true,
+    filter: "rows",
     get queryChange() {
       return t`Adds a filter on the clicked bucket, breaks out again at the finer unit`;
     },
@@ -264,7 +294,7 @@ const FILTER_DRILLS: DrillRow[] = [
   },
   {
     drill: "zoom-in.binning",
-    writesFilter: true,
+    filter: "rows",
     get queryChange() {
       return t`Adds a >= / < range on the column, narrows the bins`;
     },
@@ -290,7 +320,7 @@ const FILTER_DRILLS: DrillRow[] = [
   },
   {
     drill: "zoom-in.geographic",
-    writesFilter: true,
+    filter: "rows",
     get queryChange() {
       return t`Adds a filter on the region, swaps the breakout to lat/lon bins`;
     },
@@ -316,7 +346,7 @@ const FILTER_DRILLS: DrillRow[] = [
   },
   {
     drill: "pivot",
-    writesFilter: true,
+    filter: "rows",
     get queryChange() {
       return t`Adds = per breakout value, swaps the breakout for the chosen column`;
     },
@@ -345,7 +375,7 @@ const FILTER_DRILLS: DrillRow[] = [
     get variant() {
       return t`multi-PK tables only`;
     },
-    writesFilter: true,
+    filter: "rows",
     get queryChange() {
       return t`Adds PK = value filters, then opens object detail`;
     },
@@ -359,7 +389,7 @@ const FILTER_DRILLS: DrillRow[] = [
     get variant() {
       return t`on a new query`;
     },
-    writesFilter: true,
+    filter: "rows",
     get queryChange() {
       return t`Replaces the query with one on the target table, ID = value`;
     },
@@ -374,7 +404,7 @@ const FILTER_DRILLS: DrillRow[] = [
 const OTHER_DRILLS: DrillRow[] = [
   {
     drill: "distribution",
-    writesFilter: false,
+    filter: "none",
     get queryChange() {
       return t`Replaces the summary with Count by the column`;
     },
@@ -394,7 +424,7 @@ const OTHER_DRILLS: DrillRow[] = [
   },
   {
     drill: "sort",
-    writesFilter: false,
+    filter: "none",
     get queryChange() {
       return t`Replaces every order-by with one on the column`;
     },
@@ -413,7 +443,7 @@ const OTHER_DRILLS: DrillRow[] = [
   },
   {
     drill: "summarize-column",
-    writesFilter: false,
+    filter: "none",
     get queryChange() {
       return t`Adds an aggregation`;
     },
@@ -433,7 +463,7 @@ const OTHER_DRILLS: DrillRow[] = [
   },
   {
     drill: "summarize-column-by-time",
-    writesFilter: false,
+    filter: "none",
     get queryChange() {
       return t`Adds an aggregation and a date breakout`;
     },
@@ -453,7 +483,7 @@ const OTHER_DRILLS: DrillRow[] = [
   },
   {
     drill: "column-extract",
-    writesFilter: false,
+    filter: "none",
     get queryChange() {
       return t`Adds an expression column`;
     },
@@ -465,7 +495,7 @@ const OTHER_DRILLS: DrillRow[] = [
   },
   {
     drill: "combine-columns",
-    writesFilter: false,
+    filter: "none",
     get queryChange() {
       return t`Adds a concat expression column`;
     },
@@ -484,7 +514,7 @@ const OTHER_DRILLS: DrillRow[] = [
   },
   {
     drill: "zoom",
-    writesFilter: false,
+    filter: "none",
     get queryChange() {
       return t`No change; navigates to object detail`;
     },
@@ -495,7 +525,7 @@ const OTHER_DRILLS: DrillRow[] = [
   },
   {
     drill: "automatic-insights",
-    writesFilter: false,
+    filter: "none",
     get queryChange() {
       return t`No change; navigates to an X-ray dashboard`;
     },
@@ -521,6 +551,23 @@ const GROUPS: DrillGroup[] = [
     rows: OTHER_DRILLS,
   },
 ];
+
+const SUMMARY_MARK = (
+  <Text component="span" fw="bold" c="core-summarize" ml="xs">
+    Σ
+  </Text>
+);
+
+function FilterMark({ target }: { target: FilterTarget }) {
+  switch (target) {
+    case "rows":
+      return <>✅</>;
+    case "summary":
+      return <>✅{SUMMARY_MARK}</>;
+    case "none":
+      return <>⛔</>;
+  }
+}
 
 type DrillExamplesTableProps = {
   onLoad: (example: Example) => void;
@@ -562,7 +609,9 @@ export function DrillExamplesTable({ onLoad }: DrillExamplesTableProps) {
                     </Text>
                   )}
                 </td>
-                <td>{row.writesFilter ? "✅" : "⛔"}</td>
+                <td>
+                  <FilterMark target={row.filter} />
+                </td>
                 <td>
                   <Text size="sm">{row.queryChange}</Text>
                 </td>
@@ -598,6 +647,14 @@ export function DrillExamplesTable({ onLoad }: DrillExamplesTableProps) {
           </tbody>
         ))}
       </table>
+      <Group gap="xs">
+        <Text size="xs" c="text-secondary">{t`✅ filter on the rows`}</Text>
+        <Text size="xs" c="text-secondary">
+          <FilterMark target="summary" />{" "}
+          {t`filter on the stage after the summary`}
+        </Text>
+        <Text size="xs" c="text-secondary">{t`⛔ no filter`}</Text>
+      </Group>
     </Stack>
   );
 }
