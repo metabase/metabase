@@ -4120,7 +4120,7 @@
   (orders-stage {"aggregation" [["min" {} (orders-col "TOTAL")]]
                  "breakout"    [(orders-col "USER_ID")]}))
 
-(def ^:private user-id-by-name (typed ["field" {} "USER_ID"] "type/Integer"))
+(def ^:private user-id-by-name ["field" {} "USER_ID"])
 
 (deftest ^:parallel join-alias-field-type-scoped-to-the-stage-with-the-join-test
   (let [joined-here (query min-total-by-user-stage
