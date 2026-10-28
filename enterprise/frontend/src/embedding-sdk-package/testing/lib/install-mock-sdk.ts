@@ -16,13 +16,14 @@ const MOCK_SDK_STORE: MockSdkStore = {
   subscribe: () => () => undefined,
 };
 
-const getPropsStore = () =>
-  ensureMetabaseProviderPropsStore<
+function getPropsStore() {
+  return ensureMetabaseProviderPropsStore<
     MetabaseProviderPropsStoreExternalProps,
     MockSdkStore
   >();
+}
 
-export const installMockSdk = () => {
+export function installMockSdk() {
   const win = getWindow();
 
   if (!win) {
@@ -38,11 +39,11 @@ export const installMockSdk = () => {
     loadingState: SdkLoadingState.Initialized,
     loadingError: null,
   });
-};
+}
 
 let mountedProviderCount = 0;
 
-const uninstallMockSdk = () => {
+function uninstallMockSdk() {
   const win = getWindow();
 
   if (!win || mountedProviderCount > 0) {
@@ -52,9 +53,9 @@ const uninstallMockSdk = () => {
   delete win.METABASE_EMBEDDING_SDK_BUNDLE;
   resetMockSdkRegistry();
   getPropsStore().cleanup();
-};
+}
 
-export const acquireMockSdk = () => {
+export function acquireMockSdk() {
   mountedProviderCount += 1;
   installMockSdk();
 
@@ -62,4 +63,4 @@ export const acquireMockSdk = () => {
     mountedProviderCount -= 1;
     queueMicrotask(uninstallMockSdk);
   };
-};
+}

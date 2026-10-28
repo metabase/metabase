@@ -6,12 +6,10 @@ export type MetabaseTestProviderProps = {
   children?: ReactNode;
 };
 
-export const MetabaseTestProvider = ({
-  children,
-}: MetabaseTestProviderProps) => {
+export function MetabaseTestProvider({ children }: MetabaseTestProviderProps) {
   useState(installMockSdk);
 
   useEffect(acquireMockSdk, []);
 
   return children;
-};
+}

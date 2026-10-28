@@ -17,7 +17,7 @@ export type MockSdkRegistry = {
   resets: Set<() => void>;
 };
 
-export const getMockSdkRegistry = (): MockSdkRegistry => {
+export function getMockSdkRegistry(): MockSdkRegistry {
   const registry = { handlers: {}, resets: new Set<() => void>() };
   const win = getWindow();
 
@@ -28,8 +28,8 @@ export const getMockSdkRegistry = (): MockSdkRegistry => {
   win.METABASE_EMBEDDING_SDK_MOCKS ??= registry;
 
   return win.METABASE_EMBEDDING_SDK_MOCKS;
-};
+}
 
-export const resetMockSdkRegistry = () => {
+export function resetMockSdkRegistry() {
   getMockSdkRegistry().resets.forEach((reset) => reset());
-};
+}

@@ -21,7 +21,7 @@ const ORDERS_QUERY = defineQuery({
   source: { type: "card", entityId: "ordersQuestionEntity" },
 });
 
-const SessionInfo = () => {
+function SessionInfo() {
   const applicationName = useApplicationName();
   const authStatus = useMetabaseAuthStatus();
 
@@ -30,19 +30,19 @@ const SessionInfo = () => {
       {applicationName} {authStatus?.status}
     </p>
   );
-};
+}
 
-const DateRangeLabel = () => {
+function DateRangeLabel() {
   const { formatDateRange } = useDateFormatter();
 
   return <p>{formatDateRange(["2024-01-01", "2024-01-31"])}</p>;
-};
+}
 
-const OrdersQueryError = () => {
+function OrdersQueryError() {
   const { error } = useMetabaseQuery(ORDERS_QUERY);
 
   return <p>{error instanceof Error ? error.message : "no error"}</p>;
-};
+}
 
 describe("MetabaseTestProvider", () => {
   it("renders SDK components as their children", async () => {
