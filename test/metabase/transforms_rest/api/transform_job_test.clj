@@ -89,6 +89,19 @@
             (testing "Returns 404 for non-existent job"
               (mt/user-http-request user :get 404 "transform-job/999999/transforms"))))))))
 
+(deftest get-job-transforms-leaves-out-trashed-transforms-test
+  (testing "GET /api/transform-job/:id/transforms leaves out transforms in the trash"
+    (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+      (mt/with-temp [:model/Transform {live-id :id} {:name "live"}
+                     :model/Transform {trashed-id :id} {:name "trashed" :archived true :archived_directly true}
+                     :model/TransformTag {tag-id :id} {}
+                     :model/TransformTransformTag _ {:transform_id live-id :tag_id tag-id :position 0}
+                     :model/TransformTransformTag _ {:transform_id trashed-id :tag_id tag-id :position 1}
+                     :model/TransformJob {job-id :id} {}
+                     :model/TransformJobTransformTag _ {:job_id job-id :tag_id tag-id :position 0}]
+        (is (= [live-id]
+               (map :id (mt/user-http-request :crowberto :get 200 (str "transform-job/" job-id "/transforms")))))))))
+
 (deftest list-jobs-test
   (testing "GET /api/transform-job"
     (mt/with-premium-features #{:advanced-permissions :transforms-basic}

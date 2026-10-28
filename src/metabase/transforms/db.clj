@@ -47,9 +47,10 @@
                                :order-by [[:id :asc]]}))
 
 (mu/defn transform-dependency-rows
-  "The ID, target, target Table ID, creation time, and table dependencies of every Transform."
+  "The ID, target, target Table ID, creation time, and table dependencies of every Transform not in the Trash. Run
+  plans build on these rows, so a transform in the Trash is never part of a plan."
   []
-  (t2/select [:model/Transform :id :target :target_table_id :created_at :table_dependencies]))
+  (t2/select [:model/Transform :id :target :target_table_id :created_at :table_dependencies] :archived false))
 
 (mu/defn transform-snapshot
   "The name, entity ID, and source type of the Transform with `transform-id`."
@@ -57,9 +58,14 @@
   (t2/select-one [:model/Transform :name :entity_id :source_type] :id transform-id))
 
 (mu/defn transform-summaries-by-id
-  "A map of ID to the ID, name, and Collection ID of the Transforms with `transform-ids`."
+  "A map of ID to the ID, name, Collection ID, and archived flag of the Transforms with `transform-ids`."
   [transform-ids :- [:set ::lib.schema.id/transform]]
-  (t2/select-pk->fn identity [:model/Transform :id :name :collection_id] :id [:in transform-ids]))
+  (t2/select-pk->fn identity [:model/Transform :id :name :collection_id :archived] :id [:in transform-ids]))
+
+(mu/defn transform-archived?
+  "Whether the Transform with `transform-id` is in the Trash."
+  [transform-id :- ::lib.schema.id/transform]
+  (boolean (t2/select-one-fn :archived [:model/Transform :archived] :id transform-id)))
 
 (mu/defn transform-names-by-id
   "A map of ID to name for the Transforms with `transform-ids`."
@@ -129,6 +135,15 @@
   "The IDs of the Transforms tagged with one of `tag-ids`."
   [tag-ids :- [:or [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]
   (t2/select-fn-set :transform_id :model/TransformTransformTag :tag_id [:in tag-ids]))
+
+(mu/defn unarchived-transform-ids-with-tags
+  "The IDs of the Transforms not in the Trash tagged with one of `tag-ids`."
+  [tag-ids :- [:or [:set ms/PositiveInt] [:sequential ms/PositiveInt]]]
+  (t2/select-fn-set :transform_id :model/TransformTransformTag
+                    {:join  [:transform [:= :transform.id :transform_transform_tag.transform_id]]
+                     :where [:and
+                             [:in :transform_transform_tag.tag_id tag-ids]
+                             [:= :transform.archived false]]}))
 
 (defn- job-schedule-rows
   "Rows of Transform ID and the schedule of the TransformJobs that run it through a shared tag, narrowed

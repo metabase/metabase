@@ -138,6 +138,7 @@
                                          [:id {:optional true} pos-int?]
                                          [:name {:optional true} :string]
                                          [:deleted {:optional true} :boolean]
+                                         [:archived {:optional true} :boolean]
                                          [:collection_id {:optional true} [:maybe pos-int?]]
                                          [:collection {:optional true} [:maybe :map]]
                                          [:tag_ids {:optional true} [:sequential pos-int?]]]]]])
@@ -348,6 +349,12 @@
   (transforms-rest.db/reset-checkpoint! id)
   nil)
 
+(defn- check-not-in-trash!
+  "Reject a run of `transform` while it is in the Trash."
+  [transform]
+  (api/check-400 (not (:archived transform))
+                 (deferred-tru "This transform is in the trash and can''t run.")))
+
 (defn- check-feature-and-lock!
   "Check that the transform's premium features are enabled and that transforms are not locked by the
   trial quota."
@@ -361,6 +368,7 @@
   "Run a transform. Returns a 202 response with run_id.
    The transform must already be fetched and validated."
   [transform]
+  (check-not-in-trash! transform)
   (check-feature-and-lock! transform)
   (transforms-rest.api.u/async-run-response
    (deferred-tru "Transform run started")
@@ -397,7 +405,9 @@
    _query-params
    {:keys [direction]} :- [:map {:closed true}
                            [:direction (ms/enum-decode-keyword transforms.dag-run/dag-directions)]]]
-  (check-feature-and-lock! (api/write-check :model/Transform id))
+  (let [transform (api/write-check :model/Transform id)]
+    (check-not-in-trash! transform)
+    (check-feature-and-lock! transform))
   (transforms-rest.api.u/async-run-response
    (deferred-tru "DAG run started")
    :dag_run_id

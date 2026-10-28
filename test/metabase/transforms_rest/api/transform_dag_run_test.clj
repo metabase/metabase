@@ -213,6 +213,26 @@
               (mt/user-http-request user :get 404 "transform/999999/dag-transforms"
                                     :direction "upstream"))))))))
 
+(deftest dag-transforms-preview-leaves-out-trashed-transforms-test
+  (testing "GET /api/transform/:id/dag-transforms leaves out transforms in the trash"
+    (mt/with-temporary-raw-setting-values [transforms-enabled "true"]
+      (mt/with-premium-features #{:advanced-permissions :transforms-basic}
+        (mt/with-temp [:model/Transform {producer-id :id} {:name               "Trashed producer"
+                                                           :target_table_id    (mt/id :orders)
+                                                           :table_dependencies []
+                                                           :archived           true
+                                                           :archived_directly  true}
+                       :model/Transform {consumer-id :id} {:name               "Consumer"
+                                                           :table_dependencies [{:table (mt/id :orders)}]}]
+          (testing "upstream of a live transform"
+            (is (= [{:id consumer-id :name "Consumer"}]
+                   (mt/user-http-request :crowberto :get 200 (str "transform/" consumer-id "/dag-transforms")
+                                         :direction "upstream"))))
+          (testing "downstream of a trashed transform"
+            (is (= []
+                   (mt/user-http-request :crowberto :get 200 (str "transform/" producer-id "/dag-transforms")
+                                         :direction "downstream")))))))))
+
 ;;; +------------------------------------------------------------------------------------------------------------------+
 ;;; |                                         POST /api/transform/:id/run-dag                                           |
 ;;; +------------------------------------------------------------------------------------------------------------------+

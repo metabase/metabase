@@ -128,6 +128,10 @@
     (transforms.usage/transform-locked? transform)
     (log/warnf "Skip running transform %d due to locked meter (trial quota exhausted)" transform-id)
 
+    ;; The plan leaves out transforms in the Trash. This covers a transform trashed after the plan was made.
+    (transforms.db/transform-archived? transform-id)
+    (log/warnf "Skip running transform %d because it is in the trash" transform-id)
+
     :else
     (tracing/with-span :tasks "task.transform.execute" {:transform/id   transform-id
                                                         :transform/name (:name transform)}
@@ -405,7 +409,7 @@
 (defn- job-transform-ids [job-id]
   (let [tag-ids (transforms.db/job-tag-ids job-id)]
     (if (seq tag-ids)
-      (or (transforms.db/transform-ids-with-tags tag-ids)
+      (or (transforms.db/unarchived-transform-ids-with-tags tag-ids)
           #{})
       #{})))
 

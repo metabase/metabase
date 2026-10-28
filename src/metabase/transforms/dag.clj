@@ -87,7 +87,10 @@
       :downstream
       (let [{:keys [dependencies uncached]} (ordering/transform-ordering (into #{} (map :id) lean) lean)
             _                                (ordering/persist-table-dependencies! uncached)
-            downstream-ids                   (reachable (dependents-graph dependencies) seed-id)
+            ;; `dependencies` has no key for a seed in the Trash, so that seed plans nothing, as `:upstream` does.
+            downstream-ids                   (if (contains? dependencies seed-id)
+                                               (reachable (dependents-graph dependencies) seed-id)
+                                               #{})
             deps                             (into {}
                                                    (map (fn [id]
                                                           [id (set/intersection (get dependencies id #{}) downstream-ids)]))

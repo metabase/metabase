@@ -2450,3 +2450,29 @@
                                   :data
                                   (into #{} (map :id)))
                              transform-id)))))))))
+
+(deftest run-trashed-transform-test
+  (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+    (mt/with-temp [:model/Transform {transform-id :id} {:archived true :archived_directly true}]
+      (testing "POST /api/transform/:id/run refuses a transform in the trash"
+        (is (= "This transform is in the trash and can't run."
+               (mt/user-http-request :crowberto :post 400 (format "transform/%d/run" transform-id)))))
+      (testing "POST /api/transform/:id/run-dag refuses a transform in the trash"
+        (is (= "This transform is in the trash and can't run."
+               (mt/user-http-request :crowberto :post 400 (format "transform/%d/run-dag" transform-id)
+                                     {:direction "upstream"}))))
+      (testing "no run is recorded"
+        (is (not (t2/exists? :model/TransformRun :transform_id transform-id)))))))
+
+(deftest get-runs-of-trashed-transform-test
+  (mt/with-premium-features #{}
+    (testing "GET /api/transform/run keeps the runs of a trashed transform and marks the transform as archived"
+      (mt/with-temp [:model/Transform    {live-id :id}    {}
+                     :model/Transform    {trashed-id :id} {:archived true :archived_directly true}
+                     :model/TransformRun _                {:transform_id live-id}
+                     :model/TransformRun _                {:transform_id trashed-id}]
+        (let [response (mt/user-http-request :crowberto :get 200 "transform/run"
+                                             :transform-ids [live-id trashed-id])
+              id->transform (into {} (map (juxt :transform_id :transform)) (:data response))]
+          (is (=? {:id trashed-id :archived true} (id->transform trashed-id)))
+          (is (=? {:id live-id :archived false} (id->transform live-id))))))))

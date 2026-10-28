@@ -13,6 +13,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.test.util.thread-local :as tu.thread-local]
+   [metabase.transforms.db :as transforms.db]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.freshness :as freshness]
    [metabase.transforms.jobs :as jobs]
@@ -75,6 +76,21 @@
                    :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag) :position 0}]
       (let [result (jobs/run-job! (:id job) {:run-method :cron})]
         (is (nil? result))
+        (is (= 0 (t2/count :model/TransformJobRun :job_id (:id job))))))))
+
+(deftest job-transform-ids-leave-out-trashed-transforms-test
+  (testing "a transform in the trash is not part of its job"
+    (mt/with-temp [:model/TransformTag tag {:name "tag-trash"}
+                   :model/TransformJob job {:name "job-trash" :schedule "0 0 * * * ? *"}
+                   :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag) :position 0}
+                   :model/Transform live {:name "live"}
+                   :model/Transform trashed {:name "trashed" :archived true :archived_directly true}
+                   :model/TransformTransformTag _ {:transform_id (:id live) :tag_id (:id tag) :position 0}
+                   :model/TransformTransformTag _ {:transform_id (:id trashed) :tag_id (:id tag) :position 1}]
+      (is (= #{(:id live)} (#'jobs/job-transform-ids (:id job))))
+      (testing "a job whose only transform is in the trash runs nothing"
+        (t2/update! :model/Transform (:id live) {:archived true :archived_directly true})
+        (is (nil? (jobs/run-job! (:id job) {:run-method :cron})))
         (is (= 0 (t2/count :model/TransformJobRun :job_id (:id job))))))))
 
 (deftest next-transform-test
@@ -505,6 +521,22 @@
                                                                           :name     "zombie_out"}}]
             (testing "get-plan with empty transform-ids must not throw on unrelated zombies"
               (is (empty? (:order (#'jobs/get-plan #{})))))))))))
+
+(deftest run-transform-skips-trashed-transform-test
+  (testing "a transform trashed after the plan was made is skipped at dispatch, with a warning"
+    (mt/with-premium-features #{:hosting :transforms-basic}
+      (let [transform   {:id 11 :source_type :native :source query-source :name "Trashed later"}
+            run-called? (atom false)]
+        (mt/with-log-messages-for-level [messages [metabase.transforms.jobs :warn]]
+          (mt/with-dynamic-fn-redefs [transform-run/running-run-for-transform-id (constantly nil)
+                                      transforms.db/transform-archived?          (constantly true)
+                                      transforms.execute/execute!                (fn [_ _] (reset! run-called? true))]
+            (#'jobs/run-transform! {:parent-run [:job 300] :run-method :cron :user-id nil
+                                    :add-run-activity! (constantly nil)}
+                                   (promise) transform)
+            (is (false? @run-called?))
+            (is (some #(re-matches #".*Skip running transform 11 because it is in the trash.*" (:message %))
+                      (messages)))))))))
 
 (deftest run-transforms-skips-fresh-pulled-in-deps-test
   (mt/with-premium-features #{:transforms-basic}
