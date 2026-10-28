@@ -130,6 +130,16 @@ describe("mockQuery", () => {
     expect(screen.queryByText("1 paid 1")).not.toBeInTheDocument();
   });
 
+  it("rejects query that has no mock", async () => {
+    setup();
+
+    expect(
+      await screen.findByText(
+        /No mock for query "Orders list"\. Call mockQuery/,
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("rejects requests with unmocked dynamic part", async () => {
     mockQuery(ORDERS_QUERY, [{ id: 1, status: "paid" }]);
 

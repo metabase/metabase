@@ -1,9 +1,6 @@
 import type { QueryDatasetResult } from "embedding-sdk-bundle/lib/query-dataset";
 import { stableStringifyQuery } from "embedding-sdk-package/hooks/public/use-metabase-query/stable-query-key";
-import {
-  type MockSdkHandlers,
-  getMockSdkHandlers,
-} from "embedding-sdk-package/testing/lib/mock-sdk-handlers";
+import { getMockSdkRegistry } from "embedding-sdk-package/testing/lib/mock-sdk-registry";
 import type { DatasetQuery, NativeDatasetQuery } from "metabase-types/api";
 
 type QueryRequest = {
@@ -17,7 +14,7 @@ export type QueryMockEntry = {
   respond: (request: QueryRequest) => Promise<QueryDatasetResult>;
 };
 
-const entriesByHandlers = new WeakMap<MockSdkHandlers, QueryMockEntry[]>();
+const entries: QueryMockEntry[] = [];
 const requestsByDatasetQuery = new WeakMap<DatasetQuery, QueryRequest>();
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -75,10 +72,7 @@ const createNoMockError = ({ query, dynamicQuery }: QueryRequest) => {
   );
 };
 
-const answerQuery = (
-  entries: readonly QueryMockEntry[],
-  request: QueryRequest,
-): Promise<QueryDatasetResult> => {
+const answerQuery = (request: QueryRequest): Promise<QueryDatasetResult> => {
   const dynamicQueryKey = getDynamicQueryKey(request.dynamicQuery);
   const entry = entries.find(
     (candidate) =>
@@ -91,16 +85,8 @@ const answerQuery = (
     : Promise.reject(createNoMockError(request));
 };
 
-const getQueryMockEntries = (): QueryMockEntry[] => {
-  const handlers = getMockSdkHandlers();
-  const existingEntries = entriesByHandlers.get(handlers);
-
-  if (existingEntries) {
-    return existingEntries;
-  }
-
-  const entries: QueryMockEntry[] = [];
-  entriesByHandlers.set(handlers, entries);
+const installQueryMockHandlers = () => {
+  const { handlers, resets } = getMockSdkRegistry();
 
   handlers.resolveDatasetQuery = () => async (query, dynamicQuery) => {
     const datasetQuery: NativeDatasetQuery = {
@@ -122,14 +108,15 @@ const getQueryMockEntries = (): QueryMockEntry[] => {
         throw new Error("The dataset query was not built by a mocked query.");
       }
 
-      return answerQuery(entries, request);
+      return answerQuery(request);
     };
 
-  return entries;
+  resets.add(() => entries.splice(0));
 };
 
+installQueryMockHandlers();
+
 export const registerQueryMock = (entry: QueryMockEntry) => {
-  const entries = getQueryMockEntries();
   const replacedIndex = entries.findIndex(
     (candidate) =>
       candidate.query === entry.query &&
