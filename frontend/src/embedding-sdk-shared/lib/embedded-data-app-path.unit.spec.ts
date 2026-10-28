@@ -1,6 +1,8 @@
 import {
+  getDataAppEmbedUrl,
   getEmbeddedAppNameFromPath,
   isEmbeddedDataAppPath,
+  normalizeDataAppPath,
 } from "./embedded-data-app-path";
 
 describe("embedded data app route", () => {
@@ -42,4 +44,27 @@ describe("embedded data app route", () => {
   ])("rejects unsafe paths: %s", (path) => {
     expect(getEmbeddedAppNameFromPath(path)).toBeUndefined();
   });
+});
+
+describe("data app embed URL", () => {
+  it("preserves the installation subpath and initial route", () => {
+    const url = getDataAppEmbedUrl(
+      "https://metabase.example.com/mb/",
+      "///sales/orders?active=true#details",
+    );
+
+    expect(url.href).toBe(
+      "https://metabase.example.com/mb/embed/embedded-apps/sales/orders?active=true#details",
+    );
+    expect(normalizeDataAppPath("///sales/orders")).toBe("sales/orders");
+  });
+
+  it.each(["sales/../other", "sales/%2fother", "sales/%"])(
+    "rejects unsafe paths: %s",
+    (path) => {
+      expect(() =>
+        getDataAppEmbedUrl("https://metabase.example.com", path),
+      ).toThrow("A valid data app path must be provided.");
+    },
+  );
 });

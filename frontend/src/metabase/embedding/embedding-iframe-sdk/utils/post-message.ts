@@ -15,6 +15,7 @@ type EajsMessageBySource = {
 type ListenForEajsMessagesOptions<Source extends EajsMessageSource> = {
   /** Where the message is expected to come from. */
   messageSource: Source;
+  expectedOrigin?: string;
   handler: (message: EajsMessageBySource[Source]) => void;
 } & (Source extends "iframe-content"
   ? { iframe: HTMLIFrameElement }
@@ -41,6 +42,10 @@ export function listenForEajsMessages<Source extends EajsMessageSource>(
         }
         break;
       }
+    }
+
+    if (options.expectedOrigin && event.origin !== options.expectedOrigin) {
+      return;
     }
 
     if (!event.data) {

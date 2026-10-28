@@ -44,3 +44,18 @@ export function getEmbeddedAppNameFromPath(path: string): string | undefined {
 const hasUnsafeCharacters = (path: string): boolean =>
   // eslint-disable-next-line no-control-regex -- reject backslashes, ASCII control characters and spaces.
   /[\\\x00-\x20]/.test(path);
+
+/** Use one relative path for host settings and runtime URLs. */
+export const normalizeDataAppPath = (path: string): string =>
+  path.replace(/^\/+/, "");
+
+/** Build the runtime URL without discarding an instance's installation subpath. */
+export function getDataAppEmbedUrl(instanceUrl: string, path: string): URL {
+  if (!getEmbeddedAppNameFromPath(path)) {
+    throw new Error("A valid data app path must be provided.");
+  }
+
+  return new URL(
+    `${instanceUrl.replace(/\/+$/, "")}${EMBEDDED_DATA_APP_PREFIX}/${normalizeDataAppPath(path)}`,
+  );
+}

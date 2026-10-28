@@ -451,6 +451,12 @@ export interface MetabaseConfig {
   apiKey?: string;
 }
 
+/** Attributes for an isolated data app using modular embedding SSO. */
+export interface MetabaseDataAppAttributes {
+  /** App slug, optionally followed by a route, query parameters and hash. */
+  path: string;
+}
+
 /**
  * Used to enforce types in frontend/src/metabase/embedding/embedding-iframe-sdk/embed.ts
  *
@@ -461,4 +467,5 @@ export interface ComponentToAttributes {
   "metabase-dashboard": MetabaseDashboardAttributes;
   "metabase-browser": MetabaseBrowserAttributes;
   "metabase-metabot": MetabaseMetabotAttributes;
+  "metabase-data-app": MetabaseDataAppAttributes;
 }
