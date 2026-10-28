@@ -138,5 +138,6 @@
 
 (defmethod task/init! ::RunTransform [_]
   (log/info "Initializing transform job execution jobs")
+  (run! #(task/delete-trigger! (trigger-key %)) (transforms.db/inactive-job-ids))
   (->> (transforms.db/active-jobs)
        (run! initialize-job!)))
