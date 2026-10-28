@@ -603,7 +603,7 @@
     (when (perms-group/is-tenant-group? group-or-id)
       (when-not (or (shared-tenant-collection? collection)
                     (and (pos-int? (:id collection))
-                         (contains? (data-perms/data-app-collection-ids) (:id collection))))
+                         (data-perms/data-app-resource-collection? (:id collection))))
         (throw (ex-info (tru "Tenant groups cannot receive access to non-tenant collections.") {})))))
   (grant-permissions! (u/the-id group-or-id) (permissions.path/collection-read-path collection-or-id)))
 
