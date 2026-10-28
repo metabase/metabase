@@ -32,6 +32,8 @@
 
 (doseq [[feature supported?] {::describe-table-test/describe-materialized-view-fields false ; MotherDuck has no materialized views
                               :test/cannot-destroy-db true
+                              ;; The driver adds an explicit ESCAPE clause to LIKE; run the shared escaping tests.
+                              :test/escaping-like-metacharacters true
                               ;; This pooling test invalidates the user name. The endpoint authenticates
                               ;; with the token and ignores the user name, so the connection stays valid.
                               ::connection-test/regular-connection-pooling false}]

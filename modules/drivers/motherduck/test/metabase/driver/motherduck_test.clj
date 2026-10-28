@@ -17,21 +17,33 @@
 ;; Check DuckDB JSON extraction syntax without a database connection.
 (deftest ^:parallel json-query-test
   (let [identifier (h2x/identifier :field "boop" "bleh -> meh")]
-    (testing "a nested field reference compiles to json_extract_string with an inlined JSONPath"
+    (testing "a nested field reference compiles to json_extract_string with an inlined JSON Pointer"
       (are [field expected] (= [expected]
                                (sql.qp/format-honeysql :motherduck (sql.qp/json-query :motherduck identifier field)))
         {:nfc-path [:bleh :meh] :database-type "text"}
-        "CAST(JSON_EXTRACT_STRING(\"boop\".\"bleh\", '$.\"meh\"') AS text)"
+        "CAST(JSON_EXTRACT_STRING(\"boop\".\"bleh\", '/meh') AS text)"
 
         ;; Avoid DuckDB's default DECIMAL(18,3) scale for JSON numbers.
         {:nfc-path [:bleh :meh] :database-type "decimal"}
-        "CAST(JSON_EXTRACT_STRING(\"boop\".\"bleh\", '$.\"meh\"') AS double)"
+        "CAST(JSON_EXTRACT_STRING(\"boop\".\"bleh\", '/meh') AS double)"
 
         {:nfc-path [:bleh "boop" :foobar 1234] :database-type "boolean"}
-        "CAST(JSON_EXTRACT_STRING(\"boop\".\"bleh\", '$.\"boop\".\"foobar\".\"1234\"') AS boolean)"
+        "CAST(JSON_EXTRACT_STRING(\"boop\".\"bleh\", '/boop/foobar/1234') AS boolean)"
 
         {:nfc-path [:bleh "meh"] :database-type "timestamp"}
-        "CAST(JSON_EXTRACT_STRING(\"boop\".\"bleh\", '$.\"meh\"') AS timestamp)"))))
+        "CAST(JSON_EXTRACT_STRING(\"boop\".\"bleh\", '/meh') AS timestamp)"))
+    (testing "keys from the warehouse's JSON are escaped for JSON Pointer, and quotes are doubled for SQL"
+      (are [k pointer] (= [(format "CAST(JSON_EXTRACT_STRING(\"boop\".\"bleh\", '%s') AS text)" pointer)]
+                          (sql.qp/format-honeysql :motherduck
+                                                  (sql.qp/json-query :motherduck identifier
+                                                                     {:nfc-path ["bleh" k] :database-type "text"})))
+        "a/b"      "/a~1b"
+        "a~b"      "/a~0b"
+        "~1"       "/~01"      ; escape ~ first, so a literal "~1" doesn't become "/"
+        "a\"b"     "/a\"b"
+        "a\\"      "/a\\"
+        "it's"     "/it''s"
+        "*"        "/*"))))
 
 ;; DuckDB's regexp_extract returns the whole match and '' on no match. regexExtract must return the first
 ;; capturing group, like Postgres substring(x FROM pattern), and NULL on no match.

@@ -17,6 +17,7 @@
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.sql-jdbc.quoting :as sql-jdbc.quoting]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
    [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
@@ -67,6 +68,8 @@
                  :describe-is-generated
                  :uploads
                  :persist-models
+                 ;; Before enabling: the inherited SET ROLE quotes role names on the server with Postgres's
+                 ;; `quote_ident(?)`. Check that DuckDB's quote_ident escapes identically, or SET ROLE is injectable.
                  :connection-impersonation
                  ;; MotherDuck uses token authentication rather than Postgres roles and row-level security.
                  :test/rls-impersonation
@@ -189,8 +192,12 @@
   ((get-method sql.qp/transform-literal-like-pattern-honeysql :sql) driver like-rhs-honeysql))
 
 ;; DuckDB reads nested JSON with json_extract_string rather than the Postgres #>> operator.
-;; Both return unquoted scalar text and JSON text for objects and arrays. Inline the JSONPath
+;; Both return unquoted scalar text and JSON text for objects and arrays. Inline the path
 ;; so the endpoint can resolve the function's parameter types at prepare time.
+;;
+;; The path is a JSON Pointer (RFC 6901), not a JSONPath. The keys come from the warehouse's JSON data, and JSONPath
+;; can't express every key: a `"` or `\` breaks the path, `x"."y` reaches a different nested key, and `"*"` is still a
+;; wildcard when quoted. JSON Pointer escapes only `~` and `/`, and matches keys exactly, like Postgres's #>>.
 (def ^:private json-cast-types
   "Cast types for unfolded JSON fields that differ from the inherited Postgres types.
 
@@ -198,18 +205,22 @@
   Use `DOUBLE` to preserve the precision of the floating-point values parsed by Jackson."
   {"decimal" "double"})
 
+(defn- json-pointer
+  "Return the RFC 6901 JSON Pointer for the keys in `path`, e.g. `[\"a/b\" \"c\"]` -> `\"/a~1b/c\"`."
+  [path]
+  (apply str (for [k path]
+               (-> (if (number? k) (str k) (name k))
+                   (str/replace "~" "~0")
+                   (str/replace "/" "~1")
+                   (->> (str "/"))))))
+
 (defmethod sql.qp/json-query :motherduck
   [_driver unwrapped-identifier {:keys [database-type nfc-path] :as nfc-field}]
   {:pre [(h2x/identifier? unwrapped-identifier)]}
-  (let [json-path (apply str "$" (for [k (rest nfc-path)
-                                       :let [tag (if (number? k)
-                                                   k
-                                                   (name k))]]
-                                   (format ".\"%s\"" tag)))]
-    (h2x/cast (get json-cast-types database-type database-type)
-              [:json_extract_string
-               (sql.qp.u/nfc-field->parent-identifier unwrapped-identifier nfc-field)
-               [:inline json-path]])))
+  (h2x/cast (get json-cast-types database-type database-type)
+            [:json_extract_string
+             (sql.qp.u/nfc-field->parent-identifier unwrapped-identifier nfc-field)
+             [:inline (json-pointer (rest nfc-path))]]))
 
 (defn- capturing-group-count
   "Count the capturing groups in regex `pattern`. Java's syntax covers the RE2 syntax DuckDB accepts, except
@@ -291,9 +302,11 @@
 
 ;; The endpoint returns a result set for DROP TABLE, even in Metabase compatibility mode.
 ;; Use Statement.execute to accept it. The inherited executeUpdate path rejects result sets.
+;; Qualify the name like the :sql-jdbc method does: a plain `keyword` would let HoneySQL rewrite `-` to `_` in the
+;; schema part, dropping a table in a different schema.
 (defmethod driver/drop-table! :motherduck
   [driver db-id table-name]
-  (let [sql (first (sql/format {:drop-table [:if-exists (keyword table-name)]}
+  (let [sql (first (sql/format {:drop-table [:if-exists (sql-jdbc.quoting/dot-qualified table-name)]}
                                :quoted true
                                :dialect (sql.qp/quote-style driver)))]
     (sql-jdbc.execute/do-with-connection-with-options
