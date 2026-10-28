@@ -790,16 +790,30 @@
             (is (= "Bearer sk-embed" (get @captured "Authorization")))))))))
 
 (deftest embedding-supported?-test
-  (testing "ai-service: supported iff an embedding-service base URL or the ai-service base URL is set"
-    (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://embed"]
+  (testing "ai-service: supported iff the embedding-service connection resolves, or the ai-service base URL is set"
+    (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://embed"
+                                       ee-embedding-service-api-key  "stored-key"]
       (is (true? (embedding/embedding-supported? {:provider "ai-service"}))))
+    (testing "a connection that would refuse to embed is not ready, and says why"
+      (mt/with-temporary-setting-values [ee-embedding-service-base-url "http://embed"
+                                         ee-embedding-service-api-key  nil]
+        (is (=? {:ready?  false
+                 :reason  :embedding-database-url-requires-api-key
+                 :message #"(?s).*MB_EE_EMBEDDING_SERVICE_BASE_URL.*"}
+                (embeddings.provider/readiness {:provider "ai-service"})))
+        (mt/with-temp-env-var-value! [mb-ee-embedding-service-api-key "deployment-key"]
+          (is (=? {:ready? false
+                   :reason :embedding-environment-key-requires-environment-url}
+                  (embeddings.provider/readiness {:provider "ai-service"}))))))
     ;; ai-service-base-url is :enabled? only under the AI-managed / metabot-v3 features, so license one to
     ;; exercise that branch (and to make the setting settable/restorable here).
     (mt/with-premium-features #{:metabot-v3}
       (mt/with-temporary-setting-values [ee-embedding-service-base-url nil ai-service-base-url "http://ai"]
         (is (true? (embedding/embedding-supported? {:provider "ai-service"})))))
     (mt/with-temporary-setting-values [ee-embedding-service-base-url nil]
-      (is (false? (embedding/embedding-supported? {:provider "ai-service"})))))
+      (is (=? {:ready? false
+               :reason :embedding-service-url-not-configured}
+              (embeddings.provider/readiness {:provider "ai-service"})))))
   (testing "openai: supported iff the connection semantic search embeds through has an API key"
     (llm.tu/with-connections [(llm.tu/connection "openai" {:api-key "sk-test"})]
       (is (true? (embedding/embedding-supported? {:provider "openai"}))))

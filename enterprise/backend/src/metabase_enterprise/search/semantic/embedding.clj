@@ -622,16 +622,32 @@
             (assoc :network-policy-floor :allow-private))
 
           :else
-          (throw (ex-info (if (setting/env-var-value :ee-embedding-service-api-key)
-                            (str "Set " (setting/env-var-name :ee-embedding-service-base-url)
+          (throw (if (setting/env-var-value :ee-embedding-service-api-key)
+                   (ex-info (str "Set " (setting/env-var-name :ee-embedding-service-base-url)
                                  " alongside " (setting/env-var-name :ee-embedding-service-api-key)
                                  "; an environment API key needs an embedding service base URL.")
-                            "Embedding service and ai service base URLs are not configured")
-                          {:settings ["ee-embedding-service-base-url"
-                                      "ai-service-base-url"]})))))
+                            {:error-code :embedding-environment-key-requires-environment-url
+                             :settings   ["ee-embedding-service-base-url"
+                                          "ee-embedding-service-api-key"]})
+                   (ex-info "Embedding service and ai service base URLs are not configured"
+                            {:error-code :embedding-service-url-not-configured
+                             :settings   ["ee-embedding-service-base-url"
+                                          "ai-service-base-url"]}))))))
 
 (defmethod embedder-circuit-endpoint "ai-service" [_]
   (:endpoint (embedding-service-resolve-config!)))
+
+(defn- ai-service-readiness
+  "Ready when [[embedding-service-resolve-config!]] would accept the current settings; otherwise its error code is the
+  reason and its message, which names settings but no values, says how to fix it."
+  [_]
+  (try
+    (embedding-service-resolve-config!)
+    {:ready? true}
+    (catch clojure.lang.ExceptionInfo e
+      {:ready?  false
+       :reason  (:error-code (ex-data e))
+       :message (ex-message e)})))
 
 (defn- ai-service-get-embeddings-batch
   [{:keys [model-name vector-dimensions]} texts {:keys [record-tokens? type snowplow?] :or {snowplow? true}}]
@@ -710,9 +726,7 @@
     (embeddings.provider/register-provider!
      "ai-service"
      {:embedding-spi-version spi-version
-      :readiness             (fn [_]
-                               {:ready? (boolean (or (not-empty (semantic-settings/ee-embedding-service-base-url))
-                                                     (not-empty (llm.settings/ai-service-base-url))))})
+      :readiness             ai-service-readiness
       :resolve-model         legacy
       :embed-texts           ai-service-get-embeddings-batch})
     (embeddings.provider/register-provider!
