@@ -20,6 +20,31 @@
   z-index: 1;
 }
 
+/* fades in late, so the quick reruns of summary edits show nothing at all */
+.updatingIndicator {
+  position: absolute;
+  top: var(--mantine-spacing-md);
+  left: 50%;
+  z-index: 2;
+  padding: var(--mantine-spacing-sm);
+  border-radius: 999px;
+  background-color: var(--mb-color-background_page-primary);
+  box-shadow: var(--mantine-shadow-sm);
+  translate: -50% 0;
+  pointer-events: none;
+  animation: updating-indicator-in 150ms ease-out 600ms both;
+}
+
+@keyframes updating-indicator-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
 .warnings {
   position: absolute;
   top: 0;
