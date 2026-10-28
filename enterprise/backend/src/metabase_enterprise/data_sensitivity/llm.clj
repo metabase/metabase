@@ -602,6 +602,11 @@ name, gets a chunk of its own. The size
   (when (:aborted (swap! timing assoc :abort abort))
     (abort-async! abort)))
 
+(defn default-model
+  "The model that [[submit-packet]] uses when the caller names none: the Metabot mini model."
+  []
+  (metabot.settings/llm-mini-model))
+
 (mu/defn submit-packet :- ::submitted
   "Submit one call per chunk of `packet` to [[pool]] and return without waiting. A chunk holds at most `chunk-size`
   fields and a user message within `char-budget` characters, see [[chunk-fields]]. `cp/future` runs each task under the
@@ -614,7 +619,7 @@ name, gets a chunk of its own. The size
   that request, see [[cancel-packet]]."
   [packet :- ::context/packet
    & {:keys [model attributes chunk-size char-budget]} :- [:maybe ::classify-options]]
-  (let [model      (or model (metabot.settings/llm-mini-model))
+  (let [model      (or model (default-model))
         attributes (or attributes default-attributes)
         chunks     (chunk-fields packet
                                  attributes
