@@ -100,7 +100,7 @@
   "`proposals` with the `source` and `current_value` of the value readers see now."
   [proposals]
   (let [field-ids (vec (distinct (map :field_id proposals)))
-        fields    (db/active-fields-by-id field-ids)
+        fields    (db/visible-fields-by-id field-ids)
         settings  (db/user-settings-by-field field-ids)]
     (mapv (fn [{:keys [field_id attribute] :as p}]
             (let [field (get fields field_id)]
@@ -212,7 +212,7 @@
   (t2/with-transaction [_conn]
     (let [rows      (db/lock-proposals (mapv :id proposals))
           field-ids (vec (distinct (map :field_id proposals)))
-          fields    (db/active-fields-by-id field-ids)
+          fields    (db/visible-fields-by-id field-ids)
           settings  (db/user-settings-by-field field-ids)
           outcomes  (mapv (fn [{:keys [id field_id attribute] :as s}]
                             (let [field (get fields field_id)]
@@ -259,10 +259,10 @@
      :failures (mapv #(failure % (::outcome %)) failures)}))
 
 (defn- publish-field-updates!
-  "Publish `:event/field-update` for each active field in `field-ids` as `user-id`. A handler that throws is logged and
+  "Publish `:event/field-update` for each visible field in `field-ids` as `user-id`. A handler that throws is logged and
   does not stop the events of the other fields."
   [field-ids user-id]
-  (doseq [field (vals (db/active-fields-by-id field-ids))]
+  (doseq [field (vals (db/visible-fields-by-id field-ids))]
     (try
       (events/publish-event! :event/field-update {:object field :user-id user-id})
       (catch Exception e
@@ -294,7 +294,7 @@
     (throw (core/bad-request (tru "Give accept and edits, or reject_all, not both.")))))
 
 (defn- reject-all!
-  "Delete every pending proposal of active fields of the database `database-id`."
+  "Delete every pending proposal of visible fields of visible tables of the database `database-id`."
   [database-id]
   (let [ids (mapv :id (db/pending-proposal-keys {:database_id database-id}))]
     {:written  0
@@ -306,7 +306,7 @@
   "Throw a 400 when an edited value of `proposals` is one a person cannot set; return `proposals` with each edited
   value normalized. A proposal whose field is gone keeps its value; its write fails with `field_not_found`."
   [proposals]
-  (let [fields (db/active-fields-by-id (vec (distinct (keep #(when (:edited_value %) (:field_id %)) proposals))))]
+  (let [fields (db/visible-fields-by-id (vec (distinct (keep #(when (:edited_value %) (:field_id %)) proposals))))]
     (mapv (fn [{:keys [attribute edited_value field_id] :as p}]
             (let [field (get fields field_id)]
               (cond-> p
