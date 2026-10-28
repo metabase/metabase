@@ -5,10 +5,11 @@
   dbt leaves both as the warehouse's own SQL. [[metabase.sql-parsing.core/parse-expression]] (sqlglot) parses an
   expression on its own, without a surrounding SELECT, in the warehouse's dialect, and a subset of its tree is built
   with Lib's clause constructors: column references, literals, arithmetic, comparisons, AND/OR/NOT, IN, BETWEEN,
-  IS [NOT] NULL/TRUE/FALSE, LIKE patterns that Lib's string filters can express (see [[like]]), both forms of CASE,
-  casts to the types Lib has a conversion for (see [[cast-targets]]) and the functions that have a Lib expression
-  function with the same meaning (see [[->value]]). `NULLIF(x, 0)` as a divisor is plain division in Metabase (see
-  [[safe-divisor]]). Anything else is reported as unsupported, naming the construct.
+  IS [NOT] NULL/TRUE/FALSE, LIKE, ILIKE and SIMILAR TO patterns and regex matches (see [[like-clause]] and
+  [[regex-match]]), both forms of CASE, casts to the types Lib has a conversion for (see [[cast-targets]]) and the
+  functions that have a Lib expression function with the same meaning (see [[->value]]). `NULLIF(x, 0)` as a divisor
+  is plain division in Metabase (see [[safe-divisor]]). Anything else is reported as unsupported, naming the
+  construct.
 
   Column references are resolved through a callback, so this namespace knows nothing about semantic models or
   Metabase metadata. Unsupported constructs are signalled with [[unsupported]], an exception the resolve stage turns
@@ -438,63 +439,205 @@
                (->value (arg node :low) resolve-column)
                (->value (arg node :high) resolve-column)))
 
-(def ^:private like-simple-re
-  "`%x%`, `x%`, `%x` or `x`, where `x` has no wildcards of its own; a run of `%` is one `%`."
-  #"(%*)([^%_]*)(%*)")
+;;; patterns and regular expressions
 
-(def ^:private like-infix-re
-  "`x%y`, where neither `x` nor `y` has wildcards of its own."
-  #"([^%_]+)%+([^%_]+)")
+(def ^:private regex-metacharacters
+  "The characters a backslash makes literal in a POSIX regular expression."
+  (set "\\^$.|?*+()[]{}"))
 
-(def ^:private like-underscores-re
-  "`x__`, `__x` or `__`: one literal with a run of `_` before or after it, and no `%`."
-  #"([^%_]*)(_+)([^%_]*)")
+(defn- regex-quote
+  "`s` as a regular expression matching exactly `s`. Not `Pattern/quote`: its `\\Q...\\E` is Java's, not the
+  warehouse's."
+  [s]
+  (str/join (map (fn [c] (if (regex-metacharacters c) (str "\\" c) c)) s)))
 
-(defn- like
-  "`LIKE` or, `case-insensitive?`, `ILIKE` with a pattern Lib's string filters can express exactly. `%x%`, `x%` and
-  `%x` are `:contains`, `:starts-with` and `:ends-with`, and a pattern with no wildcard is `:=`. `x%y` is
-  `:starts-with` and `:ends-with` plus a minimum length, so that the two ends cannot overlap. A pattern of one literal
-  and a run of `_` is `:starts-with` or `:ends-with` plus the exact length. Anything else, `_` in the middle of a
-  literal or more than two literals, is reported."
-  [node resolve-column case-insensitive?]
-  (let [keyword-name (if case-insensitive? "ILIKE" "LIKE")
-        pattern      (->value (arg node :expression) resolve-column)
-        options      (when case-insensitive? {:case-sensitive false})
-        column       #(->value (arg node :this) resolve-column)
-        string-match (fn [operator body] (lib/expression-clause operator [(column) body] options))]
+(defn- regex-match
+  "`value` matches `regex`, as a filter clause. Lib has no regex filter, but the first match `regex-match-first`
+  finds is null exactly when the regex does not match, so the filter is that match being not null. The regex is wrapped
+  in a group of its own, because a group inside it would make the match that group's, which can be null even when the
+  regex matches (`(a)|b` against `b`); `(?i)` makes it case-insensitive. Needs the warehouse driver to support
+  regular expressions."
+  [value regex case-insensitive?]
+  (lib/not-null (lib/regex-match-first value (str (when case-insensitive? "(?i)") "(" regex ")"))))
+
+(defn- like-tokens
+  "The `LIKE` `pattern` as tokens: a literal string, `:any` for `%` (a run of `%` is one), `:one` for `_`. The
+  character `escape` (nil for none) makes the character after it literal."
+  [pattern escape]
+  (loop [[c & more :as chars] (seq pattern)
+         literal              (StringBuilder.)
+         tokens               []]
+    (let [flush-literal (fn [] (cond-> tokens (pos? (.length literal)) (conj (str literal))))]
+      (cond
+        (empty? chars)
+        (flush-literal)
+
+        (= c escape)
+        (do (when (empty? more)
+              (unsupported "the pattern %s ends with its escape character" (pr-str pattern)))
+            (recur (rest more) (.append literal (char (first more))) tokens))
+
+        (= c \%)
+        (recur more (StringBuilder.) (let [tokens (flush-literal)]
+                                       (cond-> tokens (not= :any (peek tokens)) (conj :any))))
+
+        (= c \_)
+        (recur more (StringBuilder.) (conj (flush-literal) :one))
+
+        :else
+        (recur more (.append literal (char c)) tokens)))))
+
+(defn- like-regex
+  "The regular expression equivalent to the `LIKE` pattern `tokens`, anchored at both ends; `transform-literal`
+  (identity, or lower-case) is applied to each literal."
+  [tokens transform-literal]
+  (str "^"
+       (str/join (map (fn [token]
+                        (case token
+                          :any ".*"
+                          :one "."
+                          (regex-quote (transform-literal token))))
+                      tokens))
+       "$"))
+
+(defn- like-clause
+  "The filter clause for `value` matching the `LIKE` pattern `tokens`, or `ILIKE` when `case-insensitive?`. Where
+  Lib's string filters express the pattern exactly they are used, since they read as what was written and run on any
+  warehouse: `%x%`, `x%` and `%x` are `:contains`, `:starts-with` and `:ends-with`, `x%y` adds a minimum `length` so
+  that the two ends cannot overlap, and one literal with a run of `_` pins the exact `length`. A pattern with no
+  wildcard is `=`, over `lower` for `ILIKE`. Anything else is the equivalent regular expression (see [[regex-match]]),
+  over `lower` with lower-cased literals for `ILIKE`, so that it does not depend on the warehouse's regex flags."
+  [value tokens case-insensitive?]
+  (let [options      (when case-insensitive? {:case-sensitive false})
+        string-match (fn [operator body] (lib/expression-clause operator [(value) body] options))
+        length       (fn [] (lib/length (value)))
+        literal?     string?
+        ones         (fn [tokens] (when (and (seq tokens) (every? #{:one} tokens)) (count tokens)))
+        lower-case   (if case-insensitive? u/lower-case-en identity)]
+    (b/cond
+      (empty? tokens)
+      (lib/= (value) "")
+
+      :let [[a b c] tokens]
+
+      (and (= 1 (count tokens)) (literal? a))
+      (if case-insensitive? (lib/= (lib/lower (value)) (lower-case a)) (lib/= (value) a))
+
+      (= [:any] tokens)
+      (lib/not-null (value))
+
+      (and (= 3 (count tokens)) (= :any a) (literal? b) (= :any c))
+      (string-match :contains b)
+
+      (and (= 2 (count tokens)) (literal? a) (= :any b))
+      (string-match :starts-with a)
+
+      (and (= 2 (count tokens)) (= :any a) (literal? b))
+      (string-match :ends-with b)
+
+      (and (= 3 (count tokens)) (literal? a) (= :any b) (literal? c))
+      (lib/and (string-match :starts-with a)
+               (string-match :ends-with c)
+               (lib/>= (length) (+ (count a) (count c))))
+
+      :let [[first-token & more] tokens
+            n-ones               (ones tokens)]
+
+      n-ones
+      (lib/= (length) n-ones)
+
+      :let [n-ones (and (literal? first-token) (ones more))]
+
+      n-ones
+      (lib/and (string-match :starts-with first-token) (lib/= (length) (+ (count first-token) n-ones)))
+
+      :let [n-ones (and (literal? (peek tokens)) (ones (pop tokens)))]
+
+      n-ones
+      (lib/and (string-match :ends-with (peek tokens)) (lib/= (length) (+ (count (peek tokens)) n-ones)))
+
+      :else
+      (regex-match (if case-insensitive? (lib/lower (value)) (value)) (like-regex tokens lower-case) false))))
+
+(defn- pattern-literal
+  "The string literal the pattern of `node` (a `LIKE`, `ILIKE` or `SIMILAR TO`) is, or [[unsupported]]: a pattern
+  that is a column or an expression has no Lib equivalent."
+  [node resolve-column keyword-name]
+  (let [pattern (->value (arg node :expression) resolve-column)]
     (when-not (string? pattern)
       (unsupported "%s with a pattern that is not a string literal is not supported" keyword-name))
-    (let [clause (b/cond
-                   :let [[_ leading body trailing] (re-matches like-simple-re pattern)]
-                   body
-                   (cond
-                     (and (seq leading) (seq trailing)) (string-match :contains body)
-                     (seq leading)                      (string-match :ends-with body)
-                     (seq trailing)                     (string-match :starts-with body)
-                     case-insensitive?                  (unsupported "ILIKE without a wildcard is not supported")
-                     :else                              (lib/= (column) body))
+    pattern))
 
-                   :let [[_ prefix suffix] (re-matches like-infix-re pattern)]
-                   prefix
-                   (lib/and (string-match :starts-with prefix)
-                            (string-match :ends-with suffix)
-                            (lib/>= (lib/length (column)) (+ (count prefix) (count suffix))))
+(defn- like
+  "`LIKE` or, `case-insensitive?`, `ILIKE`, with `escape` as the pattern's escape character (nil for none); see
+  [[like-clause]]."
+  [node resolve-column case-insensitive? escape]
+  (let [pattern (pattern-literal node resolve-column (if case-insensitive? "ILIKE" "LIKE"))
+        clause  (like-clause #(->value (arg node :this) resolve-column) (like-tokens pattern escape) case-insensitive?)]
+    (if (arg node :negate) (lib/not clause) clause)))
 
-                   :let [[_ prefix _ suffix] (re-matches like-underscores-re pattern)]
-                   (and prefix (or (empty? prefix) (empty? suffix)))
-                   (let [exact-length (lib/= (lib/length (column)) (count pattern))]
-                     (cond
-                       (seq prefix) (lib/and (string-match :starts-with prefix) exact-length)
-                       (seq suffix) (lib/and (string-match :ends-with suffix) exact-length)
-                       :else        exact-length))
+(defmethod ->predicate "Like" [node resolve-column] (like node resolve-column false nil))
+(defmethod ->predicate "ILike" [node resolve-column] (like node resolve-column true nil))
 
-                   :else
-                   (unsupported "the %s pattern %s is not supported; only %%x%%, x%%, %%x, x%%y and x__ / __x are"
-                                keyword-name (pr-str pattern)))]
-      (if (arg node :negate) (lib/not clause) clause))))
+(defn- similar-to-regex
+  "The POSIX regular expression for the SQL-standard one of `SIMILAR TO`: `%` is `.*`, `_` is `.`, `.` is a literal
+  (outside a bracket expression), `escape` makes the next character literal, and the rest (`|`, `*`, `+`, `?`, `{}`,
+  `()`, `[]`) is the same in both. Anchored at both ends, as `SIMILAR TO` matches the whole string."
+  [pattern escape]
+  (loop [[c & more :as chars] (seq pattern)
+         in-bracket?          false
+         out                  (StringBuilder. "^")]
+    (cond
+      (empty? chars)
+      (str (.append out "$"))
 
-(defmethod ->predicate "Like" [node resolve-column] (like node resolve-column false))
-(defmethod ->predicate "ILike" [node resolve-column] (like node resolve-column true))
+      (and (= c escape) (not in-bracket?))
+      (do (when (empty? more)
+            (unsupported "the pattern %s ends with its escape character" (pr-str pattern)))
+          (recur (rest more) in-bracket? (.append out (regex-quote (str (first more))))))
+
+      in-bracket?
+      (recur more (not= c \]) (.append out (char c)))
+
+      :else
+      (recur more (= c \[) (.append out (case c
+                                          \% ".*"
+                                          \_ "."
+                                          \. "\\."
+                                          (str c)))))))
+
+(defn- similar-to
+  "`SIMILAR TO`, with `escape` as its escape character (SQL's default is a backslash), as a regex match."
+  [node resolve-column escape]
+  (regex-match (->value (arg node :this) resolve-column)
+               (similar-to-regex (pattern-literal node resolve-column "SIMILAR TO") escape)
+               false))
+
+(defmethod ->predicate "SimilarTo" [node resolve-column] (similar-to node resolve-column \\))
+
+(defmethod ->predicate "Escape"
+  [node resolve-column]
+  ;; `x LIKE 'a!%' ESCAPE '!'`: the escape character wraps the pattern operator
+  (let [escape-string (->value (arg node :expression) resolve-column)
+        inner         (arg node :this)]
+    (when-not (and (string? escape-string) (= 1 (count escape-string)))
+      (unsupported "ESCAPE %s is not supported, only a one-character string literal is" (:sql (arg node :expression))))
+    (let [escape (first escape-string)]
+      (case (:class inner)
+        "Like"      (like inner resolve-column false escape)
+        "ILike"     (like inner resolve-column true escape)
+        "SimilarTo" (similar-to inner resolve-column escape)
+        (unsupported "%s is not supported as a condition" (describe node))))))
+
+(defn- regexp-like
+  "`x ~ 'regex'` (`regexp_like(x, 'regex')`), or `x ~* 'regex'` when `case-insensitive?`, as a regex match."
+  [node resolve-column case-insensitive?]
+  (regex-match (->value (arg node :this) resolve-column)
+               (pattern-literal node resolve-column (if case-insensitive? "~*" "~"))
+               case-insensitive?))
+
+(defmethod ->predicate "RegexpLike" [node resolve-column] (regexp-like node resolve-column false))
+(defmethod ->predicate "RegexpILike" [node resolve-column] (regexp-like node resolve-column true))
 
 (mu/defn expression->mbql :- ::value
   "The Lib expression for the SQL value expression `sql` in `dialect`, resolving column names with `resolve-column`. A
