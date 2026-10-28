@@ -196,5 +196,5 @@
   (api/read-check :model/Database database-id)
   (when-not (some #(= database-id (:db_id %)) (data-apps.db/published-tables))
     (throw (data-app-error (tru "A data app can read only databases with tables published to the Library, not the database {0}."
-                                database-id))))
+                                (str database-id)))))
   nil)
