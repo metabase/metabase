@@ -9,6 +9,7 @@ import {
   normalizeDataAppPath,
   validateDataAppPath,
 } from "embedding-sdk-shared/lib/embedded-data-app-path";
+import { getIsLocalhost } from "embedding-sdk-shared/lib/get-is-localhost";
 import { getErrorMessage } from "metabase/api/utils/errors";
 
 import { DataAppFrame } from "./DataAppFrame";
@@ -69,10 +70,13 @@ function DataAppInner({ path, ...props }: DataAppProps) {
     }
   }, [instanceUrl, path, id]);
 
-  // TODO(DAT-18): support API keys on localhost
-  if (authConfig?.isGuest || authConfig?.apiKey) {
+  if (authConfig?.isGuest) {
+    return <SdkError message="Data app embeds require SSO authentication." />;
+  }
+
+  if (authConfig?.apiKey && !getIsLocalhost()) {
     return (
-      <SdkError message="Guest embedding and API keys are not supported for data apps." />
+      <SdkError message="Using an API key in production is not allowed." />
     );
   }
 
@@ -87,7 +91,7 @@ function DataAppInner({ path, ...props }: DataAppProps) {
   return (
     <DataAppFrame
       // TODO(DAT-74): apply client-side routing when slug does not change
-      key={route.src}
+      key={`${route.src}:${authConfig.apiKey ?? "sso"}`}
       {...props}
       {...route}
       authConfig={authConfig}
