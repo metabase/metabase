@@ -191,7 +191,8 @@
                      ::pc [:map
                            [:id [:or [:int {:min 1}] [:= "root"]]]
                            [:name :string]
-                           [:authority_level ::official]]}}
+                           [:authority_level ::official]
+                           [:type {:optional true} :string]]}}
     [:map
      [:id [:int {:min 1}]]
      [:name :string]
@@ -271,9 +272,10 @@
 
 (defn- fill-parent-coll [model-object]
   (if (:collection_id model-object)
-    {:id (:collection_id model-object)
-     :name (:collection_name model-object)
-     :authority_level (some-> (:collection_authority_level model-object) name)}
+    (cond-> {:id (:collection_id model-object)
+             :name (:collection_name model-object)
+             :authority_level (some-> (:collection_authority_level model-object) name)}
+      (:collection_type model-object) (assoc :type (name (:collection_type model-object))))
     (root-coll)))
 
 (defn- parent-collection-valid?

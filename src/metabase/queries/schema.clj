@@ -93,6 +93,7 @@
     [:authority_level           {:optional true} [:maybe [:or :keyword :string]]]
     [:collection_name           {:optional true} [:maybe :string]]
     [:collection_authority_level {:optional true} [:maybe [:or :keyword :string]]]
+    [:collection_type           {:optional true} [:maybe [:or :keyword :string]]]
     [:dashboard_name            {:optional true} [:maybe :string]]
     [:entity-coll-id            {:optional true} [:maybe ::lib.schema.id/collection]]
     [:moderated-status          {:optional true} [:maybe :string]]

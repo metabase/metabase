@@ -62,6 +62,7 @@ export type RecentCollectionItem = BaseRecentItem & {
     id: CollectionId | null;
     name: string;
     authority_level?: "official" | null;
+    type?: CollectionType;
   };
   authority_level?: "official" | null; // for collections
   moderated_status?: "verified" | null; // for cards / models / dashboards
