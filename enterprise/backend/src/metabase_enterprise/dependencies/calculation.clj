@@ -85,11 +85,10 @@
 (mu/defn- upstream-deps:dynamic-goals :- ::deps.schema/upstream-deps
   "Entities whose value a dynamic goal in `viz-settings` reads, including goals nested in a visualizer dashcard."
   [viz-settings :- [:maybe ms/VisualizationSettings]]
-  (->> (dynamic-goals/dashcard-goal-values viz-settings)
-       (keep dynamic-goals/goal-source)
-       (filter (fn [{:keys [id type]}]
-                 (and (pos-int? id) (dynamic-goals/goal-entity-types type))))
-       (u/group-by (comp keyword :type) :id conj #{})))
+  (->> (dynamic-goals/goal-references viz-settings)
+       (filter (fn [[entity-type id _column]]
+                 (and (pos-int? id) (dynamic-goals/goal-entity-types entity-type))))
+       (u/group-by (comp keyword first) second conj #{})))
 
 (mu/defn- upstream-deps:python-transform :- ::deps.schema/upstream-deps
   [{{tables :source-tables} :source :as _py-transform} :- ::transforms.schema/transform]

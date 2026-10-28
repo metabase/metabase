@@ -223,6 +223,35 @@
                                    :from_entity_type :card :from_entity_id card-id
                                    :to_entity_type :card :to_entity_id new-source-id))))))))))
 
+(deftest card-swap-source!-dynamic-goal-unreadable-new-source-test
+  (testing "swap-source! to a card the user can't read is refused; the goal and its dependency stay on the old card"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (let [mp       (mt/metadata-provider)
+              orders   (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+              products (lib/query mp (lib.metadata/table mp (mt/id :products)))]
+          (mt/with-temp [:model/Collection {collection-id :id} {}
+                         :model/Card {old-source-id :id} {:dataset_query orders}
+                         :model/Card {new-source-id :id} {:dataset_query orders :collection_id collection-id}
+                         :model/Card {card-id :id}
+                         {:dataset_query          products
+                          :visualization_settings {:graph.goal_value {:id old-source-id :type "card" :column "count"}}}]
+            (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
+              (deps.test/synchronously-run-backfill!)
+              (mt/with-test-user :rasta
+                (is (= 403 (try
+                             (replacement.source-swap/swap-source! [:card card-id]
+                                                                   [:card old-source-id]
+                                                                   [:card new-source-id])
+                             :no-error
+                             (catch clojure.lang.ExceptionInfo e
+                               (:status-code (ex-data e)))))))
+              (is (= old-source-id
+                     (-> (t2/select-one-fn :visualization_settings :model/Card card-id) :graph.goal_value :id)))
+              (is (t2/exists? :model/Dependency
+                              :from_entity_type :card :from_entity_id card-id
+                              :to_entity_type :card :to_entity_id old-source-id)))))))))
+
 (deftest card-swap-source!-dynamic-goal-and-query-card-to-table-test
   (testing "swap-source! to a table moves a query's read of the old card to the table and keeps the goal's"
     (mt/with-premium-features #{:dependencies}
