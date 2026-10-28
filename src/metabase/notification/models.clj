@@ -7,6 +7,7 @@
    [malli.core :as mc]
    [malli.util :as mut]
    [medley.core :as m]
+   [metabase.channel.db :as channel.db]
    [metabase.channel.models.channel :as models.channel]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
@@ -316,7 +317,7 @@
   [notification-handler]
   (when-let [template-id (:template_id notification-handler)]
     (let [channel-type  (keyword (:channel_type notification-handler))
-          template-type (notification.db/channel-template-channel-type template-id)]
+          template-type (:channel_type (channel.db/channel-template template-id))]
       (when (not= channel-type template-type)
         (throw (ex-info "Channel type and template type mismatch"
                         {:status        400

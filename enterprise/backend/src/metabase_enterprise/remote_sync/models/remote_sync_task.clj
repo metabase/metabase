@@ -78,7 +78,7 @@
 
   Throws ExceptionInfo if the task has been marked as cancelled."
   [task-id progress]
-  (when (true? (remote-sync.db/task-cancelled? task-id))
+  (when (true? (:cancelled (remote-sync.db/remote-sync-task task-id)))
     (throw (ex-info "Remote sync task has been cancelled" {:task-id task-id
                                                            :cancelled? true})))
   (remote-sync.db/report-task-progress! task-id progress))

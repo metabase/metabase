@@ -7,6 +7,11 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+(mu/defn custom-viz-plugin :- [:maybe ::custom-viz-plugin.schema/custom-viz-plugin]
+  "The ::custom-viz-plugin.schema/custom-viz-plugin with `custom-viz-plugin-id`, or nil."
+  [custom-viz-plugin-id :- ms/PositiveInt]
+  (t2/select-one :model/CustomVizPlugin custom-viz-plugin-id))
+
 (def ^:private non-blob-columns
   "Columns to select for normal plugin reads, excluding the bundle blob."
   [:model/CustomVizPlugin :id :identifier :display_name :icon :status :error_message :enabled
@@ -37,16 +42,6 @@
   "Whether a CustomVizPlugin with `identifier` exists."
   [identifier :- :string]
   (t2/exists? :model/CustomVizPlugin :identifier identifier))
-
-(mu/defn plugin-bundle
-  "The bundle bytes of the CustomVizPlugin with `plugin-id`."
-  [plugin-id :- ms/PositiveInt]
-  (t2/select-one-fn :bundle :model/CustomVizPlugin :id plugin-id))
-
-(mu/defn plugin-dev-bundle-url
-  "The dev bundle URL of the CustomVizPlugin with `plugin-id`."
-  [plugin-id :- ms/PositiveInt]
-  (t2/select-one-fn :dev_bundle_url :model/CustomVizPlugin :id plugin-id))
 
 (mu/defn insert-plugin!
   "Insert `plugin` and return the new instance."

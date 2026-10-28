@@ -37,6 +37,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.db :as transforms.db]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -119,7 +120,7 @@
 (defn- testable-transform
   "The transform `transform-id` names, if it is one a test can run."
   [transform-id]
-  (let [transform (api/check-404 (transform-testing.db/transform transform-id))]
+  (let [transform (api/check-404 (transforms.db/transform transform-id))]
     (when-not (transforms-base.u/query-transform? transform)
       (throw (transform-testing.errors/ex
               ::transform-testing.errors/unsupported-transform

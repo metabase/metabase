@@ -162,6 +162,7 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
@@ -328,7 +329,7 @@
 (defmethod mi/can-create? :perms/use-parent-collection-perms
   [_model m]
   (if-let [collection-id (:collection_id m)]
-    (mi/can-write? (permissions.db/collection collection-id))
+    (mi/can-write? (collections.db/collection collection-id))
     (mi/can-write? collection.root/root-collection)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -559,7 +560,7 @@
   [collection-or-id]
   (if (map? collection-or-id)
     collection-or-id
-    (permissions.db/collection (u/the-id collection-or-id))))
+    (collections.db/collection (u/the-id collection-or-id))))
 
 (mu/defn- check-is-modifiable-collection
   "Check whether `collection-or-id` refers to a collection that can have permissions modified. Personal collections, the

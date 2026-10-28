@@ -23,14 +23,14 @@
   ([instance]
    (mi/can-read? :model/Exploration (:exploration_id instance)))
   ([_model pk]
-   (when-let [thread (explorations.db/thread-exploration-id-row pk)]
+   (when-let [thread (explorations.db/exploration-thread pk)]
      (mi/can-read? :model/Exploration (:exploration_id thread)))))
 
 (defmethod mi/can-write? :model/ExplorationThread
   ([instance]
    (mi/can-write? :model/Exploration (:exploration_id instance)))
   ([_model pk]
-   (when-let [thread (explorations.db/thread-exploration-id-row pk)]
+   (when-let [thread (explorations.db/exploration-thread pk)]
      (mi/can-write? :model/Exploration (:exploration_id thread)))))
 
 (methodical/defmethod t2/batched-hydrate [:model/ExplorationThread :timelines]

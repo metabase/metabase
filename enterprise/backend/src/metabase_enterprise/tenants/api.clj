@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
@@ -82,6 +83,13 @@
    [:attributes {:optional true} [:maybe tenant/Attributes]]
    [:is_active {:optional true} [:maybe ms/BooleanValue]]])
 
+(defn- collection-with-archived-state
+  "The Collection with `collection-id` if its archived flag is `archived?`, or nil."
+  [collection-id archived?]
+  (let [coll (collections.db/collection collection-id)]
+    (when (= archived? (:archived coll))
+      coll)))
+
 (mu/defn update-tenant!
   "Updates a tenant, publishing any necessary events after doing so"
   [tenant-id :- ms/PositiveInt
@@ -93,11 +101,11 @@
             tenant-after-update  (tenants.db/tenant tenant-id)]
         (when (false? is_active)
           (tenants.db/deactivate-tenant-users! tenant-id)
-          (some-> (tenants.db/collection-with-archived-state (:tenant_collection_id tenant-before-update) false)
+          (some-> (collection-with-archived-state (:tenant_collection_id tenant-before-update) false)
                   collection/archive-collection!))
         (when (true? is_active)
           (tenants.db/reactivate-tenant-users! tenant-id)
-          (some-> (tenants.db/collection-with-archived-state (:tenant_collection_id tenant-before-update) true)
+          (some-> (collection-with-archived-state (:tenant_collection_id tenant-before-update) true)
                   (collection/unarchive-collection! {})))
         (events/publish-event! :event/tenant-update {:object          tenant-after-update
                                                      :previous-object tenant-before-update})

@@ -23,10 +23,10 @@
                                  :description description
                                  :definition  definition))
 
-(mu/defn segment
-  "The Segment with `id`, or nil."
+(mu/defn segment :- [:maybe ::segments.schema/segment]
+  "The ::segments.schema/segment with `id`, or nil."
   [id :- ::lib.schema.id/segment]
-  (t2/select-one :model/Segment :id id))
+  (t2/select-one :model/Segment id))
 
 (mu/defn unarchived-segments
   "The unarchived Segments, in case-insensitive name order."
@@ -43,21 +43,6 @@
   [id :- ::lib.schema.id/segment
    changes :- (mut/select-keys ::segments.schema/segment.update [:description :caveats :points_of_interest :archived :definition :name :show_in_getting_started])]
   (t2/update! :model/Segment id changes))
-
-(mu/defn table
-  "The Table with `table-id`, or nil."
-  [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
-
-(mu/defn table-database-id
-  "The Database id of the Table with `table-id`, or nil."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
-
-(mu/defn table-perms-columns
-  "The Database id, schema, and id of the Table with `table-id`, or nil."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-one [:model/Table :db_id :schema :id] :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn collections
   "The Collections with `collection-ids`."

@@ -14,6 +14,16 @@
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
+(mu/defn transform-job-run :- [:maybe ::transforms.schema/transform-job-run]
+  "The ::transforms.schema/transform-job-run with `transform-job-run-id`, or nil."
+  [transform-job-run-id :- ms/PositiveInt]
+  (t2/select-one :model/TransformJobRun transform-job-run-id))
+
+(mu/defn transform-dag-run :- [:maybe ::transforms.schema/transform-dag-run]
+  "The ::transforms.schema/transform-dag-run with `transform-dag-run-id`, or nil."
+  [transform-dag-run-id :- ms/PositiveInt]
+  (t2/select-one :model/TransformDagRun transform-dag-run-id))
+
 (def ^:private no-active-run-clause
   "Honey SQL clause matching TransformRunCancelation rows whose run is no longer active."
   [:not [:exists ^:allow-subquery
@@ -25,10 +35,10 @@
 
 ;;; ------------------------------------------------ Transform ------------------------------------------------
 
-(mu/defn transform
-  "The Transform with `transform-id`, or nil."
+(mu/defn transform :- [:maybe ::transforms.schema/transform]
+  "The ::transforms.schema/transform with `transform-id`, or nil."
   [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one :model/Transform :id transform-id))
+  (t2/select-one :model/Transform transform-id))
 
 (mu/defn transforms
   "The Transforms with `transform-ids`."
@@ -49,11 +59,6 @@
   []
   (t2/select [:model/Transform :id :target :target_table_id :created_at :table_dependencies]))
 
-(mu/defn transform-snapshot
-  "The name, entity ID, and source type of the Transform with `transform-id`."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one [:model/Transform :name :entity_id :source_type] :id transform-id))
-
 (mu/defn transform-summaries-by-id
   "A map of ID to the ID, name, and Collection ID of the Transforms with `transform-ids`."
   [transform-ids :- [:set ::lib.schema.id/transform]]
@@ -63,16 +68,6 @@
   "A map of ID to name for the Transforms with `transform-ids`."
   [transform-ids :- [:sequential ::lib.schema.id/transform]]
   (t2/select-pk->fn :name :model/Transform :id [:in transform-ids]))
-
-(mu/defn transform-last-checkpoint-value
-  "The last checkpoint value of the Transform with `transform-id`."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one-fn :last_checkpoint_value [:model/Transform :last_checkpoint_value] transform-id))
-
-(mu/defn transform-collection-id
-  "The Collection ID of the Transform with `transform-id`."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one-fn :collection_id :model/Transform :id transform-id))
 
 (mu/defn insert-transform!
   "Insert `transform` and return the new instance."
@@ -92,10 +87,10 @@
 
 ;;; ---------------------------------------------- Transform tags ----------------------------------------------
 
-(mu/defn tag
-  "The TransformTag with `tag-id`, or nil."
+(mu/defn transform-tag :- [:maybe ::transforms.schema/transform-tag]
+  "The ::transforms.schema/transform-tag with `tag-id`, or nil."
   [tag-id :- ms/PositiveInt]
-  (t2/select-one :model/TransformTag :id tag-id))
+  (t2/select-one :model/TransformTag tag-id))
 
 (mu/defn existing-tag-ids
   "The subset of `tag-ids` that exist."
@@ -174,20 +169,15 @@
 
 ;;; ---------------------------------------------- Transform jobs ----------------------------------------------
 
-(mu/defn job
-  "The TransformJob with `job-id`, or nil."
+(mu/defn transform-job :- [:maybe ::transforms.schema/transform-job]
+  "The ::transforms.schema/transform-job with `job-id`, or nil."
   [job-id :- ms/PositiveInt]
-  (t2/select-one :model/TransformJob :id job-id))
+  (t2/select-one :model/TransformJob job-id))
 
 (mu/defn active-jobs
   "The active TransformJobs."
   []
   (t2/select :model/TransformJob :active true))
-
-(mu/defn job-snapshot
-  "The name, entity ID, and built-in type of the TransformJob with `job-id`."
-  [job-id :- ms/PositiveInt]
-  (t2/select-one [:model/TransformJob :name :entity_id :built_in_type] :id job-id))
 
 (mu/defn job-names-by-id
   "A map of ID to name for the TransformJobs with `job-ids`."
@@ -235,10 +225,10 @@
 
 ;;; ---------------------------------------------- Transform runs ----------------------------------------------
 
-(mu/defn run
-  "The TransformRun with `run-id`, or nil."
+(mu/defn transform-run :- [:maybe ::transforms.schema/transform-run]
+  "The ::transforms.schema/transform-run with `run-id`, or nil."
   [run-id :- ms/PositiveInt]
-  (t2/select-one :model/TransformRun :id run-id))
+  (t2/select-one :model/TransformRun run-id))
 
 (mu/defn runs
   "The TransformRuns with `run-ids`."
@@ -817,16 +807,6 @@
 
 ;;; ----------------------------------------------- Other models -----------------------------------------------
 
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database database-id))
-
-(mu/defn table
-  "The Table with `table-id`, or nil."
-  [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
-
 (mu/defn databases
   "The Databases with `database-ids`."
   [database-ids :- [:set ::lib.schema.id/database]]
@@ -846,11 +826,6 @@
   "The TableIndexes of the Transforms with `transform-ids`, ordered by index name."
   [transform-ids :- [:set ::lib.schema.id/transform]]
   (t2/select :model/TableIndex :transform_id [:in transform-ids] {:order-by [[:index_name :asc]]}))
-
-(mu/defn field
-  "The Field with `field-id`, or nil."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn field-exists?
   "Whether a Field with `field-id` exists."

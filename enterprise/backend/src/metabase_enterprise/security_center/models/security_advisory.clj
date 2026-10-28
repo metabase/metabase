@@ -57,7 +57,7 @@
   (analytics/track-event! :snowplow/simple_event
                           {:event        "security_advisory_acknowledged"
                            :event_detail (name (:severity advisory))})
-  (-> (security-center.db/advisory (:id advisory))
+  (-> (security-center.db/security-advisory (:id advisory))
       (t2/hydrate :acknowledged_by_user)))
 
 (defn acknowledge-many!

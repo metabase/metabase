@@ -12,6 +12,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.queries.core :as queries]
+   [metabase.queries.db :as queries.db]
    [metabase.query-processor :as qp]
    [metabase.query-processor.db :as qp.db]
    [metabase.test :as mt]
@@ -644,8 +645,8 @@
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query (table-query :venues)}]
         (run-jobs!)
         (reprocess! card-id)
-        (let [card (mt/original-fn #'dependencies.db/card)]
-          (mt/with-dynamic-fn-redefs [dependencies.db/card (fn [id] (assoc (card id) :result_metadata nil))]
+        (let [card (mt/original-fn #'queries.db/card)]
+          (mt/with-dynamic-fn-redefs [queries.db/card (fn [id] (assoc (card id) :result_metadata nil))]
             (do-with-inference (fn [infer query card] (rename-column (infer query card) "NAME" "Changed"))
                                rederive!)))
         (is (= "Changed" (:display_name (column card-id "NAME"))))

@@ -8,6 +8,7 @@
    [metabase.notification.payload.execute :as notification.execute]
    [metabase.notification.payload.impl.dashboard :as notification.dashboard]
    [metabase.notification.send :as notification.send]
+   [metabase.queries.db :as queries.db]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.ui-logic :as ui-logic]))
@@ -24,7 +25,7 @@
                          :status (:status card-result)
                          :error  (:error card-result)})))
       {:card_part        part
-       :card             (notification.db/card card-id)
+       :card             (queries.db/card card-id)
        :style            {:color_text_dark   channel.render/color-text-dark
                           :color_text_light  channel.render/color-text-light
                           :color_text_medium channel.render/color-text-medium}

@@ -41,6 +41,7 @@
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.queries.db :as queries.db]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
    [metabase.test :as mt]
@@ -1532,12 +1533,12 @@
    "stages"   [{"lib/type" "mbql.stage/mbql" "source-card" card-id}]})
 
 (defn- with-stubbed-card!
-  "Run `f` with `metabot.db/card` serving only card 500, and `api/read-check` bound to
+  "Run `f` with `queries.db/card` serving only card 500, and `api/read-check` bound to
   `read-check`. Stubs the model lookup rather than the content store: the numeric
   `source-card` branch resolves the database id straight off the card row, before any
   metadata provider or resolver exists."
   [read-check f]
-  (mt/with-dynamic-fn-redefs [metabot.db/card (fn [id] (when (= id 500) {:id 500 :database_id 1}))
+  (mt/with-dynamic-fn-redefs [queries.db/card (fn [id] (when (= id 500) {:id 500 :database_id 1}))
                               api/read-check  read-check]
     (f)))
 

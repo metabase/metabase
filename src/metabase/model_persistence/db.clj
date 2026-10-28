@@ -92,10 +92,10 @@
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/PersistedInfo :id [:in ids]))
 
-(mu/defn persisted-info
-  "The PersistedInfo with `id`, or nil."
+(mu/defn persisted-info :- [:maybe ::model-persistence.schema/persisted-info]
+  "The ::model-persistence.schema/persisted-info with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/PersistedInfo :id id))
+  (t2/select-one :model/PersistedInfo id))
 
 (mu/defn persisted-info-for-card
   "The PersistedInfo of the Card with `card-id`, or nil."
@@ -106,11 +106,6 @@
   "The id of the PersistedInfo of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :id :model/PersistedInfo :card_id card-id))
-
-(mu/defn persisted-info-state
-  "The state of the PersistedInfo with `id`, or nil."
-  [id :- ms/PositiveInt]
-  (t2/select-one-fn :state :model/PersistedInfo :id id))
 
 (mu/defn persisted-database-ids
   "The set of Database ids with PersistedInfos."
@@ -232,21 +227,6 @@
                              {:select [1]
                               :from [:persisted_info]
                               :where [:= :persisted_info.card_id :report_card.id]}]]]}))
-
-(mu/defn card
-  "The Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))
-
-(mu/defn card-archived-and-type
-  "The archived flag and type of the Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :archived :type] :id card-id))
-
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- [:maybe ::lib.schema.id/database]]
-  (t2/select-one :model/Database :id database-id))
 
 (mu/defn databases
   "The Databases with `database-ids`."

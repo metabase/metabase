@@ -4,6 +4,7 @@
   (:require
    [malli.core :as mc]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.revisions.schema :as revisions.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -82,17 +83,10 @@
   [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select-pk->fn :dataset_query :model/Card :id [:in card-ids]))
 
-(mu/defn revision
-  "The Revision with `revision-id` of the `model-name` row with `model-id`, or nil."
-  [model-name  :- :string
-   model-id    :- ms/PositiveInt
-   revision-id :- ms/PositiveInt]
-  (t2/select-one :model/Revision :model model-name, :model_id model-id, :id revision-id))
-
-(mu/defn card
-  "The Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))
+(mu/defn revision :- [:maybe ::revisions.schema/revision]
+  "The ::revisions.schema/revision with `revision-id`, or nil."
+  [revision-id :- ms/PositiveInt]
+  (t2/select-one :model/Revision revision-id))
 
 (mu/defn dashcards
   "The DashboardCards of the Dashboard with `dashboard-id`."
@@ -175,13 +169,6 @@
   [model-name :- :string
    model-id   :- ms/PositiveInt]
   (t2/select-one-fn :object :model/Revision :model model-name :model_id model-id {:order-by [[:id :desc]]}))
-
-(mu/defn revision-object
-  "The serialized object of the Revision with `revision-id` of the `model-name` row with `model-id`, or nil."
-  [model-name  :- :string
-   model-id    :- ms/PositiveInt
-   revision-id :- ms/PositiveInt]
-  (t2/select-one-fn :object :model/Revision :model model-name :model_id model-id :id revision-id))
 
 (def ^:private revision-object-extra-keys
   "Extra keys [[metabase.revisions.impl.dashboard/serialize-instance]] and friends add to some models' revision

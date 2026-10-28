@@ -17,6 +17,7 @@
    [metabase.models.interface :as mi]
    [metabase.parameters.db :as parameters.db]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.queries.db :as queries.db]
    [metabase.query-processor :as qp]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -234,7 +235,7 @@
     (case (:values_source_type parameter)
       :static-list (static-list-values parameter query-string)
       :card        (let [config (:values_source_config parameter)
-                         card   (parameters.db/card (:card_id config))]
+                         card   (queries.db/card (:card_id config))]
                      (when-not (mi/can-read? card)
                        (throw (ex-info "You don't have permissions to do that." {:status-code 403})))
                      (or (when-not (:archived card)
@@ -285,7 +286,7 @@
   [{config :values_source_config :as _param} :- ::parameters.schema/parameter
    value                                     :- [:or ms/FieldValue [:sequential ms/FieldValue]]]
   (when-let [label-field (:label_field config)]
-    (when-let [card (parameters.db/card (:card_id config))]
+    (when-let [card (queries.db/card (:card_id config))]
       (when (and (not (:archived card)) (mi/can-read? card))
         (when-let [query (card-query (:id card) (some-> (:dataset_query card) not-empty lib-be/normalize-query))]
           (when (can-get-card-values? query (:value_field config))

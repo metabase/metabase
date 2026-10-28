@@ -43,7 +43,7 @@
                 (every? mi/can-write? transforms)
                 true)))))
   ([_model pk]
-   (when-let [job (transforms.db/job pk)]
+   (when-let [job (transforms.db/transform-job pk)]
      (mi/can-write? job))))
 
 (defmethod mi/can-create? :model/TransformJob
@@ -98,7 +98,7 @@
   [job-id]
   (cluster-lock/with-cluster-lock (active-flip-lock-name job-id)
     (when (pos? (transforms.db/activate-job! job-id))
-      (transforms.schedule/initialize-job! (transforms.db/job job-id)))))
+      (transforms.schedule/initialize-job! (transforms.db/transform-job job-id)))))
 
 (defn deactivate-job!
   "Deactivate a transform job: set `:active` to false and remove its Quartz trigger so cron

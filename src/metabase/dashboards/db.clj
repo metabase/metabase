@@ -8,17 +8,17 @@
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.serialization :as serdes]
-   [metabase.queries.core :as queries]
+   [metabase.queries.db :as queries.db]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn dashboard
-  "The Dashboard with `dashboard-id`, or nil."
+(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard]
+  "The ::dashboards.schema/dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/Dashboard :id dashboard-id))
+  (t2/select-one :model/Dashboard dashboard-id))
 
 (mu/defn insert-dashboard!
   "Insert the Dashboard `row` and return the inserted instance."
@@ -113,15 +113,10 @@
    collection-id :- [:maybe ::lib.schema.id/collection]]
   (t2/update! :model/Card :dashboard_id dashboard-id {:collection_id collection-id}))
 
-(mu/defn card
-  "The Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))
-
 (mu/defn card-query-columns
   "The query-relevant columns of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (queries/card-query-info card-id))
+  (queries.db/card-query-info card-id))
 
 (mu/defn card-queries
   "A map of Card id to query for the Cards with `card-ids`."
@@ -179,10 +174,10 @@
               :where     [:in :series.dashboardcard_id dashcard-ids]
               :order-by  [[:series.position :asc]]}))
 
-(mu/defn dashcard
-  "The DashboardCard with `dashcard-id`, or nil."
+(mu/defn dashboard-card :- [:maybe ::dashboards.schema/dashboard-card]
+  "The ::dashboards.schema/dashboard-card with `dashcard-id`, or nil."
   [dashcard-id :- ::lib.schema.id/dashcard]
-  (t2/select-one :model/DashboardCard :id dashcard-id))
+  (t2/select-one :model/DashboardCard dashcard-id))
 
 (mu/defn multi-cards-for-dashcard
   "The unarchived Cards added to the DashboardCard with `dashcard-id` as series (the 'add series' feature)."
@@ -376,10 +371,10 @@
   [link-card-model->ids :- [:sequential [:tuple :string [:or [:set [:or :int :string]] [:sequential [:or :int :string]]]]]]
   (t2/query (link-card-info-query link-card-model->ids)))
 
-(mu/defn dashboard-tab
-  "The DashboardTab with `tab-id`, or nil."
+(mu/defn dashboard-tab :- [:maybe ::dashboards.schema/dashboard-tab]
+  "The ::dashboards.schema/dashboard-tab with `tab-id`, or nil."
   [tab-id :- ms/PositiveInt]
-  (t2/select-one :model/DashboardTab :id tab-id))
+  (t2/select-one :model/DashboardTab tab-id))
 
 (mu/defn insert-dashboard-tabs!
   "Insert the DashboardTab `rows` and return their ids."

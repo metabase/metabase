@@ -28,11 +28,6 @@
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select [:model/Measure :table_id :name] :archived false :table_id [:in table-ids]))
 
-(mu/defn collection
-  "The Collection with `collection-id`, or nil."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one :model/Collection :id collection-id))
-
 (mu/defn verified-card-ids
   "The IDs of the Cards whose most recent moderation review is verified."
   []
@@ -78,10 +73,10 @@
    source      :- :string]
   (t2/select-one :model/DataComplexityScore :fingerprint fingerprint :source source {:order-by [[:id :desc]]}))
 
-(mu/defn score-entry
-  "The DataComplexityScore with `id`, or nil."
+(mu/defn data-complexity-score :- [:maybe ::data-complexity-score.schema/data-complexity-score]
+  "The ::data-complexity-score.schema/data-complexity-score with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/DataComplexityScore :id id))
+  (t2/select-one :model/DataComplexityScore id))
 
 (mu/defn scored-within-hours?
   "Whether a DataComplexityScore of `source` for `fingerprint` was created within the last `hours` hours of

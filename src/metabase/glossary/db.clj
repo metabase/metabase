@@ -25,10 +25,10 @@
   [row :- ::glossary.schema/glossary.update]
   (t2/insert-returning-instance! :model/Glossary row))
 
-(mu/defn glossary-entry
-  "The Glossary entry with `id`, or nil."
+(mu/defn glossary :- [:maybe ::glossary.schema/glossary]
+  "The ::glossary.schema/glossary with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/Glossary :id id))
+  (t2/select-one :model/Glossary id))
 
 (mu/defn update-glossary-entry!
   "Set the term and definition of the Glossary entry with `id`."

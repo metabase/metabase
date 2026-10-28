@@ -16,11 +16,16 @@
    [metabase-enterprise.replacement.util :as replacement.util]
    [metabase-enterprise.replacement.walk :as replacement.walk]
    [metabase.api.common :as api]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
+   [metabase.measures.db :as measures.db]
    [metabase.models.visualization-settings :as vs]
+   [metabase.queries.db :as queries.db]
    [metabase.queries.models.query :as queries.query]
-   [metabase.source-swap.core :as source-swap]))
+   [metabase.segments.db :as segments.db]
+   [metabase.source-swap.core :as source-swap]
+   [metabase.transforms.db :as transforms.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -175,7 +180,7 @@
       (replacement.db/update-dashboard! (:id dashboard) {:parameters parameters'}))
     (when (or any-dashcard-changed? params-changed?)
       (events/publish-event!
-       :event/dashboard-update {:object  (replacement.db/dashboard (:id dashboard))
+       :event/dashboard-update {:object  (dashboards.db/dashboard (:id dashboard))
                                 :user-id api/*current-user-id*}))))
 
 (defn swap-source!
@@ -186,11 +191,11 @@
   ([[entity-type entity-id :as entity-ref] old-source new-source]
    (swap-source! entity-ref
                  (case entity-type
-                   :card      (replacement.db/card entity-id)
-                   :transform (replacement.db/transform entity-id)
-                   :segment   (replacement.db/segment entity-id)
-                   :measure   (replacement.db/measure entity-id)
-                   :dashboard (replacement.db/dashboard entity-id)
+                   :card      (queries.db/card entity-id)
+                   :transform (transforms.db/transform entity-id)
+                   :segment   (segments.db/segment entity-id)
+                   :measure   (measures.db/measure entity-id)
+                   :dashboard (dashboards.db/dashboard entity-id)
                    nil)
                  old-source new-source))
   ([[entity-type _entity-id] entity old-source new-source]

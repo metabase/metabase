@@ -58,16 +58,6 @@
              [:like :%lower.last_name  pattern]
              [:like :%lower.email      pattern]]))))
 
-(mu/defn user
-  "The User with `user-id`, or nil."
-  [user-id :- ::lib.schema.id/user]
-  (t2/select-one :model/User :id user-id))
-
-(mu/defn user-email
-  "The email of the User with `user-id`."
-  [user-id :- ::lib.schema.id/user]
-  (t2/select-one-fn :email :model/User :id user-id))
-
 (mu/defn lock-user
   "The `:id` row of the User with `user-id`, locked for update."
   [user-id :- ::lib.schema.id/user]

@@ -5,11 +5,11 @@
    [metabase.auth-identity.core :as auth-identity]
    [metabase.channel.email.messages :as messages]
    [metabase.channel.urls :as urls]
-   [metabase.notification.db :as notification.db]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.session.core :as session]
    [metabase.sso.core :as sso]
    [metabase.system.core :as system]
+   [metabase.users.db :as users.db]
    [metabase.users.models.user :as user]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.malli :as mu]))
@@ -20,7 +20,7 @@
   (let [reset-token               (auth-identity/create-password-reset! user-id)
         should-link-to-login-page (and (sso/sso-enabled?)
                                        (not (session/enable-password-login)))
-        email (notification.db/user-email user-id)]
+        email (:email (users.db/user user-id))]
     (if should-link-to-login-page
       (cond-> (str (system/site-url) "/auth/login")
         redirect (str "?redirect=" redirect))

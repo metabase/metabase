@@ -19,7 +19,8 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema.models.table :as table]
-   [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]))
+   [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -134,7 +135,7 @@
     (u.jvm/in-virtual-thread*
      (fn []
        (doseq [[db-id tables] (group-by :db_id newly-unhidden)]
-         (let [database (data-studio.db/database db-id)]
+         (let [database (warehouses.db/database db-id)]
            ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
            ;; purposes of creating a new H2 database.
            (if (binding [driver.settings/*allow-testing-h2-connections* true

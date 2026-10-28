@@ -16,6 +16,7 @@
    [metabase.channel.render.markdown :as markdown]
    [metabase.channel.render.png :as png]
    [metabase.channel.render.style :as style]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.system.core :as system]
    [metabase.util :as u]))
@@ -83,7 +84,7 @@
   "Given a dashboard ID, renders all of the dashcards to hiccup datastructure."
   [dashboard-id]
   (let [user              (channel.db/any-user)
-        dashboard         (channel.db/dashboard dashboard-id)
+        dashboard         (dashboards.db/dashboard dashboard-id)
         dashboard-results (notification.payload/execute-dashboard (:id dashboard) (:id user) nil)
         render            (->> (map render-one-dashcard (map #(assoc % :dashboard-id dashboard-id) dashboard-results))
                                (into [[:tr

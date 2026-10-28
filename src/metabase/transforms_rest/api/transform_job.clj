@@ -10,6 +10,7 @@
    [metabase.transforms-rest.api.util :as transforms-rest.api.u]
    [metabase.transforms-rest.db :as transforms-rest.db]
    [metabase.transforms.core :as transforms.core]
+   [metabase.transforms.db :as transforms.db]
    [metabase.transforms.util :as transforms.u]
    [metabase.util.i18n :refer [deferred-tru LocalizedString]]
    [metabase.util.log :as log]
@@ -170,7 +171,7 @@
                                                                   [:active {:optional true} :boolean]
                                                                   [:tag_ids {:optional true} [:sequential ms/PositiveInt]]]]
   (log/info "Updating transform job" job-id)
-  (let [existing-job (t2/hydrate (transforms-rest.db/job job-id) :tag_ids)]
+  (let [existing-job (t2/hydrate (transforms.db/transform-job job-id) :tag_ids)]
     ;; Check write permission on both current state and final state (with new tags if provided)
     (api/write-check existing-job)
     (when (some? tag-ids)
@@ -205,7 +206,7 @@
       ;; activate-job! only runs when :active toggled false→true.
       (when (and schedule was-active will-be-active)
         (transforms.core/update-job! job-id schedule))
-      (-> (transforms-rest.db/job job-id)
+      (-> (transforms.db/transform-job job-id)
           (t2/hydrate :tag_ids :last_run)
           (update :last_run transforms-base.u/present-run)))))
 
@@ -213,7 +214,7 @@
   "Delete a transform job."
   [{:keys [job-id]} :- [:map {:closed true} [:job-id ms/PositiveInt]]]
   (log/info "Deleting transform job" job-id)
-  (api/write-check (t2/hydrate (transforms-rest.db/job job-id) :tag_ids))
+  (api/write-check (t2/hydrate (transforms.db/transform-job job-id) :tag_ids))
   (transforms-rest.db/delete-job! job-id)
   (transforms.core/delete-job! job-id)
   api/generic-204-no-content)
@@ -231,7 +232,7 @@
    {:keys [run_all]} :- [:map {:closed true}
                          [:run_all {:default false} :boolean]]]
   (log/info "Manual run of transform job" job-id)
-  (api/write-check (transforms-rest.db/job job-id))
+  (api/write-check (transforms.db/transform-job job-id))
   (transforms-rest.api.u/async-run-response
    (deferred-tru "Job run started")
    :job_run_id
@@ -246,7 +247,7 @@
   [{:keys [job-id]} :- [:map {:closed true}
                         [:job-id ms/PositiveInt]]]
   (log/info "Getting transform job" job-id)
-  (-> (api/read-check (transforms-rest.db/job job-id))
+  (-> (api/read-check (transforms.db/transform-job job-id))
       (t2/hydrate :tag_ids :last_run)
       (update :last_run transforms-base.u/present-run)))
 
@@ -324,6 +325,13 @@
                                              :limit  (request/limit)))
       (update :data #(map transforms-base.u/present-run %))))
 
+(defn- job-run
+  "The TransformJobRun with `run-id` belonging to the TransformJob with `job-id`, or nil."
+  [run-id job-id]
+  (let [run (transforms.db/transform-job-run run-id)]
+    (when (= (:job_id run) job-id)
+      run)))
+
 (api.macros/defendpoint :get "/:job-id/runs/:run-id/transform-runs" :- [:sequential transforms-rest.api.u/MemberTransformRunResponse]
   "Get the transform runs that made up a specific job run."
   [{:keys [job-id run-id]} :- [:map {:closed true}
@@ -331,7 +339,7 @@
                                [:run-id ms/PositiveInt]]
    _query-params]
   (api/read-check :model/TransformJob job-id)
-  (api/check-404 (transforms-rest.db/job-run run-id job-id))
+  (api/check-404 (job-run run-id job-id))
   (let [runs (transforms.core/transform-runs-for-job-run run-id)]
     (->> (t2/hydrate runs [:transform :collection :transform_tag_ids])
          (map transforms-base.u/present-run))))
@@ -342,7 +350,7 @@
                                [:job-id ms/PositiveInt]
                                [:run-id ms/PositiveInt]]]
   (api/write-check :model/TransformJob job-id)
-  (api/check-404 (transforms-rest.db/job-run run-id job-id))
+  (api/check-404 (job-run run-id job-id))
   (api/check-400 (transforms.core/cancel-job-run! run-id))
   nil)
 

@@ -6,6 +6,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.util.json :as json]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -319,7 +320,7 @@
         (t2/query-one {:update :transform
                        :set    {:source "{\"type\":\"query\",\"query\":{}}"}
                        :where  [:= :id transform-id]})
-        (is (nil? (replacement.field-refs/upgrade-field-refs! [:transform transform-id])))))))
+        (is (nil? (mu/disable-enforcement (replacement.field-refs/upgrade-field-refs! [:transform transform-id]))))))))
 
 (deftest transform-upgrade-field-refs!-no-changes-test
   (testing "should not update a transform when there are no changes"

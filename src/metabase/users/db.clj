@@ -14,6 +14,11 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+(mu/defn user :- [:maybe ::users.schema/user]
+  "The ::users.schema/user with `user-id`, or nil."
+  [user-id :- ::lib.schema.id/user]
+  (t2/select-one :model/User user-id))
+
 (defn- status-clause
   "Figure out what `where` clause to add to the user query when we get a fiddly status and include_deactivated
   query.

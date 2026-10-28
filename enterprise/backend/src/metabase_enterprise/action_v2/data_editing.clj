@@ -13,7 +13,8 @@
    [metabase.query-processor.core :as qp]
    [metabase.sync.field-values :as sync.field-values]
    [metabase.util :as u]
-   [metabase.util.queue :as queue])
+   [metabase.util.queue :as queue]
+   [metabase.warehouse-schema.db :as warehouse-schema.db])
   (:import
    (java.util.concurrent ArrayBlockingQueue)))
 
@@ -88,7 +89,7 @@
   (assert (seq pk-fields) "Table must have at least one primary key column")
   ;; TODO pass in the db-id from above rather
   (when (seq rows)
-    (let [{:keys [db_id]} (api/check-404 (action-v2.db/table table-id))
+    (let [{:keys [db_id]} (api/check-404 (warehouse-schema.db/table table-id))
           row-pks (seq (map (partial get-row-pks pk-fields) rows))]
       (assert (every? valid-pks row-pks) "All rows must have valid primary keys")
       (let [mp    (lib-be/application-database-metadata-provider db_id)

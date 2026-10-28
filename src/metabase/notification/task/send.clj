@@ -17,7 +17,7 @@
 
 (defn- send-notification*
   [subscription-id]
-  (let [subscription    (notification.db/subscription subscription-id)
+  (let [subscription    (notification.db/notification-subscription subscription-id)
         notification-id (:notification_id subscription)
         notification    (notification.db/notification notification-id)]
     (log/with-context {:subscription-id subscription-id

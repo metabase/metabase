@@ -2,7 +2,6 @@
   (:require
    [metabase-enterprise.sandbox.api.column-filter :as col-filter]
    [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
-   [metabase-enterprise.sandbox.db :as sandbox.db]
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -11,6 +10,7 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.table :as schema.table]))
 
 (mu/defn only-sandboxed-perms? :- :boolean
@@ -30,7 +30,7 @@
   `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
   :feature :sandboxes
   [id opts]
-  (let [table (api/check-404 (sandbox.db/table id))
+  (let [table (api/check-404 (warehouse-schema.db/table id))
         thunk (fn [] (schema.table/fetch-query-metadata* table opts))]
     (if (only-sandboxed-perms? table)
       (filter-fields-for-sandboxing

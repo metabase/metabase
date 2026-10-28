@@ -7,11 +7,6 @@
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id database-id))
-
 (mu/defn destination-database-id
   "The ID of the destination Database of the router with `router-database-id` named `database-name`, or nil."
   [router-database-id :- ::lib.schema.id/database

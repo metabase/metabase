@@ -35,12 +35,13 @@
   ::lib-metric.schema/dimension-mapping)
 
 (mr/def ::measure
-  "A Measure as selected from the app DB: every column of `:measure`, plus `:creator` and `:table` some callers
-  hydrate onto it."
+  "A Measure as selected from the app DB: every column of `:measure`, with an unreadable `:definition` read back as
+  `{}`, plus `:creator` and `:table` some callers hydrate onto it."
   [:merge
    ::measure.update
    [:map {:closed true}
     [:id                 ms/PositiveInt]
+    [:definition         {:optional true} [:maybe [:or [:map {:closed true}] ::measure.definition]]]
     [:creator            {:optional true} [:maybe :metabase.users.schema/user]]
     [:table              {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]]])
 

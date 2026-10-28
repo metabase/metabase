@@ -18,12 +18,13 @@
    [malli.core :as mc]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.embedding-rest.api.common :as api.embed.common]
-   [metabase.embedding-rest.db :as embedding-rest.db]
    [metabase.embedding.jwt :as embedding.jwt]
    [metabase.events.core :as events]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.queries.db :as queries.db]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.pivot :as qp.pivot]
@@ -85,7 +86,7 @@
                        [:token api.embed.common/EncodedToken]]]
   (let [unsigned (unsign-and-translate-ids token)
         card-id  (api.embed.common/unsigned-token->card-id unsigned)]
-    (api.embed.common/check-embedding-enabled-for-card (api/check-404 (embedding-rest.db/card-embedding-flags card-id)))
+    (api.embed.common/check-embedding-enabled-for-card (api/check-404 (queries.db/card card-id)))
     (api.embed.common/card-for-unsigned-token unsigned :enable-embedding? true)))
 
 (defn ^:private run-query-for-unsigned-token-async
@@ -96,7 +97,7 @@
                                                      qp qp.card/process-query-for-card-default-qp}
                                                 :as options}]
   (let [card-id (api.embed.common/unsigned-token->card-id unsigned-token)
-        card    (api/check-404 (embedding-rest.db/card card-id))]
+        card    (api/check-404 (queries.db/card card-id))]
     (api.embed.common/check-embedding-enabled-for-card card)
     (api.embed.common/process-query-for-card-with-params
      :export-format export-format
@@ -169,7 +170,7 @@
                        [:token api.embed.common/EncodedToken]]]
   (let [unsigned     (unsign-and-translate-ids token)
         dashboard-id (api.embed.common/unsigned-token->dashboard-id unsigned)]
-    (api.embed.common/check-embedding-enabled-for-dashboard (api/check-404 (embedding-rest.db/dashboard-embedding-flags dashboard-id)))
+    (api.embed.common/check-embedding-enabled-for-dashboard (api/check-404 (dashboards.db/dashboard dashboard-id)))
     (u/prog1 (api.embed.common/dashboard-for-unsigned-token unsigned :enable-embedding? true)
       (events/publish-event! :event/dashboard-read {:object-id (:id <>), :user-id api/*current-user-id*}))))
 
@@ -191,9 +192,9 @@
            qp qp.card/process-query-for-card-default-qp}}]
   (let [unsigned-token (unsign-and-translate-ids token)
         dashboard-id   (api.embed.common/unsigned-token->dashboard-id unsigned-token)
-        dashboard      (api/check-404 (embedding-rest.db/dashboard dashboard-id))
-        dashcard       (api/check-404 (embedding-rest.db/dashcard dashcard-id))
-        card           (api/check-404 (embedding-rest.db/active-card card-id))]
+        dashboard      (api/check-404 (dashboards.db/dashboard dashboard-id))
+        dashcard       (api/check-404 (dashboards.db/dashboard-card dashcard-id))
+        card           (api/check-404 (api.embed.common/active-card card-id))]
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard)
     (api.embed.common/process-query-for-dashcard
      :export-format export-format
@@ -317,7 +318,7 @@
                                  [:param-key ms/NonBlankString]]]
   (let [unsigned (unsign-and-translate-ids token)
         card-id (api.embed.common/unsigned-token->card-id unsigned)
-        card (api/check-404 (embedding-rest.db/card card-id))]
+        card (api/check-404 (queries.db/card card-id))]
     (api.embed.common/check-embedding-enabled-for-card card)
     (api.embed.common/card-param-values {:unsigned-token unsigned
                                          :card card
@@ -332,7 +333,7 @@
   [{:keys [token param-key prefix]} :- api.embed.common/SearchParams]
   (let [unsigned (unsign-and-translate-ids token)
         card-id (api.embed.common/unsigned-token->card-id unsigned)
-        card (api/check-404 (embedding-rest.db/card card-id))]
+        card (api/check-404 (queries.db/card card-id))]
     (api.embed.common/check-embedding-enabled-for-card card)
     (api.embed.common/card-param-values {:unsigned-token unsigned
                                          :card card
@@ -352,7 +353,7 @@
                        [:value :string]]]
   (let [unsigned (unsign-and-translate-ids token)
         card-id (api.embed.common/unsigned-token->card-id unsigned)
-        card (api/check-404 (embedding-rest.db/card card-id))]
+        card (api/check-404 (queries.db/card card-id))]
     (api.embed.common/check-embedding-enabled-for-card card)
     (api.embed.common/card-param-remapped-value {:unsigned-token unsigned
                                                  :card card
@@ -412,7 +413,7 @@
        [:lonField ::api.tiles/legacy-ref]]]
   (let [unsigned (unsign-and-translate-ids token)
         card-id (api.embed.common/unsigned-token->card-id unsigned)
-        card (api/check-404 (embedding-rest.db/card card-id))]
+        card (api/check-404 (queries.db/card card-id))]
     (api.embed.common/check-embedding-enabled-for-card card)
     (request/as-admin
       (api.embed.common/process-tiles-query-for-card
@@ -442,9 +443,9 @@
        [:lonField ::api.tiles/legacy-ref]]]
   (let [unsigned (unsign-and-translate-ids token)
         dashboard-id (api.embed.common/unsigned-token->dashboard-id unsigned)
-        dashboard (api/check-404 (embedding-rest.db/dashboard dashboard-id))
-        dashcard (api/check-404 (embedding-rest.db/dashcard dashcard-id))
-        card (api/check-404 (embedding-rest.db/active-card card-id))]
+        dashboard (api/check-404 (dashboards.db/dashboard dashboard-id))
+        dashcard (api/check-404 (dashboards.db/dashboard-card dashcard-id))
+        card (api/check-404 (api.embed.common/active-card card-id))]
     (api.embed.common/check-embedding-enabled-for-dashboard dashboard)
     (api.embed.common/process-tiles-query-for-dashcard
      dashboard dashcard card

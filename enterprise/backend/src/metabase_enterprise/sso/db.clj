@@ -2,9 +2,15 @@
   "Application database queries for the sso module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself."
   (:require
+   [metabase-enterprise.sso.schema :as sso.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(mu/defn sso-relay-state :- [:maybe ::sso.schema/sso-relay-state]
+  "The ::sso.schema/sso-relay-state with `hashed-key`, or nil."
+  [hashed-key :- :string]
+  (t2/select-one :model/SsoRelayState :id hashed-key))
 
 (mu/defn session-user-email-and-source
   "The email and SSO source of the Session with `session-key-hashed`, plus the identifiers the IdP
@@ -33,12 +39,6 @@
            [:embedding    :boolean]
            [:expires_at   ms/TemporalInstant]]]
   (t2/insert! :model/SsoRelayState row))
-
-(mu/defn unexpired-relay-state
-  "The SsoRelayState with `hashed-key` expiring after `now`, or nil."
-  [hashed-key :- :string
-   now        :- ms/TemporalInstant]
-  (t2/select-one :model/SsoRelayState :id hashed-key :expires_at [:> now]))
 
 (mu/defn delete-relay-state!
   "Delete the SsoRelayState with `hashed-key`, returning the number deleted."

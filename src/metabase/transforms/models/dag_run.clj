@@ -38,7 +38,7 @@
   Snapshots the seed transform's name and entity_id so the run stays displayable after the
   transform is deleted (its FK is SET NULL, as for `transform_run.transform_id`)."
   [source-transform-id direction user-id transform-count]
-  (let [transform (transforms.db/transform-snapshot source-transform-id)]
+  (let [transform (transforms.db/transform source-transform-id)]
     (transforms.db/insert-dag-run! {:source_transform_id        source-transform-id
                                     :source_transform_name      (:name transform)
                                     :source_transform_entity_id (:entity_id transform)

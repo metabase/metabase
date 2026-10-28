@@ -1,6 +1,7 @@
 (ns metabase.xrays.transforms.materialize
   (:require
    [metabase.api.common :as api]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -16,7 +17,7 @@
 (defn- root-container-location
   []
   (collection/children-location
-   (xrays.db/collection-location-columns (get-or-create-root-container-collection!))))
+   (collections.db/collection (get-or-create-root-container-collection!))))
 
 (mu/defn get-collection :- [:maybe ::lib.schema.id/collection]
   "Get collection named `collection-name`. If no location is given root collection for automatically

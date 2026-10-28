@@ -9,6 +9,7 @@
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouses.core :as warehouses]
+   [metabase.warehouses.db :as warehouses.db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -327,7 +328,7 @@
       include-database?
       (assoc :db (when-let [database (when (int? database_id)
                                        (or (get databases database_id)
-                                           (warehouse-schema.db/database database_id)))]
+                                           (warehouses.db/database database_id)))]
                    (when (mi/can-read? database) database)))
 
       include-fields?

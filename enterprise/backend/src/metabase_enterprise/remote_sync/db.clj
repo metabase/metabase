@@ -400,11 +400,6 @@
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select [:model/Collection :id :is_remote_synced] :id [:in collection-ids]))
 
-(mu/defn collection-name-and-id
-  "The `:name` and `:collection_id` (its own ID) of the Collection with `collection-id`, or nil."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one [:model/Collection :name [:id :collection_id]] :id collection-id))
-
 (mu/defn library-collection
   "The Library Collection of `library-type`, or nil."
   [library-type :- :string]
@@ -450,12 +445,6 @@
   "The IDs of the Collections of `namespace-name`."
   [namespace-name :- :string]
   (t2/select-pks-vec :model/Collection :namespace namespace-name))
-
-(mu/defn collection-namespace
-  "The namespace of the Collection with `collection-id`, nil for the default namespace or no such Collection."
-  [collection-id :- [:maybe ms/PositiveInt]]
-  (when collection-id
-    (t2/select-one-fn :namespace :model/Collection :id collection-id)))
 
 (mu/defn remote-synced-collection-ids
   "The IDs of the remote-synced Collections."
@@ -756,8 +745,8 @@
   []
   (t2/delete! :model/RemoteSyncObject))
 
-(mu/defn task
-  "The RemoteSyncTask with `task-id`, or nil."
+(mu/defn remote-sync-task :- [:maybe ::remote-sync.schema/remote-sync-task]
+  "The ::remote-sync.schema/remote-sync-task with `task-id`, or nil."
   [task-id :- ms/PositiveInt]
   (t2/select-one :model/RemoteSyncTask task-id))
 
@@ -765,11 +754,6 @@
   "The RemoteSyncTask with `task-id`, locked for update, or nil."
   [task-id :- ms/PositiveInt]
   (t2/select-one :model/RemoteSyncTask :id task-id {:for :update}))
-
-(mu/defn task-cancelled?
-  "The cancelled flag of the RemoteSyncTask with `task-id`."
-  [task-id :- ms/PositiveInt]
-  (t2/select-one-fn :cancelled :model/RemoteSyncTask :id task-id))
 
 (def ^:private last-alive-at
   "The time the task's owning thread last proved it was alive: its heartbeat, or its last progress write for

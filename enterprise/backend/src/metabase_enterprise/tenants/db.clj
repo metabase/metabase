@@ -10,25 +10,15 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn tenant
-  "The Tenant with `tenant-id`, or nil."
+(mu/defn tenant :- [:maybe ::tenants.schema/tenant]
+  "The ::tenants.schema/tenant with `tenant-id`, or nil."
   [tenant-id :- ms/PositiveInt]
-  (t2/select-one :model/Tenant :id tenant-id))
+  (t2/select-one :model/Tenant tenant-id))
 
 (mu/defn tenant-by-slug
   "The Tenant with `slug`, or nil."
   [slug :- :string]
   (t2/select-one :model/Tenant :slug slug))
-
-(mu/defn tenant-slug
-  "The slug of the Tenant with `tenant-id`."
-  [tenant-id :- ms/PositiveInt]
-  (t2/select-one-fn :slug :model/Tenant :id tenant-id))
-
-(mu/defn tenant-collection-id
-  "The root Collection ID of the Tenant with `tenant-id`."
-  [tenant-id :- ms/PositiveInt]
-  (t2/select-one-fn :tenant_collection_id :model/Tenant :id tenant-id))
 
 (mu/defn tenants-page
   "The Tenants in ID order, restricted by `status` (`\"all\"`, `\"active\"`, or `\"deactivated\"`) and paged by the
@@ -108,17 +98,6 @@
   [tenant-id :- ms/PositiveInt]
   (t2/update! :model/User {:is_active false :tenant_id tenant-id :deactivated_with_tenant true}
               {:is_active true :deactivated_with_tenant nil}))
-
-(mu/defn user-tenant-id
-  "The Tenant ID of the User with `user-id`."
-  [user-id :- ::lib.schema.id/user]
-  (t2/select-one-fn :tenant_id :model/User :id user-id))
-
-(mu/defn collection-with-archived-state
-  "The Collection with `collection-id` if its archived flag is `archived?`, or nil."
-  [collection-id :- ::lib.schema.id/collection
-   archived?     :- :boolean]
-  (t2/select-one :model/Collection :id collection-id :archived archived?))
 
 (mu/defn descendant-collection-ids
   "The IDs of the Collections under the Collection with `collection-id`."

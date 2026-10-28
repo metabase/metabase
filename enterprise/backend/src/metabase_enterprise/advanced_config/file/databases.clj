@@ -11,7 +11,8 @@
    [metabase.sync.core :as sync]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.quick-task :as quick-task]))
+   [metabase.util.quick-task :as quick-task]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (s/def :metabase-enterprise.advanced-config.file.databases.config-file-spec/name
   string?)
@@ -141,7 +142,7 @@
                                                    (:is_stub existing)         (assoc :is_stub             false
                                                                                       :initial_sync_status "incomplete")))
             (when (:is_stub existing)
-              (sync-if-configured! (advanced-config.db/database (:id existing)))))
+              (sync-if-configured! (warehouses.db/database (:id existing)))))
 
           :else
           (let [db (advanced-config.db/insert-database! (cond-> (normalize-settings database)

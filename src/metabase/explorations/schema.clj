@@ -58,8 +58,8 @@
   [:map {:closed true}
    [:dimension-id   ms/UUIDString]
    [:display-name   {:optional true} [:maybe :string]]
-   [:effective-type {:optional true} [:maybe :string]]
-   [:semantic-type  {:optional true} [:maybe :string]]])
+   [:effective-type {:optional true} [:maybe [:or :keyword :string]]]
+   [:semantic-type  {:optional true} [:maybe [:or :keyword :string]]]])
 
 (mr/def ::exploration-block
   "A ExplorationBlock as selected from the app DB: every column of `:exploration_block`."
@@ -119,11 +119,13 @@
   ::exploration-thread.data-access-token)
 
 (mr/def ::exploration-query
-  "A ExplorationQuery as selected from the app DB: every column of `:exploration_query`."
+  "A ExplorationQuery as selected from the app DB: every column of `:exploration_query`, with `:dataset_query` as
+  stored JSON rather than as written."
   [:merge
    ::exploration-query.update
    [:map {:closed true}
-    [:id                     ms/PositiveInt]]])
+    [:id                     ms/PositiveInt]
+    [:dataset_query          {:optional true} [:maybe [:map {::mr/deliberately-open true, :description "the column as stored"}]]]]])
 
 (mr/def ::exploration-query.update
   "What an update (or insert) of a ExplorationQuery accepts: every column of `:exploration_query` except `id`, all optional."

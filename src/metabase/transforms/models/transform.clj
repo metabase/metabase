@@ -294,7 +294,7 @@
               (assoc transform :last_checkpoint_value checkpoint_hi_value)
               ;; latest transform value wins, could be reset
               (assoc transform :last_checkpoint_value
-                     (transforms.db/transform-last-checkpoint-value transform-id)))
+                     (:last_checkpoint_value (transforms.db/transform transform-id))))
             transform))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/Transform :transform_tag_ids]
@@ -541,7 +541,7 @@
 
 (defmethod serdes/required "Transform"
   [_model id]
-  (when-let [collection-id (transforms.db/transform-collection-id id)]
+  (when-let [collection-id (:collection_id (transforms.db/transform id))]
     {["Collection" collection-id] {"Transform" id}}))
 
 (defn- maybe-extract-transform-query-text

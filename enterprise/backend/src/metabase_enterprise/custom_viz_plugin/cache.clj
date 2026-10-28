@@ -204,7 +204,7 @@
   (when bundle_hash
     (let [dir (plugin-cache-dir id bundle_hash)]
       (when-not (u.files/exists? dir)
-        (when-let [bundle-bytes (custom-viz-plugin.db/plugin-bundle id)]
+        (when-let [bundle-bytes (:bundle (custom-viz-plugin.db/custom-viz-plugin id))]
           (let [actual-hash (bytes-hash bundle-bytes)]
             (when-not (= actual-hash bundle_hash)
               (throw (ex-info "Bundle integrity check failed: stored bytes do not match bundle_hash"
@@ -437,7 +437,7 @@
    Always returns nil when dev mode is disabled."
   [id]
   (when (custom-viz.settings/custom-viz-plugin-dev-mode-enabled)
-    (not-empty (custom-viz-plugin.db/plugin-dev-bundle-url id))))
+    (not-empty (:dev_bundle_url (custom-viz-plugin.db/custom-viz-plugin id)))))
 
 ;;; ------------------------------------------------ Resolve ------------------------------------------------
 

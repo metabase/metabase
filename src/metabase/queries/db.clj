@@ -17,6 +17,11 @@
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
+(mu/defn stored-result :- [:maybe ::queries.schema/stored-result]
+  "The ::queries.schema/stored-result with `stored-result-id`, or nil."
+  [stored-result-id :- ms/PositiveInt]
+  (t2/select-one :model/StoredResult stored-result-id))
+
 ;;; ------------------------------------------------ Cards ------------------------------------------------
 
 (def ^:private not-in-exploration-document
@@ -54,10 +59,10 @@
                                         not-in-exploration-document]}
                          (seq order-columns) (assoc :order-by (mapv (fn [column] [column :asc]) order-columns)))))
 
-(mu/defn card
-  "The Card with `card-id`, or nil."
+(mu/defn card :- [:maybe ::queries.schema/card]
+  "The ::queries.schema/card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))
+  (t2/select-one :model/Card card-id))
 
 (mu/defn cards
   "The Cards with `card-ids` (nil entries, e.g. from virtual dashcards, are ignored)."
@@ -84,27 +89,12 @@
   [card-id :- ::lib.schema.id/card]
   (:dataset_query (card-query-info card-id)))
 
-(mu/defn card-document-id
-  "The `:document_id` of the Card with `card-id`."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :document_id :model/Card :id card-id))
-
-(mu/defn card-parameters
-  "The `:parameters` of the Card with `card-id`."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :parameters [:model/Card :parameters] :id card-id))
-
 (mu/defn raw-card-dimensions
   "The raw `:dimensions` row of the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
   (t2/query-one {:select [:dimensions]
                  :from   [:report_card]
                  :where  [:= :id card-id]}))
-
-(mu/defn card-database-and-table-ids
-  "The database and primary table IDs of the Card with `card-id`, as `:database-id` and `:table-id`."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card [:database_id :database-id] [:table_id :table-id]] :id card-id))
 
 (mu/defn cards-queries-info
   "The IDs and query-related fields of the Cards with `card-ids`.
@@ -242,11 +232,6 @@
   [database-ids :- [:set ::lib.schema.id/database]]
   (t2/select :model/Database :id [:in database-ids]))
 
-(mu/defn database-name
-  "The name of the Database with `database-id`."
-  [database-id :- [:maybe ::lib.schema.id/database]]
-  (t2/select-one-fn :name :model/Database :id database-id))
-
 (mu/defn field-database-info-for-ids
   "The id, name, table name, and Database id of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
@@ -269,25 +254,10 @@
   [snippet-ids :- [:set ::lib.schema.id/native-query-snippet]]
   (t2/select :model/NativeQuerySnippet :id [:in snippet-ids]))
 
-(mu/defn dashboard
-  "The Dashboard with `dashboard-id`, or nil."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/Dashboard :id dashboard-id))
-
 (mu/defn dashboards
   "The Dashboards with `dashboard-ids`."
   [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
   (t2/select :model/Dashboard :id [:in dashboard-ids]))
-
-(mu/defn dashboard-collection-id
-  "The `:collection_id` of the Dashboard with `dashboard-id`."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] :id dashboard-id))
-
-(mu/defn dashboard-parameters
-  "The `:parameters` of the Dashboard with `dashboard-id`."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one-fn :parameters [:model/Dashboard :parameters] :id dashboard-id))
 
 (mu/defn update-dashboard!
   "Apply `changes` to the Dashboard with `dashboard-id`, returning the number updated."

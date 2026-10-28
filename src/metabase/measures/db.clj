@@ -21,10 +21,10 @@
                                  :description description
                                  :definition  definition))
 
-(mu/defn measure
-  "The Measure with `id`, or nil."
+(mu/defn measure :- [:maybe ::measures.schema/measure]
+  "The ::measures.schema/measure with `id`, or nil."
   [id :- ::lib.schema.id/measure]
-  (t2/select-one :model/Measure :id id))
+  (t2/select-one :model/Measure id))
 
 (mu/defn unarchived-measures
   "The unarchived Measures, in case-insensitive name order."
@@ -41,16 +41,6 @@
   [id      :- ::lib.schema.id/measure
    changes :- (mut/select-keys ::measures.schema/measure.update [:name :description :archived :definition])]
   (t2/update! :model/Measure id changes))
-
-(mu/defn table
-  "The Table with `table-id`, or nil."
-  [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
-
-(mu/defn table-perms-columns
-  "The Database id, schema, and id of the Table with `table-id`, or nil."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-one [:model/Table :db_id :schema :id] :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn collections
   "The Collections with `collection-ids`."

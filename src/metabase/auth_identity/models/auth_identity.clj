@@ -122,7 +122,7 @@
    (t2/with-transaction [_]
      (let [attrs {:credentials {:plaintext_password password}
                   :expires_at  (:expires-at opts)}]
-       (if-let [pw-auth-identity (auth-identity.db/auth-identity user-id "password")]
+       (if-let [pw-auth-identity (auth-identity.db/auth-identity-for-user-and-provider user-id "password")]
          (auth-identity.db/update-auth-identity! (u/the-id pw-auth-identity) attrs)
          (auth-identity.db/insert-auth-identity! (merge {:user_id user-id, :provider "password"} attrs))))
      (auth-identity.db/delete-auth-identities! user-id "emailed-secret-password-reset")
@@ -133,5 +133,5 @@
   AuthIdentity (the authoritative store), or nil if they have none. Lets callers include the token in audit events
   without reading the legacy `core_user.reset_token` column."
   [user-id :- ms/PositiveInt]
-  (get-in (auth-identity.db/auth-identity user-id "emailed-secret-password-reset")
+  (get-in (auth-identity.db/auth-identity-for-user-and-provider user-id "emailed-secret-password-reset")
           [:credentials :token_hash]))

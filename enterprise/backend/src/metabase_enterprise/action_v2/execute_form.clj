@@ -10,6 +10,8 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouses.db :as warehouses.db]
    [toucan2.core :as t2]))
 
 (def ^:private strip-namespace-hack (comp keyword name))
@@ -103,8 +105,10 @@
            row-data]}]
   (when-not table-id
     (throw (ex-info "Must provide table-id" {:status-code 400})))
-  (let [table                       (api/read-check (action-v2.db/active-table table-id))
-        database                    (action-v2.db/database (:db_id table))
+  (let [table                       (api/read-check (let [table (warehouse-schema.db/table table-id)]
+                                                      (when (:active table)
+                                                        table)))
+        database                    (warehouses.db/database (:db_id table))
         _                           (actions/check-data-editing-enabled-for-database database)
         fields                      (-> (action-v2.db/active-fields-in-position-order table-id)
                                         (t2/hydrate :dimensions :has_field_values :values))

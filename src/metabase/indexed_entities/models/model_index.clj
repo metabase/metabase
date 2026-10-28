@@ -12,6 +12,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.queries.db :as queries.db]
    [metabase.query-processor.core :as qp]
    [metabase.search.core :as search]
    [metabase.sync.schedules :as sync.schedules]
@@ -91,7 +92,7 @@
   the record with that primary key."
   [model-index :- ::indexed-entities.schema/model-index
    pk          :- [:maybe :int]]
-  (let [model     (indexed-entities.db/card (:model_id model-index))
+  (let [model     (queries.db/card (:model_id model-index))
         fix       (mu/fn [field-ref :- ::mbql.s/FieldOrExpressionRef
                           base-type :- ::lib.schema.common/base-type]
                     ;; stored value/pk refs are legacy MBQL; normalize as legacy before use

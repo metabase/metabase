@@ -24,15 +24,15 @@
 
 ;;; ---------------------------------------------- Single Collections ----------------------------------------------
 
-(mu/defn collection
+(mu/defn collection :- [:maybe ::collections.schema/collection]
   "The ::collections.schema/collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one :model/Collection :id collection-id))
+  (t2/select-one :model/Collection collection-id))
 
-(mu/defn collection-id-and-namespace
-  "The ID and namespace of the ::collections.schema/collection with `collection-id`, or nil."
+(mu/defn collection-location-columns
+  "The location, id, and type of the Collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one [:model/Collection :id :namespace] :id collection-id))
+  (t2/select-one [:model/Collection :location :id :type] :id collection-id))
 
 (mu/defn collection-of-type
   "The ::collections.schema/collection of `type`, or nil."
@@ -74,32 +74,6 @@
   "Whether the ::collections.schema/collection with `collection-id` is a personal ::collections.schema/collection."
   [collection-id :- ::lib.schema.id/collection]
   (t2/exists? :model/Collection :id collection-id :personal_owner_id [:not= nil]))
-
-(mu/defn collection-remote-synced?
-  "Whether the ::collections.schema/collection with `collection-id` is remote-synced, or nil if `collection-id` is nil (the root
-  ::collections.schema/collection) or the ::collections.schema/collection does not exist."
-  [collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/select-one-fn :is_remote_synced :model/Collection :id collection-id))
-
-(mu/defn collection-namespace
-  "The namespace of the ::collections.schema/collection with `collection-id`."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one-fn :namespace :model/Collection :id collection-id))
-
-(mu/defn collection-location
-  "The location of the ::collections.schema/collection with `collection-id`."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one-fn :location :model/Collection :id collection-id))
-
-(defn collection-location-columns
-  "The location, id, and type of the Collection with `collection-id`, or nil."
-  [collection-id]
-  (t2/select-one [:model/Collection :location :id :type] :id collection-id))
-
-(mu/defn root-collection-type-by-id
-  "The type of the top-level Collection with `collection-id`, or nil if it is not top-level."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one-fn :type :model/Collection :id collection-id :location "/"))
 
 ;;; ---------------------------------------------- ::collections.schema/collection sets ----------------------------------------------
 

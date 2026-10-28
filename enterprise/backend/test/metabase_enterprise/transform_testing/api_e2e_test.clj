@@ -108,7 +108,7 @@
       (with-transforms-enabled #{:transforms-basic :transforms-python :transforms-testing}
         (testing "422 — the environment prevents a run: not a query transform"
           (mt/with-temp [:model/Transform     {transform-id :id}
-                         {:source {:type "python" :source-database (mt/id)}}
+                         {:source {:type "python" :source-database (mt/id) :source-tables [] :body "def transform():\n    pass"}}
                          :model/TransformTest {test-id :id} {:transform_id transform-id}]
             (let [response (mt/user-http-request :crowberto :post 422
                                                  (format "ee/transform-test/%d/run" test-id))]

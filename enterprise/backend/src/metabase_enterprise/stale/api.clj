@@ -10,6 +10,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.core :as collections]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.core :as queries]
@@ -114,7 +115,7 @@
                          (t/minus (t/local-date) (t/months 6)))
         collection     (if (= id :root)
                          collection/root-collection
-                         (stale.db/collection id))
+                         (collections.db/collection id))
         _              (api/read-check collection)
         collection-ids (->> (if is_recursive
                               (conj (effective-children-ids collection @api/*current-user-permissions-set*)

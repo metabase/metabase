@@ -46,7 +46,7 @@
        (boolean (when-let [transform-id (:transform_id instance)]
                   (mi/can-read? :model/Transform transform-id)))))
   ([_model pk]
-   (when-let [run (transforms.db/run pk)]
+   (when-let [run (transforms.db/transform-run pk)]
      (mi/can-read? run))))
 
 (mi/define-simple-hydration-method add-transform-runs
@@ -69,7 +69,7 @@
   ([transform-id]
    (start-run! transform-id {}))
   ([transform-id properties]
-   (let [transform  (transforms.db/transform-snapshot transform-id)
+   (let [transform  (transforms.db/transform transform-id)
          metered-as (premium-features/transform-metered-as (:source_type transform))
          run (transforms.db/insert-run! (assoc properties
                                                :transform_id transform-id
@@ -139,7 +139,7 @@
      (cancel/delete-cancelation! run-id)
      (when (pos? <>)
        (analytics/inc! :metabase-transforms/timeouts-total {:type "transform"})
-       (when-let [run (transforms.db/run run-id)]
+       (when-let [run (transforms.db/transform-run run-id)]
          (publish-timeout-event! run))))))
 
 (defn- reap-transform-runs!

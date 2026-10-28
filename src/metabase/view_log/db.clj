@@ -3,7 +3,6 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [java-time.api :as t]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.view-log.schema :as view-log.schema]
@@ -48,11 +47,6 @@
   [views :- [:sequential ::view-log.schema/view-log.update]]
   (t2/with-transaction [_conn]
     (t2/insert! :model/ViewLog views)))
-
-(mu/defn card-type
-  "The `:type` of the Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :type :model/Card :id card-id))
 
 (mu/defn update-dashboards-last-viewed-at!
   "Move `last_viewed_at` of each Dashboard in `dashboard-id->timestamp` forward to its timestamp, without touching

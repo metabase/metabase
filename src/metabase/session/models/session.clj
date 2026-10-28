@@ -6,10 +6,11 @@
    [buddy.core.nonce :as nonce]
    [clojure.core.memoize :as memo]
    [environ.core :as env]
+   [metabase.auth-identity.db :as auth-identity.db]
    [metabase.events.core :as events]
    [metabase.request.core :as request]
-   [metabase.session.db :as session.db]
    [metabase.session.settings :as session.settings]
+   [metabase.users.db :as users.db]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [tru]]
@@ -96,7 +97,7 @@
     (throw (ex-info "Session key should not be stored plaintext in the session table." {})))
   ;; Check auth identity provider if provided
   (when-let [auth-identity-id (:auth_identity_id session)]
-    (when-let [auth-identity (session.db/auth-identity-provider auth-identity-id)]
+    (when-let [auth-identity (auth-identity.db/auth-identity auth-identity-id)]
       (when (and (= "password" (:provider auth-identity))
                  (not (session.settings/enable-password-login)))
         (throw (ex-info (str (tru "Password login is disabled for this instance."))
@@ -112,7 +113,7 @@
 
 (t2/define-after-insert :model/Session
   [session]
-  (when-let [user (session.db/user (:user_id session))]
+  (when-let [user (users.db/user (:user_id session))]
     (let [event {:user-id (u/the-id user)}]
       (events/publish-event! :event/user-login event)
       (when (nil? (:last_login user))

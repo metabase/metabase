@@ -9,6 +9,7 @@
    [metabase-enterprise.metabot-analytics.db :as metabot-analytics.db]
    [metabase-enterprise.metabot-analytics.queries :as analytics.queries]
    [metabase.api.common :as api]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.persistence :as metabot-persistence]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.slackbot.api :as slackbot.api]
@@ -120,7 +121,7 @@
 (defn fetch-conversation-detail
   "Fetch a conversation detail or throw a 404."
   [conversation-id]
-  (let [conversation (metabot-analytics.db/conversation conversation-id)]
+  (let [conversation (metabot.db/metabot-conversation conversation-id)]
     (api/check-404 conversation)
     (let [all-messages (metabot-analytics.db/messages-for-conversation conversation-id)
           forked-from  (:forked_from_conversation_id conversation)

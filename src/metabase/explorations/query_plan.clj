@@ -282,7 +282,7 @@
 
 (defn- thread-prompt-for
   [thread-id]
-  (explorations.db/thread-prompt thread-id))
+  (:prompt (explorations.db/exploration-thread thread-id)))
 
 (defn- creator-id-for-thread
   [thread-id]
@@ -415,4 +415,4 @@
 (defn debug-transcript
   "Return the persisted query-plan transcript for `thread-id`."
   [thread-id]
-  (explorations.db/thread-transcript thread-id))
+  (:query_plan_transcript (explorations.db/exploration-thread thread-id)))

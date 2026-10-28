@@ -283,9 +283,9 @@
                    :model/Table {active-table-id :id} {:db_id db-id, :name "active_table", :active true, :visibility_type nil}
                    :model/Table {inactive-table-id :id} {:db_id db-id, :name "inactive_table", :active false, :visibility_type nil}]
       (mt/with-current-user (mt/user->id :crowberto)
-        (is (= active-table-id (:id (metabot.tools.util/get-table active-table-id :db_id))))
+        (is (= active-table-id (:id (metabot.tools.util/get-table active-table-id))))
         (is (thrown? clojure.lang.ExceptionInfo
-                     (metabot.tools.util/get-table inactive-table-id :db_id)))))))
+                     (metabot.tools.util/get-table inactive-table-id)))))))
 
 (deftest ^:parallel find-column-by-field-id-test
   (let [columns [{:id 301 :name "ID"}

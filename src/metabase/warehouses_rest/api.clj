@@ -44,6 +44,7 @@
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses-rest.db :as warehouses-rest.db]
    [metabase.warehouses.core :as warehouses]
+   [metabase.warehouses.db :as warehouses.db]
    [metabase.warehouses.models.database :as database]
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
@@ -885,7 +886,7 @@
                                                          [:details ms/DatabaseDetails]
                                                          [:id {:optional true} [:maybe ms/PositiveInt]]]]]]
   (api/check-superuser)
-  (let [database         (when id (api/write-check (warehouses-rest.db/database id)))
+  (let [database         (when id (api/write-check (warehouses.db/database id)))
         details-or-error (if database
                            (test-existing-database-details database engine details)
                            (warehouses/test-connection-details engine details))]
@@ -988,7 +989,7 @@
   (when (:write-data-connection details)
     (throw (ex-info (tru "write-data-connection must not be set in details")
                     {:status-code 400})))
-  (let [existing-database               (api/write-check (warehouses-rest.db/database id))
+  (let [existing-database               (api/write-check (warehouses.db/database id))
         ;; e2e tests run against the H2 sample database and need to toggle its settings (actions,
         ;; table editing), so the guard is lifted when test endpoints are enabled
         _                               (when (and (:is_sample existing-database)
@@ -1082,7 +1083,7 @@
         ;; with the advanced-config feature enabled.
         (when (premium-features/enable-cache-granular-controls?)
           (warehouses-rest.db/update-database! id {:cache_ttl cache_ttl}))
-        (let [db (warehouses-rest.db/database id)]
+        (let [db (warehouses.db/database id)]
           ;; the details in db and existing-database have been normalized so they are the same here
           ;; we need to pass through details-changed? which is calculated before detail normalization
           ;; to ensure the pool is invalidated and [[driver-api/secret-value-as-file!]] memoization is cleared
@@ -1109,7 +1110,7 @@
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
   (t2/with-transaction [_conn]
-    (api/let-404 [db (warehouses-rest.db/database id)]
+    (api/let-404 [db (warehouses.db/database id)]
       (api/check-403 (mi/can-write? db))
       (warehouses-rest.db/delete-destination-databases! id)
       (database-routing/delete-associated-database-router! id)
@@ -1409,7 +1410,7 @@
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    {:keys [connection-type]} :- [:map {:closed true} [:connection-type {:optional true} ::driver.conn/connection-type]]]
   (api/check-superuser)
-  (let [{:as database :keys [engine]} (api/check-404 (warehouses-rest.db/database id))
+  (let [{:as database :keys [engine]} (api/check-404 (warehouses.db/database id))
         connection-type               (or connection-type :default)
         connection-details            (driver.conn/details-for-exact-type database connection-type)]
     (api/check-400 connection-details (tru "No {0} connection configured for this database" (name connection-type)))

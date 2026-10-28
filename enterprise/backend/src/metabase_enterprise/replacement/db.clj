@@ -16,10 +16,10 @@
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
-(mu/defn run
-  "The ReplacementRun with `run-id`, or nil."
+(mu/defn replacement-run :- [:maybe ::replacement.schema/replacement-run]
+  "The ::replacement.schema/replacement-run with `run-id`, or nil."
   [run-id :- ms/PositiveInt]
-  (t2/select-one :model/ReplacementRun :id run-id))
+  (t2/select-one :model/ReplacementRun run-id))
 
 (mu/defn runs
   "The ReplacementRuns, newest first, restricted to the `is-active` flag when given."
@@ -32,11 +32,6 @@
   "The active ReplacementRun, or nil."
   []
   (t2/select-one :model/ReplacementRun :is_active true))
-
-(mu/defn run-active-flag
-  "The `:is_active` row of the ReplacementRun with `run-id`, or nil."
-  [run-id :- ms/PositiveInt]
-  (t2/select-one [:model/ReplacementRun :is_active] :id run-id))
 
 (mu/defn insert-run!
   "Insert `run` and return the new instance."
@@ -97,20 +92,10 @@
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/Measure :id [:in ids]))
 
-(mu/defn card
-  "The Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))
-
 (mu/defn cards-by-id
   "A map of Card ID to Card for `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select-pk->fn identity :model/Card :id [:in card-ids]))
-
-(mu/defn card-database-id
-  "The Database ID of the Card with `card-id`."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :database_id :model/Card :id card-id))
 
 (mu/defn card-with-table-exists?
   "Whether one of the Cards with `card-ids` is on the Table with `table-id`."
@@ -124,21 +109,11 @@
    changes :- ::queries.schema/card.update]
   (t2/update! :model/Card card-id changes))
 
-(mu/defn transform
-  "The Transform with `transform-id`, or nil."
-  [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one :model/Transform :id transform-id))
-
 (mu/defn update-transform!
   "Apply `changes` to the Transform with `transform-id`, returning the number updated."
   [transform-id :- ::lib.schema.id/transform
    changes      :- ::transforms.schema/transform.update]
   (t2/update! :model/Transform transform-id changes))
-
-(mu/defn segment
-  "The Segment with `segment-id`, or nil."
-  [segment-id :- ::lib.schema.id/segment]
-  (t2/select-one :model/Segment :id segment-id))
 
 (mu/defn update-segment!
   "Apply `changes` to the Segment with `segment-id`, returning the number updated."
@@ -146,21 +121,11 @@
    changes    :- ::segments.schema/segment.update]
   (t2/update! :model/Segment segment-id changes))
 
-(mu/defn measure
-  "The Measure with `measure-id`, or nil."
-  [measure-id :- ::lib.schema.id/measure]
-  (t2/select-one :model/Measure :id measure-id))
-
 (mu/defn update-measure!
   "Apply `changes` to the Measure with `measure-id`, returning the number updated."
   [measure-id :- ::lib.schema.id/measure
    changes    :- ::measures.schema/measure.update]
   (t2/update! :model/Measure measure-id changes))
-
-(mu/defn dashboard
-  "The Dashboard with `dashboard-id`, or nil."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/Dashboard :id dashboard-id))
 
 (mu/defn update-dashboard!
   "Apply `changes` to the Dashboard with `dashboard-id`, returning the number updated."
@@ -178,11 +143,6 @@
   [dashcard-id :- ::lib.schema.id/dashcard
    changes     :- ::dashboards.schema/dashboard-card.update]
   (t2/update! :model/DashboardCard dashcard-id changes))
-
-(mu/defn table-database-id
-  "The Database ID of the Table with `table-id`."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn active-fields-of-table
   "The active Fields of the Table with `table-id`."

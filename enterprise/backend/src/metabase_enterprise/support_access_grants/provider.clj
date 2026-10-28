@@ -9,6 +9,7 @@
    [metabase-enterprise.support-access-grants.db :as support-access-grants.db]
    [metabase-enterprise.support-access-grants.schema :as schema]
    [metabase.auth-identity.core :as auth-identity]
+   [metabase.users.db :as users.db]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -72,7 +73,7 @@
                       {:status-code 400})))
     (u/prog1 (auth-identity/generate-reset-token user-id)
       (t2/with-transaction [_]
-        (let [user (support-access-grants.db/user user-id)
+        (let [user (users.db/user user-id)
               auth-identity {:user_id user-id
                              :provider "support-access-grant"
                              :provider_id (:email user)

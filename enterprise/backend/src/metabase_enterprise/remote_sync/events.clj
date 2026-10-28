@@ -24,6 +24,7 @@
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase.app-db.cluster-lock :as cluster-lock]
    [metabase.collections.core :as collections]
+   [metabase.collections.db :as collections.db]
    [metabase.events.core :as events]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -473,7 +474,8 @@
 (defn- hydrate-collection-details
   "Hydrates details for a Collection."
   [id]
-  (remote-sync.db/collection-name-and-id id))
+  (when-let [collection (collections.db/collection id)]
+    {:name (:name collection) :collection_id (:id collection)}))
 
 (defn- handle-library-sync-status-change!
   "When the Library collection's is_remote_synced status changes, trigger Library content sync tracking.

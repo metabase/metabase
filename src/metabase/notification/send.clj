@@ -573,7 +573,7 @@
   (case payload_type
     :notification/card      (when-let [card-id (or (:card_id payload)
                                                    (some->> payload_id
-                                                            notification.db/notification-card-card-id))]
+                                                            notification.db/notification-card :card_id))]
                               {:run_type        :alert
                                :entity_type     :card
                                :entity_id       card-id

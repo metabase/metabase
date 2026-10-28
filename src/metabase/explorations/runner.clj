@@ -20,9 +20,11 @@
    [metabase.interestingness.core :as interestingness]
    [metabase.lib.core :as lib]
    [metabase.permissions.core :as perms]
+   [metabase.queries.db :as queries.db]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.core :as qp]
    [metabase.request.core :as request]
+   [metabase.segments.db :as segments.db]
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
@@ -189,7 +191,7 @@
 (defn- exploration-id
   "Walk EQ → ExplorationThread → Exploration.id for recording the stored_result_use reference."
   [exploration-query]
-  (explorations.db/thread-exploration-id (:exploration_thread_id exploration-query)))
+  (:exploration_id (explorations.db/exploration-thread (:exploration_thread_id exploration-query))))
 
 (defn- variant-note
   "Human phrase for a chart's breakdown variant + params, or nil for the plain `default`
@@ -215,7 +217,7 @@
   Returns nil for a plain unsegmented default breakdown (nothing to call out)."
   [row]
   (let [segment-name (when-let [sid (:segment_id row)]
-                       (explorations.db/segment-name sid))
+                       (:name (segments.db/segment sid)))
         variant      (variant-note (:query_type row) (:params row))
         parts        (cond-> []
                        variant      (conj variant)
@@ -231,7 +233,7 @@
   charts that won't be scored."
   [exploration-query]
   {:card-description (when-let [card-id (:card_id exploration-query)]
-                       (some-> (explorations.db/card-description card-id)
+                       (some-> (:description (queries.db/card card-id))
                                str/trim
                                not-empty))
    :sql              (contextual-interestingness/dataset-query->sql (:dataset_query exploration-query))})
@@ -257,7 +259,7 @@
       (if (nil? creator-id)
         (log/warnf "Skipping contextual interestingness for ExplorationQuery %d: no creator-id on exploration"
                    (:id exploration-query))
-        (let [prompt (explorations.db/thread-prompt thread-id)]
+        (let [prompt (:prompt (explorations.db/exploration-thread thread-id))]
           (when-not (str/blank? prompt)
             (let [{:keys [card-description sql]} (build-score-context exploration-query)]
               (request/with-current-user creator-id
@@ -372,7 +374,9 @@
           (when (persist-query-result! row started computed)
             (record-query-outcome! "done"))
           (:exploration_thread_id row))))
-    (explorations.db/finished-query-thread-id query-id)))
+    (let [query (explorations.db/exploration-query query-id)]
+      (when (contains? #{"done" "error" "canceled"} (:status query))
+        (:exploration_thread_id query)))))
 
 (defn fail-query!
   "Terminally mark `query-id` as `error` with `message`, the user-visible failure state the UI
@@ -380,7 +384,7 @@
 
   No-ops on a row that is no longer `pending` (a later delivery succeeded, or it was canceled)."
   [query-id message]
-  (let [thread-id (explorations.db/query-thread-id query-id)]
+  (let [thread-id (:exploration_thread_id (explorations.db/exploration-query query-id))]
     (when (pos? (explorations.db/fail-pending-query! query-id message (OffsetDateTime/now)))
       (record-query-outcome! "error"))
     thread-id))
@@ -397,7 +401,7 @@
 (defn plan-thread!
   "Run the LLM planner for `thread-id`, materializing its `ExplorationQuery` rows. Idempotent for MQ."
   [thread-id]
-  (let [thread   (explorations.db/thread-planning-state thread-id)
+  (let [thread   (explorations.db/exploration-thread thread-id)
         planned? (cond
                    ;; `restart` deletes and re-creates a thread's work; a message for a thread that
                    ;; no longer exists is a no-op.

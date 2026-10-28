@@ -15,10 +15,10 @@
   [archived :- :boolean]
   (t2/select :model/NativeQuerySnippet :archived archived {:order-by [[:%lower.name :asc]]}))
 
-(mu/defn snippet
-  "The NativeQuerySnippet with `id`, or nil."
+(mu/defn native-query-snippet :- [:maybe ::native-query-snippets.schema/native-query-snippet]
+  "The ::native-query-snippets.schema/native-query-snippet with `id`, or nil."
   [id :- ::lib.schema.id/native-query-snippet]
-  (t2/select-one :model/NativeQuerySnippet :id id))
+  (t2/select-one :model/NativeQuerySnippet id))
 
 (mu/defn snippet-name-exists?
   "Whether a NativeQuerySnippet named `snippet-name` exists."
@@ -46,11 +46,6 @@
   "The id of the NativeQuerySnippet named `snippet-name`, or nil."
   [snippet-name :- :string]
   (t2/select-one-fn :id :model/NativeQuerySnippet :name snippet-name))
-
-(mu/defn snippet-collection-id
-  "The Collection id of the NativeQuerySnippet with `id`, or nil."
-  [id :- ::lib.schema.id/native-query-snippet]
-  (t2/select-one-fn :collection_id :model/NativeQuerySnippet :id id))
 
 (mu/defn exportable-snippets
   "A reducible of the NativeQuerySnippets to export via serdes: unarchived when `skip-archived?`, and either in one of

@@ -14,6 +14,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [methodical.core :as m]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
@@ -117,7 +118,7 @@
   [metric _event-type]
   (let [table-id (:table_id metric)
         db-id    (when table-id
-                   (audit-app.db/table-database-id table-id))]
+                   (:db_id (warehouse-schema.db/table table-id)))]
     (assoc
      (select-keys metric [:name :description :revision_message])
      :table_id    table-id

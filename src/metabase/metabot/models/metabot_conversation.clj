@@ -31,7 +31,7 @@
               (or (= originator-id user-id)
                   (participant? conversation-id user-id))))))
   ([_model pk]
-   (when-let [instance (metabot.db/conversation-id-and-user-id pk)]
+   (when-let [instance (metabot.db/metabot-conversation pk)]
      (mi/can-read? instance))))
 
 (methodical/defmethod t2/batched-hydrate [:model/MetabotConversation :user]

@@ -35,8 +35,8 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one [:model/Card :collection_id] :id card-id))
 
-(mu/defn cache-config
-  "The CacheConfig with primary key `pk`, or nil."
+(mu/defn cache-config :- [:maybe ::cache.schema/cache-config]
+  "The ::cache.schema/cache-config with `pk`, or nil."
   [pk :- ms/PositiveInt]
   (t2/select-one :model/CacheConfig pk))
 

@@ -30,35 +30,15 @@
 
 ;;; ------------------------------------------------ Database ------------------------------------------------
 
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id database-id))
-
 (mu/defn database-exists?
   "Whether a Database with `database-id` exists."
   [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/Database :id database-id))
 
-(mu/defn database-initial-sync-status
-  "The `initial_sync_status` of the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :initial_sync_status :model/Database :id database-id))
-
-(mu/defn database-sample?
-  "Whether the Database with `database-id` is the Sample Database."
-  [database-id :- ::lib.schema.id/database]
-  (boolean (t2/select-one-fn :is_sample :model/Database :id database-id)))
-
 (mu/defn attached-dwh-database-id
   "The ID of the attached data warehouse Database, or nil."
   []
   (t2/select-one-pk :model/Database :is_attached_dwh true))
-
-(mu/defn database-stub?
-  "Whether the Database with `database-id` is a stub."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :is_stub :model/Database :id database-id))
 
 (mu/defn database-on-demand-flags
   "A map of Database ID to its `:is_on_demand` flag for `database-ids`."
@@ -339,11 +319,6 @@
                          (needs-fingerprint-update-clause refingerprint? version->base-types)]
               :order-by [[:id :asc]]
               :limit    limit}))
-
-(mu/defn field-fingerprint
-  "The fingerprint of the Field with `field-id`."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :fingerprint :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn active-fields-metadata-for-table
   "The sync metadata columns of the active Fields of the Table with `table-id`, as sync wrote them, in field order."

@@ -1,6 +1,7 @@
 (ns metabase.comments.db
   "Application database queries for the comments module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
+  (:refer-clojure :exclude [comment])
   (:require
    [honey.sql.helpers :as sql.helpers]
    [malli.util :as mut]
@@ -50,20 +51,10 @@
   [user-ids :- [:sequential ::lib.schema.id/user]]
   (t2/select-pks-set :model/User :id [:in user-ids] :is_active true))
 
-(mu/defn document
-  "The Document with `id`, or nil."
+(mu/defn comment :- [:maybe ::comments.schema/comment]
+  "The ::comments.schema/comment with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/Document :id id))
-
-(mu/defn exploration
-  "The Exploration with `id`, or nil."
-  [id :- ms/PositiveInt]
-  (t2/select-one :model/Exploration :id id))
-
-(mu/defn comment-by-id
-  "The Comment with `id`, or nil."
-  [id :- ms/PositiveInt]
-  (t2/select-one :model/Comment :id id))
+  (t2/select-one :model/Comment id))
 
 (mu/defn comment-recipient-emails
   "The emails of the Users to notify about a comment: the authors of the Comment with `parent-comment-id` and of its

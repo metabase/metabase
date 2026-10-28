@@ -15,7 +15,7 @@
     (mt/with-temp [:model/User         {user-id :id} {}
                    :model/AuthIdentity _             {:user_id user-id :provider "google"}]
       (mu/disable-enforcement
-        (doseq [[fn-name f] {"auth-identity"          auth-identity.db/auth-identity
+        (doseq [[fn-name f] {"auth-identity"          auth-identity.db/auth-identity-for-user-and-provider
                              "auth-identity-id"       auth-identity.db/auth-identity-id
                              "auth-identity-expiry"   auth-identity.db/auth-identity-expiry
                              "auth-identity-exists?"  auth-identity.db/auth-identity-exists?
@@ -68,12 +68,12 @@
                  :model/AuthIdentity {ai-id :id}    {:user_id user-id :provider "google"}
                  :model/AuthIdentity _              {:user_id other-id :provider "google"}]
     (testing "a matching user and provider finds the identity"
-      (is (= ai-id (:id (auth-identity.db/auth-identity user-id "google"))))
+      (is (= ai-id (:id (auth-identity.db/auth-identity-for-user-and-provider user-id "google"))))
       (is (= ai-id (auth-identity.db/auth-identity-id user-id "google")))
       (is (= ai-id (:id (auth-identity.db/auth-identity-expiry user-id "google"))))
       (is (true? (auth-identity.db/auth-identity-exists? user-id "google"))))
     (testing "another provider matches nothing"
-      (is (nil? (auth-identity.db/auth-identity user-id "password")))
+      (is (nil? (auth-identity.db/auth-identity-for-user-and-provider user-id "password")))
       (is (nil? (auth-identity.db/auth-identity-id user-id "password")))
       (is (nil? (auth-identity.db/auth-identity-expiry user-id "password")))
       (is (false? (auth-identity.db/auth-identity-exists? user-id "password"))))

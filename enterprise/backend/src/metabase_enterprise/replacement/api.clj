@@ -11,6 +11,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.queries.db :as queries.db]
    [metabase.transforms.core :as transforms]
    [metabase.transforms.schema :as transforms.schema]
    [ring.util.response :as response]))
@@ -103,7 +104,7 @@
        [:transform_tag_ids    {:optional true} [:maybe [:sequential pos-int?]]]]]
   (api/check-superuser)
   (let [user-id   api/*current-user-id*
-        card      (api/check-404 (replacement.db/card card_id))
+        card      (api/check-404 (queries.db/card card_id))
         transform (transforms/create-transform!
                    {:name          transform_name
                     :source        {:type  :query
@@ -146,14 +147,14 @@
   "Get the status of a source replacement run."
   [{:keys [id]} :- [:map {:closed true} [:id ::replacement.schema/run-id]]]
   (api/check-superuser)
-  (or (replacement.db/run id)
+  (or (replacement.db/replacement-run id)
       (throw (ex-info "Run not found" {:status-code 404}))))
 
 (api.macros/defendpoint :post "/runs/:id/cancel" :- [:map [:success boolean?]]
   "Cancel a running source replacement."
   [{:keys [id]} :- [:map {:closed true} [:id ::replacement.schema/run-id]]]
   (api/check-superuser)
-  (let [run (replacement.db/run id)]
+  (let [run (replacement.db/replacement-run id)]
     (when-not run
       (throw (ex-info "Run not found" {:status-code 404})))
     (when-not (:is_active run)

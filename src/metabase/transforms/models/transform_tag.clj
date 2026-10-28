@@ -31,7 +31,7 @@
             (let [transforms (transform/transforms-with-tags [(:id instance)])]
               (every? mi/can-write? transforms)))))
   ([_model pk]
-   (when-let [tag (transforms.db/tag pk)]
+   (when-let [tag (transforms.db/transform-tag pk)]
      (mi/can-write? tag))))
 
 (defmethod mi/can-create? :model/TransformTag

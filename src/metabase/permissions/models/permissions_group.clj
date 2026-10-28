@@ -174,7 +174,7 @@
 (defn is-tenant-group?
   "Returns a boolean representing whether this group is a tenant group."
   [group-id]
-  (permissions.db/tenant-group? (u/the-id group-id)))
+  (:is_tenant_group (permissions.db/permissions-group (u/the-id group-id))))
 
 (defn hidden-tenant-group-ids
   "Returns the subset of `group-ids` that are tenant groups while the Tenants feature is disabled

@@ -37,16 +37,6 @@
               :limit    limit
               :offset   offset}))
 
-(mu/defn metric-card
-  "The metric Card with `id`, or nil."
-  [id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id id :type "metric"))
-
-(mu/defn measure
-  "The Measure with `id`, or nil."
-  [id :- ::lib.schema.id/measure]
-  (t2/select-one :model/Measure :id id))
-
 (mu/defn raw-metric-cards-for-database
   "The id and dimensions of the metric Cards of the Database with `database-id`.
 
@@ -61,8 +51,3 @@
   [columns   :- [:sequential :keyword]
    field-ids :- [:set ::lib.schema.id/field]]
   (t2/select (into [:model/Field :id] columns) :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
-
-(mu/defn field
-  "The Field with `field-id`, or nil."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))

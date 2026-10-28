@@ -581,7 +581,7 @@
     (mt/with-temp [:model/User user {}
                    ;; the pre-existing session hangs off a different identity, so last_used_at on the
                    ;; password identity below is nil until the reset itself touches it
-                   :model/AuthIdentity _ {:user_id (:id user) :provider "google" :metadata {:sso_source "google"}}]
+                   :model/AuthIdentity _ {:user_id (:id user) :provider "google"}]
       (auth-identity/set-password! (:id user) "password")
       (let [stale-session (auth-identity/create-session-with-auth-tracking!
                            user

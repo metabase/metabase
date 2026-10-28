@@ -17,16 +17,6 @@
   []
   (t2/select-one :model/Database :uploads_enabled true))
 
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id database-id))
-
-(mu/defn database-is-attached-dwh?
-  "Whether the Database with `database-id` is an attached data warehouse."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :is_attached_dwh :model/Database database-id))
-
 (mu/defn disable-uploads-for-all-databases!
   "Disable uploads on every Database that has them enabled."
   []
@@ -119,11 +109,6 @@
   "Archive the unarchived Cards of the Table with `table-id`, returning their ids."
   [table-id :- ::lib.schema.id/table]
   (t2/update-returning-pks! :model/Card {:table_id table-id :archived false} {:archived true}))
-
-(mu/defn table
-  "The Table with `table-id`, or nil."
-  [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn tables
   "The Tables with `table-ids`."

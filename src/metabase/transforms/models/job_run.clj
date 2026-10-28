@@ -40,9 +40,7 @@
   "Start a run. Snapshots the job's name and entity_id so the run stays displayable after the job
   is deleted (`transform_job_run.job_id` has no FK; job runs outlive their job)."
   ([job-id run-method]
-   ;; :built_in_type so the after-select hook localizes built-in job names; str realizes the
-   ;; LocalizedString into the snapshot
-   (let [job (transforms.db/job-snapshot job-id)]
+   (let [job (transforms.db/transform-job job-id)]
      (transforms.db/insert-job-run! {:job_id        job-id
                                      :job_name      (some-> (:name job) str)
                                      :job_entity_id (:entity_id job)

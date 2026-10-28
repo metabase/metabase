@@ -10,10 +10,10 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn advisory
-  "The SecurityAdvisory with `id`, or nil."
+(mu/defn security-advisory :- [:maybe ::security-center.schema/security-advisory]
+  "The ::security-center.schema/security-advisory with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/SecurityAdvisory :id id))
+  (t2/select-one :model/SecurityAdvisory id))
 
 (mu/defn advisory-by-advisory-id
   "The SecurityAdvisory with the external `advisory-id`, or nil."

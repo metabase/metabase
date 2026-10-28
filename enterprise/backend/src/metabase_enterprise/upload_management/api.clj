@@ -9,7 +9,8 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.upload.core :as upload]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]))
 
 (defn- attached-dwh-tables
   "Used for adding attached DWH tables to the list of tables visible to the user. In practice these are to manage
@@ -49,7 +50,7 @@
                                [:archive-cards {:optional true} [:maybe {:default false} ms/BooleanValue]]]]
   (try
     ;; To be idempotent, we do not check whether the table has already been deactivated.
-    (let [table  (api/check-404 (upload-management.db/table id))
+    (let [table  (api/check-404 (warehouse-schema.db/table id))
           result (upload/delete-upload! table :archive-cards? archive-cards)]
       {:status 200
        :body   (= :done result)})

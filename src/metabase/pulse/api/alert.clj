@@ -9,7 +9,7 @@
    [metabase.classloader.core :as classloader]
    [metabase.config.core :as config]
    [metabase.notification.api :as notification.api]
-   [metabase.pulse.db :as pulse.db]
+   [metabase.queries.db :as queries.db]
    [metabase.util.cron :as u.cron]
    [metabase.util.malli.schema :as ms]))
 
@@ -23,7 +23,7 @@
   [notification]
   (let [subscription      (-> notification :subscriptions first)
         notification-card (-> notification :payload)
-        card              (->> notification :payload :card_id pulse.db/card)]
+        card              (->> notification :payload :card_id queries.db/card)]
     (merge
      (select-keys notification [:id :creator_id :creator :created_at :updated_at])
      {:name                nil

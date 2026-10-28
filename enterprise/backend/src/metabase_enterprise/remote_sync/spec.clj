@@ -17,6 +17,7 @@
    [metabase-enterprise.remote-sync.settings :as rs-settings]
    [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.collections.core :as collections]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
    [metabase.models.serialization :as serdes]
    [metabase.settings.core :as setting]
@@ -878,7 +879,7 @@
    (and (library-synced-object? spec object)
         (or (nil? collection-id)
             (= collections/data-actions-ns
-               (some-> (remote-sync.db/collection-namespace collection-id) keyword))))))
+               (some-> (collections.db/collection collection-id) :namespace keyword))))))
 
 (defmethod check-eligibility-by-type :collection
   [{:keys [eligibility] :as spec} object]
@@ -887,7 +888,7 @@
         ;; what sits in a data app's collection is synced with the app, an action without a model included: the
         ;; app's copies belong to no model, and are the app's rather than the Library's
         in-data-app?    (and (some? collection-id)
-                             (data-apps-namespace-collection? {:namespace (remote-sync.db/collection-namespace collection-id)}))]
+                             (data-apps-namespace-collection? {:namespace (:namespace (collections.db/collection collection-id))}))]
     (if (and (library-synced-object? spec object) (not in-data-app?))
       (and (rs-settings/library-is-remote-synced?)
            (library-content? spec object))

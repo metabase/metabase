@@ -224,7 +224,7 @@
 
 (defmethod serdes/required "NativeQuerySnippet"
   [_model id]
-  (when-let [collection_id (native-query-snippets.db/snippet-collection-id id)]
+  (when-let [collection_id (:collection_id (native-query-snippets.db/native-query-snippet id))]
     {["Collection" collection_id] {"NativeQuerySnippet" id}}))
 
 (defmethod serdes/deserialization-dependencies "NativeQuerySnippet"
@@ -246,7 +246,7 @@
 
 (defmethod serdes/descendants "NativeQuerySnippet" [_model-name id _opts]
   (into {}
-        (for [path                   (serdes/mbql-deps true (:template_tags (native-query-snippets.db/snippet id)))
+        (for [path                   (serdes/mbql-deps true (:template_tags (native-query-snippets.db/native-query-snippet id)))
               :let                   [{:keys [model] ref-id :id} (last path)]
               :when                  (#{"Card" "NativeQuerySnippet"} model)]
           [[model ref-id] {"NativeQuerySnippet" id}])))

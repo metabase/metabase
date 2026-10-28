@@ -2,7 +2,6 @@
   "Application database queries for the Slack bot module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -62,8 +61,3 @@
                     :channel_id   channel-id
                     :slack_msg_id slack-msg-id
                     :role         "assistant"))
-
-(mu/defn card
-  "The Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))

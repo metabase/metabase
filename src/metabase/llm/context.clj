@@ -9,7 +9,8 @@
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.models.interface :as mi]
    [metabase.sql-tools.core :as sql-tools]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -26,7 +27,7 @@
   [database-id sql-string]
   (if (and database-id (seq sql-string))
     (try
-      (let [driver (llm.db/database-engine database-id)
+      (let [driver (:engine (warehouses.db/database database-id))
             tables (sql-tools/referenced-tables-raw driver sql-string)]
         (if (seq tables)
           (let [matched-tables (llm.db/active-tables-matching database-id tables)]

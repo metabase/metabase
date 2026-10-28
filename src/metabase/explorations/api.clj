@@ -8,6 +8,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
+   [metabase.documents.db :as documents.db]
    [metabase.events.core :as events]
    [metabase.explorations.blocks :as explorations.blocks]
    [metabase.explorations.core :as explorations]
@@ -23,6 +24,7 @@
    [metabase.metrics.core :as metrics]
    [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
+   [metabase.queries.db :as queries.db]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -685,10 +687,10 @@
    {:keys [page_id explore_filters]} :- ExploreFurther]
   (let [exploration (get-exploration-or-404 id)]
     (api/write-check exploration)
-    (let [page          (api/check-404 (explorations.db/page page_id))
-          block         (api/check-404 (explorations.db/block (:exploration_block_id page)))
+    (let [page          (api/check-404 (explorations.db/exploration-page page_id))
+          block         (api/check-404 (explorations.db/exploration-block (:exploration_block_id page)))
           src-thread-id (:exploration_thread_id block)
-          src-thread    (explorations.db/thread src-thread-id)
+          src-thread    (explorations.db/exploration-thread src-thread-id)
           ;; The clicked page must live in *this* exploration — a page keys off a block off a
           ;; thread off an exploration, and "Explore further" only ever drills a chart the caller
           ;; is already viewing here. Reject anything else with a 404: without this check a caller
@@ -702,7 +704,7 @@
           metric-selection  (first metric-selections)
           cards         (mapv (fn [{:keys [card_id]}]
                                 (api/read-check
-                                 (api/check-404 (when card_id (explorations.db/card card_id)))))
+                                 (api/check-404 (when card_id (queries.db/card card_id)))))
                               metric-selections)
           card          (api/check-404 (first cards))
           card-name     (:name card)
@@ -821,12 +823,12 @@
 
 (defn- get-exploration-page-or-404
   [page-id]
-  (api/check-404 (explorations.db/page page-id)))
+  (api/check-404 (explorations.db/exploration-page page-id)))
 
 (defn- get-thread-or-404
   "Fetch the thread, or 404."
   [thread-id]
-  (api/check-404 (explorations.db/thread thread-id)))
+  (api/check-404 (explorations.db/exploration-thread thread-id)))
 
 (defn- write-check-thread [thread-id]
   (let [thread (get-thread-or-404 thread-id)]
@@ -886,13 +888,13 @@
       (let [pending-ids (explorations.db/lock-pending-query-ids-for-thread thread-id)]
         (when (seq pending-ids)
           (explorations.db/cancel-queries! pending-ids)))))
-  (explorations.db/thread-terminal-state thread-id))
+  (select-keys (explorations.db/exploration-thread thread-id) [:id :canceled_at :completed_at]))
 
 (defn- get-exploration-query-or-404
   "Fetch an `ExplorationQuery` by id and read-check it. The model's `can-read?` delegates up
   through `ExplorationThread` to the parent `Exploration`."
   [query-id]
-  (api/read-check (api/check-404 (explorations.db/query query-id))))
+  (api/read-check (api/check-404 (explorations.db/exploration-query query-id))))
 
 (defn- stream-stored-result
   "Replay a worker-serialized QP result (gzipped+nippy bytes from `:model/StoredResult.result_data`)
@@ -977,14 +979,16 @@
 (defn- document-summary
   "Project a Document onto the `::ExplorationDocument` wire shape."
   [doc-id]
-  (explorations.db/summary-document-columns doc-id))
+  (some-> (documents.db/document doc-id)
+          (select-keys [:id :name :exploration_id :creator_id :content_type
+                        :created_at :updated_at :archived :is_placeholder])))
 
 (defn- page-explore-filters
   "Hydrated explore-further filters on the block that owns `page-id`, or nil
   when the page is unfiltered."
   [page-id]
-  (when-let [block-id (explorations.db/page-block-id page-id)]
-    (-> (explorations.db/block-metrics block-id)
+  (when-let [block-id (:exploration_block_id (explorations.db/exploration-page page-id))]
+    (-> (:metrics (explorations.db/exploration-block block-id))
         first
         :explore_filters
         not-empty)))

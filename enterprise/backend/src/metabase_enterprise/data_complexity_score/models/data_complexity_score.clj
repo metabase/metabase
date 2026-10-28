@@ -58,5 +58,5 @@
                                                     :source      source
                                                     :score_data  score})]
     (if id
-      (score-with-calculated-at (data-complexity-score.db/score-entry id))
+      (score-with-calculated-at (data-complexity-score.db/data-complexity-score id))
       (latest-score fingerprint source))))

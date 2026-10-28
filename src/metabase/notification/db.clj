@@ -16,6 +16,11 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+(mu/defn notification-card :- [:maybe ::notification.schema/notification-card]
+  "The ::notification.schema/notification-card with `notification-card-id`, or nil."
+  [notification-card-id :- ms/PositiveInt]
+  (t2/select-one :model/NotificationCard notification-card-id))
+
 (def ^:private NotificationRow
   "A whole Notification row for insert."
   [:map {:closed true}
@@ -82,8 +87,8 @@
 
 ;;; --------------------------------------------- Notification ---------------------------------------------
 
-(mu/defn notification
-  "The Notification with `notification-id`, or nil."
+(mu/defn notification :- [:maybe ::notification.schema/notification]
+  "The ::notification.schema/notification with `notification-id`, or nil."
   [notification-id :- ms/PositiveInt]
   (t2/select-one :model/Notification notification-id))
 
@@ -238,11 +243,6 @@
   [notification-card-id :- ::lib.schema.id/card]
   (t2/exists? :model/NotificationCard notification-card-id))
 
-(mu/defn notification-card-card-id
-  "The `:card_id` of the NotificationCard with `notification-card-id`."
-  [notification-card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :card_id :model/NotificationCard :id notification-card-id))
-
 (mu/defn insert-notification-card!
   "Insert `notification-card` and return its ID."
   [notification-card :- NotificationCardRow]
@@ -255,8 +255,8 @@
 
 ;;; --------------------------------------- NotificationSubscription ---------------------------------------
 
-(mu/defn subscription
-  "The NotificationSubscription with `subscription-id`, or nil."
+(mu/defn notification-subscription :- [:maybe ::notification.schema/notification-subscription]
+  "The ::notification.schema/notification-subscription with `subscription-id`, or nil."
   [subscription-id :- ms/PositiveInt]
   (t2/select-one :model/NotificationSubscription subscription-id))
 
@@ -375,11 +375,6 @@
   "A map of ID to ChannelTemplate for `template-ids`."
   [template-ids :- [:sequential ms/PositiveInt]]
   (t2/select-fn->fn :id identity :model/ChannelTemplate :id [:in template-ids]))
-
-(mu/defn channel-template-channel-type
-  "The `:channel_type` of the ChannelTemplate with `template-id`."
-  [template-id :- ms/PositiveInt]
-  (t2/select-one-fn :channel_type [:model/ChannelTemplate :channel_type] template-id))
 
 (mu/defn insert-channel-template!
   "Insert `template` and return its ID."
@@ -674,31 +669,6 @@
    id    :- [:maybe ms/PositiveInt]]
   (t2/select-one model id))
 
-(mu/defn card
-  "The Card with `card-id`, or nil."
-  [card-id :- [:maybe ::lib.schema.id/card]]
-  (t2/select-one :model/Card card-id))
-
-(mu/defn unarchived-card
-  "The Card with `card-id` if it is not archived, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id :archived false))
-
-(mu/defn card-name
-  "The name of the Card with `card-id`."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :name :model/Card card-id))
-
-(mu/defn dashboard
-  "The Dashboard with `dashboard-id`, or nil."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/Dashboard dashboard-id))
-
-(mu/defn dashboard-name
-  "The name of the Dashboard with `dashboard-id`."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one-fn :name :model/Dashboard dashboard-id))
-
 (mu/defn dashboard-tabs
   "The DashboardTabs of the Dashboard with `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard]
@@ -713,17 +683,6 @@
   "The DashboardCards of the Dashboard with `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select :model/DashboardCard :dashboard_id dashboard-id))
-
-(mu/defn user-email
-  "The email of the User with `user-id`."
-  [user-id :- ::lib.schema.id/user]
-  (t2/select-one-fn :email [:model/User :email] user-id))
-
-(mu/defn user-summary
-  "The ID, names, email, and derived common name of the User with `user-id`, or nil (also for a nil `user-id`, e.g.
-  a system-created notification without a creator)."
-  [user-id :- [:maybe ::lib.schema.id/user]]
-  (t2/select-one [:model/User :id :first_name :last_name :email] user-id))
 
 (mu/defn active-users-by-id
   "A map of ID to active User for `user-ids`."

@@ -21,26 +21,6 @@
                                           [:= :archived archived?]]
                                :order-by [:%lower.name]}))
 
-(mu/defn dashboard
-  "The Dashboard with `dashboard-id`, or nil."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/Dashboard :id dashboard-id))
-
-(mu/defn dashboard-parameters
-  "The id and parameters of the Dashboard with `dashboard-id`, or nil."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one [:model/Dashboard :id :parameters] dashboard-id))
-
-(mu/defn dashboard-name-columns
-  "The name, description, and creator of the Dashboard with `dashboard-id`, or nil."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one [:model/Dashboard :name :description :creator_id] dashboard-id))
-
-(mu/defn dashboard-public-uuid
-  "The public uuid of the Dashboard with `dashboard-id`, or nil."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one-fn :public_uuid :model/Dashboard :id dashboard-id))
-
 (mu/defn public-dashboards
   "The name, id, and public uuid of the unarchived Dashboards that are publicly shared."
   []
@@ -133,16 +113,6 @@
   [query-hashes :- [:sequential bytes?]]
   (t2/select-fn->fn :query_hash :average_execution_time :model/Query :query_hash [:in query-hashes]))
 
-(mu/defn card
-  "The Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))
-
-(mu/defn card-query
-  "The query of the Card with `card-id`, or nil (also nil for virtual dashcards, which have no Card id)."
-  [card-id :- [:maybe ::lib.schema.id/card]]
-  (t2/select-one-fn :dataset_query :model/Card :id card-id))
-
 (mu/defn card-queries
   "A map of Card id to query for the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
@@ -168,26 +138,10 @@
   [rows :- [:sequential (mut/select-keys ::dashboards.schema/dashboard-tab.update [:dashboard_id :name :position])]]
   (t2/insert-returning-pks! :model/DashboardTab rows))
 
-(mu/defn collection
-  "The Collection with `collection-id`, or nil."
-  [collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/select-one :model/Collection :id collection-id))
-
 (mu/defn personal-collection-for-user
   "The personal Collection of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one :model/Collection :personal_owner_id user-id))
-
-(mu/defn dashcard
-  "The DashboardCard with `dashcard-id`, or nil."
-  [dashcard-id :- ::lib.schema.id/dashcard]
-  (t2/select-one :model/DashboardCard dashcard-id))
-
-(mu/defn dashcard-in-dashboard
-  "The DashboardCard with `dashcard-id` on the Dashboard with `dashboard-id`, or nil."
-  [dashcard-id  :- ::lib.schema.id/dashcard
-   dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/DashboardCard :id dashcard-id :dashboard_id dashboard-id))
 
 (mu/defn dashcards-by-ids
   "The DashboardCards with `dashcard-ids`."
@@ -205,11 +159,6 @@
   [dashboard-id :- ::lib.schema.id/dashboard
    dashcard-ids :- [:set ::lib.schema.id/dashcard]]
   (t2/select-pk->fn :card_id :model/DashboardCard :dashboard_id dashboard-id :id [:in dashcard-ids]))
-
-(mu/defn user-name-and-email
-  "The name and email of the User with `user-id`, or nil."
-  [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :first_name :last_name :email] user-id))
 
 (mu/defn user-names-and-emails
   "The names and emails of the Users with `user-ids`."

@@ -9,20 +9,10 @@
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
-(mu/defn router-database-id
-  "The router Database id of the Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :router_database_id :model/Database :id database-id))
-
-(mu/defn database
-  "The Database with `database-id`, or nil."
+(mu/defn database :- [:maybe ::warehouses.schema/database]
+  "The ::warehouses.schema/database with `database-id`, or nil."
   [database-id :- [:maybe ::lib.schema.id/database]]
   (t2/select-one :model/Database :id database-id))
-
-(mu/defn non-destination-database
-  "The Database with `database-id` if it is not a routing destination, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id database-id :router_database_id nil))
 
 (mu/defn databases
   "The Databases with `database-ids`."

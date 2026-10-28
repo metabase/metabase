@@ -11,11 +11,6 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn conversation
-  "The MetabotConversation with `conversation-id`, or nil."
-  [conversation-id :- :string]
-  (t2/select-one :model/MetabotConversation :id conversation-id))
-
 (defn- date-range-expr
   "A half-open predicate on `col` from the serialized date-param string `date-string`. Throws 400 on a malformed
   string. Returns nil when no bound is produced."

@@ -18,7 +18,7 @@
   "How should we order fields."
   [[:position :asc] [:%lower.name :asc]])
 
-(mu/defn field
+(mu/defn field :- [:maybe ::warehouse-schema.schema/field]
   "The ::warehouse-schema.schema/field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
   (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
@@ -45,23 +45,12 @@
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (t2/select [:model/Field :id :table_id] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
-(mu/defn field-table-id
-  "The ::warehouse-schema.schema/table ID of the ::warehouse-schema.schema/field with `field-id`."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :table_id :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
-
 (mu/defn field-id-by-name
   "The ID of the ::warehouse-schema.schema/field named `field-name` under `parent-id` in the ::warehouse-schema.schema/table with `table-id`, or nil."
   [table-id   :- ::lib.schema.id/table
    parent-id  :- [:maybe ms/PositiveInt]
    field-name :- :string]
   (t2/select-one-pk :model/Field :name field-name :parent_id parent-id :table_id table-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
-
-(mu/defn field-values-eligibility
-  "The columns deciding whether the ::warehouse-schema.schema/field with `field-id` should have FieldValues, or nil."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select-one [:model/Field :base_type :visibility_type :has_field_values :preview_display] :id field-id
-                 {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn field-ids-for-table
   "The IDs of the Fields of the ::warehouse-schema.schema/table with `table-id`."
@@ -421,7 +410,7 @@
 
 ;;; ------------------------------------------------- ::warehouse-schema.schema/table -------------------------------------------------
 
-(mu/defn table
+(mu/defn table :- [:maybe ::warehouse-schema.schema/table]
   "The ::warehouse-schema.schema/table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
@@ -437,16 +426,6 @@
    schema      :- [:maybe :string]
    table-name  :- :string]
   (t2/select-one :model/Table :name table-name :db_id database-id :schema schema {:from [(warehouse-schema-overlay/table-query)]}))
-
-(mu/defn table-name-and-schema
-  "The name and schema of the ::warehouse-schema.schema/table with `table-id`."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-one [:model/Table :name :schema] :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
-
-(mu/defn table-database-id
-  "The ::warehouses.schema/database ID of the ::warehouse-schema.schema/table with `table-id`."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (defn active-tables-for-database
   "The active Tables of the Database with `database-id`."
@@ -537,25 +516,10 @@
 
 ;;; ------------------------------------------------ ::warehouses.schema/database ------------------------------------------------
 
-(mu/defn database
-  "The ::warehouses.schema/database with `database-id`, or nil."
-  [database-id :- [:maybe ::lib.schema.id/database]]
-  (t2/select-one :model/Database :id database-id))
-
 (mu/defn databases-by-id
   "A map of ID to ::warehouses.schema/database for `database-ids`."
   [database-ids :- [:set ::lib.schema.id/database]]
   (t2/select-pk->fn identity :model/Database :id [:in database-ids]))
-
-(mu/defn database-engine
-  "The engine of the ::warehouses.schema/database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :engine :model/Database :id database-id))
-
-(mu/defn database-name
-  "The name of the ::warehouses.schema/database with `database-id`."
-  [database-id :- [:maybe ::lib.schema.id/database]]
-  (t2/select-one-fn :name :model/Database :id database-id))
 
 (mu/defn database-id-by-name
   "The ID of the ::warehouses.schema/database named `database-name`, or nil."

@@ -22,8 +22,3 @@
   []
   (t2/select :model/Table :active true :is_upload true {:from [(warehouse-schema-overlay/table-query)]
                                                         :order-by [[:name :asc]]}))
-
-(mu/defn table
-  "The Table with `table-id`, or nil."
-  [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))

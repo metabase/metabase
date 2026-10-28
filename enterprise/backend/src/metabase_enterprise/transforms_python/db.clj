@@ -2,6 +2,7 @@
   "Application database queries for the transforms-python module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
+   [metabase-enterprise.transforms-python.schema :as transforms-python.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
@@ -14,24 +15,14 @@
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select-fn-set :db_id [:model/Table :db_id] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
-(mu/defn table-database-id
-  "The Database ID of the raw table row with `table-id`."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id (t2/table-name :model/Table) :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
-
-(mu/defn database-engine
-  "The engine of the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :engine :model/Database database-id))
-
 (mu/defn update-run-message!
   "Set the message of the TransformRun with `run-id`."
   [run-id  :- ms/PositiveInt
    message :- [:maybe :string]]
   (t2/update! :model/TransformRun :id run-id {:message message}))
 
-(mu/defn python-library
-  "The PythonLibrary with `library-id`, or nil."
+(mu/defn python-library :- [:maybe ::transforms-python.schema/python-library]
+  "The ::transforms-python.schema/python-library with `library-id`, or nil."
   [library-id :- ms/PositiveInt]
   (t2/select-one :model/PythonLibrary library-id))
 

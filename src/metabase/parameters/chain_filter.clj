@@ -91,6 +91,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.metadata-queries :as schema.metadata-queries]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.field-values :as field-values]))
@@ -755,8 +756,8 @@
   ;; TODO: why don't we remap the human readable values here?
   (let [{:keys [values] has-more-values? :has_more_values}
         (if (empty? constraints)
-          (params.field-values/get-or-create-field-values-for-current-user! (parameters.db/field field-id))
-          (params.field-values/get-or-create-linked-filter-field-values! (parameters.db/field field-id) constraints))]
+          (params.field-values/get-or-create-field-values-for-current-user! (warehouse-schema.db/field field-id))
+          (params.field-values/get-or-create-linked-filter-field-values! (warehouse-schema.db/field field-id) constraints))]
     {:values          (cond->> values
                         limit (take limit))
      :has_more_values (or (when limit
@@ -819,7 +820,7 @@
       (let [{the-remapped-field-id :id, :keys [mapping-type]} @remapping]
         (if-let [pk-field-id (when (and (= mapping-type :fk->pk->name)
                                         relax-fk-requirement?)
-                               (parameters.db/field-fk-target-field-id field-id))]
+                               (:fk_target_field_id (warehouse-schema.db/field field-id)))]
           (unremapped-chain-filter the-remapped-field-id
                                    (map #(cond-> %
                                            (= (:field-id %) field-id) (assoc :field-id pk-field-id))
@@ -893,12 +894,13 @@
 (defn- check-valid-search-field
   "Before running a search query, make sure the Field actually exists and that it's a Text field."
   [field-id]
-  (let [base-type (parameters.db/field-base-type field-id)]
+  (let [field     (warehouse-schema.db/field field-id)
+        base-type (:base_type field)]
     (when-not base-type
       (throw (ex-info (tru "Field {0} does not exist." field-id)
                       {:field field-id, :status-code 404})))
     (when-not (isa? base-type :type/Text)
-      (let [field-name (parameters.db/field-name field-id)]
+      (let [field-name (:name field)]
         (throw (ex-info (tru "Cannot search against non-Text Field {0} {1}" field-id (pr-str field-name))
                         {:status-code 400
                          :field-id    field-id
@@ -944,7 +946,7 @@
        :has_more_values false}))
 
 (defn- search-cached-field-values? [field-id constraints]
-  (let [field (parameters.db/field field-id)]
+  (let [field (warehouse-schema.db/field field-id)]
     (and (use-cached-field-values? field-id)
          (isa? (:base_type field) :type/Text)
          ;; if we are doing a search, make sure we only use field values when we're certain the fieldvalues we stored

@@ -15,9 +15,11 @@
    [metabase.channel.render.core :as channel.render]
    [metabase.collections.children :as collections.children]
    [metabase.collections.core :as collections]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.dashboards-rest.db :as dashboards-rest.db]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.dashboards.models.dashboard-tab :as dashboard-tab]
@@ -39,6 +41,7 @@
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.pulse.core :as pulse]
    [metabase.queries.core :as queries]
+   [metabase.queries.db :as queries.db]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.api :as api.dataset]
@@ -50,6 +53,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.request.core :as request]
    [metabase.revisions.core :as revisions]
+   [metabase.users.db :as users.db]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
@@ -362,7 +366,7 @@
                            (fn [card]
                              (when card
                                (let [dataset-query (or (:dataset_query card)
-                                                       (dashboards-rest.db/card-query (:id card)))
+                                                       (some-> (:id card) queries.db/card :dataset_query))
                                      download-level (when (seq dataset-query)
                                                       (perms/download-perms-level dataset-query api/*current-user-id*))]
                                  (assoc card :download_perms (case download-level
@@ -388,7 +392,7 @@
   (span/with-span!
     {:name       "get-dashboard"
      :attributes {:dashboard/id id}}
-    (-> (dashboards-rest.db/dashboard id)
+    (-> (dashboards.db/dashboard id)
         api/read-check
         hydrate-dashboard-details
         collection.root/hydrate-root-collection
@@ -746,7 +750,7 @@
         cards      (dashboards-rest.db/dashboard-item-cards id (request/paged?) (request/limit) (request/offset))]
     {:total  (count cards)
      :data   (collections.children/post-process-rows {}
-                                                     (dashboards-rest.db/collection (:collection_id dashboard))
+                                                     (some-> (:collection_id dashboard) collections.db/collection)
                                                      cards)
      :limit  (request/limit)
      :offset (request/offset)
@@ -842,7 +846,7 @@
 (defn- create-dashcards!
   [dashboard dashcards]
   (doseq [card-id (into #{} (comp (mapcat dashcard-card-ids) (filter pos-int?)) dashcards)]
-    (api/check-not-archived (dashboards-rest.db/card card-id)))
+    (api/check-not-archived (queries.db/card card-id)))
   (check-parameter-mapping-permissions (for [{:keys [card_id parameter_mappings]} dashcards
                                              mapping parameter_mappings]
                                          (assoc mapping :card-id card_id)))
@@ -951,7 +955,7 @@
   - The user info for the creator of the pulse
   - The users affected by the pulse"
   [{bad-pulse-id :id pulse-name :name :keys [parameters creator_id]}]
-  (let [creator (dashboards-rest.db/user-name-and-email creator_id)]
+  (let [creator (select-keys (users.db/user creator_id) [:first_name :last_name :email])]
     {:pulse-id       bad-pulse-id
      :pulse-name     pulse-name
      :bad-parameters parameters
@@ -978,7 +982,7 @@
   "Identify and return any pulses used in a subscription that contain parameters that are no longer on the dashboard."
   [dashboard-id original-dashboard-params]
   (when (seq original-dashboard-params)
-    (let [{:keys [resolved-params]} (t2/hydrate (dashboards-rest.db/dashboard-parameters dashboard-id) :resolved-params)
+    (let [{:keys [resolved-params]} (t2/hydrate (dashboards.db/dashboard dashboard-id) :resolved-params)
           dashboard-params (set (keys resolved-params))]
       ;; ordered so the notifications go out in a stable order rather than whatever order the rows come back in
       (->> (dashboards-rest.db/unarchived-pulses-for-dashboard dashboard-id)
@@ -1001,7 +1005,7 @@
   (when-some [broken-pulses (broken-pulses dashboard-id original-dashboard-params)]
     (let [{dashboard-name        :name
            dashboard-description :description
-           dashboard-creator     :creator} (t2/hydrate (dashboards-rest.db/dashboard-name-columns dashboard-id) :creator)]
+           dashboard-creator     :creator} (t2/hydrate (dashboards.db/dashboard dashboard-id) :creator)]
       (for [broken-pulse broken-pulses]
         (assoc
          (bad-pulse-notification-data broken-pulse)
@@ -1035,7 +1039,7 @@
           ;; If there are parameters in the update, we want the old params so that we can do a check to see if any of
           ;; the notifications were broken by the update.
           {original-params :resolved-params} (when parameters
-                                               (t2/hydrate (dashboards-rest.db/dashboard id) [:dashcards :card] :resolved-params))
+                                               (t2/hydrate (dashboards.db/dashboard id) [:dashcards :card] :resolved-params))
           changes-stats                      (atom nil)
           ;; tabs are always sent in production as well when dashcards are updated, but there are lots of
           ;; tests that exclude it. so this only checks for dashcards
@@ -1101,7 +1105,7 @@
                         (select-keys dashcards-changes-stats [:created-dashcards :deleted-dashcards])))))
            (collections/check-for-remote-sync-update current-dash))
          true))
-      (let [dashboard (dashboards-rest.db/dashboard id)]
+      (let [dashboard (dashboards.db/dashboard id)]
         ;; skip publishing the event if it's just a change in its collection position
         (when-not (= #{:collection_position}
                      (set (keys dash-updates)))
@@ -1218,7 +1222,7 @@
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check :model/Dashboard dashboard-id))
-  (let [existing-public-uuid (dashboards-rest.db/dashboard-public-uuid dashboard-id)
+  (let [existing-public-uuid (:public_uuid (dashboards.db/dashboard dashboard-id))
         uuid (or existing-public-uuid
                  (u/prog1 (str (random-uuid))
                    ;; one transaction, so a failing handler cannot leave a saved link that a retry never reports
@@ -1227,7 +1231,7 @@
                                                            {:public_uuid       <>
                                                             :made_public_by_id api/*current-user-id*})
                      (events/publish-event! :event/dashboard-public-link-created
-                                            {:object    (dashboards-rest.db/dashboard dashboard-id)
+                                            {:object    (dashboards.db/dashboard dashboard-id)
                                              :object-id dashboard-id
                                              :user-id   api/*current-user-id*}))))]
     {:uuid uuid}))
@@ -1251,7 +1255,7 @@
                                           {:public_uuid       nil
                                            :made_public_by_id nil})
     (events/publish-event! :event/dashboard-public-link-deleted
-                           {:object    (dashboards-rest.db/dashboard dashboard-id)
+                           {:object    (dashboards.db/dashboard dashboard-id)
                             :object-id dashboard-id
                             :user-id   api/*current-user-id*}))
   {:status 204, :body nil})
@@ -1264,7 +1268,7 @@
   "Return related entities."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (-> (dashboards-rest.db/dashboard id) api/read-check xrays/related))
+  (-> (dashboards.db/dashboard id) api/read-check xrays/related))
 
 ;;; ---------------------------------------------- Transient dashboards ----------------------------------------------
 
@@ -1448,7 +1452,8 @@
    {:keys [parameters]} :- [:map {:closed true}
                             [:parameters {:optional true} ::actions.schema/prefetch-parameter-values]]]
   (api/read-check :model/Dashboard dashboard-id)
-  (let [dashcard (api/check-404 (dashboards-rest.db/dashcard-in-dashboard dashcard-id dashboard-id))]
+  (let [dashcard (dashboards.db/dashboard-card dashcard-id)]
+    (api/check-404 (= (:dashboard_id dashcard) dashboard-id))
     (actions/fetch-values
      (api/check-404 (actions/dashcard->action dashcard))
      parameters)))
@@ -1494,9 +1499,9 @@
     (m/mapply qp.dashboard/process-query-for-dashcard
               (merge
                (dissoc body :dashboard_load_id)
-               {:dashboard (api/check-404 (dashboards-rest.db/dashboard dashboard-id))
-                :card      (api/check-404 (dashboards-rest.db/card card-id))
-                :dashcard  (api/check-404 (dashboards-rest.db/dashcard dashcard-id))}))))
+               {:dashboard (api/check-404 (dashboards.db/dashboard dashboard-id))
+                :card      (api/check-404 (queries.db/card card-id))
+                :dashcard  (api/check-404 (dashboards.db/dashboard-card dashcard-id))}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1523,9 +1528,9 @@
        [:format_rows   {:default false} ms/BooleanValue]
        [:pivot_results {:default false} ms/BooleanValue]]]
   (m/mapply qp.dashboard/process-query-for-dashcard
-            {:dashboard     (api/check-404 (dashboards-rest.db/dashboard dashboard-id))
-             :card          (api/check-404 (dashboards-rest.db/card card-id))
-             :dashcard      (api/check-404 (dashboards-rest.db/dashcard dashcard-id))
+            {:dashboard     (api/check-404 (dashboards.db/dashboard dashboard-id))
+             :card          (api/check-404 (queries.db/card card-id))
+             :dashcard      (api/check-404 (dashboards.db/dashboard-card dashcard-id))
              :export-format export-format
              :parameters    parameters
              :context       (api.dataset/export-format->context export-format)
@@ -1557,7 +1562,7 @@
   (m/mapply qp.dashboard/process-query-for-dashcard
             (merge
              body
-             {:dashboard (api/check-404 (dashboards-rest.db/dashboard dashboard-id))
-              :card      (api/check-404 (dashboards-rest.db/card card-id))
-              :dashcard  (api/check-404 (dashboards-rest.db/dashcard dashcard-id))
+             {:dashboard (api/check-404 (dashboards.db/dashboard dashboard-id))
+              :card      (api/check-404 (queries.db/card card-id))
+              :dashcard  (api/check-404 (dashboards.db/dashboard-card dashcard-id))
               :qp        qp.pivot/run-pivot-query})))

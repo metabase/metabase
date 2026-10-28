@@ -53,7 +53,9 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field :as field]
+   [metabase.warehouses.db :as warehouses.db]
    [metabase.xrays.automagic-dashboards.dashboard-templates :as dashboard-templates]
    [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.automagic-dashboards.util :as magic.util]
@@ -124,7 +126,7 @@
   (cond
     full-name full-name
     link (format "%s → %s"
-                 (-> (xrays.db/field link) :display_name (str/replace #"(?i)\sid$" ""))
+                 (-> (warehouse-schema.db/field link) :display_name (str/replace #"(?i)\sid$" ""))
                  display_name)
     :else display_name))
 
@@ -372,7 +374,7 @@
 ;; TODO - Deduplicate from core
 (mu/defn- source->db :- (ms/InstanceOf :model/Database)
   [source :- (ms/InstanceOf #{:model/Table :model/Card})]
-  (xrays.db/database ((some-fn :db_id :database_id) source)))
+  (warehouses.db/database ((some-fn :db_id :database_id) source)))
 
 (defn- enriched-field-with-sources [{:keys [tables source]} field]
   (assoc field

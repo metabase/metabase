@@ -18,10 +18,10 @@
 (def ^:private non-blob-model
   (into [:model/DataApp] non-blob-columns))
 
-(mu/defn data-app
-  "The DataApp with `data-app-id` without its bundle, or nil."
+(mu/defn data-app :- [:maybe ::data-apps.schema/data-app]
+  "The ::data-apps.schema/data-app with `data-app-id`, or nil."
   [data-app-id :- ms/PositiveInt]
-  (t2/select-one non-blob-model :id data-app-id))
+  (t2/select-one :model/DataApp data-app-id))
 
 (mu/defn data-app-by-slug
   "The DataApp named `slug` without its bundle, or nil."
@@ -86,11 +86,6 @@
   []
   (t2/select-fn-set :resource_collection_id :model/DataApp :resource_collection_id [:not= nil]))
 
-(mu/defn resource-collection-id
-  "The ID of the resource collection owned by the DataApp with `data-app-id`."
-  [data-app-id :- ms/PositiveInt]
-  (t2/select-one-fn :resource_collection_id :model/DataApp :id data-app-id))
-
 (defn collection-card-ids
   "The IDs of the cards in the collection with `collection-id`."
   [collection-id]
@@ -100,11 +95,6 @@
   "The IDs of the actions in the collection with `collection-id`."
   [collection-id]
   (t2/select-pks-vec :model/Action :collection_id collection-id))
-
-(defn resource-collection
-  "The resource collection with `collection-id`, or nil."
-  [collection-id]
-  (t2/select-one :model/Collection :id collection-id))
 
 (defn delete-resource-collection!
   "Delete the resource collection with `collection-id`."

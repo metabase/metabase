@@ -22,6 +22,7 @@
    [metabase.settings.core :as setting]
    [metabase.sso.core :as sso]
    [metabase.system.core :as system]
+   [metabase.users.db :as users.db]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
@@ -590,7 +591,7 @@
                               (verify-second-factor! user-id code jti)
                               (do
                                 (events/publish-event! :event/mfa-verification-failed
-                                                       {:object (session.db/user user-id)})
+                                                       {:object (users.db/user user-id)})
                                 (throw (ex-info (tru "Invalid authentication code.") {:status-code 401}))))))
         user (session.db/user-login-status user-id)]
     ;; the account can be deactivated (or deleted) between the password step and here; a
@@ -660,7 +661,7 @@
                                           (or
                                            (confirm-enrollment! user-id code jti)
                                            (do (events/publish-event! :event/mfa-required-enrollment-failed
-                                                                      {:object (session.db/user user-id)})
+                                                                      {:object (users.db/user user-id)})
                                                (throw (ex-info (tru "Invalid authentication code.") {:status-code 401}))))))
         user           (session.db/user-login-status user-id)]
     ;; the account can be deactivated (or deleted) between the password step and here; an

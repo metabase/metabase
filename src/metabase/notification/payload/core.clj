@@ -4,13 +4,13 @@
    [malli.util :as mut]
    [metabase.appearance.core :as appearance]
    [metabase.channel.models.channel :as models.channel]
-   [metabase.notification.db :as notification.db]
    [metabase.notification.models :as models.notification]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.payload.temp-storage :as notification.payload.temp-storage]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.premium-features.core :as premium-features]
    [metabase.system.core :as system]
+   [metabase.users.db :as users.db]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -177,7 +177,7 @@
   "Realize notification-info with :context and :payload."
   [notification :- ::Notification]
   (assoc (select-keys notification [:payload_type :creator_id])
-         :creator (notification.db/user-summary (:creator_id notification))
+         :creator (some-> (:creator_id notification) users.db/user (select-keys [:id :first_name :last_name :email :common_name]))
          :payload (w/prewalk (fn [x]
                                (if (and (map? x) (:lib/metadata x))
                                  (dissoc x :lib/metadata)

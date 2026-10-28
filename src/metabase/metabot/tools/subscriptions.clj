@@ -5,7 +5,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.channel.settings :as channel.settings]
-   [metabase.metabot.db :as metabot.db]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.create-alert :as tools.create-alert]
@@ -54,7 +54,7 @@
 
 (defn- dashboard-for-subscription [dashboard-id]
   (let [dashboard (tools/with-entity {:kind :dashboard :id dashboard-id}
-                    (-> (metabot.db/dashboard dashboard-id)
+                    (-> (dashboards.db/dashboard dashboard-id)
                         api/read-check
                         (t2/hydrate [:dashcards :card])))
         dashcards (filter (comp int? :id :card) (:dashcards dashboard))]

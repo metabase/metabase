@@ -528,7 +528,7 @@
   ;; We hope that this will be the most recent user.
   ;; Only root-cause failures are reported individually; dependents that never ran because an
   ;; upstream transform failed are summarized as a count to avoid a cascade of redundant errors.
-  (let [job (transforms.db/job job-id)
+  (let [job (transforms.db/transform-job job-id)
         [roots cascades] (split-cascade-failures failures)
         roots (map (fn [failure]
                      (let [transform (::transform failure)]

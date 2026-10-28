@@ -12,7 +12,8 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]))
 
 ;;; ------------------------------------------------- API Shape -------------------------------------------------
 ;;; Convert internal (kebab) dimensions to the snake_case shape the frontend expects, and back.
@@ -239,7 +240,7 @@
    dimension-mappings :- [:maybe [:sequential ::lm.schema/dimension-mapping]]
    dimension-id       :- :string]
   (let [field-id (lib-metric/resolve-dimension-to-field-id dimensions dimension-mappings dimension-id)
-        field    (metrics.db/field field-id)]
+        field    (warehouse-schema.db/field field-id)]
     (parameters/field->values field)))
 
 (mu/defn dimension-search-values :- [:sequential [:vector :string]]
@@ -259,11 +260,11 @@
    dimension-id       :- :string
    value              :- :string]
   (let [field-id        (lib-metric/resolve-dimension-to-field-id dimensions dimension-mappings dimension-id)
-        field           (metrics.db/field field-id)
+        field           (warehouse-schema.db/field field-id)
         parsed-value    (parameters/parse-query-param-value-for-field field value)
         remapped-fid    (parameters/remapped-field-id field-id)]
     (if remapped-fid
-      (let [remapped-field (metrics.db/field remapped-fid)]
+      (let [remapped-field (warehouse-schema.db/field remapped-fid)]
         (parameters/remapped-value field remapped-field parsed-value))
       ;; No remapping - return the value as-is
       [parsed-value])))

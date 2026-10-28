@@ -3,7 +3,6 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.lib.core :as lib]
-   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.entity-details :as entity-details]
@@ -15,7 +14,8 @@
    [metabase.request.core :as request]
    [metabase.sync.core :as sync]
    [metabase.sync.util :as sync-util]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]))
 
 (defn- build-field-statistics [fvs fp limit]
   (merge
@@ -47,7 +47,7 @@
         ;; Sync returns `:sync/no-connection` or a Throwable when it can't sample the database
         (cond
           (not (map? result))                   ::unavailable
-          (pos? (:updated-fingerprints result)) (metabot.db/field-fingerprint id)))))
+          (pos? (:updated-fingerprints result)) (:fingerprint (warehouse-schema.db/field id))))))
 
 (defn- database-unrestricted?
   [db-id]
@@ -83,7 +83,7 @@
   Unrestricted database users keep fingerprints even when source tables cannot be determined."
   [query {:keys [id fingerprint]} limit]
   (if id
-    (let [field (metabot.db/field id)
+    (let [field (warehouse-schema.db/field id)
           table-id (:table_id field)
           fvs (params.field-values/get-or-create-field-values! field)
           restricted? (or (not (int? table-id))

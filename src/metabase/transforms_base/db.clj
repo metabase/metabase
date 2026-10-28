@@ -47,11 +47,6 @@
   [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/Database :id database-id))
 
-(mu/defn field-table-id
-  "The Table id of the Field with `field-id`, or nil."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :table_id :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
-
 (mu/defn target-table
   "The Table named `table-name` in `schema` of the Database with `database-id` also matching the key-value
   `conditions`, or nil."
@@ -60,11 +55,6 @@
    table-name  :- :string
    & conditions :- [:* [:or :keyword :string :int :boolean]]]
   (apply t2/select-one :model/Table :db_id database-id :schema schema :name table-name conditions))
-
-(mu/defn table
-  "The Table with `table-id`, or nil."
-  [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn table-for-transform
   "The Table owned by the Transform with `transform-id`, or nil. `transform-id` is nil for a transform

@@ -5,6 +5,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
@@ -47,7 +48,7 @@
     (cond
       ;; you specified both - they must match
       (and specified-collection-id? dashboard-id)
-      (let [dashboard-collection-id (queries.db/dashboard-collection-id dashboard-id)]
+      (let [dashboard-collection-id (:collection_id (dashboards.db/dashboard dashboard-id))]
         (api/check-400 (= collection-id dashboard-collection-id)
                        (tru "Mismatch detected between Dashboard''s `collection_id` ({0}) and `collection_id` ({1})"
                             dashboard-collection-id
@@ -56,7 +57,7 @@
 
       specified-collection-id? collection-id
 
-      dashboard-id (queries.db/dashboard-collection-id dashboard-id)
+      dashboard-id (:collection_id (dashboards.db/dashboard dashboard-id))
 
       :else nil)))
 
@@ -88,7 +89,7 @@
   (when (api/column-will-change? (:dashboard_id card-before-update) (get card-updates :dashboard_id ::api/not-provided))
     (check-allowed-to-remove-from-existing-dashboards card-before-update)
     (when-let [dashboard-id (:dashboard_id card-updates)]
-      (card/check-shared-dashboard-timeline-permissions! (queries.db/dashboard dashboard-id)
+      (card/check-shared-dashboard-timeline-permissions! (dashboards.db/dashboard dashboard-id)
                                                          [(merge card-before-update card-updates)])))
   (collection/check-allowed-to-change-collection card-before-update card-updates))
 

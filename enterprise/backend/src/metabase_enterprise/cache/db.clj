@@ -147,11 +147,6 @@
   [query-hashes :- [:sequential bytes?]]
   (t2/delete! :model/QueryCache :query_hash [:in query-hashes]))
 
-(mu/defn dashboard
-  "The Dashboard with `dashboard-id`, or nil."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/Dashboard :id dashboard-id))
-
 (mu/defn cache-configs-ready-to-run
   "The CacheConfigs of `strategy` whose next run is unset or due at `now`."
   [strategy :- :keyword

@@ -6,7 +6,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.parameters.chain-filter :as chain-filter]
-   [metabase.parameters.db :as parameters.db]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.parameters.field.search-values-query :as search-values-query]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -14,6 +13,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.metadata-from-qp :as warehouse-schema.metadata-from-qp]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema])
   (:import
@@ -33,7 +33,7 @@
   [{semantic-type :semantic_type, fk-target-field-id :fk_target_field_id, :as field}]
   (if (and (isa? semantic-type :type/FK)
            fk-target-field-id)
-    (parameters.db/field fk-target-field-id)
+    (warehouse-schema.db/field fk-target-field-id)
     field))
 
 (def ^:private default-max-field-search-limit 1000)
@@ -89,7 +89,7 @@
   (if-let [remapped-field-id (when (= has-field-values-type :list)
                                (chain-filter/remapped-field-id field-id))]
     {:values          (search-values (api/check-404 field)
-                                     (api/check-404 (parameters.db/field remapped-field-id)))
+                                     (api/check-404 (warehouse-schema.db/field remapped-field-id)))
      :field_id        field-id
      :has_more_values (boolean has_more_values)}
     (params.field-values/get-or-create-field-values-for-current-user! (api/check-404 field))))
@@ -101,10 +101,10 @@
   Field->Field remapping."
   [field-id]
   (let [field        (if qp.perms/*param-values-query*
-                       (api/check-404 (parameters.db/field field-id))
-                       (api/read-check (parameters.db/field field-id)))
+                       (api/check-404 (warehouse-schema.db/field field-id))
+                       (api/read-check (warehouse-schema.db/field field-id)))
         search-field (or (some->> (chain-filter/remapped-field-id field-id)
-                                  parameters.db/field)
+                                  warehouse-schema.db/field)
                          field)]
     [field search-field]))
 

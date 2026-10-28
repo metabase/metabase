@@ -85,11 +85,13 @@
    [:emails          {:optional true} [:maybe [:sequential :string]]]])
 
 (mr/def ::pulse-channel
-  "A PulseChannel as selected from the app DB: every column of `:pulse_channel`."
+  "A PulseChannel as selected from the app DB: every column of `:pulse_channel`, with `:details` as stored rather
+  than as written."
   [:merge
    ::pulse-channel.update
    [:map {:closed true}
-    [:id             ms/PositiveInt]]])
+    [:id             ms/PositiveInt]
+    [:details        {:optional true} [:maybe [:map {::mr/deliberately-open true, :description "the column as stored"}]]]]])
 
 (mr/def ::pulse-channel.update
   "What an update (or insert) of a PulseChannel accepts: every column of `:pulse_channel` except `id`, all optional."

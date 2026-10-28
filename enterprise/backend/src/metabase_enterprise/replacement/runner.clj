@@ -12,10 +12,13 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.model-persistence.core :as model-persistence]
+   [metabase.queries.db :as queries.db]
    [metabase.source-swap.util :as source-swap.util]
    [metabase.transforms.core :as transforms]
+   [metabase.transforms.db :as transforms.db]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]))
 
 (set! *warn-on-reflection* true)
@@ -110,8 +113,8 @@
                                        (count all-transitive-dependents))) ;; phase 2: swap
 
   (let [db-id      (case (first old-source)
-                     :card  (replacement.db/card-database-id (second old-source))
-                     :table (replacement.db/table-database-id (second old-source)))
+                     :card  (:database_id (queries.db/card (second old-source)))
+                     :table (:db_id (warehouse-schema.db/table (second old-source))))
         batch-size 500]
     ;; phase 1: Upgrade field refs for ALL transitive dependents
     (doseq [batch (partition-all batch-size all-transitive-dependents)]
@@ -172,7 +175,7 @@
   "Copy user-edited metadata from a model's result_metadata onto the FieldUserSettings of the
    output table's Fields, so the overrides keep showing on the new Fields after the swap."
   [card-id table-id]
-  (let [card            (replacement.db/card card-id)
+  (let [card            (queries.db/card card-id)
         result-metadata (:result_metadata card)
         fields          (replacement.db/active-fields-of-table table-id)
         field-by-name   (m/index-by :name fields)]
@@ -192,7 +195,7 @@
   ([card-id transform-id]
    (run-swap-model-with-transform! card-id transform-id noop-progress))
   ([card-id transform-id progress & {:keys [user-id]}]
-   (let [transform (or (replacement.db/transform transform-id)
+   (let [transform (or (transforms.db/transform transform-id)
                        (throw (ex-info "Transform not found" {:transform-id transform-id})))]
      ;; phase 1: execute the transform
      (transforms/execute! transform (cond-> {:run-method :manual}

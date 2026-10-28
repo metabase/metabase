@@ -16,10 +16,10 @@
   [now :- ms/TemporalInstant]
   (t2/exists? :model/SupportAccessGrantLog :revoked_at nil :grant_end_timestamp [:> now]))
 
-(mu/defn grant
-  "The SupportAccessGrantLog with `grant-id`, or nil."
+(mu/defn support-access-grant-log :- [:maybe ::support-access-grants.schema/support-access-grant-log]
+  "The ::support-access-grants.schema/support-access-grant-log with `grant-id`, or nil."
   [grant-id :- ms/PositiveInt]
-  (t2/select-one :model/SupportAccessGrantLog :id grant-id))
+  (t2/select-one :model/SupportAccessGrantLog grant-id))
 
 (mu/defn current-grant
   "The newest unrevoked SupportAccessGrantLog that has not ended, or nil."
@@ -74,11 +74,6 @@
   [grant-id :- ms/PositiveInt
    changes  :- (mut/select-keys ::support-access-grants.schema/support-access-grant-log.update [:revoked_at :revoked_by_user_id])]
   (t2/update! :model/SupportAccessGrantLog grant-id changes))
-
-(mu/defn user
-  "The User with `user-id`, or nil."
-  [user-id :- ::lib.schema.id/user]
-  (t2/select-one :model/User user-id))
 
 (mu/defn user-by-email
   "The User with `email`, or nil."

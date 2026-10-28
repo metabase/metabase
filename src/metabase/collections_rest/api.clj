@@ -12,6 +12,7 @@
    [metabase.collections-rest.db :as collections-rest.db]
    [metabase.collections.children :as collections.children]
    [metabase.collections.core :as collections]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.documents.core :as documents]
@@ -620,7 +621,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/check-403 api/*is-superuser?*)
-  (let [collection (collections-rest.db/collection id)
+  (let [collection (collections.db/collection id)
         old-children-location (collection/children-location collection)
         new-children-location (:location collection)]
     (api/check-400 (:archived collection)

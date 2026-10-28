@@ -7,17 +7,6 @@
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
-(mu/defn card-collection-id
-  "The `:collection_id` of the Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :collection_id] :id card-id))
-
-(mu/defn card-not-in-database
-  "The Card with `card-id` if it does not belong to the Database with `database-id`, or nil."
-  [card-id     :- ::lib.schema.id/card
-   database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Card :id card-id :database_id [:!= database-id]))
-
 (mu/defn field-table-ids
   "The set of Table ids of the Fields with `field-ids`."
   [field-ids :- [:or [:set ::lib.schema.id/field] [:sequential ::lib.schema.id/field]]]

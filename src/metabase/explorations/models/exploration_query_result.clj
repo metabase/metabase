@@ -6,6 +6,7 @@
    [metabase.interestingness.core :as interestingness]
    [metabase.models.interface :as mi]
    [metabase.queries.core :as queries]
+   [metabase.queries.db :as queries.db]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.core :as qp]
    [metabase.util.i18n :refer [tru]]
@@ -39,7 +40,7 @@
   still pending/errored)."
   [eq-id]
   (when-let [sr-id (explorations.db/query-result-stored-result-id eq-id)]
-    (explorations.db/stored-result sr-id)))
+    (queries.db/stored-result sr-id)))
 
 (defn- deserialize-stored-result
   "Inverse of [[qp/do-with-serialization]] for a stored_result's
@@ -69,9 +70,9 @@
   [eq-ids]
   (mapv
    (fn [eq-id]
-     (let [eq        (api/check-404 (t2/hydrate (explorations.db/query eq-id) :segment_name))
+     (let [eq        (api/check-404 (t2/hydrate (explorations.db/exploration-query eq-id) :segment_name))
            eqr       (api/check-404 (explorations.db/query-result eq-id))
-           sr        (api/check-404 (explorations.db/stored-result (:stored_result_id eqr)))
+           sr        (api/check-404 (queries.db/stored-result (:stored_result_id eqr)))
            qp-result (api/check-404 (deserialize-stored-result (:result_data sr)))]
        {:eq eq :eqr eqr :sr sr :qp-result qp-result}))
    eq-ids))
@@ -131,7 +132,7 @@
         first-eq      (:eq (first eq-results))
         first-sr      (:sr (first eq-results))
         src-card      (when-let [card-id (:card_id first-eq)]
-                        (explorations.db/card-presentation card-id))
+                        (queries.db/card card-id))
         composite-qp  (composite/combine eq-results (or visualization-settings {}))
         dataset-query (:dataset_query first-eq)
         creator-id    (:id creator)]

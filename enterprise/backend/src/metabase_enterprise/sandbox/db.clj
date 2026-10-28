@@ -15,10 +15,10 @@
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
-(mu/defn sandbox
-  "The Sandbox with `sandbox-id`, or nil."
+(mu/defn sandbox :- [:maybe ::sandbox.schema/sandbox]
+  "The ::sandbox.schema/sandbox with `sandbox-id`, or nil."
   [sandbox-id :- ::lib.schema.id/sandbox]
-  (t2/select-one :model/Sandbox :id sandbox-id))
+  (t2/select-one :model/Sandbox sandbox-id))
 
 (mu/defn sandboxes
   "Every Sandbox, in ID order."
@@ -150,11 +150,6 @@
                                     [:not= :login_attributes nil]
                                     [:not= :login_attributes "{}"]]]}))
 
-(mu/defn table
-  "The Table with `table-id`, or nil."
-  [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
-
 (mu/defn tables-of-database
   "The `:id`, `:db_id`, and `:schema` of the Tables of the Database with `db-id`, restricted to `schema` when
   `schema-only?`."
@@ -191,11 +186,6 @@
   "The query-related columns of the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
   (queries/cards-queries-info card-ids))
-
-(mu/defn card-result-metadata
-  "The result metadata of the Card with `card-id`."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :result_metadata :model/Card :id card-id))
 
 (mu/defn sandboxing-cards
   "The `:id`, `:dataset_query`, and `:database_id` of the Cards Sandboxes are built on."

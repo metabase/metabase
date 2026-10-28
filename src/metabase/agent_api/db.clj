@@ -9,22 +9,6 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(mu/defn collection-breadcrumb-columns
-  "The id, name, location, owner, namespace, and archival of the Collection with `collection-id`, or nil."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one [:model/Collection :id :name :location :personal_owner_id :namespace :archived_directly]
-                 collection-id))
-
-(mu/defn card
-  "The Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))
-
-(mu/defn dashboard
-  "The Dashboard with `dashboard-id`, or nil."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/Dashboard :id dashboard-id))
-
 (mu/defn dashboard-tab-names
   "The id and name of the DashboardTabs of the Dashboard with `dashboard-id`, in position order."
   [dashboard-id :- ::lib.schema.id/dashboard]
@@ -54,12 +38,6 @@
   "The DashboardCards of the Dashboard with `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select :model/DashboardCard :dashboard_id dashboard-id))
-
-(mu/defn dashcard-in-dashboard
-  "The DashboardCard with `dashcard-id` on the Dashboard with `dashboard-id`, or nil."
-  [dashcard-id  :- ::lib.schema.id/dashcard
-   dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/DashboardCard :id dashcard-id :dashboard_id dashboard-id))
 
 (mu/defn update-dashcard!
   "Apply `changes` to the DashboardCard with `dashcard-id`, returning the number updated."

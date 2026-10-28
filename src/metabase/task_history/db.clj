@@ -104,10 +104,10 @@
   [filters :- RunFilters]
   (t2/count :model/TaskRun (or (run-where filters) {})))
 
-(mu/defn task-run
-  "The TaskRun with `id`, or nil."
+(mu/defn task-run :- [:maybe ::task-history.schema/task-run]
+  "The ::task-history.schema/task-run with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/TaskRun :id id))
+  (t2/select-one :model/TaskRun id))
 
 (mu/defn tasks-for-run
   "The TaskHistory rows of the TaskRun with `run-id`, oldest first."

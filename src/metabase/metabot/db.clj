@@ -8,6 +8,7 @@
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.audit-app.core :as audit-app]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection.model]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -18,16 +19,17 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [toucan2.core :as t2]))
 
-(declare collection metabot-metrics-and-models-query root-collections-of-types)
+(declare metabot-metrics-and-models-query root-collections-of-types)
 
 ;;; ------------------------------------------------- Metabot -------------------------------------------------
 
-(mu/defn metabot
-  "The Metabot with `metabot-id`, or nil."
+(mu/defn metabot :- [:maybe ::metabot.schema/metabot]
+  "The ::metabot.schema/metabot with `metabot-id`, or nil."
   [metabot-id :- ms/PositiveInt]
-  (t2/select-one :model/Metabot :id metabot-id))
+  (t2/select-one :model/Metabot metabot-id))
 
 (mu/defn metabot-by-entity-id
   "The Metabot with `entity-id`, or nil."
@@ -141,20 +143,10 @@
 
 ;;; ----------------------------------------------- Conversations -----------------------------------------------
 
-(mu/defn conversation
-  "The MetabotConversation with `conversation-id`, or nil."
+(mu/defn metabot-conversation :- [:maybe ::metabot.schema/metabot-conversation]
+  "The ::metabot.schema/metabot-conversation with `conversation-id`, or nil."
   [conversation-id :- :string]
   (t2/select-one :model/MetabotConversation :id conversation-id))
-
-(mu/defn conversation-id-and-user-id
-  "The ID and originator of the MetabotConversation with `conversation-id`, or nil."
-  [conversation-id :- :string]
-  (t2/select-one [:model/MetabotConversation :id :user_id] :id conversation-id))
-
-(mu/defn conversation-title
-  "The title of the MetabotConversation with `conversation-id`."
-  [conversation-id :- :string]
-  (t2/select-one-fn :title :model/MetabotConversation :id conversation-id))
 
 (mu/defn lock-conversation
   "The MetabotConversation with `conversation-id`, locked for update."
@@ -300,7 +292,7 @@
   [conversation-id :- :string
    user-id :- ::lib.schema.id/user]
   (boolean
-   (when-let [{:keys [id user_id slack_thread_ts]} (conversation conversation-id)]
+   (when-let [{:keys [id user_id slack_thread_ts]} (metabot-conversation conversation-id)]
      ;; Anyone in a Slack thread can join its conversation, so the thread counts before a second person writes.
      ;; A thread older than the `slack_thread_ts` column shows as Slack only through its messages.
      ;; Whoever started a conversation can read it even when none of its messages name them.
@@ -416,11 +408,6 @@
 
 ;;; ------------------------------------------------ Databases ------------------------------------------------
 
-(mu/defn database-summary
-  "The ID, name, description, and engine of the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one [:model/Database :id :name :description :engine] database-id))
-
 (mu/defn database-with-columns
   "The `columns` of the Database with `database-id`."
   [columns :- [:sequential :keyword]
@@ -459,22 +446,6 @@
 
 ;;; ------------------------------------------------- Tables -------------------------------------------------
 
-(mu/defn table
-  "The Table with `table-id`, or nil."
-  [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
-
-(mu/defn active-table-with-columns
-  "The `columns` of the active Table with `table-id`, or nil."
-  [columns :- [:sequential :keyword]
-   table-id :- ::lib.schema.id/table]
-  (t2/select-one columns :id table-id :active true))
-
-(mu/defn table-database-id
-  "The Database ID of the Table with `table-id`."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
-
 (defn readable-active-table-database-id
   "The Database ID of the active Table with `table-id`, or nil when there is no such table *or*
   the current user cannot read it.
@@ -489,8 +460,8 @@
   and `:collection_id`. Handing it a trimmed row makes it answer a narrower question and deny a
   user whose access comes through that path."
   [table-id]
-  (when-let [table (t2/select-one :model/Table :id table-id :active true {:from [(warehouse-schema-overlay/table-query)]})]
-    (when (mi/can-read? table)
+  (when-let [table (warehouse-schema.db/table table-id)]
+    (when (and (:active table) (mi/can-read? table))
       (:db_id table))))
 
 (mu/defn tables-by-id
@@ -693,20 +664,10 @@
 
 ;;; ------------------------------------------------- Fields -------------------------------------------------
 
-(mu/defn field
-  "The Field with `field-id`, or nil."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
-
 (mu/defn fields
   "The Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
-
-(mu/defn field-fingerprint
-  "The fingerprint of the Field with `field-id`."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :fingerprint :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn field-table-ids
   "A map of Field ID to Table ID for `field-ids`."
@@ -715,26 +676,10 @@
 
 ;;; -------------------------------------------------- Cards --------------------------------------------------
 
-(mu/defn card
-  "The Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))
-
 (mu/defn card-by-entity-id
   "The Card with `entity-id`, or nil."
   [entity-id :- :string]
   (t2/select-one :model/Card :entity_id entity-id))
-
-(mu/defn card-of-type
-  "The Card with `card-id` if it is of `type`, or nil."
-  [card-id :- ::lib.schema.id/card
-   type :- [:enum :model :metric :question]]
-  (t2/select-one :model/Card :id card-id :type type))
-
-(mu/defn card-type-row
-  "The ID and type of the Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :id :type] :id card-id))
 
 (defn- metabot-metrics-and-models-query
   "Honey SQL query selecting the metric and model Cards in scope of the Metabot with `metabot-id` that are visible to
@@ -761,7 +706,7 @@
         ;; Columns are qualified with report_card because the official-collections branch joins
         ;; `collection`, which shares column names (type, archived, id) — unqualified refs would be ambiguous.
         collection-filter (if metabot-collection-id
-                            (let [metabot-collection (collection metabot-collection-id)
+                            (let [metabot-collection (collections.db/collection metabot-collection-id)
                                   collection-ids (conj (collection.model/descendant-ids metabot-collection) metabot-collection-id)]
                               [:in :report_card.collection_id collection-ids])
                             [:and true])
@@ -891,16 +836,6 @@
 
 ;;; ----------------------------------------------- Collections -----------------------------------------------
 
-(mu/defn collection
-  "The Collection with `collection-id`, or nil."
-  [collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/select-one :model/Collection :id collection-id))
-
-(mu/defn collection-name
-  "The name of the Collection with `collection-id`."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one-fn :name :model/Collection :id collection-id))
-
 (mu/defn collection-descriptions
   "A map of Collection ID to description for `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
@@ -942,21 +877,6 @@
   (t2/select :model/Collection :type [:in types] :location "/"))
 
 ;;; ---------------------------------------------- Other models ----------------------------------------------
-
-(mu/defn dashboard
-  "The Dashboard with `dashboard-id`, or nil."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/Dashboard dashboard-id))
-
-(mu/defn dashboard-summary
-  "The ID, description, name, Collection ID, and parameters of the Dashboard with `dashboard-id`, or nil."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one [:model/Dashboard :id :description :name :collection_id :parameters] dashboard-id))
-
-(mu/defn dashboard-name
-  "The name of the Dashboard with `dashboard-id`."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one-fn :name :model/Dashboard :id dashboard-id))
 
 (mu/defn dashboards-in-collection
   "Return unarchived dashboard summaries in a collection, ordered by name.
@@ -1047,12 +967,6 @@
                     {:order-by [[order-column :desc]]
                      :limit    limit}))
 
-(mu/defn user-summary
-  "The ID, email, and names of the User with `user-id`, or nil if `user-id` is nil or matches no User."
-  [user-id :- [:maybe ::lib.schema.id/user]]
-  (when user-id
-    (t2/select-one [:model/User :id :email :first_name :last_name] user-id)))
-
 (mu/defn user-summaries-by-id
   "A map of ID to the ID, email, and names of the Users with `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
@@ -1067,26 +981,6 @@
   "The ID and Collection ID of the Dashboards with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
   (t2/select [:model/Dashboard :id :collection_id] :id [:in ids]))
-
-(mu/defn measure-table-id
-  "The Table ID of the Measure with `id`, or nil."
-  [id :- ::lib.schema.id/measure]
-  (t2/select-one-fn :table_id :model/Measure :id id))
-
-(mu/defn segment-table-id
-  "The Table ID of the Segment with `id`, or nil."
-  [id :- ::lib.schema.id/segment]
-  (t2/select-one-fn :table_id :model/Segment :id id))
-
-(mu/defn measure-entity-id
-  "The entity ID of the Measure with `id`."
-  [id :- ::lib.schema.id/measure]
-  (t2/select-one-fn :entity_id :model/Measure :id id))
-
-(mu/defn segment-entity-id
-  "The entity ID of the Segment with `id`."
-  [id :- ::lib.schema.id/segment]
-  (t2/select-one-fn :entity_id :model/Segment :id id))
 
 (mu/defn measures
   "The ID, name, description, Table ID, and entity ID of the Measures with `ids`."

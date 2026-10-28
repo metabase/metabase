@@ -15,8 +15,8 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.xrays.automagic-dashboards.schema :as ads]
-   [metabase.xrays.db :as xrays.db]
    [ring.util.codec :as codec]))
 
 (mu/defn field-isa?
@@ -97,7 +97,7 @@
     (or
      ;; Handle integer Field IDs.
      (when (integer? id-or-name)
-       (xrays.db/field id-or-name))
+       (warehouse-schema.db/field id-or-name))
      ;; handle field string names. Only if we have result metadata. (Not sure why)
      (when (string? id-or-name)
        (when-not result-metadata

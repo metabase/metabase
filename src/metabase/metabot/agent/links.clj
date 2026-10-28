@@ -6,11 +6,13 @@
    [clojure.string :as str]
    [metabase.lib.core :as lib]
    [metabase.lib.schema]
-   [metabase.metabot.db :as metabot.db]
+   [metabase.measures.db :as measures.db]
+   [metabase.segments.db :as segments.db]
    [metabase.system.core :as system]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -158,7 +160,7 @@
   unknown."
   [entity-id]
   (let [measure-id (parse-long entity-id)
-        table-id   (some-> measure-id metabot.db/measure-table-id)]
+        table-id   (some-> measure-id measures.db/measure :table_id)]
     (if table-id
       (str "/data-studio/library/tables/" table-id "/measures/" measure-id)
       (log/warn "Measure not found for link resolution" {:measure-id entity-id}))))
@@ -168,8 +170,8 @@
   segment, or nil when the segment is unknown."
   [entity-id]
   (let [segment-id (parse-long entity-id)
-        table-id   (some-> segment-id metabot.db/segment-table-id)
-        db-id      (some-> table-id metabot.db/table-database-id)]
+        table-id   (some-> segment-id segments.db/segment :table_id)
+        db-id      (some-> table-id warehouse-schema.db/table :db_id)]
     (if db-id
       (str "/question#?db=" db-id "&table=" table-id "&segment=" segment-id)
       (log/warn "Segment not found for link resolution" {:segment-id entity-id}))))

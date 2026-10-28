@@ -28,8 +28,8 @@
                                           (:postgres :h2) :desc-nulls-last
                                           :mysql          :desc)]]}))
 
-(mu/defn api-key
-  "The ApiKey with `id`, or nil."
+(mu/defn api-key :- [:maybe ::api-keys.schema/api-key]
+  "The ::api-keys.schema/api-key with `id`, or nil."
   [id :- ms/PositiveInt]
   (t2/select-one :model/ApiKey id))
 

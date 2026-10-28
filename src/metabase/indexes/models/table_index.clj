@@ -102,7 +102,9 @@
 (defn select-applicable-by-id
   "Fetch a single applicable index request by id."
   [id]
-  (indexes.db/applicable-table-index id))
+  (let [table-index (indexes.db/table-index id)]
+    (when-not (= :delete-pending (:status table-index))
+      table-index)))
 
 (defn pending-changes-for-transform?
   "True when `transform-id` has index changes that require a full rebuild to apply."

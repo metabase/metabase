@@ -3,10 +3,10 @@
   (:require
    [metabase.api.common :as api]
    [metabase.metabot.agent.streaming :as streaming]
-   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.core :as tools]
-   [metabase.metabot.tools.shared.llm-shape :as llm-shape]))
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.queries.db :as queries.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -33,7 +33,7 @@
 
   (handle [_ {:keys [entity_id]} _ctx]
     (let [card (tools/with-entity {:kind :card :id entity_id}
-                 (api/read-check (metabot.db/card entity_id)))]
+                 (api/read-check (queries.db/card entity_id)))]
       {:output     (queued-output card)
        :data-parts [(streaming/static-viz-part {:entity_id entity_id})]})))
 

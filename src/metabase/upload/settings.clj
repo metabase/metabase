@@ -5,7 +5,8 @@
    [metabase.settings.core :refer [defsetting]]
    [metabase.upload.db :as upload.db]
    [metabase.util.i18n :refer [deferred-tru]]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (defn- not-handling-api-request?
   []
@@ -16,7 +17,7 @@
   [db-id]
   (or (not-handling-api-request?)
       (mi/can-write? :model/Database db-id)
-      (upload.db/database-is-attached-dwh? db-id)
+      (:is_attached_dwh (warehouses.db/database db-id))
       (api/throw-403)))
 
 (defsetting uploads-settings

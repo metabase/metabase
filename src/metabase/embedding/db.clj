@@ -3,9 +3,15 @@
   additional logic, so the rest of the module never talks to `toucan2.core` itself."
   (:require
    [metabase.app-db.core :as mdb]
+   [metabase.embedding.schema :as embedding.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
+
+(mu/defn embedding-theme :- [:maybe ::embedding.schema/embedding-theme]
+  "The ::embedding.schema/embedding-theme with `embedding-theme-id`, or nil."
+  [embedding-theme-id :- ms/PositiveInt]
+  (t2/select-one :model/EmbeddingTheme embedding-theme-id))
 
 (mu/defn count-embedded-cards
   "Number of Cards that have embedding enabled."
