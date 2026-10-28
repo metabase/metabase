@@ -233,7 +233,15 @@
                (-> (mt/user-http-request :crowberto :post 200 "notification" {:creator_id   (mt/user->id :rasta)
                                                                               :payload      {:card_id card-id}
                                                                               :payload_type "notification/card"})
-                   :creator_id)))))))
+                   :creator_id))))
+      (testing "a handler whose template has another channel type is a 400"
+        (mt/with-temp [:model/ChannelTemplate {slack-tmpl-id :id} {:channel_type :channel/slack}]
+          (is (= "Channel type and template type mismatch"
+                 (mt/user-http-request :crowberto :post 400 "notification"
+                                       {:payload      {:card_id card-id}
+                                        :payload_type "notification/card"
+                                        :handlers     [{:channel_type "channel/email"
+                                                        :template_id  slack-tmpl-id}]}))))))))
 
 (deftest notification-with-custom-template-test
   (mt/with-model-cleanup [:model/Notification]
