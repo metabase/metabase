@@ -1781,10 +1781,10 @@
       ;; Simulate a failure during card archiving
       (testing "failure during card archiving rolls back document archiving"
         (let [orig-update! (mt/original-fn #'t2/update!)]
-          (mt/with-dynamic-fn-redefs [t2/update! (fn [model id updates]
-                                                   (if (and (= model :model/Card) (:archived updates))
+          (mt/with-dynamic-fn-redefs [t2/update! (fn [model & args]
+                                                   (if (and (= model :model/Card) (:archived (last args)))
                                                      (throw (ex-info "Simulated card archive failure" {}))
-                                                     (orig-update! model id updates)))]
+                                                     (apply orig-update! model args)))]
             (mt/user-http-request :crowberto
                                   :put 500 (format "document/%s" doc-id)
                                   {:archived true})
