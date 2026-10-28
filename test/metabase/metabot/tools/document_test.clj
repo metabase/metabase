@@ -235,6 +235,52 @@
               (invoke-document-tool "document_construct_sql_chart"
                                     (assoc sql-chart-args :database_id (mt/id) :sql "SELECT * FROM NO_SUCH_TABLE")))))))
 
+(defn- databricks-error
+  "A Databricks-style query failure: the JDBC driver puts stack frames in its error text."
+  []
+  (let [text (str "[Databricks][JDBC](500051) ERROR processing query\n"
+                  "\tat com.databricks.client.hivecommon.api.HS2Client.executeStatement(Unknown Source)")]
+    (ex-info (str "Error executing query: " text)
+             {:type :invalid-query}
+             (java.sql.SQLException. text))))
+
+(defn- pool-checkout-timeout-error
+  "A saturated warehouse pool: the curated text wraps c3p0's library error."
+  []
+  (ex-info "Too many queries are running. Please try again in a moment."
+           {:type :connection-pool-checkout-timeout}
+           (java.sql.SQLException. "An attempt by a client to checkout a Connection has timed out."
+                                   (com.mchange.v2.resourcepool.TimeoutException. "timed out"))))
+
+(defn- referenced-card-error
+  "SQL with `{{#123}}` whose question fails to compile: only the outer messages name the tag and the question."
+  []
+  (let [parse-tag (ex-info (str "The sub-query from referenced question #123 failed with the following error: "
+                                "\"Unknown column BOGUS\"")
+                           {:card-query-error? true :card-id 123 :type :invalid-parameter}
+                           (ex-info "Unknown column BOGUS" {}))]
+    (ex-info (str "Error determining value for parameter \"#123\": " (ex-message parse-tag))
+             {:type :invalid-parameter}
+             parse-tag)))
+
+(deftest document-construct-sql-chart-caller-facing-text-test
+  (testing "a caller-facing failure reaches the model with its own text, without the stack frames a driver adds"
+    (doseq [[label thrown expected] [["Databricks stack frames" (databricks-error) "ERROR processing query\""]
+                                     ["saturated pool" (pool-checkout-timeout-error) "Too many queries are running."]
+                                     ["referenced question" (referenced-card-error) "referenced question #123"]]]
+      (testing label
+        (mt/with-dynamic-fn-redefs [create-sql-query-tools/create-sql-query
+                                    (fn [_]
+                                      {:validation-result {:valid? true :dialect "postgres"}
+                                       :action-result     {:query-id "q-1"
+                                                           :query    {:database 1
+                                                                      :type     "native"
+                                                                      :native   {:query "SELECT 1"}}}})
+                                    qp/process-query (fn [_] (throw thrown))]
+          (let [output (:output (invoke-document-tool "document_construct_sql_chart" sql-chart-args))]
+            (is (str/includes? output expected))
+            (is (not (str/includes? output "HS2Client")))))))))
+
 (deftest document-construct-sql-chart-h2-read-only-refusal-test
   (testing "H2's refusal of a statement that is not read-only reaches the model quoted, so the model can fix it"
     (mt/with-current-user (mt/user->id :crowberto)
