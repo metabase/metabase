@@ -51,7 +51,9 @@
                 :model/AuditLog :all :model/ViewLog :all
                 ;; Cards need to able to update their last used at timestamp, but we don't want to create
                 ;; new cards or update other fields.
-                :model/Card #{:id :last_used_at :updated_at}}
+                :model/Card #{:id :last_used_at :updated_at}
+                ;; Reading filter values stamps last_used_at so sync knows the values are in use.
+                :model/FieldValues #{:last_used_at :updated_at}}
                ;; These exceptions use table name instead of model name because you can actually bypass the model
                ;; and write toucan2 functions that interact with table directly.
                t2/table-name))
