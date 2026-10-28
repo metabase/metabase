@@ -1252,9 +1252,9 @@
 
 (defn- autoplace-or-remove-dashcards-for-card!
   "When moving around dashboard questions (cards that are internal to a dashboard), we need to remove or autoplace new
-  DashboardQuestions."
-  [{:as card-before-update
-    card-id :id
+  DashboardQuestions. Removes the outdated dashcards and returns the id of the Dashboard to autoplace the card on, if
+  any."
+  [{card-id :id
     old-archived :archived
     old-dashboard-id :dashboard_id}
    {:as card-updates
@@ -1277,9 +1277,6 @@
     (api/check-400
      (not (and dashboard-tab-id
                (not new-dashboard-id))))
-    ;; we'll end up unarchived and a dashboard card => make sure we autoplace
-    (when (and on-dashboard-after? (not archived-after?))
-      (autoplace-dashcard-for-card! new-dashboard-id dashboard-tab-id card-before-update nil))
     (when (and
            ;; we start out as a DQ, and
            on-dashboard-before?
@@ -1303,7 +1300,10 @@
       ;; removed from the dashboard" since you can't restore to the previous state...
       (queries.db/delete-dashcards-for-card-off-dashboard! card-id new-dashboard-id)
       (when-let [ids (seq (map :id (queries.db/dashcard-series-for-card-off-dashboard card-id new-dashboard-id)))]
-        (queries.db/delete-dashcard-series! ids)))))
+        (queries.db/delete-dashcard-series! ids)))
+    ;; we'll end up unarchived and a dashboard card => the caller autoplaces
+    (when (and on-dashboard-after? (not archived-after?))
+      new-dashboard-id)))
 
 (defn create-card!
   "Create a new Card. Metadata will be fetched off thread. If the metadata takes longer than [[metadata-sync-wait-ms]]
@@ -1565,8 +1565,8 @@
   ;; don't block our precious core.async thread, run the actual DB updates on a separate thread
   (t2/with-transaction [_conn]
     (api/maybe-reconcile-collection-position! (select-keys card-before-update [:collection_id :collection_position]) (select-keys card-updates [:collection_id :collection_position]))
-    (autoplace-or-remove-dashcards-for-card! card-before-update card-updates delete-old-dashcards?)
-    (let [updated-fields (u/select-keys-when card-updates
+    (let [autoplace-dashboard-id (autoplace-or-remove-dashcards-for-card! card-before-update card-updates delete-old-dashcards?)
+          updated-fields (u/select-keys-when card-updates
                                              ;; `collection_id` and `description` can be `nil` (in order to unset them).
                                              ;; Other values should only be modified if they're passed in as non-nil
                                              :present #{:collection_id :collection_position :description :cache_ttl :archived_directly :dashboard_id :document_id :embedding_type}
@@ -1578,6 +1578,9 @@
       (queries.db/update-card! (:id card-before-update)
                                (m/update-existing updated-fields :dataset_query
                                                   #(lib/normalize ::queries.schema/card.dataset-query %)))
+      ;; after the update, so a card joining a dashboard already carries that dashboard's collection when placed
+      (when autoplace-dashboard-id
+        (autoplace-dashcard-for-card! autoplace-dashboard-id (:dashboard_tab_id card-updates) card-before-update nil))
       (cache/invalidate-config! {:questions [(:id card-before-update)]
                                  :with-overrides? true}))
     ;; Update all transitively dependent cards if the database was changed (#74561)
