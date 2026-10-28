@@ -12,6 +12,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.describe-table-test :as describe-table-test]
    [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
+   [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    ;; Load the inherited test extensions, including the row-xform method used below.
@@ -230,14 +231,14 @@
 (defmethod tx/create-view-of-table! :motherduck
   [driver database view-name table-name options]
   (sql-jdbc.execute/do-with-connection-with-options
-   driver database {:write? true}
+   driver (driver.u/ensure-lib-database database) {:write? true}
    (fn [conn]
      (execute/execute-sql! driver conn (first (sql.tx/create-view-of-table-sql driver database view-name table-name options))))))
 
 (defmethod tx/drop-view! :motherduck
   [driver database view-name options]
   (sql-jdbc.execute/do-with-connection-with-options
-   driver database {:write? true}
+   driver (driver.u/ensure-lib-database database) {:write? true}
    (fn [conn]
      (execute/execute-sql! driver conn (first (sql.tx/drop-view-sql driver database view-name options))))))
 
