@@ -1,17 +1,17 @@
 ---
 title: Data actions
-summary: Data actions let data apps insert, update, or delete rows in your database. You can also run them in Data Studio or share them as public forms.
+summary: Data actions insert, update, or delete rows in your database. You can run them in Data Studio or share them as public forms.
 ---
 
 # Data actions
 
 _Data Studio > Data actions_
 
-Data actions are how [data apps](../data-apps/build.md) write to your database. A data app reads questions and metrics built on your [Library](./semantic-layer/library.md), and it saves changes through data actions. For example, a review queue can use a data action to approve a request, and an order portal can use one to mark an order as refunded.
+Data actions let people change the data in your database. For example, a data action can approve a request, or mark an order as refunded.
 
-Each data action does one job: it inserts, updates, or deletes rows. An admin sets up the action once, and people can only make the changes that the action allows. To see which actions an app can use, check out [What a data app can read and write](../data-apps/build.md#what-a-data-app-can-read-and-write).
+Each data action does one job: it inserts, updates, or deletes rows. An admin sets up the action once, and people can only make the changes that the action allows.
 
-You can also run data actions without a data app:
+You can run data actions in two ways:
 
 - **In Data Studio**, to test an action or make a one-off change. See [Run a data action](#run-a-data-action).
 - **As a public form**, to collect data from people outside Metabase, like event sign-ups or feedback. See [Share a data action as a public form](#share-a-data-action-as-a-public-form).
@@ -27,7 +27,7 @@ Only admins can create data actions. Data actions only work on PostgreSQL and My
 You can create a data action in two ways:
 
 - **[Write SQL](#create-a-data-action-with-sql)** for changes that need your own logic, like updating every order for a customer.
-- **[Pick a table](#create-a-data-action-that-changes-one-row)** for an action that adds, updates, or deletes one row. Metabase builds the form from the table's columns.
+- **[Pick a table](#create-a-data-action-that-changes-one-row)** for an action that adds, updates, or deletes one row.
 
 ### Create a data action with SQL
 
@@ -98,7 +98,7 @@ Anyone who can view a folder can run the actions in it. So use folders to give e
 
 ## Data action permissions
 
-Anyone who can view a data action's folder can run the action. To run an action in Data Studio, people also need [access to Data Studio](./data-studio.md#permissions-for-data-studio). People without access to Data Studio can run an action through a [public form](#share-a-data-action-as-a-public-form), or through a [data app that they can open](../data-apps/manage.md#choose-who-can-open-an-app).
+Anyone who can view a data action's folder can run the action. To run an action in Data Studio, people also need [access to Data Studio](./data-studio.md#permissions-for-data-studio). People without access to Data Studio can run an action through a [public form](#share-a-data-action-as-a-public-form).
 
 Only admins can create, edit, move, archive, or unarchive data actions and their folders. You can't give other groups [Curate access](../permissions/collections.md#collection-permission-levels) to data actions folders.
 
