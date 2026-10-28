@@ -101,7 +101,9 @@
   exactly how to reference the column.
 
   A column without a portable FK, like the renamed copy `NAME_2` or a computed column, carries its emitted string
-  `field_id` as `:reference_name`. The requested `field-id` is never a reference: `\"48\"` stays a lookup key."
+  `field_id` as `:reference_name`. The reference always comes from the column, never from the requested
+  `field-id`. A request for the numeric string `\"48\"` (the field ID of VENUES.NAME) still renders the
+  portable FK of VENUES.NAME, not `\"48\"`."
   [query col field-id limit]
   (let [result-col (metabot.tools.u/->result-column query col)]
     {:structured-output (merge {:result-type    :field-metadata
