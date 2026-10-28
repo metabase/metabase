@@ -37,6 +37,7 @@ export const createMockMetadataGenerationEstimate = (
   table_count: 10,
   field_count: 200,
   total_tokens: 86600,
+  model: "anthropic/claude-haiku-4-5",
   cost_usd: 0.134,
   unavailable_reason: null,
   ...opts,

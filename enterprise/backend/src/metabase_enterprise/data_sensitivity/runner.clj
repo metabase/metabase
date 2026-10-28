@@ -84,11 +84,15 @@
   {"claude-haiku-4-5"  {:input 1.00 :output 5.00 :cache_write 1.25 :cache_read 0.10}
    "claude-sonnet-4-6" {:input 3.00 :output 15.00 :cache_write 3.75 :cache_read 0.30}})
 
+(defn- model-price
+  "The [[price-per-million-tokens]] entry of `model`, or nil when it has none."
+  [model]
+  (some (fn [[k v]] (when (and model (str/includes? model k)) v)) price-per-million-tokens))
+
 (defn- call-cost
   "USD cost of `usage` on `model`, or nil when `model` has no price. `:input_tokens` includes both cache buckets."
   [model {:keys [input_tokens output_tokens cache_read_tokens cache_creation_tokens]}]
-  (when-let [{:keys [input output cache_write cache_read]}
-             (some (fn [[k v]] (when (and model (str/includes? model k)) v)) price-per-million-tokens)]
+  (when-let [{:keys [input output cache_write cache_read]} (model-price model)]
     (/ (+ (* (- input_tokens cache_read_tokens cache_creation_tokens) input)
           (* cache_creation_tokens cache_write)
           (* cache_read_tokens cache_read)
@@ -486,28 +490,40 @@
    #{:description}                                  {:tokens 245 :cost_usd 0.00054}
    #{:data_sensitivity :semantic_type :description} {:tokens 324 :cost_usd 0.00070}})
 
+(def ^:private bench-model "claude-haiku-4-5")
+
+(defn- price-ratio
+  "The price of `model` divided by the price of the [[per-field-cost]] bench model, or nil when `model` has no price.
+  The input price sets the ratio: the input and output prices of each listed model have the same ratio to Haiku 4.5."
+  [model]
+  (when-let [{:keys [input]} (model-price model)]
+    (/ input (:input (model-price bench-model)))))
+
 (mr/def ::estimate
   [:map {:closed true}
    [:table_count        ms/IntGreaterThanOrEqualToZero]
    [:field_count        ms/IntGreaterThanOrEqualToZero]
    [:total_tokens       ms/IntGreaterThanOrEqualToZero]
-   [:cost_usd           number?]
+   [:model              [:maybe :string]]
+   [:cost_usd           [:maybe number?]]
    [:unavailable_reason [:maybe :keyword]]])
 
 (mu/defn estimate :- ::estimate
-  "The size of a run that [[start-run!]] would start for `request`: tables, fields, and about how many tokens and USD
-  it uses. `:unavailable_reason` is why a start would fail now, or nil. Throws a 400 for the same scope errors as
-  [[start-run!]]."
+  "The size of a run that [[start-run!]] would start for `request`: tables, fields, the model, and about how many tokens
+  and USD it uses. `:cost_usd` is nil when the model has no price. `:unavailable_reason` is why a start would fail now,
+  or nil. Throws a 400 for the same scope errors as [[start-run!]]."
   [database :- (ms/InstanceOf :model/Database)
    request  :- ::start-request]
   (let [{:keys [attributes tables]} (parse-request (:id database) request)
         field-count (db/active-field-count (mapv :id tables))
         ratio       (or (per-field-cost (set attributes))
-                        (per-field-cost (set run/attributes)))]
+                        (per-field-cost (set run/attributes)))
+        model       (llm/default-model)]
     {:table_count        (count tables)
      :field_count        field-count
      :total_tokens       (* field-count (:tokens ratio))
-     :cost_usd           (* field-count (:cost_usd ratio))
+     :model              model
+     :cost_usd           (some->> (price-ratio model) (* field-count (:cost_usd ratio)))
      :unavailable_reason (core/unavailable-reason)}))
 
 ;;; Public API
