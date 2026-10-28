@@ -10,6 +10,8 @@ export function useReportGoalWarning(
     onUpdateGoalWarning?.(hasGoalWarning);
 
     // clear the warning when the chart unmounts, e.g. after a display switch
-    return () => onUpdateGoalWarning?.(false);
+    return () => {
+      onUpdateGoalWarning?.(false);
+    };
   }, [hasGoalWarning, onUpdateGoalWarning]);
 }

@@ -234,7 +234,7 @@ export function needsGraphGoalResolution(
   );
 }
 
-// no goal line is better than one at a made-up value
+// Hide an unresolved goal line: drawing it at a fallback value would misrepresent the data.
 export function applyGraphGoalValue(
   settings: ComputedVisualizationSettings,
   value: number | null,

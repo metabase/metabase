@@ -61,15 +61,15 @@ const SETTINGS: VisualizationSettings = {
 const FAILED = createMockFailedReferencedEntitiesResults();
 
 type SetupOpts = {
-  settings?: VisualizationSettings;
-  referencedEntities?: ReferencedEntitiesResults;
   onUpdateGoalWarning?: OnUpdateGoalWarning;
+  referencedEntities?: ReferencedEntitiesResults;
+  settings?: VisualizationSettings;
 };
 
 function setup({
-  settings = SETTINGS,
-  referencedEntities,
   onUpdateGoalWarning,
+  referencedEntities,
+  settings = SETTINGS,
 }: SetupOpts = {}) {
   const series: RawSeries = [
     createMockSingleSeries(
@@ -139,11 +139,11 @@ describe("row chart dynamic goal", () => {
 
   it("reads an answered goal as a percentage of a normalized stack", async () => {
     setup({
-      settings: { ...SETTINGS, "stackable.stack_type": "normalized" },
       referencedEntities: createMockReferencedEntitiesResults({
         column: "goal",
         value: 50,
       }),
+      settings: { ...SETTINGS, "stackable.stack_type": "normalized" },
     });
 
     const goalLine = await findGoalLine();
@@ -215,7 +215,7 @@ describe("row chart dynamic goal", () => {
 
   it("reports a goal warning when the reference cannot be resolved", async () => {
     const onUpdateGoalWarning = jest.fn<void, [boolean]>();
-    setup({ referencedEntities: FAILED, onUpdateGoalWarning });
+    setup({ onUpdateGoalWarning, referencedEntities: FAILED });
 
     await waitFor(() =>
       expect(onUpdateGoalWarning).toHaveBeenLastCalledWith(true),
@@ -225,11 +225,11 @@ describe("row chart dynamic goal", () => {
   it("reports no goal warning when the reference resolves", async () => {
     const onUpdateGoalWarning = jest.fn<void, [boolean]>();
     setup({
+      onUpdateGoalWarning,
       referencedEntities: createMockReferencedEntitiesResults({
         column: "goal",
         value: GOAL,
       }),
-      onUpdateGoalWarning,
     });
 
     await findGoalLine();
