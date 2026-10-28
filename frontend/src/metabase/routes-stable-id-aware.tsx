@@ -159,8 +159,9 @@ function handleResults({
     const id = entity_ids?.[value]?.id;
 
     if (type === "hash") {
-      // the hash only points inside the page, so an unknown entity id is
-      // dropped instead of showing a 404 for the whole page
+      // we don't show a 404 for missing hash params: the only one we have today
+      // is #scrollTo, the id of the dashcard to scroll to, and if it's missing we
+      // don't want to show an error but just drop it
       const hashOptions = parseHashOptions(nextHash);
       const hashString = stringifyHashOptions(
         id ? { ...hashOptions, [name]: String(id) } : _.omit(hashOptions, name),
