@@ -29,6 +29,7 @@ The dependency graph tracks the relationships between Metabase entities:
 - [Metrics](../../data-modeling/semantic-layer/metrics.md)
 - [Dashboards](../../dashboards/introduction.md)
 - [Documents](../../documents/introduction.md)
+- [Data apps](../../data-apps/start.md)
 
 Dependency graph will also show the dependencies of Metabase entities on the tables that serve as data sources for those entities.
 

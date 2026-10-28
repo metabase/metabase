@@ -13,10 +13,12 @@ import {
   PLUGIN_CUSTOM_VIZ,
 } from "metabase/plugins";
 import type { DispatchFn } from "metabase/redux/hooks";
+import { useForceUpdate } from "metabase/utils/use-force-update";
 import {
   getCustomPluginIdentifier,
   getPluginAssetUrl,
 } from "metabase/visualizations/custom-visualizations/custom-viz-utils";
+import { visualizations } from "metabase/viz-core";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type {
   CustomVizPluginId,
@@ -195,16 +197,29 @@ export function initializeSdkCustomVizPlugin() {
         // Regular (non-custom) displays are always allowed.
         !isCustomVizDisplay(display) || isCustomVizAllowed(display, allowlist);
 
-      useEffect(() => {
-        if (isCustomVizDisplay(display) && !allowed) {
-          unregisterCustomVizDisplay(display);
-        }
-      }, [display, allowed]);
+      // A plugin could have been loaded under a previous allow list and needs
+      // to be removed. We keep the viz unmounted (reporting loading) until it's
+      // unregistered, so it remounts with the fallback settings.
+      const needsUnregister =
+        isCustomVizDisplay(display) && !allowed && visualizations.has(display);
+      const forceUpdate = useForceUpdate();
 
-      return eeUseAutoLoadCustomVizPlugin(allowed ? display : undefined, {
-        sandboxMode,
-        onMessage: logUnavailableCustomVizMessage,
-      });
+      useEffect(() => {
+        if (needsUnregister && isCustomVizDisplay(display)) {
+          unregisterCustomVizDisplay(display);
+          forceUpdate();
+        }
+      }, [display, needsUnregister, forceUpdate]);
+
+      const result = eeUseAutoLoadCustomVizPlugin(
+        allowed ? display : undefined,
+        {
+          sandboxMode,
+          onMessage: logUnavailableCustomVizMessage,
+        },
+      );
+
+      return { ...result, loading: result.loading || needsUnregister };
     },
 
     useCustomVizPlugins: (opts?: { enabled?: boolean }) => {
