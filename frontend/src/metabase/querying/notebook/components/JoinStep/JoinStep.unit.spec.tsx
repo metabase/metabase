@@ -304,7 +304,7 @@ function setup({
     };
   }
 
-  return { getRecentJoin, changeQuery, mockWindowOpen };
+  return { getRecentJoin, changeQuery, updateQuery, mockWindowOpen };
 }
 
 async function enterCustomExpression(expression: string) {
@@ -779,6 +779,90 @@ describe("Notebook Editor > Join Step", () => {
       ).not.toBeInTheDocument();
     },
   );
+
+  describe("post-aggregation stage", () => {
+    it("should show 'Previous results' for a LHS aggregation column (metabase#17968)", async () => {
+      const query = Lib.createTestQuery(provider, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            aggregations: [{ type: "operator", operator: "count", args: [] }],
+            breakouts: [{ type: "column", name: "CREATED_AT" }],
+          },
+          {},
+        ],
+      });
+      setup({ step: createMockNotebookStep({ query, stageIndex: 1 }) });
+
+      await userEvent.click(
+        within(screen.getByLabelText("Right table")).getByRole("textbox"),
+      );
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: /Browse all/ }),
+      );
+      const modal = await screen.findByTestId("entity-picker-modal");
+      await waitForLoaderToBeRemoved();
+      await userEvent.click(await within(modal).findByText("Databases"));
+      await userEvent.click(await screen.findByText(/Sample Database/));
+      await userEvent.click(await within(modal).findByText("Products"));
+      const lhsColumnPicker = await screen.findByTestId("lhs-column-picker");
+      await userEvent.click(within(lhsColumnPicker).getByText("Count"));
+
+      const lhsColumn = screen.getByLabelText("Left column");
+      await waitFor(() => expect(lhsColumn).toHaveTextContent("Count"));
+      expect(lhsColumn).toHaveTextContent("Previous results");
+    });
+
+    it("should suggest a condition from a previous-stage breakout on a joined column", async () => {
+      const query = Lib.createTestQuery(provider, {
+        stages: [
+          {
+            source: { type: "table", id: ORDERS_ID },
+            joins: [
+              {
+                source: { type: "table", id: PRODUCTS_ID },
+                strategy: "left-join",
+                conditions: [
+                  {
+                    operator: "=",
+                    left: { type: "column", name: "PRODUCT_ID" },
+                    right: { type: "column", name: "ID" },
+                  },
+                ],
+              },
+            ],
+            aggregations: [{ type: "operator", operator: "count", args: [] }],
+            breakouts: [{ type: "column", name: "ID", joinAlias: "Products" }],
+          },
+          {},
+        ],
+      });
+      const { getRecentJoin } = setup({
+        step: createMockNotebookStep({ query, stageIndex: 1 }),
+      });
+
+      await userEvent.click(
+        within(screen.getByLabelText("Right table")).getByRole("textbox"),
+      );
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: /Browse all/ }),
+      );
+      const modal = await screen.findByTestId("entity-picker-modal");
+      await waitForLoaderToBeRemoved();
+      await userEvent.click(await within(modal).findByText("Databases"));
+      await userEvent.click(await screen.findByText(/Sample Database/));
+      await userEvent.click(await within(modal).findByText("Reviews"));
+
+      const { conditions } = getRecentJoin();
+      const [condition] = conditions;
+      expect(conditions).toHaveLength(1);
+      expect(condition.operator).toBe("=");
+      expect(condition.lhsExpression.longDisplayName).toBe("Products → ID");
+      expect(condition.rhsExpression.longDisplayName).toBe(
+        "Reviews → Product ID",
+      );
+    });
+  });
 
   describe("join strategies", () => {
     it("should be able to change the join strategy for a new join clause", async () => {
@@ -1265,6 +1349,24 @@ describe("Notebook Editor > Join Step", () => {
       ).not.toBeInTheDocument();
     });
 
+    it("should not add an incomplete condition to the query (metabase#17710)", async () => {
+      const { updateQuery } = setup({
+        step: createMockNotebookStep({ query: getJoinedQuery() }),
+      });
+
+      await userEvent.click(screen.getByLabelText("Add condition"));
+      const conditionContainer = screen.getByTestId("new-join-condition");
+      const lhsColumnPicker = await screen.findByTestId("lhs-column-picker");
+      await userEvent.click(within(lhsColumnPicker).getByText("Created At"));
+      await waitFor(() =>
+        expect(
+          within(conditionContainer).getByLabelText("Left column"),
+        ).toHaveTextContent("Created At"),
+      );
+
+      expect(updateQuery).not.toHaveBeenCalled();
+    });
+
     it("should remove a complete condition", async () => {
       const { getRecentJoin } = setup({
         step: createMockNotebookStep({
@@ -1520,6 +1622,50 @@ describe("Notebook Editor > Join Step", () => {
       await submitCustomExpression();
 
       const [condition] = getRecentJoin().conditions;
+      expect(condition.rhsExpression.longDisplayName).toBe("ID + 1");
+    });
+
+    it("should update an existing join with custom expressions on both sides", async () => {
+      const { getRecentJoin } = setup({
+        step: createMockNotebookStep({
+          query: getJoinedQueryWithCustomExpressions(
+            { type: "literal", value: 1 },
+            { type: "literal", value: 1 },
+          ),
+        }),
+      });
+
+      await userEvent.click(screen.getByLabelText("Change operator"));
+      await userEvent.click(
+        within(await screen.findByTestId("select-list")).getByLabelText("!="),
+      );
+      await userEvent.click(screen.getByLabelText("Change join type"));
+      await userEvent.click(
+        within(await screen.findByTestId("select-list")).getByLabelText(
+          "Inner join",
+        ),
+      );
+
+      await userEvent.click(screen.getByLabelText("Left column"));
+      expect(
+        await screen.findByTestId("custom-expression-query-editor"),
+      ).toHaveValue("1");
+      await enterCustomExpression("[[Product ID] + 1");
+      await submitCustomExpression();
+
+      await userEvent.click(screen.getByLabelText("Right column"));
+      expect(
+        await screen.findByTestId("custom-expression-query-editor"),
+      ).toHaveValue("1");
+      await enterCustomExpression("[[Products → ID] + 1");
+      await submitCustomExpression();
+
+      const { strategy, conditions } = getRecentJoin();
+      const [condition] = conditions;
+      expect(strategy.shortName).toBe("inner-join");
+      expect(conditions).toHaveLength(1);
+      expect(condition.operator).toBe("!=");
+      expect(condition.lhsExpression.longDisplayName).toBe("Product ID + 1");
       expect(condition.rhsExpression.longDisplayName).toBe("ID + 1");
     });
 
