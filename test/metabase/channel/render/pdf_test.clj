@@ -503,10 +503,10 @@
     (is (= :bar (#'pdf/effective-display
                  {:display "smartscalar"}
                  {:visualization_settings {:visualization {:display "bar"}}}))))
-  (testing "a visualizer dashcard without an explicit display falls back to the card display"
-    (is (= :line (#'pdf/effective-display
-                  {:display "line"}
-                  {:visualization_settings {:visualization {:settings {}}}})))))
+  (testing "a visualizer dashcard without an explicit display renders as a bar chart, as in the app"
+    (is (= :bar (#'pdf/effective-display
+                 {:display "line"}
+                 {:visualization_settings {:visualization {:settings {}}}})))))
 
 ;; --------------------------------------------------------------------------------------------
 ;; Text-layout characterization (golden) test.

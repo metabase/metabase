@@ -191,7 +191,8 @@
   (check-parameter-mapping-permissions (for [{:keys [card_id parameter_mappings]} dashcards
                                              mapping parameter_mappings]
                                          (assoc mapping :card-id card_id)))
-  ;; goals already on the dashboard reach the same viewers, so new dashcards may reuse them
+  ;; goals the dashboard stores were read-checked when saved, whatever their display, or predate that check and so
+  ;; already ran wherever the dashboard was shown, so new dashcards may reuse them
   (dashboard-card/with-copy-source-dashcards (:dashcards dashboard)
     (api/check-500 (dashboard/add-dashcards! dashboard dashcards))))
 

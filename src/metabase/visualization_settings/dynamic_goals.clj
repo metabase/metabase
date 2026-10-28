@@ -4,7 +4,8 @@
   truth for which settings carry goal values, so deriving the queries to run and substituting their
   results can never disagree. Mirrors `frontend/src/metabase/viz-core/lib/dynamic-goal-settings.ts`."
   (:require
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.visualization-settings.dynamic-goal-settings :as dynamic-goal-settings]))
 
 (set! *warn-on-reflection* true)
 
@@ -21,13 +22,13 @@
   {:graph.goal_value :graph.show_goal})
 
 (defn- shown-goal-settings
-  "[[goal-settings]] minus the ones this chart doesn't show."
-  [viz-settings]
+  "[[goal-settings]] that a chart with `display` draws and doesn't hide through a toggle in `viz-settings`."
+  [display viz-settings]
   (into {}
         (remove (fn [[setting _kind]]
                   (when-let [toggle (goal-toggles setting)]
                     (not (get viz-settings toggle)))))
-        goal-settings))
+        (select-keys goal-settings (dynamic-goal-settings/display->goal-settings (some-> display keyword)))))
 
 (defn goal-source
   "The `{:id N, :type \"card\", :column \"name\"}` reference inside `goal-value`, or nil if it isn't one."
@@ -52,14 +53,14 @@
   (values-in viz-settings goal-settings))
 
 (defn shown-goal-values
-  "Like [[goal-values]], minus the goals this chart doesn't show. Nothing renders those, so nothing
-  needs to run the queries behind them. Toggles come from `effective-settings`, which defaults to
-  `viz-settings`: reading one half of a card+dashcard pair has to consult the merge, since either half
-  can flip `graph.show_goal`."
-  ([viz-settings]
-   (shown-goal-values viz-settings viz-settings))
-  ([viz-settings effective-settings]
-   (values-in viz-settings (shown-goal-settings effective-settings))))
+  "Like [[goal-values]], minus the goals a chart with `display` doesn't show: settings another display owns, and
+  goals a toggle hides. Nothing renders those, so nothing needs to run the queries behind them. Toggles come from
+  `effective-settings`, which defaults to `viz-settings`: reading one half of a card+dashcard pair has to consult the
+  merge, since either half can flip `graph.show_goal`."
+  ([display viz-settings]
+   (shown-goal-values display viz-settings viz-settings))
+  ([display viz-settings effective-settings]
+   (values-in viz-settings (shown-goal-settings display effective-settings))))
 
 (defn- update-values-in
   [viz-settings settings f]
@@ -106,6 +107,39 @@
   (cond-> (update-goal-values viz-settings f)
     (map? (get-in viz-settings visualizer-settings-path))
     (update-in visualizer-settings-path update-goal-values f)))
+
+(defn- visualizer-chart
+  "The chart a visualizer dashcard draws, or nil when `dashcard` isn't one."
+  [dashcard]
+  (let [chart (get-in dashcard [:visualization_settings :visualization])]
+    (when (map? chart)
+      chart)))
+
+(defn goal-scope
+  "The chart `card` draws on `dashcard` (nil for a card on its own): its `:display`, the `:viz-settings` maps holding
+  its goals, and the `:effective-settings` their toggles are read from. Nil when `card` is a series card of the
+  dashcard, which draws no goals."
+  [card dashcard]
+  (let [dash-viz (:visualization_settings dashcard)
+        chart    (visualizer-chart dashcard)]
+    (cond
+      (and (:card_id dashcard) (not= (:id card) (:card_id dashcard)))
+      nil
+
+      ;; the chart is drawn from the nested settings, extended by the dashcard's own; the card's settings don't apply
+      chart
+      (let [{:keys [display settings]} chart
+            dash-viz                   (dissoc dash-viz :visualization)]
+        ;; the FE draws a visualizer without a display as a bar chart
+        {:display            (or display :bar)
+         :viz-settings       [settings dash-viz]
+         :effective-settings (merge settings dash-viz)})
+
+      :else
+      (let [card-viz (:visualization_settings card)]
+        {:display            (:display card)
+         :viz-settings       [card-viz dash-viz]
+         :effective-settings (merge card-viz dash-viz)}))))
 
 (defn- unresolved!
   [reason {:keys [id type column]}]
@@ -176,14 +210,14 @@
         segments))
 
 (defn resolve-dynamic-goals
-  "Substitute every shown goal value in `viz-settings` with its [[resolve-goal-value]] resolution, best-effort so the
-  chart still renders: a goal value that can't resolve falls back to 0, and a segment bound that can't resolve
-  becomes nil. A goal the chart doesn't show is left as-is. Toggles are read from `effective-settings`, which
-  defaults to `viz-settings`: resolving one half of a card+dashcard pair has to consult the merge, since either half
-  can flip `graph.show_goal`."
-  ([viz-settings referenced-entities]
-   (resolve-dynamic-goals viz-settings referenced-entities viz-settings))
-  ([viz-settings referenced-entities effective-settings]
+  "Substitute every goal value a chart with `display` shows in `viz-settings` with its [[resolve-goal-value]]
+  resolution, best-effort so the chart still renders: a goal value that can't resolve falls back to 0, and a segment
+  bound that can't resolve becomes nil. A goal the chart doesn't show is left as-is. Toggles are read from
+  `effective-settings`, which defaults to `viz-settings`: resolving one half of a card+dashcard pair has to consult
+  the merge, since either half can flip `graph.show_goal`."
+  ([display viz-settings referenced-entities]
+   (resolve-dynamic-goals display viz-settings referenced-entities viz-settings))
+  ([display viz-settings referenced-entities effective-settings]
    (let [resolve-fn #(resolve-goal-value % referenced-entities)]
      (reduce-kv
       (fn [viz setting kind]
@@ -193,4 +227,25 @@
             :value    (update viz setting #(or (resolve-or-nil resolve-fn %) 0))
             :segments (update viz setting resolve-segments resolve-fn))))
       viz-settings
-      (shown-goal-settings effective-settings)))))
+      (shown-goal-settings display effective-settings)))))
+
+(defn resolve-drawn-goals
+  "Resolve the goals `card` draws on `dashcard` (see [[goal-scope]]) against `data`'s `:referenced_entities`, in
+  every settings map a renderer reads them from. Returns `[card dashcard data]`; goals the chart doesn't draw are left
+  as stored."
+  [card dashcard data]
+  (if-let [{:keys [display effective-settings]} (goal-scope card dashcard)]
+    (let [resolve-fn  #(resolve-dynamic-goals display % (:referenced_entities data) effective-settings)
+          resolve-in  (fn [m path]
+                        (cond-> m
+                          (get-in m path) (update-in path resolve-fn)))
+          ;; a visualizer's chart reads its goals from neither the card's settings nor the result's merge of them
+          visualizer? (some? (visualizer-chart dashcard))]
+      [(cond-> card
+         (not visualizer?) (resolve-in [:visualization_settings]))
+       (some-> dashcard
+               (resolve-in [:visualization_settings])
+               (resolve-in (into [:visualization_settings] visualizer-settings-path)))
+       (cond-> data
+         (not visualizer?) (resolve-in [:viz-settings]))])
+    [card dashcard data]))

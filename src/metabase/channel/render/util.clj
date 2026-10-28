@@ -42,11 +42,12 @@
         (get-in dashcard [:visualization_settings :visualization]))))
 
 (defn visualizer-display-type
-  "The display type a visualizer dashcard renders as (from its visualizer viz settings), or nil when
-  `dashcard` isn't a visualizer dashcard."
+  "The display type a visualizer dashcard renders as (from its visualizer viz settings, or `:bar` when they name
+  none, as in the app), or nil when `dashcard` isn't a visualizer dashcard."
   [dashcard]
   (when (is-visualizer-dashcard? dashcard)
-    (-> dashcard :visualization_settings :visualization :display keyword)))
+    (or (some-> dashcard :visualization_settings :visualization :display keyword)
+        :bar)))
 
 (defn merged-viz-settings
   "Merge a card's and dashcard's `:visualization_settings`, with the dashcard's taking precedence."

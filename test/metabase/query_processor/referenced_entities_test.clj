@@ -174,41 +174,56 @@
       (is (nil? (get-in response [:data :referenced_entities]))))))
 
 (deftest viz-settings->goal-specs-test
-  (testing "GoalSource references are extracted from the 3 dynamic-goal viz settings and grouped by entity"
+  (testing "GoalSource references are extracted from the dynamic-goal viz settings and grouped by entity"
     (testing "a :graph.goal_value GoalSource"
       (is (= [{:type "card" :id 1 :columns ["total"]}]
              (referenced-entities/viz-settings->goal-specs
-              {:graph.show_goal true, :graph.goal_value {:id 1 :type "card" :column "total"}}))))
+              :line {:graph.show_goal true, :graph.goal_value {:id 1 :type "card" :column "total"}}))))
     (testing "a :graph.goal_value GoalSource the chart doesn't show is skipped"
-      (are [viz] (nil? (referenced-entities/viz-settings->goal-specs viz))
+      (are [viz] (nil? (referenced-entities/viz-settings->goal-specs :line viz))
         {:graph.goal_value {:id 1 :type "card" :column "total"}}
         {:graph.show_goal false, :graph.goal_value {:id 1 :type "card" :column "total"}}))
-    (testing ":gauge.segments and :scalar.segments min/max, grouped + de-duped by entity"
+    (testing ":gauge.segments min/max, grouped + de-duped by entity"
       (is (= {["card" 1]    ["sum" "avg"]
               ["measure" 2] ["total"]}
              (into {} (map (juxt (juxt :type :id) :columns))
                    (referenced-entities/viz-settings->goal-specs
-                    {:gauge.segments  [{:min 0 :max {:id 1 :type "card" :column "sum"}}
-                                       {:min {:id 1 :type "card" :column "avg"}
-                                        :max {:id 1 :type "card" :column "sum"}}]
-                     :scalar.segments [{:min {:id 2 :type "measure" :column "total"} :max nil :color "red"}]})))))
+                    :gauge
+                    {:gauge.segments [{:min 0 :max {:id 1 :type "card" :column "sum"}}
+                                      {:min {:id 1 :type "card" :column "avg"}
+                                       :max {:id 1 :type "card" :column "sum"}}
+                                      {:min {:id 2 :type "measure" :column "total"} :max nil :color "red"}]})))))
     (testing "a card and a measure with the same id stay separate"
       (is (= 2 (count (referenced-entities/viz-settings->goal-specs
+                       :gauge
                        {:gauge.segments [{:min {:id 1 :type "card" :column "a"}
                                           :max {:id 1 :type "measure" :column "b"}}]})))))
     (testing "static numbers and bare-string self-column references are ignored"
       (is (nil? (referenced-entities/viz-settings->goal-specs
-                 {:graph.show_goal  true
-                  :graph.goal_value 100
-                  :gauge.segments   [{:min 0 :max 50}
-                                     {:min "self_col" :max 100}]})))))
+                 :gauge
+                 {:gauge.segments [{:min 0 :max 50}
+                                   {:min "self_col" :max 100}]})))))
+  (testing "only the goal settings the display draws run"
+    (let [viz {:graph.show_goal  true
+               :graph.goal_value {:id 1 :type "card" :column "a"}
+               :progress.goal    {:id 2 :type "card" :column "b"}
+               :gauge.segments   [{:max {:id 3 :type "card" :column "c"}}]
+               :scalar.segments  [{:max {:id 4 :type "card" :column "d"}}]}]
+      (are [display ids] (= ids (set (map :id (referenced-entities/viz-settings->goal-specs display viz))))
+        :line       #{1}
+        :progress   #{2}
+        :gauge      #{3}
+        :scalar     #{4}
+        :table      #{}
+        :custom:foo #{})))
   (testing "no goal settings at all -> nil"
-    (is (nil? (referenced-entities/viz-settings->goal-specs {})))))
+    (is (nil? (referenced-entities/viz-settings->goal-specs :line {})))))
 
 (deftest card-endpoint-viz-settings-referenced-entities-test
   (testing "POST /api/card/:id/query derives referenced entities from a :graph.goal_value GoalSource"
     (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}
                    :model/Card {chart-id :id} {:dataset_query          (mt/mbql-query venues {:aggregation [[:count]]})
+                                               :display                :line
                                                :visualization_settings {:graph.show_goal  true
                                                                         :graph.goal_value {:id     goal-id
                                                                                            :type   "card"
@@ -233,7 +248,8 @@
 (deftest dashcard-endpoint-referenced-entities-test
   (testing "POST /api/dashboard/.../dashcard/.../card/.../query reads a GoalSource from the *merged* viz settings"
     (mt/with-temp [:model/Card      {goal-id :id}     {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}
-                   :model/Card      {chart-id :id}    {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})}
+                   :model/Card      {chart-id :id}    {:dataset_query (mt/mbql-query venues {:aggregation [[:count]]})
+                                                       :display       :gauge}
                    :model/Dashboard {dash-id :id}     {}
                    ;; the dynamic goal lives on the DASHCARD's viz settings, exercising the card+dashcard merge
                    :model/DashboardCard {dashcard-id :id} {:dashboard_id            dash-id
@@ -301,11 +317,127 @@
                                            (format "dashboard/%d/dashcard/%d/card/%d/query" dash-id dashcard-id chart-id))]
         (is (nil? (get-in response [:data :referenced_entities])))))))
 
+;;; GDGT-3158: a goal only runs when the chart the user sees draws the setting holding it
+
+(defn- goal-ref [card-id]
+  {:id card-id :type "card" :column "count"})
+
+(defn- count-query [table]
+  {:database (mt/id)
+   :type     :query
+   :query    {:source-table (mt/id table) :aggregation [[:count]]}})
+
+(defn- chart-card
+  "With-temp attributes of a card counting venues, drawn as `display` with `viz-settings`."
+  [display viz-settings]
+  {:dataset_query          (count-query :venues)
+   :display                display
+   :visualization_settings viz-settings})
+
+(defn- card-query-referenced-entities [card-id]
+  (-> (mt/user-http-request :crowberto :post 202 (format "card/%d/query" card-id))
+      :data
+      :referenced_entities))
+
+(defn- dashcard-query-referenced-entities [dash-id dashcard-id card-id]
+  (-> (mt/user-http-request :crowberto :post 202
+                            (format "dashboard/%d/dashcard/%d/card/%d/query" dash-id dashcard-id card-id))
+      :data
+      :referenced_entities))
+
+(deftest card-display-goal-guard-test
+  (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (count-query :checkins)}]
+    (let [shown-goal {:graph.show_goal true :graph.goal_value (goal-ref goal-id)}
+          all-goals  (assoc shown-goal
+                            :progress.goal   (goal-ref goal-id)
+                            :gauge.segments  [{:min 0 :max (goal-ref goal-id)}]
+                            :scalar.segments [{:min (goal-ref goal-id) :max nil}])
+          segments   {:gauge.segments [{:min 0 :max (goal-ref goal-id)}]}]
+      (testing "a custom visualization's bare goal settings, written by its plugin before namespacing, never run"
+        (mt/with-temp [:model/Card {chart-id :id} (chart-card "custom:my-viz" all-goals)]
+          (is (nil? (card-query-referenced-entities chart-id)))))
+      (testing "a built-in display runs only the goal settings it draws"
+        (doseq [display [:line :progress :gauge :scalar]]
+          (mt/with-temp [:model/Card {chart-id :id} (chart-card display segments)]
+            (testing display
+              (is (= (= display :gauge)
+                     (some? (get-in (card-query-referenced-entities chart-id) [:card goal-id]))))))))
+      (testing "switching the display to one that draws the setting starts running it, and switching back stops it"
+        (mt/with-temp [:model/Card {chart-id :id} (chart-card :bar segments)]
+          (is (nil? (card-query-referenced-entities chart-id)))
+          (mt/user-http-request :crowberto :put 200 (format "card/%d" chart-id) {:display "gauge"})
+          (is (= "completed" (get-in (card-query-referenced-entities chart-id) [:card goal-id :status])))
+          (mt/user-http-request :crowberto :put 200 (format "card/%d" chart-id) {:display "bar"})
+          (is (nil? (card-query-referenced-entities chart-id)))))
+      (testing "a dashcard's goal follows its card's display"
+        (mt/with-temp [:model/Card      {bar-id :id}    (chart-card :bar {})
+                       :model/Card      {custom-id :id} (chart-card "custom:my-viz" {})
+                       :model/Dashboard {dash-id :id}   {}
+                       :model/DashboardCard {bar-dashcard-id :id}    {:dashboard_id           dash-id
+                                                                      :card_id                bar-id
+                                                                      :visualization_settings shown-goal}
+                       :model/DashboardCard {custom-dashcard-id :id} {:dashboard_id           dash-id
+                                                                      :card_id                custom-id
+                                                                      :visualization_settings shown-goal}]
+          (is (= "completed" (get-in (dashcard-query-referenced-entities dash-id bar-dashcard-id bar-id)
+                                     [:card goal-id :status])))
+          (is (nil? (dashcard-query-referenced-entities dash-id custom-dashcard-id custom-id)))))
+      (testing "a public custom visualization doesn't run its bare goal settings"
+        (mt/with-temporary-setting-values [enable-public-sharing true]
+          (mt/with-temp [:model/Card {uuid :public_uuid} (assoc (chart-card "custom:my-viz"
+                                                                            {:progress.goal (goal-ref goal-id)})
+                                                                :public_uuid (str (random-uuid)))]
+            (let [response (client/client :get 202 (str "public/card/" uuid "/query"))]
+              (is (= "completed" (:status response)))
+              (is (nil? (get-in response [:data :referenced_entities]))))))))))
+
+(deftest visualizer-display-goal-guard-test
+  (mt/with-temp [:model/Card      {goal-id :id}  {:dataset_query (count-query :checkins)}
+                 ;; a visualizer draws its own chart, so the card's goal never shows
+                 :model/Card      {chart-id :id} (chart-card :bar {:graph.show_goal  true
+                                                                   :graph.goal_value (goal-ref goal-id)})
+                 :model/Dashboard {dash-id :id}  {}]
+    (let [run   (fn [dash-viz]
+                  (mt/with-temp [:model/DashboardCard {dashcard-id :id} {:dashboard_id           dash-id
+                                                                         :card_id                chart-id
+                                                                         :visualization_settings dash-viz}]
+                    (some? (get-in (dashcard-query-referenced-entities dash-id dashcard-id chart-id)
+                                   [:card goal-id]))))
+          chart (fn [display settings]
+                  {:visualization {:display display :settings settings}})]
+      (testing "the nested chart's display decides which nested goals run"
+        (is (true? (run (chart "progress" {:progress.goal (goal-ref goal-id)}))))
+        (is (false? (run (chart "bar" {:progress.goal (goal-ref goal-id)}))))
+        (is (true? (run (chart "gauge" {:gauge.segments [{:max (goal-ref goal-id)}]})))))
+      (testing "the primary card's own goal doesn't run"
+        (is (false? (run (chart "bar" {})))))
+      (testing "the dashcard's own goal runs when the nested chart draws it, with toggles from both"
+        (is (true? (run (merge (chart "line" {:graph.show_goal true})
+                               {:graph.goal_value (goal-ref goal-id)}))))
+        (is (false? (run (merge (chart "line" {})
+                                {:graph.goal_value (goal-ref goal-id)}))))))))
+
+(deftest multi-series-goal-guard-test
+  (testing "only the main card of a multi-series dashcard runs goals; its series cards only feed it data"
+    (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (count-query :checkins)}]
+      (let [shown-goal {:graph.show_goal true :graph.goal_value (goal-ref goal-id)}]
+        (mt/with-temp [:model/Card      {chart-id :id}  (chart-card :bar {})
+                       :model/Card      {series-id :id} (chart-card :line shown-goal)
+                       :model/Dashboard {dash-id :id}   {}
+                       :model/DashboardCard {dashcard-id :id} {:dashboard_id           dash-id
+                                                               :card_id                chart-id
+                                                               :visualization_settings shown-goal}
+                       :model/DashboardCardSeries _ {:dashboardcard_id dashcard-id :card_id series-id}]
+          (is (= "completed" (get-in (dashcard-query-referenced-entities dash-id dashcard-id chart-id)
+                                     [:card goal-id :status])))
+          (is (nil? (dashcard-query-referenced-entities dash-id dashcard-id series-id))))))))
+
 (deftest public-card-endpoint-referenced-entities-test
   (testing "GET /api/public/card/:uuid/query injects referenced_entities (survives the public result whitelist)"
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (mt/with-temp [:model/Card {goal-id :id} {:dataset_query (mt/mbql-query checkins {:aggregation [[:count]]})}
                      :model/Card {uuid :public_uuid} {:dataset_query           (mt/mbql-query venues {:aggregation [[:count]]})
+                                                      :display                 :scalar
                                                       :public_uuid             (str (random-uuid))
                                                       :visualization_settings  {:scalar.segments
                                                                                 [{:min   {:id     goal-id
@@ -344,6 +476,7 @@
                                                     :table_id   (mt/id :venues)
                                                     :definition (venues-count-measure)}
                    :model/Card    {chart-id :id}   {:dataset_query          (mt/mbql-query checkins {:aggregation [[:count]]})
+                                                    :display                :bar
                                                     :visualization_settings {:graph.show_goal  true
                                                                              :graph.goal_value {:id     measure-id
                                                                                                 :type   "measure"

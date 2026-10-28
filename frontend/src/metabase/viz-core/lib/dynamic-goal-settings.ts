@@ -1,4 +1,6 @@
+import { DYNAMIC_GOAL_SETTINGS_BY_DISPLAY_JSON } from "cljs/metabase.visualization_settings.dynamic_goal_settings";
 import type { VisualizationDisplay } from "metabase-types/api";
+import { isObject } from "metabase-types/guards";
 
 export type GoalSettingKey =
   | "graph.goal_value"
@@ -16,26 +18,24 @@ export const GOAL_SETTINGS: Record<GoalSettingKey, GoalSettingKind> = {
   "scalar.segments": "segments",
 };
 
-const DYNAMIC_GOAL_SETTINGS_BY_DISPLAY: Partial<
-  Record<VisualizationDisplay, GoalSettingKey[]>
-> = {
-  area: ["graph.goal_value"],
-  bar: ["graph.goal_value"],
-  boxplot: ["graph.goal_value"],
-  combo: ["graph.goal_value"],
-  gauge: ["gauge.segments"],
-  line: ["graph.goal_value"],
-  progress: ["progress.goal"],
-  row: ["graph.goal_value"],
-  scalar: ["scalar.segments"],
-  scatter: ["graph.goal_value"],
-  waterfall: ["graph.goal_value"],
-};
+// Shared with the BE (metabase.visualization-settings.dynamic-goal-settings)
+const DYNAMIC_GOAL_SETTINGS_BY_DISPLAY: unknown =
+  DYNAMIC_GOAL_SETTINGS_BY_DISPLAY_JSON;
+
+function isGoalSettingKey(key: unknown): key is GoalSettingKey {
+  return typeof key === "string" && Object.hasOwn(GOAL_SETTINGS, key);
+}
 
 export function getDynamicGoalSettingKeys(
   display: VisualizationDisplay | undefined,
 ): GoalSettingKey[] {
-  return display !== undefined
-    ? (DYNAMIC_GOAL_SETTINGS_BY_DISPLAY[display] ?? [])
-    : [];
+  if (
+    display === undefined ||
+    !isObject(DYNAMIC_GOAL_SETTINGS_BY_DISPLAY) ||
+    !Object.hasOwn(DYNAMIC_GOAL_SETTINGS_BY_DISPLAY, display)
+  ) {
+    return [];
+  }
+  const keys = DYNAMIC_GOAL_SETTINGS_BY_DISPLAY[display];
+  return Array.isArray(keys) ? keys.filter(isGoalSettingKey) : [];
 }
