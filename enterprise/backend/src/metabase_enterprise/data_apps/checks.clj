@@ -8,6 +8,7 @@
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase.actions.schema :as actions.schema]
    [metabase.api.common :as api]
+   [metabase.collections.core :as collections]
    [metabase.data-apps.core :as data-apps]
    [metabase.data-apps.schema :as data-apps.schema]
    [metabase.lib-be.schema :as lib-be.schema]
