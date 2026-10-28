@@ -857,7 +857,8 @@
        diagnostics over every custom column / aggregation / filter
        ([[repr.repair/assert-editor-accepts-expressions!]]), then reject a temporal bucket
        sitting on a column that is not temporal
-       ([[repr.repair/assert-temporal-buckets-on-temporal-columns!]]). Any of the three
+       ([[repr.repair/assert-temporal-buckets-on-temporal-columns!]]), and reject a metric whose
+       definition can't run on the stage's source ([[incompatible-metrics]]). Any of these
        failing is a retryable `:agent-error?` - success on a query the editor rejects is
        BOT-1442.
     7. Export that final numeric MBQL 5 back to the portable form for the LLM-facing
