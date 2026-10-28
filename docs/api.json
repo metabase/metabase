@@ -9237,7 +9237,7 @@
       },
       "metabase.driver.connection.connection-type" : {
         "type" : "string",
-        "enum" : [ "default", "write-data", "admin", "transform" ]
+        "enum" : [ "default", "write-data", "transform" ]
       },
       "metabase.driver.index-field" : {
         "description" : "One form field describing how to request an index: the same shape as a [[connection-properties]] descriptor, plus a\n  `:columns` type for the indexed columns.",
@@ -13318,6 +13318,9 @@
               "type" : "null"
             } ]
           },
+          "qp/non-default-parameterized?" : {
+            "type" : "boolean"
+          },
           "lib/type" : {
             "default" : "mbql/query",
             "const" : "mbql/query"
@@ -14908,7 +14911,7 @@
       "metabase.lib.schema.info.context" : {
         "description" : "Schema for `info.context`; used for informational purposes to record how a query was executed.",
         "type" : "string",
-        "enum" : [ "action", "action-execute", "ad-hoc", "agent", "cache-refresh", "collection", "map-tiles", "metric", "pulse", "dashboard-subscription", "dashboard", "question", "csv-download", "xlsx-download", "json-download", "public-action-execute", "public-dashboard", "public-question", "public-csv-download", "public-xlsx-download", "public-json-download", "embedded-dashboard", "embedded-question", "embedded-csv-download", "embedded-xlsx-download", "embedded-json-download", "table-grid", "table-rows-sample", "transform-inspector", "slackbot", "exploration" ]
+        "enum" : [ "action", "action-execute", "ad-hoc", "agent", "cache-refresh", "collection", "map-tiles", "metabot", "metric", "pulse", "dashboard-subscription", "dashboard", "question", "csv-download", "xlsx-download", "json-download", "public-action-execute", "public-dashboard", "public-question", "public-csv-download", "public-xlsx-download", "public-json-download", "embedded-dashboard", "embedded-question", "embedded-csv-download", "embedded-xlsx-download", "embedded-json-download", "table-grid", "table-rows-sample", "transform-inspector", "slackbot", "exploration" ]
       },
       "metabase.lib.schema.info.hash" : {
         "type" : "string",
@@ -19296,6 +19299,9 @@
               }, {
                 "type" : "null"
               } ]
+            },
+            "qp/non-default-parameterized?" : {
+              "type" : "boolean"
             },
             "lib/type" : {
               "default" : "mbql/query",
@@ -43197,19 +43203,8 @@
       "get" : {
         "operationId" : "get-api-ee-apps",
         "summary" : "GET /api/ee/apps",
-        "description" : "List the data apps. Pass `available=true` to return only enabled apps. Disabled and outdated apps are listed only\n  to superusers, who see them badged, and never as available.",
-        "parameters" : [ {
-          "in" : "query",
-          "name" : "available",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        } ],
+        "description" : "List the data apps the user can read. Disabled and outdated apps are listed only to superusers, who see them\n  badged.",
+        "parameters" : [ ],
         "responses" : {
           "2XX" : {
             "description" : "Successful response",
@@ -43285,6 +43280,9 @@
                           "type" : "string",
                           "minLength" : 1
                         },
+                        "enabled" : {
+                          "type" : "boolean"
+                        },
                         "id" : {
                           "description" : "value must be an integer greater than zero.",
                           "type" : "integer",
@@ -43293,9 +43291,12 @@
                         "name" : {
                           "type" : "string",
                           "minLength" : 1
+                        },
+                        "outdated" : {
+                          "type" : "boolean"
                         }
                       },
-                      "required" : [ "id", "name", "display_name" ],
+                      "required" : [ "id", "name", "display_name", "enabled", "outdated" ],
                       "additionalProperties" : false
                     } ]
                   }
@@ -43620,7 +43621,7 @@
       "delete" : {
         "operationId" : "delete-api-ee-apps-slug",
         "summary" : "DELETE /api/ee/apps/{slug}",
-        "description" : "Delete a data app, its bundle, its collection, and its group assignments.",
+        "description" : "Delete a data app, its bundle, and its collection with the grants on it.",
         "parameters" : [ {
           "in" : "path",
           "name" : "slug",
@@ -43736,6 +43737,9 @@
                         "type" : "string",
                         "minLength" : 1
                       },
+                      "enabled" : {
+                        "type" : "boolean"
+                      },
                       "id" : {
                         "description" : "value must be an integer greater than zero.",
                         "type" : "integer",
@@ -43744,9 +43748,12 @@
                       "name" : {
                         "type" : "string",
                         "minLength" : 1
+                      },
+                      "outdated" : {
+                        "type" : "boolean"
                       }
                     },
-                    "required" : [ "id", "name", "display_name" ],
+                    "required" : [ "id", "name", "display_name", "enabled", "outdated" ],
                     "additionalProperties" : false
                   } ]
                 }
@@ -43918,7 +43925,7 @@
       "get" : {
         "operationId" : "get-api-ee-apps-slug-group-permission-warnings",
         "summary" : "GET /api/ee/apps/{slug}/group-permission-warnings",
-        "description" : "Return missing table access for groups already assigned to this app.",
+        "description" : "Return missing table access for the groups listed for this app.",
         "parameters" : [ {
           "in" : "path",
           "name" : "slug",
@@ -43996,7 +44003,7 @@
       "get" : {
         "operationId" : "get-api-ee-apps-slug-groups",
         "summary" : "GET /api/ee/apps/{slug}/groups",
-        "description" : "List the groups assigned to a data app.",
+        "description" : "List the groups other than Administrators that can read a data app's resource collection.",
         "parameters" : [ {
           "in" : "path",
           "name" : "slug",
@@ -44048,7 +44055,7 @@
       "post" : {
         "operationId" : "post-api-ee-apps-slug-groups",
         "summary" : "POST /api/ee/apps/{slug}/groups",
-        "description" : "Assign a batch of internal groups atomically.",
+        "description" : "Grant a batch of internal groups read access to a data app's resource collection atomically.",
         "parameters" : [ {
           "in" : "path",
           "name" : "slug",
@@ -44125,7 +44132,7 @@
       "delete" : {
         "operationId" : "delete-api-ee-apps-slug-groups-group-id",
         "summary" : "DELETE /api/ee/apps/{slug}/groups/{group-id}",
-        "description" : "Remove a group's assignment and collection access.",
+        "description" : "Revoke a group's access to a data app's resource collection.",
         "parameters" : [ {
           "in" : "path",
           "name" : "slug",

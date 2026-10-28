@@ -271,6 +271,7 @@ config:
     metabot-recent-views-enabled: true
     metabot-show-illustrations: true
     metabot-slack-signing-secret: null
+    metabot-sql-execution-enabled: true
     metabot-sql-system-prompt: ''
     mfa-challenge-signing-key: null
     mfa-enforcement: 'off'
