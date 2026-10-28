@@ -207,7 +207,7 @@
   [:map {:closed true}
    [:show-dashboard-questions?     :boolean]
    [:show-exploration-documents?   {:optional true} [:maybe :boolean]]
-   [:collection-type {:optional true} [:maybe [:or CollectionType [:set :string]]]]
+   [:collection-types {:optional true} [:maybe [:or CollectionType [:set :string]]]]
    [:archived?                     :boolean]
    [:include-library?               {:optional true} [:maybe :boolean]]
    [:pinned-state {:optional true} [:maybe (into [:enum] (map keyword) valid-pinned-state-values)]]
@@ -719,16 +719,16 @@
    [:not= :namespace (u/qualified-name "snippets")]])
 
 (defn- collection-query
-  [collection {:keys [archived? collection-namespace pinned-state collection-type include-library?]}]
+  [collection {:keys [archived? collection-namespace pinned-state collection-types include-library?]}]
   (-> (assoc
        (collection/effective-children-query
         collection
         {:cte-name :visible_collection_ids}
         [:and
-         (when collection-type
-           (if (= collection-type "remote-synced")
+         (when collection-types
+           (if (= collection-types "remote-synced")
              [:= :is_remote_synced true]
-             [:in :type (vec collection-type)]))
+             [:in :type (vec collection-types)]))
          (when-not include-library?
            [:or [:= nil :type]
             [:not [:in :type (vec collection/library-collection-types)]]])

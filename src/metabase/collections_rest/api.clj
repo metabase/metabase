@@ -433,7 +433,7 @@
         options         {:archived?                   (boolean archived)
                          :show-dashboard-questions?   (boolean show-dashboard-questions)
                          :show-exploration-documents? (boolean show-exploration-documents)
-                         :collection-type             (or (some-> data-app data-apps/data-app-collection-types) collection-type)
+                         :collection-types            (or (some-> data-app data-apps/data-app-collection-types) collection-type)
                          :include-library?            (or include-library (some? data-app))
                          :models                      (if (or data-app
                                                               (not (contains? collections.children/namespaces-holding-non-collection-types namespace)))
@@ -476,7 +476,7 @@
                                {:archived?                   (boolean archived)
                                 :show-dashboard-questions?   (boolean show-dashboard-questions)
                                 :show-exploration-documents? (boolean show-exploration-documents)
-                                :collection-type             collection-type
+                                :collection-types            collection-type
                                 :include-library?            include-library
                                 :pinned-state                (keyword pinned-state)
                                 :sort-info                   {:sort-column                 :name
@@ -693,7 +693,7 @@
         options     {:show-dashboard-questions?   show-dashboard-questions
                      :show-exploration-documents? show-exploration-documents
                      :models                      model-kwds
-                     :collection-type             (some-> data-app data-apps/data-app-collection-types)
+                     :collection-types            (some-> data-app data-apps/data-app-collection-types)
                      :include-library?            true
                      :archived?                   (or archived (:archived collection) (collection/is-trash? collection))
                      :pinned-state                (keyword pinned-state)
