@@ -414,6 +414,101 @@
           (is (some? (mt/user-http-request :crowberto :put 200 (str "dashboard/" (:id library-dash))
                                            {:dashcards [(dashcard -1 (:id root-card))]}))))))))
 
+(deftest shallow-copy-dashboard-into-library-dashboards-test
+  (mt/with-premium-features #{:library}
+    (let [mp    (mt/metadata-provider)
+          query (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
+      (mt/with-temp [:model/Collection    allow-dashboards {:name "Test Base Library" :type collection/library-dashboards-collection-type}
+                     :model/Collection    regular          {:name "Regular Collection"}
+                     :model/Collection    allow-metrics    {:name "Test Metrics" :type collection/library-metrics-collection-type}
+                     :model/Card          question         {:collection_id (:id regular) :type :question :dataset_query query}
+                     :model/Card          series-question  {:collection_id (:id regular) :type :question :dataset_query query}
+                     :model/Card          metric           {:collection_id (:id allow-metrics) :type :metric :dataset_query query}
+                     :model/Card          regular-metric   {:collection_id (:id regular) :type :metric :dataset_query query}
+                     :model/Card          model            {:collection_id (:id regular) :type :model :dataset_query query}
+                     :model/Dashboard     dashboard        {:collection_id (:id regular)}
+                     :model/DashboardCard dashcard         {:dashboard_id (:id dashboard) :card_id (:id question)}
+                     :model/DashboardCardSeries _          {:dashboardcard_id (:id dashcard) :card_id (:id series-question)}
+                     :model/DashboardCard _                {:dashboard_id (:id dashboard) :card_id (:id metric)}]
+        (doseq [[path copy!] {"API"   #(mt/user-http-request :crowberto :post (:status %) (str "dashboard/" (:id dashboard) "/copy") (:body %))
+                              "write" #(mt/with-current-user (mt/user->id :crowberto)
+                                         (if (= 200 (:status %))
+                                           (dashboards.write/copy-dashboard! (:id dashboard) (:body %))
+                                           (try (dashboards.write/copy-dashboard! (:id dashboard) (:body %))
+                                                (catch clojure.lang.ExceptionInfo e (ex-message e)))))}]
+          (testing (str path ": a shallow copy into the Library copies regular questions and series as dashboard questions")
+            (let [copy-id (:id (copy! {:status 200 :body {:collection_id (:id allow-dashboards) :is_deep_copy false}}))
+                  dashcards (t2/select :model/DashboardCard :dashboard_id copy-id)
+                  card-ids  (into #{} (mapcat #(cons (:card_id %) (t2/select-fn-vec :card_id :model/DashboardCardSeries :dashboardcard_id (:id %)))) dashcards)
+                  cards     (t2/select :model/Card :id [:in card-ids])]
+              (is (= 3 (count cards)))
+              (is (= #{(:id metric)} (set (map :id (remove :dashboard_id cards)))))
+              (is (every? #(= copy-id (:dashboard_id %)) (filter #(= :question (:type %)) cards)))
+              (is (not-any? #{(:id question) (:id series-question)} card-ids))))
+          (testing (str path ": a shallow copy into a regular collection still references the originals")
+            (let [copy-id (:id (copy! {:status 200 :body {:collection_id (:id regular) :is_deep_copy false}}))]
+              (is (= #{(:id question) (:id metric)}
+                     (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id copy-id)))))
+          (testing (str path ": models cannot be referenced from a Library dashboard")
+            (mt/with-temp [:model/DashboardCard _ {:dashboard_id (:id dashboard) :card_id (:id model)}]
+              (is (= (library-card-msg (:id model))
+                     (let [r (copy! {:status 400 :body {:collection_id (:id allow-dashboards) :is_deep_copy false}})]
+                       (cond-> r (map? r) :message))))))
+          (testing (str path ": a non-library metric cannot be referenced from a Library dashboard")
+            (mt/with-temp [:model/DashboardCard _ {:dashboard_id (:id dashboard) :card_id (:id regular-metric)}]
+              (is (= (library-card-msg (:id regular-metric))
+                     (let [r (copy! {:status 400 :body {:collection_id (:id allow-dashboards) :is_deep_copy true}})]
+                       (cond-> r (map? r) :message)))))))))))
+
+(deftest copy-into-library-dashboards-series-test
+  (mt/with-premium-features #{:library}
+    (let [mp    (mt/metadata-provider)
+          query (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
+      (mt/with-temp [:model/Collection    allow-dashboards {:name "Test Base Library" :type collection/library-dashboards-collection-type}
+                     :model/Collection    allow-metrics    {:name "Test Metrics" :type collection/library-metrics-collection-type}
+                     :model/Collection    regular          {:name "Regular Collection"}
+                     :model/Card          metric           {:collection_id (:id allow-metrics) :type :metric :dataset_query query}
+                     :model/Card          metric-series    {:collection_id (:id allow-metrics) :type :metric :dataset_query query}
+                     :model/Card          series-question  {:collection_id (:id regular) :type :question :dataset_query query}
+                     :model/Card          question         {:collection_id (:id regular) :type :question :dataset_query query}
+                     :model/Dashboard     dashboard        {:collection_id (:id regular)}
+                     :model/DashboardCard metric-dc        {:dashboard_id (:id dashboard) :card_id (:id metric)}
+                     :model/DashboardCardSeries _          {:dashboardcard_id (:id metric-dc) :card_id (:id series-question)}
+                     :model/DashboardCard question-dc      {:dashboard_id (:id dashboard) :card_id (:id question)}
+                     :model/DashboardCardSeries _          {:dashboardcard_id (:id question-dc) :card_id (:id metric-series)}]
+        (doseq [[path copy!] {"API"   #(:id (mt/user-http-request :crowberto :post 200 (str "dashboard/" (:id dashboard) "/copy") %))
+                              "write" #(mt/with-current-user (mt/user->id :crowberto)
+                                         (:id (dashboards.write/copy-dashboard! (:id dashboard) %)))}]
+          (letfn [(series-ids [copy-id card-id]
+                    (let [dc (t2/select-one :model/DashboardCard :dashboard_id copy-id :card_id [:in [card-id]])]
+                      (t2/select-fn-set :card_id :model/DashboardCardSeries :dashboardcard_id (:id dc))))]
+            (testing (str path ": copying into the Library remaps series on referenced and copied dashcards")
+              (let [copy-id   (copy! {:collection_id (:id allow-dashboards) :is_deep_copy false})
+                    copied-id (fn [card-id]
+                                (t2/select-one-pk :model/Card :dashboard_id copy-id :name (t2/select-one-fn :name :model/Card card-id)))
+                    new-sq    (copied-id (:id series-question))
+                    new-q     (copied-id (:id question))]
+                (is (some? new-sq))
+                (is (= #{new-sq} (series-ids copy-id (:id metric))))
+                (is (= #{(:id metric-series)} (series-ids copy-id new-q)))))
+            (testing (str path ": copying into a regular collection keeps referencing the original series")
+              (let [copy-id (copy! {:collection_id (:id regular) :is_deep_copy false})]
+                (is (= #{(:id series-question)} (series-ids copy-id (:id metric))))
+                (is (= #{(:id metric-series)} (series-ids copy-id (:id question))))))))))))
+
+(deftest shallow-copy-dashboard-with-dashboard-questions-into-library-test
+  (mt/with-premium-features #{:library}
+    (mt/with-temp [:model/Collection allow-dashboards {:name "Test Base Library" :type collection/library-dashboards-collection-type}
+                   :model/Collection regular          {:name "Regular Collection"}
+                   :model/Dashboard  dashboard        {:collection_id (:id regular)}
+                   :model/Card       _                {:collection_id (:id regular) :dashboard_id (:id dashboard) :type :question}]
+      (testing "a shallow copy into the Library is made deep instead of being rejected"
+        (is (some? (mt/user-http-request :crowberto :post 200 (str "dashboard/" (:id dashboard) "/copy")
+                                         {:collection_id (:id allow-dashboards) :is_deep_copy false}))))
+      (testing "a shallow copy into a regular collection is still rejected"
+        (mt/user-http-request :crowberto :post 400 (str "dashboard/" (:id dashboard) "/copy")
+                              {:collection_id (:id regular) :is_deep_copy false})))))
+
 (deftest library-dashboard-dashcard-hooks-test
   (mt/with-premium-features #{:library}
     (mt/with-temp [:model/Collection allow-dashboards {:name "Test Dashboards" :type collection/library-dashboards-collection-type}
