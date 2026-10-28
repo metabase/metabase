@@ -56,6 +56,7 @@ export function DrillMenuCanvas({
           query={query}
           display="bar"
           hasNewMenu={hasNewMenu}
+          menuLayout="flat"
           onPick={question.apply}
           onLegacyDrill={(nextQuery) => question.apply(nextQuery)}
         />

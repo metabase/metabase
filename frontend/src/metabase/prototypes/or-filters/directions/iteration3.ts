@@ -77,6 +77,7 @@ export const ITERATION_3_DIRECTIONS: FilterDirection[] = [
     Component: ExpressionBarSplitPrototype,
     Canvas: DrillMenuCanvas,
     initialExample: REALISTIC_EXAMPLES[0],
+    draft: true,
   },
   {
     id: "expression-bar-unified",

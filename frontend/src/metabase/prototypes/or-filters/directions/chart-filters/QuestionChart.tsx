@@ -1,6 +1,8 @@
 import {
+  Fragment,
   type ReactNode,
   type RefObject,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -11,7 +13,21 @@ import { t } from "ttag";
 import { useGetAdhocQueryQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useMetadataProviderUnfiltered } from "metabase/metadata-store";
-import { Box, Group, Icon, Loader, Menu, Text } from "metabase/ui";
+import {
+  Box,
+  Button,
+  Divider,
+  Group,
+  Icon,
+  type IconName,
+  Loader,
+  Menu,
+  Popover,
+  PopoverBackButton,
+  Stack,
+  Text,
+} from "metabase/ui";
+import C from "metabase/visualizations/components/ClickActions/ClickActionControl.module.css";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import type {
@@ -39,6 +55,8 @@ type QuestionChartProps = {
   display: CardDisplayType;
   /** `false` shows today's drill-through popover instead of the new menu. */
   hasNewMenu?: boolean;
+  /** "nested" folds the filters behind one "Filter" entry; "flat" lists them under the drills. */
+  menuLayout?: "nested" | "flat";
   onPick: (query: Lib.Query, target: DrillOptionTarget) => void;
   /** Today's popover produced a new query. */
   onLegacyDrill?: (query: Lib.Query) => void;
@@ -63,6 +81,7 @@ export function QuestionChart({
   query,
   display,
   hasNewMenu = true,
+  menuLayout = "nested",
   onPick,
   onLegacyDrill,
   pickQuery = query,
@@ -82,6 +101,7 @@ export function QuestionChart({
     legendWrap != null ? wrapRef : undefined,
   );
 
+  const MenuComponent = menuLayout === "flat" ? DrillMenu : NestedDrillMenu;
   const isAggregated = Lib.aggregations(query, 0).length > 0;
   const effectiveDisplay = isAggregated ? display : "table";
   const groupCount = result.data?.data?.rows.length ?? 0;
@@ -192,7 +212,7 @@ export function QuestionChart({
           </Box>
         )}
         {menu && (
-          <DrillMenu
+          <MenuComponent
             menu={menu}
             query={query}
             markNoun={markNoun}
@@ -394,6 +414,191 @@ function DrillMenu({
         })}
       </Menu.Dropdown>
     </Menu>
+  );
+}
+
+/** A submenu that replaces the main list, like today's popover. */
+type NestedView = { kind: "action"; action: DrillAction } | { kind: "filter" };
+
+/**
+ * Today's drill-through popover: same layout and type, submenus replace the
+ * list behind a back button. Every filter sits behind one "Filter" entry
+ * under "Break out by…".
+ */
+function NestedDrillMenu({ menu, onClose, onPick, onAction }: DrillMenuProps) {
+  const [views, setViews] = useState<NestedView[]>([]);
+  const view = views.at(-1);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  const openView = (next: NestedView) => setViews([...views, next]);
+  const goBack = () => setViews(views.slice(0, -1));
+
+  const handleAction = (action: DrillAction) => {
+    if (action.children) {
+      openView({ kind: "action", action });
+    } else if (action.apply) {
+      onAction(action.apply());
+    } else if (action.onSelect) {
+      action.onSelect();
+      onClose();
+    }
+  };
+
+  return (
+    <Popover
+      opened
+      onChange={(opened) => !opened && onClose()}
+      position="bottom-start"
+      offset={8}
+    >
+      <Popover.Target>
+        <Box pos="fixed" left={menu.x} top={menu.y} w={1} h={1} />
+      </Popover.Target>
+      <Popover.Dropdown>
+        <Stack gap="sm" px="xl" py="lg" fw={700}>
+          {view && (
+            <PopoverBackButton mb="sm" onClick={goBack}>
+              {view.kind === "filter" ? t`Filter…` : view.action.title}
+            </PopoverBackButton>
+          )}
+          {view == null && (
+            <NestedMainView
+              model={menu.model}
+              onAction={handleAction}
+              onFilter={() => openView({ kind: "filter" })}
+            />
+          )}
+          {view?.kind === "filter" && (
+            <NestedFilterView options={menu.model.options} onPick={onPick} />
+          )}
+          {view?.kind === "action" && (
+            <Stack gap="sm" mah="60vh" style={{ overflowY: "auto" }}>
+              {view.action.children?.map((child) => (
+                <NestedMenuButton
+                  key={child.id}
+                  icon={child.icon}
+                  onClick={() => handleAction(child)}
+                >
+                  {child.title}
+                </NestedMenuButton>
+              ))}
+            </Stack>
+          )}
+        </Stack>
+      </Popover.Dropdown>
+    </Popover>
+  );
+}
+
+type NestedMainViewProps = {
+  model: DrillMenuModel;
+  onAction: (action: DrillAction) => void;
+  onFilter: () => void;
+};
+
+function NestedMainView({ model, onAction, onFilter }: NestedMainViewProps) {
+  const filterIndex =
+    model.actions.findIndex((action) => action.id === "pivot") + 1;
+  const hasFilter = model.options.length > 0;
+  return (
+    <>
+      {model.actions.map((action, index) => (
+        <Fragment key={action.id}>
+          {hasFilter && index === filterIndex && (
+            <NestedMenuButton icon="filter" onClick={onFilter}>
+              {t`Filter…`}
+            </NestedMenuButton>
+          )}
+          <NestedMenuButton icon={action.icon} onClick={() => onAction(action)}>
+            {action.title}
+          </NestedMenuButton>
+        </Fragment>
+      ))}
+    </>
+  );
+}
+
+type NestedFilterViewProps = {
+  options: DrillOption[];
+  onPick: (option: DrillOption) => void;
+};
+
+/** Row filters, then a divider, then the summary's thresholds. */
+function NestedFilterView({ options, onPick }: NestedFilterViewProps) {
+  const groups = OPTION_SECTIONS.map(({ target }) =>
+    options.filter((option) => option.target === target),
+  ).filter((group) => group.length > 0);
+
+  return (
+    <>
+      {groups.map((group, index) => (
+        <Fragment key={group[0].target}>
+          {index > 0 && <Divider mx="-xl" my="xs" />}
+          {group.map((option) => (
+            <NestedMenuButton
+              key={option.id}
+              title={option.detail}
+              onClick={() => onPick(option)}
+            >
+              {option.title}
+            </NestedMenuButton>
+          ))}
+        </Fragment>
+      ))}
+    </>
+  );
+}
+
+type NestedMenuButtonProps = {
+  icon?: IconName;
+  title?: string;
+  children: ReactNode;
+  onClick: () => void;
+  onMouseEnter?: () => void;
+  onFocus?: () => void;
+};
+
+/** The "horizontal" button of today's popover. */
+function NestedMenuButton({
+  icon,
+  title,
+  children,
+  onClick,
+  onMouseEnter,
+  onFocus,
+}: NestedMenuButtonProps) {
+  return (
+    <Button
+      p="0.5rem"
+      mx="-0.5rem"
+      variant="subtle"
+      color="neutral"
+      classNames={{
+        root: C.horizontalButton,
+        label: C.label,
+        inner: C.inner,
+      }}
+      leftSection={
+        icon ? (
+          <Icon className={C.clickActionButtonIcon} name={icon} m={0} />
+        ) : null
+      }
+      title={title}
+      onClick={onClick}
+      onMouseEnter={onMouseEnter}
+      onFocus={onFocus}
+    >
+      {children}
+    </Button>
   );
 }
 
