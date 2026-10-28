@@ -61,15 +61,15 @@ const SETTINGS: VisualizationSettings = {
 const FAILED = createMockFailedReferencedEntitiesResults();
 
 type SetupOpts = {
-  onUpdateGoalWarning?: OnUpdateGoalWarning;
   referencedEntities?: ReferencedEntitiesResults;
   settings?: VisualizationSettings;
+  onUpdateGoalWarning?: OnUpdateGoalWarning;
 };
 
 function setup({
-  onUpdateGoalWarning,
   referencedEntities,
   settings = SETTINGS,
+  onUpdateGoalWarning,
 }: SetupOpts = {}) {
   const series: RawSeries = [
     createMockSingleSeries(
@@ -215,7 +215,7 @@ describe("row chart dynamic goal", () => {
 
   it("reports a goal warning when the reference cannot be resolved", async () => {
     const onUpdateGoalWarning = jest.fn<void, [boolean]>();
-    setup({ onUpdateGoalWarning, referencedEntities: FAILED });
+    setup({ referencedEntities: FAILED, onUpdateGoalWarning });
 
     await waitFor(() =>
       expect(onUpdateGoalWarning).toHaveBeenLastCalledWith(true),
@@ -225,11 +225,11 @@ describe("row chart dynamic goal", () => {
   it("reports no goal warning when the reference resolves", async () => {
     const onUpdateGoalWarning = jest.fn<void, [boolean]>();
     setup({
-      onUpdateGoalWarning,
       referencedEntities: createMockReferencedEntitiesResults({
         column: "goal",
         value: GOAL,
       }),
+      onUpdateGoalWarning,
     });
 
     await findGoalLine();
