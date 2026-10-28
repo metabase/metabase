@@ -41,8 +41,8 @@
   is-temp-transform-table?]
  [metabase.transforms.crud
   check-database-feature
-  check-folder-in-trash!
   check-feature-enabled!
+  check-not-in-trashed-folder!
   validate-incremental-column-type!
   validate-target-schema!
   validate-transform-query!

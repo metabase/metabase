@@ -155,7 +155,7 @@
         (assoc :requestable_indexes (requestable-indexes transform))
         transforms.u/add-source-readable)))
 
-(defn check-folder-in-trash!
+(defn check-not-in-trashed-folder!
   "Reject a create or a move of a transform from `old` to `new` into a folder in the Trash, and a restore of a
   transform whose folder is in the Trash. `old` is nil for a create."
   [old new]
@@ -174,7 +174,7 @@
   ([body]
    (create-transform! body nil))
   ([body creator-id]
-   (check-folder-in-trash! nil body)
+   (check-not-in-trashed-folder! nil body)
    (when (transforms-base.u/query-transform? body)
      (validate-transform-query! body))
    (validate-target-schema! body)
@@ -216,7 +216,7 @@
                           new  (merge old body)
                           target-fields #(-> % :target (select-keys [:schema :name]))]
                       (api/check-403 (and (mi/can-write? old) (mi/can-write? new)))
-                      (check-folder-in-trash! old new)
+                      (check-not-in-trashed-folder! old new)
                       (when-not archive-or-move-only?
                         ;; we must validate on a full transform object
                         (check-feature-enabled! new)

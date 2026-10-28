@@ -22,7 +22,7 @@
   ;; Trash, GDGT-3429.
   (let [current  (revisions.db/raw-row model id)
         reverted (dissoc serialized-transform :archived :archived_directly)]
-    (transforms/check-folder-in-trash! current (merge current reverted))
+    (transforms/check-not-in-trashed-folder! current (merge current reverted))
     ((get-method revision/revert-to-revision! :default) model id user-id reverted)))
 
 (defmethod revision/revision-readable? :model/Transform
