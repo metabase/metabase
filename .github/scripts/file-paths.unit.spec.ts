@@ -246,7 +246,6 @@ describe("file-paths.yaml", () => {
     "frontend/build/shared/esbuild/side-effect-free-modules-plugin.js",
     "rspack.main.config.js",
     "bun.lock",
-    "locales/fr.po",
     "snowplow/events/event.yaml",
     "patches/@cypress+grep+6.0.0.patch",
   ])("runs all E2E specs when %s changes", (file) => {
@@ -272,6 +271,16 @@ describe("file-paths.yaml", () => {
   ])("runs CI-script tests when %s changes", (file) => {
     expect(matches("ci_scripts", file)).toBe(true);
   });
+
+  it.each(["locales/translations.pin", "locales/fr.po"])(
+    "only lints i18n when %s changes",
+    (file) => {
+      const matched = Object.keys(filters).filter((name) =>
+        matches(name, file),
+      );
+      expect(matched).toEqual(["all_changed", "i18n"]);
+    },
+  );
 
   it("runs the module cycles test when a cluster is named", () => {
     expect(
