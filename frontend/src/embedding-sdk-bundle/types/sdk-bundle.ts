@@ -24,6 +24,7 @@ import type {
   formatDate,
   formatDateRange,
 } from "embedding-sdk-bundle/lib/format-date-range";
+import type { getDataAppSession } from "embedding-sdk-bundle/lib/get-data-app-session";
 import type {
   QueryDatasetParams,
   QueryDatasetResult,
@@ -85,6 +86,7 @@ type ReduxStoreExports = {
 };
 
 type ReduxStoreUtilityFunctionExports = {
+  getDataAppSession?: typeof getDataAppSession;
   resolveDatasetQuery: ReduxStoreUtilityFunction<
     ReturnType<ResolveDatasetQuery>
   >;
