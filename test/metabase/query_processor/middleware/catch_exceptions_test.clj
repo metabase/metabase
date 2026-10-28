@@ -220,7 +220,7 @@
                                                                  :log/keys   #{:field-id :field-name}})))))]
             (is (=? [{:level :error, :message "Error processing query: inner"}]
                     (messages)))
-            (is (contains? (set @contexts) {:card-id 2, :field-id 1, :field-name "PASSWORD"}))
+            (is (=? {:card-id 2, :field-id 1, :field-name "PASSWORD"} (last @contexts)))
             (is (not (re-find #"hunter2" (pr-str @contexts))))
             (is (not (re-find #"PASSWORD|field-id|card-id" (pr-str (dissoc result :stacktrace :via)))))
             (is (not-any? :ex-data (:via result))))))))
@@ -329,6 +329,47 @@
 
 (defn- every-error [result]
   (map :error (cons result (:via result))))
+
+(deftest ^:synchronized error-log-query-context-test
+  (testing "the error log line has ids that tie it to the query and to the user's report, and no query text or values"
+    (let [contexts (atom [])
+          log-ctx  (fn [run query]
+                     (reset! contexts [])
+                     (mt/with-dynamic-fn-redefs [log/with-thread-context-fn (fn [context-map f]
+                                                                              (swap! contexts conj context-map)
+                                                                              (f))]
+                       (catch-exceptions run query))
+                     (last @contexts))
+          query    {:database (mt/id), :info {:card-id 3, :dashboard-id 4, :context :question}}]
+      (mt/with-test-user :rasta
+        (with-redefs-fn {#'perms/data-access-token (constantly {})}
+          (fn []
+            (testing "an unrestricted user"
+              (let [ctx (log-ctx throw-driver-error query)]
+                (is (=? {:user-id      (mt/user->id :rasta)
+                         :database-id  (mt/id)
+                         :card-id      3
+                         :dashboard-id 4
+                         :context      :question}
+                        ctx))
+                (is (not (contains? ctx :response-restricted)))
+                (is (not (re-find #"SELECT|TIER|PRICE" (pr-str ctx))))))
+            (testing "ids the query does not have are left out"
+              (is (= #{:user-id :database-id :context}
+                     (set (keys (log-ctx throw-driver-error {:database (mt/id), :info {:context :ad-hoc}}))))))
+            (testing "ex-data `:log/keys` from the throw site are still there"
+              (is (=? {:field-id 1, :card-id 3}
+                      (log-ctx (fn [] (throw (ex-info "boom" {:field-id 1, :log/keys #{:field-id}}))) query))))
+            (doseq [[restriction redefs] {:sandbox       {#'perms/sandboxed-user-for-db? (constantly true)}
+                                          :impersonation {#'perms/impersonation-enforced-for-db? (constantly true)}
+                                          :routing       {#'perms/data-access-token (constantly {:routing {1 "digest"}})}
+                                          :unknown       {#'perms/sandboxed-user-for-db? (fn [_] (throw (ex-info "lookup failed" {})))}}]
+              (testing (str "a row-restricted user: " restriction)
+                (with-redefs-fn redefs
+                  (fn []
+                    (let [ctx (log-ctx throw-driver-error query)]
+                      (is (=? {:response-restricted restriction, :card-id 3} ctx))
+                      (is (not (re-find #"SELECT|TIER|PRICE" (pr-str ctx)))))))))))))))
 
 (deftest ^:synchronized row-restricted-user-error-response-test
   (let [generic "An error occurred while running the query."]

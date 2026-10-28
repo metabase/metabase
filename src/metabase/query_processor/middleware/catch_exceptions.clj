@@ -8,7 +8,7 @@
                     {:status-code 400, :field-id id, :field-name field-name, :log/keys #{:field-id :field-name}}))
 
   responds without either key and logs `field-id` and `field-name` alongside the message. Don't list the query or
-  values from it.
+  values from it. The log line also gets the ids in [[query-log-context]].
 
   A user whose row access is restricted on the query's database (by a sandbox, connection impersonation or database
   routing) gets a generic message in place of each error message that could carry the compiled query, the sandbox
@@ -16,6 +16,7 @@
   (:refer-clojure :exclude [some get-in not-empty select-keys])
   (:require
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
    [metabase.api.common :as api]
    [metabase.config.core :as config]
@@ -124,20 +125,25 @@
 (defn- generic-error-message []
   (tru "An error occurred while running the query."))
 
-(defn- row-restricted-user?
-  "Whether the current user's row access to database `database-id` is restricted by a sandbox, connection impersonation
-  or database routing. Such a user must not see the compiled query (which holds the sandbox) or column metadata such
-  as fingerprints (computed over every row). Fails closed: true when the check itself throws."
+(defn- row-restriction
+  "What restricts the current user's row access to database `database-id`: `:sandbox`, `:impersonation` or `:routing`,
+  or nil when nothing does. Such a user must not see the compiled query (which holds the sandbox) or column metadata
+  such as fingerprints (computed over every row). Fails closed: `:unknown` when the check itself throws."
   [database-id]
-  (boolean
-   (and api/*current-user-id*
-        (not api/*is-superuser?*)
-        (try
-          (or (perms/sandboxed-user-for-db? database-id)
-              (perms/impersonation-enforced-for-db? database-id)
-              (contains? (perms/data-access-token {:database-id database-id, :table-ids #{}}) :routing))
-          (catch Throwable _
-            true)))))
+  (when (and api/*current-user-id*
+             (not api/*is-superuser?*))
+    (try
+      (cond
+        (perms/sandboxed-user-for-db? database-id)                                                   :sandbox
+        (perms/impersonation-enforced-for-db? database-id)                                           :impersonation
+        (contains? (perms/data-access-token {:database-id database-id, :table-ids #{}}) :routing) :routing)
+      (catch Throwable _
+        :unknown))))
+
+(defn- row-restricted-user?
+  "Whether the current user's row access to database `database-id` is restricted; see [[row-restriction]]."
+  [database-id]
+  (some? (row-restriction database-id)))
 
 (defn- sql-visible?
   "Whether the current user may see the compiled native query of `query`: the same check as for the `:native` key."
@@ -281,6 +287,19 @@
                (merge (some #(not-empty (select-keys (ex-data %) [:type])) chain)
                       (some #(not-empty (select-keys (ex-data %) [:status-code])) chain))))))
 
+(defn- query-log-context
+  "Ids for the error log line that tie it to `query` and to the user's report: the user, Database, Card, Dashboard and
+  run context, and what restricts the user's row access, if anything (their response then has a generic message in
+  place of the one logged). Ids only: never the query, its SQL, or values from it."
+  [{database-id :database, :keys [info]}]
+  (m/assoc-some {}
+                :user-id             api/*current-user-id*
+                :database-id         database-id
+                :card-id             (:card-id info)
+                :dashboard-id        (:dashboard-id info)
+                :context             (:context info)
+                :response-restricted (row-restriction database-id)))
+
 (defn- log-context
   "The ex-data entries each exception in `e`'s chain lists under `:log/keys`, for the error log line. An inner
   exception's entries win over an outer one's. Empty when a `:log/keys` is malformed, so that it can't mask `e`."
@@ -311,7 +330,7 @@
                      (restricted-exception e)
                      e)]
             (when-not (identical? e e')
-              (log/with-thread-context (log-context e)
+              (log/with-thread-context (merge (query-log-context query) (log-context e))
                 (log/errorf "Error processing query: %s" (ex-message e))))
             (throw e'))))
       (try
@@ -332,7 +351,7 @@
                 pool-saturated?     (qp.error-type/connection-pool-saturated?
                                      (:error_type formatted-exception))]
             (when-not (or query-canceled? pool-saturated?)
-              (log/with-thread-context (log-context e)
+              (log/with-thread-context (merge (query-log-context query) (log-context e))
                 ;; the unrestricted message, which a row-restricted user's response leaves out
                 (log/errorf "Error processing query: %s"
                             (or (:error (if (identical? restrict-maps identity)
