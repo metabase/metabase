@@ -21,6 +21,7 @@ import {
   withFkFilterDrilled,
   withMonthCombined,
   withMonthExtracted,
+  withOrExample,
   withPivotDrilled,
   withQuickFilterDrilled,
   withRawRows,
@@ -50,6 +51,8 @@ type DrillRow = {
   results: Example[];
   /** What to click in the results, then which popover item. */
   howToOpen: string;
+  /** Set once the drill was tried from the "+ OR" start and landed correctly next to the OR. */
+  worksWithOr?: boolean;
 };
 
 type DrillGroup = {
@@ -98,6 +101,7 @@ const FILTER_DRILLS: DrillRow[] = [
     get howToOpen() {
       return t`Click a Total cell → ">"`;
     },
+    worksWithOr: true,
   },
   {
     drill: "quick-filter",
@@ -558,6 +562,21 @@ const SUMMARY_MARK = (
   </Text>
 );
 
+function OrCheckMark({ worksWithOr }: { worksWithOr?: boolean }) {
+  return worksWithOr ? (
+    <Text
+      component="span"
+      title={t`Tried from the + OR start; lands AND-ed next to the OR`}
+    >
+      ✅
+    </Text>
+  ) : (
+    <Text component="span" c="text-secondary">
+      —
+    </Text>
+  );
+}
+
 function FilterMark({ target }: { target: FilterTarget }) {
   switch (target) {
     case "rows":
@@ -567,6 +586,19 @@ function FilterMark({ target }: { target: FilterTarget }) {
     case "none":
       return <>⛔</>;
   }
+}
+
+/** The same starting point with `Total > 100 or Tax > 2` on the rows, to see the drill land next to an OR. */
+function withOrStart(start: Example): Example {
+  return {
+    ...start,
+    get label() {
+      return t`${start.label} + OR`;
+    },
+    load: (query, stageIndex) =>
+      withOrExample(start.load(query, stageIndex), stageIndex),
+    hint: t`Same shape, with (Total > 100 or Tax > 2) already on the rows`,
+  };
 }
 
 type DrillExamplesTableProps = {
@@ -587,6 +619,7 @@ export function DrillExamplesTable({ onLoad }: DrillExamplesTableProps) {
             <th>{t`Drill`}</th>
             <th>{t`Filter`}</th>
             <th>{t`Query change`}</th>
+            <th>{t`With OR`}</th>
             <th>{t`Start`}</th>
             <th>{t`Result`}</th>
             <th>{t`How to open`}</th>
@@ -595,7 +628,7 @@ export function DrillExamplesTable({ onLoad }: DrillExamplesTableProps) {
         {GROUPS.map((group) => (
           <tbody key={group.label}>
             <tr>
-              <th colSpan={6} className={S.groupHeading}>
+              <th colSpan={7} className={S.groupHeading}>
                 {group.label}
               </th>
             </tr>
@@ -616,8 +649,17 @@ export function DrillExamplesTable({ onLoad }: DrillExamplesTableProps) {
                   <Text size="sm">{row.queryChange}</Text>
                 </td>
                 <td>
+                  <OrCheckMark worksWithOr={row.worksWithOr} />
+                </td>
+                <td>
                   {row.start ? (
-                    <ExampleButton example={row.start} onLoad={onLoad} />
+                    <Group gap="xs">
+                      <ExampleButton example={row.start} onLoad={onLoad} />
+                      <ExampleButton
+                        example={withOrStart(row.start)}
+                        onLoad={onLoad}
+                      />
+                    </Group>
                   ) : (
                     "—"
                   )}
@@ -654,6 +696,12 @@ export function DrillExamplesTable({ onLoad }: DrillExamplesTableProps) {
           {t`filter on the stage after the summary`}
         </Text>
         <Text size="xs" c="text-secondary">{t`⛔ no filter`}</Text>
+        <Text size="xs" c="text-secondary">
+          {t`+ OR: the same start with (Total > 100 or Tax > 2) on the rows`}
+        </Text>
+        <Text size="xs" c="text-secondary">
+          {t`With OR ✅: tried from the + OR start, the drill lands AND-ed next to the OR; — not tried yet`}
+        </Text>
       </Group>
     </Stack>
   );
