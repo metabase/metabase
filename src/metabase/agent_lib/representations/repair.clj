@@ -3162,14 +3162,30 @@
                             e)))
           (throw e))))))
 
+(defn- with-alias-on-join-fields
+  "`join` with its alias on each by-name field ref in its `fields`, as lib's join normalization does
+  for every ref there. Path refs are left for lib, since nothing before it reads them as previous-stage
+  refs."
+  [join]
+  (let [alias (when (map? join) (get join "alias"))]
+    (cond-> join
+      (and (non-blank-string? alias) (sequential? (get join "fields")))
+      (update "fields" (partial mapv #(cond-> %
+                                        (match/matches? % ["field" (_ :guard map?) (_ :guard string?)])
+                                        (assoc-in [1 "join-alias"] alias)))))))
+
 (defn- infer-join-field-types-in-stage
-  "The stage at `idx` of `query`, with [[infer-join-field-types]] run over each of its joins."
+  "The stage at `idx` of `query`, with [[infer-join-field-types]] run over each of its joins.
+  Each join's `fields` refs get its alias first, so Pass 4.7 types them from the join and Pass 5 doesn't
+  take them for refs to the previous stage."
   [query mp content-store idx stage]
   (if-not (and (map? stage) (sequential? (get stage "joins")))
     stage
     (let [database  (get query "database")
           stage-idx (repr/original-stage-index query idx)]
-      (update stage "joins" (partial mapv #(infer-join-field-types % database mp content-store stage-idx))))))
+      (update stage "joins" (partial mapv #(-> %
+                                               with-alias-on-join-fields
+                                               (infer-join-field-types database mp content-store stage-idx)))))))
 
 (defn- infer-field-types*
   "Passes 4.5, 4.7, 5 and 5.7, after running them over every join's own stages. No-op without `mp`."
