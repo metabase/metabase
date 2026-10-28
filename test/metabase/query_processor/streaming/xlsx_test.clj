@@ -274,9 +274,9 @@
           settings  {::mb.viz/currency "EUR", ::mb.viz/currency-in-header false}]
       (testing "The instance default applies to all currency label styles"
         (doseq [[style expected] [["symbol" "#,##0.00\"\u00a0\"[$€]"]
-                                 ["narrowSymbol" "#,##0.00\"\u00a0\"[$€]"]
-                                 ["code" "#,##0.00\"\u00a0\"[$EUR]"]
-                                 ["name" "#,##0.00\" euros\""]]]
+                                  ["narrowSymbol" "#,##0.00\"\u00a0\"[$€]"]
+                                  ["code" "#,##0.00\"\u00a0\"[$EUR]"]
+                                  ["name" "#,##0.00\" euros\""]]]
           (is (= expected (format-string (assoc settings ::mb.viz/currency-style style) price-col)))))
       (testing "Column settings override the instance default"
         (is (= "[$€]#,##0.00"
@@ -284,7 +284,7 @@
       (testing "Currency names always follow the amount"
         (is (= "#,##0.00\" euros\""
                (format-string (assoc settings ::mb.viz/currency-position "before"
-                                              ::mb.viz/currency-style "name") price-col))))
+                                     ::mb.viz/currency-style "name") price-col))))
       (testing "Header currency labels stay out of the cell"
         (is (= "#,##0.00" (format-string (assoc settings ::mb.viz/currency-in-header true) price-col)))))))
 

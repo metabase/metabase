@@ -76,7 +76,7 @@
   (doseq [position ["before" "after"]]
     (let [db-form   {:column_settings {"[\"name\",\"Price\"]" {:currency_position position}}}
           norm-form {::mb.viz/column-settings {{::mb.viz/column-name "Price"}
-                                              {::mb.viz/currency-position position}}}]
+                                               {::mb.viz/currency-position position}}}]
       (t/is (= norm-form (mb.viz/db->norm db-form)))
       (t/is (= db-form (mb.viz/norm->db norm-form)))
       (t/is (= {::mb.viz/currency-position position}

@@ -174,8 +174,8 @@
                  ["name" "before" "-1,234.56 euros"]
                  ["name" "after" "-1,234.56 euros"]]]
           (is (= expected (fmt-fn -1234.56 (assoc settings
-                                                 ::mb.viz/currency-style style
-                                                 ::mb.viz/currency-position position)))))
+                                                  ::mb.viz/currency-style style
+                                                  ::mb.viz/currency-position position)))))
         (testing "Header currency labels stay out of the cell"
           (is (= "1,234.56" (fmt-fn 1234.56 (assoc settings
                                                    ::mb.viz/currency-position "after"
@@ -183,9 +183,9 @@
         (testing "Custom affixes surround the amount and currency label"
           (is (= "Total: 1,234.56\u00a0€ incl. tax"
                  (fmt-fn 1234.56 (assoc settings
-                                       ::mb.viz/currency-position "after"
-                                       ::mb.viz/prefix "Total: "
-                                       ::mb.viz/suffix " incl. tax")))))))))
+                                        ::mb.viz/currency-position "after"
+                                        ::mb.viz/prefix "Total: "
+                                        ::mb.viz/suffix " incl. tax")))))))))
 
 (deftest currency-position-inheritance-test
   (mt/with-temporary-setting-values [custom-formatting {:type/Currency {:currency_position "after"}}]
@@ -201,7 +201,7 @@
         (is (= "€2.00" (fmt (assoc col :settings {:currency_position "before"}) settings))))
       (testing "Question column formatting overrides field formatting"
         (is (= "2.00\u00a0€" (fmt (assoc col :settings {:currency_position "before"})
-                                (assoc settings ::mb.viz/currency-position "after"))))))))
+                                  (assoc settings ::mb.viz/currency-position "after"))))))))
 
 (deftest column-settings-formatting-test
   (letfn [(fmt-with-type
