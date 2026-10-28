@@ -2310,80 +2310,21 @@
         ctes     (mapv #(stage-cte (cte-body %) (stages %)) (range last-idx))]
     (update (cte-body last-idx) :with #(into ctes %))))
 
-(defn- stage-ctes?
-  "Whether the current database compiles stages to CTEs, see the `:stage-ctes` driver feature."
-  [driver]
-  (and (driver-api/initialized?)
-       (driver/database-supports? driver :stage-ctes (driver-api/database (driver-api/metadata-provider)))))
-
-(defn- stages->honeysql [driver stages]
+(defn- stages->honeysql*
+  "Compiles `stages` to CTEs if they have CTE names, else to subselects."
+  [driver stages]
   (if (::cte-name (first stages))
     (stages->honeysql-ctes driver stages)
     (stages->honeysql-subselects driver stages)))
 
 (defmethod join-source :sql
   [driver {:keys [stages]}]
-  (stages->honeysql driver stages))
+  (stages->honeysql* driver stages))
 
 (defn- all-stages
-  "`stages` together with the stages of every join in them"
+  "Gets all the stages of a query including the join stages."
   [stages]
-  (mapcat (fn [stage]
-            (cons stage (mapcat (comp all-stages :stages) (:joins stage))))
-          stages))
-
-(defn- native-sql-max-cte-number
-  [stage]
-  (let [sql (or (:persisted-info/native stage)
-                (when (= (:lib/type stage) :mbql.stage/native)
-                  (:native stage)))]
-    (when (string? sql)
-      (when-let [numbers (seq (for [[_ n] (re-seq (re-pattern (str stage-cte-prefix #"(\d+)")) sql)]
-                                (parse-long n)))]
-        (apply max numbers)))))
-
-(defn- native-with-stage?
-  "Whether `stage` is native SQL that contains `WITH`. A false positive only makes the query use subselects."
-  [stage]
-  (and (= (:lib/type stage) :mbql.stage/native)
-       (string? (:native stage))
-       (boolean (re-find #"(?i)\bwith\b" (:native stage)))))
-
-(defn- use-stage-ctes?
-  "Whether to compile the stages of this query to CTEs. If the database does not support `:stage-ctes/nested`, we use
-  subselects for a query that has a native stage with a `WITH`, and for a card that a native query references."
-  [driver query stages]
-  (and (stage-ctes? driver)
-       (or (driver/database-supports? driver :stage-ctes/nested (driver-api/database (driver-api/metadata-provider)))
-           (and (not (get-in query [:middleware :card-reference?]))
-                (not-any? native-with-stage? (all-stages stages))))))
-
-(defn- first-cte-number
-  "The number of the first stage CTE. Normally 0, but if the native SQL of any stage already has stage CTEs, we start
-  above them to avoid name collisions."
-  [stages]
-  (if-let [numbers (seq (keep native-sql-max-cte-number (all-stages stages)))]
-    (inc (apply max numbers))
-    0))
-
-(defn- assign-cte-names
-  "Gives each stage that compiles to a CTE a unique `::cte-name`, starting at `__mb_stage_<n>`. Join stages get their
-  names before the stage that joins them, so the names are in the same order as the CTEs after [[hoist-ctes]].
-  Returns `[stages next-n]`."
-  [stages n]
-  (let [last-idx (dec (count stages))]
-    (reduce (fn [[stages n] [idx stage]]
-              (let [[joins n] (reduce (fn [[joins n] join]
-                                        (let [[join-stages n] (assign-cte-names (:stages join) n)]
-                                          [(conj joins (assoc join :stages join-stages)) n]))
-                                      [[] n]
-                                      (:joins stage))
-                    stage     (cond-> stage
-                                (seq joins)      (assoc :joins joins)
-                                (< idx last-idx) (assoc ::cte-name (str stage-cte-prefix n)))]
-                [(conj stages stage) (cond-> n (< idx last-idx) inc)]))
-            [[] n]
-            (map-indexed vector stages))))
+  (mapcat #(cons % (mapcat (comp all-stages :stages) (:joins %))) stages))
 
 (defn- hoist-ctes
   "Moves the `WITH` clauses of nested queries, e.g. multi-stage join sources, to one `WITH` clause at the top. Inner
@@ -2399,19 +2340,75 @@
     (cond-> hsql
       (and (map? hsql) (seq @ctes)) (assoc :with @ctes))))
 
+(defn- native-sql-max-cte-number
+  [stage]
+  (when-let [sql (and (lib/native-stage? stage) (string? (:native stage)) (:native stage))]
+    (some->> (re-seq (re-pattern (str stage-cte-prefix #"(\d+)")) sql)
+             (map (comp parse-long second))
+             (apply max))))
+
+(defn- first-cte-number
+  "The number of the first stage CTE. Normally 0, but if the native SQL of any stage already has stage CTEs, we start
+  above them to avoid name collisions."
+  [stages]
+  (inc (reduce max -1 (keep native-sql-max-cte-number (all-stages stages)))))
+
+(defn- assign-cte-names*
+  "Gives each stage that compiles to a CTE a unique `::cte-name`, starting at `__mb_stage_<n>`. Join stages get their
+  names before the stage that joins them, so the names are in the same order as the CTEs after [[hoist-ctes]].
+  Returns `[stages next-n]`."
+  [stages n]
+  (let [last-idx (dec (count stages))]
+    (reduce (fn [[stages n] [idx stage]]
+              (let [[joins n] (reduce (fn [[joins n] join]
+                                        (let [[join-stages n] (assign-cte-names* (:stages join) n)]
+                                          [(conj joins (assoc join :stages join-stages)) n]))
+                                      [[] n]
+                                      (:joins stage))
+                    stage     (cond-> stage
+                                (seq joins)      (assoc :joins joins)
+                                (< idx last-idx) (assoc ::cte-name (str stage-cte-prefix n)))]
+                [(conj stages stage) (cond-> n (< idx last-idx) inc)]))
+            [[] n]
+            (map-indexed vector stages))))
+
+(defn- assign-cte-names
+  [stages]
+  (first (assign-cte-names* stages (first-cte-number stages))))
+
+(defn- native-stage-has-cte?
+  "Whether `stage` is native SQL that contains `WITH`. A false positive only makes the query use subselects."
+  [stage]
+  (and (lib/native-stage? stage)
+       (string? (:native stage))
+       (boolean (re-find #"(?i)\bwith\b" (:native stage)))))
+
+(defn- use-stage-ctes?
+  "Whether to compile the stages of this query to CTEs. If nested CTEs are not supported, then we only use CTEs
+  if we can guarantee there is no native component to the query (i.e. not compiling a card reference like {{#123}}
+  and no native stages)."
+  [driver stages query]
+  (when-let [db (and (driver-api/initialized?) (driver-api/database (driver-api/metadata-provider)))]
+    (and (driver/database-supports? driver :stage-ctes db)
+         (or (driver/database-supports? driver :stage-ctes/nested db)
+             (and (not (get-in query [:middleware :card-reference?]))
+                  (not-any? native-stage-has-cte? (all-stages stages)))))))
+
+(defn- stages->honeysql
+  [driver stages query]
+  (if (use-stage-ctes? driver stages query)
+    (hoist-ctes (stages->honeysql* driver (assign-cte-names stages)))
+    (stages->honeysql* driver stages)))
+
 (mu/defn mbql->honeysql :- [:or :map [:tuple [:= :inline] :map]]
   "Build the HoneySQL form we will compile to SQL and execute."
   [driver :- :keyword
    query  :- ::qp.schema/any-query]
   (if (:lib/type query)
     (binding [driver/*driver* driver]
-      (let [stages     (preprocess driver query)
-            ctes?      (use-stage-ctes? driver query stages)
-            stages     (cond-> stages
-                         ctes? (-> (assign-cte-names (first-cte-number stages)) first))]
+      (let [stages (preprocess driver query)]
         (log/trace "Compiling MBQL query")
-        (u/prog1 (cond-> (stages->honeysql driver stages)
-                   ctes? hoist-ctes)
+        (u/prog1 (stages->honeysql driver stages query)
           (log/debug "Compiled HoneySQL form")
           (driver-api/debug> (list '🍯 <>)))))
     (let [metadata-provider (driver-api/metadata-provider)
