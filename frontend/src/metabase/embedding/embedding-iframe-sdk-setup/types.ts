@@ -1,5 +1,6 @@
 import type {
   BrowserEmbedOptions,
+  DataAppEmbedOptions,
   ExplorationEmbedOptions,
   MetabotEmbedOptions,
   SdkIframeDashboardEmbedSettings,
@@ -37,7 +38,8 @@ export type SdkIframeEmbedSetupTemplateSettings =
   | SdkIframeQuestionEmbedSettings
   | ExplorationEmbedOptions
   | BrowserEmbedOptions
-  | MetabotEmbedOptions;
+  | MetabotEmbedOptions
+  | DataAppEmbedOptions;
 
 /**
  * Settings used by the embed setup route.

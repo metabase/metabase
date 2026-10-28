@@ -4,6 +4,7 @@ import type { SdkDashboardId, SdkQuestionId } from "embedding-sdk-bundle/types";
 import type {
   BrowserEmbedOptions,
   DashboardEmbedOptions,
+  DataAppEmbedOptions,
   ExplorationEmbedOptions,
   MetabotEmbedOptions,
   QuestionEmbedOptions,
@@ -82,6 +83,13 @@ export const getDefaultSdkIframeEmbedSettings = ({
       }),
     )
     .with(
+      "app",
+      (): DataAppEmbedOptions => ({
+        componentName: "metabase-data-app",
+        path: String(resourceId ?? ""),
+      }),
+    )
+    .with(
       "metabot",
       (): MetabotEmbedOptions => ({
         componentName: "metabase-metabot",
@@ -107,6 +115,7 @@ export const getResourceIdFromSettings = (
   settings: SdkIframeEmbedSetupSettings,
 ): string | number | undefined =>
   match(settings)
+    .with({ componentName: "metabase-data-app" }, (s) => s.path)
     .with({ initialCollection: P.nonNullable }, (s) => s.initialCollection)
     .with({ dashboardId: P.nonNullable }, (s) => s.dashboardId)
     .with({ questionId: P.nonNullable }, (s) => s.questionId)
@@ -121,4 +130,5 @@ export const getExperienceFromSettings = (
     .with({ componentName: "metabase-browser" }, () => "browser")
     .with({ componentName: "metabase-dashboard" }, () => "dashboard")
     .with({ componentName: "metabase-metabot" }, () => "metabot")
+    .with({ componentName: "metabase-data-app" }, () => "app")
     .exhaustive();

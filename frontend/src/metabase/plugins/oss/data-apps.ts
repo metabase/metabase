@@ -9,6 +9,10 @@ export type DataAppsPlugin = {
   isEnabled: boolean;
   getRoutes: () => ReactNode | null;
   getDataStudioRoutes: (IsAdmin: ComponentType) => ReactNode | null;
+  EmbedResourceCard: ComponentType<{
+    value: string | null;
+    onChange: (path: string) => void;
+  }>;
   MainNavbarSection: ComponentType<{ onItemSelect: () => void }>;
   /**
    * The data apps the user can read. `data` is undefined until the list loads, and always without the data apps
@@ -26,6 +30,7 @@ const getDefaultPluginDataApps = (): DataAppsPlugin => ({
   getRoutes: () => null,
   getDataStudioRoutes: () => null,
   MainNavbarSection: PluginPlaceholder,
+  EmbedResourceCard: PluginPlaceholder,
   useDataApps: () => ({ data: undefined, isLoading: false }),
 });
 

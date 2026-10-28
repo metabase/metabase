@@ -1,0 +1,153 @@
+import userEvent from "@testing-library/user-event";
+
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import { setupListDataAppsEndpoint } from "__support__/server-mocks";
+import { screen, waitFor } from "__support__/ui";
+import type { SdkIframeEmbedSetupModalInitialState } from "metabase/embedding/types";
+import { PLUGIN_EMBEDDING_IFRAME_SDK_SETUP } from "metabase/plugins";
+import { createMockDataApp } from "metabase-types/api/mocks";
+
+import { setup } from "./test-setup";
+
+jest.mock("metabase-enterprise/settings", () => ({
+  hasPremiumFeature: () => true,
+}));
+
+const setupDataApps = (
+  initialState?: SdkIframeEmbedSetupModalInitialState,
+  apps = [
+    createMockDataApp({ name: "boba-hq", display_name: "Boba HQ" }),
+    createMockDataApp({ name: "sales", display_name: "Sales" }),
+  ],
+) => {
+  PLUGIN_EMBEDDING_IFRAME_SDK_SETUP.isEnabled = () => true;
+  setupEnterpriseOnlyPlugin("data-apps");
+  setupListDataAppsEndpoint(apps);
+
+  setup({
+    modularEmbeddingEnabled: true,
+    jwtReady: true,
+    dataAppsEnabled: true,
+    initialState,
+  });
+};
+
+describe("data app embedding setup", () => {
+  const originalRoot = window.MetabaseRoot;
+
+  afterEach(() => {
+    window.MetabaseRoot = originalRoot;
+  });
+
+  it("previews under the current installation subpath", async () => {
+    window.MetabaseRoot = "/mb/";
+    setupDataApps({ resourceType: "data-app", resourceId: "sales" });
+
+    await waitFor(() =>
+      expect(screen.getByRole("textbox", { name: "Data app" })).toHaveValue(
+        "Sales",
+      ),
+    );
+    expect(screen.getByTitle("Data app preview")).toHaveAttribute(
+      "src",
+      `${window.location.origin}/mb/embed/apps/sales`,
+    );
+  });
+
+  it("opens with the data app selected, previews it, and generates its SSO snippet", async () => {
+    setupDataApps({ resourceType: "data-app", resourceId: "boba-hq" });
+
+    expect(screen.getByRole("radio", { name: /Data App/ })).toBeChecked();
+    await waitFor(() =>
+      expect(screen.getByRole("textbox", { name: "Data app" })).toHaveValue(
+        "Boba HQ",
+      ),
+    );
+    expect(screen.getByTitle("Data app preview")).toHaveAttribute(
+      "src",
+      `${window.location.origin}/embed/apps/boba-hq`,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Get code" }));
+
+    const snippet = await screen.findByTestId("embed-code-snippet");
+    expect(snippet).toHaveTextContent(
+      '<metabase-data-app path="boba-hq"></metabase-data-app>',
+    );
+    expect(
+      screen.queryByRole("radio", {
+        name: "Existing session (local testing only)",
+      }),
+    ).not.toBeInTheDocument();
+    expect(snippet).not.toHaveTextContent("useExistingUserSession");
+    expect(snippet).not.toHaveTextContent('"isGuest": true');
+
+    await userEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(screen.getByRole("textbox", { name: "Data app" })).toHaveValue(
+      "Boba HQ",
+    );
+  });
+
+  it("lets the user select and change data apps from the dropdown", async () => {
+    setupDataApps({ isGuest: true });
+
+    await userEvent.click(screen.getByRole("radio", { name: /Data App/ }));
+    await waitFor(() =>
+      expect(screen.getByRole("textbox", { name: "Data app" })).toHaveValue(
+        "Boba HQ",
+      ),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Get code" })).toBeEnabled(),
+    );
+    await userEvent.click(screen.getByRole("textbox", { name: "Data app" }));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Boba HQ" }),
+    );
+    expect(screen.getByTitle("Data app preview")).toHaveAttribute(
+      "src",
+      `${window.location.origin}/embed/apps/boba-hq`,
+    );
+
+    await userEvent.click(screen.getByRole("textbox", { name: "Data app" }));
+    await userEvent.click(await screen.findByRole("option", { name: "Sales" }));
+    expect(screen.getByTitle("Data app preview")).toHaveAttribute(
+      "src",
+      `${window.location.origin}/embed/apps/sales`,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Get code" }));
+    const snippet = await screen.findByTestId("embed-code-snippet");
+    expect(snippet).toHaveTextContent(
+      '<metabase-data-app path="sales"></metabase-data-app>',
+    );
+    expect(snippet).not.toHaveTextContent('"isGuest": true');
+  });
+
+  it("requires an app when the instance has none", async () => {
+    setupDataApps({ resourceType: "data-app", resourceId: "" }, []);
+
+    await userEvent.click(screen.getByRole("radio", { name: /Data Apps/ }));
+    expect(
+      await screen.findByRole("textbox", { name: "Data app" }),
+    ).toHaveValue("");
+    await waitFor(() =>
+      expect(screen.getByRole("textbox", { name: "Data app" })).toBeEnabled(),
+    );
+    expect(screen.getByRole("button", { name: "Get code" })).toBeDisabled();
+    expect(screen.queryByTitle("Data app preview")).not.toBeInTheDocument();
+  });
+
+  it("hides the data app option without the data apps feature", async () => {
+    setup();
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Change dashboard" }),
+      ).toHaveTextContent("Dashboard"),
+    );
+
+    expect(
+      screen.queryByRole("radio", { name: /Data App/ }),
+    ).not.toBeInTheDocument();
+  });
+});

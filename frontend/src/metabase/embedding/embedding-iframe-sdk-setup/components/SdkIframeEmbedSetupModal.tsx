@@ -72,8 +72,11 @@ export const SdkIframeEmbedSetupContent = () => {
     settings,
   );
 
+  const isMissingDataApp =
+    settings.componentName === "metabase-data-app" && !settings.path;
   const isMissingResource =
-    isQuestionOrDashboard && !isLoading && (!resource || resource.archived);
+    isMissingDataApp ||
+    (isQuestionOrDashboard && !isLoading && (!resource || resource.archived));
 
   const siteUrl = useSetting("site-url");
   const isSiteUrlMismatched = !isSiteUrlMatchingCurrentOrigin(siteUrl);
@@ -92,7 +95,7 @@ export const SdkIframeEmbedSetupContent = () => {
     .with("select-embed-options", () => (
       <Button
         variant="filled"
-        disabled={!allowPreviewAndNavigation}
+        disabled={!allowPreviewAndNavigation || isMissingDataApp}
         onClick={handleNext}
       >
         {t`Get code`}
@@ -102,9 +105,9 @@ export const SdkIframeEmbedSetupContent = () => {
       <Button
         variant="filled"
         onClick={handleNext}
-        disabled={!allowPreviewAndNavigation}
+        disabled={!allowPreviewAndNavigation || isMissingDataApp}
       >
-        {t`Next`}
+        {experience === "app" ? t`Get code` : t`Next`}
       </Button>
     ));
 
@@ -125,7 +128,7 @@ export const SdkIframeEmbedSetupContent = () => {
             {canGoBack && (
               <Button
                 onClick={handleBack}
-                disabled={!allowPreviewAndNavigation}
+                disabled={!allowPreviewAndNavigation || isMissingDataApp}
               >
                 {t`Back`}
               </Button>

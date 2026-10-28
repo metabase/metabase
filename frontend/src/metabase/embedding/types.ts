@@ -99,7 +99,8 @@ export type SdkIframeEmbedSetupExperience =
   | "chart"
   | "exploration"
   | "browser"
-  | "metabot";
+  | "metabot"
+  | "app";
 
 export type LegacyStaticEmbeddingModalProps = {
   experience: SdkIframeEmbedSetupExperience;

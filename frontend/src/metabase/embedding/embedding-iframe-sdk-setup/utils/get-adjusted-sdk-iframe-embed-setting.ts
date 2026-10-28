@@ -21,6 +21,20 @@ export const getAdjustedSdkIframeEmbedSetting = ({
 }): SdkIframeEmbedSetupSettings => {
   const experience = getExperienceFromSettings(settings);
 
+  if (experience === "app") {
+    return {
+      ...settings,
+      theme: undefined,
+      ...getCommonEmbedSettings({
+        experience,
+        isGuestEmbedsEnabled,
+        isSsoEnabledAndConfigured,
+        isGuest: false,
+        useExistingUserSession: false,
+      }),
+    };
+  }
+
   return match({ prevSettings, settings })
     .with(
       {

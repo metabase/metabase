@@ -64,6 +64,7 @@ export function getEmbedCustomElementSnippet({
     .with("exploration", () => "metabase-question")
     .with("browser", () => "metabase-browser")
     .with("metabot", () => "metabase-metabot")
+    .with("app", () => "metabase-data-app")
     .exhaustive();
 
   const attributes = buildEmbedAttributes({

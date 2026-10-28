@@ -78,6 +78,10 @@ export const SdkIframeEmbedSetupProvider = ({
   // Default to the embed options step if both resource type and id are provided.
   // This is to skip the experience and resource selection steps as we know both.
   const defaultStep: SdkIframeEmbedSetupStep = useMemo(() => {
+    if (initialState?.resourceType === "data-app") {
+      return "select-embed-experience";
+    }
+
     if (!!initialState?.resourceType && !!initialState?.resourceId) {
       return "select-embed-options";
     }
