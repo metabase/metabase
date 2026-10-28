@@ -5,6 +5,7 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { waitForFloatingPosition } from "__support__/utils";
 import { DATE_PICKER_UNITS } from "metabase/querying/common/constants";
 import type {
+  DatePickerTruncationUnit,
   DatePickerUnit,
   RelativeDatePickerValue,
   RelativeIntervalDirection,
@@ -313,7 +314,7 @@ describe("DateOffsetIntervalPicker", () => {
         ).not.toBeInTheDocument();
       });
 
-      it.each<[DatePickerUnit, string[]]>([
+      it.each<[DatePickerTruncationUnit, string[]]>([
         ["day", ["days", "weeks", "months", "quarters", "years"]],
         ["quarter", ["quarters", "years"]],
       ])(

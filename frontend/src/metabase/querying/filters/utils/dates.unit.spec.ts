@@ -1,4 +1,7 @@
-import type { DateFilterValue } from "metabase/querying/common/types";
+import type {
+  DateFilterValue,
+  DatePickerTruncationUnit,
+} from "metabase/querying/common/types";
 import { setLocalization } from "metabase/utils/i18n";
 import * as Lib from "metabase-lib";
 import {
@@ -169,7 +172,7 @@ describe("getDateFilterClause", () => {
     },
   );
 
-  it.each<[Lib.TemporalUnit, string]>([
+  it.each<[DatePickerTruncationUnit, string]>([
     ["minute", "minutes"],
     ["hour", "hours"],
     ["day", "days"],
