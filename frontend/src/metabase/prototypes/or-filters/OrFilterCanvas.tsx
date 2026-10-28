@@ -130,7 +130,8 @@ type OrFilterCanvasProps = {
 export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
   const { query: baseQuery, isLoading, error } = useOrdersQuery();
   const [query, setQuery] = useState<Lib.Query>();
-  const [display, setDisplay] = useState<CardDisplayType>(DEFAULT_DISPLAY);
+  /** The loaded example's display; `undefined` lets each view pick its own default. */
+  const [display, setDisplay] = useState<CardDisplayType>();
   const [compactReading, setCompactReading] = useState(false);
   const [summaryPlacement, setSummaryPlacement] =
     useState<SummaryPlacement>("caret");
@@ -144,6 +145,7 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
       if (initialExample) {
         const loaded = initialExample.load(baseQuery, STAGE_INDEX);
         setQuery(loaded);
+        setDisplay(initialExample.display);
         setSaved(
           initialExample.title
             ? { title: initialExample.title, query: loaded }
@@ -166,7 +168,7 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
     const loaded = load(baseQuery ?? query, STAGE_INDEX);
     setQuery(loaded);
     setSaved(title ? { title, query: loaded } : undefined);
-    setDisplay(exampleDisplay ?? DEFAULT_DISPLAY);
+    setDisplay(exampleDisplay);
   };
   const heading = getHeading(query, saved);
 
@@ -220,7 +222,7 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
                       if (baseQuery) {
                         setQuery(baseQuery);
                         setSaved(undefined);
-                        setDisplay(DEFAULT_DISPLAY);
+                        setDisplay(undefined);
                       }
                     }}
                   >
@@ -297,6 +299,7 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
               query={query}
               onChange={setQuery}
               heading={heading}
+              display={display}
             />
           ) : (
             <>
@@ -330,7 +333,7 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
                     <QueryResults
                       query={query}
                       stageIndex={STAGE_INDEX}
-                      display={display}
+                      display={display ?? DEFAULT_DISPLAY}
                       onChange={(nextQuery, nextDisplay) => {
                         setQuery(nextQuery);
                         setDisplay(nextDisplay);

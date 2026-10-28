@@ -21,6 +21,7 @@ export function DrillMenuCanvas({
   query,
   onChange,
   heading,
+  display = "bar",
 }: FilterCanvasProps) {
   const question = useQuestionHistory(query, onChange);
   const [hasNewMenu, setHasNewMenu] = useState(true);
@@ -54,7 +55,7 @@ export function DrillMenuCanvas({
       <Box p="lg">
         <QuestionChart
           query={query}
-          display="bar"
+          display={display}
           hasNewMenu={hasNewMenu}
           menuLayout="flat"
           onPick={question.apply}

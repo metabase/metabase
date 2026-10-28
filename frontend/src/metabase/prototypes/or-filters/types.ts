@@ -24,6 +24,8 @@ export type FilterCanvasProps = {
   onChange: (query: Lib.Query) => void;
   /** The header's title; defaults to the query's generated name. */
   heading?: QuestionHeading;
+  /** How the loaded example asked to render; chart canvases default to a bar. */
+  display?: CardDisplayType;
 };
 
 /** A canned query the harness can load from its examples row. */

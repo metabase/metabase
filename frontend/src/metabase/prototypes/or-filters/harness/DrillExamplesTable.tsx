@@ -79,6 +79,23 @@ const COUNT_BY_CATEGORY: Example = {
   display: "bar",
 };
 
+/** Explicitly a table, so the chart-based directions show cells and headers to click. */
+const COUNT_BY_CATEGORY_TABLE: Example = {
+  get label() {
+    return t`Count by Category`;
+  },
+  load: withCountByCategory,
+  display: "table",
+};
+
+const COUNT_FILTERED_TABLE: Example = {
+  get label() {
+    return t`Count > 4939`;
+  },
+  load: withCountFilterDrilled,
+  display: "table",
+};
+
 const MONTH_EXTRACTED: Example = {
   get label() {
     return t`Month of year`;
@@ -116,20 +133,8 @@ const FILTER_DRILLS: DrillRow[] = [
     get queryChange() {
       return t`Adds the filter on the stage after the summary`;
     },
-    start: {
-      get label() {
-        return t`Count by Category`;
-      },
-      load: withCountByCategory,
-    },
-    results: [
-      {
-        get label() {
-          return t`Count > 4939`;
-        },
-        load: withCountFilterDrilled,
-      },
-    ],
+    start: COUNT_BY_CATEGORY_TABLE,
+    results: [COUNT_FILTERED_TABLE],
     get howToOpen() {
       return t`Click the Gadget Count cell → ">"; lands on the stage after the summary`;
     },
@@ -153,6 +158,7 @@ const FILTER_DRILLS: DrillRow[] = [
     get howToOpen() {
       return t`Click a Product ID cell → "View this Product's Orders"`;
     },
+    worksWithOr: true,
   },
   {
     drill: "column-filter",
@@ -172,6 +178,7 @@ const FILTER_DRILLS: DrillRow[] = [
     get howToOpen() {
       return t`Click the Total header → "Filter by this column"`;
     },
+    worksWithOr: true,
   },
   {
     drill: "column-filter",
@@ -182,23 +189,12 @@ const FILTER_DRILLS: DrillRow[] = [
     get queryChange() {
       return t`Adds the picked filter on the stage after the summary`;
     },
-    start: {
-      get label() {
-        return t`Count by Category`;
-      },
-      load: withCountByCategory,
-    },
-    results: [
-      {
-        get label() {
-          return t`Count > 4939`;
-        },
-        load: withCountFilterDrilled,
-      },
-    ],
+    start: COUNT_BY_CATEGORY_TABLE,
+    results: [COUNT_FILTERED_TABLE],
     get howToOpen() {
       return t`Click the Count header → "Filter by this column"`;
     },
+    worksWithOr: true,
   },
   {
     drill: "underlying-records",
@@ -218,6 +214,7 @@ const FILTER_DRILLS: DrillRow[] = [
     get howToOpen() {
       return t`Click the Gizmo bar → "See these Orders"`;
     },
+    worksWithOr: true,
   },
   {
     drill: "underlying-records",
@@ -246,6 +243,7 @@ const FILTER_DRILLS: DrillRow[] = [
     get howToOpen() {
       return t`Click the Doohickey bar → "See these Orders"; the aggregation's own condition comes along`;
     },
+    worksWithOr: true,
   },
   {
     drill: "underlying-records",
@@ -303,6 +301,7 @@ const FILTER_DRILLS: DrillRow[] = [
     get howToOpen() {
       return t`Click a bar → "See these Orders"; one filter per breakout, the date one bucketed by month`;
     },
+    worksWithOr: true,
   },
   {
     drill: "zoom-in.timeseries",

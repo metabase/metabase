@@ -32,7 +32,12 @@ const TABLE_NAME = "Orders";
  * expression on Orders; the summary only keeps its thresholds, an AND-ed tail
  * "after summarizing". Each top-level condition shows the rows left after it.
  */
-export function StackedCanvas({ query, onChange, heading }: FilterCanvasProps) {
+export function StackedCanvas({
+  query,
+  onChange,
+  heading,
+  display = "bar",
+}: FilterCanvasProps) {
   const question = useQuestionHistory(query, onChange);
   const [hasLlm, setHasLlm] = useState(true);
 
@@ -75,7 +80,7 @@ export function StackedCanvas({ query, onChange, heading }: FilterCanvasProps) {
         <Box p="lg">
           <QuestionChart
             query={query}
-            display="bar"
+            display={display}
             onPick={question.apply}
             onLegacyDrill={(nextQuery) => question.apply(nextQuery)}
           />

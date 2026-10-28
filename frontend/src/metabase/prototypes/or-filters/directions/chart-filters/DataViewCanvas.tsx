@@ -60,6 +60,7 @@ export function DataViewCanvas({
   query,
   onChange,
   heading,
+  display = "bar",
   DataZone = SourceDataZone,
   Legend,
   LegendWrap,
@@ -141,7 +142,7 @@ export function DataViewCanvas({
           )}
           <QuestionChart
             query={query}
-            display="bar"
+            display={display}
             onPick={question.apply}
             onLegacyDrill={(nextQuery) => question.apply(nextQuery)}
             yAxisTitle={
