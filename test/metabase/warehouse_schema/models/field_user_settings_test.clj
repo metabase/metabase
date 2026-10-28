@@ -82,3 +82,17 @@
     (testing "the field API does not write the AI columns"
       (mt/user-http-request :crowberto :put (format "field/%d" field-id) {:ai_description "x"})
       (is (nil? (t2/select-one-fn :ai_description :model/FieldUserSettings :field_id field-id))))))
+
+(deftest unset-user-settings-clears-an-unflagged-data-sensitivity-test
+  (mt/with-temp [:model/Field {field-id :id :as field} {:data_sensitivity :PUBLIC}]
+    (t2/insert! :model/FieldUserSettings {:field_id             field-id
+                                          :data_sensitivity     :PII
+                                          :data_sensitivity_set false
+                                          :ai_data_sensitivity  :PHI})
+    (testing "a human data_sensitivity without its flag wins over the AI value"
+      (is (= :PII (read-column field-id :data_sensitivity))))
+    (testing "unset-user-settings! of a human data_sensitivity without its flag gives the AI value back"
+      (field-user-settings/unset-user-settings! field [:data_sensitivity])
+      (is (= :PHI (read-column field-id :data_sensitivity)))
+      (is (=? {:data_sensitivity nil :data_sensitivity_set false}
+              (t2/select-one :model/FieldUserSettings :field_id field-id))))))

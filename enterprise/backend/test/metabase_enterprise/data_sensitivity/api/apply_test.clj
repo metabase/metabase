@@ -216,6 +216,17 @@
            (is (=? {:semantic_type :type/Email} (effective a-text)))
            (is (=? {:description "A plain text field."} (effective a-plain)))))))))
 
+(deftest apply-over-unflagged-human-data-sensitivity-test
+  (mt/with-premium-features #{:data-sensitivity}
+    (do-with-run
+     (fn [run-id {:keys [a a-plain]}]
+       (t2/insert! :model/FieldUserSettings {:field_id a-plain :data_sensitivity :PII :data_sensitivity_set false})
+       (let [ds (suggestion! run-id a a-plain :attribute :data_sensitivity :proposed_value "PHI")]
+         (is (=? {:written 1} (apply! {:accept [ds]})))
+         (testing "an accepted AI value replaces a human data_sensitivity without its flag for readers"
+           (is (=? {:data_sensitivity nil :data_sensitivity_set false :ai_data_sensitivity :PHI} (settings a-plain)))
+           (is (=? {:data_sensitivity :PHI} (effective a-plain)))))))))
+
 (deftest apply-category-leaves-has-field-values-test
   (mt/with-premium-features #{:data-sensitivity}
     (do-with-run

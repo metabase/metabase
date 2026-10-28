@@ -10,7 +10,9 @@
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.pipeline :as t2.pipeline]
+   [toucan2.tools.before-update :as t2.before-update]))
 
 (set! *warn-on-reflection* true)
 
@@ -62,9 +64,16 @@
   [settings]
   (delete-when-empty! settings))
 
-(t2/define-before-update :model/FieldUserSettings
-  [settings]
-  (with-set-flags settings (t2/changes settings)))
+(methodical/defmethod t2.pipeline/transduce-query :around [:toucan.query-type/update.* :model/FieldUserSettings :default]
+  "Set the `_set` flags from the changes as the caller gives them. A before-update hook sees only `t2/changes`, which
+  drops a flag the caller sets to its current value. The UPDATE that Toucan runs after its before-update hooks has only
+  those changes, so it keeps them as they are."
+  [rf query-type model parsed-args resolved-query]
+  (next-method rf query-type model
+               (cond-> parsed-args
+                 (not (::t2.before-update/doing-before-update? parsed-args))
+                 (update :changes #(some-> % (with-set-flags %))))
+               resolved-query))
 
 (t2/define-after-update :model/FieldUserSettings
   [settings]
@@ -77,7 +86,7 @@
   (let [settings (u/select-keys-when settings :present field/field-user-settings)]
     (when (seq settings)
       (if (warehouse-schema.db/field-user-settings-exist? id)
-        (warehouse-schema.db/update-field-user-settings! id (with-set-flags settings settings))
+        (warehouse-schema.db/update-field-user-settings! id settings)
         (warehouse-schema.db/insert-field-user-settings! (assoc settings :field_id id))))))
 
 (mu/defn set-custom-positions!
