@@ -13,7 +13,7 @@ import { useMetabaseAuthStatus } from "embedding-sdk-package/hooks/public/use-me
 import { useMetabaseQuery } from "embedding-sdk-package/hooks/public/use-metabase-query";
 import { defineQuery } from "embedding-sdk-package/hooks/public/use-metabase-query/define-query";
 
-import { getMockSdkHandlers } from "../../lib/mock-sdk-handlers";
+import { getMockSdkRegistry } from "../../lib/mock-sdk-registry";
 
 import { MetabaseTestProvider } from "./MetabaseTestProvider";
 
@@ -111,8 +111,10 @@ describe("MetabaseTestProvider", () => {
   });
 
   it("keeps mocks registered before render through strict mode effect replay", async () => {
-    getMockSdkHandlers().resolveDatasetQuery = () => () =>
+    const { handlers, resets } = getMockSdkRegistry();
+    handlers.resolveDatasetQuery = () => () =>
       Promise.reject(new Error("Answered by registered mock"));
+    resets.add(() => delete handlers.resolveDatasetQuery);
 
     render(
       <StrictMode>
