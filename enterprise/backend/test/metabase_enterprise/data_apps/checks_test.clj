@@ -811,6 +811,18 @@
                                  (map :id)
                                  [data-child data-grandchild metrics-child metrics-grandchild])]
                   (is (= id (:id (mt/user-http-request :crowberto :get 200 (str "collection/" id) as-data-app))))))
+              (testing "the collection list and the tree of a data app hold the Library, Data, Metrics and their nested collections"
+                (let [visible [library-id data-id metrics-id (:id data-grandchild) (:id metrics-grandchild)]
+                      hidden  [(:id outside) dashboards-id]]
+                  (doseq [[label found] [["list" (set (map :id (mt/user-http-request :crowberto :get 200 "collection" as-data-app)))]
+                                         ["tree" (set (map :id (mapcat #(tree-seq (comp seq :children) :children %)
+                                                                       (mt/user-http-request :crowberto :get 200 "collection/tree" as-data-app))))]]]
+                    (is (every? found visible) label)
+                    (is (not-any? found hidden) label))))
+              (testing "the shallow tree of a data app holds the nested collections of Data"
+                (let [found (set (map :id (mt/user-http-request :crowberto :get 200 "collection/tree" as-data-app
+                                                                :shallow true :collection-id data-id)))]
+                  (is (contains? found (:id data-child)))))
               (testing "a data app is refused any other collection and its items"
                 (doseq [id       [(:id outside) dashboards-id]
                         endpoint [(str "collection/" id) (str "collection/" id "/items")]]
@@ -820,7 +832,8 @@
               (testing "a request that is not a data app's finds the other collection and the root card"
                 (let [found (item-ids {} "collection/root/items")]
                   (is (contains? found ["collection" (:id outside)]))
-                  (is (contains? found ["card" (:id root-card)]))))))))))))
+                  (is (contains? found ["card" (:id root-card)])))
+                (is (contains? (set (map :id (mt/user-http-request :crowberto :get 200 "collection"))) (:id outside))))))))))))
 
 (deftest without-data-apps-feature-test
   (testing "without the data-apps feature a data app's queries are not checked"

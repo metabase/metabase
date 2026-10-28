@@ -77,8 +77,11 @@
   This will select only collections where `personal_owner_id` is not `nil`.
 
   To include library collections and their descendants, pass in `include-library?` as `true`.
-  By default, library-type collections are excluded. "
-  [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?]}]
+  By default, library-type collections are excluded.
+
+  To select only collections of some types, pass them as the set `collection-types`. "
+  [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?
+           collection-types]}]
   (cond->>
    (collections.db/collections-matching
     {:where [:and
@@ -94,6 +97,8 @@
                (location-from-collection-id-clause collection-id))
              (when personal-only
                [:!= :personal_owner_id nil])
+             (when collection-types
+               [:in :type (vec collection-types)])
              (when exclude-other-user-collections
                [:or [:= :personal_owner_id nil] [:= :personal_owner_id api/*current-user-id*]])
              (when-not include-library?

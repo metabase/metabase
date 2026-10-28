@@ -78,9 +78,12 @@
                                                                                  [:archived                       {:default false} [:maybe ms/BooleanValue]]
                                                                                  [:exclude-other-user-collections {:default false} [:maybe ms/BooleanValue]]
                                                                                  [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
-                                                                                 [:personal-only                  {:default false} [:maybe ms/BooleanValue]]]]
+                                                                                 [:personal-only                  {:default false} [:maybe ms/BooleanValue]]]
+   _body
+   request]
   (as->
    (collections.children/select-collections {:archived                       (boolean archived)
+                                             :collection-types               (some-> (data-apps/request-data-app request) data-apps/data-app-collection-types)
                                              :exclude-other-user-collections exclude-other-user-collections
                                              :namespaces                     (cond
                                                                                namespace [namespace]
@@ -149,10 +152,13 @@
        [:namespace                      {:optional true} [:maybe ms/NonBlankString]]
        [:namespaces                     {:optional true} [:maybe [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} :string]]]
        [:shallow                        {:default false} [:maybe :boolean]]
-       [:collection-id                  {:optional true} [:maybe ms/PositiveInt]]]]
+       [:collection-id                  {:optional true} [:maybe ms/PositiveInt]]]
+   _body
+   request]
   (api/check-400
    (not (and namespace (seq namespaces))))
-  (let [archived    (if exclude-archived false nil)
+  (let [data-app    (data-apps/request-data-app request)
+        archived    (if exclude-archived false nil)
         namespaces (cond
                      namespace #{namespace}
                      (seq namespaces) (into #{} (map not-empty namespaces))
@@ -163,7 +169,8 @@
                                                                   :namespaces                     namespaces
                                                                   :shallow                        shallow
                                                                   :collection-id                  collection-id
-                                                                  :include-library?               include-library})
+                                                                  :collection-types               (some-> data-app data-apps/data-app-collection-types)
+                                                                  :include-library?               (or include-library (some? data-app))})
                         (t2/hydrate :can_write))]
     (if shallow
       (collections.children/shallow-tree-from-collection-id collections)
