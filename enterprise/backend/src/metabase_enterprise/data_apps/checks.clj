@@ -215,12 +215,10 @@
   nil)
 
 (defenterprise-schema data-app-collection-types :- [:maybe [:set :string]]
-  "The types of the Library and of its Data and Metrics collections, which their subcollections inherit."
+  "The types of the Library and of its collections, which their subcollections inherit."
   :feature :data-apps
   [_data-app :- ::data-apps.schema/data-app]
-  #{collections/library-collection-type
-    collections/library-data-collection-type
-    collections/library-metrics-collection-type})
+  collections/library-collection-types)
 
 (defenterprise-schema check-collection :- :nil
   "Throws a 400 unless the collection with `collection-id` is of a type in [[data-app-collection-types]], after a read
@@ -229,6 +227,6 @@
   [data-app      :- ::data-apps.schema/data-app
    collection-id :- ::lib.schema.id/collection]
   (when-not (contains? (data-app-collection-types data-app) (:type (api/read-check :model/Collection collection-id)))
-    (throw (data-app-error (tru "A data app can see only the Library, its Data and Metrics collections and their subcollections, not the collection {0}."
+    (throw (data-app-error (tru "A data app can see only the Library and its collections, not the collection {0}."
                                 (str collection-id)))))
   nil)

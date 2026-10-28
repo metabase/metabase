@@ -772,7 +772,7 @@
   [options endpoint]
   (set (map (juxt :model :id) (:data (mt/user-http-request :crowberto :get 200 endpoint options)))))
 
-(deftest collection-endpoints-show-only-library-data-and-metrics-test
+(deftest collection-endpoints-show-only-library-test
   (do-with-app-collection
    (fn [_collection-id]
      (data-apps.tu/do-with-library!
@@ -794,11 +794,11 @@
                 (let [found (item-ids as-data-app "collection/root/items")]
                   (is (contains? found ["collection" library-id]))
                   (is (not-any? found [["collection" (:id outside)] ["card" (:id root-card)]]))))
-              (testing "the Library holds only its Data and Metrics collections"
+              (testing "the Library holds its Data, Metrics and Dashboards collections"
                 (let [found (item-ids as-data-app (str "collection/" library-id "/items"))]
                   (is (contains? found ["collection" data-id]))
                   (is (contains? found ["collection" metrics-id]))
-                  (is (not (contains? found ["collection" dashboards-id])))))
+                  (is (contains? found ["collection" dashboards-id]))))
               (testing "Data and Metrics hold their nested collections at every level"
                 (doseq [[parent child] [[data-id data-child]
                                         [(:id data-child) data-grandchild]
@@ -806,14 +806,14 @@
                                         [(:id metrics-child) metrics-grandchild]]]
                   (is (contains? (item-ids as-data-app (str "collection/" parent "/items")) ["collection" (:id child)])
                       (:name child))))
-              (testing "a data app reads the Library, its Data and Metrics collections and their nested collections"
-                (doseq [id (into [library-id data-id metrics-id]
+              (testing "a data app reads the Library, its collections and their nested collections"
+                (doseq [id (into [library-id data-id metrics-id dashboards-id]
                                  (map :id)
                                  [data-child data-grandchild metrics-child metrics-grandchild])]
                   (is (= id (:id (mt/user-http-request :crowberto :get 200 (str "collection/" id) as-data-app))))))
-              (testing "the collection list and the tree of a data app hold the Library, Data, Metrics and their nested collections"
-                (let [visible [library-id data-id metrics-id (:id data-grandchild) (:id metrics-grandchild)]
-                      hidden  [(:id outside) dashboards-id]]
+              (testing "the collection list and the tree of a data app hold the Library, its collections and their nested collections"
+                (let [visible [library-id data-id metrics-id dashboards-id (:id data-grandchild) (:id metrics-grandchild)]
+                      hidden  [(:id outside)]]
                   (doseq [[label found] [["list" (set (map :id (mt/user-http-request :crowberto :get 200 "collection" as-data-app)))]
                                          ["tree" (set (map :id (mapcat #(tree-seq (comp seq :children) :children %)
                                                                        (mt/user-http-request :crowberto :get 200 "collection/tree" as-data-app))))]]]
@@ -824,9 +824,8 @@
                                                                 :shallow true :collection-id data-id)))]
                   (is (contains? found (:id data-child)))))
               (testing "a data app is refused any other collection and its items"
-                (doseq [id       [(:id outside) dashboards-id]
-                        endpoint [(str "collection/" id) (str "collection/" id "/items")]]
-                  (is (= (format "A data app can see only the Library, its Data and Metrics collections and their subcollections, not the collection %s." id)
+                (doseq [endpoint [(str "collection/" (:id outside)) (str "collection/" (:id outside) "/items")]]
+                  (is (= (format "A data app can see only the Library and its collections, not the collection %s." (:id outside))
                          (mt/user-http-request :crowberto :get 400 endpoint as-data-app))
                       endpoint)))
               (testing "a request that is not a data app's finds the other collection and the root card"
