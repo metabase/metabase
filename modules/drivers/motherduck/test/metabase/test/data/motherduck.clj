@@ -31,9 +31,6 @@
 ;; for MotherDuck would fail because clojure.core/derive rejects a redundant ancestor.
 
 (doseq [[feature supported?] {::describe-table-test/describe-materialized-view-fields false ; MotherDuck has no materialized views
-                              ;; Field sync reports primary keys through information_schema even
-                              ;; though foreign key sync (:metadata/key-constraints) is disabled.
-                              ::describe-table-test/describe-pks true
                               :test/cannot-destroy-db true
                               ;; This pooling test invalidates the user name. The endpoint authenticates
                               ;; with the token and ignores the user name, so the connection stays valid.
@@ -127,9 +124,59 @@
   [driver {:keys [database-name]} & _]
   [(format "DROP DATABASE IF EXISTS %s CASCADE;" (qualify-and-quote driver (qualified-db-name database-name)))])
 
-;; DuckDB requires foreign keys in CREATE TABLE. The loader adds them afterward, so omit them
-;; and keep :metadata/key-constraints disabled in the driver.
+;; DuckDB can't add a foreign key with ALTER TABLE, so declare foreign keys in CREATE TABLE instead
+;; (below) and skip the loader's separate step.
 (defmethod sql.tx/add-fk-sql :motherduck [& _] nil)
+
+(defn- fk-target
+  "Name of the table that `fielddef` references, or nil if it isn't a foreign key."
+  [{:keys [fk]}]
+  (some-> fk name))
+
+(defn- inline-fk-sql
+  "FOREIGN KEY clause for `fielddef` in `table-name`, referencing the target table's primary key.
+
+  Skip self-references: DuckDB checks a row's foreign keys before inserting the row, and runs
+  UPDATE as a delete plus an insert, so no row can ever reference itself. The
+  test-data-self-referencing-user dataset needs exactly that."
+  [driver dbdef table-name {:keys [field-name], :as fielddef}]
+  (let [target (fk-target fielddef)
+        pks    (some->> (sql.tx/get-tabledef dbdef target) :field-definitions sql.tx/fielddefs->pk-field-names)]
+    (when (and target (not= target table-name) (= 1 (count pks)))
+      (format "FOREIGN KEY (%s) REFERENCES %s (%s)"
+              (sql.tx/format-and-quote-field-name driver field-name)
+              (qualify-and-quote driver (:database-name dbdef) target)
+              (sql.tx/format-and-quote-field-name driver (first pks))))))
+
+(defmethod sql.tx/create-table-sql :motherduck
+  [driver {:keys [database-name], :as dbdef} {:keys [table-name field-definitions], :as tabledef}]
+  (let [fks (keep #(inline-fk-sql driver dbdef table-name %) field-definitions)
+        sql ((get-method sql.tx/create-table-sql :sql/test-extensions) driver dbdef tabledef)]
+    (if (empty? fks)
+      sql
+      ;; The inherited statement ends its column list with the PRIMARY KEY clause.
+      (let [pk-clause (re-find #", PRIMARY KEY \([^)]*\)" sql)]
+        (assert pk-clause (format "Expected a PRIMARY KEY clause in CREATE TABLE for %s.%s" database-name table-name))
+        (str/replace-first sql pk-clause (str pk-clause ", " (str/join ", " fks)))))))
+
+(defn- parents-first
+  "Order `tabledefs` so every table comes after the tables it references, keeping the original order otherwise.
+  Tables must be created this way because a FOREIGN KEY clause needs its target to exist, and loaded this way
+  because DuckDB checks foreign keys on insert."
+  [tabledefs]
+  (let [names (set (map :table-name tabledefs))
+        deps  (fn [{:keys [table-name field-definitions]}]
+                (into #{} (comp (keep fk-target) (filter names) (remove #{table-name})) field-definitions))]
+    (loop [done #{}, ordered [], remaining tabledefs]
+      (if (empty? remaining)
+        ordered
+        (let [ready (filter #(every? done (deps %)) remaining)]
+          (when (empty? ready)
+            (throw (ex-info "Foreign keys between test tables form a cycle; DuckDB can't load them"
+                            {:tables (map :table-name remaining)})))
+          (recur (into done (map :table-name ready))
+                 (into ordered ready)
+                 (remove (set ready) remaining)))))))
 
 ;; DuckDB supports virtual generated columns, the default when STORED is omitted.
 (defmethod sql.tx/generated-column-sql :motherduck [_ expr]
@@ -206,7 +253,7 @@
 (defmethod tx/create-db! :motherduck
   [driver dbdef & options]
   (swap! created-databases conj (qualified-db-name (:database-name dbdef)))
-  (apply load-data/create-db! driver dbdef options))
+  (apply load-data/create-db! driver (update dbdef :table-definitions parents-first) options))
 
 (defmethod tx/dataset-already-loaded? :motherduck
   [driver dbdef]

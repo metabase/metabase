@@ -69,9 +69,6 @@
                  ;; MotherDuck uses token authentication rather than Postgres roles and row-level security.
                  :test/rls-impersonation
                  :test/column-impersonation
-                 ;; Foreign key sync is not supported. The test loader adds constraints after table
-                 ;; creation, but DuckDB requires foreign keys in the CREATE TABLE statement.
-                 :metadata/key-constraints
                  ;; Transforms are not supported at all.
                  :transforms/table
                  :transforms/python
@@ -143,6 +140,28 @@
       (if (.next rs)
         (recur (conj pks (.getString rs 1)))
         pks))))
+
+;; The inherited query reads pg_constraint, matching key columns with ANY(conkey). Read
+;; duckdb_constraints() instead. Its column lists are ordered, and unnesting both in one SELECT
+;; pairs them by position, so each column of a composite key maps to its referenced column. DuckDB
+;; only allows foreign keys within a schema, so the referenced table shares the referencing
+;; table's schema.
+(defmethod sql-jdbc.sync/describe-fks-sql :motherduck
+  [driver & {:keys [schema-names table-names]}]
+  (sql/format {:select   [[:schema_name "fk-table-schema"]
+                          [:table_name "fk-table-name"]
+                          [[:unnest :constraint_column_names] "fk-column-name"]
+                          [:schema_name "pk-table-schema"]
+                          [:referenced_table "pk-table-name"]
+                          [[:unnest :referenced_column_names] "pk-column-name"]]
+               :from     [[[:duckdb_constraints]]]
+               :where    [:and
+                          [:= :database_name [:current_database]]
+                          [:= :constraint_type [:inline "FOREIGN KEY"]]
+                          (when schema-names [:in :schema_name schema-names])
+                          (when table-names [:in :table_name table-names])]
+               :order-by [:fk-table-schema :fk-table-name]}
+              :dialect (sql.qp/quote-style driver)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Query processing                                                   |
