@@ -2436,6 +2436,36 @@
               (is (contains? (item-ids user folder-id) transform-id))
               (is (not (contains? (item-ids user trash-id) transform-id))))))))))
 
+(mt/when-ee-evailable
+ (deftest trashed-transform-without-database-permissions-test
+   (testing "a data analyst without transforms permission on the database cannot restore or delete a trashed transform"
+     (mt/initialize-if-needed! :db)
+     (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+       (mt/with-data-analyst-role! (mt/user->id :lucky)
+         (mt/with-db-perms-for-group! (perms-group/all-users) (mt/id) {:perms/transforms     :no
+                                                                       :perms/create-queries :query-builder-and-native}
+           (mt/with-temp [:model/Transform {transform-id :id} {}]
+             (let [url      (format "transform/%d" transform-id)
+                   trash-id (:id (mt/user-http-request :crowberto :get 200 "collection/trash"))]
+               (mt/user-http-request :crowberto :put 200 url {:archived true})
+               (testing "GET /api/transform/:id"
+                 (is (=? {:archived    true
+                          :can_write   false
+                          :can_restore false
+                          :can_delete  false}
+                         (mt/user-http-request :lucky :get 200 url))))
+               (testing "the Trash"
+                 (is (=? [{:id          transform-id
+                           :can_write   false
+                           :can_restore false
+                           :can_delete  false}]
+                         (->> (mt/user-http-request :lucky :get 200 (format "collection/%d/items" trash-id))
+                              :data
+                              (filter #(and (= "transform" (:model %)) (= transform-id (:id %))))))))
+               (testing "a restore is forbidden"
+                 (mt/user-http-request :lucky :put 403 url {:archived false})
+                 (is (:archived (t2/select-one :model/Transform transform-id))))))))))))
+
 (deftest search-the-trash-for-transforms-test
   (mt/initialize-if-needed! :db)
   (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
