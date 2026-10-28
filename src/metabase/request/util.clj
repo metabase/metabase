@@ -61,6 +61,11 @@
   [{:keys [uri]}]
   (when uri (re-matches data-app-uri-regex uri)))
 
+(defn internal-data-app?
+  "Whether the request targets the internal data app iframe route."
+  [{:keys [uri]}]
+  (boolean (and uri (str/starts-with? uri (str data-app-embed-prefix "/")))))
+
 (defn embedded-data-app?
   "Whether the request targets the dedicated SSO embedding route."
   [{:keys [uri]}]

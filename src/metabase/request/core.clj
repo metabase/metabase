@@ -66,6 +66,7 @@
   embedded?
   geocode-ip-addresses
   https-state
+  internal-data-app?
   public?
   referer])
 

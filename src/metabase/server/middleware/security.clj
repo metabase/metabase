@@ -653,7 +653,7 @@
                  ;; `embed?`, which `/embed/apps/...` also matches.
                  :frame-ancestors             (cond
                                                 (request/embedded-data-app? request)              :any
-                                                (request/data-app? request)                       :self
+                                                (request/internal-data-app? request)              :self
                                                 ((some-fn request/public? request/embed?) request) :any
                                                 :else                                              :none)
                  :allow-cache?                (and (request/cacheable? request)
