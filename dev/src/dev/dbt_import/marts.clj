@@ -135,9 +135,9 @@
       (.mkdirs profiles)
       (spit (io/file profiles "profiles.yml") (profiles-yaml connection))
       (when-not (.isDirectory (io/file scratch "dbt_packages"))
-        (fixture/dbt! scratch "deps"))
-      (fixture/dbt! scratch "seed" "--profiles-dir" (.getPath profiles))
-      (fixture/dbt! scratch "run" "--select" (str "package:" package-name) "--profiles-dir" (.getPath profiles))
+        (fixture/dbt! scratch profiles "deps"))
+      (fixture/dbt! scratch profiles "seed")
+      (fixture/dbt! scratch profiles "run" "--select" (str "package:" package-name))
       (finally
         (fixture/delete-recursively! scratch)))))
 
