@@ -416,6 +416,45 @@
 (defmethod ->predicate "Is" [node resolve-column] (is node resolve-column (boolean (arg node :negate))))
 (defmethod ->predicate "In" [node resolve-column] (in node resolve-column lib/in))
 
+(defn- null-safe-comparison
+  "`a IS NOT DISTINCT FROM b`, or `a IS DISTINCT FROM b` when `distinct?`: equality that treats two nulls as the same
+  and a null against a value as different, and is never null itself. Against a literal it is the `=` or `!=` Lib has:
+  `=` is null, so false in a filter, for a null column, and Metabase compiles `!=` on a column to include the nulls.
+  Between two columns (or expressions) it is spelled out over `IS NULL` checks with every branch two-valued, which
+  runs on any warehouse where `IS DISTINCT FROM` or a boolean `COALESCE` would not."
+  [node resolve-column distinct?]
+  ;; a value is converted afresh each time it appears in the clause, so that no two refs share a uuid
+  (let [a #(->value (arg node :this) resolve-column)
+        b #(->value (arg node :expression) resolve-column)
+        [column literal] (cond
+                           (and (lib/clause? (a)) (lib/clause? (b))) nil
+                           (lib/clause? (a))                          [a (b)]
+                           (lib/clause? (b))                          [b (a)]
+                           :else (unsupported "%s compares two literals" (describe node)))]
+    (cond
+      (and column (nil? literal))
+      (if distinct? (lib/not-null (column)) (lib/is-null (column)))
+
+      column
+      (if distinct?
+        ;; `!=` on a column already includes the nulls; on an expression it does not, so say so
+        (if (lib/clause-of-type? (column) :field)
+          (lib/!= (column) literal)
+          (lib/or (lib/!= (column) literal) (lib/is-null (column))))
+        (lib/= (column) literal))
+
+      distinct?
+      (lib/or (lib/and (lib/not-null (a)) (lib/not-null (b)) (lib/!= (a) (b)))
+              (lib/and (lib/is-null (a)) (lib/not-null (b)))
+              (lib/and (lib/not-null (a)) (lib/is-null (b))))
+
+      :else
+      (lib/or (lib/and (lib/not-null (a)) (lib/not-null (b)) (lib/= (a) (b)))
+              (lib/and (lib/is-null (a)) (lib/is-null (b)))))))
+
+(defmethod ->predicate "NullSafeEQ" [node resolve-column] (null-safe-comparison node resolve-column false))
+(defmethod ->predicate "NullSafeNEQ" [node resolve-column] (null-safe-comparison node resolve-column true))
+
 (defn- unparenthesized
   "`node` with any parentheses around it removed."
   [node]

@@ -869,10 +869,35 @@
       "case {{ Dimension('fact_sales_key__status') }} when 'a' then 1 else 0 end = 1"
       [:= {} [:case {} [[[:= {} status "a"] 1]] 0] 1])))
 
+(deftest ^:parallel filter-null-safe-comparison-test
+  (let [status (fld "status" :type/Text)
+        code   (fld "customer_key" :type/Text)]
+    (testing "against a literal, IS [NOT] DISTINCT FROM is the = or != Lib has: = is false in a filter for a null column, and != on a column includes the nulls"
+      (are [template clause] (= clause (filter-of template))
+        "{{ Dimension('fact_sales_key__status') }} IS NOT DISTINCT FROM 'x'" [:= {} status "x"]
+        "{{ Dimension('fact_sales_key__status') }} IS DISTINCT FROM 'x'"     [:!= {} status "x"]
+        "'x' IS DISTINCT FROM {{ Dimension('fact_sales_key__status') }}"     [:!= {} status "x"]
+        "{{ Dimension('fact_sales_key__status') }} IS DISTINCT FROM NULL"    [:not-null {} status]
+        "{{ Dimension('fact_sales_key__status') }} IS NOT DISTINCT FROM NULL" [:is-null {} status]))
+    (testing "!= on an expression does not include the nulls, so the null case is spelled out"
+      (is (= [:or {} [:!= {} [:lower {} status] "x"] [:is-null {} [:lower {} status]]]
+             (filter-of "lower({{ Dimension('fact_sales_key__status') }}) IS DISTINCT FROM 'x'"))))
+    (testing "between two columns (here a dimension and an entity key) every branch is two-valued, so two nulls are the same and a null against a value is different"
+      (is (= [:or {}
+              [:and {} [:not-null {} status] [:not-null {} code] [:= {} status code]]
+              [:and {} [:is-null {} status] [:is-null {} code]]]
+             (filter-of "{{ Dimension('fact_sales_key__status') }} IS NOT DISTINCT FROM {{ Entity('customer') }}")))
+      (is (= [:or {}
+              [:and {} [:not-null {} status] [:not-null {} code] [:!= {} status code]]
+              [:and {} [:is-null {} status] [:not-null {} code]]
+              [:and {} [:not-null {} status] [:is-null {} code]]]
+             (filter-of "{{ Dimension('fact_sales_key__status') }} IS DISTINCT FROM {{ Entity('customer') }}"))))
+    (testing "two literals compare nothing"
+      (is (re-find #"compares two literals" (filter-reason "{{ Dimension('fact_sales_key__status') }} = 'x' AND 1 IS DISTINCT FROM 2"))))))
+
 (deftest ^:parallel filter-unsupported-sql-test
   (are [template reason] (re-find reason (filter-reason template))
     "regexp_replace({{ Dimension('fact_sales_key__status') }}, 'a', 'b') = 'acme'"   #"the function regexp_replace"
-    "{{ Dimension('fact_sales_key__status') }} IS DISTINCT FROM 'x'"                #"is not supported"
     "{{ Dimension('fact_sales_key__status') }} IN (SELECT status FROM x)"          #"IN over"
     "1 = 1"                                                                        #"references no dimension or entity"
     "{{ Dimension('fact_sales_key__status') }} = 'Shipped'; DROP TABLE fact_sales" #"could not parse"
