@@ -160,6 +160,7 @@ describe("VisualizationResult", () => {
       });
 
       expect(screen.getByText("No results")).toBeInTheDocument();
+      expect(screen.getByAltText("No results")).toBeInTheDocument();
       expect(screen.getByText("Alert prompt")).toBeInTheDocument();
     });
 

@@ -12,6 +12,7 @@ import {
   renderWithProviders,
   screen,
   waitFor,
+  within,
 } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import type { SettingKey } from "metabase-types/api";
@@ -45,6 +46,10 @@ const setup = (props: AdminSettingInputProps<SettingKey>) => {
       key: "site-url",
       is_env_setting: true,
       env_name: "MB_HARDCODED_URL",
+    }),
+    createMockSettingDefinition({
+      key: "site-name",
+      description: "The name used for this instance of New Test Co.",
     }),
   ]);
 
@@ -80,6 +85,20 @@ describe("AdminSettingInput", () => {
     expect(await screen.findByText("Site Name")).toBeInTheDocument();
     expect(
       await screen.findByText("The name of your site"),
+    ).toBeInTheDocument();
+  });
+
+  it("should fall back to the setting description from the API (metabase#17043)", async () => {
+    setup({
+      title: "Site Name",
+      name: "site-name",
+      inputType: "text",
+    });
+
+    expect(
+      await within(await screen.findByTestId("site-name-setting")).findByText(
+        "The name used for this instance of New Test Co.",
+      ),
     ).toBeInTheDocument();
   });
 
