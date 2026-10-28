@@ -1423,6 +1423,7 @@
            metabot
            metabot.agent-api
            metabot.llm
+           metabot.toolkit
            metrics
            models
            notification
@@ -1531,7 +1532,8 @@
               metabase.metabot.usage-controls}
    :module-exports #{metabot.agent-api
                      metabot.llm
-                     metabot.slackbot}
+                     metabot.slackbot
+                     metabot.toolkit}
    :uses    #{activity-feed
               ai-tracing
               analytics
@@ -1709,6 +1711,14 @@
               upload
               util}
    :model-imports #{:model/AuthIdentity :model/Card :model/MetabotMessage}}
+
+  metabot.toolkit
+  {:team "Metabot"
+   :api  #{metabase.metabot.toolkit.dashboard-ops}
+   :uses #{dashboards
+           lib
+           parameters
+           util}}
 
   metrics
   {:team "UX West"
