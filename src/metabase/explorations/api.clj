@@ -20,6 +20,7 @@
    [metabase.explorations.query-plan.context :as qp.context]
    [metabase.explorations.queues :as explorations.queues]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.metrics.core :as metrics]
    [metabase.permissions.core :as perms]
@@ -275,17 +276,6 @@
       (explorations.queues/start-thread! thread-id)
       true)))
 
-(defn- stringify-dim-types
-  "Prepare a block's `:dimensions` for re-insertion. The model's read transform keywordizes
-  `:effective-type`/`:semantic-type` (e.g. `:type/Date`); the JSON write transform would
-  otherwise drop the namespace on a bare keyword, so stringify them first."
-  [dimensions]
-  (mapv (fn [dim]
-          (cond-> dim
-            (keyword? (:effective-type dim)) (update :effective-type u/qualified-name)
-            (keyword? (:semantic-type dim))  (update :semantic-type u/qualified-name)))
-        dimensions))
-
 (defn- format-explore-filter-for-thread-name
   "Format one explore filter for a thread name. `:display_value` is FE-authored and is the
   sole source of truth for the value label."
@@ -358,8 +348,8 @@
   [:map {:closed true :decode/api {:enter #(cond-> % (map? %) (update-keys u/->kebab-case-en))}}
    [:dimension-id   ms/UUIDString]
    [:display-name   {:optional true} [:maybe :string]]
-   [:effective-type {:optional true} [:maybe :string]]
-   [:semantic-type  {:optional true} [:maybe :string]]])
+   [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
+   [:semantic-type  {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]])
 
 (def ^:private BlockSelection
   "One Research-plan area on the FE — a metric plus its chosen dimensions. Persisted verbatim as
@@ -731,7 +721,7 @@
               tid    (:id thread)]
           (explorations.db/insert-blocks! {:exploration_thread_id tid
                                            :metrics               metrics'
-                                           :dimensions            (stringify-dim-types (:dimensions block))
+                                           :dimensions            (:dimensions block)
                                            :position              0})
           (insert-thread-timelines! tid timeline-ids)
           ;; Stamp `started_at` last — it's the signal the planning worker claims on.

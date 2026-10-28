@@ -14,6 +14,7 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
+   [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -36,8 +37,19 @@
               (:semantic-type dim)  (update :semantic-type keyword)))
           dimensions)))
 
+(defn- stringify-dim-types
+  "Write `effective-type`/`semantic-type` as namespaced strings (`\"type/Date\"`), the shape [[keywordize-dim-types]]
+  reads back."
+  [dimensions]
+  (when dimensions
+    (mapv (fn [dim]
+            (cond-> dim
+              (keyword? (:effective-type dim)) (update :effective-type u/qualified-name)
+              (keyword? (:semantic-type dim))  (update :semantic-type u/qualified-name)))
+          dimensions)))
+
 (def ^:private transform-dimensions
-  {:in  (:in mi/transform-json)
+  {:in  (comp (:in mi/transform-json) stringify-dim-types)
    :out (comp keywordize-dim-types (:out mi/transform-json))})
 
 (defn- normalize-explore-filters

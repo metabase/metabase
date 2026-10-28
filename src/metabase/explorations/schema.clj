@@ -3,6 +3,7 @@
   (:require
    [metabase.interestingness.chart.types :as chart.types]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metrics.core :as metrics]
    [metabase.util.malli.registry :as mr]
@@ -58,24 +59,15 @@
   [:map {:closed true}
    [:dimension-id   ms/UUIDString]
    [:display-name   {:optional true} [:maybe :string]]
-   [:effective-type {:optional true} [:maybe :string]]
-   [:semantic-type  {:optional true} [:maybe :string]]])
-
-(mr/def ::exploration-block.selected-dimension
-  "One entry of the `:dimensions` column of a ExplorationBlock as selected, with the types read back as keywords."
-  [:merge
-   ::exploration-block.dimension
-   [:map {:closed true}
-    [:effective-type {:optional true} [:maybe :keyword]]
-    [:semantic-type  {:optional true} [:maybe :keyword]]]])
+   [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
+   [:semantic-type  {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]])
 
 (mr/def ::exploration-block
   "A ExplorationBlock as selected from the app DB: every column of `:exploration_block`."
   [:merge
    ::exploration-block.update
    [:map {:closed true}
-    [:id                    ms/PositiveInt]
-    [:dimensions            {:optional true} [:maybe [:sequential ::exploration-block.selected-dimension]]]]])
+    [:id                    ms/PositiveInt]]])
 
 (mr/def ::exploration-block.update
   "What an update (or insert) of a ExplorationBlock accepts: every column of `:exploration_block` except `id`, all optional."
