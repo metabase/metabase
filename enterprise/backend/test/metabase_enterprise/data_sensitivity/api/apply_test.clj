@@ -268,6 +268,25 @@
            (is (nil? (:ai_description (settings b-text))))
            (is (= {desc :kept} (row-states [desc])))))))))
 
+(deftest apply-skips-hidden-fields-and-tables-test
+  (mt/with-premium-features #{:data-sensitivity}
+    (do-with-run
+     (fn [run-id {:keys [a b a-text a-plain a-int b-text]}]
+       (let [hidden    (suggestion! run-id a a-text :attribute :description :proposed_value "Hidden.")
+             sensitive (suggestion! run-id a a-plain :attribute :description :proposed_value "Sensitive.")
+             in-hidden (suggestion! run-id b b-text :attribute :description :proposed_value "In a hidden table.")
+             visible   (suggestion! run-id a a-int :attribute :description :proposed_value "Visible.")]
+         (t2/update! :model/Field a-text {:visibility_type :hidden})
+         (t2/update! :model/Field a-plain {:visibility_type :sensitive})
+         (t2/update! :model/Table b {:visibility_type :hidden})
+         (is (=? {:written 1 :failed 3} (apply! {:accept [hidden sensitive in-hidden visible]})))
+         (testing "a field that is hidden or sensitive, or in a hidden table, gets no AI value"
+           (is (nil? (:ai_description (settings a-text))))
+           (is (nil? (:ai_description (settings a-plain))))
+           (is (nil? (:ai_description (settings b-text)))))
+         (testing "a visible field gets its AI value"
+           (is (=? {:ai_description "Visible."} (settings a-int)))))))))
+
 (deftest apply-counts-written-proposals-when-an-event-handler-fails-test
   (mt/with-premium-features #{:data-sensitivity}
     (do-with-run
@@ -285,16 +304,16 @@
     (do-with-run
      (fn [run-id {:keys [a a-plain]}]
        (let [desc   (suggestion! run-id a a-plain :attribute :description :proposed_value "v1")
-             orig   db/active-fields-by-id
+             orig   db/visible-fields-by-id
              upsert (promise)]
-         (mt/with-dynamic-fn-redefs [db/active-fields-by-id (fn [ids]
-                                                              (when-not (realized? upsert)
-                                                                (deliver upsert
-                                                                         (future
-                                                                           (t2/update! :model/MetadataGenerationProposal desc
-                                                                                       {:proposed_value "v2"})))
-                                                                (deref @upsert 2000 nil))
-                                                              (orig ids))]
+         (mt/with-dynamic-fn-redefs [db/visible-fields-by-id (fn [ids]
+                                                               (when-not (realized? upsert)
+                                                                 (deliver upsert
+                                                                          (future
+                                                                            (t2/update! :model/MetadataGenerationProposal desc
+                                                                                        {:proposed_value "v2"})))
+                                                                 (deref @upsert 2000 nil))
+                                                               (orig ids))]
            (apply! {:accept [desc] :proposed_values {desc "v1"}}))
          @@upsert
          (testing "a value a run upserts after the staleness check is not lost"

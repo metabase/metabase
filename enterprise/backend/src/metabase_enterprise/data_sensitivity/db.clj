@@ -21,13 +21,29 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database :id database-id))
 
+(defn- column
+  "Column `k`, qualified with `alias` when it is given."
+  [alias k]
+  (if alias (keyword (name alias) (name k)) k))
+
+(defn- visible-table-where
+  "The condition on a Table, as users see it, that generation, review and apply share: active, with no
+  `visibility_type`. `alias` is the alias of the table in the query, if any."
+  [& [alias]]
+  [:and [:= (column alias :active) true] [:= (column alias :visibility_type) nil]])
+
+(defn- visible-field-where
+  "The condition on a Field, as users see it, that generation, review and apply share: active, with a
+  `visibility_type` that is not retired, sensitive or hidden. `alias` is the alias of the field in the query, if any."
+  [& [alias]]
+  [:and [:= (column alias :active) true] [:not-in (column alias :visibility_type) ["retired" "sensitive" "hidden"]]])
+
 (defn- active-fields-where
   "The `:where` of [[active-fields]] over the tables that `table-condition` selects."
   [table-condition]
   [:and
    table-condition
-   [:= :active true]
-   [:not-in :visibility_type ["retired" "sensitive" "hidden"]]
+   (visible-field-where)
    [:= :nfc_path nil]
    [:= :parent_id nil]])
 
@@ -60,7 +76,7 @@
 (defn- active-tables-where
   "The `:where` of [[active-tables]] over the tables that `table-condition` selects."
   [table-condition]
-  [:and table-condition [:= :active true] [:= :visibility_type nil]])
+  [:and table-condition (visible-table-where)])
 
 (mu/defn fk-target-names
   "The id, name, table name and table schema of the Fields with `field-ids` that [[active-fields]] could return, in
@@ -212,19 +228,21 @@
    [:table_ids   {:optional true} [:maybe [:sequential ::lib.schema.id/table]]]])
 
 (defn- pending-in-scope
-  "The `:from`, `:join` and `:where` of a query over the pending proposals in `scope` of active fields of active
-  tables, with the proposal table aliased `p`, the Table `t` and the Field `f`."
+  "The `:from`, `:join` and `:where` of a query over the pending proposals in `scope` of the fields and tables that
+  generation selects, with the proposal table aliased `p`, the Table `t` and the Field `f`."
   [{:keys [database_id schema table_ids]}]
   {:from  [[:metadata_generation_proposal :p]]
    :join  [(warehouse-schema-overlay/table-query {:alias :t}) [:= :t.id :p.table_id]
            (warehouse-schema-overlay/field-query {:alias :f}) [:= :f.id :p.field_id]]
-   :where (cond-> [:and [:= :t.active true] [:= :f.active true]]
+   :where (cond-> [:and
+                   (visible-table-where :t)
+                   (visible-field-where :f)]
             database_id     (conj [:= :t.db_id database_id])
             schema          (conj [:= :t.schema schema])
             (seq table_ids) (conj [:in :p.table_id table_ids]))})
 
 (mu/defn pending-proposals :- [:sequential (ms/InstanceOf :model/MetadataGenerationProposal)]
-  "The pending proposals in `scope` of active fields of active tables, with the field's `field_name`,
+  "The pending proposals in `scope` of visible fields of visible tables, with the field's `field_name`,
   `field_display_name`, `field_base_type` and `field_effective_type`, ordered by schema, table name, field position,
   field id and attribute."
   [scope :- ::scope]
@@ -240,8 +258,8 @@
                                                 [:table_id  ms/PositiveInt]
                                                 [:field_id  ms/PositiveInt]
                                                 [:attribute ::run/attribute]]]
-  "The id, table, field and attribute of the pending proposals in `scope` of active fields of active tables, ordered
-  by id."
+  "The id, table, field and attribute of the pending proposals in `scope` of visible fields of visible tables,
+  ordered by id."
   [scope :- ::scope]
   (t2/select :model/MetadataGenerationProposal
              (assoc (pending-in-scope scope)
@@ -268,8 +286,8 @@
 
 ;;; Apply
 
-(mu/defn active-fields-by-id :- [:map-of ::lib.schema.id/field (ms/InstanceOf :model/Field)]
-  "A map of field id to the active Field of an active Table, with the values readers see and `:can_write` hydrated,
+(mu/defn visible-fields-by-id :- [:map-of ::lib.schema.id/field (ms/InstanceOf :model/Field)]
+  "A map of field id to the visible Field of a visible Table, with the values readers see and `:can_write` hydrated,
   for `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (if (seq field-ids)
@@ -279,11 +297,10 @@
                                  {:from  [(warehouse-schema-overlay/field-query)]
                                   :where [:and
                                           [:in :id field-ids]
-                                          [:= :active true]
+                                          (visible-field-where)
                                           [:in :table_id ^:allow-subquery {:select [:id]
-                                                                           :from   [(warehouse-schema-overlay/table-query
-                                                                                     {:user-settings? false})]
-                                                                           :where  [:= :active true]}]]})
+                                                                           :from   [(warehouse-schema-overlay/table-query)]
+                                                                           :where  (visible-table-where)}]]})
                       :can_write))
     {}))
 
