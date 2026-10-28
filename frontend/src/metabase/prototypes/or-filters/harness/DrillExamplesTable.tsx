@@ -41,8 +41,6 @@ type DrillRow = {
   writesFilter: boolean;
   /** What the drill does to the query, in a few words. */
   queryChange: string;
-  /** Index into `FOOTNOTES`, for the two drills whose filter is not on this query. */
-  footnote?: number;
   /** The unfiltered query the drill appears on; absent when no shape on Orders offers it. */
   start?: Example;
   /** The queries the drill produces; empty when it opens another view instead. */
@@ -342,6 +340,35 @@ const FILTER_DRILLS: DrillRow[] = [
       return t`Click the Affiliate bar → "Break out by…" → Product → Category`;
     },
   },
+  {
+    drill: "pk",
+    get variant() {
+      return t`multi-PK tables only`;
+    },
+    writesFilter: true,
+    get queryChange() {
+      return t`Adds PK = value filters, then opens object detail`;
+    },
+    results: [],
+    get howToOpen() {
+      return t`Only on tables with several primary keys; never offered on Orders`;
+    },
+  },
+  {
+    drill: "fk-details",
+    get variant() {
+      return t`on a new query`;
+    },
+    writesFilter: true,
+    get queryChange() {
+      return t`Replaces the query with one on the target table, ID = value`;
+    },
+    start: RAW_ROWS,
+    results: [],
+    get howToOpen() {
+      return t`Click a Product ID cell → "View details"; the bar shows ID = 14 on Products`;
+    },
+  },
 ];
 
 const OTHER_DRILLS: DrillRow[] = [
@@ -456,18 +483,6 @@ const OTHER_DRILLS: DrillRow[] = [
     },
   },
   {
-    drill: "pk",
-    writesFilter: false,
-    get queryChange() {
-      return t`Adds PK = value filters, then opens object detail`;
-    },
-    footnote: 1,
-    results: [],
-    get howToOpen() {
-      return t`Only on tables with several primary keys; never offered on Orders`;
-    },
-  },
-  {
     drill: "zoom",
     writesFilter: false,
     get queryChange() {
@@ -476,19 +491,6 @@ const OTHER_DRILLS: DrillRow[] = [
     results: [],
     get howToOpen() {
       return t`Not reachable here: an ID cell has no popover at all, since quick filters skip primary keys and the real app's "View details" is a page navigation the harness does not wire up`;
-    },
-  },
-  {
-    drill: "fk-details",
-    writesFilter: false,
-    get queryChange() {
-      return t`New query on the target table with ID = value`;
-    },
-    footnote: 2,
-    start: RAW_ROWS,
-    results: [],
-    get howToOpen() {
-      return t`Click a Product ID cell → "View details"; loads Products with ID = 14`;
     },
   },
   {
@@ -508,7 +510,7 @@ const OTHER_DRILLS: DrillRow[] = [
 const GROUPS: DrillGroup[] = [
   {
     get label() {
-      return t`Writes a filter on this query`;
+      return t`Writes a filter`;
     },
     rows: FILTER_DRILLS,
   },
@@ -518,11 +520,6 @@ const GROUPS: DrillGroup[] = [
     },
     rows: OTHER_DRILLS,
   },
-];
-
-const FOOTNOTES = [
-  t`pk writes "PK = value", but only on tables with several primary keys.`,
-  t`fk-details writes "ID = value" on a new query on the target table.`,
 ];
 
 type DrillExamplesTableProps = {
@@ -565,10 +562,7 @@ export function DrillExamplesTable({ onLoad }: DrillExamplesTableProps) {
                     </Text>
                   )}
                 </td>
-                <td>
-                  {row.writesFilter ? "✅" : "⛔"}
-                  {row.footnote && <sup>{row.footnote}</sup>}
-                </td>
+                <td>{row.writesFilter ? "✅" : "⛔"}</td>
                 <td>
                   <Text size="sm">{row.queryChange}</Text>
                 </td>
@@ -604,11 +598,6 @@ export function DrillExamplesTable({ onLoad }: DrillExamplesTableProps) {
           </tbody>
         ))}
       </table>
-      {FOOTNOTES.map((note, index) => (
-        <Text key={index} size="xs" c="text-secondary">
-          <sup>{index + 1}</sup> {note}
-        </Text>
-      ))}
     </Stack>
   );
 }
