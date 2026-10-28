@@ -4,11 +4,10 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 cd "$I18N_ROOT"
 
-commit=$(i18n_commit)
-mkdir -p "$I18N_CACHE"
-workspace=$(mktemp -d "locales/metabase-i18n/update.XXXXXX")
-trap 'rm -rf "$workspace"' EXIT
-i18n_clone "$commit" "$workspace/repo"
-printf '%s\n' "$commit" > "$workspace/repo/.git/metabase-base"
-trap - EXIT
-printf '%s\n' "$workspace/repo"
+pin=$(i18n_pin)
+snapshot=$(./bin/i18n/fetch-translations "$pin")
+checkout=$(mktemp -d "$I18N_CACHE/update.XXXXXX")
+cp -R "$snapshot" "$checkout/locales"
+chmod -R u+w "$checkout/locales"
+printf '%s\n' "$pin" > "$checkout/base"
+printf '%s\n' "$checkout"

@@ -71,8 +71,8 @@ jobs:
       timeout-minutes: 5
       uses: ./.github/actions/prepare-backend
 
-    - name: Test external translation checkouts and publishing
-      run: ./bin/i18n/test-external-repo
+    - name: Test translation snapshot scripts
+      run: ./bin/i18n/test-translations
     - name: Run build and release script tests
       run: clojure -X:dev:drivers:build:build-dev:build-test:ci
       timeout-minutes: 15

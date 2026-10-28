@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write
   pull-requests: write
 
 concurrency:
@@ -37,12 +38,15 @@ jobs:
       - name: install gettext
         run: sudo apt-get install gettext
 
-      - name: Prepare external translation checkout
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
+        with:
+          role-to-assume: ${{ secrets.TRANSLATIONS_IAM_ROLE }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Prepare translation snapshot
         run: |
-          gh auth setup-git
           checkout=$(./bin/i18n/prepare-translation-update)
-          git -C "$checkout" config user.name github-actions
-          git -C "$checkout" config user.email github-actions@github.com
           cp locales/crowdin.yml "$checkout/locales/crowdin.yml"
           echo "METABASE_I18N_CHECKOUT=$checkout" >> "$GITHUB_ENV"
 
@@ -80,7 +84,7 @@ jobs:
           ./bin/i18n/build-translation-resources "$METABASE_I18N_CHECKOUT/locales"
           ./bin/i18n/publish-translations "$METABASE_I18N_CHECKOUT"
 
-          git add locales/metabase-i18n.commit resources/locales.clj
+          git add locales/translations.pin resources/locales.clj
           git commit -m "Update translations $DATE" --allow-empty --no-verify
           git push -u origin "$BRANCH_NAME"
 

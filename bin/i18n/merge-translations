@@ -12,7 +12,7 @@
 # Example usage:
 #   ./bin/i18n/merge-translations <branch-name> [-o]
 #
-# The script reads the catalogs pinned in locales/metabase-i18n.commit on both
+# The script reads the catalogs pinned in locales/translations.pin on both
 # branches, publishes the merged catalogs, and updates the pin on this branch.
 
 set -euo pipefail
@@ -29,13 +29,14 @@ esac
 git rev-parse --verify "$other_branch^{commit}" > /dev/null
 
 checkout=$(./bin/i18n/prepare-translation-update)
-trap 'if [ "$?" = 0 ]; then rm -rf "$(dirname "$checkout")"; else echo "Update retained at $checkout" >&2; fi' EXIT
+trap 'if [ "$?" = 0 ]; then rm -rf "$checkout"; else echo "Update retained at $checkout" >&2; fi' EXIT
 source_directory="$checkout/locales"
 
-if other_commit=$(git show "$other_branch:locales/metabase-i18n.commit" 2>/dev/null); then
-  other_directory=$(./bin/i18n/fetch-translations "$other_commit")
+if other_pin=$(git show "$other_branch:locales/translations.pin" 2>/dev/null); then
+  other_directory="$checkout/other"
+  i18n_download "$(i18n_pin "$other_pin")" "$other_directory"
 else
-  other_directory="$(dirname "$checkout")/legacy"
+  other_directory="$checkout/legacy"
   mkdir "$other_directory"
   git archive "$other_branch:locales" -- '*.po' | tar -x -C "$other_directory"
 fi

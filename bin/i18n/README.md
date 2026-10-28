@@ -5,7 +5,7 @@ orchestrate:
 
 1. **[Extraction](#extraction)** — scan Clojure/TypeScript source for `trs` / `tru` / ttag `t`
    tagged-template call sites, emit a gettext source template.
-2. **[Artifact generation](#artifact-generation)** — read back translated `locales/metabase-i18n/<commit>/*.po` files,
+2. **[Artifact generation](#artifact-generation)** — read back the pinned translated `*.po` files,
    apply [autofixes](#autofix-pass) for unambiguously repairable translator mistakes, validate
    the rest, and emit the runtime artifacts at `resources/i18n/*.edn` (backend) and
    `resources/frontend_client/app/locales/*.json` (frontend). Translations the scanner still
@@ -17,10 +17,21 @@ workflow runs weekly to pull translations down and open a PR.
 
 ## Pinned catalogs
 
-`locales/metabase-i18n.commit` pins a commit in
-[ChrisVandoo/metabase-i18n](https://github.com/ChrisVandoo/metabase-i18n). The catalogs of that
-commit are downloaded into `locales/metabase-i18n/<commit>/`, which Git ignores. Only the
-current pin is kept: a new pin replaces the old download.
+`locales/translations.pin` pins one snapshot of the catalogs, as `<version>/<commit>`. For
+example, `v66/516af13bc7e…`. Master uses `latest/<commit>`, and each release branch uses
+`vNN/<commit>`. `<commit>` is the Metabase commit that published the snapshot.
+
+Snapshots are `.tar.gz` files in `s3://metabase-ci-infra/translations/<version>/<commit>.tar.gz`.
+Builds download them through CloudFront at
+`https://d3rmfk6uwjyg5s.cloudfront.net/translations/<version>/<commit>.tar.gz`, which needs no
+credentials. A snapshot never changes after upload, so a commit always builds with the same
+translations.
+
+The catalogs are downloaded into `locales/metabase-i18n/<version>-<commit>/`, which Git ignores.
+Only the current pin is kept: a new pin replaces the old download.
+
+When a release branch is cut, `cut-release-branch.yml` copies the master snapshot to
+`vNN/<commit>.tar.gz` and pins it on the new branch.
 
 ## Build
 
@@ -31,22 +42,23 @@ pseudo-locale into `target/i18n/en-ZZ.po`.
 
 ## Publish
 
-The Crowdin workflow publishes updates. To publish by hand, you need write access to
-`ChrisVandoo/metabase-i18n`. Run from the project root:
+The Crowdin workflow publishes updates. To publish by hand, you need AWS credentials that can
+write to `s3://metabase-ci-infra/translations/`. Run from the project root:
 
 ```sh
 checkout=$(./bin/i18n/prepare-translation-update)
 ./bin/i18n/update-translation-template "$checkout/locales"
 ./bin/i18n/build-translation-resources "$checkout/locales"
 ./bin/i18n/publish-translations "$checkout"
-rm -rf "$(dirname "$checkout")"
+rm -rf "$checkout"
 ```
 
-`publish-translations` pushes the new commit to a `metabase-<commit>` branch and updates the pin.
+`publish-translations` uploads a new snapshot named after the current `HEAD` and updates the pin.
+It does not overwrite a snapshot that exists, so publish from a new commit each time.
 Commit the pin and `resources/locales.clj`.
 
 To merge the catalogs of another branch, run `./bin/i18n/merge-translations <branch> [-o]`.
-To test the scripts, run `./bin/i18n/test-external-repo`.
+To test the scripts, run `./bin/i18n/test-translations`.
 
 ```mermaid
 flowchart LR
@@ -60,7 +72,7 @@ flowchart LR
     subgraph Sync ["Phase 2: Crowdin sync"]
         direction LR
         Crowdin{{Crowdin}}
-        LocalePo[(Pinned external catalogs)]
+        LocalePo[(Pinned S3 snapshot)]
         Crowdin -->|download| LocalePo
     end
 
@@ -180,7 +192,7 @@ More information in the [grasp issue](https://github.com/borkdude/grasp/issues/2
 
 ## Artifact generation
 
-_`locales/metabase-i18n/<commit>/*.po` → `resources/i18n/*.edn` + `resources/frontend_client/app/locales/*.json`_
+_Pinned `*.po` files → `resources/i18n/*.edn` + `resources/frontend_client/app/locales/*.json`_
 
 Once translators have filled in the external `<locale>.po` files through Crowdin, the build pipeline turns
 those into the runtime artifacts that Metabase actually ships:

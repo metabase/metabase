@@ -6,6 +6,9 @@ on:
 
 jobs:
   cut:
+    permissions:
+      contents: read
+      id-token: write
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
     timeout-minutes: 5
     steps:
@@ -15,6 +18,7 @@ jobs:
           sparse-checkout: |
             release
             .github
+            locales
           token: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
 
       - name: Prepare release scripts
@@ -56,6 +60,12 @@ jobs:
             core.setOutput('nextMilestone', String(next + 1));
             core.setOutput('needsRequirementsUpdate', String(needsRequirementsUpdate));
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@d979d5b3a71173a29b74b5b88418bfda9437d885 # v6.1.1
+        with:
+          role-to-assume: ${{ secrets.TRANSLATIONS_IAM_ROLE }}
+          aws-region: ${{ vars.AWS_REGION }}
+
       # Pushing the new branch triggers set-milestone.yml, which does the
       # full milestone backfill and then dispatches release-notes-preview
       # to upload the markdown to #writing.
@@ -76,7 +86,11 @@ jobs:
           source .github/actions/create-backport/kondo-ratchets.sh
           write_disabled_ratchets .clj-kondo/ratchets.edn
           write_disabled_ratchets .clj-kondo/ratchets-test.edn
-          git add --sparse .clj-kondo/ratchets.edn .clj-kondo/ratchets-test.edn
+          PIN=$(cat locales/translations.pin)
+          RELEASE_PIN="v${{ steps.preflight.outputs.next }}/${PIN#*/}"
+          aws s3 cp "s3://metabase-ci-infra/translations/$PIN.tar.gz" "s3://metabase-ci-infra/translations/$RELEASE_PIN.tar.gz"
+          echo "$RELEASE_PIN" > locales/translations.pin
+          git add --sparse .clj-kondo/ratchets.edn .clj-kondo/ratchets-test.edn locales/translations.pin
           git commit --allow-empty --no-verify -m "Cut $BRANCH branch"
           git push -u origin "$BRANCH"
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"

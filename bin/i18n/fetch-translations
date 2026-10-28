@@ -3,20 +3,20 @@
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
-commit=$(i18n_commit "${1:-}")
-destination="$I18N_CACHE/$commit"
+pin=$(i18n_pin "${1:-}")
+destination=$(i18n_snapshot "$pin")
 
 if [ ! -d "$destination" ]; then
   mkdir -p "$I18N_CACHE"
   workspace=$(mktemp -d "$I18N_CACHE/fetch.XXXXXX")
   trap 'rm -rf "$workspace"' EXIT
-  i18n_clone "$commit" "$workspace/repo"
-  chmod a-w "$workspace/repo/locales/"*.po
+  i18n_download "$pin" "$workspace/locales"
+  chmod a-w "$workspace/locales/"*.po
   for snapshot in "$I18N_CACHE"/*; do
-    if [[ "$(basename "$snapshot")" =~ ^[0-9a-f]{40}$ ]]; then
+    if [[ "$(basename "$snapshot")" =~ ^(latest|v[0-9]+)-[0-9a-f]{40}$ ]]; then
       rm -rf "$snapshot"
     fi
   done
-  mv "$workspace/repo/locales" "$destination"
+  mv "$workspace/locales" "$destination"
 fi
 printf '%s\n' "$destination"
