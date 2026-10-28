@@ -9,8 +9,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.parameters.schema :as parameters.schema]
-   [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]))
 
 (defenterprise visible-data-app-filter-select
   "A HoneySQL query of the ids of the data apps that the user described by `user-info` (`:user-id`, `:is-superuser?`)
