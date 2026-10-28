@@ -771,13 +771,60 @@
         "{{ Dimension('fact_sales_key__status') }} LIKE '__-2024'" [:and {} [:ends-with {} status "-2024"] [:= {} len 7]]
         "{{ Dimension('fact_sales_key__status') }} LIKE '___'"     [:= {} len 3]
         "{{ Dimension('fact_sales_key__status') }} ILIKE 'ord_'"   [:and {} [:starts-with {:case-sensitive false} status "ord"] [:= {} len 4]]))
-    (testing "patterns Lib's string filters cannot express exactly"
-      (are [template] (re-find #"LIKE pattern .* is not supported" (filter-reason template))
-        "{{ Dimension('fact_sales_key__status') }} LIKE 'a_c%'"
-        "{{ Dimension('fact_sales_key__status') }} LIKE 'a%b%c'"
-        "{{ Dimension('fact_sales_key__status') }} LIKE '%a%b'"
-        "{{ Dimension('fact_sales_key__status') }} LIKE 'a_b_'"
-        "{{ Dimension('fact_sales_key__status') }} LIKE 'a_b'"))))
+    (testing "a pattern with no wildcard is =, over lower for ILIKE; % alone is any non-null value"
+      (are [template clause] (= clause (filter-of template))
+        "{{ Dimension('fact_sales_key__status') }} LIKE 'acme'"  [:= {} status "acme"]
+        "{{ Dimension('fact_sales_key__status') }} ILIKE 'Acme'" [:= {} [:lower {} status] "acme"]
+        "{{ Dimension('fact_sales_key__status') }} LIKE ''"      [:= {} status ""]
+        "{{ Dimension('fact_sales_key__status') }} LIKE '%'"     [:not-null {} status]))
+    (testing "patterns Lib's string filters cannot express exactly are the equivalent regex, anchored; ILIKE lower-cases both sides"
+      (are [template regex] (= [:not-null {} [:regex-match-first {} status regex]] (filter-of template))
+        "{{ Dimension('fact_sales_key__status') }} LIKE 'a_c%'"     "(^a.c.*$)"
+        "{{ Dimension('fact_sales_key__status') }} LIKE 'a%b%c'"    "(^a.*b.*c$)"
+        "{{ Dimension('fact_sales_key__status') }} LIKE '%a%b'"     "(^.*a.*b$)"
+        "{{ Dimension('fact_sales_key__status') }} LIKE 'a_b_'"     "(^a.b.$)"
+        "{{ Dimension('fact_sales_key__status') }} LIKE 'a_b'"      "(^a.b$)"
+        "{{ Dimension('fact_sales_key__status') }} LIKE 'a.b_(c)%'" "(^a\\.b.\\(c\\).*$)")
+      (is (= [:not-null {} [:regex-match-first {} [:lower {} status] "(^a.c.*$)"]]
+             (filter-of "{{ Dimension('fact_sales_key__status') }} ILIKE 'A_C%'")))
+      (is (= [:not {} [:not-null {} [:regex-match-first {} status "(^a.b$)"]]]
+             (filter-of "{{ Dimension('fact_sales_key__status') }} NOT LIKE 'a_b'"))))
+    (testing "ESCAPE makes the next character literal, whatever the pattern then maps to"
+      (are [template clause] (= clause (filter-of template))
+        "{{ Dimension('fact_sales_key__status') }} LIKE '100!%' ESCAPE '!'"     [:= {} status "100%"]
+        "{{ Dimension('fact_sales_key__status') }} LIKE 'a!_b%' ESCAPE '!'"     [:starts-with {} status "a_b"]
+        "{{ Dimension('fact_sales_key__status') }} ILIKE '%a!%b%' ESCAPE '!'"   [:contains {:case-sensitive false} status "a%b"]
+        "{{ Dimension('fact_sales_key__status') }} NOT LIKE 'a!%b' ESCAPE '!'"  [:not {} [:= {} status "a%b"]]
+        "{{ Dimension('fact_sales_key__status') }} LIKE 'a!%b_c' ESCAPE '!'"    [:not-null {} [:regex-match-first {} status "(^a%b.c$)"]]
+        "{{ Dimension('fact_sales_key__status') }} LIKE 'a\\%b' ESCAPE '\\'" [:= {} status "a%b"])
+      (are [template reason] (re-find reason (filter-reason template))
+        "{{ Dimension('fact_sales_key__status') }} LIKE 'a!' ESCAPE '!'"   #"ends with its escape character"
+        "{{ Dimension('fact_sales_key__status') }} LIKE 'a%' ESCAPE '!!'"  #"ESCAPE .* only a one-character string literal"))
+    (testing "the pattern has to be a literal"
+      (is (re-find #"LIKE with a pattern that is not a string literal"
+                   (filter-reason "{{ Dimension('fact_sales_key__status') }} LIKE upper('a%')"))))))
+
+(deftest ^:parallel filter-regex-test
+  (let [status (fld "status" :type/Text)]
+    (testing "a regex match is the first match being not null, the regex wrapped in a group of its own; ~* is case-insensitive"
+      (are [template clause] (= clause (filter-of template))
+        "{{ Dimension('fact_sales_key__status') }} ~ '^ORD-(a|b)'"        [:not-null {} [:regex-match-first {} status "(^ORD-(a|b))"]]
+        "{{ Dimension('fact_sales_key__status') }} ~* '^ord-'"            [:not-null {} [:regex-match-first {} status "(?i)(^ord-)"]]
+        "{{ Dimension('fact_sales_key__status') }} !~ '^ORD-'"            [:not {} [:not-null {} [:regex-match-first {} status "(^ORD-)"]]]
+        "{{ Dimension('fact_sales_key__status') }} !~* '^ord-'"           [:not {} [:not-null {} [:regex-match-first {} status "(?i)(^ord-)"]]]
+        "regexp_like({{ Dimension('fact_sales_key__status') }}, '^a')"    [:not-null {} [:regex-match-first {} status "(^a)"]]))
+    (testing "SIMILAR TO is the POSIX form of its SQL regex: % and _ are .* and ., . is literal, backslash escapes"
+      (are [template regex] (= [:not-null {} [:regex-match-first {} status regex]] (filter-of template))
+        "{{ Dimension('fact_sales_key__status') }} SIMILAR TO 'ORD-%(a|b)_'"        "(^ORD-.*(a|b).$)"
+        "{{ Dimension('fact_sales_key__status') }} SIMILAR TO 'a.b[.%]'"            "(^a\\.b[.%]$)"
+        "{{ Dimension('fact_sales_key__status') }} SIMILAR TO 'a\\%b'"              "(^a%b$)"
+        "{{ Dimension('fact_sales_key__status') }} SIMILAR TO 'a!%b' ESCAPE '!'"    "(^a%b$)"
+        "{{ Dimension('fact_sales_key__status') }} SIMILAR TO '(a|b){2,}'"          "(^(a|b){2,}$)")
+      (is (= [:not {} [:not-null {} [:regex-match-first {} status "(^a.*$)"]]]
+             (filter-of "{{ Dimension('fact_sales_key__status') }} NOT SIMILAR TO 'a%'"))))
+    (testing "the regex has to be a literal"
+      (is (re-find #"~ with a pattern that is not a string literal"
+                   (filter-reason "{{ Dimension('fact_sales_key__status') }} ~ {{ Dimension('fact_sales_key__amount') }}"))))))
 
 (deftest ^:parallel filter-is-boolean-test
   (let [is-returned (fld "is_returned" :type/Boolean)]
@@ -826,8 +873,6 @@
   (are [template reason] (re-find reason (filter-reason template))
     "regexp_replace({{ Dimension('fact_sales_key__status') }}, 'a', 'b') = 'acme'"   #"the function regexp_replace"
     "{{ Dimension('fact_sales_key__status') }} IS DISTINCT FROM 'x'"                #"is not supported"
-    "{{ Dimension('fact_sales_key__status') }} LIKE 'a%' ESCAPE '!'"                #"is not supported as a condition"
-    "{{ Dimension('fact_sales_key__status') }} ILIKE 'acme'"                       #"ILIKE without a wildcard"
     "{{ Dimension('fact_sales_key__status') }} IN (SELECT status FROM x)"          #"IN over"
     "1 = 1"                                                                        #"references no dimension or entity"
     "{{ Dimension('fact_sales_key__status') }} = 'Shipped'; DROP TABLE fact_sales" #"could not parse"

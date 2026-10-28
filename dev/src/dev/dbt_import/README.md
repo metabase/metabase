@@ -146,8 +146,8 @@ listed under "Filters and SQL expressions"; everything outside it is reported, n
 | -- | -- | -- | -- |
 | a function with no MBQL expression function of the same meaning | `greatest(a, b)`, `regexp_replace(x, 'a', 'b')`, `to_char(d, 'YYYY')`, `ln(x)`, `log(2, x)`, `dateadd(day, 1, d)`, `extract(dow from d)`, `trim('x' from s)`, `round(x, -1)`, `date_trunc('decade', d)`, `date_trunc('month', d + 1)` | The functions that have an MBQL expression function with the same meaning are mapped (the list is under "Filters and SQL expressions"); the rest have nothing to map onto. `round` to a number of decimals is `round(x * 10^n) / 10^n`, so the decimals have to be a literal. `date_trunc` is a temporal bucket on a column ref, so there is nothing to bucket when its argument is an expression, and nothing for a unit Metabase does not have. | Extend the converter where MBQL has an equivalent under another shape (`dateadd` as `datetime-add`, `greatest` as a `case`); extend MBQL with the rest (a regex replace, a date format, a natural log, week and day-of-week extraction that agrees on the first day of the week). |
 | a `CAST` to anything but an integer, decimal, float, text, date or timestamp type | `cast(x as boolean)`, `x::uuid`, `cast(x as interval)` | MBQL's conversions are `integer`, `float`, `text`, `date` and `datetime`, and the common SQL spellings of those types map onto them (`cast(amount_cents as decimal) / 100` converts). | Extend MBQL with the missing conversions. |
-| `IS [NOT] DISTINCT FROM`, `LIKE ... ESCAPE`, `SIMILAR TO`, a regex match operator | `filter: "{{ Dimension('order__status') }} is distinct from 'shipped'"`, `like 'a!%' escape '!'`, `~ '^ORD-'` | `IS [NOT] NULL`, `TRUE` and `FALSE` map (the negations as `!=` together with `IS NULL`, to keep their meaning for a null column). Null-safe comparison, escaped wildcards and regular expressions have no MBQL filter. | Extend MBQL with a `like` or regex filter clause and a null-safe equality. |
-| a `LIKE` pattern beyond `%x%`, `x%`, `%x`, `x%y` and one literal with a run of `_` | `like 'a%b%c'`, `like '%a%b'`, `like 'a_c%'`, `like 'a_b_'` | The patterns that map are the ones Lib's string filters express exactly: `contains`, `starts-with` and `ends-with`, plus `length` to keep the two ends of `x%y` from overlapping (`like 'ORD-%-2024'` converts) or to pin the exact length of `order_`. Three literals, or `_` in the middle of one, would need a substring comparison per segment, which MBQL has no clean form for. | Extend MBQL with a `like` or regex filter clause. |
+| `IS [NOT] DISTINCT FROM` | `filter: "{{ Dimension('order__status') }} is distinct from 'shipped'"` | `IS [NOT] NULL`, `TRUE` and `FALSE` map (the negations as `!=` together with `IS NULL`, to keep their meaning for a null column), but null-safe comparison of two values has no MBQL filter. | Extend MBQL with a null-safe equality, or extend the converter to spell it out as `!=` with the `IS NULL` cases when one side is a literal. |
+| a `LIKE`, `SIMILAR TO` or regex pattern that is not a string literal | `like {{ Dimension('order__prefix') }} \|\| '%'`, `~ {{ Dimension('order__pattern') }}` | A pattern that is a column or an expression cannot be taken apart into Lib's string filters, and the regex fallback needs the regex as a literal too. | Extend MBQL with a `like` clause taking an expression as the pattern. |
 | a custom calendar granularity | `TimeDimension('order__ordered_at', 'retail_month')`, defined on the project's time spine | Metabase buckets by its standard truncation units, `minute` through `year`. `fiscal_quarter` is read as `quarter` until custom calendars are supported. | Custom calendars in Metabase, then a mapping from a dbt custom granularity onto one. |
 | a dimension reached through two entities | `Dimension('order__customer__region')` | A dimension mapping is one implicit join, a foreign key on the metric's table to the joined table's key. A two-hop path has no representation. | Extend Metabase metrics so a dimension mapping can carry a multi-hop join path, or so a metric query can hold explicit joins. |
 
@@ -276,8 +276,18 @@ of SQL maps onto MBQL:
 - column references, literals, `+ - * /` and `^`, comparisons, `AND`/`OR`/`NOT`, `IN`, `BETWEEN`;
 - `IS [NOT] NULL`, `IS [NOT] TRUE` and `IS [NOT] FALSE`, the negated boolean forms as `!= ... OR IS NULL` so that
   they still hold for a null column;
-- `LIKE` and `ILIKE` with a `%x%`, `x%`, `%x` or `x%y` pattern, or a pattern of one literal and a run of `_`
-  (`contains`, `starts-with`, `ends-with`, and `length` where the pattern pins one);
+- `LIKE` and `ILIKE` with any literal pattern, with or without `ESCAPE`. A `%x%`, `x%`, `%x` or `x%y` pattern, or
+  one literal with a run of `_`, is `contains`, `starts-with` or `ends-with` (and `length` where the pattern pins one),
+  which read as what was written and run on any warehouse; a pattern with no wildcard is `=`, over `lower` for
+  `ILIKE`. Any other pattern is the equivalent anchored regular expression through the regex fallback below, over
+  `lower` with lower-cased literals for `ILIKE`;
+- `SIMILAR TO`, and the regex operators `~`, `~*`, `!~`, `!~*` and `regexp_like`, through the regex fallback: MBQL has
+  no regex filter, but the first match `regex-match-first` finds is null exactly when the regex does not match, so
+  `[:not-null [:regex-match-first x regex]]` is one. The regex is wrapped in a group of its own, so that a group
+  inside it cannot make the match null when the regex matches, and `~*` prefixes `(?i)`. A `SIMILAR TO` pattern is
+  rewritten to POSIX form (`%` to `.*`, `_` to `.`, `.` made literal, the escape character honoured). This needs the
+  warehouse driver to support regular expressions (the `:regex` feature; Postgres does, SQL Server does not), and
+  `(?i)` to be understood where `~*` is used;
 - both forms of `CASE`, the simple `CASE x WHEN v` as `CASE WHEN x = v`;
 - `CAST` (and `::`) to an integer, decimal, float, text, date or timestamp type, as `integer`, `float`, `text`,
   `date` and `datetime`;
