@@ -16,7 +16,7 @@ To view the analytics:
 1. Click the **grid** icon in the upper right and select **Monitor**.
 2. In the left sidebar, under **AI Auditing**, click **Data app analytics**.
 
-Only admins can see data app analytics. Runs from an app's [preview on your computer](../data-apps/build.md#preview-the-app-on-your-computer) aren't logged.
+Only admins can see data app analytics. Runs from an app's [preview on your computer](../data-apps/build.md#preview-the-app-on-your-computer) don't show on this page.
 
 You can filter the log by app, by person, by time, and to only questions or only actions. By default, the log shows the last 30 days. Apps that you deleted stay in the log, listed by their slug.
 

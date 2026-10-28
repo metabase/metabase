@@ -13,7 +13,7 @@ summary: Data apps are custom apps that an AI coding agent builds on your semant
 
 Data apps are custom apps that you build on your Metabase data. Like a dashboard, a data app shows charts and tables from your [semantic layer](../data-modeling/semantic-layer/library.md). But an app isn't limited to cards and filters on a grid: an app can have its own layout, its own pages, and forms that add, edit, or delete rows in your database. An app doesn't have to write data: an app can just show data, from any database. You can build apps like portals, review queues, and forms, without having to stand up a separate app and backend.
 
-A data app runs with the permissions of the person who opens it, so people see only the data that they're allowed to see. And an app can read and write data only through the questions, metrics, and actions in its own collection. See [what a data app can read and write](#what-a-data-app-can-read-and-write).
+A data app runs with the permissions of the person who opens it, so people see only the data that they're allowed to see. And an app can read only from your semantic layer and its own collection, and it can write data only through the actions in its own collection. See [what a data app can read and write](#what-a-data-app-can-read-and-write).
 
 ## How data apps work
 
@@ -46,7 +46,15 @@ Your agent does most of the work, but here's an overview of the end-to-end proce
 
 A data app runs with the permissions of the person who opens it. Their [data permissions](../permissions/data.md), including [row and column security](../permissions/row-and-column-security.md), apply to everything the app reads. If row and column security applies to a person on any table in a database, that person can't run the app's actions on that database.
 
-An app runs only the items in its own collection, and the collection can hold only questions, metrics, and actions. When your agent saves an item to the collection, Metabase refuses the item if it breaks a rule. The main rules are:
+An app can read only:
+
+- [Published tables](../data-modeling/semantic-layer/published-tables.md), with their [segments](../data-modeling/semantic-layer/segments.md) and [measures](../data-modeling/semantic-layer/measures.md). The app can query these tables directly, without a saved question, but not with SQL.
+- The metrics and dashboards in your [Library](../data-modeling/semantic-layer/library.md).
+- The questions and metrics in its own collection.
+
+An app can write data only through the actions in its own collection.
+
+Your agent saves the questions, metrics, and actions that the app needs to the app's collection, and the collection can hold only questions, metrics, and actions. When your agent saves an item to the collection, Metabase refuses the item if it breaks a rule. The main rules are:
 
 - Questions must be built with the query builder, not SQL. Questions can read only [published tables](../data-modeling/semantic-layer/published-tables.md) and metrics from your semantic layer, and the [segments](../data-modeling/semantic-layer/segments.md) and [measures](../data-modeling/semantic-layer/measures.md) of published tables. So questions can't start from or join another saved question or model.
 - Actions can be table actions, which insert, update, or delete one row of a published table, or SQL actions.
@@ -105,7 +113,7 @@ If you let your agent use Git, the agent can do these steps for you.
 
 Remote Sync doesn't sync an app's group access or its [status](./manage.md#make-an-app-live-or-a-draft) (live or draft), so each Metabase keeps its own. The first pull creates the app on your production Metabase as live, and only admins can open it until you add groups there. Later pulls keep the app's status on production, so you can make the app a draft on production without changing it on development.
 
-Your production Metabase also needs the published tables and metrics that the app reads. A pull doesn't check for them, so add your [Library](../installation-and-operation/remote-sync.md#you-choose-what-to-sync), which holds your semantic layer, to Remote Sync too. If your app uses actions, [enable actions](../data-modeling/models/actions/introduction.md#enabling-actions-for-a-database) on the production databases that the app writes to.
+Your production Metabase also needs the published tables and metrics that the app reads. A pull doesn't check that the tables are published, but the pull fails if the app's questions use metrics that aren't in your production Library. So add your [Library](../installation-and-operation/remote-sync.md#you-choose-what-to-sync), which holds your semantic layer, to Remote Sync too. If your app uses actions, [enable actions](../data-modeling/models/actions/introduction.md#enabling-actions-for-a-database) on the production databases that the app writes to.
 
 ### What syncs with a data app
 

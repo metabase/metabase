@@ -22,7 +22,9 @@ To open a live app, click the **three dots** on the app's row and select **Open 
 
 ## See what an app reads and writes
 
-Before you let more people open an app, check which data the app reads and writes. In the list of data apps, click the app to see the questions that the app reads, the actions that the app uses to write data, and the groups that can open the app. The list of questions doesn't include the app's metrics. The app's **Overview** tab also has a preview of the app.
+Before you let more people open an app, check which data the app reads and writes. In the list of data apps, click the app. The app's **Questions** and **Actions** tabs list the questions and actions in the app's collection, and the **Permissions** tab lists the groups that can open the app. The list of questions doesn't include the app's metrics. The app's **Overview** tab has a preview of the app.
+
+These tabs don't show everything that the app can read. The app can also read your published tables, and the metrics and dashboards in your Library. See [what a data app can read and write](./build.md#what-a-data-app-can-read-and-write).
 
 ![Data app Overview tab](./images/data-apps-overview-tab.png)
 
