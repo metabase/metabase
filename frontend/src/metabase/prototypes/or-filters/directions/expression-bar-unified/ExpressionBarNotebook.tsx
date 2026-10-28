@@ -1,4 +1,4 @@
-import { type ComponentType, useEffect, useMemo, useState } from "react";
+import { type ComponentType, useLayoutEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useQuestionFromOptsBuilder } from "metabase/metadata-store";
@@ -60,7 +60,7 @@ export function ExpressionBarNotebook({
   appliesOnVisualize = false,
 }: ExpressionBarNotebookProps) {
   const [draftQuery, setDraftQuery] = useState(query);
-  useEffect(() => setDraftQuery(query), [query]);
+  useLayoutEffect(() => setDraftQuery(query), [query]);
   const notebookQuery = appliesOnVisualize ? draftQuery : query;
   const changeNotebookQuery = appliesOnVisualize ? setDraftQuery : onChange;
 
