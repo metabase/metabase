@@ -377,12 +377,11 @@
         "sales / nullif(quantity, 0)"     [:/ {} sales quantity]
         "sales / NULLIF(quantity, 0.0)"   [:/ {} sales quantity]
         "sales / nullif(quantity + 1, 0)" [:/ {} sales [:+ {} quantity 1]])
-      (testing "but NULLIF anywhere else, or against another value, is a function like any other"
-        (are [expr] (re-find #"the function nullif" (expr-reason expr))
-          "nullif(sales, 0)"
-          "sales / nullif(quantity, 1)"
-          "sales / nullif(quantity, '0')"
-          "nullif(sales, 0) / quantity")))
+      (testing "but NULLIF anywhere else, or against another value, is the CASE it stands for (see expr-function-test)"
+        (is (= [:sum {} [:/ {} sales [:case {} [[[:= {} quantity "0"] nil]] quantity]]]
+               (aggregation-of-expr "sales / nullif(quantity, '0')")))
+        (is (= [:sum {} [:/ {} [:case {} [[[:= {} sales 0] nil]] sales] quantity]]
+               (aggregation-of-expr "nullif(sales, 0) / quantity")))))
     (testing "CASE WHEN"
       (are [expr clause] (= [:sum {} clause] (aggregation-of-expr expr))
         "case when is_returned then sales else 0 end"          [:case {} [[[:= {} is-returned true] sales]] 0]
@@ -397,11 +396,18 @@
     (testing "over an expression, count skips nulls and average averages"
       (is (= [:count-where {} [:not-null {} [:+ {} sales 0]]] (aggregation-of-expr "sales + 0" :agg "count")))
       (is (= [:avg {} [:/ {} sales quantity]] (aggregation-of-expr "sales / quantity" :agg "average"))))
+    (testing "a simple CASE is the searched CASE with = conditions"
+      (are [expr clause] (= [:sum {} clause] (aggregation-of-expr expr))
+        "case status when 'shipped' then 1 else 0 end"
+        [:case {} [[[:= {} status "shipped"] 1]] 0]
+        "case quantity when 1 then sales when 2 then sales * 2 end"
+        [:case {} [[[:= {} quantity 1] sales] [[:= {} quantity 2] [:* {} sales 2]]]]))
     (testing "SQL the converter cannot express is reported, naming the construct"
       (are [expr reason] (re-find reason (expr-reason expr))
-        "coalesce(sales, 0)"           #"the function coalesce"
-        "sales::numeric"               #"a cast"
-        "case sales when 1 then 2 end" #"simple CASE"
+        "greatest(sales, 0)"           #"the function greatest"
+        "ln(sales)"                    #"the function ln"
+        "sales::boolean"               #"a cast to BOOLEAN"
+        "cast(sales as interval)"      #"a cast to INTERVAL"
         "{{ var('amount_col') }}"      #"could not parse"
         "1.0"                          #"sum over the literal 1.0"
         ""                             #"could not parse"
@@ -410,6 +416,120 @@
       (are [expr reason] (re-find reason (expr-reason expr :agg "count"))
         "count(*)"              #"the function count"
         "distinct customer_key" #"could not parse"))))
+
+(deftest ^:parallel expr-function-test
+  (let [sales      (fld "sales" :type/Float)
+        quantity   (fld "quantity" :type/Integer)
+        status     (fld "status" :type/Text)
+        code       (fld "code" :type/Text)
+        created-at (fld "created_at" :type/DateTime)]
+    (testing "functions with a Metabase expression function of the same meaning"
+      (are [expr clause] (= [:sum {} clause] (aggregation-of-expr expr))
+        "coalesce(sales, 0) * quantity"      [:* {} [:coalesce {} sales 0] quantity]
+        "coalesce(sales, quantity, 0)"       [:coalesce {} sales quantity 0]
+        "coalesce(sales)"                    sales
+        "abs(sales)"                         [:abs {} sales]
+        "floor(sales)"                       [:floor {} sales]
+        "ceil(sales)"                        [:ceil {} sales]
+        "ceiling(sales)"                     [:ceil {} sales]
+        "sqrt(sales)"                        [:sqrt {} sales]
+        "exp(sales)"                         [:exp {} sales]
+        "power(sales, 2)"                    [:power {} sales 2]
+        "sales ^ 2"                          [:power {} sales 2]
+        "round(sales)"                       [:round {} sales]
+        "round(sales, 0)"                    [:round {} sales]
+        "length(status)"                     [:length {} status]
+        "char_length(status)"                [:length {} status]
+        "extract(year from created_at)"      [:get-year {} created-at]
+        "extract(quarter from created_at)"   [:get-quarter {} created-at]
+        "date_part('month', created_at)"     [:get-month {} created-at]
+        "extract(day from created_at)"       [:get-day {} created-at]
+        "extract(hour from created_at)"      [:get-hour {} created-at]
+        "extract(minute from created_at)"    [:get-minute {} created-at]
+        "extract(second from created_at)"    [:get-second {} created-at]))
+    (testing "log is base 10 in both SQL and Metabase; ln is not log"
+      (is (= [:sum {} [:log {} sales]] (aggregation-of-expr "log(sales)")))
+      (is (= [:sum {} [:log {} sales]] (aggregation-of-expr "log(10, sales)")))
+      (is (re-find #"log to a base other than 10" (expr-reason "log(2, sales)")))
+      (is (re-find #"the function ln" (expr-reason "ln(sales)"))))
+    (testing "round to n decimals is round(x * 10^n) / 10^n"
+      (is (= [:sum {} [:/ {} [:round {} [:* {} sales 100]] 100]] (aggregation-of-expr "round(sales, 2)")))
+      (are [expr] (re-find #"round to .* decimals is not supported" (expr-reason expr))
+        "round(sales, -1)"
+        "round(sales, quantity)"))
+    (testing "NULLIF anywhere but as a zero divisor is CASE WHEN x = y THEN NULL ELSE x END"
+      (is (= [:sum {} [:case {} [[[:= {} sales 0] nil]] sales]] (aggregation-of-expr "nullif(sales, 0)")))
+      (is (= [:sum {} [:/ {} sales [:case {} [[[:= {} quantity 1] nil]] quantity]]]
+             (aggregation-of-expr "sales / nullif(quantity, 1)"))))
+    (testing "string functions, counted distinct"
+      (are [expr clause] (= [:distinct {} clause] (aggregation-of-expr expr :agg "count_distinct"))
+        "lower(status)"                     [:lower {} status]
+        "upper(status)"                     [:upper {} status]
+        "trim(status)"                      [:trim {} status]
+        "trim(both ' ' from status)"        [:trim {} status]
+        "ltrim(status)"                     [:ltrim {} status]
+        "rtrim(status)"                     [:rtrim {} status]
+        "replace(status, 'a', 'b')"         [:replace {} status "a" "b"]
+        "substring(status, 2, 3)"           [:substring {} status 2 3]
+        "substring(status from 2 for 3)"    [:substring {} status 2 3]
+        "substr(status, 2)"                 [:substring {} status 2]
+        "concat(status, '-', code)"         [:concat {} status "-" code]
+        "status || '-' || code"             [:concat {} status "-" code]
+        "upper(trim(status))"               [:upper {} [:trim {} status]])
+      (is (re-find #"TRIM of characters other than spaces" (expr-reason "trim('x' from status)" :agg "count_distinct"))))
+    (testing "date_trunc over a column is the column bucketed by that unit"
+      (are [expr unit] (= [:distinct {} (assoc-in created-at [1 :temporal-unit] unit)]
+                          (aggregation-of-expr expr :agg "count_distinct"))
+        "date_trunc('minute', created_at)"  :minute
+        "date_trunc('hour', created_at)"    :hour
+        "date_trunc('day', created_at)"     :day
+        "date_trunc('week', created_at)"    :week
+        "date_trunc('month', created_at)"   :month
+        "date_trunc('quarter', created_at)" :quarter
+        "date_trunc('year', created_at)"    :year)
+      (testing "but there is nothing to bucket when the argument is an expression, and no bucket for a unit Metabase lacks"
+        (is (re-find #"date_trunc over an expression" (expr-reason "date_trunc('month', created_at + 1)" :agg "count_distinct")))
+        (is (re-find #"truncating a date to DECADE" (expr-reason "date_trunc('decade', created_at)" :agg "count_distinct")))))
+    (testing "the current time and date"
+      (is (= [:sum {} [:case {} [[[:< {} created-at [:now {}]] sales]]]]
+             (aggregation-of-expr "case when created_at < now() then sales end")))
+      (is (= [:sum {} [:case {} [[[:< {} created-at [:today {}]] sales]]]]
+             (aggregation-of-expr "case when created_at < current_date then sales end"))))
+    (testing "date parts Metabase has no function for"
+      (is (re-find #"extracting DOW" (expr-reason "extract(dow from created_at)"))))))
+
+(deftest ^:parallel expr-cast-test
+  (let [sales   (fld "sales" :type/Float)
+        amount  (fld "amount" :type/Decimal)
+        status  (fld "status" :type/Text)
+        date    (fld "date_day" :type/Date)
+        created (fld "created_at" :type/DateTime)]
+    (testing "casts to the types Metabase has a conversion for, in either spelling"
+      (are [expr clause] (= [:sum {} clause] (aggregation-of-expr expr))
+        "cast(amount as decimal) / 100"     [:/ {} [:float {} amount] 100]
+        "cast(amount as numeric(10, 2))"    [:float {} amount]
+        "amount::float"                     [:float {} amount]
+        "cast(amount as double precision)"  [:float {} amount]
+        "cast(sales as int)"                [:integer {} sales]
+        "cast(sales as integer)"            [:integer {} sales]
+        "sales::bigint"                     [:integer {} sales]
+        "cast(sales as smallint)"           [:integer {} sales]
+        "cast(status as integer)"           [:integer {} status]))
+    (are [expr clause] (= [:distinct {} clause] (aggregation-of-expr expr :agg "count_distinct"))
+      "cast(sales as text)"            [:text {} sales]
+      "sales::varchar"                 [:text {} sales]
+      "cast(sales as varchar(10))"     [:text {} sales]
+      "cast(sales as char(3))"         [:text {} sales]
+      "cast(created_at as date)"       [:date {} created]
+      "cast(status as date)"           [:date {} status]
+      "cast(status as timestamp)"      [:datetime {} status]
+      "cast(date_day as timestamp)"    [:datetime {} date]
+      "status::timestamptz"            [:datetime {} status])
+    (testing "a cast to a type Metabase cannot convert to"
+      (are [expr reason] (re-find reason (expr-reason expr))
+        "cast(status as boolean)" #"a cast to BOOLEAN"
+        "cast(status as uuid)"    #"a cast to UUID"
+        "cast(status as json)"    #"a cast to JSON"))))
 
 (deftest ^:parallel expr-literal-test
   (testing "sum or count of the literal 1 is a row count"
@@ -588,7 +708,7 @@
       "{{ TimeDimension('metric_time', 'hour') }} = '2024-01-01'"             #"granularity \"hour\" has no Metabase temporal unit"
       "{{ TimeDimension('fact_sales_key__status', 'day') }} = '2024-01-01'"   #"\"status\" is not a time dimension"
       "{{ TimeDimension('fact_sales_key__next_day', 'day') }} = '2024-01-01'" #"cannot bucket the SQL expression \"date_day \+ 1\""
-      "{{ TimeDimension('metric_time', 'week') }} < current_date"             #"current_date")))
+      "{{ TimeDimension('metric_time', 'week') }} < random()"                 #"the function rand")))
 
 (deftest ^:parallel filter-entity-test
   (are [template clause] (= clause (filter-of template))
@@ -631,10 +751,82 @@
       "{{ Metric('order_total', group_by=['customer']) }} > 1000"
       "{{ Metric('order_count', group_by=['customer']) }} >= 5")))
 
+(deftest ^:parallel filter-like-pattern-test
+  (let [status   (fld "status" :type/Text)
+        len      [:length {} status]]
+    (testing "x%y is starts-with and ends-with, long enough that the two ends cannot overlap"
+      (are [template clause] (= clause (filter-of template))
+        "{{ Dimension('fact_sales_key__status') }} LIKE 'ORD-%-2024'"
+        [:and {} [:starts-with {} status "ORD-"] [:ends-with {} status "-2024"] [:>= {} len 9]]
+        "{{ Dimension('fact_sales_key__status') }} LIKE 'a%%b'"
+        [:and {} [:starts-with {} status "a"] [:ends-with {} status "b"] [:>= {} len 2]]
+        "{{ Dimension('fact_sales_key__status') }} ILIKE 'ord-%-2024'"
+        [:and {} [:starts-with {:case-sensitive false} status "ord-"] [:ends-with {:case-sensitive false} status "-2024"] [:>= {} len 9]]
+        "{{ Dimension('fact_sales_key__status') }} NOT LIKE 'a%b'"
+        [:not {} [:and {} [:starts-with {} status "a"] [:ends-with {} status "b"] [:>= {} len 2]]]))
+    (testing "a run of _ next to one literal is the literal at that end and the exact length"
+      (are [template clause] (= clause (filter-of template))
+        "{{ Dimension('fact_sales_key__status') }} LIKE 'order_'"  [:and {} [:starts-with {} status "order"] [:= {} len 6]]
+        "{{ Dimension('fact_sales_key__status') }} LIKE 'ORD-__'"  [:and {} [:starts-with {} status "ORD-"] [:= {} len 6]]
+        "{{ Dimension('fact_sales_key__status') }} LIKE '__-2024'" [:and {} [:ends-with {} status "-2024"] [:= {} len 7]]
+        "{{ Dimension('fact_sales_key__status') }} LIKE '___'"     [:= {} len 3]
+        "{{ Dimension('fact_sales_key__status') }} ILIKE 'ord_'"   [:and {} [:starts-with {:case-sensitive false} status "ord"] [:= {} len 4]]))
+    (testing "patterns Lib's string filters cannot express exactly"
+      (are [template] (re-find #"LIKE pattern .* is not supported" (filter-reason template))
+        "{{ Dimension('fact_sales_key__status') }} LIKE 'a_c%'"
+        "{{ Dimension('fact_sales_key__status') }} LIKE 'a%b%c'"
+        "{{ Dimension('fact_sales_key__status') }} LIKE '%a%b'"
+        "{{ Dimension('fact_sales_key__status') }} LIKE 'a_b_'"
+        "{{ Dimension('fact_sales_key__status') }} LIKE 'a_b'"))))
+
+(deftest ^:parallel filter-is-boolean-test
+  (let [is-returned (fld "is_returned" :type/Boolean)]
+    (testing "IS TRUE and IS FALSE are =; the negations hold for null too, so they are != OR IS NULL"
+      (are [template clause] (= clause (filter-of template))
+        "{{ Dimension('fact_sales_key__is_returned') }} IS TRUE"
+        [:= {} is-returned true]
+        "{{ Dimension('fact_sales_key__is_returned') }} IS FALSE"
+        [:= {} is-returned false]
+        "{{ Dimension('fact_sales_key__is_returned') }} IS NOT TRUE"
+        [:or {} [:!= {} is-returned true] [:is-null {} is-returned]]
+        "{{ Dimension('fact_sales_key__is_returned') }} IS NOT FALSE"
+        [:or {} [:!= {} is-returned false] [:is-null {} is-returned]]
+        "NOT ({{ Dimension('fact_sales_key__is_returned') }} IS TRUE)"
+        [:or {} [:!= {} is-returned true] [:is-null {} is-returned]]
+        "NOT ({{ Dimension('fact_sales_key__is_returned') }} IS NULL)"
+        [:not-null {} is-returned]))))
+
+(deftest ^:parallel filter-function-test
+  (let [status     (fld "status" :type/Text)
+        amount     (fld "amount" :type/Decimal)
+        created-at (fld "created_at" :type/DateTime)]
+    (are [template clause] (= clause (filter-of template))
+      "lower({{ Dimension('fact_sales_key__status') }}) = 'shipped'"
+      [:= {} [:lower {} status] "shipped"]
+      "upper(trim({{ Dimension('fact_sales_key__status') }})) IN ('A', 'B')"
+      [:in {} [:upper {} [:trim {} status]] "A" "B"]
+      "coalesce({{ Dimension('fact_sales_key__amount') }}, 0) > 100"
+      [:> {} [:coalesce {} amount 0] 100]
+      "round({{ Dimension('fact_sales_key__amount') }}) = 100"
+      [:= {} [:round {} amount] 100]
+      "cast({{ Dimension('fact_sales_key__amount') }} as integer) = 100"
+      [:= {} [:integer {} amount] 100]
+      "{{ Dimension('fact_sales_key__status') }}::text = 'x'"
+      [:= {} [:text {} status] "x"]
+      "extract(year from {{ Dimension('fact_sales_key__created_at') }}) = 2024"
+      [:= {} [:get-year {} created-at] 2024]
+      "date_trunc('month', {{ Dimension('fact_sales_key__created_at') }}) = '2024-03-01'"
+      [:= {} (assoc-in created-at [1 :temporal-unit] :month) "2024-03-01"]
+      "{{ Dimension('fact_sales_key__created_at') }} < current_date"
+      [:< {} created-at [:today {}]]
+      "case {{ Dimension('fact_sales_key__status') }} when 'a' then 1 else 0 end = 1"
+      [:= {} [:case {} [[[:= {} status "a"] 1]] 0] 1])))
+
 (deftest ^:parallel filter-unsupported-sql-test
   (are [template reason] (re-find reason (filter-reason template))
-    "lower({{ Dimension('fact_sales_key__status') }}) = 'acme'"                    #"the function lower"
-    "{{ Dimension('fact_sales_key__status') }} LIKE 'a_c%'"                        #"LIKE pattern \"a_c%\""
+    "regexp_replace({{ Dimension('fact_sales_key__status') }}, 'a', 'b') = 'acme'"   #"the function regexp_replace"
+    "{{ Dimension('fact_sales_key__status') }} IS DISTINCT FROM 'x'"                #"is not supported"
+    "{{ Dimension('fact_sales_key__status') }} LIKE 'a%' ESCAPE '!'"                #"is not supported as a condition"
     "{{ Dimension('fact_sales_key__status') }} ILIKE 'acme'"                       #"ILIKE without a wildcard"
     "{{ Dimension('fact_sales_key__status') }} IN (SELECT status FROM x)"          #"IN over"
     "1 = 1"                                                                        #"references no dimension or entity"

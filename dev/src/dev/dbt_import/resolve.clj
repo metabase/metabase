@@ -206,7 +206,8 @@
 
 (mu/defn- aggregation :- ::lib.schema.aggregation/aggregation
   "The Lib aggregation clause for the metric over `expression`, nil being a row count. A cumulative metric runs over
-  everything up to each row, which Metabase has for a sum and a row count only."
+  everything up to each row, which Metabase has for a sum and a row count only; a running count of a column, which
+  skips nulls, is the running sum of 1 where the column is not null."
   [{:keys [type agg agg-params fill-nulls-with]} :- ::schemas.ir/metric.simple
    expression                                    :- [:maybe ::sql/value]]
   (let [f      expression
@@ -215,7 +216,7 @@
                    ;; a sum of the literal 1 is a row count
                    :sum   (if f (lib/cum-sum f) (lib/cum-count))
                    :count (if f
-                            (sql/unsupported "a running count of a column has no Metabase equivalent: cum-count counts rows, nulls included")
+                            (lib/cum-sum (lib/case [[(lib/not-null f) 1]] 0))
                             (lib/cum-count))
                    (sql/unsupported "a running %s has no Metabase equivalent: only a running sum or row count does" (name agg)))
                  (case agg
@@ -258,21 +259,28 @@
   "A context for the semantic model the foreign `entity` of `context`'s model joins to: bare column names resolve to
   that model's columns, reached through the entity's column on this model. Metabase spells that `:source-field` on
   the ref and joins implicitly, so the instance's metadata has to know the foreign key for the query to run.
-  [[sql/unsupported]] when there is no such model, more than one, the join column on either side is SQL, or the model
-  is in another Metabase database."
+  [[sql/unsupported]] when there is no such model, more than one that the config's `:entity-models` does not choose
+  between, the join column on either side is SQL, or the model is in another Metabase database."
   [{:keys [config provider resolve-column] :as context} :- ::context
    {entity-name :name, :as entity}                      :- ::schemas.ir/entity]
   (b/cond
-    :let [candidates (models-primary-for context entity-name)]
+    :let [candidates (models-primary-for context entity-name)
+          chosen     (get-in config [:entity-models entity-name])]
 
     (empty? candidates)
     (sql/unsupported "no semantic model has entity %s as its primary entity" (pr-str entity-name))
 
-    (next candidates)
-    (sql/unsupported "more than one semantic model has entity %s as its primary entity: %s"
+    (and (next candidates) (not chosen))
+    (sql/unsupported "more than one semantic model has entity %s as its primary entity: %s; name the one to join to in :entity-models"
                      (pr-str entity-name) (str/join ", " (map (comp pr-str :name) candidates)))
 
-    :let [target        (first candidates)
+    (and (next candidates) (not (some #(= chosen (:name %)) candidates)))
+    (sql/unsupported ":entity-models names semantic model %s for entity %s, but the models with it as their primary entity are %s"
+                     (pr-str chosen) (pr-str entity-name) (str/join ", " (map (comp pr-str :name) candidates)))
+
+    :let [target        (if (next candidates)
+                          (m/find-first #(= chosen (:name %)) candidates)
+                          (first candidates))
           target-entity (m/find-first #(= entity-name (:name %)) (:entities target))]
 
     (not target-entity)

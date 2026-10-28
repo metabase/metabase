@@ -31,7 +31,11 @@
    ;; database types and if we're missing any we should add them there.
    [:base-types      {:optional true} ::config.base-types]
    ;; `:collection-name` names the collection the metrics are written to.
-   [:collection-name {:optional true} :string]])
+   [:collection-name {:optional true} :string]
+   ;; `:entity-models` says which semantic model a foreign entity joins to when more than one semantic model has the
+   ;; entity as its primary entity: entity name → semantic model name. An entity exactly one model is primary for
+   ;; needs no entry.
+   [:entity-models   {:optional true} [:map-of :string :string]]])
 
 ;; TODO (Cam 2026-10-22) there has to be an existing schema for this somewhere in the codebase already
 (mr/def ::entity-id
