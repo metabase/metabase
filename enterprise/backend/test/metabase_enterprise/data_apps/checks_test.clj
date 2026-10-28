@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.test-util :as data-apps.tu :refer [do-with-app-collection]]
+   [metabase.collections.core :as collections]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -39,7 +40,7 @@
 (defn- card-error
   "The error message for a data app's run of the card with `card-id`."
   [card-id]
-  (format "A data app can use only the cards in its own collection and the metrics in the Library, not the card %d." card-id))
+  (format "A data app can use only the cards in its own collection and in the Library, not the card %d." card-id))
 
 (defn- run-query
   "The response to a data app's request to run `query` through `POST /api/dataset`, expecting `status`."
@@ -272,28 +273,6 @@
          (is (= "completed" (:status (mt/user-http-request :crowberto :post 202
                                                            (format "card/%d/query" elsewhere-id))))))))))
 
-(deftest card-endpoints-allow-library-metrics-test
-  (do-with-app-collection
-   (fn [_collection-id]
-     (data-apps.tu/do-with-sources!
-      (fn [{:keys [metric-id]}]
-        (testing "a Library metric, its metadata and its run are open to a data app"
-          (is (=? {:id metric-id} (mt/user-http-request :crowberto :get 200 (format "card/%d" metric-id) as-data-app)))
-          (is (map? (mt/user-http-request :crowberto :get 200 (format "card/%d/query_metadata" metric-id) as-data-app)))
-          (is (=? {:id (str "card__" metric-id)}
-                  (mt/user-http-request :crowberto :get 200 (format "table/card__%d/query_metadata" metric-id) as-data-app)))
-          (is (= "completed" (:status (mt/user-http-request :crowberto :post 202 (format "card/%d/query" metric-id)
-                                                            as-data-app)))))
-        (mt/with-temp [:model/Card {outside-id :id} {:name          "Venue count elsewhere"
-                                                     :type          :metric
-                                                     :database_id   (mt/id)
-                                                     :dataset_query (lib/aggregate (data-apps.tu/venues-query) (lib/count))}]
-          (testing "a metric outside the Library is refused"
-            (doseq [url ["card/%d" "card/%d/query_metadata" "table/card__%d/query_metadata"]]
-              (is (= (card-error outside-id)
-                     (mt/user-http-request :crowberto :get 400 (format url outside-id) as-data-app))
-                  url)))))))))
-
 (deftest card-read-endpoints-check-card-test
   (do-with-app-card!
    (fn [card-id _collection-id]
@@ -364,6 +343,85 @@
    :values_source_type   :card
    :values_source_config {:card_id card-id :value_field (legacy-field-ref (mt/id :venues :name))}})
 
+(deftest card-endpoints-allow-library-metrics-test
+  (do-with-app-collection
+   (fn [_collection-id]
+     (data-apps.tu/do-with-sources!
+      (fn [{:keys [metric-id]}]
+        (testing "a Library metric, its metadata and its run are open to a data app"
+          (is (=? {:id metric-id} (mt/user-http-request :crowberto :get 200 (format "card/%d" metric-id) as-data-app)))
+          (is (map? (mt/user-http-request :crowberto :get 200 (format "card/%d/query_metadata" metric-id) as-data-app)))
+          (is (=? {:id (str "card__" metric-id)}
+                  (mt/user-http-request :crowberto :get 200 (format "table/card__%d/query_metadata" metric-id) as-data-app)))
+          (is (= "completed" (:status (mt/user-http-request :crowberto :post 202 (format "card/%d/query" metric-id)
+                                                            as-data-app)))))
+        (mt/with-temp [:model/Card {outside-id :id} {:name          "Venue count elsewhere"
+                                                     :type          :metric
+                                                     :database_id   (mt/id)
+                                                     :dataset_query (lib/aggregate (data-apps.tu/venues-query) (lib/count))}]
+          (testing "a metric outside the Library is refused"
+            (doseq [url ["card/%d" "card/%d/query_metadata" "table/card__%d/query_metadata"]]
+              (is (= (card-error outside-id)
+                     (mt/user-http-request :crowberto :get 400 (format url outside-id) as-data-app))
+                  url))))
+        (let [library-id    (:id (collections/library-collection))
+              dashboards-id (t2/select-one-pk :model/Collection
+                                              :location (str "/" library-id "/")
+                                              :type     collections/library-dashboards-collection-type)]
+          (mt/with-temp [:model/Dashboard dashboard     {:collection_id dashboards-id}
+                         :model/Card      {question-id :id} {:collection_id dashboards-id
+                                                             :dashboard_id  (:id dashboard)
+                                                             :dataset_query (data-apps.tu/venues-query)}]
+            (testing "a dashboard question in the Library is open to the card endpoints"
+              (is (=? {:id question-id} (mt/user-http-request :crowberto :get 200 (format "card/%d" question-id) as-data-app)))
+              (is (=? {:id (str "card__" question-id)}
+                      (mt/user-http-request :crowberto :get 200 (format "table/card__%d/query_metadata" question-id)
+                                            as-data-app))))
+            (testing "but not as a source of parameter values"
+              (is (= (format "A data app cannot take parameter values from the dashboard question %d." question-id)
+                     (mt/user-http-request :crowberto :post 400 "dataset/parameter/values" as-data-app
+                                           {:parameter (card-source-parameter question-id)}))))
+            (testing "nor as a source card of a query"
+              (is (= (error-message :cards question-id)
+                     (run-query 400 (card-query question-id))))))))))))
+
+(deftest adhoc-parameter-endpoints-check-values-source-test
+  (do-with-app-collection
+   (fn [collection-id]
+     (data-apps.tu/with-published-tables! [(mt/id :venues)]
+       (mt/with-temp [:model/Card {source-id :id}    {:collection_id collection-id
+                                                      :dataset_query (data-apps.tu/venues-query)}
+                      :model/Card {elsewhere-id :id} {:dataset_query (data-apps.tu/venues-query)}]
+         (testing "a static list loads as is"
+           (is (=? {:values [["bar"] ["cafe"]]}
+                   (mt/user-http-request :crowberto :post 200 "dataset/parameter/values" as-data-app
+                                         {:parameter static-parameter}))))
+         (testing "values from a card of the app load, from any other card are refused"
+           (is (seq (:values (mt/user-http-request :crowberto :post 200 "dataset/parameter/values" as-data-app
+                                                   {:parameter (card-source-parameter source-id)}))))
+           (doseq [[url body] [["dataset/parameter/values" {}]
+                               ["dataset/parameter/search/Red" {}]
+                               ["dataset/parameter/remapping" {:value "Red"}]]]
+             (is (= (card-error elsewhere-id)
+                    (mt/user-http-request :crowberto :post 400 url as-data-app
+                                          (assoc body :parameter (card-source-parameter elsewhere-id))))
+                 url)))
+         (let [parameter {:id "name" :type :string/=}]
+           (testing "values from a field of a published table load, from any other field are refused"
+             (is (seq (:values (mt/user-http-request :crowberto :post 200 "dataset/parameter/values" as-data-app
+                                                     {:parameter parameter :field_ids [(mt/id :venues :name)]}))))
+             (doseq [[url body] [["dataset/parameter/values" {}]
+                                 ["dataset/parameter/search/Red" {}]
+                                 ["dataset/parameter/remapping" {:value "Red"}]]]
+               (is (= (format "A data app can read only fields of tables published to the Library, not the field %d."
+                              (mt/id :categories :name))
+                      (mt/user-http-request :crowberto :post 400 url as-data-app
+                                            (assoc body :parameter parameter :field_ids [(mt/id :categories :name)])))
+                   url)))
+           (testing "a request that is not a data app's still loads the values of any field"
+             (is (seq (:values (mt/user-http-request :crowberto :post 200 "dataset/parameter/values"
+                                                     {:parameter parameter :field_ids [(mt/id :categories :name)]})))))))))))
+
 (deftest card-parameter-endpoints-check-values-source-card-test
   (do-with-app-collection
    (fn [collection-id]
@@ -416,7 +474,7 @@
    (fn [_card-id _collection-id]
      (mt/with-temp [:model/Card {elsewhere-id :id} {:id 1234567 :dataset_query (data-apps.tu/venues-query)}]
        (testing "an ID of a thousand or more appears as it is, not as 1,234,567"
-         (is (= "A data app can use only the cards in its own collection and the metrics in the Library, not the card 1234567."
+         (is (= "A data app can use only the cards in its own collection and in the Library, not the card 1234567."
                 (mt/user-http-request :crowberto :post 400 (format "card/%d/query" elsewhere-id) as-data-app))))))))
 
 (deftest without-data-apps-feature-test

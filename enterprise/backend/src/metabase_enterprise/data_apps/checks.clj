@@ -14,6 +14,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.parameters.params :as params]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
    [metabase.util.i18n :refer [tru]]))
 
@@ -75,18 +76,24 @@
   nil)
 
 (defn- read-checked-app-card
-  "The card with `card-id`, after a read check; throws a 400 unless it is in `data-app`'s collection or a metric in the
-  Library."
+  "The card with `card-id`, after a read check; throws a 400 unless it is in `data-app`'s collection or in the Library."
   [data-app card-id]
   (let [card (api/read-check :model/Card card-id)]
-    (when-not (or (in-app-collection? data-app card) (empty? (data-apps.db/external-metric-ids #{card-id})))
-      (throw (data-app-error (tru "A data app can use only the cards in its own collection and the metrics in the Library, not the card {0}."
+    (when-not (or (in-app-collection? data-app card) (data-apps.db/library-collection? (:collection_id card)))
+      (throw (data-app-error (tru "A data app can use only the cards in its own collection and in the Library, not the card {0}."
                                   (str card-id)))))
     card))
 
-(defenterprise-schema check-card :- :nil
-  "Throws a 400 unless the card with `card-id` is in `data-app`'s collection or a metric in the Library, after a read
+(defn- check-values-source-card
+  "Throws a 400 unless the card with `card-id` is one `data-app` may use and not a dashboard question, after a read
   check of the card."
+  [data-app card-id]
+  (when (:dashboard_id (read-checked-app-card data-app card-id))
+    (throw (data-app-error (tru "A data app cannot take parameter values from the dashboard question {0}." (str card-id))))))
+
+(defenterprise-schema check-card :- :nil
+  "Throws a 400 unless the card with `card-id` is in `data-app`'s collection or in the Library, after a read check of
+  the card."
   :feature :data-apps
   [data-app :- ::data-apps.schema/data-app
    card-id  :- ::lib.schema.id/card]
@@ -107,9 +114,9 @@
                                 (str field-id))))))
 
 (defenterprise-schema check-card-parameter :- :nil
-  "Throws a 400 unless the card with `card-id` is in `data-app`'s collection and its parameter `param-key` takes its
-  values from a static list, a card in that collection, or a field of a table published to the Library, after read
-  checks of each."
+  "Throws a 400 unless the card with `card-id` is in `data-app`'s collection or the Library and its parameter
+  `param-key` takes its values from a static list, such a card other than a dashboard question, or a field of a table
+  published to the Library, after read checks of each."
   :feature :data-apps
   [data-app  :- ::data-apps.schema/data-app
    card-id   :- ::lib.schema.id/card
@@ -118,6 +125,20 @@
         parameter (some #(when (= param-key (:id %)) %) (:parameters card))]
     (case (some-> (:values_source_type parameter) keyword)
       :static-list nil
-      :card        (some->> (get-in parameter [:values_source_config :card_id]) (read-checked-app-card data-app))
+      :card        (some->> (get-in parameter [:values_source_config :card_id]) (check-values-source-card data-app))
       (some-> (params/param-target->field-id (:target parameter) card) check-published-field)))
+  nil)
+
+(defenterprise-schema check-parameter :- :nil
+  "Throws a 400 unless the ad-hoc `parameter` takes its values from a static list, a card `data-app` may use other than
+  a dashboard question, or the fields with `field-ids`, each of a table published to the Library, after read checks
+  of each."
+  :feature :data-apps
+  [data-app  :- ::data-apps.schema/data-app
+   parameter :- ::parameters.schema/parameter
+   field-ids :- [:maybe [:sequential ::lib.schema.id/field]]]
+  (case (some-> (:values_source_type parameter) keyword)
+    :static-list nil
+    :card        (some->> (get-in parameter [:values_source_config :card_id]) (check-values-source-card data-app))
+    (run! check-published-field field-ids))
   nil)

@@ -871,6 +871,7 @@
            api-scope
            lib.be
            lib.schema
+           parameters.schema
            premium-features
            util}}
 
@@ -3856,6 +3857,7 @@
            lib.types
            models
            parameters
+           parameters.schema
            permissions
            premium-features
            remote-sync

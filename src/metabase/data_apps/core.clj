@@ -7,6 +7,7 @@
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]))
 
 (defenterprise visible-data-app-filter-select
@@ -74,4 +75,13 @@
   [_data-app  :- ::data-apps.schema/data-app
    _card-id   :- ::lib.schema.id/card
    _param-key :- ::lib.schema.parameter/id]
+  nil)
+
+(defenterprise-schema check-parameter :- :nil
+  "Throws a 400 unless `data-app` may load values for the ad-hoc `parameter` from its source or the fields with
+  `field-ids`; does nothing without the data-apps feature."
+  metabase-enterprise.data-apps.checks
+  [_data-app  :- ::data-apps.schema/data-app
+   _parameter :- ::parameters.schema/parameter
+   _field-ids :- [:maybe [:sequential ::lib.schema.id/field]]]
   nil)
