@@ -56,15 +56,16 @@
 
 (api.macros/defendpoint :post "/proposals/apply" :- ::review/apply-result
   "Apply a review in one request: write the proposals in `accept` and `edits`, or with `reject_all` delete every
-  pending proposal that `/proposals` shows for the database `database_id`. `edits` maps a proposal id to a value that replaces the proposed
-  value and accepts the proposal; the value follows the rules of the attribute (a data-sensitivity category, a
-  semantic type that fits the field and is not a key type, or a non-blank plain-text description of at most 200
-  characters, without links, HTML tags or backticks), else the request is a 400 and nothing is written. An edited
-  value is written as the person's value, any other as an AI value, and an unedited proposal over a value a person
-  set clears that value. `proposed_values` maps a proposal id to the proposed value that the client saw: a proposal
-  that a run changed or deleted since is not written, and is listed in `failures` as `changed`. Each table is one
-  transaction; a written proposal is deleted. A proposal that cannot be written stays pending and is listed in
-  `failures`; a proposal of a field that `/proposals` does not show fails as `field_not_found`."
+  pending proposal that `/proposals` shows for the database `database_id`. `edits` maps a proposal id to a value that
+  replaces the proposed value and accepts the proposal; the value follows the rules of the attribute (a
+  data-sensitivity category, a semantic type that fits the field and is not a key type, or a non-blank plain-text
+  description of at most 200 characters, without Markdown links or images, HTML tags or backticks), else the request
+  is a 400 and nothing is written. An edited value is written as the person's value, any other as an AI value, and
+  an unedited proposal over a value a person set clears that value. `proposed_values` maps a proposal id to the
+  proposed value that the client saw: a proposal that a run changed or deleted since is not written, and is listed
+  in `failures` as `changed`. Each table is one transaction; a written proposal is deleted. A proposal that cannot be
+  written stays pending and is listed in `failures`; a proposal of a field that `/proposals` does not show fails as
+  `field_not_found`."
   [_route-params
    _query-params
    body :- [:maybe ::review/apply-request]]

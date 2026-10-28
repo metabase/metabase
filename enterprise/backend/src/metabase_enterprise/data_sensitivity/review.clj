@@ -93,7 +93,8 @@
 
 (defn- current-source [settings field attribute]
   (let [value (current-value field attribute)]
-    (or (warehouse-schema-overlay/field-value-source settings attribute (if (= :description attribute) (not-empty value) value))
+    (or (warehouse-schema-overlay/field-value-source settings attribute
+                                                     (if (= :description attribute) (not-empty value) value))
         :none)))
 
 (defn- with-current
@@ -149,7 +150,8 @@
         (throw (core/bad-request (tru "The description must be at most {0} characters." llm/description-cap)))
 
         (llm/markup? value)
-        (throw (core/bad-request (tru "The description must be plain text, without links, HTML tags or code.")))
+        (throw (core/bad-request
+                (tru "The description must be plain text, without Markdown links, HTML tags or code.")))
 
         :else
         value))))

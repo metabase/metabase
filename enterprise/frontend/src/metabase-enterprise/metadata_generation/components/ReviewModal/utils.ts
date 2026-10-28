@@ -181,15 +181,6 @@ export function getApplySummary(result: MetadataGenerationApplyResult): string {
       result.written,
     ),
   ];
-  if (result.rejected > 0) {
-    sentences.push(
-      ngettext(
-        msgid`${result.rejected} suggestion rejected.`,
-        `${result.rejected} suggestions rejected.`,
-        result.rejected,
-      ),
-    );
-  }
   if (result.failed > 0) {
     sentences.push(
       ngettext(
