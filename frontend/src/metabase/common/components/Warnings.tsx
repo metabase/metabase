@@ -27,22 +27,27 @@ export const Warnings = ({
   if (!warnings || warnings.length === 0) {
     return null;
   }
-
+  const tooltip = (
+    <ul className={cx(CS.px2, CS.pt2, CS.pb1)} style={{ maxWidth: 350 }}>
+      {warnings.map((warning) => (
+        <li className={CS.pb1} key={warning}>
+          {warning}
+        </li>
+      ))}
+    </ul>
+  );
   const color = severity === "error" ? "feedback-negative" : undefined;
 
   if (!onClick) {
     return (
-      <Tooltip label={<WarningList warnings={warnings} />}>
+      <Tooltip label={tooltip}>
         <Icon className={className} c={color} name="warning" size={size} />
       </Tooltip>
     );
   }
 
   return (
-    <Tooltip
-      keepMounted // kept mounted so the button's description exists while the tooltip is closed
-      label={<WarningList id={descriptionId} warnings={warnings} />}
-    >
+    <Tooltip label={tooltip}>
       <UnstyledButton
         aria-describedby={descriptionId}
         aria-label={t`Warnings`}
@@ -51,28 +56,10 @@ export const Warnings = ({
         onClick={onClick}
       >
         <Icon c={color} display="block" name="warning" size={size} />
+        <span hidden id={descriptionId}>
+          {warnings.join(" ")}
+        </span>
       </UnstyledButton>
     </Tooltip>
   );
 };
-
-type WarningListProps = {
-  id?: string;
-  warnings: string[];
-};
-
-function WarningList({ id, warnings }: WarningListProps) {
-  return (
-    <ul
-      className={cx(CS.px2, CS.pt2, CS.pb1)}
-      id={id}
-      style={{ maxWidth: 350 }}
-    >
-      {warnings.map((warning) => (
-        <li className={CS.pb1} key={warning}>
-          {warning}
-        </li>
-      ))}
-    </ul>
-  );
-}
