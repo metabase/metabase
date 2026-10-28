@@ -21,7 +21,7 @@ const baseColors = {
     90: "color-mix(in srgb, var(--mb-color-core-brand), black 64%)",
     80: "color-mix(in srgb, var(--mb-color-core-brand), black 48%)",
     70: "color-mix(in srgb, var(--mb-color-core-brand), black 26%)",
-    60: "var(--mb-color-core-brand)", // This is the base brand color
+    60: "var(--mb-color-core-brand)", // The exact admin color. Same step number as ocean[60], so every token that uses ocean[60] in the default theme gets the exact admin color
     50: "color-mix(in srgb, var(--mb-color-core-brand), white 19%)",
     40: "color-mix(in srgb, var(--mb-color-core-brand), white 31%)",
     30: "color-mix(in srgb, var(--mb-color-core-brand), white 55%)",
