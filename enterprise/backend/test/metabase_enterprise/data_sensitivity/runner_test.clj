@@ -457,6 +457,33 @@
             (is (= 400 (:status-code (try (start! db {:table_ids [(:id t1)]})
                                           (catch clojure.lang.ExceptionInfo e (ex-data e)))))))))))))
 
+(deftest table-hidden-during-run-not-sent-test
+  (testing "a table hidden after the run starts and before the worker reaches it is not sent to the model"
+    (do-with-temp-tables
+     2
+     (fn [db [t0 t1]]
+       (let [prompts (atom [])
+             started (CountDownLatch. 1)
+             release (promise)]
+         (ds.tu/do-with-llm!
+          (fn [& [_model messages :as args]]
+            (swap! prompts conj (table-name-in-message messages))
+            (when (= (:name t0) (table-name-in-message messages))
+              (.countDown started)
+              (deref release 10000 nil))
+            (apply (ds.tu/canned-llm (constantly {:data_sensitivity "PII"})) args))
+          (fn []
+            (let [run (start! db {:attributes [:data_sensitivity]})]
+              (is (.await started 10 TimeUnit/SECONDS))
+              (t2/update! :model/Table (:id t1) {:visibility_type :hidden})
+              (deliver release true)
+              (is (=? {:status       :succeeded
+                       :done_tables  1
+                       :table_errors [{:table_id (:id t1) :error_code "table_not_visible"}]}
+                      (wait-ended (:id run))))
+              (is (= [(:name t0)] @prompts))
+              (is (= #{(:id t0)} (set (map :table_id (suggestions (:id run))))))))))))))
+
 (deftest failed-table-usage-test
   (testing "the usage of the chunks that finished in a table that failed counts in the run's usage"
     (mt/with-temp [:model/Database db    {}

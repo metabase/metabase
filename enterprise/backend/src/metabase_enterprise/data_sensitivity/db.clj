@@ -57,11 +57,27 @@
     (into {} (map (juxt :field_id identity)) (t2/select :model/FieldUserSettings :field_id [:in field-ids]))
     {}))
 
-(mu/defn field-names-and-tables
-  "The id, name, and table id of the Fields with `field-ids`."
+(defn- active-tables-where
+  "The `:where` of [[active-tables]] over the tables that `table-condition` selects."
+  [table-condition]
+  [:and table-condition [:= :active true] [:= :visibility_type nil]])
+
+(mu/defn fk-target-names
+  "The id, name, table name and table schema of the Fields with `field-ids` that [[active-fields]] could return, in
+  tables that [[active-tables]] could return. Other ids have no row."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :name :table_id] :id [:in field-ids]
-             {:from [(warehouse-schema-overlay/field-query)]}))
+  (let [fields (t2/select [:model/Field :id :name :table_id]
+                          {:from  [(warehouse-schema-overlay/field-query)]
+                           :where (active-fields-where [:in :id field-ids])})
+        tables (when (seq fields)
+                 (into {} (map (juxt :id identity))
+                       (t2/select [:model/Table :id :name :schema]
+                                  {:from  [(warehouse-schema-overlay/table-query)]
+                                   :where (active-tables-where [:in :id (into #{} (map :table_id) fields)])})))]
+    (into [] (keep (fn [{:keys [id name table_id]}]
+                     (when-let [table (get tables table_id)]
+                       {:id id :name name :table_name (:name table) :table_schema (:schema table)})))
+          fields)))
 
 (mu/defn tables-by-id
   "A map of table id to the id, name, and schema of the Tables with `table-ids`."
@@ -69,13 +85,19 @@
   (into {} (map (juxt :id identity)) (t2/select [:model/Table :id :name :schema] :id [:in table-ids]
                                                 {:from [(warehouse-schema-overlay/table-query)]})))
 
+(mu/defn visible-table
+  "The Table with `table-id` when [[active-tables]] could return it, or nil."
+  [table-id :- ::lib.schema.id/table]
+  (t2/select-one :model/Table {:from  [(warehouse-schema-overlay/table-query)]
+                               :where (active-tables-where [:= :id table-id])}))
+
 (mu/defn active-tables
   "The active Tables of `database-id` with no `visibility_type` as users see it, as sync selects them, ordered by
   schema then name."
   [database-id :- ::lib.schema.id/database]
   (t2/select :model/Table
              {:from     [(warehouse-schema-overlay/table-query)]
-              :where    [:and [:= :db_id database-id] [:= :active true] [:= :visibility_type nil]]
+              :where    (active-tables-where [:= :db_id database-id])
               :order-by [[:schema :asc] [:name :asc]]}))
 
 ;;; Metadata generation runs

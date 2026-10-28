@@ -109,16 +109,15 @@
   (into #{} (filter #(warehouse-schema-overlay/field-ai-set? user-settings %)) (keys warehouse-schema-overlay/field-ai-columns)))
 
 (defn- fk-targets
-  "Map of target field id -> `schema.table.field` for every `fk_target_field_id` among `fields`."
+  "Map of target field id -> `schema.table.field` for every `fk_target_field_id` among `fields` whose target
+  [[db/fk-target-names]] returns. A target in a hidden table, or a retired, sensitive or hidden target field, is not
+  in the map."
   [fields]
   (let [target-ids (into #{} (keep :fk_target_field_id) fields)]
     (when (seq target-ids)
-      (let [targets (db/field-names-and-tables target-ids)
-            tables  (db/tables-by-id (into #{} (map :table_id) targets))]
-        (into {} (map (fn [{:keys [id name table_id]}]
-                        (let [{table-name :name schema :schema} (get tables table_id)]
-                          [id (str/join "." (remove nil? [schema table-name name]))])))
-              targets)))))
+      (into {} (map (fn [{:keys [id name table_name table_schema]}]
+                      [id (str/join "." (remove nil? [table_schema table_name name]))]))
+            (db/fk-target-names target-ids)))))
 
 (defn- round2 [x]
   (cond
