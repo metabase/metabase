@@ -35,6 +35,7 @@ export const ITERATION_3_DIRECTIONS: FilterDirection[] = [
         Legend: LegendFilters,
         LegendWrap: LegendFilterWrap,
       }),
+    NotebookCanvas: UnifiedExpressionBarNotebook,
     initialExample: REALISTIC_EXAMPLES[0],
   },
   {

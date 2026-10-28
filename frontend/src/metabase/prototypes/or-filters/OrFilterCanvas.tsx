@@ -365,6 +365,13 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
             </>
           )}
 
+          {direction.Canvas && direction.NotebookCanvas && (
+            <Stack gap="sm">
+              <Title order={3}>{t`Notebook mode`}</Title>
+              <direction.NotebookCanvas query={query} onChange={setQuery} />
+            </Stack>
+          )}
+
           <Stack gap="sm">
             <Title order={3}>{t`Preview query`}</Title>
             <Paper withBorder radius="md" p="lg">
