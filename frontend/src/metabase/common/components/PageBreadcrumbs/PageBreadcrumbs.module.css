@@ -1,0 +1,11 @@
+.root {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 1.75rem;
+
+  /* The provided breadcrumbs render nothing on pages without a path */
+  &:empty {
+    display: none;
+  }
+}

@@ -2,6 +2,10 @@ import { useViewportSize } from "@mantine/hooks";
 import { useMemo } from "react";
 
 import {
+  PageBreadcrumbs,
+  useHasPageBreadcrumbs,
+} from "metabase/common/components/PageBreadcrumbs";
+import {
   DetailsGroup,
   Header,
   Relationships,
@@ -54,6 +58,7 @@ export function DetailViewPage({
   const isSmallBreakpoint = width <= BREAKPOINT_SMALL;
   const paddingLeft = isSmallBreakpoint ? 32 : DETAIL_VIEW_PADDING_LEFT;
   const hasPk = columns.some(isPK);
+  const hasPageBreadcrumbs = useHasPageBreadcrumbs();
 
   return (
     <Stack
@@ -68,8 +73,10 @@ export function DetailViewPage({
           className={S.header}
           pl={rem(paddingLeft)}
           pr="xxl"
-          py={rem(64)}
+          pt={hasPageBreadcrumbs ? "xl" : rem(64)}
+          pb={rem(64)}
         >
+          <PageBreadcrumbs mb="xl" />
           <Box
             // intentionally misalign the header to create an "optical alignment effect" (due to rounded avatar)
             ml={rem(-8)}

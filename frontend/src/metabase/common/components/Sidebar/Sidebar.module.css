@@ -3,6 +3,9 @@
   flex-direction: column;
   border-left: 1px solid var(--mb-color-border-neutral);
   background: var(--mb-color-background_page-primary);
+  /* Above the floating Metabot button (z-index 1) in the main content */
+  position: relative;
+  z-index: 2;
 }
 
 .ChildrenContainer {

@@ -1,3 +1,17 @@
+.ViewHeaderLeftColumn {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+}
+
+.ViewHeaderBreadcrumbs {
+  padding-top: 0.25rem;
+
+  @container query-builder (max-width: 70em) {
+    padding-left: 1.325rem;
+  }
+}
+
 @container query-builder (max-width: 50em) {
   .ActionButtonRoot[data-variant="default"] {
     flex-shrink: 0;

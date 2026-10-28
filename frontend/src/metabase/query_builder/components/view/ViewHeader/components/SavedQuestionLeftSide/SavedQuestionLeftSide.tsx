@@ -3,6 +3,7 @@ import type React from "react";
 import { useCallback, useEffect, useState } from "react";
 
 import { LastEditInfoLabel } from "metabase/common/components/LastEditInfoLabel";
+import { useHasPageBreadcrumbs } from "metabase/common/components/PageBreadcrumbs";
 import { Box, Flex } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
@@ -36,6 +37,7 @@ export function SavedQuestionLeftSide({
   const hasLastEditInfo = question.lastEditInfo() != null;
   const type = question.type();
   const isModelOrMetric = type === "model" || type === "metric";
+  const hasPageBreadcrumbs = useHasPageBreadcrumbs();
 
   const onHeaderChange = useCallback(
     (name: string) => {
@@ -79,7 +81,9 @@ export function SavedQuestionLeftSide({
                 <span className={ViewTitleHeaderS.HeaderDivider}>/</span>
               }
               parts={[
-                ...(isAdditionalInfoVisible && isModelOrMetric
+                ...(isAdditionalInfoVisible &&
+                isModelOrMetric &&
+                !hasPageBreadcrumbs
                   ? [
                       <HeaderCollectionBreadcrumb
                         key="collection"

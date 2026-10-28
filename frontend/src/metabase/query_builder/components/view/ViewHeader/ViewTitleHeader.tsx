@@ -3,13 +3,14 @@ import type React from "react";
 import { useEffect } from "react";
 import { usePrevious } from "react-use";
 
+import { PageBreadcrumbs } from "metabase/common/components/PageBreadcrumbs";
 import { useToggle } from "metabase/common/hooks/use-toggle";
 import type {
   DatasetEditorTab,
   QueryBuilderMode,
   QueryModalType,
 } from "metabase/redux/store";
-import { Flex } from "metabase/ui";
+import { Box, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
@@ -158,27 +159,30 @@ export function ViewTitleHeader({
         style={style}
         data-testid="qb-header"
       >
-        <Flex className={ViewTitleHeaderS.ViewHeaderLeftSideWrapper}>
-          <QueryBuilderBackButton mr="sm" />
-          {isSaved ? (
-            <SavedQuestionLeftSide
-              question={question}
-              isObjectDetail={isObjectDetail}
-              isAdditionalInfoVisible={isAdditionalInfoVisible}
-              onOpenQuestionInfo={onOpenQuestionInfo}
-              onSave={onSave}
-            />
-          ) : (
-            <AdHocQuestionLeftSide
-              question={question}
-              isObjectDetail={isObjectDetail}
-              isSummarized={isSummarized}
-              isNative={isNative}
-              originalQuestion={originalQuestion}
-              onOpenModal={onOpenModal}
-            />
-          )}
-        </Flex>
+        <Box className={ViewTitleHeaderS.ViewHeaderLeftColumn}>
+          <PageBreadcrumbs className={ViewTitleHeaderS.ViewHeaderBreadcrumbs} />
+          <Flex className={ViewTitleHeaderS.ViewHeaderLeftSideWrapper}>
+            <QueryBuilderBackButton mr="sm" />
+            {isSaved ? (
+              <SavedQuestionLeftSide
+                question={question}
+                isObjectDetail={isObjectDetail}
+                isAdditionalInfoVisible={isAdditionalInfoVisible}
+                onOpenQuestionInfo={onOpenQuestionInfo}
+                onSave={onSave}
+              />
+            ) : (
+              <AdHocQuestionLeftSide
+                question={question}
+                isObjectDetail={isObjectDetail}
+                isSummarized={isSummarized}
+                isNative={isNative}
+                originalQuestion={originalQuestion}
+                onOpenModal={onOpenModal}
+              />
+            )}
+          </Flex>
+        </Box>
         <ViewTitleHeaderRightSide
           question={question}
           result={result}

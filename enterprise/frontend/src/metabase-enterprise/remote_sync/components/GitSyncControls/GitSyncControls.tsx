@@ -252,7 +252,6 @@ export const GitSyncControls = () => {
           <Button
             variant="subtle"
             color="neutral"
-            mr="xl"
             disabled={isLoading}
             onClick={() => combobox.toggleDropdown()}
             leftSection={

@@ -12,7 +12,6 @@ import { isMac } from "metabase/utils/browser";
 import S from "./AppBar.module.css";
 
 export interface AppBarToggleProps {
-  isSmallAppBar?: boolean;
   isNavBarEnabled?: boolean;
   isLogoVisible?: boolean;
   isNavBarOpen?: boolean;
@@ -20,7 +19,6 @@ export interface AppBarToggleProps {
 }
 
 export function AppBarToggle({
-  isSmallAppBar,
   isNavBarEnabled,
   isLogoVisible,
   isNavBarOpen,
@@ -58,7 +56,7 @@ export function AppBarToggle({
     <div ref={hoverRef as React.Ref<HTMLDivElement>}>
       <Tooltip
         label={getSidebarTooltipLabel(isNavBarOpen)}
-        disabled={isSmallAppBar || disableTooltip}
+        disabled={disableTooltip}
         withArrow
         offset={-12}
         openDelay={1000}
@@ -70,7 +68,7 @@ export function AppBarToggle({
           justify="center"
           w="2.25rem"
           px={0}
-          py={isSmallAppBar ? "sm" : "lg"}
+          py="lg"
           onClick={handleToggleClick}
           data-testid="sidebar-toggle"
           aria-label={t`Toggle sidebar`}
@@ -78,8 +76,8 @@ export function AppBarToggle({
           <Icon
             className={cx({ [S.toggleIconDimmed]: !isLogoVisible })}
             c={isLogoVisible ? "core-brand" : undefined}
-            size={20}
-            name="burger"
+            size={16}
+            name={isNavBarOpen ? "sidebar_closed" : "sidebar_open"}
           />
         </Flex>
       </Tooltip>

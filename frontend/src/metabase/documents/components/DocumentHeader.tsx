@@ -8,6 +8,7 @@ import {
   getFormattedTime,
 } from "metabase/common/components/DateTime";
 import { Link } from "metabase/common/components/Link";
+import { PageBreadcrumbs } from "metabase/common/components/PageBreadcrumbs";
 import CS from "metabase/css/core/index.css";
 import { getUserIsAdmin } from "metabase/current-user";
 import { usePrintContext } from "metabase/documents/contexts/PrintContext";
@@ -123,208 +124,211 @@ export const DocumentHeader = ({
   );
 
   return (
-    <Flex className={S.documentHeader}>
-      <Flex direction="column" className={S.titleContainer}>
-        <TextInput
-          aria-label={t`Document Title`}
-          autoFocus={isNewDocument}
-          value={documentTitle}
-          onChange={(event) => {
-            const value = event.currentTarget.value;
-            if (value.length <= DOCUMENT_TITLE_MAX_LENGTH) {
-              onTitleChange(value);
-            }
-          }}
-          placeholder={t`New document`}
-          readOnly={!canWrite}
-          maxLength={DOCUMENT_TITLE_MAX_LENGTH}
-          classNames={{ input: S.titleInput }}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
+    <Box className={S.documentHeaderContainer}>
+      <PageBreadcrumbs mb="sm" />
+      <Flex className={S.documentHeader}>
+        <Flex direction="column" className={S.titleContainer}>
+          <TextInput
+            aria-label={t`Document Title`}
+            autoFocus={isNewDocument}
+            value={documentTitle}
+            onChange={(event) => {
+              const value = event.currentTarget.value;
+              if (value.length <= DOCUMENT_TITLE_MAX_LENGTH) {
+                onTitleChange(value);
+              }
+            }}
+            placeholder={t`New document`}
+            readOnly={!canWrite}
+            maxLength={DOCUMENT_TITLE_MAX_LENGTH}
+            classNames={{ input: S.titleInput }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
 
-              if (canWrite) {
-                onTitleSubmit?.();
+                if (canWrite) {
+                  onTitleSubmit?.();
+                }
               }
-            }
-          }}
-        />
-        {document && (
-          <Flex gap="lg">
-            <Flex align="center" gap="0.25rem" c="text-secondary">
-              <Icon name="person" />
-              <Text>{document.creator.common_name}</Text>
-            </Flex>
-            <Tooltip
-              label={getFormattedTime(document.updated_at, "default", {
-                local: true,
-              })}
-            >
+            }}
+          />
+          {document && (
+            <Flex gap="lg">
               <Flex align="center" gap="0.25rem" c="text-secondary">
-                <Icon name="clock" />
-                <DateTime value={document.updated_at} unit="day" />
+                <Icon name="person" />
+                <Text>{document.creator.common_name}</Text>
               </Flex>
-            </Tooltip>
-          </Flex>
-        )}
-      </Flex>
-      <Flex gap="lg" align="center" className={S.actionsContainer}>
-        <Transition
-          mounted={showSaveButton}
-          transition={saveButtonTransition}
-          duration={200}
-          keepMounted
-        >
-          {(style) => (
-            <Box
-              style={
-                style.display === "none" ? saveButtonTransition.out : style
-              }
-            >
-              <Button onClick={onSave} variant="filled" data-hide-on-print>
-                {t`Save`}
-              </Button>
-            </Box>
+              <Tooltip
+                label={getFormattedTime(document.updated_at, "default", {
+                  local: true,
+                })}
+              >
+                <Flex align="center" gap="0.25rem" c="text-secondary">
+                  <Icon name="clock" />
+                  <DateTime value={document.updated_at} unit="day" />
+                </Flex>
+              </Tooltip>
+            </Flex>
           )}
-        </Transition>
-        {!isNewDocument && hasComments && !isWithinIframe() && (
-          <Tooltip label={t`Show all comments`}>
-            <Box>
-              {document && (
+        </Flex>
+        <Flex gap="lg" align="center" className={S.actionsContainer}>
+          <Transition
+            mounted={showSaveButton}
+            transition={saveButtonTransition}
+            duration={200}
+            keepMounted
+          >
+            {(style) => (
+              <Box
+                style={
+                  style.display === "none" ? saveButtonTransition.out : style
+                }
+              >
+                <Button onClick={onSave} variant="filled" data-hide-on-print>
+                  {t`Save`}
+                </Button>
+              </Box>
+            )}
+          </Transition>
+          {!isNewDocument && hasComments && !isWithinIframe() && (
+            <Tooltip label={t`Show all comments`}>
+              <Box>
+                {document && (
+                  <ActionIcon
+                    variant="subtle"
+                    component={Link}
+                    to={`/document/${document.id}/comments/all`}
+                    size="md"
+                    aria-label={t`Show all comments`}
+                    data-hide-on-print
+                  >
+                    <Icon name="comment" />
+                  </ActionIcon>
+                )}
+              </Box>
+            </Tooltip>
+          )}
+          {!document?.archived && (
+            <Menu
+              position="bottom-end"
+              opened={isMenuOpen}
+              onChange={handleMenuChange}
+            >
+              <Menu.Target>
                 <ActionIcon
                   variant="subtle"
-                  component={Link}
-                  to={`/document/${document.id}/comments/all`}
                   size="md"
-                  aria-label={t`Show all comments`}
+                  aria-label={t`More options`}
                   data-hide-on-print
                 >
-                  <Icon name="comment" />
+                  <Icon name="ellipsis" />
                 </ActionIcon>
-              )}
-            </Box>
-          </Tooltip>
-        )}
-        {!document?.archived && (
-          <Menu
-            position="bottom-end"
-            opened={isMenuOpen}
-            onChange={handleMenuChange}
-          >
-            <Menu.Target>
-              <ActionIcon
-                variant="subtle"
-                size="md"
-                aria-label={t`More options`}
-                data-hide-on-print
-              >
-                <Icon name="ellipsis" />
-              </ActionIcon>
-            </Menu.Target>
-            <Menu.Dropdown>
-              <Menu.Item
-                leftSection={
-                  isPreparingForPrint ? (
-                    <Loader size="xs" />
-                  ) : (
-                    <Icon name="document" />
-                  )
-                }
-                closeMenuOnClick={false}
-                disabled={isPreparingForPrint}
-                onClick={handlePrint}
-              >
-                {t`Print Document`}
-              </Menu.Item>
-              {!isNewDocument && (
-                <>
-                  {isAdmin && (
-                    <Menu.Item
-                      leftSection={<Icon name="link" />}
-                      onClick={() => setIsPublicLinkPopoverOpen(true)}
-                      {...(!isPublicSharingEnabled && {
-                        onClick: undefined,
-                        component: "div",
-                        disabled: true,
-                      })}
-                    >
-                      {isPublicSharingEnabled ? (
-                        hasPublicLink ? (
-                          t`Public link`
-                        ) : (
-                          t`Create a public link`
-                        )
-                      ) : (
-                        <>
-                          {t`Public link`}
-                          <Button
-                            component={Link}
-                            to="/admin/settings/public-sharing"
-                            target="_blank"
-                            variant="transparent"
-                            size="compact-md"
-                            h="auto"
-                            lh="inherit"
-                            ml="sm"
-                            bd={0}
-                            className={CS.floatRight}
-                          >
-                            {t`Enable`}
-                          </Button>
-                        </>
-                      )}
-                    </Menu.Item>
-                  )}
-                  {canWrite && (
-                    <Menu.Item
-                      leftSection={<Icon name="move" />}
-                      onClick={onMove}
-                    >
-                      {t`Move`}
-                    </Menu.Item>
-                  )}
-                  <Menu.Item
-                    leftSection={<Icon name="clone" />}
-                    onClick={onDuplicate}
-                  >
-                    {c("A verb, not a noun").t`Duplicate`}
-                  </Menu.Item>
-                  <Menu.Item
-                    leftSection={<Icon name={"bookmark"} />}
-                    onClick={onToggleBookmark}
-                  >
-                    {isBookmarked ? t`Remove from Bookmarks` : t`Bookmark`}
-                  </Menu.Item>
-                  <Menu.Item
-                    leftSection={<Icon name="history" />}
-                    onClick={onShowHistory}
-                  >
-                    {t`History`}
-                  </Menu.Item>
-                  {canWrite && (
-                    <>
-                      <Menu.Divider />
+              </Menu.Target>
+              <Menu.Dropdown>
+                <Menu.Item
+                  leftSection={
+                    isPreparingForPrint ? (
+                      <Loader size="xs" />
+                    ) : (
+                      <Icon name="document" />
+                    )
+                  }
+                  closeMenuOnClick={false}
+                  disabled={isPreparingForPrint}
+                  onClick={handlePrint}
+                >
+                  {t`Print Document`}
+                </Menu.Item>
+                {!isNewDocument && (
+                  <>
+                    {isAdmin && (
                       <Menu.Item
-                        leftSection={<Icon name="trash" />}
-                        onClick={onArchive}
+                        leftSection={<Icon name="link" />}
+                        onClick={() => setIsPublicLinkPopoverOpen(true)}
+                        {...(!isPublicSharingEnabled && {
+                          onClick: undefined,
+                          component: "div",
+                          disabled: true,
+                        })}
                       >
-                        {t`Move to trash`}
+                        {isPublicSharingEnabled ? (
+                          hasPublicLink ? (
+                            t`Public link`
+                          ) : (
+                            t`Create a public link`
+                          )
+                        ) : (
+                          <>
+                            {t`Public link`}
+                            <Button
+                              component={Link}
+                              to="/admin/settings/public-sharing"
+                              target="_blank"
+                              variant="transparent"
+                              size="compact-md"
+                              h="auto"
+                              lh="inherit"
+                              ml="sm"
+                              bd={0}
+                              className={CS.floatRight}
+                            >
+                              {t`Enable`}
+                            </Button>
+                          </>
+                        )}
                       </Menu.Item>
-                    </>
-                  )}
-                </>
-              )}
-            </Menu.Dropdown>
-          </Menu>
-        )}
-        {document && isAdmin && (
-          <DocumentPublicLinkPopover
-            document={document}
-            isOpen={isPublicLinkPopoverOpen}
-            onClose={() => setIsPublicLinkPopoverOpen(false)}
-          />
-        )}
+                    )}
+                    {canWrite && (
+                      <Menu.Item
+                        leftSection={<Icon name="move" />}
+                        onClick={onMove}
+                      >
+                        {t`Move`}
+                      </Menu.Item>
+                    )}
+                    <Menu.Item
+                      leftSection={<Icon name="clone" />}
+                      onClick={onDuplicate}
+                    >
+                      {c("A verb, not a noun").t`Duplicate`}
+                    </Menu.Item>
+                    <Menu.Item
+                      leftSection={<Icon name={"bookmark"} />}
+                      onClick={onToggleBookmark}
+                    >
+                      {isBookmarked ? t`Remove from Bookmarks` : t`Bookmark`}
+                    </Menu.Item>
+                    <Menu.Item
+                      leftSection={<Icon name="history" />}
+                      onClick={onShowHistory}
+                    >
+                      {t`History`}
+                    </Menu.Item>
+                    {canWrite && (
+                      <>
+                        <Menu.Divider />
+                        <Menu.Item
+                          leftSection={<Icon name="trash" />}
+                          onClick={onArchive}
+                        >
+                          {t`Move to trash`}
+                        </Menu.Item>
+                      </>
+                    )}
+                  </>
+                )}
+              </Menu.Dropdown>
+            </Menu>
+          )}
+          {document && isAdmin && (
+            <DocumentPublicLinkPopover
+              document={document}
+              isOpen={isPublicLinkPopoverOpen}
+              onClose={() => setIsPublicLinkPopoverOpen(false)}
+            />
+          )}
+        </Flex>
       </Flex>
-    </Flex>
+    </Box>
   );
 };

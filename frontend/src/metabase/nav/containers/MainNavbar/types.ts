@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type { StoreDashboard } from "metabase/redux/store";
 import type { Location } from "metabase/router";
 
@@ -10,6 +12,8 @@ export interface MainNavbarOwnProps {
     pageId?: string;
   };
   dashboard?: StoreDashboard;
+  /** Rendered pinned above the scrollable navigation items. */
+  header?: ReactNode;
 }
 
 export interface MainNavbarDispatchProps {

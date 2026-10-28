@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { NewItemMenu } from "metabase/nav/components/NewItemMenu";
-import { Button, Icon } from "metabase/ui";
+import { ActionIcon, Icon } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 
 import { trackAppNewButtonClicked } from "./analytics";
@@ -14,14 +14,13 @@ const NewItemButton = ({ collectionId }: NewItemButtonProps) => {
   return (
     <NewItemMenu
       trigger={
-        <Button
+        <ActionIcon
           variant="filled"
-          leftSection={<Icon name="add" size={16} />}
           aria-label={t`New`}
           onClick={() => trackAppNewButtonClicked()}
         >
-          {t`New`}
-        </Button>
+          <Icon name="add" />
+        </ActionIcon>
       }
       collectionId={collectionId}
     />
