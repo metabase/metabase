@@ -5,9 +5,9 @@
 
   - Skills are markdown files with YAML frontmatter in `resources/help_assistant/skills/`. They are re-read on every
     request, so you can edit them while Metabase is running.
-  - The Metabase docs (markdown only, no images) are bundled in `resources/help_assistant/docs/`. The model can search
-    and read them with the `search_docs` and `read_doc` tools. When that folder is missing (e.g. you haven't copied the
-    docs yet) and you're running from source, the repo's own `docs/` folder is used instead."
+  - The Metabase docs (markdown only, no images) are bundled in `resources/help_assistant/docs/` by the `:help-docs`
+    build step. The model can search and read them with the `search_docs` and `read_doc` tools. When that folder is
+    missing and you're running from source, the repo's own `docs/` folder is used instead."
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -93,7 +93,9 @@
                                :title   (doc-title path content)
                                :content content
                                :lower   (u/lower-case-en content)}]))]
-      (log/infof "Help assistant: loaded %d doc pages" (count docs))
+      (if (empty? docs)
+        (log/warn "Help assistant: no doc pages found, so answers can't use the docs. Build with the :help-docs step.")
+        (log/infof "Help assistant: loaded %d doc pages" (count docs)))
       docs)))
 
 (defn- docs-version-tag
@@ -229,7 +231,8 @@
    "- Base answers on the docs and the diagnostic info. If you can't find the answer, say so plainly and suggest "
    "emailing Metabase support at [help@metabase.com](mailto:help@metabase.com). Never guess setting names, menu "
    "paths or environment variables.\n"
-   "- Link to the pages you used, with the exact URL read_doc gave you. Never make up URLs.\n"
+   "- Link to the pages you used where you mention them, with the exact URL read_doc gave you. Never make up URLs. "
+   "Don't end with a list of links: the Help page already lists the pages you read under your answer.\n"
    "- For how-to questions, keep it short and practical: the answer first, then numbered steps.\n"
    "- For troubleshooting, work through it with the user one cause at a time instead of giving every fix at once:\n"
    "  1. If the symptom is too vague to tell which causes apply, ask one short question to narrow it down first.\n"
@@ -290,6 +293,21 @@
    "# Skills\n\n"
    (str/join "\n\n" (map skill->prompt (load-skills)))))
 
+;;; --------------------------------------------------- Feedback --------------------------------------------------
+
+(defn log-feedback!
+  "Write a rating of one answer to the server log. The rating and sources are logged at INFO. The question, comment and
+  answer are logged at DEBUG, because they can contain pasted logs or customer data."
+  [{:keys [positive comment question answer sources]}]
+  ;; The prototype has nowhere to store ratings, and the log is enough to find the questions the docs don't answer well.
+  (log/infof "Help assistant feedback: %s. Sources: %s"
+             (if positive "helpful" "not helpful")
+             (if (seq sources) (str/join ", " (map :url sources)) "(none)"))
+  (log/debugf "Help assistant feedback content:\nQuestion: %s\nComment: %s\nAnswer: %s"
+              (u/truncate question 2000)
+              (if (str/blank? comment) "(none)" (u/truncate comment 2000))
+              (u/truncate answer 2000)))
+
 ;;; ------------------------------------------------- Agent loop --------------------------------------------------
 
 (def ^:private max-iterations 8)
@@ -313,57 +331,90 @@
 
 (def ^:private history-part-types #{:text :tool-input :tool-output :reasoning})
 
-(defn- messages->parts
-  "Conversation from the browser -> the part format `call-llm` expects. Keeps the last 20 messages."
+;; Odd: a conversation ends with a question, so an even number of recent messages starts with an answer, and the turns
+;; still alternate after the first question.
+(def ^:private max-history-messages 19)
+
+(defn- trim-history
+  "The first question and the most recent messages, at most [[max-history-messages]] in all. The first question stays
+  so that a long troubleshooting chat doesn't lose the original problem. Answers before the first question are dropped."
   [messages]
-  (vec (for [{:keys [role content]} (take-last 20 messages)]
+  (let [messages (drop-while #(not= "user" (:role %)) messages)]
+    (if (<= (count messages) max-history-messages)
+      messages
+      (cons (first messages) (take-last (dec max-history-messages) messages)))))
+
+(defn- messages->parts
+  "Conversation from the browser -> the part format `call-llm` expects. Long conversations are trimmed with
+  [[trim-history]]."
+  [messages]
+  (vec (for [{:keys [role content]} (trim-history messages)]
          (if (= role "user")
            {:role :user, :content content}
            {:type :text, :id (str "mb-" (random-uuid)), :text content}))))
 
-(defn- unavailable-message [reason]
-  (case reason
-    :metabot-disabled  "AI features are turned off on this instance. Turn on Metabot under Admin > AI to use the assistant."
-    :no-llm            "No AI provider is connected yet. Connect one under Admin > AI, then try again."
-    :usage-limit       "This instance has reached its AI usage limit."
-    :permission-denied "Your account doesn't have permission to use AI features."
-    (str "The assistant isn't available right now (" (name reason) ").")))
+(defn- unavailable-error [reason]
+  (ex-info (case reason
+             :metabot-disabled  "AI features are turned off on this instance. Turn on Metabot under Admin > AI to use the assistant."
+             :no-llm            "No AI provider is connected yet. Connect one under Admin > AI, then try again."
+             :usage-limit       "This instance has reached its AI usage limit."
+             :permission-denied "Your account doesn't have permission to use AI features."
+             (str "The assistant isn't available right now (" (name reason) ")."))
+           {:status-code (if (= reason :permission-denied) 403 503)}))
+
+(def ^:private last-step-instruction
+  "\n\nThis is your last step. Answer now with what you found so far. Do not call any tools.")
+
+(def ^:private no-answer-reply
+  (str "I couldn't finish looking this up. Try a narrower question, or email Metabase support at "
+       "[help@metabase.com](mailto:help@metabase.com)."))
+
+(defn- cited-sources
+  "The pages `reply` links to. When it links none, every page that was read."
+  [reply sources]
+  (let [cited (filter #(str/includes? reply (:url %)) sources)]
+    (vec (if (seq cited) cited sources))))
 
 (defn chat
-  "Run one turn of the conversation. Returns `{:reply \"markdown\", :sources [{:title :url}]}`."
+  "Run one turn of the conversation. Returns `{:reply \"markdown\", :sources [{:title :url}]}`. Throws a 403 or 503
+  when the AI connection can't be used, and a 502 when the AI provider returns an error."
   [{:keys [messages diagnostic-info]}]
-  (if-let [reason (metabot.self/llm-call-unavailable-reason :permission/metabot-other-tools)]
-    {:reply (unavailable-message reason), :sources []}
-    (let [sources (atom {})
-          tools   (make-tools sources)
-          model   (metabot.settings/llm-metabot-provider)
-          system  (system-prompt diagnostic-info)]
-      (log/infof "Help assistant: calling %s with %d messages" model (count messages))
-      (loop [history   (messages->parts messages)
-             iteration 1
-             texts     []]
-        (let [parts       (-> (into [] (metabot.self/call-llm model system history tools tracking-opts))
-                              merge-streamed-text
-                              metabot.self.core/merge-reasoning-parts)
-              error       (some #(when (= :error (:type %)) %) parts)
-              text        (->> parts
-                               (keep #(when (= :text (:type %)) (not-empty (str/trim (:text %)))))
-                               (str/join "\n\n"))
-              tool-calls? (some #(= :tool-input (:type %)) parts)]
-          (cond
-            error
-            (throw (ex-info (str "The AI provider returned an error: "
-                                 (or (get-in error [:error :message]) "unknown error"))
-                            {:status-code 502}))
+  (when-let [reason (metabot.self/llm-call-unavailable-reason :permission/metabot-other-tools)]
+    (throw (unavailable-error reason)))
+  (let [sources (atom {})
+        tools   (make-tools sources)
+        model   (metabot.settings/llm-metabot-provider)
+        system  (system-prompt diagnostic-info)]
+    (log/infof "Help assistant: calling %s with %d messages" model (count messages))
+    (loop [history   (messages->parts messages)
+           iteration 1]
+      (let [last-step?  (= iteration max-iterations)
+            parts       (-> (into [] (metabot.self/call-llm model
+                                                            (cond-> system last-step? (str last-step-instruction))
+                                                            history
+                                                            tools
+                                                            tracking-opts))
+                            merge-streamed-text
+                            metabot.self.core/merge-reasoning-parts)
+            error       (some #(when (= :error (:type %)) %) parts)
+            text        (->> parts
+                             (keep #(when (= :text (:type %)) (not-empty (str/trim (:text %)))))
+                             (str/join "\n\n"))
+            tool-calls? (some #(= :tool-input (:type %)) parts)]
+        (cond
+          error
+          (throw (ex-info (str "The AI provider returned an error: "
+                               (or (get-in error [:error :message]) "unknown error"))
+                          {:status-code 502}))
 
-            (and tool-calls? (< iteration max-iterations))
-            (recur (into history (filter #(history-part-types (:type %))) parts)
-                   (inc iteration)
-                   (conj texts text))
+          (and tool-calls? (not last-step?))
+          (recur (into history (filter #(history-part-types (:type %))) parts)
+                 (inc iteration))
 
-            :else
-            {:reply   (if (str/blank? text)
-                        (or (last (remove str/blank? texts))
-                            "Sorry, I couldn't come up with an answer. Try rephrasing the question.")
-                        text)
-             :sources (vec (vals @sources))}))))))
+          ;; text next to a tool call is a preamble like "Let me check the docs", not an answer
+          (or tool-calls? (str/blank? text))
+          {:reply no-answer-reply, :sources []}
+
+          :else
+          {:reply   text
+           :sources (cited-sources text (vals @sources))})))))

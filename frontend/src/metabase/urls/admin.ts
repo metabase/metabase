@@ -172,8 +172,20 @@ export function adminHelp() {
   return "/admin/help";
 }
 
+export function adminHelpChat(conversationId: string) {
+  return `${adminHelp()}/chat/${conversationId}`;
+}
+
+export function adminHelpDiagnostics() {
+  return `${adminHelp()}/diagnostics`;
+}
+
+export function adminHelpSupport() {
+  return `${adminHelp()}/support`;
+}
+
 export function adminHelpGrantAccess() {
-  return `${adminHelp()}/grant-access`;
+  return `${adminHelpSupport()}/grant-access`;
 }
 
 export function adminAiSettings() {

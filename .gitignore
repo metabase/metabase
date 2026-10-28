@@ -218,5 +218,5 @@ dependency-graph.json
 # mage modules-tree --html output
 /modules.html
 
-# Help assistant prototype: copy of docs/ bundled into the JAR (regenerate with bin/copy-help-assistant-docs.ps1)
+# Help assistant: copy of docs/ bundled into the JAR (regenerate with ./bin/build.sh '{:steps [:help-docs]}')
 /resources/help_assistant/docs/

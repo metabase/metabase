@@ -216,9 +216,24 @@ const oauthAuthorizations = () =>
     ({ OAuthAuthorizationsPage }) => ({ Component: OAuthAuthorizationsPage }),
   );
 
-const help = () =>
+const helpLayout = () =>
   import(/* webpackChunkName: "admin" */ "metabase/admin/help").then(
-    ({ Help }) => ({ Component: Help }),
+    ({ HelpLayout }) => ({ Component: HelpLayout }),
+  );
+
+const helpAssistant = () =>
+  import(/* webpackChunkName: "admin" */ "metabase/admin/help").then(
+    ({ HelpAssistant }) => ({ Component: HelpAssistant }),
+  );
+
+const helpDiagnostics = () =>
+  import(/* webpackChunkName: "admin" */ "metabase/admin/help").then(
+    ({ HelpDiagnosticsPage }) => ({ Component: HelpDiagnosticsPage }),
+  );
+
+const helpSupport = () =>
+  import(/* webpackChunkName: "admin" */ "metabase/admin/help").then(
+    ({ HelpSupportPage }) => ({ Component: HelpSupportPage }),
   );
 
 export const getRoutes = (
@@ -469,9 +484,22 @@ export const getRoutes = (
         )}
 
         <Route element={createElement(createAdminRouteGuard("help"))}>
-          <Route path="help" lazy={help}>
-            {PLUGIN_SUPPORT.isEnabled &&
-              modalRoute("grant-access", PLUGIN_SUPPORT.GrantAccessModal)}
+          <Route path="help" lazy={helpLayout}>
+            <Route index lazy={helpAssistant} />
+            <Route path="chat/:conversationId" lazy={helpAssistant} />
+            <Route path="diagnostics" lazy={helpDiagnostics} />
+            {PLUGIN_SUPPORT.isEnabled && (
+              <Route path="support" lazy={helpSupport}>
+                {modalRoute("grant-access", PLUGIN_SUPPORT.GrantAccessModal)}
+              </Route>
+            )}
+            {PLUGIN_SUPPORT.isEnabled && (
+              // The grant-access modal used to open over the Help page.
+              <Route
+                path="grant-access"
+                element={redirect("/admin/help/support/grant-access")}
+              />
+            )}
           </Route>
         </Route>
       </Route>

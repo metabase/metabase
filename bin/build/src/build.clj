@@ -1,5 +1,6 @@
 (ns build
   (:require
+   [build.help-assistant-docs :as help-assistant-docs]
    [build.licenses :as license]
    [build.python :as build.python]
    [build.uberjar :as uberjar]
@@ -93,6 +94,8 @@
                        (build-drivers/build-drivers! edition))
    :python       (fn [{:keys [edition]}]
                    (build.python/build-python-deps! edition))
+   :help-docs    (fn [_]
+                   (help-assistant-docs/copy-docs!))
    :uberjar      (fn [{:keys [edition]}]
                    (build-uberjar! edition))))
 

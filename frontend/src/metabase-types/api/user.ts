@@ -3,6 +3,10 @@ import type { DashboardId } from "./dashboard";
 import type { DatabaseId } from "./database";
 import type { DependencyDiagnosticsUserParams } from "./dependencies";
 import type { ExportFormat, TableExportFormat } from "./export-format";
+import type {
+  HelpAssistantConversation,
+  HelpAssistantConversationId,
+} from "./help-assistant";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type { ConcreteTableId, SchemaName } from "./table";
 
@@ -227,6 +231,11 @@ export type UserKeyValue =
       value: {
         table_ids: ConcreteTableId[];
       };
+    }
+  | {
+      namespace: "help_assistant";
+      key: HelpAssistantConversationId;
+      value: HelpAssistantConversation;
     };
 
 export type UserKeyValueKey = Pick<UserKeyValue, "namespace" | "key">;
