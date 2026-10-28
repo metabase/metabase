@@ -8,6 +8,7 @@
    [metabase.collections.core :as collections]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -625,45 +626,50 @@
 (deftest database-endpoints-narrow-to-published-tables-test
   (do-with-app-collection
    (fn [_collection-id]
-     (data-apps.tu/with-published-tables! [(mt/id :venues)]
-       (mt/with-temp [:model/Database other {:engine :h2 :details {}}
-                      :model/Table    _     {:db_id (:id other) :name "ELSEWHERE" :schema "PUBLIC"}]
-         (let [schema (:schema (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))
-               tables #(map :id (mt/user-http-request :crowberto :get 200 (format "database/%d/schema/" %1) %2 :schema schema))]
-           (testing "the database list holds only databases with published tables, and only those tables"
-             (let [dbs (:data (mt/user-http-request :crowberto :get 200 "database?include=tables" as-data-app))]
-               (is (= [(mt/id)] (map :id dbs)))
-               (is (= [(mt/id :venues)] (map :id (:tables (first dbs)))))))
-           (testing "with only the schemas of its published tables"
-             (is (= [(str schema)]
-                    (:schemas (first (:data (mt/user-http-request :crowberto :get 200 "database?include=schemas" as-data-app)))))))
-           (testing "and not the saved-questions virtual database"
-             (is (= [(mt/id)] (map :id (:data (mt/user-http-request :crowberto :get 200 "database?saved=true" as-data-app))))))
-           (testing "a database with published tables lists only those, in only their schemas"
-             (is (= [(mt/id :venues)]
-                    (map :id (:tables (mt/user-http-request :crowberto :get 200 (format "database/%d?include=tables" (mt/id))
+     (mt/with-temp [:model/Database db          {:engine :h2 :details {}}
+                    :model/Table    published   {:db_id (:id db) :name "PUBLISHED" :schema "PUBLIC"}
+                    :model/Table    unpublished {:db_id (:id db) :name "UNPUBLISHED" :schema "PRIVATE"}
+                    :model/Database other       {:engine :h2 :details {}}
+                    :model/Table    _           {:db_id (:id other) :name "ELSEWHERE" :schema "PUBLIC"}]
+       (data-apps.tu/with-published-tables! [(:id published)]
+         (let [list-dbs (fn [url] (:data (mt/user-http-request :crowberto :get 200 url as-data-app)))
+               listed   (fn [dbs] (some #(when (= (:id db) (:id %)) %) dbs))]
+           (testing "the database list holds the database with a published table, with only that table and its schema"
+             (is (= [(:id published)] (map :id (:tables (listed (list-dbs "database?include=tables"))))))
+             (is (= ["PUBLIC"] (:schemas (listed (list-dbs "database?include=schemas"))))))
+           (testing "but not a database without published tables, nor the saved-questions virtual database"
+             (doseq [id [(:id other) lib.schema.id/saved-questions-virtual-database-id]]
+               (is (not-any? #(= id (:id %)) (list-dbs "database?saved=true")) id)))
+           (testing "a database with a published table lists only that table and its schema"
+             (is (= [(:id published)]
+                    (map :id (:tables (mt/user-http-request :crowberto :get 200 (format "database/%d?include=tables" (:id db))
                                                             as-data-app)))))
-             (is (every? #{schema} (mt/user-http-request :crowberto :get 200 (format "database/%d/schemas" (mt/id)) as-data-app)))
-             (is (= [(mt/id :venues)] (tables (mt/id) as-data-app))))
+             (is (= ["PUBLIC"] (mt/user-http-request :crowberto :get 200 (format "database/%d/schemas" (:id db)) as-data-app)))
+             (is (= [(:id published)]
+                    (map :id (mt/user-http-request :crowberto :get 200 (format "database/%d/schema/PUBLIC" (:id db)) as-data-app))))
+             (is (= "Not found."
+                    (mt/user-http-request :crowberto :get 404 (format "database/%d/schema/PRIVATE" (:id db)) as-data-app))))
            (testing "a database without published tables is refused"
              (doseq [url ["database/%d" "database/%d/schemas" "database/%d/schema/PUBLIC"]]
                (is (= (format "A data app can read only databases with tables published to the Library, not the database %d."
                               (:id other))
                       (mt/user-http-request :crowberto :get 400 (format url (:id other)) as-data-app))
                    url)))
-           (testing "a request that is not a data app's still lists every table"
-             (is (< 1 (count (tables (mt/id) {})))))))))))
+           (testing "a request that is not a data app's still lists the unpublished table"
+             (is (= [(:id unpublished)]
+                    (map :id (mt/user-http-request :crowberto :get 200 (format "database/%d/schema/PRIVATE" (:id db)))))))))))))
 
 (deftest database-endpoints-without-published-tables-test
   (do-with-app-collection
    (fn [_collection-id]
-     (data-apps.tu/do-with-library!
-      (fn [_library]
-        (testing "with no published table, a data app sees no database"
-          (is (= [] (:data (mt/user-http-request :crowberto :get 200 "database?include=tables" as-data-app)))))
-        (testing "and is refused the database by its ID"
-          (is (= (format "A data app can read only databases with tables published to the Library, not the database %d." (mt/id))
-                 (mt/user-http-request :crowberto :get 400 (format "database/%d" (mt/id)) as-data-app)))))))))
+     (mt/with-temp [:model/Database db {:engine :h2 :details {}}
+                    :model/Table    _  {:db_id (:id db) :name "UNPUBLISHED" :schema "PUBLIC"}]
+       (testing "a database whose tables are all unpublished is not listed"
+         (is (not-any? #(= (:id db) (:id %))
+                       (:data (mt/user-http-request :crowberto :get 200 "database?include=tables" as-data-app)))))
+       (testing "and is refused by its ID"
+         (is (= (format "A data app can read only databases with tables published to the Library, not the database %d." (:id db))
+                (mt/user-http-request :crowberto :get 400 (format "database/%d" (:id db)) as-data-app))))))))
 
 (deftest without-data-apps-feature-test
   (testing "without the data-apps feature a data app's queries are not checked"
