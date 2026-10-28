@@ -10,7 +10,8 @@
 
    A whole dashboard's JSON cannot survive a round trip through model context, so callers send
    *ops*. This namespace reads current state, hands it to the pure compiler in
-   [[metabase.mcp.v2.dashboard-ops]], and passes the compiled payload to the same domain fns the
+   [[metabase.metabot.toolkit.dashboard-ops]] through MCP's error wording in
+   [[metabase.mcp.v2.dashboard-errors]], and passes the compiled payload to the same domain fns the
    REST endpoints use ([[metabase.dashboards.write/create-dashboard!]] and
    [[metabase.dashboards.write/update-dashboard!]]) — so write permission enforcement,
    transactionality, and event publishing are inherited, never reimplemented."
@@ -20,7 +21,7 @@
    [metabase.lib.core :as lib]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
-   [metabase.mcp.v2.dashboard-ops :as dashboard-ops]
+   [metabase.mcp.v2.dashboard-errors :as dashboard-errors]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
    [metabase.mcp.v2.redaction :as redaction]
@@ -71,7 +72,7 @@
   (doseq [[idx op] (map-indexed vector ops)
           card-id  (concat [(:card_id op)] (:series op) (:card_ids op))
           :when    (and card-id (not (contains? cards card-id)))]
-    (dashboard-ops/op-error! idx (:op op) (message/msg ["no card with id %s that you can read."] card-id))))
+    (dashboard-errors/op-error! idx (:op op) (message/msg ["no card with id %s that you can read."] card-id))))
 
 ;;; ------------------------------------------------ Response ------------------------------------------------------
 
@@ -431,7 +432,7 @@
   (let [ops     (mapv compact-op ops)
         cards   (fetch-cards (referenced-card-ids dash ops))
         _       (check-cards-exist! ops cards)
-        payload (normalize-parameters (dashboard-ops/compile-ops dash ops cards))]
+        payload (normalize-parameters (dashboard-errors/compile-ops dash ops cards))]
     (validate-payload! (merge attrs payload))
     (if validate-only?
       (dry-run-row dash attrs payload cards)
