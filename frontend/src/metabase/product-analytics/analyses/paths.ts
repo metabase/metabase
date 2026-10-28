@@ -174,10 +174,10 @@ const SETTINGS: AnalysisSettingDefinitions<PathsSettings> = {
   },
   "paths.max_nodes": {
     getTitle: () => t`Number of events to show at each step`,
-    getHint: () => t`The rest are grouped into Other.`,
+    getHint: () => t`The rest are grouped into (Other).`,
     getSection: () => "advanced",
     widget: NumberStepperWidget,
-    getDefault: () => 8,
+    getDefault: () => 5,
     isValid: (value) => isPositiveInteger(value),
   },
   "paths.min_volume": {

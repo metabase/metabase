@@ -174,14 +174,14 @@ export const HABIT_CONFIG: AnalysisConfig<"habit"> = {
     return t`Habit`;
   },
   get question() {
-    return t`How many days in a row did people show up?`;
+    return t`How often do people show up?`;
   },
   getQuestion: (settings) => {
     const isWeekly = toSubPeriod(settings.granularity) === "week";
     if (settings["habit.measure"] === "histogram") {
       return isWeekly
-        ? t`How many weeks in a row did people show up?`
-        : HABIT_CONFIG.question;
+        ? t`How many weeks did people show up?`
+        : t`How many days did people show up?`;
     }
     return isWeekly
       ? t`What share of monthly users show up each week?`

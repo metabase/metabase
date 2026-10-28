@@ -121,7 +121,7 @@ const { breakout_view: breakoutView, ...common } = commonSettings({
 const SETTINGS: AnalysisSettingDefinitions<LifecycleSettings> = {
   ...common,
   "lifecycle.active": withWidgetProps({
-    getTitle: () => t`What action counts as being active?`,
+    getTitle: () => t`What event counts as being active?`,
     getSection: () => "setup",
     widget: EventDefinitionWidget,
     getDefault: () => null,
