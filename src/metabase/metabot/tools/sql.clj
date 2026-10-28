@@ -61,16 +61,18 @@
                              :mode "rewrite"
                              :value sql}))
 
+(def ^:private notebook-tool-name "construct_notebook_query")
+
 (tools/defrecoverable no-native-permission-with-notebook-fallback!
   "The user may not write SQL against the target database, and the notebook builder is offered this turn."
   {:payload [:map {:closed true}]}
   [_]
   {:message  "You do not have permission to write SQL against this database."
-   :recovery [{:uses #{"construct_notebook_query"}
+   :recovery [{:uses #{notebook-tool-name}
                :text (str "Build the question with `construct_notebook_query` instead. Don't write SQL against"
                           " this database again.")}]})
 
-(defn- with-notebook-fallback
+(defn- do-with-notebook-fallback
   "Call `thunk`, rethrowing its native-query refusal as [[no-native-permission-with-notebook-fallback!]]
   when the notebook builder is offered this turn.
   Without the notebook builder the refusal still ends the turn."
@@ -81,7 +83,7 @@
     (thunk)
     (catch clojure.lang.ExceptionInfo e
       (if (and (= ::sql.common/no-native-permission (get-in (ex-data e) [tools.error/error-key :code]))
-               (contains? (:tool-names ctx) "construct_notebook_query"))
+               (contains? (:tool-names ctx) notebook-tool-name))
         (tools.error/throw-recoverable! ::no-native-permission-with-notebook-fallback {} {:cause e})
         (throw e)))))
 
@@ -118,8 +120,8 @@
                           (tools/unrecoverable! ::missing-editor
                                                 {:user-message (tru "No active SQL editor was found. Open a SQL editor and try again.")})))
           action-result (sql.common/validated-sql-action!
-                         (with-notebook-fallback
-                           ctx #(create-sql-query-tools/create-sql-query {:database-id database-id :sql sql-query})))
+                         (do-with-notebook-fallback
+                          ctx #(create-sql-query-tools/create-sql-query {:database-id database-id :sql sql-query})))
           {:keys [query-id query-content]} action-result
           structured (assoc action-result :result-type :query)
           instr (if code-edit?
@@ -175,12 +177,12 @@
      :metabot/capabilities #{:permission-write-sql-queries}
      :args edit-sql-schema})
   (handle [_ {query-id :query_id :keys [edits checklist title]} ctx]
-    (sql-edit-result (with-notebook-fallback
-                       ctx #(edit-sql-query-tools/edit-sql-query
-                             {:query-id query-id
-                              :edits edits
-                              :checklist checklist
-                              :queries-state (shared/current-queries-state (:memory-atom ctx))}))
+    (sql-edit-result (do-with-notebook-fallback
+                      ctx #(edit-sql-query-tools/edit-sql-query
+                            {:query-id query-id
+                             :edits edits
+                             :checklist checklist
+                             :queries-state (shared/current-queries-state (:memory-atom ctx))}))
                      title instructions/edit-sql-query-instructions-for ctx)))
 
 (def edit-sql-query-tool
@@ -208,12 +210,12 @@
      :metabot/capabilities #{:permission-write-sql-queries}
      :args replace-sql-schema})
   (handle [_ {query-id :query_id new-query :new_query :keys [checklist title]} ctx]
-    (sql-edit-result (with-notebook-fallback
-                       ctx #(replace-sql-query-tools/replace-sql-query
-                             {:query-id query-id
-                              :sql new-query
-                              :checklist checklist
-                              :queries-state (shared/current-queries-state (:memory-atom ctx))}))
+    (sql-edit-result (do-with-notebook-fallback
+                      ctx #(replace-sql-query-tools/replace-sql-query
+                            {:query-id query-id
+                             :sql new-query
+                             :checklist checklist
+                             :queries-state (shared/current-queries-state (:memory-atom ctx))}))
                      title instructions/replace-sql-query-instructions-for ctx)))
 
 (def replace-sql-query-tool
