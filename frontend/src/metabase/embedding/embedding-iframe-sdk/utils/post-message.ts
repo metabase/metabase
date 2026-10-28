@@ -11,7 +11,10 @@ type ListenForEajsMessagesOptions = {
 } & (
   | {
       messageSource: "embed.js";
-      handler: (message: SdkIframeEmbedMessage) => void;
+      handler: (
+        message: SdkIframeEmbedMessage,
+        event: MessageEvent<SdkIframeEmbedMessage>,
+      ) => void;
     }
   | {
       messageSource: "iframe-content";
@@ -42,7 +45,7 @@ export function listenForEajsMessages(options: ListenForEajsMessagesOptions) {
       return;
     }
 
-    options.handler(event.data);
+    options.handler(event.data, event);
   };
 
   window.addEventListener("message", messageHandler);
