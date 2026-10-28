@@ -15,10 +15,11 @@ export type ActionMockEntry = {
 
 const entries: ActionMockEntry[] = [];
 
-const getActionId = (input: SdkActionInput) =>
-  typeof input === "object" ? input.action.id : input;
+function getActionId(input: SdkActionInput) {
+  return typeof input === "object" ? input.action.id : input;
+}
 
-const createNoMockError = (input: SdkActionInput) => {
+function createNoMockError(input: SdkActionInput) {
   const name =
     typeof input === "object" && "name" in input.action
       ? input.action.name
@@ -27,12 +28,12 @@ const createNoMockError = (input: SdkActionInput) => {
   return new Error(
     `No mock for action "${String(name)}". Call mockAction for it before rendering.`,
   );
-};
+}
 
-const answerAction = ({
+function answerAction({
   actionId,
   parameters = {},
-}: ExecuteActionParams): Promise<ExecuteActionResult> => {
+}: ExecuteActionParams): Promise<ExecuteActionResult> {
   const entry = entries.find(
     ({ definition }) =>
       definition === actionId || definition.action.id === getActionId(actionId),
@@ -41,18 +42,18 @@ const answerAction = ({
   return entry
     ? entry.respond(parameters)
     : Promise.reject(createNoMockError(actionId));
-};
+}
 
-const installActionMockHandlers = () => {
+function installActionMockHandlers() {
   const { handlers, resets } = getMockSdkRegistry();
 
   handlers.executeAction = () => answerAction;
   resets.add(() => entries.splice(0));
-};
+}
 
 installActionMockHandlers();
 
-export const registerActionMock = (entry: ActionMockEntry) => {
+export function registerActionMock(entry: ActionMockEntry) {
   const replacedIndex = entries.findIndex(
     ({ definition }) => definition === entry.definition,
   );
@@ -62,4 +63,4 @@ export const registerActionMock = (entry: ActionMockEntry) => {
   }
 
   entries.unshift(entry);
-};
+}

@@ -25,14 +25,15 @@ type RefundButtonProps = {
   parameters: { id: number; reason?: string };
 };
 
-const RefundButton = ({ parameters }: RefundButtonProps) => {
+function RefundButton({ parameters }: RefundButtonProps) {
   const { execute, result, error } = useDataAppAction(REFUND_ORDER);
   const [thrownMessage, setThrownMessage] = useState("");
 
-  const handleClick = () =>
-    execute(parameters).catch((thrown: unknown) =>
+  function handleClick() {
+    return execute(parameters).catch((thrown: unknown) =>
       setThrownMessage(thrown instanceof Error ? thrown.message : ""),
     );
+  }
 
   return (
     <div>
@@ -43,13 +44,13 @@ const RefundButton = ({ parameters }: RefundButtonProps) => {
       {thrownMessage && <p>{thrownMessage}</p>}
     </div>
   );
-};
+}
 
 type SetupOpts = {
   parameters?: RefundButtonProps["parameters"];
 };
 
-const setup = async ({ parameters = { id: 1 } }: SetupOpts = {}) => {
+async function setup({ parameters = { id: 1 } }: SetupOpts = {}) {
   render(
     <MetabaseTestProvider>
       <RefundButton parameters={parameters} />
@@ -57,7 +58,7 @@ const setup = async ({ parameters = { id: 1 } }: SetupOpts = {}) => {
   );
 
   await userEvent.click(await screen.findByRole("button", { name: "Refund" }));
-};
+}
 
 describe("mockAction", () => {
   it("resolves action with mocked result and records parameters", async () => {

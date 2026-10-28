@@ -35,10 +35,10 @@ type MockedAction = DefinedAction & { action: ActionSchema };
 type MockedActionParameters<TAction extends MockedAction> =
   ActionParametersFromDataAppSchema<TAction["action"]>;
 
-const createActionMock = <TAction extends MockedAction>(
+function createActionMock<TAction extends MockedAction>(
   definition: TAction,
   respond: () => Promise<ExecuteActionResult>,
-): ActionMock<MockedActionParameters<TAction>> => {
+): ActionMock<MockedActionParameters<TAction>> {
   const calls: ActionMockCall<MockedActionParameters<TAction>>[] = [];
 
   registerActionMock({
@@ -64,21 +64,23 @@ const createActionMock = <TAction extends MockedAction>(
     calls: () => calls,
     lastCall: () => calls.at(-1),
   };
-};
+}
 
-export const mockAction = <TAction extends MockedAction>(
+export function mockAction<TAction extends MockedAction>(
   action: TAction,
   result: ActionResultForKind<ActionKindFromDataAppSchema<TAction["action"]>>,
-): ActionMock<MockedActionParameters<TAction>> =>
-  createActionMock(action, () => Promise.resolve(result));
+): ActionMock<MockedActionParameters<TAction>> {
+  return createActionMock(action, () => Promise.resolve(result));
+}
 
-export const mockActionError = <TAction extends MockedAction>(
+export function mockActionError<TAction extends MockedAction>(
   action: TAction,
   error: ActionMockError<TAction> = {},
-): ActionMock<MockedActionParameters<TAction>> =>
-  createActionMock(action, () =>
+): ActionMock<MockedActionParameters<TAction>> {
+  return createActionMock(action, () =>
     Promise.reject({
       status: error.status ?? 500,
       data: { message: error.message, errors: error.errors ?? {} },
     }),
   );
+}

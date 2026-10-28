@@ -4,10 +4,10 @@ import type {
   ActionSchema,
 } from "embedding-sdk-package/hooks/public/use-action/types";
 
-const isValueOfType = (
+function isValueOfType(
   value: unknown,
   jsType: ActionParameterSchema["jsType"],
-): boolean => {
+): boolean {
   if (value === null || jsType === undefined || jsType === "unknown") {
     return true;
   }
@@ -22,12 +22,12 @@ const isValueOfType = (
     case "Date":
       return typeof value === "string" || value instanceof Date;
   }
-};
+}
 
-export const getActionParametersError = (
+export function getActionParametersError(
   action: ActionSchema,
   parameters: Record<string, unknown>,
-): string | null => {
+): string | null {
   const parametersBySlug = new Map(
     action.parameters.map((parameter) => [parameter.slug, parameter]),
   );
@@ -58,10 +58,11 @@ export const getActionParametersError = (
   return mistypedParameter
     ? `"${mistypedParameter.slug}" must be a ${mistypedParameter.jsType} value`
     : null;
-};
+}
 
-export const isActionParameters = <TAction extends ActionSchema>(
+export function isActionParameters<TAction extends ActionSchema>(
   action: TAction,
   parameters: Record<string, unknown>,
-): parameters is ActionParametersFromDataAppSchema<TAction> =>
-  getActionParametersError(action, parameters) === null;
+): parameters is ActionParametersFromDataAppSchema<TAction> {
+  return getActionParametersError(action, parameters) === null;
+}
