@@ -198,6 +198,7 @@
     (throw (data-app-error (tru "A data app can read only databases with tables published to the Library, not the database {0}."
                                 (str database-id)))))
   nil)
+
 (def ^:private sdk-user-key-values
   "The user key-values, as `[namespace key]`, that the SDK reads and writes inside a data app."
   #{["last_download_format" "download_format_preference"]})

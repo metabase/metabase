@@ -125,6 +125,7 @@
   [_data-app    :- ::data-apps.schema/data-app
    _database-id :- ::lib.schema.id/database]
   nil)
+
 (defenterprise-schema check-user-key-value :- :nil
   "Throws a 400 unless `data-app` may use the user key-value `k` in `nmspace`; does nothing without the data-apps
   feature."
