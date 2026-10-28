@@ -852,7 +852,7 @@
       "a reference inside it could not be resolved - often a field reference to a column, join alias, or expression that does not exist. Refer to a join's or an earlier stage's columns by their exact machine name (an aggregation is `min`, `count`, `sum`)"
 
       (= :base-type missing)
-      "a field reference by name is missing `base-type`, usually because the name matches no real column"
+      "a field reference by name is missing `base-type` because its type could not be inferred - check that the name is a column this stage or join can reference"
 
       missing
       (format "missing `%s`" (name missing))
@@ -861,21 +861,49 @@
       (= "non-aggregation expression" (me/error-message error))
       (format "%s: aggregation and window functions such as `offset` cannot be custom columns - move them to `aggregation:` or `order-by:`" (me/error-message error)))))
 
+(defn- problem-rank
+  "Where `error` goes in the list: 0 when [[not-runnable-problem]] states its cause, 1 for Malli's own
+  message, and 2 when it can only offer the usual cause of a missing key."
+  [error]
+  (cond
+    (and (= :malli.core/missing-key (:type error))
+         (contains? #{:lib/uuid :base-type} (peek (:in error)))) 2
+    (not-runnable-problem error)                                 0
+    :else                                                        1))
+
+(def ^:private max-not-runnable-problems 3)
+
+(defn- not-runnable-problem-lines
+  "One line per distinct problem among `errors`, in [[problem-rank]] order: its first path, how many
+  other places have it, and the problem. Lines past [[max-not-runnable-problems]] are counted instead
+  of listed."
+  [errors repaired-query]
+  (let [located  (for [error (sort-by problem-rank errors)]
+                   {:path    (repr/query-path (repr/original-query-path repaired-query (:in error)))
+                    :problem (or (not-runnable-problem error) (me/error-message error))})
+        paths-of (group-by :problem located)
+        lines    (for [problem (distinct (map :problem located))
+                       :let    [[path & others] (distinct (map :path (paths-of problem)))]]
+                   (str path
+                        (when others
+                          (format " (and %d other place%s)" (count others) (if (next others) "s" "")))
+                        ": " problem))
+        omitted  (- (count lines) max-not-runnable-problems)]
+    (cond-> (vec (take max-not-runnable-problems lines))
+      (pos? omitted) (conj (format "and %d more problem%s" omitted (if (> omitted 1) "s" ""))))))
+
 (defn- query-not-runnable-explanation
   "Explain why `pmbql-query` fails the query builder's `canRun` check, or return nil.
 
-  Problems that [[not-runnable-problem]] can explain come first. Add the usual causes if it cannot
-  explain any of them. `repaired-query` supplies the original stage indexes and defaults to `pmbql-query`."
+  Each distinct problem is listed once, with how many places have it, in [[problem-rank]] order. Add
+  the usual causes if [[not-runnable-problem]] cannot explain any of them. `repaired-query` supplies
+  the original stage indexes and defaults to `pmbql-query`."
   ([pmbql-query] (query-not-runnable-explanation pmbql-query pmbql-query))
   ([pmbql-query repaired-query]
    (binding [lib.schema.expression/*suppress-expression-type-check?* true]
      (when-let [explanation (mr/explain :metabase.lib.schema/query pmbql-query)]
-       (let [errors (sort-by (comp nil? not-runnable-problem) (:errors explanation))]
-         (cond-> (or (some->> errors
-                              (map #(str (repr/query-path (repr/original-query-path repaired-query (:in %))) ": "
-                                         (or (not-runnable-problem %) (me/error-message %))))
-                              distinct
-                              (take 3)
+       (let [errors (:errors explanation)]
+         (cond-> (or (some->> (not-runnable-problem-lines errors repaired-query)
                               seq
                               (str/join "; "))
                      "the query does not match the query builder's schema")

@@ -3347,11 +3347,20 @@
         hint    #"\. This usually means a field reference is missing its type"]
     (testing "identical problems are listed once"
       (is (= "stages[0].alias: missing `alias`" (explain (missing :alias) (missing :alias)))))
-    (testing "at most three problems are listed"
-      (is (= 3 (count (str/split (apply explain (map missing [:a :b :c :d])) #"; ")))))
+    (testing "one problem in several places is listed once, with a count of the others"
+      (is (str/starts-with? (explain (invalid :a) (invalid :b) (invalid :c))
+                            "stages[0].a (and 2 other places): should be an integer.")))
+    (testing "at most three problems are listed, and the rest are counted"
+      (is (str/ends-with? (apply explain (map missing [:a :b :c :d :e])) "; and 2 more problems")))
     (testing "problems with a known cause are listed before Malli's own messages"
       (is (str/starts-with? (explain (invalid :a) (invalid :b) (invalid :c) (missing :alias))
-                            "stages[0].alias: missing `alias`; stages[0].a: should be an integer")))
+                            "stages[0].alias: missing `alias`; stages[0].a (and 2 other places): should be an integer")))
+    (testing "Malli's own messages are listed before a guessed cause, however often it repeats"
+      (let [untyped (fn [i] {:type :malli.core/missing-key :in [:stages 0 :filters i 2 1 :base-type]})
+            no-join {:schema (mc/schema [:fn {:error/message "no join named \"first\""} any?]) :value 1 :in [:stages]}]
+        (is (str/starts-with? (apply explain (conj (mapv untyped (range 4)) no-join))
+                              (str "stages: no join named \"first\"; "
+                                   "stages[0].filters[0][2][1].base-type (and 3 other places): a field reference by name is missing `base-type`")))))
     (testing "the usual causes are added only when no problem has a known cause"
       (is (re-find hint (explain (invalid :a))))
       (is (not (re-find hint (explain (invalid :a) (missing :alias))))))
