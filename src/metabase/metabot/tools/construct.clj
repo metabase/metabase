@@ -886,11 +886,11 @@
                        :let    [[path & others] (distinct (map :path (paths-of problem)))]]
                    (str path
                         (when others
-                          (format " (and %d other place%s)" (count others) (if (next others) "s" "")))
+                          (format " (and %d other place%s)" (count others) (if (= 1 (count others)) "" "s")))
                         ": " problem))
         omitted  (- (count lines) max-not-runnable-problems)]
     (cond-> (vec (take max-not-runnable-problems lines))
-      (pos? omitted) (conj (format "and %d more problem%s" omitted (if (> omitted 1) "s" ""))))))
+      (pos? omitted) (conj (format "and %d more problem%s" omitted (if (= 1 omitted) "" "s"))))))
 
 (defn- query-not-runnable-explanation
   "Explain why `pmbql-query` fails the query builder's `canRun` check, or return nil.
