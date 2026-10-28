@@ -144,28 +144,20 @@ export const BranchDropdown = ({
                 {filteredBranches.length > 0 && (
                   <>
                     <Combobox.Options>
-                      <Box px="sm" py="sm">
-                        <Text
-                          size="xs"
-                          c="text-disabled"
-                          tt="uppercase"
-                          fw="bold"
-                        >
-                          {t`Branches`}
-                        </Text>
-                      </Box>
-                      {filteredBranches.map((branch) => (
-                        <Combobox.Option
-                          key={branch}
-                          value={branch}
-                          onClick={() => handleBranchSelect(branch)}
-                          data-testid={`branch-item-${branch}`}
-                        >
-                          <Group gap="xxs" wrap="nowrap">
-                            <div>{branch}</div>
-                          </Group>
-                        </Combobox.Option>
-                      ))}
+                      <Combobox.Group label={t`Branches`}>
+                        {filteredBranches.map((branch) => (
+                          <Combobox.Option
+                            key={branch}
+                            value={branch}
+                            onClick={() => handleBranchSelect(branch)}
+                            data-testid={`branch-item-${branch}`}
+                          >
+                            <Group gap="xxs" wrap="nowrap">
+                              <div>{branch}</div>
+                            </Group>
+                          </Combobox.Option>
+                        ))}
+                      </Combobox.Group>
                     </Combobox.Options>
                     {showCreateOption && <Divider />}
                   </>
