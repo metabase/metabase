@@ -24,6 +24,12 @@ import {
   type MetabaseTestProviderProps,
 } from "./MetabaseTestProvider";
 
+const ORDERS_QUERY = defineQuery({
+  source: { type: "card", entityId: "ordersQuestionEntity" },
+});
+
+const CREATED_DASHBOARD = createMockDashboard({ name: "Q3 revenue" });
+
 function SessionInfo() {
   const applicationName = useApplicationName();
   const authStatus = useMetabaseAuthStatus();
@@ -74,12 +80,6 @@ function setup({ children, ...options }: MetabaseTestProviderProps = {}) {
     <MetabaseTestProvider {...options}>{children}</MetabaseTestProvider>,
   );
 }
-
-const ORDERS_QUERY = defineQuery({
-  source: { type: "card", entityId: "ordersQuestionEntity" },
-});
-
-const CREATED_DASHBOARD = createMockDashboard({ name: "Q3 revenue" });
 
 describe("MetabaseTestProvider", () => {
   it("renders SDK components as their children", async () => {

@@ -6,6 +6,9 @@ import type {
   FormatDateRangeOptions,
 } from "embedding-sdk-bundle/lib/format-date-range";
 
+const DEFAULT_DATE_FORMAT = "MMMM D, YYYY";
+const DEFAULT_DATE_RANGE_SEPARATOR = "–";
+
 export function formatDate(
   value: string | null | undefined,
   { format = DEFAULT_DATE_FORMAT }: FormatDateOptions = {},
@@ -30,6 +33,3 @@ export function formatDateRange(
     .filter((label) => label !== "")
     .join(separator);
 }
-
-const DEFAULT_DATE_FORMAT = "MMMM D, YYYY";
-const DEFAULT_DATE_RANGE_SEPARATOR = "–";

@@ -1,5 +1,7 @@
 import type { MetabaseUser } from "embedding-sdk-bundle/types/user";
 
+const MOCK_TIMESTAMP = "2024-01-01T00:00:00Z";
+
 export function createMockUser(opts?: Partial<MetabaseUser>): MetabaseUser {
   const firstName = opts?.first_name ?? "Testy";
   const lastName = opts?.last_name ?? "Tableton";
@@ -17,5 +19,3 @@ export function createMockUser(opts?: Partial<MetabaseUser>): MetabaseUser {
     ...opts,
   };
 }
-
-const MOCK_TIMESTAMP = "2024-01-01T00:00:00Z";
