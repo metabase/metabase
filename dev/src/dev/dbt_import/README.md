@@ -47,6 +47,16 @@ I haven't tested this.
 
 `target/manifest.json` should now exist.
 
+## Supported dbt versions
+
+The converter reads manifests written by **dbt 1.12 or later**, on manifest schema v12. It checks `metadata` first
+and rejects anything else up front with `Unsupported dbt manifest`, naming the `dbt_version` and `dbt_schema_version`
+it found. Older releases are not supported, even though dbt 1.8 to 1.11 also write schema v12: they lack the
+`type_params` keys that arrived with the 1.12 inline spec (`fill_nulls_with`, `cumulative_type_params`,
+`metric_aggregation_params`), which the manifest schemas in `dev.dbt-import.schemas.dbt-manifest` require. To import
+an older project, upgrade dbt and run `dbt parse` again; a project on the legacy spec (top-level `semantic_models:`
+and `metrics:`) needs no changes for that, dbt 1.12 still parses it.
+
 ## Convert the manifest to Metabase metrics
 
 From a dev REPL (needs the `:ee` alias on the classpath for the serdes YAML writer):
@@ -116,9 +126,8 @@ It copies the clone to a scratch directory like `dev.dbt-import.fixture/regenera
 ## The test fixtures
 
 Two manifests under `dev/resources/dbt_import/`, one per way of writing a dbt semantic layer, both trimmed to the
-sections the converter reads and both written by `dbt parse` under dbt 1.12.6 (manifest schema v12). The converter
-has been tested against no other manifest version; the schema accepts v10 and v11 because the sections it reads are
-the same there, but nothing has checked that.
+sections the converter reads and both written by `dbt parse` under dbt 1.12.6 (manifest schema v12). That is the only
+kind of manifest the converter accepts, see "Supported dbt versions".
 
 `flexanalytics_manifest.json` is the flexanalytics project's manifest, on the **legacy spec** (top-level
 `semantic_models:` with `measures:`, and `metrics:` pointing at a measure), plus the metrics in

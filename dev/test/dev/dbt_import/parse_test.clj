@@ -178,6 +178,9 @@
 (defn- schema-version [v]
   (fn [m] (assoc-in m [:metadata :dbt_schema_version] (format "https://schemas.getdbt.com/dbt/manifest/%s.json" v))))
 
+(defn- dbt-version [v]
+  (fn [m] (assoc-in m [:metadata :dbt_version] v)))
+
 (defn- add-measure [measure]
   (fn [m] (update-in m [:semantic_models tu/sm-id :measures] conj (merge (tu/base-measure) measure))))
 
@@ -185,15 +188,28 @@
   (fn [m] (assoc-in m [:metrics (:unique_id metric)] (merge (get-in m [:metrics "metric.p.m"]) metric))))
 
 (deftest ^:parallel manifest-version-test
-  (testing "manifest schema versions v10 to v12 are accepted"
-    (are [v] (= sum-sales (tu/aggregation {:edit (schema-version v)}))
-      "v10" "v11" "v12"))
-  (testing "other versions are rejected up front"
-    (are [v] (thrown-with-msg? ExceptionInfo #"Invalid dbt manifest"
+  (testing "manifest schema v12 is the only one accepted"
+    (is (= sum-sales (tu/aggregation {:edit (schema-version "v12")})))
+    (are [v] (thrown-with-msg? ExceptionInfo #"Unsupported dbt manifest.*manifest/v1[0-3]\.json"
                                (tu/convert {:edit (schema-version v)}))
-      "v9" "v13"))
-  (testing "a pre-release dbt version string"
-    (is (= sum-sales (tu/aggregation {:edit (fn [m] (assoc-in m [:metadata :dbt_version] "1.13.0-b2"))})))))
+      "v10" "v11" "v13"))
+  (testing "dbt 1.12 and later are accepted, including pre-releases and a future major"
+    (are [v] (= sum-sales (tu/aggregation {:edit (dbt-version v)}))
+      "1.12.0" "1.12.6" "1.13.0-b2" "1.20.1" "2.0.0"))
+  (testing "manifests from dbt before 1.12 are rejected up front, by their version rather than by the keys they lack"
+    (are [v] (thrown-with-msg? ExceptionInfo
+                               (re-pattern (str "Unsupported dbt manifest.*dbt \""
+                                                (java.util.regex.Pattern/quote v) "\""))
+                               (tu/convert {:edit (dbt-version v)}))
+      "1.11.5" "1.9.0" "1.8.0" "0.21.1" "garbage"))
+  (testing "the exception carries both version fields and the schema explanation"
+    (let [e (try
+              (tu/convert {:edit (dbt-version "1.11.5")})
+              (catch ExceptionInfo e e))]
+      (is (=? {:dbt-version        "1.11.5"
+               :dbt-schema-version "https://schemas.getdbt.com/dbt/manifest/v12.json"
+               :errors             {:dbt_version ["only manifests written by dbt 1.12 or later are supported"]}}
+              (ex-data e))))))
 
 (deftest ^:parallel unknown-manifest-content-test
   (testing "unknown top-level keys and fields pass through"
