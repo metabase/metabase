@@ -4,6 +4,16 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.64.3.5
+
+- `metabase.driver/validate-impersonated-query` `[driver query]` has moved from `:sql-jdbc` to `:sql`, so every
+  SQL driver -- not only the JDBC ones -- inherits the check that a connection-impersonated native query is a
+  single statement of the allowed type. It now walks native stages nested inside joins as well as the top-level
+  ones, and refuses a query it cannot parse exactly as it would execute: one whose driver has no known SQLGlot
+  dialect, or one holding a literal list over 2,000 items. A driver that supports `:connection-impersonation`
+  without descending from `:sql` must implement the method itself; impersonated native queries on such a driver
+  are refused outright.
+
 ## Metabase 0.64.0
 
 - `metabase.driver/disallowed-connection-parameters` `[driver]` -- new multimethod returning the names of client
