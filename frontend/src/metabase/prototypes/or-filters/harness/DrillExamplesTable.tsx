@@ -587,6 +587,7 @@ const OTHER_DRILLS: DrillRow[] = [
     get howToOpen() {
       return t`Click a bar → "Automatic insights…" → "X-ray"; leaves the prototype for an auto dashboard`;
     },
+    worksWithOr: true,
   },
 ];
 
