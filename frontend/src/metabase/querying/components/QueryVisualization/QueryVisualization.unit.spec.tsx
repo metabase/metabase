@@ -8,7 +8,11 @@ import { registerVisualizations } from "metabase/visualizations/register";
 import type { OnOpenChartSettings } from "metabase/visualizations/types";
 import { loadVisualizationComponents } from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
-import type { DatasetData, VisualizationSettings } from "metabase-types/api";
+import type {
+  Dataset,
+  DatasetData,
+  VisualizationSettings,
+} from "metabase-types/api";
 import {
   createMockColumn,
   createMockDataset,
@@ -44,9 +48,12 @@ const GOAL_SETTINGS: VisualizationSettings = {
   "graph.goal_value": { type: "card", id: 9, column: "goal" },
 };
 
-type SetupOpts = {
+type ResultOpts = {
   referencedEntities?: DatasetData["referenced_entities"];
   rowsTruncated?: number;
+};
+
+type SetupOpts = ResultOpts & {
   canOpenChartSettings?: boolean;
 };
 
@@ -68,36 +75,32 @@ async function setup({
     },
     metadata,
   );
-  const data = createMockDatasetData({
-    cols: [
-      createMockColumn({ name: "month", base_type: "type/Text" }),
-      createMockColumn({ name: "count", base_type: "type/Integer" }),
-    ],
-    rows: [
-      ["Jan", 1],
-      ["Feb", 2],
-    ],
-    referenced_entities: referencedEntities,
-    rows_truncated: rowsTruncated,
-  });
+
+  function getVisualization(result: Dataset) {
+    return (
+      <QueryVisualization
+        question={question}
+        result={result}
+        rawSeries={[{ card: question.card(), data: result.data }]}
+        onOpenChartSettings={
+          canOpenChartSettings ? onOpenChartSettings : undefined
+        }
+      />
+    );
+  }
 
   jest.useFakeTimers({ advanceTimers: true });
-  renderWithProviders(
-    <QueryVisualization
-      question={question}
-      result={createMockDataset({ data })}
-      rawSeries={[{ card: question.card(), data }]}
-      onOpenChartSettings={
-        canOpenChartSettings ? onOpenChartSettings : undefined
-      }
-    />,
+  const { rerender } = renderWithProviders(
+    getVisualization(createResult({ referencedEntities, rowsTruncated })),
   );
-  // ExplicitSize sets the chart dimensions after mounting
-  await act(async () => {
-    jest.advanceTimersByTime(0);
-  });
+  await waitForChartSize();
 
-  return { onOpenChartSettings };
+  async function rerenderWithResult(result: Dataset) {
+    rerender(getVisualization(result));
+    await waitForChartSize();
+  }
+
+  return { onOpenChartSettings, rerenderWithResult };
 }
 
 describe("QueryVisualization", () => {
@@ -120,6 +123,45 @@ describe("QueryVisualization", () => {
     expect(onOpenChartSettings).toHaveBeenCalledWith({
       initialChartSettings: { section: "Display" },
     });
+  });
+
+  it("hides the goal warning once the goal value resolves", async () => {
+    const { rerenderWithResult } = await setup({
+      referencedEntities: createMockFailedReferencedEntitiesResults(),
+    });
+    expect(
+      screen.getByRole("button", { name: "Goal warning" }),
+    ).toBeInTheDocument();
+
+    await rerenderWithResult(
+      createResult({
+        referencedEntities: createMockReferencedEntitiesResults({
+          column: "goal",
+          value: 250,
+        }),
+      }),
+    );
+
+    expect(screen.getByText("Jan")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Goal warning" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides the goal warning when the query fails and the chart goes away", async () => {
+    const { rerenderWithResult } = await setup({
+      referencedEntities: createMockFailedReferencedEntitiesResults(),
+    });
+    expect(
+      screen.getByRole("button", { name: "Goal warning" }),
+    ).toBeInTheDocument();
+
+    await rerenderWithResult(createMockDataset({ error: "Query failed" }));
+
+    expect(screen.queryByText("Jan")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Goal warning" }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows no goal warning when the goal value resolves", async () => {
@@ -160,6 +202,30 @@ describe("QueryVisualization", () => {
     expect(getWarningIcons()).toHaveLength(2);
   });
 });
+
+function createResult({ referencedEntities, rowsTruncated }: ResultOpts = {}) {
+  return createMockDataset({
+    data: createMockDatasetData({
+      cols: [
+        createMockColumn({ name: "month", base_type: "type/Text" }),
+        createMockColumn({ name: "count", base_type: "type/Integer" }),
+      ],
+      rows: [
+        ["Jan", 1],
+        ["Feb", 2],
+      ],
+      referenced_entities: referencedEntities,
+      rows_truncated: rowsTruncated,
+    }),
+  });
+}
+
+// ExplicitSize sets the chart dimensions after mounting
+async function waitForChartSize() {
+  await act(async () => {
+    jest.advanceTimersByTime(0);
+  });
+}
 
 function getWarningIcons() {
   return screen.getAllByLabelText("warning icon");
