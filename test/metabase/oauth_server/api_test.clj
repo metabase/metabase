@@ -927,6 +927,44 @@
                    :authorization (basic-auth-header client-id client-secret)))
               "Should return full token response"))))))
 
+(deftest read-only-mode-token-flow-test
+  (testing "OAuth clients can exchange codes and refresh tokens in read-only mode"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [{client-id :client_id, client-secret :client_secret} (create-test-client!)
+              authorization (basic-auth-header client-id client-secret)]
+          (mt/with-temporary-setting-values [read-only-mode true]
+            (let [tokens    (token-request! {:grant_type   "authorization_code"
+                                             :code         (authorize-and-get-code! client-id)
+                                             :redirect_uri "https://example.com/callback"}
+                                            :authorization authorization)
+                  refreshed (token-request! {:grant_type    "refresh_token"
+                                             :refresh_token (:refresh_token tokens)}
+                                            :authorization authorization)]
+              (is (=? {:id (mt/user->id :crowberto)}
+                      (client/client :get 200 "api/user/current"
+                                     {:request-options {:headers {"authorization"
+                                                                  (str "Bearer " (:access_token refreshed))}}})))
+              (testing "Refresh revokes the rotated refresh token"
+                (is (=? {:error "invalid_grant"}
+                        (token-request! {:grant_type    "refresh_token"
+                                         :refresh_token (:refresh_token tokens)}
+                                        :expected-status 400
+                                        :authorization authorization)))))))))))
+
+(deftest read-only-mode-dynamic-registration-test
+  (testing "Registering a new OAuth client is still blocked in read-only mode"
+    (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
+                                       oauth-server-dynamic-registration-enabled true
+                                       read-only-mode                            true]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client-count (t2/count :model/OAuthClient)]
+          (is (= {:error "Metabase is in read-only-mode mode!"}
+                 (register-client! {:redirect_uris ["https://example.com/callback"]
+                                    :client_name   "Read-only Client"}
+                                   :expected-status 400)))
+          (is (= client-count (t2/count :model/OAuthClient))))))))
+
 (deftest token-auth-code-invalid-code-test
   (testing "GHY-4491: Authorization code grant -- an unknown code is an invalid grant (RFC 6749 section 5.2)"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
