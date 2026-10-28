@@ -18,7 +18,6 @@ describe("scenarios > filters", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
-    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   it("should filter a joined, summarized question before and after the aggregation (metabase#13534, metabase#11957)", () => {
@@ -268,7 +267,6 @@ describe("scenarios > filters", () => {
       cy.findByLabelText("Thursday").click();
       cy.button("Update filter").click();
     });
-    cy.wait("@dataset");
     H.assertQueryBuilderRowCount(180);
     H.queryBuilderMain()
       .findByText("Practical Bronze Computer")
@@ -395,9 +393,10 @@ describe("scenarios > filters", () => {
     H.popover().within(() => {
       cy.findByText("Product ID").click();
       cy.findByText("Aerodynamic Linen Coat").click();
+      cy.intercept("POST", "/api/dataset").as("remappedFilterQuery");
       cy.button("Apply filter").click();
     });
-    cy.wait("@dataset");
+    cy.wait("@remappedFilterQuery");
     H.queryBuilderMain().within(() => {
       cy.findAllByText("148.23").should("have.length.at.least", 1); // one of the subtotals for this product
       cy.findAllByText("Fantastic Wool Shirt").should("not.exist");
@@ -491,7 +490,6 @@ describe("scenarios > filters", () => {
     cy.findByTestId("qb-header-action-panel")
       .findByText("Explore results")
       .click();
-    cy.wait("@dataset");
 
     H.tableHeaderClick("time");
     H.popover().within(() => {
@@ -499,7 +497,6 @@ describe("scenarios > filters", () => {
       cy.findByDisplayValue("00:00").clear().type("14:03");
       cy.button("Add filter").click();
     });
-    cy.wait("@dataset");
 
     H.assertQueryBuilderRowCount(1);
     H.tableInteractiveBody().within(() => {
