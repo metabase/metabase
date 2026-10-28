@@ -39,6 +39,8 @@ type DrillRow = {
   /** Distinguishes rows that exercise the same drill on different shapes. */
   variant?: string;
   writesFilter: boolean;
+  /** What the drill does to the query, in a few words. */
+  queryChange: string;
   /** Index into `FOOTNOTES`, for the two drills whose filter is not on this query. */
   footnote?: number;
   /** The unfiltered query the drill appears on; absent when no shape on Orders offers it. */
@@ -80,6 +82,9 @@ const FILTER_DRILLS: DrillRow[] = [
   {
     drill: "quick-filter",
     writesFilter: true,
+    get queryChange() {
+      return t`Adds one filter on the clicked value`;
+    },
     start: RAW_ROWS,
     results: [
       {
@@ -99,6 +104,9 @@ const FILTER_DRILLS: DrillRow[] = [
       return t`on an aggregation`;
     },
     writesFilter: true,
+    get queryChange() {
+      return t`Adds the filter on the stage after the summary`;
+    },
     start: {
       get label() {
         return t`Count by Category`;
@@ -120,6 +128,9 @@ const FILTER_DRILLS: DrillRow[] = [
   {
     drill: "fk-filter",
     writesFilter: true,
+    get queryChange() {
+      return t`Adds FK = value`;
+    },
     start: RAW_ROWS,
     results: [
       {
@@ -136,6 +147,9 @@ const FILTER_DRILLS: DrillRow[] = [
   {
     drill: "column-filter",
     writesFilter: true,
+    get queryChange() {
+      return t`Adds the filter picked in the widget`;
+    },
     start: RAW_ROWS,
     results: [
       {
@@ -152,6 +166,9 @@ const FILTER_DRILLS: DrillRow[] = [
   {
     drill: "underlying-records",
     writesFilter: true,
+    get queryChange() {
+      return t`Drops the summary, adds one filter per breakout value`;
+    },
     start: COUNT_BY_CATEGORY,
     results: [
       {
@@ -171,6 +188,9 @@ const FILTER_DRILLS: DrillRow[] = [
       return t`count-where`;
     },
     writesFilter: true,
+    get queryChange() {
+      return t`Drops the summary, adds the breakout value and the aggregation's own condition`;
+    },
     start: {
       get label() {
         return t`Count where Discount by Category`;
@@ -196,6 +216,9 @@ const FILTER_DRILLS: DrillRow[] = [
       return t`two breakouts`;
     },
     writesFilter: true,
+    get queryChange() {
+      return t`Drops the summary, adds one filter per breakout value, the date one bucketed`;
+    },
     start: {
       get label() {
         return t`Count by Category by Month`;
@@ -218,6 +241,9 @@ const FILTER_DRILLS: DrillRow[] = [
   {
     drill: "zoom-in.timeseries",
     writesFilter: true,
+    get queryChange() {
+      return t`Adds a filter on the clicked bucket, breaks out again at the finer unit`;
+    },
     start: {
       get label() {
         return t`Count by Month`;
@@ -241,6 +267,9 @@ const FILTER_DRILLS: DrillRow[] = [
   {
     drill: "zoom-in.binning",
     writesFilter: true,
+    get queryChange() {
+      return t`Adds a >= / < range on the column, narrows the bins`;
+    },
     start: {
       get label() {
         return t`Count by Total`;
@@ -264,6 +293,9 @@ const FILTER_DRILLS: DrillRow[] = [
   {
     drill: "zoom-in.geographic",
     writesFilter: true,
+    get queryChange() {
+      return t`Adds a filter on the region, swaps the breakout to lat/lon bins`;
+    },
     start: {
       get label() {
         return t`Count by State`;
@@ -287,6 +319,9 @@ const FILTER_DRILLS: DrillRow[] = [
   {
     drill: "pivot",
     writesFilter: true,
+    get queryChange() {
+      return t`Adds = per breakout value, swaps the breakout for the chosen column`;
+    },
     start: {
       get label() {
         return t`Count by Source`;
@@ -313,6 +348,9 @@ const OTHER_DRILLS: DrillRow[] = [
   {
     drill: "distribution",
     writesFilter: false,
+    get queryChange() {
+      return t`Replaces the summary with Count by the column`;
+    },
     start: RAW_ROWS,
     results: [
       {
@@ -330,6 +368,9 @@ const OTHER_DRILLS: DrillRow[] = [
   {
     drill: "sort",
     writesFilter: false,
+    get queryChange() {
+      return t`Replaces every order-by with one on the column`;
+    },
     start: RAW_ROWS,
     results: [
       {
@@ -346,6 +387,9 @@ const OTHER_DRILLS: DrillRow[] = [
   {
     drill: "summarize-column",
     writesFilter: false,
+    get queryChange() {
+      return t`Adds an aggregation`;
+    },
     start: RAW_ROWS,
     results: [
       {
@@ -363,6 +407,9 @@ const OTHER_DRILLS: DrillRow[] = [
   {
     drill: "summarize-column-by-time",
     writesFilter: false,
+    get queryChange() {
+      return t`Adds an aggregation and a date breakout`;
+    },
     start: RAW_ROWS,
     results: [
       {
@@ -380,6 +427,9 @@ const OTHER_DRILLS: DrillRow[] = [
   {
     drill: "column-extract",
     writesFilter: false,
+    get queryChange() {
+      return t`Adds an expression column`;
+    },
     start: RAW_ROWS,
     results: [MONTH_EXTRACTED],
     get howToOpen() {
@@ -389,6 +439,9 @@ const OTHER_DRILLS: DrillRow[] = [
   {
     drill: "combine-columns",
     writesFilter: false,
+    get queryChange() {
+      return t`Adds a concat expression column`;
+    },
     start: MONTH_EXTRACTED,
     results: [
       {
@@ -405,6 +458,9 @@ const OTHER_DRILLS: DrillRow[] = [
   {
     drill: "pk",
     writesFilter: false,
+    get queryChange() {
+      return t`Adds PK = value filters, then opens object detail`;
+    },
     footnote: 1,
     results: [],
     get howToOpen() {
@@ -414,6 +470,9 @@ const OTHER_DRILLS: DrillRow[] = [
   {
     drill: "zoom",
     writesFilter: false,
+    get queryChange() {
+      return t`No change; navigates to object detail`;
+    },
     start: RAW_ROWS,
     results: [],
     get howToOpen() {
@@ -423,6 +482,9 @@ const OTHER_DRILLS: DrillRow[] = [
   {
     drill: "fk-details",
     writesFilter: false,
+    get queryChange() {
+      return t`New query on the target table with ID = value`;
+    },
     footnote: 2,
     start: RAW_ROWS,
     results: [],
@@ -433,6 +495,9 @@ const OTHER_DRILLS: DrillRow[] = [
   {
     drill: "automatic-insights",
     writesFilter: false,
+    get queryChange() {
+      return t`No change; navigates to an X-ray dashboard`;
+    },
     start: COUNT_BY_CATEGORY,
     results: [],
     get howToOpen() {
@@ -478,6 +543,7 @@ export function DrillExamplesTable({ onLoad }: DrillExamplesTableProps) {
           <tr>
             <th>{t`Drill`}</th>
             <th>{t`Filter`}</th>
+            <th>{t`Query change`}</th>
             <th>{t`Start`}</th>
             <th>{t`Result`}</th>
             <th>{t`How to open`}</th>
@@ -486,7 +552,7 @@ export function DrillExamplesTable({ onLoad }: DrillExamplesTableProps) {
         {GROUPS.map((group) => (
           <tbody key={group.label}>
             <tr>
-              <th colSpan={5} className={S.groupHeading}>
+              <th colSpan={6} className={S.groupHeading}>
                 {group.label}
               </th>
             </tr>
@@ -503,6 +569,9 @@ export function DrillExamplesTable({ onLoad }: DrillExamplesTableProps) {
                 <td>
                   {row.writesFilter ? "✅" : "⛔"}
                   {row.footnote && <sup>{row.footnote}</sup>}
+                </td>
+                <td>
+                  <Text size="sm">{row.queryChange}</Text>
                 </td>
                 <td>
                   {row.start ? (
