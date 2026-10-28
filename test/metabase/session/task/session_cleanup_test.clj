@@ -65,7 +65,7 @@
           ;; also past max age, to show which reason wins
           old-session (insert-session! user-id :created_at (t/minus (t/local-date-time) (t/days 400)))]
       ;; the raw table: the model's before-update would end the sessions itself, which is not what this test is about
-      (t2/update! (t2/table-name :model/User) user-id {:is_active false})
+      (t2/update! (t2/table-name :model/User) :id user-id {:is_active false})
       (sweep!)
       (testing "a deactivated user's session is recorded as user-deactivated"
         (is (= {:reason "user-deactivated", :ended? true, :key-cleared? true} (ending session-id))))

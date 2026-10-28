@@ -335,7 +335,7 @@
         ;; [[metabase.channel.db/accepted-admin-emails]] filters on `last_login`. Record a login for our own
         ;; admin rather than relying on a shared test user, whose `last_login` is only set as a side effect of
         ;; some earlier test creating a session for them, and is therefore a matter of test ordering.
-        (t2/update! :model/User (:id admin) {:last_login :%now})
+        (t2/update! :model/User :id (:id admin) {:last_login :%now})
         (let [^org.quartz.Trigger trigger (#'task.persist-refresh/database-trigger db "0 0 0/8 * * ? *")]
           (#'task.persist-refresh/save-task-history!
            "persist-refresh" (u/the-id db)

@@ -135,13 +135,13 @@
 (mu/defn dashboard-collection-id
   "The Collection id of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] dashboard-id))
+  (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] :id dashboard-id))
 
 (mu/defn update-card!
   "Apply `changes` to the Card with `card-id`."
   [card-id :- ::lib.schema.id/card
    changes :- (mut/select-keys ::queries.schema/card.update [:collection_position :collection_id :public_uuid :made_public_by_id])]
-  (t2/update! :model/Card card-id changes))
+  (t2/update! :model/Card :id card-id changes))
 
 (mu/defn actions-for-model
   "The Actions of the model Card with `model-id`."

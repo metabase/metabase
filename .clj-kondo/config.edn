@@ -74,6 +74,7 @@
   :metabase/no-jsqlparser-imports                            {:level :warning}
   :metabase/prefer-with-dynamic-fn-redefs                    {:level :warning}
   :metabase/t2-query-namespace                               {:level :warning}
+  :metabase/t2-implicit-pk                                   {:level :warning}
   :metabase/table-or-field-query                             {:level :warning}
   ;; App-DB query hygiene: a value reaching a value slot unmarked, and a query written as
   ;; `:column value` pairs rather than a map. Off by default and enabled per namespace under
@@ -248,7 +249,9 @@
      metabase.util/run-count!
      next.jdbc/execute!
      ;; pure validator: parses a keyword and throws on a bad one, touches no state
-     metabase.mcp.v2.tools.question/check-semantic-type!}}
+     metabase.mcp.v2.tools.question/check-semantic-type!
+     ;; pure validator: throws unless its argument is a map or nil, touches no state
+     metabase.util.honey-sql-2/assert-map-or-nil!}}
 
   :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests
   {:level      :warning

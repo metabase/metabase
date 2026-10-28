@@ -14,7 +14,7 @@
   "Set the details of the Database with `database-id`, returning the number updated."
   [database-id :- ::lib.schema.id/database
    details     :- ::warehouses.schema/database.details]
-  (t2/update! :model/Database database-id {:details details}))
+  (t2/update! :model/Database :id database-id {:details details}))
 
 (mu/defn set-table-schemas!
   "Set the schema of the Tables of the Database with `database-id` that do not have `schema` yet, overwriting any

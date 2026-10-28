@@ -9,14 +9,14 @@
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card card-id))
+  (t2/select-one :model/Card :id card-id))
 
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/Dashboard dashboard-id))
+  (t2/select-one :model/Dashboard :id dashboard-id))
 
 (mu/defn dashcard
   "The DashboardCard with `dashcard-id`, or nil."
   [dashcard-id :- ::lib.schema.id/dashcard]
-  (t2/select-one :model/DashboardCard dashcard-id))
+  (t2/select-one :model/DashboardCard :id dashcard-id))

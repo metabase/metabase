@@ -125,7 +125,7 @@
 (mu/defn dashcard-dashboard-id
   "The `:dashboard_id` of the DashboardCard with `dashcard-id`, or nil."
   [dashcard-id :- ::lib.schema.id/dashcard]
-  (t2/select-one-fn :dashboard_id [:model/DashboardCard :dashboard_id] dashcard-id))
+  (t2/select-one-fn :dashboard_id [:model/DashboardCard :dashboard_id] :id dashcard-id))
 
 (mu/defn dashcard-action-id
   "The Action id of the DashboardCard with `dashcard-id`, or nil."
@@ -151,7 +151,7 @@
   "Apply `changes` to the Action with `action-id`, returning the number updated."
   [action-id :- ::lib.schema.id/action
    changes   :- ::actions.schema/action.for-update]
-  (t2/update! :model/Action action-id changes))
+  (t2/update! :model/Action :id action-id changes))
 
 (mu/defn insert-query-action!
   "Insert the QueryAction `action`, returning the number inserted."
@@ -167,13 +167,13 @@
   "Apply `changes` to the QueryAction with `action-id`, returning the number updated."
   [action-id :- ::lib.schema.id/action
    changes   :- ::actions.schema/query-action.update]
-  (t2/update! :model/QueryAction action-id changes))
+  (t2/update! :model/QueryAction :action_id action-id changes))
 
 (mu/defn update-implicit-action!
   "Apply `changes` to the ImplicitAction with `action-id`, returning the number updated."
   [action-id :- ::lib.schema.id/action
    changes   :- ::actions.schema/implicit-action.update]
-  (t2/update! :model/ImplicitAction action-id changes))
+  (t2/update! :model/ImplicitAction :action_id action-id changes))
 
 (mu/defn delete-query-action!
   "Delete the QueryAction of the Action with `action-id`, returning the number deleted."
@@ -260,7 +260,7 @@
 (mu/defn dashboard-collection-id
   "The Collection id of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] dashboard-id))
+  (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] :id dashboard-id))
 
 (mu/defn destination-database-exists-for-router?
   "Whether the Database with `database-id` has routing destinations."

@@ -1391,7 +1391,7 @@
               {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 100 :completionTokens 50}}
               {:type :data :data-type "state" :data {:step 1}}
               {:type :finish}])
-            (t2/select-one :model/MetabotMessage assistant-msg-id)))
+            (t2/select-one :model/MetabotMessage :id assistant-msg-id)))
         (finally
           (t2/delete! :model/MetabotMessage :conversation_id conv-id)
           (t2/delete! :model/MetabotConversation :id conv-id))))))
@@ -1433,7 +1433,7 @@
                 {:type :usage :model "claude-sonnet-4-6" :usage {:promptTokens 1 :completionTokens 1}}
                 {:type :finish}]
                :turn-state {:todos [{:id "1"}]})
-              (let [msg        (t2/select-one :model/MetabotMessage assistant-msg-id)
+              (let [msg        (t2/select-one :model/MetabotMessage :id assistant-msg-id)
                     part-types (into #{} (map :type) (:data msg))
                     data-types (into #{}
                                      (keep #(when (str/starts-with? % "data-") (subs % 5)))

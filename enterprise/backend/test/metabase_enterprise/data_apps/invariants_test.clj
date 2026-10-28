@@ -104,12 +104,12 @@
            (let [action-id (insert-query-action! collection-id "Reads own" (reading-card own-id))]
              (testing "changing its query to read a card outside is refused"
                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can read only the app's own cards"
-                                     (t2/update! :model/QueryAction action-id {:dataset_query (reading-card outside-id)})))))
+                                     (t2/update! :model/QueryAction :action_id action-id {:dataset_query (reading-card outside-id)})))))
            (testing "moving an action that reads a card outside into the collection is refused"
              (mt/with-temp [:model/Collection {other-id :id} {:namespace :data-actions}]
                (let [action-id (insert-query-action! other-id "Moved in" (reading-card outside-id))]
                  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can read only the app's own cards"
-                                       (t2/update! :model/Action action-id {:collection_id collection-id})))
+                                       (t2/update! :model/Action :id action-id {:collection_id collection-id})))
                  (is (= other-id (t2/select-one-fn :collection_id :model/Action :id action-id))))))))))))
 
 (defn- insert-implicit-action!
@@ -167,10 +167,10 @@
          (mt/with-temp [:model/Collection {other-id :id} {:namespace :data-actions}]
            (let [action-id (insert-implicit-action! other-id "Elsewhere" (mt/id :venues))]
              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"published to the Library"
-                                   (t2/update! :model/Action action-id {:collection_id collection-id})))
+                                   (t2/update! :model/Action :id action-id {:collection_id collection-id})))
              (is (= other-id (t2/select-one-fn :collection_id :model/Action :id action-id)))
              (data-apps.tu/with-published-tables! [(mt/id :venues)]
-               (t2/update! :model/Action action-id {:collection_id collection-id})
+               (t2/update! :model/Action :id action-id {:collection_id collection-id})
                (is (= collection-id (t2/select-one-fn :collection_id :model/Action :id action-id)))))))))))
 
 (deftest two-data-apps-cannot-share-collection-test
@@ -257,8 +257,8 @@
                           {:location (str "/" other-id "/")}]]
            (testing (pr-str changes)
              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"stays a top-level collection of data apps"
-                                   (t2/update! :model/Collection collection-id changes)))))
-         (t2/update! :model/Collection collection-id {:archive_operation_id nil :is_remote_synced true :description "Birds"})
+                                   (t2/update! :model/Collection :id collection-id changes)))))
+         (t2/update! :model/Collection :id collection-id {:archive_operation_id nil :is_remote_synced true :description "Birds"})
          (is (true? (t2/select-one-fn :is_remote_synced :model/Collection :id collection-id)))
          (is (= "Birds" (t2/select-one-fn :description :model/Collection :id collection-id))))))))
 
@@ -280,7 +280,7 @@
              (testing label
                (let [action-id (insert-query-action! other-id (str "Moved " label) query columns)]
                  (is (thrown-with-msg? clojure.lang.ExceptionInfo message
-                                       (t2/update! :model/Action action-id {:collection_id collection-id})))
+                                       (t2/update! :model/Action :id action-id {:collection_id collection-id})))
                  (is (= other-id (t2/select-one-fn :collection_id :model/Action :id action-id))))))))
        (testing "an action of a model"
          (mt/with-actions-enabled
@@ -292,7 +292,7 @@
                (t2/insert! :model/QueryAction {:action_id action-id :database_id (mt/id)
                                                :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")})
                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"goes in the model's collection"
-                                     (t2/update! :model/Action action-id {:collection_id collection-id})))
+                                     (t2/update! :model/Action :id action-id {:collection_id collection-id})))
                (is (= model-coll (t2/select-one-fn :collection_id :model/Action :id action-id)))))))))))
 
 (deftest card-in-apps-collection-reads-only-published-tables-through-its-macros-test
@@ -338,10 +338,10 @@
                                                              :creator_id             (mt/user->id :crowberto)
                                                              :collection_id          collection-id
                                                              :dataset_query          (data-apps.tu/venues-query)}))]
-         (t2/update! :model/Card card-id {:name "Renamed" :description "Still venues"})
+         (t2/update! :model/Card :id card-id {:name "Renamed" :description "Still venues"})
          (is (= "Renamed" (t2/select-one-fn :name :model/Card :id card-id)))
          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not VENUES"
-                               (t2/update! :model/Card card-id {:dataset_query (lib/limit (data-apps.tu/venues-query) 10)}))))))))
+                               (t2/update! :model/Card :id card-id {:dataset_query (lib/limit (data-apps.tu/venues-query) 10)}))))))))
 
 (deftest card-in-apps-collection-is-in-no-document-test
   (testing "a card that belongs to a document elsewhere can't be in an app's collection"
