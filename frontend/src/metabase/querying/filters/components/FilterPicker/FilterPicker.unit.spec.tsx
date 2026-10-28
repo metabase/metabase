@@ -34,6 +34,7 @@ import {
   createQueryWithTimeFilter,
   findBooleanColumn,
   findDateColumn,
+  findDateTimeColumn,
   findNumericColumn,
   findStringColumn,
   storeInitialState,
@@ -424,6 +425,18 @@ describe("FilterPicker", () => {
   });
 
   describe("custom expression", () => {
+    // The editor wraps long expressions over lines, so compare without whitespace.
+    async function expectEditorSource(source: string) {
+      const editor = await screen.findByTestId(
+        "custom-expression-query-editor",
+      );
+      await waitFor(() =>
+        expect(editor.textContent?.replace(/\s/g, "")).toBe(
+          source.replace(/\s/g, ""),
+        ),
+      );
+    }
+
     async function editExpressionAndSubmit(
       text: string,
       { delay }: { delay: number } = { delay: 0 },
@@ -465,6 +478,92 @@ describe("FilterPicker", () => {
       // the expression editor formats its source asynchronously; wait for it
       // to settle so the resulting state updates stay inside act()
       await waitFor(() => expect(editor).toHaveProperty("readOnly", false));
+    });
+
+    it.each<[string, () => SetupOpts, string]>([
+      [
+        "a negated case-insensitive string filter (metabase#14880)",
+        () =>
+          createQueryWithStringFilter({
+            column: findStringColumn(createQuery(), "PRODUCTS", "TITLE"),
+            operator: "does-not-contain",
+            values: ["Wallet"],
+            options: { caseSensitive: false },
+          }),
+        'doesNotContain([Product → Title], "Wallet", "case-insensitive")',
+      ],
+      [
+        "a case-insensitive string filter (metabase#14959)",
+        () =>
+          createQueryWithStringFilter({
+            column: findStringColumn(createQuery(), "PRODUCTS", "TITLE"),
+            operator: "contains",
+            values: ["MULLER"],
+            options: { caseSensitive: false },
+          }),
+        'contains([Product → Title], "MULLER", "case-insensitive")',
+      ],
+      [
+        "an is-empty string filter",
+        () =>
+          createQueryWithStringFilter({
+            operator: "is-empty",
+            values: [],
+          }),
+        "isEmpty([Product → Description])",
+      ],
+      [
+        "an is-empty numeric filter",
+        () => createQueryWithNumberFilter({ operator: "is-null", values: [] }),
+        "isNull([Total])",
+      ],
+    ])(
+      "should convert %s to a custom expression",
+      async (_name, getOpts, expectedSource) => {
+        setup(getOpts());
+
+        await userEvent.click(screen.getByLabelText("Back"));
+        await userEvent.click(screen.getByText(/Custom expression/i));
+
+        await expectEditorSource(expectedSource);
+      },
+    );
+
+    it("should show a comparison between two columns as a custom expression (metabase#12492)", async () => {
+      const query = createQuery();
+      const clause = Lib.expressionClause(">", [
+        findDateTimeColumn(query),
+        findStringColumn(query, "PRODUCTS", "CREATED_AT"),
+      ]);
+      setup(createFilteredQuery(query, clause));
+
+      await expectEditorSource("[Created At] > [Product → Created At]");
+    });
+
+    it("should keep include-current after converting a relative date filter to a custom expression (metabase#12457)", async () => {
+      const { query, getNextFilter } = setup(
+        createQueryWithRelativeDateFilter({
+          value: -30,
+          unit: "day",
+          options: { includeCurrent: true },
+        }),
+      );
+
+      await userEvent.click(screen.getByLabelText("Back"));
+      await userEvent.click(screen.getByLabelText("Back"));
+      await userEvent.click(screen.getByText(/Custom expression/i));
+
+      const button = await screen.findByRole("button", { name: "Update" });
+      await waitFor(() => expect(button).toBeEnabled());
+      await userEvent.click(button);
+
+      expect(
+        Lib.relativeDateFilterParts(query, 0, getNextFilter()),
+      ).toMatchObject({
+        value: -30,
+        unit: "day",
+        options: { includeCurrent: true },
+      });
     });
 
     it("should update a filter with a numeric custom expression", async () => {
