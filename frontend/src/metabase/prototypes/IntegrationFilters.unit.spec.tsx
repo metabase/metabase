@@ -15,7 +15,11 @@ import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { IntegrationFilters } from "./IntegrationFilters";
-import { withOrExample } from "./or-filters/harness/examples";
+import {
+  withDnfExample,
+  withNestedExample,
+  withOrExample,
+} from "./or-filters/harness/examples";
 
 interface SetupOpts {
   summarized?: boolean;
@@ -153,3 +157,37 @@ describe("integrated OR filters", () => {
     ).toContain("200");
   });
 });
+
+it.each([
+  ["one level", withDnfExample, false],
+  ["two levels", withNestedExample, true],
+] as const)(
+  "expands %s of parentheses only when needed and collapses on blur",
+  async (_label, example, shouldExpand) => {
+    setupDatabaseEndpoints(createSampleDatabase());
+    setupPrototypeSamplesEndpoint();
+    const query = example(
+      Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY),
+      0,
+    );
+    renderWithProviders(
+      <>
+        <IntegrationFilters query={query} onChange={jest.fn()} />
+        <button>Outside</button>
+      </>,
+    );
+    expect(screen.queryAllByTestId("filter-expression-row-break")).toHaveLength(
+      0,
+    );
+    await userEvent.click(
+      screen.getByRole("textbox", { name: "Filter expression" }),
+    );
+    expect(
+      screen.queryAllByTestId("filter-expression-row-break").length > 0,
+    ).toBe(shouldExpand);
+    await userEvent.click(screen.getByRole("button", { name: "Outside" }));
+    expect(screen.queryAllByTestId("filter-expression-row-break")).toHaveLength(
+      0,
+    );
+  },
+);

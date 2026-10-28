@@ -37,6 +37,7 @@ export function IntegrationFilters({
             <ExpressionBar
               query={editableQuery}
               stageIndex={stageIndex}
+              rowsFromNesting={2}
               onChange={(nextQuery) => onChange(Lib.dropEmptyStages(nextQuery))}
             />
           </Stack>

@@ -8,6 +8,7 @@ import { FixSqlQueryButton } from "metabase/metabot/components/FixSqlQueryButton
 import { HasResultsAlertPrompt } from "metabase/notifications/HasResultsAlertPrompt";
 import { SyncedParametersList } from "metabase/parameters/components/SyncedParametersList";
 import { IntegrationLegendFilters } from "metabase/prototypes/IntegrationLegendFilters";
+import { getIntegrationClickActions } from "metabase/prototypes/integration-click-actions";
 import { Mode } from "metabase/querying/click-actions/Mode";
 import { getQueryMode } from "metabase/querying/click-actions/lib/modes";
 import { QueryVisualization } from "metabase/querying/components/QueryVisualization";
@@ -31,7 +32,7 @@ import type {
 import { setCardAndRun } from "../../../../actions";
 import { updateUrl } from "../../../../actions/url";
 import { useVisualizationResultQBProps } from "../../../../hooks";
-import { getLastRunCard } from "../../../../store/selectors";
+import { getLastRunCard, getQueryResults } from "../../../../store/selectors";
 import { ObjectDetailSidesheet } from "../../../ObjectDetailSidesheet";
 import { useColumnFormulaBar } from "../../ColumnFormulaBar";
 import { readsSlowTable } from "../../FilterAutoApply/utils";
@@ -117,6 +118,8 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
   const prototypeData = useSetting("prototype-data");
   const dispatch = useDispatch();
   const lastRunCard = useSelector(getLastRunCard);
+  const queryResults = useSelector(getQueryResults);
+  const groupCount = queryResults?.[0]?.data?.rows.length ?? 0;
   // Prototype: puts back the question of the result, like the browser back
   // button. The result is up to date again, so nothing runs.
   const handleResetChanges =
@@ -142,8 +145,21 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
   const onAddColumn = !isNative && isEditable ? columnFormula.open : undefined;
   const clickActionMode = useMemo(
     () =>
-      new Mode(getQueryMode, { hasColumnShortcutActions: true, onAddColumn }),
-    [onAddColumn],
+      new Mode(getQueryMode, {
+        hasColumnShortcutActions: true,
+        onAddColumn,
+        mapActions: (actions, clicked, clickedQuestion) =>
+          !isEditable || props.readOnly
+            ? actions
+            : getIntegrationClickActions({
+                actions,
+                clicked,
+                question: clickedQuestion,
+                groupCount,
+                isSlow: readsSlowTable(clickedQuestion.query(), prototypeData),
+              }),
+      }),
+    [onAddColumn, groupCount, prototypeData, isEditable, props.readOnly],
   );
 
   if (queryBuilderMode === "notebook") {

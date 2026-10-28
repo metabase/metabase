@@ -572,7 +572,12 @@ export function ExpressionBar({
 function RowBreak({ isBreak, indent }: { isBreak: boolean; indent: number }) {
   return (
     <>
-      {isBreak && <span className={S.rowBreak} />}
+      {isBreak && (
+        <span
+          className={S.rowBreak}
+          data-testid="filter-expression-row-break"
+        />
+      )}
       <span style={{ width: `${indent * INDENT_REM}rem`, flexShrink: 0 }} />
     </>
   );

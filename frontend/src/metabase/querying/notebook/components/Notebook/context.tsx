@@ -1,4 +1,5 @@
 import {
+  type ComponentType,
   type PropsWithChildren,
   createContext,
   useContext,
@@ -7,11 +8,12 @@ import {
 
 import type { DataPickerValue } from "metabase/common/components/Pickers/DataPicker";
 
-import type { NotebookDataPickerOptions } from "../../types";
+import type { NotebookDataPickerOptions, NotebookStepProps } from "../../types";
 
 export type NotebookContextType = {
   modelsFilterList: DataPickerValue["model"][];
   dataPickerOptions?: NotebookDataPickerOptions;
+  filterStepComponent?: ComponentType<NotebookStepProps>;
 };
 
 export const NotebookContext = createContext<NotebookContextType | undefined>(
@@ -21,11 +23,12 @@ export const NotebookContext = createContext<NotebookContextType | undefined>(
 export const NotebookProvider = ({
   modelsFilterList = ["table", "card", "dataset", "metric"],
   dataPickerOptions,
+  filterStepComponent,
   children,
 }: PropsWithChildren<Partial<NotebookContextType>>) => {
   const value = useMemo(
-    () => ({ modelsFilterList, dataPickerOptions }),
-    [modelsFilterList, dataPickerOptions],
+    () => ({ modelsFilterList, dataPickerOptions, filterStepComponent }),
+    [modelsFilterList, dataPickerOptions, filterStepComponent],
   );
 
   return (
