@@ -1,5 +1,6 @@
 (ns metabase.data-apps.core
   (:require
+   [metabase.actions.schema :as actions.schema]
    [metabase.analytics.core :as analytics]
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.macros.scope :as scope]
@@ -84,4 +85,74 @@
   [_data-app  :- ::data-apps.schema/data-app
    _parameter :- ::parameters.schema/parameter
    _field-ids :- [:maybe [:sequential ::lib.schema.id/field]]]
+  nil)
+
+(defenterprise-schema check-action :- :nil
+  "Throws a 400 unless `data-app` may run the action with `action-id`, after a read check of the action; does nothing
+  without the data-apps feature."
+  metabase-enterprise.data-apps.checks
+  [_data-app  :- ::data-apps.schema/data-app
+   _action-id :- ::lib.schema.id/action]
+  nil)
+
+(defenterprise-schema data-app-actions :- [:sequential ::actions.schema/action]
+  "The `actions` that `data-app` may use; all of them without the data-apps feature."
+  metabase-enterprise.data-apps.checks
+  [_data-app :- ::data-apps.schema/data-app
+   actions   :- [:sequential ::actions.schema/action]]
+  actions)
+
+(defenterprise-schema check-table :- :nil
+  "Throws a 400 unless `data-app` may read the table with `table-id`, after a read check of the table; does nothing
+  without the data-apps feature."
+  metabase-enterprise.data-apps.checks
+  [_data-app :- ::data-apps.schema/data-app
+   _table-id :- ::lib.schema.id/table]
+  nil)
+
+(defenterprise-schema check-field :- :nil
+  "Throws a 400 unless `data-app` may read the field with `field-id`, after a read check of the field; does nothing
+  without the data-apps feature."
+  metabase-enterprise.data-apps.checks
+  [_data-app :- ::data-apps.schema/data-app
+   _field-id :- ::lib.schema.id/field]
+  nil)
+
+(defenterprise-schema check-database :- :nil
+  "Throws a 400 unless `data-app` may read the database with `database-id`, after a read check of the database; does
+  nothing without the data-apps feature."
+  metabase-enterprise.data-apps.checks
+  [_data-app    :- ::data-apps.schema/data-app
+   _database-id :- ::lib.schema.id/database]
+  nil)
+
+(defenterprise-schema check-user-key-value :- :nil
+  "Throws a 400 unless `data-app` may use the user key-value `k` in `nmspace`; does nothing without the data-apps
+  feature."
+  metabase-enterprise.data-apps.checks
+  [_data-app :- ::data-apps.schema/data-app
+   _nmspace  :- :string
+   _k        :- :string]
+  nil)
+
+(defenterprise-schema data-app-collection-types :- [:maybe [:set :string]]
+  "The types of the collections that `data-app` may see, or nil, meaning any, without the data-apps feature."
+  metabase-enterprise.data-apps.checks
+  [_data-app :- ::data-apps.schema/data-app]
+  nil)
+
+(defenterprise-schema check-collection :- :nil
+  "Throws a 400 unless `data-app` may see the collection with `collection-id`, after a read check of the collection;
+  does nothing without the data-apps feature."
+  metabase-enterprise.data-apps.checks
+  [_data-app      :- ::data-apps.schema/data-app
+   _collection-id :- ::lib.schema.id/collection]
+  nil)
+
+(defenterprise-schema check-dashboard :- :nil
+  "Throws a 400 unless `data-app` may use the dashboard with `dashboard-id`, after a read check of the dashboard; does
+  nothing without the data-apps feature."
+  metabase-enterprise.data-apps.checks
+  [_data-app     :- ::data-apps.schema/data-app
+   _dashboard-id :- ::lib.schema.id/dashboard]
   nil)
