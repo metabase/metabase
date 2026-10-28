@@ -3143,12 +3143,14 @@
 (declare infer-field-types*)
 
 (defn- infer-join-field-types
-  "`join` with Passes 4.5 to 5.7 run over its own `stages`, as a query against `database`."
+  "`join` with Passes 4.5 to 5.7 run over its own `stages`, as a query against `database`.
+  An agent error from inside is rethrown with a message naming the join and `stage-idx`, and with
+  `:join-alias` and `:join-stage` added to its data."
   [join database mp content-store stage-idx]
   (if-not (and (map? join) (vector? (get join "stages")))
     join
     (try
-      (assoc join "stages" (-> (cond-> {"lib/type" "mbql/query" "stages" (get join "stages")}
+      (assoc join "stages" (-> (cond-> {"lib/type" "mbql/query", "stages" (get join "stages")}
                                  database (assoc "database" database))
                                (infer-field-types* mp content-store)
                                (get "stages")))
@@ -3160,22 +3162,22 @@
                             e)))
           (throw e))))))
 
+(defn- infer-join-field-types-in-stage
+  "The stage at `idx` of `query`, with [[infer-join-field-types]] run over each of its joins."
+  [query mp content-store idx stage]
+  (if-not (and (map? stage) (sequential? (get stage "joins")))
+    stage
+    (let [database  (get query "database")
+          stage-idx (repr/original-stage-index query idx)]
+      (update stage "joins" (partial mapv #(infer-join-field-types % database mp content-store stage-idx))))))
+
 (defn- infer-field-types*
   "Passes 4.5, 4.7, 5 and 5.7, after running them over every join's own stages. No-op without `mp`."
   [query mp content-store]
   (if-not (and mp (map? query) (vector? (get query "stages")))
     query
     (-> query
-        (update "stages" (fn [stages]
-                           (into []
-                                 (map-indexed
-                                  (fn [idx stage]
-                                    (let [stage-idx (repr/original-stage-index query idx)
-                                          typed     #(infer-join-field-types % (get query "database") mp content-store stage-idx)]
-                                      (cond-> stage
-                                        (and (map? stage) (sequential? (get stage "joins")))
-                                        (update "joins" (partial mapv typed))))))
-                                 stages)))
+        (update "stages" #(into [] (map-indexed (partial infer-join-field-types-in-stage query mp content-store)) %))
         (infer-source-card-field-types* mp content-store)
         (repair-join-alias-refs* mp content-store)
         (infer-cross-stage-field-types* mp content-store)
