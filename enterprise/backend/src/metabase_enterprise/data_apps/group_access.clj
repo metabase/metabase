@@ -5,6 +5,7 @@
    [metabase.api.common :as api]
    [metabase.graph.core :as graph]
    [metabase.permissions.core :as perms]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [tru]]
    [toucan2.core :as t2]))
@@ -19,18 +20,24 @@
 (defn assigned-groups
   "The groups other than Administrators that can read the resource collection of `app`, with their member counts."
   [app]
-  (let [using-tenants? (setting/get :use-tenants)]
+  (let [using-tenants? (setting/get :use-tenants)
+        group-ids     (access-group-ids app)
+        tenant-flags  (perms/group-tenant-flags group-ids)]
     (mapv (fn [group]
-            (assoc group :name (perms/group-display-name group using-tenants?)))
-          (t2/hydrate (perms/groups-by-ids (access-group-ids app)) :member_count))))
+            (assoc group
+                   :name (perms/group-display-name group using-tenants?)
+                   :is_tenant_group (boolean (get tenant-flags (:id group)))))
+          (t2/hydrate (perms/groups-by-ids group-ids) :member_count))))
 
 (defn- check-assignable-groups
-  "Throws unless every group with an id in `group-ids` exists and is neither a tenant group nor Administrators."
+  "Reject missing groups and Administrators. Require the tenants feature for tenant groups."
   [group-ids]
   (let [group-tenant-flags (perms/group-tenant-flags (set group-ids))]
     (api/check-404 (every? #(contains? group-tenant-flags %) group-ids))
-    (api/check-400 (not-any? #(or (get group-tenant-flags %) (= % (:id (perms/admin-group)))) group-ids)
-                   (tru "Tenant groups and admins cannot be assigned to data apps."))))
+    (api/check-400 (not-any? #(= % (:id (perms/admin-group))) group-ids)
+                   (tru "Admins cannot be assigned to data apps."))
+    (when (some group-tenant-flags group-ids)
+      (premium-features/assert-has-feature :tenants (tru "Tenants")))))
 
 (defn- app-collection
   "The resource collection of `app`, or a 404."
@@ -105,20 +112,23 @@
     (vec (into (set table) outputs))))
 
 (defn permission-warnings
-  "Missing table access for the groups with access to `app`, including access inherited from All Users."
+  "Missing table access for the groups with access to `app`, including access inherited from the matching tenancy."
   [{collection-id :resource_collection_id :as app}]
   (let [assigned-ids (sort (access-group-ids app))
         table-ids    (when (seq assigned-ids)
                        (resource-table-ids collection-id))]
     (if (seq table-ids)
-      (let [tables       (table-details table-ids)
-            all-users-id (:id (perms/all-users-group))
-            access       (group-table-access (conj (set assigned-ids) all-users-id) tables)]
+      (let [tables         (table-details table-ids)
+            tenant-flags   (perms/group-tenant-flags (set assigned-ids))
+            all-users-id   (:id (perms/all-users-group))
+            all-tenants-id (:id (perms/all-external-users-group))
+            access         (group-table-access (into (set assigned-ids) [all-users-id all-tenants-id]) tables)]
         (into []
               (keep (fn [group-id]
-                      (let [missing (filterv #(not (or (group-has-table-access? access group-id %)
-                                                       (group-has-table-access? access all-users-id %)))
-                                             tables)]
+                      (let [inherited-id (if (get tenant-flags group-id) all-tenants-id all-users-id)
+                            missing      (filterv #(not (or (group-has-table-access? access group-id %)
+                                                            (group-has-table-access? access inherited-id %)))
+                                                  tables)]
                         (when (seq missing)
                           {:group_id group-id :missing_tables missing}))))
               assigned-ids))

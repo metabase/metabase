@@ -5,9 +5,11 @@ import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getGroupNameLocalized } from "metabase/common/utils/groups";
 import {
+  Badge,
   Card,
   Ellipsified,
   Flex,
+  Group,
   TreeTable,
   type TreeTableColumnDef,
   TreeTableSkeleton,
@@ -44,7 +46,12 @@ export function DataAppGroupList({
         header: t`Group name`,
         minWidth: 200,
         cell: ({ row }) => (
-          <Ellipsified>{getGroupNameLocalized(row.original)}</Ellipsified>
+          <Group gap="sm" wrap="nowrap">
+            <Ellipsified>{getGroupNameLocalized(row.original)}</Ellipsified>
+            {row.original.is_tenant_group && (
+              <Badge variant="outline">{t`Tenant group`}</Badge>
+            )}
+          </Group>
         ),
       },
       {

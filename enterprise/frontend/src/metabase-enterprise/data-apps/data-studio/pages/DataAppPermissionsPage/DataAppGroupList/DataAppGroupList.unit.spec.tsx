@@ -54,7 +54,12 @@ describe("DataAppGroupList", () => {
     setup({
       groups: [
         createMockDataAppGroup({ id: 3, name: "Support", member_count: 12 }),
-        createMockDataAppGroup({ id: 4, name: "Finance", member_count: 4 }),
+        createMockDataAppGroup({
+          id: 4,
+          name: "Finance",
+          member_count: 4,
+          is_tenant_group: true,
+        }),
       ],
       warnings: [createMockDataAppGroupPermissionWarning({ group_id: 4 })],
     });
@@ -62,8 +67,29 @@ describe("DataAppGroupList", () => {
     expect(await screen.findByText("Support")).toBeInTheDocument();
     expect(screen.getByText("12")).toBeInTheDocument();
     expect(screen.getByText("Finance")).toBeInTheDocument();
+    expect(screen.getByText("Tenant group")).toBeInTheDocument();
     expect(await screen.findByText("Missing 1 table")).toBeInTheDocument();
     expect(screen.getByText("All tables")).toBeInTheDocument();
+  });
+
+  it("links tenant groups to their management page", async () => {
+    setup({
+      groups: [
+        createMockDataAppGroup({
+          id: 7,
+          name: "Tenant support",
+          is_tenant_group: true,
+        }),
+      ],
+    });
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Tenant support options" }),
+    );
+
+    expect(
+      await screen.findByRole("menuitem", { name: /View group/ }),
+    ).toHaveAttribute("href", "/admin/people/tenants/groups/7");
   });
 
   it("selects a group when its row is clicked", async () => {
