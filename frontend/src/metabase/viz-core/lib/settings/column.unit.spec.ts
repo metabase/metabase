@@ -1,3 +1,4 @@
+import { mockSettings } from "__support__/settings";
 import { checkNotNull } from "metabase/utils/types";
 import type {
   DatasetColumn,
@@ -40,6 +41,61 @@ function seriesWithColumn(column?: Partial<DatasetColumn>): Series {
 }
 
 describe("column settings", () => {
+  describe("currency position inheritance", () => {
+    afterEach(() => {
+      mockSettings();
+    });
+
+    it("should default to before the amount", () => {
+      mockSettings();
+      const series = seriesWithColumn();
+      const computed = getComputedSettings(columnSettings(), series, {});
+
+      expect(computed.column?.(series[0].data.cols[0]).currency_position).toBe(
+        "before",
+      );
+    });
+
+    it("should use the instance default unless the field or question overrides it", () => {
+      mockSettings({
+        "custom-formatting": {
+          "type/Currency": { currency_position: "after" },
+        },
+      });
+      const series = seriesWithColumn();
+      const computed = getComputedSettings(columnSettings(), series, {});
+      expect(computed.column?.(series[0].data.cols[0]).currency_position).toBe(
+        "after",
+      );
+
+      const fieldSeries = seriesWithColumn({
+        settings: { currency_position: "before" },
+      });
+      const fieldComputed = getComputedSettings(
+        columnSettings(),
+        fieldSeries,
+        {},
+      );
+      expect(
+        fieldComputed.column?.(fieldSeries[0].data.cols[0]).currency_position,
+      ).toBe("before");
+
+      const questionComputed = getComputedSettings(
+        columnSettings(),
+        fieldSeries,
+        {
+          column_settings: {
+            '["name","foo"]': { currency_position: "after" },
+          },
+        },
+      );
+      expect(
+        questionComputed.column?.(fieldSeries[0].data.cols[0])
+          .currency_position,
+      ).toBe("after");
+    });
+  });
+
   it("should find by column name", () => {
     const series = seriesWithColumn();
     const defs = { ...columnSettings() };
@@ -189,6 +245,7 @@ describe("column settings", () => {
         expect(hiddenById.number_style).toBe(false);
         expect(hiddenById.currency).toBe(false);
         expect(hiddenById.currency_style).toBe(false);
+        expect(hiddenById.currency_position).toBe(false);
         expect(hiddenById.currency_in_header).toBe(false);
       });
 
@@ -197,6 +254,7 @@ describe("column settings", () => {
         expect(hiddenById.number_style).toBe(false);
         expect(hiddenById.currency).toBe(true);
         expect(hiddenById.currency_style).toBe(true);
+        expect(hiddenById.currency_position).toBe(true);
         expect(hiddenById.currency_in_header).toBe(true);
       });
     });

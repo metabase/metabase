@@ -17,7 +17,11 @@ import type { Document, DocumentId } from "./document";
 import type { EmbeddingParameters, EmbeddingType } from "./embed";
 import type { BaseEntityId } from "./entity-id";
 import type { Field } from "./field";
-import type { CurrencyStyle, TimeOnlyOptions } from "./formatting";
+import type {
+  CurrencyPosition,
+  CurrencyStyle,
+  TimeOnlyOptions,
+} from "./formatting";
 import type { ModerationReview } from "./moderation";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
 import type {
@@ -295,6 +299,7 @@ export type ColumnSettings = TimeOnlyOptions & {
   compact?: boolean;
   currency?: string;
   currency_style?: CurrencyStyle;
+  currency_position?: CurrencyPosition;
   date_abbreviate?: boolean;
   date_format?: string;
   date_separator?: string;

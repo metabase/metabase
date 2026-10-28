@@ -159,6 +159,49 @@
                                        ::mb.viz/currency-in-header false}))
                 style)))))))
 
+(deftest currency-position-formatting-test
+  (doseq [{:keys [name fmt-fn]} formatters]
+    (testing (str "Currency label position" name)
+      (let [settings {::mb.viz/currency           "EUR"
+                      ::mb.viz/currency-in-header false}]
+        (doseq [[style position expected]
+                [["symbol" nil "€-1,234.56"]
+                 ["symbol" "before" "€-1,234.56"]
+                 ["symbol" "after" "-1,234.56\u00a0€"]
+                 ["code" "after" "-1,234.56\u00a0EUR"]
+                 ["narrowSymbol" "after" "-1,234.56\u00a0€"]
+                 ["name" "before" "-1,234.56 euros"]
+                 ["name" "after" "-1,234.56 euros"]]]
+          (is (= expected (fmt-fn -1234.56 (assoc settings
+                                                 ::mb.viz/currency-style style
+                                                 ::mb.viz/currency-position position)))))
+        (testing "Header currency labels stay out of the cell"
+          (is (= "1,234.56" (fmt-fn 1234.56 (assoc settings
+                                                   ::mb.viz/currency-position "after"
+                                                   ::mb.viz/currency-in-header true)))))
+        (testing "Custom affixes surround the amount and currency label"
+          (is (= "Total: 1,234.56\u00a0€ incl. tax"
+                 (fmt-fn 1234.56 (assoc settings
+                                       ::mb.viz/currency-position "after"
+                                       ::mb.viz/prefix "Total: "
+                                       ::mb.viz/suffix " incl. tax")))))))))
+
+(deftest currency-position-inheritance-test
+  (mt/with-temporary-setting-values [custom-formatting {:type/Currency {:currency_position "after"}}]
+    (let [col      {:name "Price", :semantic_type :type/Price, :base_type :type/Float}
+          settings {::mb.viz/currency "EUR", ::mb.viz/currency-in-header false}
+          fmt      (fn [col column-settings]
+                     (str ((formatter/number-formatter
+                            col {::mb.viz/column-settings {{::mb.viz/column-name "Price"} column-settings}})
+                           2)))]
+      (testing "Columns inherit the instance position"
+        (is (= "2.00\u00a0€" (fmt col settings))))
+      (testing "Field formatting overrides the instance position"
+        (is (= "€2.00" (fmt (assoc col :settings {:currency_position "before"}) settings))))
+      (testing "Question column formatting overrides field formatting"
+        (is (= "2.00\u00a0€" (fmt (assoc col :settings {:currency_position "before"})
+                                (assoc settings ::mb.viz/currency-position "after"))))))))
+
 (deftest column-settings-formatting-test
   (letfn [(fmt-with-type
             ([type value] (fmt-with-type type value nil))

@@ -49,7 +49,7 @@
   the number, not a formula). Deliberately conservative: only digits, group/decimal separators, whitespace, currency
   symbols, an exponent and a trailing `%`. Nothing that matches this can carry formula syntax, so exempting it can't
   reopen the injection."
-  #"[-+]?\p{Sc}?\s?\d[\d,\s.]*(?:[eE][-+]?\d+)?\s?\p{Sc}?\s?%?")
+  #"[-+]?\p{Sc}?\s?\d[\d,\s.]*(?:[eE][-+]?\d+)?[\s\u00a0]?\p{Sc}?\s?%?")
 
 (defn escape-spreadsheet-formula
   "Neutralize spreadsheet formula (a.k.a. CSV/DDE) injection in an exported cell value: a value an attacker planted in

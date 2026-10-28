@@ -6,8 +6,10 @@ import {
   currency,
   getCurrency,
   getCurrencyNarrowSymbol,
+  getCurrencyPositionOptions,
   getCurrencyStyleOptions,
   getCurrencySymbol,
+  getEffectiveCurrencyPosition,
   hasHour,
   numberFormatterForOptions,
 } from "metabase/utils/formatting";
@@ -44,6 +46,7 @@ import type {
 import {
   getDefaultCurrency,
   getDefaultCurrencyInHeader,
+  getDefaultCurrencyPosition,
   getDefaultCurrencyStyle,
   getDefaultNumberSeparators,
   getDefaultNumberStyle,
@@ -329,6 +332,27 @@ export const NUMBER_COLUMN_SETTINGS: VisualizationSettingsDefinitions = {
     getDefault: getDefaultCurrencyStyle,
     getHidden: (_column, settings) => settings.number_style !== "currency",
     readDependencies: ["number_style"],
+  },
+  currency_position: {
+    get title() {
+      return t`Currency label position`;
+    },
+    widget: "radio",
+    getProps: (_column, settings) => ({
+      options: getCurrencyPositionOptions(),
+      value: getEffectiveCurrencyPosition(
+        settings.currency_style,
+        settings.currency_position,
+      ),
+      disabled: settings.currency_style === "name",
+      description:
+        settings.currency_style === "name"
+          ? t`Currency names always appear after the amount.`
+          : undefined,
+    }),
+    getDefault: getDefaultCurrencyPosition,
+    getHidden: (_column, settings) => settings.number_style !== "currency",
+    readDependencies: ["number_style", "currency_style"],
   },
   currency_in_header: {
     get title() {
