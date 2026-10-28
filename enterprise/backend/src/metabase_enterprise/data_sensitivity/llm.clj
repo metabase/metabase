@@ -263,7 +263,8 @@
     (str "- " (one-line name)
          " (" (subs (str base_type) 1) (when database_type (str ", " (capped database_type)))
          (when semantic_type (str "; semantic: " (subs (str semantic_type) 1) (human-set-marker field :semantic_type)))
-         (when (contains? (:human_set field) :display_name) (str "; display name: " (quoted (capped display_name)) " [human-set]"))
+         (when (contains? (:human_set field) :display_name)
+           (str "; display name: " (quoted (capped display_name)) " [human-set]"))
          (cond
            (not (str/blank? description))
            (str "; description: " (quoted (capped description)) (human-set-marker field :description))
@@ -315,7 +316,8 @@
     {:type                 "object"
      :properties           {:fields {:type  "array"
                                      :items {:type                 "object"
-                                             :properties           (apply array-map (mapcat (juxt identity property) ordered))
+                                             :properties           (apply array-map
+                                                                          (mapcat (juxt identity property) ordered))
                                              :required             (mapv name ordered)
                                              :additionalProperties false}}}
      :required             ["fields"]
@@ -536,9 +538,8 @@
 (defn- chunk-fields
   "Split the fields of `packet` into chunks in order. A chunk ends at `chunk-size` fields, or when the next field line
   would put the user message over `char-budget`. A field line over the budget alone, possible only with a very long
-name, gets a chunk of its own. The size
-  is an upper bound: the message with no fields, room for the digits of the field count, and each line plus a
-  newline."
+  name, gets a chunk of its own. The size is an upper bound: the message with no fields, room for the digits of the
+  field count, and each line plus a newline."
   [packet attributes chunk-size char-budget]
   (let [overhead (+ (count (user-message packet [] attributes)) (dec (count (str chunk-size))))
         close    (fn [{:keys [chunks chunk]}] (cond-> chunks (seq chunk) (conj chunk)))]

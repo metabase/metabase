@@ -219,7 +219,7 @@ describe("ReviewModal", () => {
     setup();
 
     const tableCheckbox = await screen.findByRole("checkbox", {
-      name: "Accept the suggestions of this table",
+      name: "Accept all suggestions",
     });
     expect(tableCheckbox).not.toBeChecked();
     await userEvent.click(tableCheckbox);

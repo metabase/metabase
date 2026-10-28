@@ -77,7 +77,7 @@ function GenerateMetadataButtonContent({
     openModal();
   };
 
-  // The server has rejected every suggestion: return to the generate form.
+  // The server has discarded every suggestion: return to the generate form.
   const handleDiscard = () => {
     closeReview();
     setStartedRunId(null);

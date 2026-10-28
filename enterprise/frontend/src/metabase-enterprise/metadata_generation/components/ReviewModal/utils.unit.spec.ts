@@ -197,18 +197,10 @@ describe("getTableLabel", () => {
 });
 
 describe("getApplySummary", () => {
-  it("lists only the written count when nothing was rejected or failed", () => {
+  it("lists only the written count when nothing failed", () => {
     expect(
       getApplySummary(createMockMetadataGenerationApplyResult({ written: 1 })),
     ).toBe("1 value written.");
-  });
-
-  it("lists the rejected count when there is one", () => {
-    expect(
-      getApplySummary(
-        createMockMetadataGenerationApplyResult({ written: 2, rejected: 1 }),
-      ),
-    ).toBe("2 values written. 1 suggestion rejected.");
   });
 
   it("lists the written and failed counts", () => {

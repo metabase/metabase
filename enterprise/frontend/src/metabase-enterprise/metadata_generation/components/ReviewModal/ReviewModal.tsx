@@ -1190,11 +1190,11 @@ function AcceptAllHeader() {
   const { tableCheckbox, bulkProposals, select } = useCellState();
   return (
     <Tooltip
-      label={t`Select or clear every suggestion in this table, except those that replace a value a person set.`}
+      label={t`Select or clear all suggestions, except those that replace a value a person set.`}
     >
       <Box component="span" display="inline-flex">
         <Checkbox
-          aria-label={t`Accept the suggestions of this table`}
+          aria-label={t`Accept all suggestions`}
           checked={tableCheckbox.checked}
           indeterminate={tableCheckbox.indeterminate}
           disabled={tableCheckbox.disabled}

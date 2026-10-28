@@ -145,9 +145,10 @@
       :schemas  (when-let [missing (seq (remove (set (map :schema tables)) schemas))]
                   (throw (core/bad-request (tru "No active, visible tables in schemas: {0}." (str/join ", " missing)))))
       :tables   (when-let [missing (seq (remove (set (map :id tables)) table_ids))]
-                  (throw (core/bad-request (tru "Not active, visible tables of this database: {0}." (str/join ", " missing))))))
+                  (throw (core/bad-request (tru "These tables are not active, visible tables of this database: {0}."
+                                                (str/join ", " missing))))))
     (when (empty? tables)
-      (throw (core/bad-request (tru "The database has no active, visible tables to classify."))))
+      (throw (core/bad-request (tru "The database has no active, visible tables."))))
     tables))
 
 (defn- parse-request
@@ -374,7 +375,8 @@
               outcome (try
                         (check-stop! ctx)
                         (if-let [current (db/visible-table (:id table))]
-                          (let [{:keys [packet classification slow-calls]} (classify-table ctx database current packet-opts)]
+                          (let [{:keys [packet classification slow-calls]}
+                                (classify-table ctx database current packet-opts)]
                             {:usage       (:usage classification)
                              :model       (:model classification)
                              :slow-calls  slow-calls
@@ -404,7 +406,8 @@
                           (:not-visible outcome)
                           (-> state
                               (update :failed inc)
-                              (update :errors conj (table-error table (tru "The table was hidden or removed during the run.")
+                              (update :errors conj (table-error table
+                                                                (tru "The table was hidden or removed during the run.")
                                                                 "table_not_visible")))
 
                           :else
@@ -415,7 +418,9 @@
                               (update :slow-calls (fnil + 0) (:slow-calls outcome))
                               (update :usage add-usage (:model outcome) (:usage outcome))))]
               (when e
-                (log/warnf e "Metadata generation run %d failed for table %d" run-id (:id table)))
+                ;; Not the throwable: the ex-data of a model error can hold model output that quotes warehouse values.
+                (log/warnf "Metadata generation run %d failed for table %d: %s (%s)"
+                           run-id (:id table) (or (ex-message e) (class e)) (error-code e)))
               (if (db/record-table! run-id (progress state) (:proposals outcome))
                 (recur state more)
                 (assoc state :end [:stopped :gone] :remaining more)))))))))
@@ -447,7 +452,9 @@
   write. An unexpected failure fails the run, unless the run was canceled."
   [{:keys [run-id stop] :as ctx} database tables]
   (try
-    (if (pos? (db/update-run-with-status! run-id :pending {:status :running :started_at (OffsetDateTime/now) :last_heartbeat (OffsetDateTime/now)}))
+    (if (pos? (db/update-run-with-status! run-id :pending {:status         :running
+                                                           :started_at     (OffsetDateTime/now)
+                                                           :last_heartbeat (OffsetDateTime/now)}))
       (let [state (run-tables! ctx database tables)]
         (Thread/interrupted)
         (finish! run-id state))
@@ -457,9 +464,10 @@
       (Thread/interrupted)
       (let [canceled? (= :canceled @stop)
             errors    (u/ignore-exceptions
-                        (with-unprocessed-errors (db/run run-id) (if canceled?
-                                                                   (tru "The run was canceled.")
-                                                                   (tru "The run failed before it processed the table."))))]
+                        (with-unprocessed-errors (db/run run-id)
+                          (if canceled?
+                            (tru "The run was canceled.")
+                            (tru "The run failed before it processed the table."))))]
         (when-not canceled?
           (log/errorf e "Metadata generation run %d failed" run-id))
         (u/ignore-exceptions
@@ -548,7 +556,8 @@
 (mu/defn start-run! :- (ms/InstanceOf :model/MetadataGenerationRun)
   "Start a run over the active, visible tables of `database` that the request names: all of them, those in `:schemas`,
   or `:table_ids`. `:attributes` defaults to [[llm/default-attributes]]. Returns the new run. Throws a 409 when a run is
-  active for the database, and a 400 when Metabot cannot run or the scope holds no active, visible table. The run executes as `creator-id`."
+  active for the database, and a 400 when Metabot cannot run or the scope holds no active, visible table. The run
+  executes as `creator-id`."
   [database   :- (ms/InstanceOf :model/Database)
    request    :- ::start-request
    creator-id :- ms/PositiveInt]
@@ -557,7 +566,7 @@
     (when (db/active-run database-id)
       (throw (conflict database-id)))
     (when-let [reason (core/unavailable-reason)]
-      (throw (ex-info (tru "AI metadata generation is not available.")
+      (throw (ex-info (tru "Field metadata generation is not available.")
                       {:status-code 400 :reason reason :error-code reason})))
     (let [run (try
                 (db/insert-run! {:database_id    database-id
@@ -581,8 +590,9 @@
   (when-let [run (db/run run-id)]
     (when-not (run/active-statuses (:status run))
       (throw (ex-info (tru "The run has already ended.") {:status-code 409})))
-    (if (pos? (db/update-run-with-status! run-id :pending
-                                          (canceled-changes start-state (tables-in-scope (:database_id run) (:scope run)))))
+    (if (pos? (db/update-run-with-status!
+               run-id :pending
+               (canceled-changes start-state (tables-in-scope (:database_id run) (:scope run)))))
       (when-let [{:keys [future]} (get @local-runs run-id)]
         (swap! local-runs dissoc run-id)
         (some-> ^Future future (.cancel false)))
@@ -634,8 +644,10 @@
                                    :terminal {:status    "failed"
                                               :ended_at  :%now
                                               :is_active nil
-                                              :message   (tru "The run stopped sending heartbeats for {0} minutes; its node probably stopped."
-                                                              stale-minutes)}})]
+                                              :message
+                                              (tru (str "The run stopped sending heartbeats for {0} minutes; "
+                                                        "its node probably stopped.")
+                                                   stale-minutes)}})]
     (doseq [{run-id :id} reaped]
       (try
         (when-let [run (db/run run-id)]

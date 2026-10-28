@@ -298,9 +298,10 @@
                                   :where [:and
                                           [:in :id field-ids]
                                           (visible-field-where)
-                                          [:in :table_id ^:allow-subquery {:select [:id]
-                                                                           :from   [(warehouse-schema-overlay/table-query)]
-                                                                           :where  (visible-table-where)}]]})
+                                          [:in :table_id ^:allow-subquery
+                                           {:select [:id]
+                                            :from   [(warehouse-schema-overlay/table-query)]
+                                            :where  (visible-table-where)}]]})
                       :can_write))
     {}))
 

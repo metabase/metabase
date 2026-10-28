@@ -1,10 +1,10 @@
 (ns metabase-enterprise.data-sensitivity.context
-  "Builds the per-table packet that the metadata generation LLM call consumes: app-DB metadata for every active field
-  of a table plus, when `:include-values?` is true, cached FieldValues and a small warehouse row sample. The row
-  sample is the only warehouse query; a failure there is recorded under `[:sample :error]` and the packet still
-  builds so a broken connection degrades to schema-only classification. A cancel during the sample throws an
-  `InterruptedException` instead. Values are read only when the current user
-  may see all rows of the table (see [[values-restriction]]); otherwise the packet is schema-only and
+  "Builds the per-table packet that the metadata generation LLM call consumes: app-DB metadata for the fields of a
+  table that generation uses (active, and not retired, sensitive or hidden) plus, when `:include-values?` is true,
+  cached FieldValues and a small warehouse row sample. The row sample is the only warehouse query; a failure there is
+  recorded under `[:sample :error]` and the packet still builds so a broken connection degrades to schema-only
+  classification. A cancel during the sample throws an `InterruptedException` instead. Values are read only when the
+  current user may see all rows of the table (see [[values-restriction]]); otherwise the packet is schema-only and
   `[:sample :error]` says why."
   (:require
    [clojure.core.async :as a]
@@ -106,7 +106,9 @@
   (into #{} (filter #(warehouse-schema-overlay/field-user-set? user-settings %)) field/field-user-settings))
 
 (defn- ai-set-keys [user-settings]
-  (into #{} (filter #(warehouse-schema-overlay/field-ai-set? user-settings %)) (keys warehouse-schema-overlay/field-ai-columns)))
+  (into #{}
+        (filter #(warehouse-schema-overlay/field-ai-set? user-settings %))
+        (keys warehouse-schema-overlay/field-ai-columns)))
 
 (defn- fk-targets
   "Map of target field id -> `schema.table.field` for every `fk_target_field_id` among `fields` whose target
