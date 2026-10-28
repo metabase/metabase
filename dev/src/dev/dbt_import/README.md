@@ -80,10 +80,10 @@ without a base type: the instance supplies it when the import binds the field, a
 warehouse fails there.
 
 `convert!` returns a report: `:converted` lists each metric with its `entity_id` and file, and `:unsupported` lists
-every metric that could not be converted with the reason. Nothing is silently dropped, and one bad metric does not
-stop the run: an unexpected exception while resolving a metric is logged with its stack and reported like any other
-unsupported metric, naming the exception. Entity IDs are derived from the dbt metric's unique ID, so re-running and
-re-importing updates the existing cards instead of duplicating them.
+every metric that could not be converted with the reason ("Limitations" below collects every reason). Nothing is
+silently dropped, and one bad metric does not stop the run: an unexpected exception while resolving a metric is logged
+with its stack and reported like any other unsupported metric, naming the exception. Entity IDs are derived from the
+dbt metric's unique ID, so re-running and re-importing updates the existing cards instead of duplicating them.
 
 The output is a serdes tree, `collections/main/<collection>.yaml` plus one card per metric under
 `collections/main/<collection>/`, in the same format `export` produces. Import it into the instance from QRES-2:
@@ -94,6 +94,93 @@ MB_DB_CONNECTION_URI=... clojure -M:run:ee import /path/to/serdes-out -e
 
 Then open each metric in the UI, run it, and compare the number against a hand-written SQL query. The end-to-end
 test below does the same thing against a test instance.
+
+## Limitations
+
+A Metabase metric is one aggregation over one table, optionally filtered, with a curated set of dimensions it can be
+broken out by. Whatever dbt can say that does not fit that shape is not approximated: the converter reports each case
+and moves on. A metric it cannot convert is listed in the report's `:unsupported` with the reason, and a dbt dimension
+that cannot become a curated dimension is listed under the metric's `:unsupported-dimensions` while the metric itself
+still converts. The tables below collect every such case with an example of the dbt that triggers it. Examples are in
+the legacy spec unless they say otherwise; the inline spec reports the same things.
+
+Two things are not limitations of the conversion but are checked before it: the manifest has to come from dbt 1.12 or
+later (see "Supported dbt versions"), and the converter reads only `semantic_models`, `metrics` and the model `nodes`
+they are defined on. Saved queries, exports and the time spine are never read.
+
+### Metric types
+
+| dbt | Example | Why it is unsupported |
+| -- | -- | -- |
+| `conversion` metrics | `type: conversion` with `base_measure: visits`, `conversion_measure: purchases`, `entity: user`, `window: 7 days` | A funnel counts, per entity, a base event followed by a conversion event within a window: a self-join with a time condition. A metric is one aggregation over one table. |
+| `cumulative` with a `window` | `type: cumulative`, `type_params: {measure: revenue, window: 7 days}` (inline spec: `cumulative_type_params: {window: 7 days}`) | A trailing window is a rolling-window aggregation, which MBQL does not have. The running total minus the running total seven rows back would nest window functions, which SQL does not allow. |
+| `cumulative` with `grain_to_date` | `type_params: {measure: revenue, grain_to_date: month}` | A running total that resets each month needs a month breakout, and a metric cannot require one. The query processor does partition a cumulative aggregation by every breakout but the finest temporal one, so a user who breaks out by month *and* day gets month-to-date, but under a day breakout alone `cum-sum` is the all-time running total. |
+| `cumulative` over anything but a `sum` or a row count | `type: cumulative` over a measure with `agg: count_distinct` (or `average`, `min`, `max`, `median`, `percentile`), or `agg: count` with `expr: order_id` | MBQL's only running aggregations are `cum-sum` and `cum-count`. SQL does not allow `DISTINCT` in a window function, and there is no running average, min, max or percentile. `cum-count` counts rows, nulls included, so a running `count` of a column, which skips nulls, is not it either. |
+| `cumulative` over a metric that is not simple (inline spec) | `cumulative_type_params: {metric: sales_to_target_ratio}` | A cumulative metric runs the aggregation of the metric it is built on, and a ratio or derived metric has no single aggregation to run. |
+| a `ratio` or `derived` input with `offset_window` | `metrics: [{name: revenue}, {name: revenue, offset_window: 1 month, alias: revenue_last_month}]` | dbt shifts the input by a fixed span of time. MBQL's `offset` is relative to the rows of the result, so its meaning changes with whatever breakout grain the user picks. |
+| a `ratio` or `derived` input with `offset_to_grain` | `metrics: [{name: revenue, offset_to_grain: month, alias: revenue_at_month_start}]` | The value at the start of the current period has no MBQL equivalent at all. |
+| a `derived` `expr` that is not arithmetic over its inputs | `expr: "100"`, or `expr: "revenue * tax_rate"` where `tax_rate` is not one of `metrics` | Metric definitions (`metabase.lib-metric`) allow arithmetic over `[:metric ...]` and `[:measure ...]` leaves only. A constant or a name that is not an input is neither. |
+| `ratio` or `derived` inputs on different semantic models | `numerator: {name: order_count}` on `orders`, `denominator: {name: customer_count}` on `customers` | A metric queries one table, and the `[:metric ...]` references in its aggregation have to share it. |
+| a `filter` on an input that is not a simple metric | `numerator: {name: sales_to_target_ratio, filter: "..."}` | An input filter is inlined as the filtered form of the input's measure (`sum-where` and friends). A ratio, derived or cumulative input has no single measure to filter. |
+| a `filter` on an input whose aggregation has no filtered form | `numerator: {name: avg_order_value, filter: "{{ Dimension('order__status') }} = 'shipped'"}` where `avg_order_value` is an `average` | MBQL has `sum-where`, `count-where` and `distinct-where` only. There is no filtered average, min, max, median or percentile. |
+| a `filter` that references a metric | `filter: "{{ Metric('order_total', group_by=['customer']) }} > 1000"` | A condition on a metric's value is a `HAVING` over a grouped subquery. A metric's aggregation has no place for it. |
+| a metric that refers to itself, directly or through its inputs | `a` derived from `b` and `b` derived from `a` | There is no order to write them in. |
+
+### Measures and aggregations
+
+| dbt | Example | Why it is unsupported |
+| -- | -- | -- |
+| `non_additive_dimension` | `non_additive_dimension: {name: metric_time, window_choice: max, window_groupings: [account]}` | A semi-additive measure takes one time slice per group before it aggregates (each account's balance at its latest date). Nothing in MBQL picks a row per group ahead of the aggregation. |
+| discrete percentiles | `agg: percentile`, `agg_params: {percentile: 0.5, use_discrete_percentile: true}` | Metabase percentiles are continuous: they interpolate between rows. `percentile_type: continuous` (inline spec `use_approximate_percentile`) converts. |
+| a percentile without a value, or out of range | `agg: percentile` with no `agg_params`, or `agg_params: {percentile: 1.5}` | dbt documents the percentile as a fraction between 0 and 1; a percentage up to 100 is tolerated. |
+| `sum_boolean` over a column that is not boolean | `agg: sum_boolean, expr: status` where `status` has `data_type: text` | Metabase has no boolean sum. The converter writes it as a `count-where` the column is true, which needs a boolean column; a column with no documented type is trusted. |
+| a measure over a literal or `*` that is not a row count | `agg: sum, expr: "2"`, `agg: average, expr: "*"` | Metabase aggregations take a column or an expression. `count(*)`, `count(1)` and `sum(1)` are row counts and do convert. |
+| `fill_nulls_with` on a `min` or `max` of a non-numeric column | `agg: max, expr: status, fill_nulls_with: 0` | The fill is written as `coalesce` around the aggregation, and `COALESCE(MAX(text), 0)` fails in the warehouse. Every other aggregation returns a number, so the fill is fine there. |
+
+### SQL in `expr` and `filter`
+
+A measure's `expr` and a `filter` are parsed with sqlglot and mapped onto MBQL clause by clause. The subset that maps is
+listed under "Filters and SQL expressions"; everything outside it is reported, naming the construct:
+
+| dbt | Example | Why it is unsupported |
+| -- | -- | -- |
+| any function (`NULLIF(x, 0)` as a divisor excepted) | `expr: "coalesce(discount, 0) * price"`, `filter: "lower({{ Dimension('order__status') }}) = 'shipped'"` | There is no general mapping from a warehouse's functions to MBQL expressions, and each dialect has its own. `x / NULLIF(y, 0)` is the one exception, only because Metabase's `/` already returns NULL for a zero divisor. |
+| `CAST` | `expr: "cast(amount_cents as decimal) / 100"` | Casts are not in the subset; the column's declared `data_type` decides its Metabase type. |
+| a simple `CASE` | `expr: "case status when 'shipped' then 1 else 0 end"` | Only the searched form, `CASE WHEN condition THEN ... END`, maps onto MBQL `case`. |
+| `IN` over a subquery | `filter: "{{ Entity('customer') }} in (select id from vip_customers)"` | MBQL `in` takes a list of values. |
+| `IS` anything but `NULL` | `filter: "{{ Dimension('order__is_paid') }} is true"` | Only `IS [NOT] NULL` maps, to `is-null` / `not-null`. Write `= true` instead. |
+| a `LIKE` pattern other than `%x%`, `x%` or `%x`, or one that is not a string literal | `like 'a%b'`, `like 'order_'`, `like other_column`, `ilike 'x'` with no wildcard | Those three patterns are `contains`, `starts-with` and `ends-with`. MBQL has no general pattern match. |
+| Jinja that is not a MetricFlow reference | `filter: "{% if var('strict') %} ... {% endif %}"` | The converter renders `Dimension(...)`, `TimeDimension(...)`, `Entity(...)` and `Metric(...)`; anything else is left in the SQL, which then does not parse. |
+| a `filter` with no reference at all | `filter: "1 = 1"` | dbt filters address columns through the semantic graph. A condition that references nothing is rejected rather than bound to the metric's table by guesswork. |
+| `TimeDimension(...)` on a dimension that is not a time dimension, or whose `expr` is SQL | `TimeDimension('order__status', 'month')`, or a `derived_semantics` time dimension with `expr: "date_trunc('day', created_at)"` | Temporal bucketing applies to a time column. |
+| a granularity Metabase has no unit for | `TimeDimension('order__ordered_at', 'nanosecond')`, or a custom calendar granularity such as `retail_month` | Metabase buckets by its standard truncation units, `minute` through `year`. `fiscal_quarter` is read as `quarter` until custom calendars are supported. |
+| `metric_time` on a measure with no `agg_time_dimension` | `filter: "{{ TimeDimension('metric_time', 'month') }} >= '2024-01-01'"` on a model with no `defaults: {agg_time_dimension: ...}` and none on the measure | `metric_time` stands for the measure's aggregation time dimension; without one it stands for nothing. |
+| a dimension reached through two entities | `Dimension('order__customer__region')` | A dimension mapping is one implicit join, a foreign key on the metric's table to the joined table's key. A two-hop path has no representation. |
+
+### Dimensions and joins
+
+These apply to the curated dimension set and are reported under `:unsupported-dimensions`; the metric converts without
+them. The same conditions inside a `filter` make the metric itself unsupported, since the filter cannot be written.
+
+| dbt | Example | Why it is unsupported |
+| -- | -- | -- |
+| a dimension whose `expr` is SQL | `dimensions: [{name: is_large_order, type: categorical, expr: "amount > 100"}]`, or any `derived_semantics` dimension | A dimension mapping targets a column of the table or of a joined table. There is no place in it for an expression. |
+| a foreign entity whose `expr` is SQL, on either side of the join | `entities: [{name: customer, type: foreign, expr: "lower(customer_key)"}]` | An implicit join is a foreign-key column pointing at a primary-key column (`:source-field`). |
+| a foreign entity that more than one semantic model is primary for | `customer` declared `type: primary` on both `dim_customer` and `dim_customer_history` | The join target has to be unambiguous. An entity no model is primary for is just a key and reports nothing. |
+| a join to a semantic model in another Metabase database | `orders` is in a warehouse database mapped to `Sales DB` and `customers` in one mapped to `CRM DB` under `:databases` | Metabase does not join across databases. |
+| a joined model whose `primary_entity` names an entity it does not declare | `primary_entity: customer` with no `customer` under `entities` | There is no column on that side to join on. |
+| an `agg_time_dimension` that is not a dimension of the model | `defaults: {agg_time_dimension: created_at}` with no `created_at` dimension | The metric's default dimension has to be one of its dimensions. |
+
+### Manifest and configuration errors
+
+These are reported the same way, but they are fixed in the project or the config rather than being limits of the
+conversion:
+
+- A warehouse database with no entry in the config's `:databases`.
+- A column whose `data_type` the config's `:driver` does not know; add it to `:base-types`.
+- A metric whose semantic model, measure or input metric is not in the manifest, for example because it is disabled.
+- A `ratio` without both a `numerator` and a `denominator`, a `derived` metric without an `expr` or without input
+  metrics, or a simple metric with neither a measure nor `metric_aggregation_params`.
 
 ## The end-to-end test
 
@@ -194,15 +281,15 @@ MetricFlow references around SQL. Both go through sqlglot (`metabase.sql-parsing
 `dev.dbt-import.sql`), which parses an expression on its own in the dialect of the config's `:driver`, and a small
 subset of SQL maps onto MBQL: column references, literals, `+ - * /`, comparisons, `AND`/`OR`/`NOT`,
 `IN`, `BETWEEN`, `IS [NOT] NULL`, `LIKE` with a `%x%`, `x%` or `%x` pattern, and `CASE WHEN ... THEN ... ELSE ... END`.
-`x / NULLIF(y, 0)` is plain division, since Metabase's `/` already returns NULL for a zero divisor. Other functions,
-casts and anything else are reported as unsupported, naming the construct.
+`x / NULLIF(y, 0)` is plain division, since Metabase's `/` already returns NULL for a zero divisor. Anything outside
+that subset is reported, naming the construct; see "Limitations".
 
 In a filter, `Dimension('<entity>__<dimension>')` resolves to one of the metric's own columns when the entity is the
 semantic model's primary entity, and `TimeDimension(..., '<grain>')` additionally buckets it by the matching Metabase
 temporal unit; `metric_time` is the measure's `agg_time_dimension` and `Entity('<name>')` is that entity's column. A
 dimension reached through a foreign entity is on the semantic model that entity is primary for, and resolves to that
-model's column joined implicitly through the entity's column (see "Entities and dimensions"); `Metric(...)` references
-are reported (see "Advanced metric types").
+model's column joined implicitly through the entity's column (see "Entities and dimensions"). `Metric(...)` references
+are reported (see "Limitations").
 
 ## Advanced metric types
 
@@ -213,29 +300,13 @@ metrics they refer to are written before them.
 | -- | -- |
 | `ratio` of `numerator` to `denominator` | one metric card whose aggregation divides `[:metric ...]` references to the input metrics' cards |
 | `derived` with `expr` over `metrics` | the same arithmetic over `[:metric ...]` references, aliases resolved; `x / nullif(y, 0)` is `x / y` |
-| an input (`numerator`, `denominator`, `metrics[]`) with its own `filter` | inlined as `sum-where`, `count-where` or `distinct-where` over the input's measure, with the input's own filters and the reference's combined, so the metric stays one card; an input whose aggregation has no filtered form (`average`, `min`, `max`, `median`, `percentile`) is reported |
+| an input (`numerator`, `denominator`, `metrics[]`) with its own `filter` | inlined as `sum-where`, `count-where` or `distinct-where` over the input's measure, with the input's own filters and the reference's combined, so the metric stays one card |
 | `cumulative` with no window over a `sum` or a row count | `cum-sum` / `cum-count`; the metric's filters apply as on a simple metric |
 | `conversion` | out of scope, reported |
 
-Not converted, and reported with the reason, because a Metabase metric is a scalar aggregation with no breakout of
-its own and MBQL has no clause for them:
-
-- `cumulative` with `window` (a trailing window, `7 days`): MBQL has no rolling-window aggregation. Running total minus
-  the running total seven rows back would nest window functions, which SQL does not allow.
-- `cumulative` with `grain_to_date` (`month` to date): a running total that resets at each grain. The query processor
-  does partition a cumulative aggregation by every breakout except the finest temporal one, so a user who breaks out
-  by month *and* day gets month-to-date, but a metric definition cannot require that breakout, and under a day breakout
-  alone a plain `cum-sum` would be the all-time running total.
-- `cumulative` over anything but a sum or row count: SQL does not allow `DISTINCT` in a window function, and MBQL has
-  no running average, min, max or percentile.
-- `derived` inputs with `offset_window` (period over period) or `offset_to_grain`: MBQL's `offset` is relative to the
-  rows of the result, so its meaning changes with the breakout grain the user picks, while dbt's offset is a fixed span
-  of time; `offset_to_grain` (the value at the start of the grain) has no MBQL equivalent at all. Metric definitions
-  (`metabase.lib-metric`) also only allow arithmetic over `[:metric ...]` and `[:measure ...]` leaves.
-- `conversion`: a per-entity funnel (a base event followed by a conversion event within a window) is a self-join with a
-  time condition, nothing a metric expresses.
-- a filter template that references `Metric(...)`: a condition on a metric's value is a HAVING, which a metric has no
-  place for.
+Every other form is reported with the reason: a cumulative `window` or `grain_to_date`, an input with an
+`offset_window` or `offset_to_grain`, a `conversion` metric, a `filter` on an input whose aggregation has no filtered
+form. "Limitations" lists them all with the reasoning.
 
 ## Entities and dimensions
 
@@ -254,11 +325,9 @@ out in the UI as soon as it is imported:
 Dimension ids are derived from the metric's dbt unique ID and the dimension's reference, so a re-run writes the same
 ids and a re-import updates the dimensions in place. Groups are named after the semantic model's label, or its table.
 
-A dimension mapping targets a column, never SQL, so a dimension whose `expr` is SQL (`case when ...`) cannot be a
-curated dimension; neither can the dimensions behind a foreign entity whose join column is SQL on either side, or
-whose entity no semantic model, or more than one, is primary for. These are listed per metric under
-`:unsupported-dimensions` in the report rather than dropped. A foreign entity no model is primary for is just a key
-and reports nothing.
+A dbt dimension that cannot be a curated dimension, because its `expr` is SQL or because the join behind its foreign
+entity cannot be made, is listed per metric under `:unsupported-dimensions` in the report rather than dropped;
+"Limitations" lists the cases.
 
 Pipeline: `parse` (manifest -> IR) -> `resolve` (IR + config -> Lib queries against a metadata provider built from the
 manifest, entity ids) -> `emit` (serdes YAML, with serdes' own MBQL export turning the provider's ids back into
