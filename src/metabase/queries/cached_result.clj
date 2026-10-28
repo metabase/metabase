@@ -30,14 +30,14 @@
   validator, and the renderer agree."
   #{"value_asc" "value_desc" "label_asc" "label_desc"})
 
-(defn- resolved-source-footprint
-  "The source footprint of `stored-result`: the one stored with it, else its query's resolved live. nil when
-  resolution throws (a deleted card in the source chain): the viewer is denied."
-  [{:keys [id dataset_query source_footprint]}]
+(defn- stored-result->resolved-source-ids
+  "The resolved source ids of `stored-result`: those stored with it, else its query's resolved live. nil when
+  resolution throws (a deleted card in the source chain) or resolves to nothing: the viewer is denied."
+  [{:keys [id dataset_query resolved_source_ids]}]
   (try
-    (query-perms/query->source-footprint dataset_query source_footprint)
+    (not-empty (query-perms/query->resolved-source-ids dataset_query resolved_source_ids))
     (catch Exception e
-      (log/debugf e "Cached result %s: resolving the source footprint threw; denying" id)
+      (log/debugf e "Cached result %s: computing the resolved source ids threw; denying" id)
       nil)))
 
 (defn- viewer-lens-compatible?
@@ -58,7 +58,7 @@
 
   A missing `:dataset_query` is not a degenerate case but a caller bug — the schema forbids NULL —
   and [[cached-result-blocked-reason]] throws on it before we get here."
-  [stored-result footprint]
+  [stored-result resolved-source-ids data-access-token-reader]
   (if (nil? (:data_access_token stored-result))
     (do
       (log/errorf "Cached result %s has no readable data_access_token (never captured, or failed to parse). Denying."
@@ -67,8 +67,8 @@
     (try
       (perms/data-access-compatible?
        (:data_access_token stored-result)
-       (perms/data-access-token {:database-id (:database_id stored-result)
-                                 :table-ids   (:table-ids footprint)}))
+       (data-access-token-reader {:database-id (:database_id stored-result)
+                                  :table-ids   (:table-ids resolved-source-ids)}))
       (catch Exception e
         (log/debugf e "Cached result %s: computing the viewer's data-access lens threw; denying"
                     (:id stored-result))
@@ -81,9 +81,9 @@
   The check absorbs the ordinary permission-denial `ExceptionInfo`s itself; anything else it
   throws — a stored query malformed enough to trip its `:- :map` schema, a source table that no
   longer exists — must not escape an authorization gate as a 500: deny instead."
-  [stored-result footprint]
+  [stored-result resolved-source-ids]
   (try
-    (query-perms/can-run-query-with-source-footprint? (:dataset_query stored-result) footprint)
+    (query-perms/can-run-query-with-resolved-source-ids? (:dataset_query stored-result) resolved-source-ids)
     (catch Exception e
       (log/debugf e "Cached result %s: the data-perms check threw; denying" (:id stored-result))
       false)))
@@ -102,28 +102,32 @@
     `:no-data-perms`        — current user lacks the data perms required to run the underlying query.
     `:incompatible-context` — current user's sandbox/impersonation/routing lens differs from the
                               lens the snapshot was computed under."
-  [stored-result]
-  (when (nil? (:dataset_query stored-result))
-    (throw (ex-info "stored-result is missing its dataset_query"
-                    {:stored-result-id (:id stored-result)})))
-  (if api/*is-superuser?*
-    nil
-    (let [footprint (resolved-source-footprint stored-result)]
-      (cond
-        (nil? footprint)
-        :no-data-perms
+  ([stored-result]
+   (cached-result-blocked-reason stored-result {}))
+  ([stored-result {:keys [data-access-token-reader] :or {data-access-token-reader perms/data-access-token}}]
+   (when (nil? (:dataset_query stored-result))
+     (throw (ex-info "stored-result is missing its dataset_query"
+                     {:stored-result-id (:id stored-result)})))
+   (if api/*is-superuser?*
+     nil
+     (let [resolved-source-ids (stored-result->resolved-source-ids stored-result)]
+       (cond
+         (nil? resolved-source-ids)
+         :no-data-perms
 
-        (not (viewer-can-run-underlying-query? stored-result footprint))
-        :no-data-perms
+         (not (viewer-can-run-underlying-query? stored-result resolved-source-ids))
+         :no-data-perms
 
-        (not (viewer-lens-compatible? stored-result footprint))
-        :incompatible-context))))
+         (not (viewer-lens-compatible? stored-result resolved-source-ids data-access-token-reader))
+         :incompatible-context)))))
 
 (defn viewer-can-view-cached-result?
   "Boolean form of [[assert-can-view-cached-result!]]: true when the current user may be served the
   blob for `stored-result`."
-  [stored-result]
-  (nil? (cached-result-blocked-reason stored-result)))
+  ([stored-result]
+   (viewer-can-view-cached-result? stored-result {}))
+  ([stored-result opts]
+   (nil? (cached-result-blocked-reason stored-result opts))))
 
 (defn assert-can-view-cached-result!
   "Throw a 403 if the current user must not see the cached blob for `stored-result`."

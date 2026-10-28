@@ -17,6 +17,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.query-permissions.db :as query-permissions.db]
+   [metabase.query-permissions.schema :as query-permissions.schema]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -26,6 +27,7 @@
    [metabase.request.core :as request]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -203,7 +205,7 @@
   lens. `do-as-admin` keeps the user's id (and thus their attributes), so database routing and
   impersonation would still resolve the user's destination db / role — and throw when that
   configuration exists without its premium feature. Those per-user dimensions are the lens callers
-  are *comparing*, not part of the query's table footprint, so skip them.
+  are *comparing*, not part of the query's resolved source ids, so skip them.
 
   [[qp.i/*skip-middleware-because-app-db-access*]] is a much bigger name than its blast radius:
   despite \"middleware\" plural, the routing and impersonation preprocess middlewares are the only
@@ -212,29 +214,6 @@
   [query]
   (binding [qp.i/*skip-middleware-because-app-db-access* true]
     (preprocess-query query)))
-
-(mu/defn query->resolved-source-ids :- [:maybe :map]
-  "Like [[query->source-ids]], but resolves card-sourced queries (`:source-table \"card__N\"`,
-  card-sourced joins, nested card-on-card chains) first, by preprocessing the query.
-
-  The whole projection, not just its tables: preprocessing is also what surfaces `:card-ids` (via the
-  `:qp/stage-is-from-source-card` annotation it adds), and those drive a read-permission check on
-  each card's collection in [[required-perms-for-query]] — a requirement no projection of the *raw*
-  query can express. Callers keying a permission verdict on this must keep the whole map, or two
-  queries reading the same tables through different cards will look identical.
-
-  Preprocessing runs as admin with per-user lens resolution skipped
-  ([[preprocess-without-per-user-lens]]), so the result is identical for every user. THROWS when the
-  query cannot be preprocessed — e.g. a card in the source chain has been deleted — so callers
-  gating cached reads on it can fail closed instead of treating the query as touching nothing."
-  [query :- ::query]
-  (when (seq query)
-    (query->source-ids (preprocess-without-per-user-lens query))))
-
-(mu/defn query->resolved-source-table-ids :- [:maybe [:set ::lib.schema.id/table]]
-  "The Table IDs of [[query->resolved-source-ids]]. Throws on an unpreprocessable query, as it does."
-  [query :- ::query]
-  (:table-ids (query->resolved-source-ids query)))
 
 (defn- referenced-card-ids
   "Return the union of all the `:query-permissions/referenced-card-ids` sets anywhere in the query."
@@ -249,32 +228,48 @@
      query)
     (not-empty @all-ids)))
 
-(def SourceFootprint
+(def ResolvedSourceIds
   "Everything [[required-perms-for-query]] and the data-access lens read from a preprocessed query."
-  [:map {:closed true}
-   [:table-ids           {:optional true} [:set ::lib.schema.id/table]]
-   [:table-query-ids     {:optional true} [:set ::lib.schema.id/table]]
-   [:card-ids            {:optional true} [:set ::lib.schema.id/card]]
-   [:native?             {:optional true} :boolean]
-   [:referenced-card-ids {:optional true} [:set ::lib.schema.id/card]]])
+  [:ref ::query-permissions.schema/resolved-source-ids])
 
-(defn- preprocessed->source-footprint
+(defn- preprocessed->resolved-source-ids
   [preprocessed-query]
   (let [referenced (referenced-card-ids preprocessed-query)]
     (cond-> (or (query->source-ids preprocessed-query) {})
       referenced (assoc :referenced-card-ids referenced))))
 
-(mu/defn query->source-footprint :- [:maybe SourceFootprint]
-  "The [[SourceFootprint]] of `query`, preprocessed as admin with per-user lens resolution skipped, so it is the same
-  for every user. Throws on an unpreprocessable query. A `stored` footprint, when given, is returned instead."
+(defn- query-digest
+  "Digest of `query` as it reads back from JSON."
+  ^String [query]
+  (perms/digest (json/decode (json/encode query))))
+
+(mu/defn stamped-resolved-source-ids :- [:maybe ResolvedSourceIds]
+  "`resolved-source-ids` tagged with a digest of `query`, the query they came from."
+  [query               :- ::query
+   resolved-source-ids :- [:maybe ResolvedSourceIds]]
+  (some-> resolved-source-ids (assoc :query-digest (query-digest query))))
+
+(mu/defn verified-resolved-source-ids :- [:maybe ResolvedSourceIds]
+  "`stored` without its digest, or nil unless it was stamped from `query`."
+  [query  :- [:maybe ::query]
+   stored :- [:maybe ResolvedSourceIds]]
+  (when-let [stored-digest (:query-digest stored)]
+    (when (= stored-digest (query-digest query))
+      (dissoc stored :query-digest))))
+
+(mu/defn query->resolved-source-ids :- [:maybe ResolvedSourceIds]
+  "The [[ResolvedSourceIds]] of `query`, preprocessed as admin with per-user lens resolution skipped, so it is the same
+  for every user. Throws on an unpreprocessable query. `stored` resolved source ids, when given, are returned instead
+  when stamped from `query`."
   ([query :- ::query]
    (when (seq query)
-     (preprocessed->source-footprint (preprocess-without-per-user-lens query))))
+     (preprocessed->resolved-source-ids (preprocess-without-per-user-lens query))))
   ([query  :- ::query
-    stored :- [:maybe SourceFootprint]]
-   (or stored (query->source-footprint query))))
+    stored :- [:maybe ResolvedSourceIds]]
+   (or (verified-resolved-source-ids query stored)
+       (query->resolved-source-ids query))))
 
-(defn- merge-source-footprint
+(defn- merge-resolved-source-ids*
   [a {:keys [table-ids table-query-ids card-ids native? referenced-card-ids]}]
   (cond-> a
     table-ids           (update :table-ids           (fnil set/union #{}) table-ids)
@@ -283,22 +278,22 @@
     (some? native?)     (update :native?             (fnil #(or %1 %2) false) native?)
     referenced-card-ids (update :referenced-card-ids (fnil set/union #{}) referenced-card-ids)))
 
-(mu/defn merge-source-footprints :- [:maybe SourceFootprint]
-  "The [[SourceFootprint]] of a query reading everything `footprints` read. nil when none is given."
-  [footprints :- [:sequential [:maybe SourceFootprint]]]
-  (when-let [footprints (seq (remove nil? footprints))]
-    (reduce merge-source-footprint {} footprints)))
+(mu/defn merge-resolved-source-ids :- [:maybe ResolvedSourceIds]
+  "The [[ResolvedSourceIds]] of a query reading everything `id-maps` read. nil when none is given."
+  [id-maps :- [:sequential [:maybe ResolvedSourceIds]]]
+  (when-let [id-maps (seq (remove nil? id-maps))]
+    (reduce merge-resolved-source-ids* {} id-maps)))
 
-(def source-footprint-transform
-  "Toucan transform for a persisted [[query->source-footprint]]. An unreadable blob reads as `nil`, like a row that
+(def resolved-source-ids-transform
+  "Toucan transform for a persisted [[query->resolved-source-ids]]. An unreadable blob reads as `nil`, like a row that
   was never stamped, so the query is resolved live."
-  (let [{:keys [in out]} (mi/transform-json-with-schema "source_footprint" SourceFootprint {:log-level :error})]
+  (let [{:keys [in out]} (mi/transform-json-with-schema "resolved_source_ids" ResolvedSourceIds {:log-level :error})]
     {:in  in
      :out (fn [s]
-            (let [footprint (out s)]
-              (if (or (nil? footprint) (mr/validate SourceFootprint footprint))
-                footprint
-                (do (log/errorf "Unreadable source_footprint %s; resolving live" (pr-str s))
+            (let [resolved-source-ids (out s)]
+              (if (or (nil? resolved-source-ids) (mr/validate ResolvedSourceIds resolved-source-ids))
+                resolved-source-ids
+                (do (log/errorf "Unreadable resolved_source_ids %s; resolving live" (pr-str s))
                     nil))))}))
 
 (defn- native-perms
@@ -317,7 +312,7 @@
   [query]
   (native-perms (referenced-card-ids query)))
 
-(defn- source-footprint->required-perms
+(defn- resolved-source-ids->required-perms
   [{:keys [table-ids table-query-ids card-ids native? referenced-card-ids]}]
   (merge
    (when-let [card-ids (not-empty (into (set card-ids) referenced-card-ids))]
@@ -335,7 +330,7 @@
 
   ([metadata-provider
     query
-    {:keys [throw-exceptions? already-preprocessed? source-footprint]}]
+    {:keys [throw-exceptions? already-preprocessed? resolved-source-ids]}]
    (try
      (let [metadata-provider (or metadata-provider
                                  (when (qp.store/initialized?)
@@ -348,10 +343,10 @@
                                        lib/primary-source-card-id)]
          {:paths (source-card-read-perms source-card-id)}
          ;; otherwise if there's no source card then calculate perms based on the Tables referenced in the query
-         (source-footprint->required-perms
-          (or source-footprint
-              (preprocessed->source-footprint (cond-> query
-                                                (not already-preprocessed?) preprocess-query))))))
+         (resolved-source-ids->required-perms
+          (or resolved-source-ids
+              (preprocessed->resolved-source-ids (cond-> query
+                                                   (not already-preprocessed?) preprocess-query))))))
      ;; if for some reason we can't expand the Card (i.e. it's an invalid legacy card) just return a set of permissions
      ;; that means no one will ever get to see it
      (catch Throwable e
@@ -379,7 +374,7 @@
   "Returns a map representing the permissions required to run `query`. The map has the optional keys
   :paths (containing legacy permission paths), :card-ids, :perms/view-data, and :perms/create-queries.
 
-  `:source-footprint` stands in for preprocessing."
+  `:resolved-source-ids` stands in for preprocessing."
   [query & {:as perms-opts}]
   (if (empty? query)
     {}
@@ -554,12 +549,16 @@
                    {:already-preprocessed? already-preprocessed?
                     :throw-exceptions?     throw-non-permission-errors?})))
 
-(mu/defn can-run-query-with-source-footprint? :- :boolean
-  "[[can-run-query?]] for a query whose [[query->source-footprint]] is already known, without preprocessing it."
-  [query     :- ::query
-   footprint :- SourceFootprint]
-  (can-run-query* query {:source-footprint  footprint
-                         :throw-exceptions? false}))
+(mu/defn can-run-query-with-resolved-source-ids? :- :boolean
+  "[[can-run-query?]] for a query whose [[query->resolved-source-ids]] is already known, without preprocessing it.
+  Denies on empty `resolved-source-ids`, which only a failed resolution produces."
+  [query               :- ::query
+   resolved-source-ids :- ResolvedSourceIds]
+  (if (empty? resolved-source-ids)
+    (do (log/debug "Empty resolved source ids; denying")
+        false)
+    (can-run-query* query {:resolved-source-ids resolved-source-ids
+                           :throw-exceptions?   false})))
 
 (mu/defn can-query-table?
   "Does the current user have permissions to run an ad-hoc query against the Table with `table-id`?"

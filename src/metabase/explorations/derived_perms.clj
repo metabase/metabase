@@ -38,7 +38,7 @@
   over one metric card, so their queries differ textually while requiring identical permissions.
 
   The verdict's halves project the query *differently*, so the key has to carry each of them or it is
-  not a partition. The lens comparison resolves the query first (`query->source-footprint`
+  not a partition. The lens comparison resolves the query first (`query->resolved-source-ids`
   preprocesses, expanding implicit joins and card chains); `can-run-query?` needs both the raw
   projection and the resolved one — the latter because `:card-ids` only exist after preprocessing and
   each one costs a read-permission check on that card's collection.
@@ -63,26 +63,27 @@
   `resolve-source-ids` is the resolving half, passed in so a batch can share one memo — resolution is
   a pure function of the query (it runs as admin with the per-user lens skipped), so repeats are free
   to collapse."
-  [resolve-source-ids {:keys [database_id dataset_query data_access_token source_footprint]}]
+  [resolve-source-ids {:keys [database_id dataset_query data_access_token resolved_source_ids]}]
   (let [source-ids (try
                      (some-> dataset_query query-perms/query->source-ids)
                      (catch Throwable _ ::unprojectable))]
     [database_id data_access_token
-     (or source_footprint (resolve-source-ids dataset_query))
+     (or (query-perms/verified-resolved-source-ids dataset_query resolved_source_ids)
+         (resolve-source-ids dataset_query))
      (cond
        (= ::unprojectable source-ids)                                  ::unprojectable
        (or (seq (:table-ids source-ids)) (seq (:card-ids source-ids))) source-ids
        :else                                                           dataset_query)]))
 
 (defn- source-ids-resolver
-  "A memoized [[metabase.query-permissions.core/query->source-footprint]] for one batch.
+  "A memoized [[metabase.query-permissions.core/query->resolved-source-ids]] for one batch.
   Throws are absorbed into a marker rather than propagated: an unpreprocessable query (a deleted card
   in its source chain) is one the lens check denies anyway, and it must not take the batch down with
   it."
   []
   (memoize (fn [query]
              (try
-               (some-> query query-perms/query->source-footprint)
+               (some-> query query-perms/query->resolved-source-ids)
                (catch Throwable _ ::unresolvable)))))
 
 (defn- finalized-queries
@@ -122,7 +123,7 @@
                         :database_id           (:database_id card)
                         :dataset_query         (:dataset_query card)
                         :data_access_token     (:data_access_token thread)
-                        :source_footprint      (:source_footprint thread)}
+                        :resolved_source_ids   (:resolved_source_ids thread)}
                  ;; The Card is what the stamp was computed over, and it does not outlive a delete:
                  ;; both `exploration_query.card_id` and `exploration_page.card_id` cascade, so
                  ;; deleting it strips every other adjudicable row while the thread's name survives.
@@ -137,10 +138,10 @@
   (it throws without a `:dataset_query`). It denies instead — the same fail-closed choice
   [[source-ids-resolver]] makes for a query it cannot resolve. Callers exempt superusers before
   reaching here; the superuser check keeps the gate's own answer if this is reached directly."
-  [artifact]
+  [data-access-token-reader artifact]
   (if (::indeterminate artifact)
     (boolean api/*is-superuser?*)
-    (queries/viewer-can-view-cached-result? artifact)))
+    (queries/viewer-can-view-cached-result? artifact {:data-access-token-reader data-access-token-reader})))
 
 (defn- blocked-thread-ids
   "Thread ids with at least one artifact the current user may not see.
@@ -148,10 +149,10 @@
   Artifacts sharing a [[visibility-key]] share a verdict by construction, so grouping by it lets
   the expensive check run once per group rather than once per artifact."
   [artifacts]
-  (perms/with-data-access-token-memo
+  (let [data-access-token-reader (perms/data-access-token-reader)]
     (->> (group-by (partial visibility-key (source-ids-resolver)) artifacts)
          (remove (fn [[_key [representative]]]
-                   (artifact-visible? representative)))
+                   (artifact-visible? data-access-token-reader representative)))
          (mapcat val)
          (map :exploration_thread_id)
          set)))

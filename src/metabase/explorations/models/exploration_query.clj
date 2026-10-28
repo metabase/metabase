@@ -20,7 +20,7 @@
    :dataset_query          mi/transform-json
    :params                 mi/transform-json
    :data_access_token      perms/data-access-token-transform
-   :source_footprint       query-perms/source-footprint-transform})
+   :resolved_source_ids    query-perms/resolved-source-ids-transform})
 
 (defmethod mi/can-read? :model/ExplorationQuery
   ([instance]
