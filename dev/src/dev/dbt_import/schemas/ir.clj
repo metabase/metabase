@@ -91,16 +91,22 @@
    [:filters [:sequential :string]]])
 
 (mr/def ::metric.common
-  "What every metric has. `label` falls back to the name. `filters` holds unrendered filter templates (QRES-3) on the
-  metric itself; empty means none."
+  "What every metric has. `label` falls back to the name. `filters` holds unrendered filter templates on the metric
+  itself; empty means none. `fill-nulls-with` is the value the metric takes where its aggregation is null, on a simple
+  metric from the metric or its input measure, on any other kind from the metric. `time-granularity` is the coarsest
+  grain the metric is meant to be queried at, a dbt granularity name (standard or from a custom calendar); nil means
+  its time dimension's own. `meta` is the project's free-form metadata, carried for a later mapping and not written
+  anywhere."
   [:map
-   [:type        [:enum :simple :cumulative :ratio :derived]]
-   [:name        :string]
-   [:unique-id   :string]
-   [:label       :string]
-   [:description [:maybe :string]]
-   [:filters     [:sequential :string]]
-   [:meta        [:maybe :map]]])
+   [:type             [:enum :simple :cumulative :ratio :derived]]
+   [:name             :string]
+   [:unique-id        :string]
+   [:label            :string]
+   [:description      [:maybe :string]]
+   [:filters          [:sequential :string]]
+   [:fill-nulls-with  [:maybe :int]]
+   [:time-granularity [:maybe :string]]
+   [:meta             [:maybe :map]]])
 
 (mr/def ::metric.simple
   "A simple metric: one aggregation over one semantic model, flattened so the emitter does not have to chase the
@@ -113,7 +119,6 @@
     [:type              [:enum :simple :cumulative]]
     [:semantic-model    :string]
     [:measure           [:maybe :string]]
-    [:fill-nulls-with   [:maybe :int]]
     [:join-to-timespine :boolean]]])
 
 (mr/def ::metric.ratio

@@ -183,7 +183,7 @@
           with-twin (fn [tweaks]
                       (assoc tweaks :edit #(assoc-in % [:semantic_models "semantic_model.p.dim_product_2"] twin)))
           reasons   (tu/unsupported-dimensions (with-twin {}))]
-      (are [dimension-name] (re-find #"more than one semantic model has entity \"product\" as its primary entity.*:entity-models"
+      (are [dimension-name] (re-find #"more than one semantic model has entity \"product\" as its primary or a unique entity.*:entity-models"
                                      (reason-for reasons dimension-name))
         "product_category_dim"
         "msrp"
@@ -203,11 +203,76 @@
                                            :metric {:filter {:where_filters [{:where_sql_template "{{ Dimension('product__product_category_dim') }} = 'Planes'"}]}}})))))))
       (testing "an :entity-models entry naming a model that is not primary for the entity is reported"
         (let [reasons (tu/unsupported-dimensions (with-twin {:config {:entity-models {"product" "dim_order"}}}))]
-          (is (re-find #":entity-models names semantic model \"dim_order\" for entity \"product\", but the models with it as their primary entity are \"dim_product\", \"dim_product_2\""
+          (is (re-find #":entity-models names semantic model \"dim_order\" for entity \"product\", but the models with it as their primary or a unique entity are \"dim_product\", \"dim_product_2\""
                        (reason-for reasons "msrp")))))
       (testing "an entry for an entity exactly one model is primary for changes nothing"
         (is (= (tu/dimension-set {})
                (tu/dimension-set {:config {:entity-models {"order" "dim_order"}}})))))))
+
+(defn- retype-entity
+  "A `:edit` fn for [[tu/build-manifest]] that gives the entity `entity-name` of semantic model `sm-id` the type
+  `entity-type`."
+  [sm-id entity-name entity-type]
+  (tu/edit-semantic-model sm-id (fn [model]
+                                  (update model :entities
+                                          (partial mapv #(cond-> % (= entity-name (:name %)) (assoc :type entity-type)))))))
+
+(deftest ^:parallel unique-entity-test
+  (testing "a unique entity on the model joined to is a key into it, like its primary entity"
+    ;; dim_product keyed by a new surrogate primary entity, with `product` a unique entity on it
+    (let [unique-target (comp (retype-entity tu/product-sm-id "product" "unique")
+                              (tu/edit-semantic-model tu/product-sm-id
+                                                      #(update % :entities conj (tu/entity "product_sk" "primary" :expr "product_key"))))]
+      (is (= (get (tu/dimension-set {}) "product_category_dim")
+             (get (tu/dimension-set {:edit unique-target}) "product_category_dim")))
+      (is (= (tu/dimension-names {}) (tu/dimension-names {:edit unique-target})))
+      (testing "and a filter through the entity joins to it"
+        (is (= [[:= {} (tu/joined-fld "product_key" "dim_product" "product_category" :type/Text) "Planes"]]
+               (tu/filters {:edit   unique-target
+                            :metric {:filter {:where_filters [{:where_sql_template "{{ Dimension('product__product_category_dim') }} = 'Planes'"}]}}}))))))
+  (testing "a unique entity on the metric's own model reaches the model keyed by it, like a foreign entity"
+    (let [unique-source (retype-entity tu/sm-id "order" "unique")]
+      (is (= (get (tu/dimension-set {}) "order_status_dim")
+             (get (tu/dimension-set {:edit unique-source}) "order_status_dim")))
+      (is (= (tu/dimension-names {}) (tu/dimension-names {:edit unique-source})))
+      (is (= [[:= {} (tu/joined-fld "order_key" "dim_order" "status" :type/Text) "Shipped"]]
+             (tu/filters {:edit   unique-source
+                          :metric {:filter {:where_filters [{:where_sql_template "{{ Dimension('order__order_status_dim') }} = 'Shipped'"}]}}})))))
+  (testing "a unique entity no other model is keyed by is just a key: nothing joined, nothing reported, no join to the model itself"
+    (let [lone-unique (tu/edit-semantic-model #(update % :entities conj (tu/entity "sale_alt" "unique" :expr "fact_sales_key")))]
+      (is (= (tu/dimension-names {}) (tu/dimension-names {:edit lone-unique})))
+      (is (= (tu/unsupported-dimensions {}) (tu/unsupported-dimensions {:edit lone-unique})))))
+  (testing "a foreign entity on the model joined to is not a key into it"
+    (let [foreign-target (retype-entity tu/product-sm-id "product" "foreign")
+          reasons        (tu/unsupported-dimensions {:edit foreign-target})]
+      (is (not-any? #{"product_category_dim" "msrp" "first_order_date"} (tu/dimension-names {:edit foreign-target})))
+      (is (= {} (select-keys reasons ["product_category_dim" "msrp" "first_order_date"]))
+          "no model is keyed by the entity, so there is nothing behind it to report")
+      (is (re-find #"no semantic model has entity \"product\" as its primary or a unique entity"
+                   (tu/unsupported {:edit   foreign-target
+                                    :metric {:filter {:where_filters [{:where_sql_template "{{ Dimension('product__product_category_dim') }} = 'Planes'"}]}}}))))))
+
+(deftest ^:parallel metric-time-granularity-test
+  (testing "a metric's time_granularity is the default temporal unit of its default dimension"
+    (are [grain unit] (= (assoc (local-dimension "date_day" :type/Date)
+                                :name "date_day", :display-name "date_day", :default true, :default-temporal-unit unit)
+                         (get (tu/dimension-set {:metric {:time_granularity grain}}) "date_day"))
+      "month"          :month
+      "year"           :year
+      ;; a fiscal quarter is read as a calendar quarter until custom calendars are supported
+      "fiscal_quarter" :quarter))
+  (testing "the other time dimensions keep their own granularity"
+    (is (= :day (:default-temporal-unit (get (tu/dimension-set {:metric {:time_granularity "month"}}) "created_at")))))
+  (testing "without one, the dimension's own granularity is the default unit"
+    (is (= :day (:default-temporal-unit (get (tu/dimension-set {}) "date_day")))))
+  (testing "a grain Metabase cannot bucket the dimension by is reported, as a custom calendar grain in a TimeDimension is"
+    (are [grain re] (re-find re (tu/unsupported {:metric {:time_granularity grain}}))
+      "retail_month" #"time_granularity \"retail_month\" has no Metabase temporal unit for \"date_day\""
+      ;; date_day is a date, which has no hours
+      "hour"         #"time_granularity \"hour\" has no Metabase temporal unit for \"date_day\""))
+  (testing "a metric with no default dimension has nothing to apply it to"
+    (is (= [] (defaults-of {:metric {:time_granularity "retail_month"}
+                            :edit   (tu/edit-semantic-model #(assoc % :defaults nil))})))))
 
 (deftest ^:parallel dimension-id-test
   (let [{:keys [dimensions dimension-mappings]} (tu/convert {})

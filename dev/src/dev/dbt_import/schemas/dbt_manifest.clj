@@ -102,16 +102,19 @@
    [:agg_time_dimension     [:maybe :string]]])
 
 (mr/def ::entity
-  "A join key. `expr` is the column; `nil` means the entity name is the column."
+  "A join key. `expr` is the column; `nil` means the entity name is the column. The manifest JSON schema requires only
+  `name` and `type`; dbt writes the rest, as `null` when unset, but a hand-written manifest need not."
   [:map
    [:name        :string]
    [:type        ::entity-type]
-   [:label       [:maybe :string]]
-   [:description [:maybe :string]]
-   [:role        [:maybe :string]]
-   [:expr        [:maybe :string]]])
+   [:label       {:optional true} [:maybe :string]]
+   [:description {:optional true} [:maybe :string]]
+   [:role        {:optional true} [:maybe :string]]
+   [:expr        {:optional true} [:maybe :string]]])
 
-(mr/def ::dimenstion-type-params.validity-params
+(mr/def ::dimension-type-params.validity-params
+  "`dimensions[].type_params.validity_params`, marking the start and end columns of a slowly changing dimension's
+  validity window. Not read by the converter."
   [:map
    [:is_start :boolean]
    [:is_end   :boolean]])
@@ -120,7 +123,7 @@
   "`dimensions[].type_params`, only present for `type: time`."
   [:map
    [:time_granularity ::time-granularity]
-   [:validity_params  {:optional true} [:maybe ::dimenstion-type-params.validity-params]]])
+   [:validity_params  {:optional true} [:maybe ::dimension-type-params.validity-params]]])
 
 (mr/def ::dimension
   "A categorical or time dimension. `expr` is a column or SQL; `nil` means the dimension name is the column."
@@ -224,9 +227,12 @@
    [:non_additive_dimension [:maybe ::non-additive-dimension]]])
 
 (mr/def ::cumulative-type-params
-  "`type_params.cumulative_type_params` (QRES-5). On the 1.12 inline spec `metric` is the input metric the running
-  total is over, which the converter does not need: a plain cumulative metric aggregates its semantic model directly,
-  and one with a window or `grain_to_date` is reported before anything is read."
+  "`type_params.cumulative_type_params`. On the 1.12 inline spec `metric` is the input metric the running total is
+  over, whose aggregation and semantic model the cumulative metric takes. `period_agg` says which value of the running
+  total stands for a period when the metric is queried at a grain coarser than its own: the value at the period's
+  `first` day (dbt's default), its `last` day, or the `average` over its days. Metabase's running total under a coarser
+  breakout is the value at the end of the period, so only `last` converts; the parse stage reports the others, and a
+  window or `grain_to_date`, before anything else is read."
   [:map
    [:window        [:maybe ::time-window]]
    [:grain_to_date [:maybe :string]]

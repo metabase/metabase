@@ -1,6 +1,8 @@
 # Metrics the converter's fixture adds to the flexanalytics/dbt-business-intelligence project, which defines only
-# simple metrics. One per metric type that composes other metrics (ratio, derived, cumulative) and one conversion
-# metric, so the fixture exercises every row of QRES-5's mapping table with shapes dbt itself wrote.
+# simple metrics. Two ratio, three derived and three cumulative metrics plus one conversion metric, so the fixture
+# exercises every row of the README's "Advanced metric types" table, and the reported cases next to it, with shapes
+# dbt itself wrote. `cumulative_sales` sets `period_agg: last`, the one value the converter accepts: dbt's default,
+# `first`, is the running total at the start of each period, which Metabase does not compute.
 #
 # `dev.dbt-import.fixture/regenerate!` splices this list into the project's `models/semantic_models.yml` under
 # `metrics:`, runs `dbt parse` and trims the result into `flexanalytics_manifest.json`. Indentation matches that
@@ -62,6 +64,8 @@
     description: Running total of sales over all time
     type_params:
       measure: sales
+      cumulative_type_params:
+        period_agg: last
   - name: sales_trailing_7d
     label: Sales Trailing 7 Days
     type: cumulative

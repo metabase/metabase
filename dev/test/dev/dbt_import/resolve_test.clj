@@ -689,6 +689,11 @@
       [:= {} (at "created_at" :type/DateTime :month) "2024-03-01"]
       "{{ TimeDimension('fact_sales_key__created_at', 'year') }} = '2024-01-01'"
       [:= {} (at "created_at" :type/DateTime :year) "2024-01-01"]
+      ;; a grain finer than a day needs a column with a time of day: a timestamp has one, a date (below) does not
+      "{{ TimeDimension('fact_sales_key__created_at', 'hour') }} >= '2024-01-01 09:00:00'"
+      [:>= {} (at "created_at" :type/DateTime :hour) "2024-01-01 09:00:00"]
+      "{{ TimeDimension('fact_sales_key__created_at', 'minute') }} >= '2024-01-01 09:30:00'"
+      [:>= {} (at "created_at" :type/DateTime :minute) "2024-01-01 09:30:00"]
       ;; without a granularity, the dimension's own
       "{{ TimeDimension('metric_time') }} >= '2024-01-01'"
       [:>= {} (at "date_day" :type/Date :day) "2024-01-01"]
@@ -712,6 +717,25 @@
       "{{ TimeDimension('fact_sales_key__status', 'day') }} = '2024-01-01'"   #"\"status\" is not a time dimension"
       "{{ TimeDimension('fact_sales_key__next_day', 'day') }} = '2024-01-01'" #"cannot bucket the SQL expression \"date_day \+ 1\""
       "{{ TimeDimension('metric_time', 'week') }} < random()"                 #"the function rand")))
+
+(deftest ^:parallel virtual-primary-entity-test
+  (testing "a semantic model with no entity of type primary names one in primary_entity; the model's own dimensions are reached through that name"
+    (let [virtual (tu/edit-semantic-model #(-> %
+                                               (assoc :primary_entity "sale")
+                                               (update :entities (partial remove (comp #{"fact_sales_key"} :name)))
+                                               (update :entities vec)))]
+      (is (= [[:= {} status "Shipped"]]
+             (tu/filters {:edit   virtual
+                          :metric {:filter (where-filters "{{ Dimension('sale__status') }} = 'Shipped'")}})))
+      (is (= [[:>= {} (at "date_day" :type/Date :month) "2024-01-01"]]
+             (tu/filters {:edit   virtual
+                          :metric {:filter (where-filters "{{ TimeDimension('sale__date_day', 'month') }} >= '2024-01-01'")}})))
+      (testing "the old primary entity's name is no longer a prefix"
+        (is (re-find #"entity \"fact_sales_key\" is not on semantic model \"fact_sales\""
+                     (tu/unsupported {:edit   virtual
+                                      :metric {:filter (where-filters "{{ Dimension('fact_sales_key__status') }} = 'Shipped'")}}))))
+      (testing "the curated dimensions are the same as with a declared primary entity"
+        (is (= (tu/dimension-set {}) (tu/dimension-set {:edit virtual})))))))
 
 (deftest ^:parallel filter-entity-test
   (are [template clause] (= clause (filter-of template))
@@ -743,7 +767,7 @@
       [:= {} [:case {} [[[:= {} order-status "Cancelled"] 1]] 0] 1]))
   (testing "references no join can satisfy"
     (are [template reason] (re-find reason (filter-reason template))
-      "{{ Dimension('customer__name') }} LIKE '%Inc%'"      #"no semantic model has entity \"customer\" as its primary entity"
+      "{{ Dimension('customer__name') }} LIKE '%Inc%'"      #"no semantic model has entity \"customer\" as its primary or a unique entity"
       "{{ Dimension('customer__region__country') }} = 'US'" #"more than one entity"
       "{{ Dimension('order__nope') }} = 'Shipped'"          #"dimension \"nope\" is not on semantic model \"dim_order\""
       "{{ Dimension('nope__status') }} = 'Shipped'"         #"entity \"nope\" is not on semantic model \"fact_sales\""
