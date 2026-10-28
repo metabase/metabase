@@ -16,10 +16,6 @@ export function useToggleRunHotkey({
   cancel,
 }: UseToggleRunHotkeyOptions) {
   const onHotkey = () => {
-    if (!isEnabled) {
-      return;
-    }
-
     if (isRunning) {
       cancel();
     } else if (isRunnable) {
@@ -27,5 +23,5 @@ export function useToggleRunHotkey({
     }
   };
 
-  useHotkeys([["mod+Enter", onHotkey]], []);
+  useHotkeys(isEnabled ? [["mod+Enter", onHotkey]] : [], []);
 }
