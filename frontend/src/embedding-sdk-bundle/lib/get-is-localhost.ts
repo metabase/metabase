@@ -1,4 +1,1 @@
-import { isLoopbackHostname } from "metabase/utils/dom";
-
-export const getIsLocalhost = () =>
-  isLoopbackHostname(window.location.hostname);
+export { getIsLocalhost } from "embedding-sdk-shared/lib/get-is-localhost";
