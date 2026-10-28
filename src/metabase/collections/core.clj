@@ -24,6 +24,7 @@
   has-remote-synced-collection?
   check-for-remote-sync-update
   check-library-dashboard-cards
+  check-library-dashcard-series-cards
   check-non-remote-synced-dependencies
   check-remote-synced-dependents
   create-library-collection!

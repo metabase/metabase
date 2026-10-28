@@ -376,6 +376,8 @@
               (testing "the deprecated cards endpoint is guarded too"
                 (is (= (msg (:id regular-card)) (mt/user-http-request :crowberto :put 400 (str "dashboard/" (:id library-dash) "/cards")
                                                                       {:cards [(dashcard -1 (:id regular-card))]})))))
+            (testing "a non-library card is rejected as a series card"
+              (is (= (msg (:id regular-card)) (save! (:id library-dash) [(dashcard -1 (:id metric) :series [{:id (:id regular-card)}])] 400))))
             (testing "a non-library card is rejected when replacing a library card"
               (mt/with-temp [:model/DashboardCard dc {:dashboard_id (:id library-dash) :card_id (:id metric)}]
                 (is (= (msg (:id regular-card)) (save! (:id library-dash) [(dashcard (:id dc) (:id regular-card))] 400)))
@@ -478,6 +480,50 @@
               (let [rdc-id (insert-legacy-dashcard! (:id regular-dash) (:id metric))]
                 (is (= 1 (t2/update! :model/DashboardCard rdc-id {:card_id (:id other-regular)}))))))
           (t2/delete! :model/DashboardCard :dashboard_id (:id library-dash)))))))
+
+(deftest library-dashboard-series-hooks-test
+  (mt/with-premium-features #{:library}
+    (mt/with-temp [:model/Collection allow-dashboards {:name "Test Dashboards" :type collection/library-dashboards-collection-type}
+                   :model/Collection allow-metrics    {:name "Test Metrics" :type collection/library-metrics-collection-type}
+                   :model/Collection regular          {:name "Regular Collection"}
+                   :model/Dashboard  library-dash     {:collection_id (:id allow-dashboards)}
+                   :model/Dashboard  regular-dash     {:collection_id (:id regular)}
+                   :model/Card       regular-card     {:collection_id (:id regular)}
+                   :model/Card       other-regular    {:collection_id (:id regular)}
+                   :model/Card       metric           {:collection_id (:id allow-metrics) :type :metric}
+                   :model/Card       metric-2         {:collection_id (:id allow-metrics) :type :metric}]
+      (let [library-dc (insert-legacy-dashcard! (:id library-dash) (:id metric))
+            regular-dc (insert-legacy-dashcard! (:id regular-dash) (:id regular-card))
+            insert!    (fn [dc-id card] (t2/insert! :model/DashboardCardSeries {:dashboardcard_id dc-id :card_id (:id card) :position 0}))
+            series     (fn [dc-id] (t2/select-fn-vec :card_id :model/DashboardCardSeries :dashboardcard_id dc-id {:order-by [:position]}))]
+        (testing "a non-library series card is rejected"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo library-card-msg-re
+                                (insert! library-dc regular-card)))
+          (is (empty? (series library-dc))))
+        (testing "a library series card is accepted"
+          (is (some? (insert! library-dc metric-2))))
+        (testing "a dashboard outside the library is unaffected"
+          (is (some? (insert! regular-dc other-regular))))
+        (testing "deserializing bypasses the check"
+          (is (some? (insert-legacy-series! library-dc (:id regular-card)))))
+        (testing "without the library feature nothing is checked"
+          (mt/with-premium-features #{}
+            (is (some? (insert! library-dc other-regular)))))
+        (t2/delete! :model/DashboardCardSeries :dashboardcard_id library-dc)
+        (testing "update-dashboard-cards-series! keeps a legacy series card and rejects a new non-library one"
+          (insert-legacy-series! library-dc (:id regular-card))
+          (dashboard-card/update-dashboard-cards-series! {library-dc [(:id regular-card) (:id metric-2)]})
+          (is (= [(:id regular-card) (:id metric-2)] (series library-dc)))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo library-card-msg-re
+                                (dashboard-card/update-dashboard-cards-series! {library-dc [(:id regular-card) (:id other-regular)]})))
+          (testing "and the existing series are left in place"
+            (is (= [(:id regular-card) (:id metric-2)] (series library-dc)))))
+        (testing "a series card may move between dashcards of the same dashboard"
+          (let [dc-2 (t2/insert-returning-pk! :model/DashboardCard (merge (mt/with-temp-defaults :model/DashboardCard)
+                                                                          {:dashboard_id (:id library-dash) :card_id (:id metric-2)}))]
+            (dashboard-card/update-dashboard-cards-series! {library-dc [(:id metric-2)]
+                                                            dc-2       [(:id regular-card)]})
+            (is (= [(:id regular-card)] (series dc-2)))))))))
 
 (deftest revert-library-dashboard-dashcards-test
   (mt/with-premium-features #{:library}

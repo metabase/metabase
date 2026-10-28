@@ -190,13 +190,13 @@
   {:arglists '([dashcard-id->card-ids])}
   [dashcard-id->card-ids]
   (when (seq dashcard-id->card-ids)
-    ;; first off, just delete all series on the dashboard card (we add them again below)
-    (dashboards.db/delete-series-for-dashcards! (keys dashcard-id->card-ids))
-    ;; now just insert all of the series that were given to us
-    (when-let [card-series (seq (for [[dashcard-id card-ids] dashcard-id->card-ids
-                                      [i card-id]            (map-indexed vector card-ids)]
-                                  {:dashboardcard_id dashcard-id, :card_id card-id, :position i}))]
-      (dashboards.db/insert-dashcard-series! card-series))))
+    ;; insert the wanted series before deleting the old ones, so the DashboardCardSeries insert hook sees the cards the
+    ;; dashboard already references
+    (let [new-series-ids (when-let [card-series (seq (for [[dashcard-id card-ids] dashcard-id->card-ids
+                                                           [i card-id]            (map-indexed vector card-ids)]
+                                                       {:dashboardcard_id dashcard-id, :card_id card-id, :position i}))]
+                           (dashboards.db/insert-dashcard-series! card-series))]
+      (dashboards.db/delete-series-for-dashcards! (keys dashcard-id->card-ids) (vec new-series-ids)))))
 
 (def ^:private DashboardCardUpdates
   [:merge
