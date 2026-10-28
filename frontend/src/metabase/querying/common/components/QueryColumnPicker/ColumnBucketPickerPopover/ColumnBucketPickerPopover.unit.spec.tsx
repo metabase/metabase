@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { render, screen, waitFor } from "__support__/ui";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
   DEFAULT_TEST_QUERY,
@@ -125,7 +126,7 @@ describe("ColumnBucketPickerPopover", () => {
         Lib.displayInfo(query, 0, strategy).displayName ===
         "Bin every 20 degrees",
     );
-    const column = Lib.withBinning(coordinateColumn, strategy ?? null);
+    const column = Lib.withBinning(coordinateColumn, checkNotNull(strategy));
     await setupBinningPicker({ column });
 
     expect(
