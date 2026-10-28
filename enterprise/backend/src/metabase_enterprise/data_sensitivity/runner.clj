@@ -8,7 +8,9 @@
   `canceling` on the run row, so a cancel from any node reaches the worker, and interrupts the worker when it runs on
   this node. The worker reads the status between tables and every [[poll-ms]] while it waits on chunk calls, cancels
   the chunks in flight, and writes `canceled`. A usage limit ends the run with status `usage_limit`. A table that
-  fails is recorded on the run and the run continues. The run records the tables it finished in `done_table_ids`.
+  fails is recorded on the run and the run continues. The worker reads each table again before its packet: a table
+  hidden or removed since the run started is not sent and is recorded as failed with error code `table_not_visible`.
+  The run records the tables it finished in `done_table_ids`.
   When a run ends before its last table (cancel, usage limit, an unexpected failure, or the reaper), the tables of its
   scope that it did not finish go to `table_errors` with error code `not_processed`, so [[retry-failed!]] covers them.
 
@@ -371,14 +373,16 @@
               timer   (u/start-timer)
               outcome (try
                         (check-stop! ctx)
-                        (let [{:keys [packet classification slow-calls]} (classify-table ctx database table packet-opts)]
-                          {:usage       (:usage classification)
-                           :model       (:model classification)
-                           :slow-calls  slow-calls
-                           :proposals   {:table_id   (:id table)
-                                         :attributes attributes
-                                         :proposals  (table-proposals run-id attributes packet
-                                                                      (:fields classification))}})
+                        (if-let [current (db/visible-table (:id table))]
+                          (let [{:keys [packet classification slow-calls]} (classify-table ctx database current packet-opts)]
+                            {:usage       (:usage classification)
+                             :model       (:model classification)
+                             :slow-calls  slow-calls
+                             :proposals   {:table_id   (:id table)
+                                           :attributes attributes
+                                           :proposals  (table-proposals run-id attributes packet
+                                                                        (:fields classification))}})
+                          {:not-visible true})
                         (catch Exception e
                           (cond
                             (stop-reason e)         {:end [:stopped (stop-reason e)]}
@@ -389,12 +393,21 @@
           (if (:end outcome)
             (assoc (add-spent state @spent) :end (:end outcome) :remaining remaining)
             (let [e     (:error outcome)
-                  state (if e
+                  state (cond
+                          e
                           (-> (add-spent state @spent)
                               (add-table-time elapsed)
                               (update :failed inc)
                               (update :errors conj (table-error table (or (ex-message e) (str (class e))) (error-code e)
                                                                 elapsed)))
+
+                          (:not-visible outcome)
+                          (-> state
+                              (update :failed inc)
+                              (update :errors conj (table-error table (tru "The table was hidden or removed during the run.")
+                                                                "table_not_visible")))
+
+                          :else
                           (-> state
                               (add-table-time elapsed)
                               (update :done inc)
