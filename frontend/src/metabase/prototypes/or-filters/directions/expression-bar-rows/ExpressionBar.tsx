@@ -86,6 +86,7 @@ export function ExpressionBar({
   const [draftColumn, setDraftColumn] = useState<Lib.ColumnMetadata>();
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
   const shouldRefocusRef = useRef(false);
   const flashed = useFlashedLabels(query, stageIndex, committedTokens);
   const [hasFocus, setHasFocus] = useState(false);
@@ -159,10 +160,13 @@ export function ExpressionBar({
     setIsOpen(false);
   };
 
-  const moveCaret = (index: number) => {
+  // Arrow keys keep the popover as it is, so a closed one stays closed.
+  const moveCaret = (index: number, { open = true } = {}) => {
     resetDraft();
     setCaret(index);
-    setIsOpen(true);
+    if (open) {
+      setIsOpen(true);
+    }
     focusInput();
   };
 
@@ -210,6 +214,26 @@ export function ExpressionBar({
       }
       return;
     }
+    if (event.key === "ArrowUp" && isOpen && !hasNavigated) {
+      event.preventDefault();
+      close();
+      return;
+    }
+    if ((event.key === "ArrowDown" || event.key === "ArrowUp") && !isOpen) {
+      const bar = barRef.current;
+      const target =
+        bar && getSlotOnAdjacentRow(bar, caretIndex, event.key === "ArrowUp");
+      if (target != null) {
+        event.preventDefault();
+        moveCaret(target, { open: false });
+        return;
+      }
+      // Up on the top row stays put; Down on the last row opens the list.
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        return;
+      }
+    }
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
       setIsOpen(true);
@@ -221,8 +245,9 @@ export function ExpressionBar({
       event.preventDefault();
       if (text.length > 0) {
         resetDraft();
-      } else {
+      } else if (isOpen) {
         close();
+      } else {
         input.blur();
       }
       return;
@@ -239,7 +264,7 @@ export function ExpressionBar({
       caretIndex > 0
     ) {
       event.preventDefault();
-      moveCaret(caretIndex - 1);
+      moveCaret(caretIndex - 1, { open: isOpen });
       return;
     }
     if (
@@ -248,7 +273,7 @@ export function ExpressionBar({
       caretIndex < tokens.length
     ) {
       event.preventDefault();
-      moveCaret(caretIndex + 1);
+      moveCaret(caretIndex + 1, { open: isOpen });
     }
   };
 
@@ -339,6 +364,7 @@ export function ExpressionBar({
   return (
     <Box>
       <Box
+        ref={barRef}
         className={cx(S.bar, {
           [S.barInvalid]: !parsed.ok,
           [S.barExpanded]: isExpanded && hasGroups,
@@ -364,9 +390,15 @@ export function ExpressionBar({
           ...tokens.flatMap((token, index) => [
             ...rowStart(index),
             index === caretIndex ? (
-              <CaretSlot key="caret">{caretView}</CaretSlot>
+              <CaretSlot key="caret" index={caretIndex}>
+                {caretView}
+              </CaretSlot>
             ) : (
-              <Gap key={`gap-${index}`} onClick={() => moveCaret(index)} />
+              <Gap
+                key={`gap-${index}`}
+                index={index}
+                onClick={() => moveCaret(index)}
+              />
             ),
             <TokenView
               key={`token-${index}`}
@@ -394,9 +426,15 @@ export function ExpressionBar({
           ]),
           ...rowStart(tokens.length),
           caretIndex === tokens.length ? (
-            <CaretSlot key="caret">{caretView}</CaretSlot>
+            <CaretSlot key="caret" index={caretIndex}>
+              {caretView}
+            </CaretSlot>
           ) : (
-            <Gap key="gap-end" onClick={() => moveCaret(tokens.length)} />
+            <Gap
+              key="gap-end"
+              index={tokens.length}
+              onClick={() => moveCaret(tokens.length)}
+            />
           ),
         ]}
         {tokens.length === 0 && text === "" && draftColumn == null && (
@@ -463,20 +501,75 @@ function MetabotMenu() {
   );
 }
 
-function CaretSlot({ children }: { children: ReactNode }) {
-  return <span className={S.caretSlot}>{children}</span>;
+const SLOT_ATTR = "data-caret-slot";
+
+function CaretSlot({
+  index,
+  children,
+}: {
+  index: number;
+  children: ReactNode;
+}) {
+  return (
+    <span className={S.caretSlot} {...{ [SLOT_ATTR]: index }}>
+      {children}
+    </span>
+  );
 }
 
-function Gap({ onClick }: { onClick: () => void }) {
+function Gap({ index, onClick }: { index: number; onClick: () => void }) {
   return (
     <span
       className={S.gap}
+      {...{ [SLOT_ATTR]: index }}
       onClick={(event) => {
         event.stopPropagation();
         onClick();
       }}
     />
   );
+}
+
+/** The caret position on the row above or below, nearest horizontally. */
+function getSlotOnAdjacentRow(
+  bar: HTMLElement,
+  caretIndex: number,
+  isUp: boolean,
+): number | undefined {
+  const slots = Array.from(
+    bar.querySelectorAll<HTMLElement>(`[${SLOT_ATTR}]`),
+  ).map((element) => ({
+    index: Number(element.getAttribute(SLOT_ATTR)),
+    rect: element.getBoundingClientRect(),
+  }));
+  const current = slots.find((slot) => slot.index === caretIndex);
+  if (!current) {
+    return undefined;
+  }
+  const centerY = (rect: DOMRect) => rect.top + rect.height / 2;
+  const currentY = centerY(current.rect);
+  const candidates = slots.filter((slot) =>
+    isUp
+      ? centerY(slot.rect) < current.rect.top
+      : centerY(slot.rect) > current.rect.bottom,
+  );
+  if (candidates.length === 0) {
+    return undefined;
+  }
+  const rowY = candidates
+    .map((slot) => centerY(slot.rect))
+    .reduce((best, y) =>
+      Math.abs(y - currentY) < Math.abs(best - currentY) ? y : best,
+    );
+  const row = candidates.filter(
+    (slot) => Math.abs(centerY(slot.rect) - rowY) < slot.rect.height / 2 + 1,
+  );
+  const currentX = current.rect.left;
+  return row.reduce((best, slot) =>
+    Math.abs(slot.rect.left - currentX) < Math.abs(best.rect.left - currentX)
+      ? slot
+      : best,
+  ).index;
 }
 
 function getHiddenSearch(listRef: RefObject<HTMLDivElement>) {

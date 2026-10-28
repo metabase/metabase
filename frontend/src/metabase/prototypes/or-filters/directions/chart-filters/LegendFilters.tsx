@@ -13,7 +13,7 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
-import { color } from "metabase/ui/utils/colors";
+import { getColorsForValues } from "metabase/ui/colors/charts";
 import * as Lib from "metabase-lib";
 
 import { toFilterClause } from "../../harness/clauses";
@@ -44,17 +44,21 @@ export function LegendFilters({ query, onChange }: FilterCanvasProps) {
   const handleChange = (nextQuery: Lib.Query) =>
     onChange(Lib.dropEmptyStages(nextQuery));
 
+  const measures = getMeasures(summaryQuery);
+  // same keys and hashing the chart uses for its series colors
+  const names = measures.map(
+    (measure) => Lib.displayInfo(summaryQuery, SUMMARY_STAGE, measure).name,
+  );
+  const colors = getColorsForValues(names, null, undefined, names);
+
   return (
     <Group gap={4} mb="sm" wrap="nowrap" className={S.legendFilters}>
-      {getMeasures(summaryQuery).map((measure, index) => (
+      {measures.map((measure, index) => (
         <LegendPill
           key={index}
           summaryQuery={summaryQuery}
           measure={measure}
-          seriesColor={color(
-            // template literal widens to string; accent0–accent7 are valid color keys
-            `accent${index % 8}` as Parameters<typeof color>[0],
-          )}
+          seriesColor={colors[names[index]]}
           onChange={handleChange}
         />
       ))}

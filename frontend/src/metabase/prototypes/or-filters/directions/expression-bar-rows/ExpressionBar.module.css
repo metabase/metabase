@@ -98,7 +98,7 @@
 }
 
 /* Unfocused and empty: keeps the input focusable without taking space. */
-.typingIdle {
+.typingIdle:not(:focus-within) {
   width: 0;
   padding: 0;
   overflow: hidden;
