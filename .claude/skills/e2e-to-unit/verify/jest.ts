@@ -223,21 +223,31 @@ export function runJest(
     const tail = fs.existsSync(logFile)
       ? fs.readFileSync(logFile, "utf8").slice(-2000)
       : "";
+    const recorded = allowPartial ? parseProgress(progressFile) : [];
     // spawnSync reports a kill through signal, and leaves error set when the
     // process never started, which is what a command line over the system
     // argument limit looks like.
     if (result.signal === "SIGKILL") {
       const minutes = Math.round(timeoutMs / 60000);
-      const partial = allowPartial ? parseProgress(progressFile) : [];
-      if (partial.length > 0) {
+      if (recorded.length > 0) {
         log(
-          `jest was killed after ${minutes} minutes, so a mutant probably wedged a spec. Judging the ${partial.length} test result(s) that finished; raise --pass-timeout or narrow the run for the rest.`,
+          `jest was killed after ${minutes} minutes, so a mutant probably wedged a spec. Judging the ${recorded.length} test result(s) that finished; raise --pass-timeout or narrow the run for the rest.`,
         );
-        return { success: false, results: partial, timedOut: true };
+        return { success: false, results: recorded, timedOut: true };
       }
       throw new Error(
         `jest was killed after ${minutes} minutes, so a mutant probably wedged a spec, and no test finished first. Raise --pass-timeout, or narrow the run.\n${tail}`,
       );
+    }
+    // Jest serializes its own JSON with JSON.stringify, which throws on a
+    // failure payload that holds a circular object, such as the Metadata a
+    // spec puts in an `expect`. The reporter lines are then the only record of
+    // a pass that ran to the end.
+    if (recorded.length > 0) {
+      log(
+        `jest wrote no JSON, so judging the ${recorded.length} test result(s) its reporter recorded.`,
+      );
+      return { success: false, results: recorded, timedOut: false };
     }
     const detail = result.error ? result.error.message : tail;
     throw new Error(`jest produced no JSON output\n${detail}`);
