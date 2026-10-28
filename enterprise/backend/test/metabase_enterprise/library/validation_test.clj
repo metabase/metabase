@@ -165,9 +165,9 @@
                    :model/Card       dashboard-card   {:collection_id (:id regular)
                                                        :dashboard_id  (:id dashboard)
                                                        :type          :question}]
-      (testing "Moving a dashboard moves its questions along"
-        (mt/user-http-request :crowberto :put 200 (str "dashboard/" (:id dashboard)) {:collection_id (:id allow-dashboards)})
-        (is (= (:id allow-dashboards) (t2/select-one-fn :collection_id :model/Card :id (:id dashboard-card))))))))
+      (testing "Moving a dashboard into the Library is rejected and leaves its questions in place"
+        (mt/user-http-request :crowberto :put 400 (str "dashboard/" (:id dashboard)) {:collection_id (:id allow-dashboards)})
+        (is (= (:id regular) (t2/select-one-fn :collection_id :model/Card :id (:id dashboard-card))))))))
 
 (deftest tables-cannot-be-moved-to-non-library-data-collections
   (mt/with-premium-features #{:library}
@@ -338,6 +338,9 @@
 
 (def ^:private library-card-msg-re #"^Only questions from the Library can be added to a Library dashboard\.")
 
+(def ^:private library-dashboard-move-msg
+  "Dashboards can't be moved into the Library. Duplicate the dashboard into the Library instead.")
+
 (deftest library-dashboard-only-accepts-library-cards-test
   (let [msg library-card-msg]
     (mt/with-premium-features #{:library}
@@ -388,6 +391,10 @@
               (binding [mi/*deserializing?* true]
                 (t2/update! :model/Dashboard (:id library-dash) {:collection_id (:id allow-dashboards)})
                 (t2/update! :model/Card (:id dash-question) {:collection_id (:id allow-dashboards)})))
+            (testing "moving a dashboard into the library is rejected, with or without cards in the same save"
+              (is (= library-dashboard-move-msg
+                     (save! (:id regular-dash) {:collection_id (:id allow-dashboards) :dashcards [(dashcard -1 (:id regular-card))]} 400)))
+              (is (= (:id regular) (t2/select-one-fn :collection_id :model/Dashboard (:id regular-dash)))))
             (testing "removing a legacy card and re-adding it in the same save is a new reference"
               (let [dc-id (insert-legacy-dashcard! (:id library-dash) (:id regular-card))]
                 (try
@@ -655,6 +662,41 @@
         (testing "an existing library metric is accepted"
           (is (some? (save! 200 metric)))
           (is (= 1 (count!))))))))
+
+(deftest move-dashboard-into-library-test
+  (mt/with-premium-features #{:library}
+    (mt/with-temp [:model/Collection allow-dashboards {:name "Test Dashboards" :type collection/library-dashboards-collection-type}
+                   :model/Collection nested           {:name     "Nested Dashboards"
+                                                       :type     collection/library-dashboards-collection-type
+                                                       :location (str "/" (:id allow-dashboards) "/")}
+                   :model/Collection regular          {:name "Regular Collection"}
+                   :model/Dashboard  regular-dash     {:collection_id (:id regular)}
+                   :model/Dashboard  root-dash        {:collection_id nil}
+                   :model/Dashboard  library-dash     {:collection_id (:id allow-dashboards)}]
+      (let [collection-of #(t2/select-one-fn :collection_id :model/Dashboard (:id %))]
+        (testing "a dashboard from outside the Library can't be moved into it, nested collections included"
+          (doseq [dash [regular-dash root-dash]
+                  dest [allow-dashboards nested]]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo (re-pattern library-dashboard-move-msg)
+                                  (t2/update! :model/Dashboard (:id dash) {:collection_id (:id dest)})))
+            (is (= (:collection_id dash) (collection-of dash)))))
+        (testing "a Library dashboard can move within the Library"
+          (is (= 1 (t2/update! :model/Dashboard (:id library-dash) {:collection_id (:id nested)})))
+          (is (= 1 (t2/update! :model/Dashboard (:id library-dash) {:collection_id (:id allow-dashboards)}))))
+        (testing "creating a dashboard in the Library is still allowed"
+          (is (some? (:id (mt/user-http-request :crowberto :post 200 "dashboard/"
+                                                {:name "New library dash" :collection_id (:id allow-dashboards)})))))
+        (testing "copying a dashboard into the Library is still allowed"
+          (is (= (:id allow-dashboards)
+                 (:collection_id (mt/user-http-request :crowberto :post 200 (str "dashboard/" (:id regular-dash) "/copy")
+                                                       {:collection_id (:id allow-dashboards)})))))
+        (testing "deserializing bypasses the check"
+          (binding [mi/*deserializing?* true]
+            (is (= 1 (t2/update! :model/Dashboard (:id regular-dash) {:collection_id (:id allow-dashboards)}))))
+          (is (= 1 (t2/update! :model/Dashboard (:id regular-dash) {:collection_id (:id regular)}))))
+        (testing "without the library feature nothing is checked"
+          (mt/with-premium-features #{}
+            (is (= 1 (t2/update! :model/Dashboard (:id root-dash) {:collection_id (:id allow-dashboards)})))))))))
 
 (deftest move-dashboard-question-between-dashboards-test
   (mt/with-premium-features #{:library}

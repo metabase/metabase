@@ -101,9 +101,12 @@
 (t2/define-before-update :model/Dashboard
   [dashboard]
   (let [changes   (t2/changes dashboard)
+        original  (t2/original dashboard)
         dashboard (lib/normalize ::dashboards.schema/dashboard dashboard)
         changes   (lib/normalize ::dashboards.schema/dashboard changes)]
     (collection/check-allowed-content :model/Dashboard (:collection_id changes))
+    (when (and (contains? changes :collection_id) (not mi/*deserializing?*))
+      (collections/check-library-dashboard-move (:collection_id original) (:collection_id changes)))
     (u/prog1 (-> dashboard
                  maybe-populate-initially-published-at
                  public-sharing/add-public-uuid-prefix-if-changed)

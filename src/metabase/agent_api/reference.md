@@ -552,7 +552,8 @@ lists the dashboard's tabs in display order.
 
 On a dashboard in the Library's Dashboards collection, `add` only accepts
 questions from the Library (such as Library metrics) and returns a 400 naming
-the rejected card ids otherwise.
+the rejected card ids otherwise; a dashboard outside the Library cannot be
+moved into it with `collection_id`.
 
 New cards are auto-placed into the first free grid slot, scanning
 left-to-right then top-to-bottom, so two half-width cards can end up side by
