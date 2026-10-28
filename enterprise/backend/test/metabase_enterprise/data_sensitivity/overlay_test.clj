@@ -108,7 +108,11 @@
         (is (=? [{:id field-id :semantic_type "type/City" :ai_proposals {:semantic_type {:value "type/City"}}}]
                 (fields-of :include_editable_data_model true :preview_ai_proposals true)))
         (mt/user-http-request :crowberto :get 400 (format "table/%d/query_metadata" table-id)
-                              :preview_ai_proposals true)))))
+                              :preview_ai_proposals true)
+        (testing "with the :sandboxes feature, which routes the request to the EE endpoint"
+          (mt/with-premium-features #{:data-sensitivity :sandboxes}
+            (is (=? [{:id field-id :semantic_type "type/City" :ai_proposals {:semantic_type {:value "type/City"}}}]
+                    (fields-of :include_editable_data_model true :preview_ai_proposals true)))))))))
 
 (deftest preview-hides-reasoning-from-users-who-cannot-view-data-test
   (testing "a metadata manager whose view-data is blocked reads neither the reasoning nor the value of a proposal"
