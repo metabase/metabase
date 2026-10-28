@@ -35,7 +35,7 @@ describe("scenarios > embedding > data app web component (DAT-14)", () => {
       .should("include", "view=recent");
 
     appBody().findByTestId("current-pathname").should("have.text", "/orders");
-    appBody().findByRole("link", { name: "Order details" }).click();
+    appBody().findByRole("button", { name: "Order details" }).click();
 
     appBody()
       .findByTestId("current-pathname")
