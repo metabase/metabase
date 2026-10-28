@@ -56,6 +56,12 @@
                              [:= :id [:auto/param dashcard-id]]
                              [:in :dashboard_id library-dashboard-ids-subquery]]}))
 
+(mu/defn collection-ids-of-types
+  "The ids among `collection-ids` of Collections whose type is one of `types`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]
+   types          :- [:sequential :string]]
+  (t2/select-pks-set :model/Collection :id [:in collection-ids] :type [:in types]))
+
 (mu/defn dashboard-referenced-card-ids
   "The ids among `card-ids` that the Dashboard with `dashboard-id` already references, as a DashboardCard's Card or as
   a series."

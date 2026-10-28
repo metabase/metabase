@@ -650,6 +650,13 @@
   [_dashcard-id _card-ids]
   true)
 
+(defenterprise check-library-dashboard-move
+  "Checks that a dashboard may move from the collection `old-collection-id` to `new-collection-id`. The OSS
+  implementation is a no-op."
+  metabase-enterprise.library.validation
+  [_old-collection-id _new-collection-id]
+  true)
+
 ;; This function is defined later after children-location is available
 
 (def ^:private CollectionWithLocationOrRoot

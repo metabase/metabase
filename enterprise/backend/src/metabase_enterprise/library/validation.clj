@@ -81,6 +81,21 @@
       (check-library-dashboard-card-ids dashboard-id card-ids)))
   true)
 
+(defenterprise check-library-dashboard-move
+  "Throws if a Dashboard would move from `old-collection-id` outside every Library dashboards Collection into
+  `new-collection-id` inside one."
+  metabase-enterprise.library.validation
+  :feature :library
+  [old-collection-id new-collection-id]
+  (when new-collection-id
+    (let [library-ids (library.db/collection-ids-of-types (filterv some? [old-collection-id new-collection-id])
+                                                          [collection/library-dashboards-collection-type])]
+      (when (and (contains? library-ids new-collection-id)
+                 (not (contains? library-ids old-collection-id)))
+        (throw (ex-info (tru "Dashboards can''t be moved into the Library. Duplicate the dashboard into the Library instead.")
+                        {:status-code 400})))))
+  true)
+
 (defenterprise check-library-update
   "Checks that a collection of type `:library` only contains allowed content."
   metabase-enterprise.library.validation
