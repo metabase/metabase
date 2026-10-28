@@ -175,7 +175,7 @@
    table-id  :- ::lib.schema.id/table]
   (api/read-check :model/Table table-id)
   (when-not (published-table? table-id)
-    (throw (data-app-error (tru "A data app can read only tables published to the Library, not the table {0}." table-id))))
+    (throw (data-app-error (tru "A data app can read only tables published to the Library, not the table {0}." (str table-id)))))
   nil)
 
 (defenterprise-schema check-field :- :nil
