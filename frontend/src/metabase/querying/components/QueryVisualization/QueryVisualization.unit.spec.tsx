@@ -120,6 +120,7 @@ describe("QueryVisualization", () => {
 
     await userEvent.click(warning);
 
+    expect(onOpenChartSettings).toHaveBeenCalledTimes(1);
     expect(onOpenChartSettings).toHaveBeenCalledWith({
       initialChartSettings: { section: "Display" },
     });
