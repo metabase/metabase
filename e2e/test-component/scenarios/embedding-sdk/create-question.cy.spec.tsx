@@ -468,6 +468,66 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     });
   });
 
+  it('should show the database name without a back link in the staged picker when joining and `entityTypes` = ["table"]', () => {
+    cy.signOut();
+    mockAuthProviderAndJwtSignIn();
+
+    mountSdkContent(
+      <div style={{ display: "flex", padding: "20px" }}>
+        <InteractiveQuestion
+          questionId="new"
+          dataPicker="staged"
+          entityTypes={["table"]}
+        />
+      </div>,
+    );
+
+    getSdkRoot().findByText("Pick your starting data").should("be.visible");
+
+    H.popover().findByText("Orders").click();
+    getSdkRoot().within(() => {
+      cy.button("Join data").click();
+    });
+
+    H.popover().within(() => {
+      cy.findByText("Sample Database").should("be.visible");
+      cy.findByText("Orders").should("be.visible");
+      cy.icon("chevronleft").should("not.exist");
+    });
+  });
+
+  it('should open the tables from Raw Data, not a one-database list, in the staged picker when joining and `entityTypes` = ["table", "model"]', () => {
+    cy.signOut();
+    mockAuthProviderAndJwtSignIn();
+
+    mountSdkContent(
+      <div style={{ display: "flex", padding: "20px" }}>
+        <InteractiveQuestion
+          questionId="new"
+          dataPicker="staged"
+          entityTypes={["table", "model"]}
+        />
+      </div>,
+    );
+
+    getSdkRoot().findByText("Pick your starting data").should("be.visible");
+
+    H.popover().findByText("Raw Data").click();
+    H.popover().findByText("Orders").click();
+    getSdkRoot().within(() => {
+      cy.button("Join data").click();
+    });
+
+    H.popover().within(() => {
+      cy.findByText("Orders").should("be.visible");
+      cy.icon("chevronleft").click();
+      cy.findByText("Models").should("be.visible");
+      cy.findByText("Raw Data").click();
+      cy.findByText("Orders").should("be.visible");
+      cy.findByText("Raw Data").should("not.exist");
+    });
+  });
+
   [
     {
       targetCollectionId: "personal",

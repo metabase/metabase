@@ -755,14 +755,12 @@ describe("scenarios > embedding > full app", () => {
      *
      * This step only shows when there are more than 1 option in the bucket step, the only time this happens
      * is when there are both selectable models and tables for the current user.
+     *
+     * A join only lists the query's database, so going back skips the database step.
      */
-    /** @param {'from-table' | 'from-model'} fromStep */
-    function goBackToBucketStep(fromStep = "from-table") {
+    function goBackToBucketStep() {
       H.popover().within(() => {
         cy.icon("chevronleft").click();
-        if (fromStep === "from-table") {
-          cy.icon("chevronleft").click();
-        }
       });
     }
 
@@ -874,13 +872,8 @@ describe("scenarios > embedding > full app", () => {
           );
           H.getNotebookStep("data").button("Join data").click();
           H.popover().within(() => {
-            cy.icon("chevronleft").click();
-            cy.findByRole("heading", { name: "Sample Database" }).should(
-              "not.exist",
-            );
-            cy.findByRole("heading", { name: "QA Postgres12" }).should(
-              "be.visible",
-            );
+            cy.findByText("Sample Database").should("not.exist");
+            cy.findByText("QA Postgres12").should("be.visible");
           });
 
           cy.log(
@@ -1067,7 +1060,7 @@ describe("scenarios > embedding > full app", () => {
         });
 
         H.getNotebookStep("data").button("Join data").click();
-        goBackToBucketStep("from-model");
+        goBackToBucketStep();
         selectCard({
           cardName: ordersCountModelDetails.name,
           cardType: "model",
@@ -1096,11 +1089,10 @@ describe("scenarios > embedding > full app", () => {
         });
 
         H.getNotebookStep("data").button("Join data").click();
-        goBackToBucketStep("from-model");
+        goBackToBucketStep();
 
         selectTable({
           tableName: "Products",
-          databaseName: "Sample Database",
           aliases: joinTableAliases,
         });
         clickOnJoinDataSource("Products");
