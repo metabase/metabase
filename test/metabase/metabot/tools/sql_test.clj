@@ -242,7 +242,9 @@
                   (is (str/includes? (:output result) "Don't retry"))))
               (testing (str tool-name " with the notebook builder")
                 (let [result (invoke :internal)]
-                  (is (= {:class :recoverable :code ::sql/no-native-permission} (:error result)))
+                  (is (= {:class :recoverable
+                          :code  ::sql/no-native-permission-with-notebook-fallback}
+                         (:error result)))
                   (is (str/includes? (:output result) "Build the question with `construct_notebook_query`")))))))))))
 
 (deftest missing-sql-editor-test
@@ -285,7 +287,7 @@
               [[:query-builder-and-native :internal nil]
                [:query-builder-and-native :sql nil]
                [:query-builder :internal {:class :recoverable
-                                          :code ::sql/no-native-permission}]
+                                          :code ::sql/no-native-permission-with-notebook-fallback}]
                [:query-builder :sql {:class :unrecoverable
                                      :code ::sql.common/no-native-permission
                                      :user-message "You do not have permission to write SQL queries against this database. Native query permissions are required."}]
