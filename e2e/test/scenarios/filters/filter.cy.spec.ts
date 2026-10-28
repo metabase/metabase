@@ -20,7 +20,7 @@ describe("scenarios > filters", () => {
     cy.signInAsAdmin();
   });
 
-  it("should filter a joined, summarized question before and after the aggregation (metabase#13534, metabase#11957)", () => {
+  it("should filter a joined, summarized question before and after the aggregation (metabase#13534, metabase#11957, metabase#24994, metabase#30312)", () => {
     H.visitQuestionAdhoc({
       dataset_query: {
         database: SAMPLE_DB_ID,
@@ -89,20 +89,54 @@ describe("scenarios > filters", () => {
     H.assertQueryBuilderRowCount(2);
     H.tableInteractiveBody().findByText("Doohickey").should("not.exist");
 
-    cy.log("removing the first-stage filter keeps the aggregation filter");
+    cy.log(
+      "edit the first-stage filter of a question with an aggregation filter",
+    );
     H.queryBuilderFiltersPanel()
       .findByText("Products → Category is not Gizmo")
+      .click();
+    H.popover().within(() => {
+      cy.findByRole("checkbox", { name: "Gizmo" }).should("be.checked");
+      cy.findByText("Widget").click();
+      cy.button("Update filter").click();
+    });
+    H.queryBuilderFiltersPanel()
+      .findByText("Products → Category is not 2 selections")
+      .should("be.visible");
+    H.assertQueryBuilderRowCount(1);
+    H.tableInteractiveBody().findByText("Gadget").should("be.visible");
+
+    cy.log("removing the first-stage filter keeps the aggregation filter");
+    H.queryBuilderFiltersPanel()
+      .findByText("Products → Category is not 2 selections")
       .icon("close")
       .click();
     H.queryBuilderFiltersPanel().within(() => {
       cy.findByText(/^Count is greater than 4,?000$/).should("be.visible");
-      cy.findByText("Products → Category is not Gizmo").should("not.exist");
+      cy.findByText("Products → Category is not 2 selections").should(
+        "not.exist",
+      );
     });
     H.assertQueryBuilderRowCount(3);
     H.tableInteractiveBody().within(() => {
       cy.findByText("4,784").should("be.visible"); // Gizmo
       cy.findByText("Doohickey").should("not.exist");
     });
+
+    cy.log("filter the aggregation from its column header");
+    H.tableHeaderClick("Count");
+    H.popover().findByText("Filter by this column").click();
+    H.selectFilterOperator("Equal to");
+    H.clickActionsPopover().within(() => {
+      cy.findByPlaceholderText("Enter a number").type("4939");
+      cy.realPress("Tab");
+      cy.button("Add filter").should("be.enabled").click();
+    });
+    H.queryBuilderFiltersPanel()
+      .findByText(/^Count is equal to 4,?939$/)
+      .should("be.visible");
+    H.assertQueryBuilderRowCount(1);
+    H.tableInteractiveBody().findByText("Gadget").should("be.visible");
   });
 
   it("should add a filter to the first stage of a question summarized twice (metabase#15620)", () => {
