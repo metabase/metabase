@@ -1,33 +1,37 @@
 import { render, screen, waitFor } from "@testing-library/react";
-import { StrictMode } from "react";
+import userEvent from "@testing-library/user-event";
+import { StrictMode, useState } from "react";
 
+import type { MetabaseDashboard } from "embedding-sdk-bundle/types/dashboard";
+import { CreateDashboardModal } from "embedding-sdk-package/components/public/CreateDashboardModal";
 import { InteractiveQuestion } from "embedding-sdk-package/components/public/InteractiveQuestion";
 import { StaticQuestion } from "embedding-sdk-package/components/public/StaticQuestion";
+import { StaticDashboard } from "embedding-sdk-package/components/public/dashboard/StaticDashboard";
 import {
   SDK_COMPONENT_NOT_YET_AVAILABLE_MESSAGE,
   SDK_NOT_LOADED_YET_MESSAGE,
 } from "embedding-sdk-package/constants/error-messages";
 import { useApplicationName } from "embedding-sdk-package/hooks/public/use-application-name";
+import { useCurrentUser } from "embedding-sdk-package/hooks/public/use-current-user";
 import { useDateFormatter } from "embedding-sdk-package/hooks/public/use-date-formatter";
 import { useMetabaseAuthStatus } from "embedding-sdk-package/hooks/public/use-metabase-auth-status";
 import { useMetabaseQuery } from "embedding-sdk-package/hooks/public/use-metabase-query";
 import { defineQuery } from "embedding-sdk-package/hooks/public/use-metabase-query/define-query";
+import { createMockUser } from "metabase-types/api/mocks";
 
-import { getMockSdkRegistry } from "../../lib/mock-sdk-registry";
-
-import { MetabaseTestProvider } from "./MetabaseTestProvider";
-
-const ORDERS_QUERY = defineQuery({
-  source: { type: "card", entityId: "ordersQuestionEntity" },
-});
+import {
+  MetabaseTestProvider,
+  type MetabaseTestProviderProps,
+} from "./MetabaseTestProvider";
 
 function SessionInfo() {
   const applicationName = useApplicationName();
   const authStatus = useMetabaseAuthStatus();
+  const user = useCurrentUser();
 
   return (
     <p>
-      {applicationName} {authStatus?.status}
+      {applicationName} {authStatus?.status} {user?.first_name ?? "anonymous"}
     </p>
   );
 }
@@ -44,28 +48,75 @@ function OrdersQueryError() {
   return <p>{error instanceof Error ? error.message : "no error"}</p>;
 }
 
+function NewDashboardFlow() {
+  const [createdName, setCreatedName] = useState("");
+
+  return (
+    <div>
+      <CreateDashboardModal
+        onCreate={(dashboard) => setCreatedName(dashboard.name)}
+      />
+      {createdName && <p>Opened {createdName}</p>}
+    </div>
+  );
+}
+
+function ClickCounter() {
+  const [count, setCount] = useState(0);
+
+  return (
+    <button onClick={() => setCount(count + 1)}>Clicked {count} times</button>
+  );
+}
+
+function setup({ children, ...options }: MetabaseTestProviderProps = {}) {
+  return render(
+    <MetabaseTestProvider {...options}>{children}</MetabaseTestProvider>,
+  );
+}
+
+const ORDERS_QUERY = defineQuery({
+  source: { type: "card", entityId: "ordersQuestionEntity" },
+});
+
+const CREATED_DASHBOARD: MetabaseDashboard = {
+  id: 7,
+  entity_id: "createdDashboardEntity",
+  created_at: "2024-01-01T00:00:00Z",
+  updated_at: "2024-01-01T00:00:00Z",
+  name: "Q3 revenue",
+  description: null,
+  "last-edit-info": {
+    id: 1,
+    email: "ada@example.com",
+    first_name: "Ada",
+    last_name: "Lovelace",
+    timestamp: "2024-01-01T00:00:00Z",
+  },
+};
+
 describe("MetabaseTestProvider", () => {
   it("renders SDK components as their children", async () => {
-    render(
-      <MetabaseTestProvider>
+    setup({
+      children: (
         <StaticQuestion questionId={1}>
           <p>Orders by month</p>
         </StaticQuestion>
-      </MetabaseTestProvider>,
-    );
+      ),
+    });
 
     expect(await screen.findByText("Orders by month")).toBeInTheDocument();
   });
 
   it("renders subcomponents of compound SDK components", async () => {
-    render(
-      <MetabaseTestProvider>
+    setup({
+      children: (
         <InteractiveQuestion questionId={1}>
           <InteractiveQuestion.Title />
           <p>Below title</p>
         </InteractiveQuestion>
-      </MetabaseTestProvider>,
-    );
+      ),
+    });
 
     expect(await screen.findByText("Below title")).toBeInTheDocument();
     expect(
@@ -76,22 +127,70 @@ describe("MetabaseTestProvider", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("serves signed-in session to SDK hooks", async () => {
-    render(
-      <MetabaseTestProvider>
-        <SessionInfo />
-      </MetabaseTestProvider>,
+  it("renders component passed for SDK component with its props", async () => {
+    setup({
+      StaticQuestion: ({ questionId }) => <p>Question {questionId}</p>,
+      children: <StaticQuestion questionId={42} />,
+    });
+
+    expect(await screen.findByText("Question 42")).toBeInTheDocument();
+  });
+
+  it("renders component passed for SDK component that uses hooks", async () => {
+    setup({
+      StaticDashboard: ClickCounter,
+      children: <StaticDashboard dashboardId={1} />,
+    });
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Clicked 0 times" }),
     );
 
-    expect(await screen.findByText("Metabase success")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Clicked 1 times" }),
+    ).toBeInTheDocument();
+  });
+
+  it("lets component passed for SDK component call its callbacks", async () => {
+    setup({
+      CreateDashboardModal: ({ onCreate }) => (
+        <button onClick={() => onCreate(CREATED_DASHBOARD)}>
+          Create dashboard
+        </button>
+      ),
+      children: <NewDashboardFlow />,
+    });
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Create dashboard" }),
+    );
+
+    expect(screen.getByText("Opened Q3 revenue")).toBeInTheDocument();
+  });
+
+  it("serves signed-in session by default", async () => {
+    setup({ children: <SessionInfo /> });
+
+    expect(
+      await screen.findByText("Metabase success anonymous"),
+    ).toBeInTheDocument();
+  });
+
+  it("serves passed user, login status and application name", async () => {
+    setup({
+      user: createMockUser({ first_name: "Ada" }),
+      loginStatus: { status: "loading" },
+      applicationName: "Acme Analytics",
+      children: <SessionInfo />,
+    });
+
+    expect(
+      await screen.findByText("Acme Analytics loading Ada"),
+    ).toBeInTheDocument();
   });
 
   it("formats dates for date formatter hook", async () => {
-    render(
-      <MetabaseTestProvider>
-        <DateRangeLabel />
-      </MetabaseTestProvider>,
-    );
+    setup({ children: <DateRangeLabel /> });
 
     expect(
       await screen.findByText("January 1, 2024–January 31, 2024"),
@@ -99,42 +198,31 @@ describe("MetabaseTestProvider", () => {
   });
 
   it("rejects unmocked data requests", async () => {
-    render(
-      <MetabaseTestProvider>
-        <OrdersQueryError />
-      </MetabaseTestProvider>,
-    );
+    setup({ children: <OrdersQueryError /> });
 
     expect(
       await screen.findByText(/No mock for resolveDatasetQuery/),
     ).toBeInTheDocument();
   });
 
-  it("keeps mocks registered before render through strict mode effect replay", async () => {
-    const { handlers, resets } = getMockSdkRegistry();
-    handlers.resolveDatasetQuery = () => () =>
-      Promise.reject(new Error("Answered by registered mock"));
-    resets.add(() => delete handlers.resolveDatasetQuery);
-
+  it("keeps serving SDK through strict mode effect replay", async () => {
     render(
       <StrictMode>
-        <MetabaseTestProvider>
-          <OrdersQueryError />
+        <MetabaseTestProvider applicationName="Acme Analytics">
+          <SessionInfo />
         </MetabaseTestProvider>
       </StrictMode>,
     );
 
     expect(
-      await screen.findByText("Answered by registered mock"),
+      await screen.findByText("Acme Analytics success anonymous"),
     ).toBeInTheDocument();
   });
 
   it("removes mock SDK on unmount", async () => {
-    const { unmount } = render(
-      <MetabaseTestProvider>
-        <StaticQuestion questionId={1} />
-      </MetabaseTestProvider>,
-    );
+    const { unmount } = setup({
+      children: <StaticQuestion questionId={1} />,
+    });
 
     expect(window.METABASE_EMBEDDING_SDK_BUNDLE).toBeDefined();
 

@@ -1,19 +1,12 @@
 import type { MetabaseProviderPropsStoreExternalProps } from "embedding-sdk-bundle/components/public/ComponentProvider";
+import type { MetabaseEmbeddingSdkBundleExports } from "embedding-sdk-bundle/types/sdk-bundle";
 import { ensureMetabaseProviderPropsStore } from "embedding-sdk-shared/lib/ensure-metabase-provider-props-store";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import { SdkLoadingState } from "embedding-sdk-shared/types/sdk-loading";
 
-import { MOCK_SDK_BUNDLE } from "./mock-sdk-bundle";
-import { resetMockSdkRegistry } from "./mock-sdk-registry";
-
 type MockSdkStore = {
   getState: () => undefined;
   subscribe: (listener: () => void) => () => void;
-};
-
-const MOCK_SDK_STORE: MockSdkStore = {
-  getState: () => undefined,
-  subscribe: () => () => undefined,
 };
 
 function getPropsStore() {
@@ -23,14 +16,14 @@ function getPropsStore() {
   >();
 }
 
-export function installMockSdk() {
+export function installMockSdk(bundle: MetabaseEmbeddingSdkBundleExports) {
   const win = getWindow();
 
   if (!win) {
-    return;
+    return bundle;
   }
 
-  win.METABASE_EMBEDDING_SDK_BUNDLE = MOCK_SDK_BUNDLE;
+  win.METABASE_EMBEDDING_SDK_BUNDLE = bundle;
 
   const propsStore = getPropsStore();
   propsStore.setProps({});
@@ -39,9 +32,9 @@ export function installMockSdk() {
     loadingState: SdkLoadingState.Initialized,
     loadingError: null,
   });
-}
 
-let mountedProviderCount = 0;
+  return bundle;
+}
 
 function uninstallMockSdk() {
   const win = getWindow();
@@ -51,16 +44,22 @@ function uninstallMockSdk() {
   }
 
   delete win.METABASE_EMBEDDING_SDK_BUNDLE;
-  resetMockSdkRegistry();
   getPropsStore().cleanup();
 }
 
-export function acquireMockSdk() {
+export function acquireMockSdk(bundle: MetabaseEmbeddingSdkBundleExports) {
   mountedProviderCount += 1;
-  installMockSdk();
+  installMockSdk(bundle);
 
   return () => {
     mountedProviderCount -= 1;
-    queueMicrotask(uninstallMockSdk);
+    uninstallMockSdk();
   };
 }
+
+const MOCK_SDK_STORE: MockSdkStore = {
+  getState: () => undefined,
+  subscribe: () => () => undefined,
+};
+
+let mountedProviderCount = 0;
