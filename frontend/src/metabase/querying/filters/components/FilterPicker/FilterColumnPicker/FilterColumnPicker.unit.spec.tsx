@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen, within } from "__support__/ui";
+import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
@@ -43,6 +43,49 @@ describe("FilterColumnPicker", () => {
     expect(screen.getAllByLabelText("More info").length).toBeGreaterThanOrEqual(
       1,
     );
+  });
+
+  it("should show the column description and semantic type in the info hovercard", async () => {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+    setup({ query, stageIndexes: [0] });
+
+    fireEvent.mouseEnter(
+      within(screen.getByLabelText("Created At")).getByLabelText("More info"),
+    );
+
+    expect(
+      await screen.findByText("The timestamp the order was created"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Creation timestamp")).toBeInTheDocument();
+  });
+
+  it("should filter columns by the search text", async () => {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
+    setup({ query, stageIndexes: [0] });
+
+    await userEvent.click(screen.getByText("Product"));
+    expect(
+      screen.getByRole("option", { name: "Category" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Vendor" })).toBeInTheDocument();
+
+    const searchInput = screen.getByTestId("list-search-field");
+    await userEvent.type(searchInput, "vend");
+    expect(
+      await screen.findByRole("option", { name: "Vendor" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("option", { name: "Category" }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.clear(searchInput);
+    await userEvent.type(searchInput, "price");
+    expect(
+      await screen.findByRole("option", { name: "Price" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("option", { name: "Category" }),
+    ).not.toBeInTheDocument();
   });
 
   it("Searching by displayName should work (#39622)", async () => {
