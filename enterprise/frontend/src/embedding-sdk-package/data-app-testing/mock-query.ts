@@ -42,10 +42,11 @@ type DynamicQueryFor<TQuery, TDynamic> = TDynamic &
 
 const DEFAULT_DATE_VALUE = "2024-01-01T00:00:00Z";
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
-const getDefaultValue = (column: SchemaColumn): RowValue => {
+function getDefaultValue(column: SchemaColumn): RowValue {
   switch (column.jsType) {
     case "number":
       return 1;
@@ -58,9 +59,9 @@ const getDefaultValue = (column: SchemaColumn): RowValue => {
     default:
       return null;
   }
-};
+}
 
-const toRowValue = (value: unknown): RowValue => {
+function toRowValue(value: unknown): RowValue {
   if (
     typeof value === "string" ||
     typeof value === "number" ||
@@ -71,36 +72,39 @@ const toRowValue = (value: unknown): RowValue => {
   }
 
   return null;
-};
+}
 
-const toRowValues = (
+function toRowValues(
   row: unknown,
   columns: readonly SchemaColumn[],
-): RowValues =>
-  columns.map((column) =>
+): RowValues {
+  return columns.map((column) =>
     isRecord(row) && Object.hasOwn(row, column.name)
       ? toRowValue(row[column.name])
       : getDefaultValue(column),
   );
+}
 
-const toDatasetColumn = (column: SchemaColumn): DatasetColumn => ({
-  name: column.name,
-  display_name: column.displayName ?? column.name,
-  source: "fields",
-  ...(column.baseType !== undefined && { base_type: column.baseType }),
-  ...(column.effectiveType !== undefined && {
-    effective_type: column.effectiveType,
-  }),
-});
+function toDatasetColumn(column: SchemaColumn): DatasetColumn {
+  return {
+    name: column.name,
+    display_name: column.displayName ?? column.name,
+    source: "fields",
+    ...(column.baseType !== undefined && { base_type: column.baseType }),
+    ...(column.effectiveType !== undefined && {
+      effective_type: column.effectiveType,
+    }),
+  };
+}
 
-const createQueryMock = <TDynamic>(
+function createQueryMock<TDynamic>(
   query: DefinedQuery,
   dynamicQuery: TDynamic,
   respond: (columns: SchemaColumn[]) => Promise<{
     columns: DatasetColumn[];
     rows: RowValues[];
   }>,
-): QueryMock<TDynamic> => {
+): QueryMock<TDynamic> {
   const calls: QueryMockCall<TDynamic>[] = [];
 
   registerQueryMock({
@@ -125,7 +129,7 @@ const createQueryMock = <TDynamic>(
     calls: () => calls,
     lastCall: () => calls.at(-1),
   };
-};
+}
 
 export function mockQuery<TQuery extends DefinedQuery>(
   query: TQuery,

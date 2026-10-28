@@ -38,7 +38,7 @@ const ORDERS_BY_STATUS = {
   aggregations: [aggregations.count()],
 } as const;
 
-const getErrorMessage = (error: unknown) => {
+function getErrorMessage(error: unknown) {
   if (error instanceof Error) {
     return error.message;
   }
@@ -50,13 +50,13 @@ const getErrorMessage = (error: unknown) => {
     "data" in error;
 
   return isApiError ? JSON.stringify(error) : "";
-};
+}
 
 type OrdersListProps = {
   status?: string;
 };
 
-const OrdersList = ({ status }: OrdersListProps) => {
+function OrdersList({ status }: OrdersListProps) {
   const { data, error, refetch } = useMetabaseQuery(
     ORDERS_QUERY,
     status === undefined
@@ -77,9 +77,9 @@ const OrdersList = ({ status }: OrdersListProps) => {
       <button onClick={refetch}>Refetch</button>
     </div>
   );
-};
+}
 
-const OrdersByStatus = () => {
+function OrdersByStatus() {
   const { data } = useMetabaseQuery(ORDERS_QUERY, {
     breakouts: [{ type: "column", name: "status" }],
     aggregations: [aggregations.count()],
@@ -97,18 +97,19 @@ const OrdersByStatus = () => {
       </ul>
     </div>
   );
-};
+}
 
 type SetupOpts = {
   status?: string;
 };
 
-const setup = ({ status }: SetupOpts = {}) =>
-  render(
+function setup({ status }: SetupOpts = {}) {
+  return render(
     <MetabaseTestProvider>
       <OrdersList status={status} />
     </MetabaseTestProvider>,
   );
+}
 
 describe("mockQuery", () => {
   it("serves mocked rows and fills unset columns with defaults", async () => {

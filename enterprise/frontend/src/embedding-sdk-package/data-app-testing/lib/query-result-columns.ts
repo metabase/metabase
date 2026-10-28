@@ -11,19 +11,23 @@ const JAVASCRIPT_TYPES: readonly SchemaJavaScriptType[] = [
   "unknown",
 ];
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
-const readArray = (value: unknown): readonly unknown[] =>
-  Array.isArray(value) ? value : [];
+function readArray(value: unknown): readonly unknown[] {
+  return Array.isArray(value) ? value : [];
+}
 
-const readString = (value: unknown): string | undefined =>
-  typeof value === "string" ? value : undefined;
+function readString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
 
-const readJavaScriptType = (value: unknown): SchemaJavaScriptType | undefined =>
-  JAVASCRIPT_TYPES.find((javaScriptType) => javaScriptType === value);
+function readJavaScriptType(value: unknown): SchemaJavaScriptType | undefined {
+  return JAVASCRIPT_TYPES.find((javaScriptType) => javaScriptType === value);
+}
 
-const toSchemaColumn = (value: unknown): SchemaColumn | null => {
+function toSchemaColumn(value: unknown): SchemaColumn | null {
   if (!isRecord(value) || typeof value.name !== "string") {
     return null;
   }
@@ -40,9 +44,9 @@ const toSchemaColumn = (value: unknown): SchemaColumn | null => {
     ...(baseType !== undefined && { baseType }),
     ...(effectiveType !== undefined && { effectiveType }),
   };
-};
+}
 
-const getSourceColumns = (source: unknown): SchemaColumn[] => {
+function getSourceColumns(source: unknown): SchemaColumn[] {
   if (!isRecord(source)) {
     return [];
   }
@@ -52,12 +56,12 @@ const getSourceColumns = (source: unknown): SchemaColumn[] => {
     : Object.values(isRecord(source.fields) ? source.fields : {});
 
   return columns.map(toSchemaColumn).filter((column) => column !== null);
-};
+}
 
-const getBreakoutColumn = (
+function getBreakoutColumn(
   breakout: unknown,
   inputColumns: readonly SchemaColumn[],
-): SchemaColumn | null => {
+): SchemaColumn | null {
   if (
     isRecord(breakout) &&
     breakout.type === "breakout" &&
@@ -71,9 +75,9 @@ const getBreakoutColumn = (
   const inputColumn = inputColumns.find(({ name }) => name === column?.name);
 
   return column && { ...inputColumn, ...column };
-};
+}
 
-const getAggregationColumn = (aggregation: unknown): SchemaColumn | null => {
+function getAggregationColumn(aggregation: unknown): SchemaColumn | null {
   if (!isRecord(aggregation)) {
     return null;
   }
@@ -90,12 +94,12 @@ const getAggregationColumn = (aggregation: unknown): SchemaColumn | null => {
     (operator === "distinct" ? "count" : operator);
 
   return name === undefined ? null : { name, jsType: "number" };
-};
+}
 
-const getStageColumns = (
+function getStageColumns(
   stage: unknown,
   inputColumns: SchemaColumn[],
-): SchemaColumn[] => {
+): SchemaColumn[] {
   if (!isRecord(stage)) {
     return inputColumns;
   }
@@ -115,16 +119,16 @@ const getStageColumns = (
     .filter((column) => column !== null);
 
   return fields.length > 0 ? fields : inputColumns;
-};
+}
 
-export const getQueryResultColumns = (
+export function getQueryResultColumns(
   query: unknown,
   dynamicQuery: unknown,
-): SchemaColumn[] => {
+): SchemaColumn[] {
   const sourceColumns = getSourceColumns(
     isRecord(query) ? query.source : undefined,
   );
   const queryColumns = getStageColumns(query, sourceColumns);
 
   return getStageColumns(dynamicQuery, queryColumns);
-};
+}

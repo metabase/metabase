@@ -17,13 +17,15 @@ export type QueryMockEntry = {
 const entries: QueryMockEntry[] = [];
 const requestsByDatasetQuery = new WeakMap<DatasetQuery, QueryRequest>();
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
-const isEmptyClause = (value: unknown) =>
-  value === undefined || (Array.isArray(value) && value.length === 0);
+function isEmptyClause(value: unknown) {
+  return value === undefined || (Array.isArray(value) && value.length === 0);
+}
 
-export const getDynamicQueryKey = (dynamicQuery: unknown): string => {
+export function getDynamicQueryKey(dynamicQuery: unknown): string {
   if (!isRecord(dynamicQuery)) {
     return "";
   }
@@ -35,9 +37,9 @@ export const getDynamicQueryKey = (dynamicQuery: unknown): string => {
   return clauses.length > 0
     ? stableStringifyQuery(Object.fromEntries(clauses))
     : "";
-};
+}
 
-const getSourceKey = (query: unknown): string | undefined => {
+function getSourceKey(query: unknown): string | undefined {
   const source = isRecord(query) ? query.source : undefined;
 
   if (!isRecord(source)) {
@@ -47,21 +49,24 @@ const getSourceKey = (query: unknown): string | undefined => {
   return typeof source.entityId === "string"
     ? source.entityId
     : `${String(source.type)}:${String(source.id)}`;
-};
+}
 
-const getQueryLabel = (query: unknown): string => {
+function getQueryLabel(query: unknown): string {
   const source = isRecord(query) ? query.source : undefined;
   const name = isRecord(source) ? source.name : undefined;
 
   return typeof name === "string" ? name : (getSourceKey(query) ?? "query");
-};
+}
 
-const isSameQuery = (registered: unknown, requested: unknown) =>
-  registered === requested ||
-  (getSourceKey(registered) !== undefined &&
-    getSourceKey(registered) === getSourceKey(requested));
+function isSameQuery(registered: unknown, requested: unknown) {
+  return (
+    registered === requested ||
+    (getSourceKey(registered) !== undefined &&
+      getSourceKey(registered) === getSourceKey(requested))
+  );
+}
 
-const createNoMockError = ({ query, dynamicQuery }: QueryRequest) => {
+function createNoMockError({ query, dynamicQuery }: QueryRequest) {
   const dynamicQueryKey = getDynamicQueryKey(dynamicQuery);
   const dynamicPart = dynamicQueryKey
     ? ` with dynamic part ${dynamicQueryKey}`
@@ -70,9 +75,9 @@ const createNoMockError = ({ query, dynamicQuery }: QueryRequest) => {
   return new Error(
     `No mock for query "${getQueryLabel(query)}"${dynamicPart}. Call mockQuery for it before rendering.`,
   );
-};
+}
 
-const answerQuery = (request: QueryRequest): Promise<QueryDatasetResult> => {
+function answerQuery(request: QueryRequest): Promise<QueryDatasetResult> {
   const dynamicQueryKey = getDynamicQueryKey(request.dynamicQuery);
   const entry = entries.find(
     (candidate) =>
@@ -83,9 +88,9 @@ const answerQuery = (request: QueryRequest): Promise<QueryDatasetResult> => {
   return entry
     ? entry.respond(request)
     : Promise.reject(createNoMockError(request));
-};
+}
 
-const installQueryMockHandlers = () => {
+function installQueryMockHandlers() {
   const { handlers, resets } = getMockSdkRegistry();
 
   handlers.resolveDatasetQuery = () => async (query, dynamicQuery) => {
@@ -112,11 +117,11 @@ const installQueryMockHandlers = () => {
     };
 
   resets.add(() => entries.splice(0));
-};
+}
 
 installQueryMockHandlers();
 
-export const registerQueryMock = (entry: QueryMockEntry) => {
+export function registerQueryMock(entry: QueryMockEntry) {
   const replacedIndex = entries.findIndex(
     (candidate) =>
       candidate.query === entry.query &&
@@ -128,4 +133,4 @@ export const registerQueryMock = (entry: QueryMockEntry) => {
   }
 
   entries.unshift(entry);
-};
+}
