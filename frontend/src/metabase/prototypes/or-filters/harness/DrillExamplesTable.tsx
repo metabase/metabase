@@ -473,10 +473,9 @@ const OTHER_DRILLS: DrillRow[] = [
     get queryChange() {
       return t`No change; navigates to object detail`;
     },
-    start: RAW_ROWS,
     results: [],
     get howToOpen() {
-      return t`Click an ID cell → "View details"; navigates to object detail in the real app, does nothing here`;
+      return t`Not reachable here: an ID cell has no popover at all, since quick filters skip primary keys and the real app's "View details" is a page navigation the harness does not wire up`;
     },
   },
   {
