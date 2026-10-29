@@ -13,8 +13,6 @@ import {
 
 import type { ColumnListItem } from "../types";
 
-import type { ColumnListItem } from "../types";
-
 import { FilterColumnPicker } from "./FilterColumnPicker";
 
 interface SetupOpts {
