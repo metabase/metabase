@@ -12,13 +12,13 @@
 (mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database database-id))
+  (t2/select-one :model/Database :id database-id))
 
 (mu/defn update-database-details!
   "Set the details of the Database with `database-id`, returning the number updated."
   [database-id :- ::lib.schema.id/database
    details     :- ::warehouses.schema/database.details]
-  (t2/update! :model/Database database-id {:details details}))
+  (t2/update! :model/Database :id database-id {:details details}))
 
 (mu/defn set-table-schemas!
   "Set the schema of the Tables of the Database with `database-id` that do not have `schema` yet, overwriting any

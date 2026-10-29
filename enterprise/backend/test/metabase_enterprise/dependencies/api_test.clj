@@ -465,7 +465,7 @@
                                                                      :schema "PUBLIC"
                                                                      :name   "inactive_transform_table"}}]
           ;; Simulate the transform having been run: link it to its (now inactive) target table
-          (t2/update! :model/Transform transform-id {:target_table_id table-id})
+          (t2/update! :model/Transform :id transform-id {:target_table_id table-id})
           (events/publish-event! :event/transform-run-complete
                                  {:object {:db-id (mt/id)
                                            :output-schema "PUBLIC"
@@ -1156,7 +1156,7 @@
                                                                                 :name   "referenced_transform_table"}}]
           ;; Simulate the referenced transform having been run: link it to its target table
           ;; so the table→transform dep is visible in the dependency graph.
-          (t2/update! :model/Transform referenced-transform-id {:target_table_id referenced-table-id})
+          (t2/update! :model/Transform :id referenced-transform-id {:target_table_id referenced-table-id})
           (events/publish-event! :event/transform-run-complete
                                  {:object {:db-id (mt/id)
                                            :output-schema "PUBLIC"
@@ -1386,7 +1386,7 @@
                   (let [internal-model (create-model-card! user "Internal Model - intbreaking")
                         dependent-card (create-dependent-card-on-model! user internal-model "Dependent - intbreaking")]
                     [internal-model dependent-card]))]
-            (t2/update! :model/Card (:id internal-model) {:creator_id config/internal-mb-user-id})
+            (t2/update! :model/Card :id (:id internal-model) {:creator_id config/internal-mb-user-id})
             (lib-be/with-metadata-provider-cache
               (break-model-card! (t2/select-one :model/Card :id (:id internal-model))))
             (lib-be/with-metadata-provider-cache
@@ -1782,7 +1782,7 @@
                                              :creator_id    (:id user)}
                            :model/Dependency _dep {:from_entity_type "card",  :from_entity_id (:id card)
                                                    :to_entity_type   "table", :to_entity_id   (:id table)}]
-              (t2/update! :model/Table (:id table) {:active false})
+              (t2/update! :model/Table :id (:id table) {:active false})
               (lib-be/with-metadata-provider-cache
                 (run-analysis-for-card! (:id card)))
               (testing "the dependent card's analysis is now broken, attributing the inactive table as the source"
@@ -2135,9 +2135,9 @@
             {mid-id :id} (create-dependent! base-card user "Mid")
             {high-id :id} (create-dependent! base-card user "High")]
         (deps.test/synchronously-run-backfill!)
-        (t2/update! :model/Card low-id {:view_count 10})
-        (t2/update! :model/Card mid-id {:view_count 50})
-        (t2/update! :model/Card high-id {:view_count 100})
+        (t2/update! :model/Card :id low-id {:view_count 10})
+        (t2/update! :model/Card :id mid-id {:view_count 50})
+        (t2/update! :model/Card :id high-id {:view_count 100})
         (is (=? [{:data {:view_count 10}} {:data {:view_count 50}} {:data {:view_count 100}}]
                 (get-dependents base-card-id :sort-column :view-count :sort-direction :asc)))
         (is (=? [{:data {:view_count 100}} {:data {:view_count 50}} {:data {:view_count 10}}]
@@ -2154,8 +2154,8 @@
                                               :row 0 :col 0 :size_x 4 :size_y 4})
             (events/publish-event! :event/dashboard-update {:object (t2/select-one :model/Dashboard :id dashboard-id) :user-id (mt/user->id :crowberto)})
             (deps.test/synchronously-run-backfill!)
-            (t2/update! :model/Card low-id {:view_count 10})
-            (t2/update! :model/Card high-id {:view_count 100})
+            (t2/update! :model/Card :id low-id {:view_count 10})
+            (t2/update! :model/Card :id high-id {:view_count 100})
             (is (=? [{:data {:view_count 10}} {:data {:view_count 100}} {:data {:view_count 200}}]
                     (get-dependents base-card-id :sort-column :view-count :sort-direction :asc)))
             (is (=? [{:data {:view_count 200}} {:data {:view_count 100}} {:data {:view_count 10}}]
@@ -2251,8 +2251,8 @@
                         archived-dep-b (create-dependent-card-on-model! user model-card-b "Archived Dep B - errvistest")]
                     [model-card-a model-card-b visible-dep-a visible-dep-b archived-dep-a archived-dep-b]))]
             ;; Archive the archived dependents
-            (t2/update! :model/Card (:id archived-dep-a) {:archived true})
-            (t2/update! :model/Card (:id archived-dep-b) {:archived true})
+            (t2/update! :model/Card :id (:id archived-dep-a) {:archived true})
+            (t2/update! :model/Card :id (:id archived-dep-b) {:archived true})
             ;; Break both models
             (lib-be/with-metadata-provider-cache
               (break-model-card! model-card-a)
@@ -2348,8 +2348,8 @@
                         archived-dep-a-2 (create-dependent-card-on-model! user model-card-a "Archived Dep A2 - sortviserr")]
                     [model-card-a model-card-b visible-dep-a visible-dep-b archived-dep-a-1 archived-dep-a-2]))]
             ;; Archive model-a's extra dependents
-            (t2/update! :model/Card (:id archived-dep-a-1) {:archived true})
-            (t2/update! :model/Card (:id archived-dep-a-2) {:archived true})
+            (t2/update! :model/Card :id (:id archived-dep-a-1) {:archived true})
+            (t2/update! :model/Card :id (:id archived-dep-a-2) {:archived true})
             ;; Insert errors directly to ensure we control exactly what's in the DB
             ;; Model A: 1 visible error, 2 archived errors = 3 total
             ;; Model B: 2 visible errors = 2 total

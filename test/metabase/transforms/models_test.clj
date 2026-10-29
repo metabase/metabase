@@ -317,7 +317,7 @@
                                :target-incremental-strategy {:type "append"}}
                       :last_checkpoint_value "42"}]
         (testing "checkpoint is present before update"
-          (let [t (t2/select-one :model/Transform transform-id)]
+          (let [t (t2/select-one :model/Transform :id transform-id)]
             (is (= "42" (:last_checkpoint_value t)))))
         (testing "changing checkpoint-filter-field-id resets checkpoint"
           (t2/update! :model/Transform :id transform-id
@@ -325,18 +325,18 @@
                                 :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 1")
                                 :source-incremental-strategy {:type "checkpoint"
                                                               :checkpoint-filter-field-id 200}}})
-          (let [t (t2/select-one :model/Transform transform-id)]
+          (let [t (t2/select-one :model/Transform :id transform-id)]
             (is (nil? (:last_checkpoint_value t)))))
         (testing "updating without changing checkpoint-filter-field-id preserves checkpoint"
           ;; Set checkpoint again
-          (t2/update! :model/Transform transform-id
+          (t2/update! :model/Transform :id transform-id
                       {:last_checkpoint_value "99"})
           (t2/update! :model/Transform :id transform-id
                       {:source {:type :query
                                 :query (lib/native-query (lib-be/application-database-metadata-provider db-id) "SELECT 2")
                                 :source-incremental-strategy {:type "checkpoint"
                                                               :checkpoint-filter-field-id 200}}})
-          (let [t (t2/select-one :model/Transform transform-id)]
+          (let [t (t2/select-one :model/Transform :id transform-id)]
             (is (= "99" (:last_checkpoint_value t)))))))))
 
 (deftest lookback-round-trips-with-keyword-keys-test
@@ -355,7 +355,7 @@
                                :database db-id
                                :target-incremental-strategy {:type "append"}}}]
         (is (= {:value 4 :unit "day"}
-               (get-in (t2/select-one :model/Transform transform-id)
+               (get-in (t2/select-one :model/Transform :id transform-id)
                        [:source :source-incremental-strategy :lookback])))))))
 
 (deftest schedules-for-transforms-test

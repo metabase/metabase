@@ -11,7 +11,7 @@
 (mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database database-id))
+  (t2/select-one :model/Database :id database-id))
 
 (mu/defn table-index
   "The TableIndex with `id`, or nil."
@@ -27,10 +27,10 @@
   "Set the `structured` definition of the TableIndex with `id`."
   [id         :- ms/PositiveInt
    structured :- [:maybe ::indexes.schema/table-index.structured]]
-  (t2/update! :model/TableIndex id {:structured structured}))
+  (t2/update! :model/TableIndex :id id {:structured structured}))
 
 (mu/defn set-table-index-status!
   "Set the `status` of the TableIndex with `id`."
   [id     :- ms/PositiveInt
    status :- [:or :keyword :string]]
-  (t2/update! :model/TableIndex id {:status status}))
+  (t2/update! :model/TableIndex :id id {:status status}))
