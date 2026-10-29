@@ -40,9 +40,7 @@
   },
   "typesVersions": {
     "*": {
-      "next": [
-        "./dist/next.d.ts"
-      ]
+      "next": ["./dist/next.d.ts"]
     }
   },
   "types": "./dist/index.d.ts",
