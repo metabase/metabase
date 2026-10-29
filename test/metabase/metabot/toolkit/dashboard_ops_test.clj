@@ -171,8 +171,14 @@
 ;; not ^:parallel: the `!` in fail! trips the kondo deftest lint
 (deftest error-data-must-match-its-schema-test
   (testing "throwing an error whose data breaks its schema in `errors` is a bug, caught where it is thrown"
-    (is (thrown-with-msg? AssertionError #"Data for dashboard op error :unknown-dashcard does not match its schema"
-                          (#'dashboard-ops/fail! :unknown-dashcard {:dashcard_id 7})))))
+    (let [e (try (#'dashboard-ops/fail! :unknown-dashcard {:dashcard_id 7})
+                 (catch clojure.lang.ExceptionInfo e e))]
+      (is (=? {:code :unknown-dashcard} (ex-data e)))
+      (is (re-find #"Data for dashboard op error :unknown-dashcard does not match its schema" (ex-message e))))
+    (testing "and it is a plain error, not a coded one a tool would word for the model"
+      (is (= {:code :not-a-code}
+             (ex-data (try (#'dashboard-ops/fail! :not-a-code {})
+                           (catch clojure.lang.ExceptionInfo e e))))))))
 
 (deftest ^:parallel out-of-range-index-test
   (testing "move_tab and move_parameter reject an out-of-range index, giving the count"
@@ -1111,4 +1117,21 @@
                                                         :values_source_type   "card"
                                                         :values_source_config {:card_id 45}}])
                         [{:op "update_parameter" :parameter_id "p1" :name "Renamed"}]
-                        {})))))
+                        {}))))
+  (testing "a card the dashboard already references may be named again without a row, as on save"
+    (let [dash (assoc empty-dash
+                      :dashcards  [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4 :series [{:id 11}]}]
+                      :parameters [{:id "p1" :values_source_type "card" :values_source_config {:card_id 45}}
+                                   {:id "p2"}])]
+      (is (nil? (op-error dash
+                          [{:op "set_series" :dashcard_id 7 :card_ids [11]}
+                           {:op "add_card" :id -1 :card_id 9}
+                           {:op                   "update_parameter"
+                            :parameter_id         "p2"
+                            :values_source_type   "card"
+                            :values_source_config {:card_id 45}}
+                           {:op "update_parameter" :parameter_id "p1" :values_source_type "static-list"}
+                           {:op "update_parameter" :parameter_id "p1" :values_source_type "card"}]
+                          {})))
+      (is (=? {::dashboard-ops/error :unknown-card, :card-id 12}
+              (op-error dash [{:op "set_series" :dashcard_id 7 :card_ids [11 12]}] {}))))))
