@@ -251,8 +251,9 @@
       ;; Python's `except Exception` also catches the RecursionError of SQL nested too deeply.
       (catch StackOverflowError _
         (vswap! result assoc :error "maximum recursion depth exceeded"))
+      ;; An exception without a message (a port NullPointerException) is still an error, so it still gets a reason.
       (catch Exception e
-        (vswap! result assoc :error (ex-message e))))
+        (vswap! result assoc :error (or (ex-message e) (.getName (class e))))))
     (cond-> @result
       (and read-only-type? (:error @result)) (assoc :reason "unparseable"))))
 

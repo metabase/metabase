@@ -75,6 +75,23 @@
     (is (thrown-with-msg? Exception #"ParseError"
                           (protocol/referenced-tables (sqlglot-java/parser) "postgres" "SELECT FROM WHERE (")))))
 
+(deftest rename-keeps-comments-test
+  (testing "a renamed column keeps its comment, as on GraalPy"
+    (let [replacements {:columns [[{:table "t" :column "a"} "b"]] :tables [[{:table "t"} "u"]]}]
+      (doseq [[sql expected] [["SELECT a /* c1 */ FROM t" "SELECT b /* c1 */ FROM u"]
+                              ["SELECT a -- c2\nFROM t" "SELECT b /* c2 */ FROM u"]
+                              ["SELECT t.a /* c3 */, x FROM t /* c4 */" "SELECT u.b /* c3 */, x FROM u /* c4 */"]
+                              ["SELECT * FROM t WHERE a /* c5 */ = 1" "SELECT * FROM u WHERE b /* c5 */ = 1"]]
+              backend [:sqlglot :sqlglot-java]]
+        (is (= expected (sql-parsing/replace-names (sql-parsing/parser backend) "postgres" sql replacements))
+            [backend sql])))))
+
+(deftest read-only-error-without-message-test
+  (testing "a port exception without a message still makes the SQL unparseable"
+    (is (=? {:allowed-stmt-type? false, :reason "unparseable", :error string?}
+            (sql-parsing/is-single-stmt-of-type? (sqlglot-java/parser) "postgres" "select @@session.x := 1"
+                                                 "read-only")))))
+
 (deftest backend-dispatch-test
   (testing "every sql-tools multimethod runs its :sqlglot method for :sqlglot-java, through the backend hierarchy"
     (is (= 10 (count (interface-multimethods))))

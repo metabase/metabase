@@ -102,6 +102,13 @@
   ^Expr [^Expr node ^String k value]
   (.set node k value))
 
+(defn copy-comments!
+  "Give `to` the comments attached to `from`, if any (`to.add_comments(from.comments)`). Returns `to`."
+  ^Expr [^Expr from ^Expr to]
+  (when-let [comments (some-> from .rawComments seq)]
+    (.addComments to (vec comments) false))
+  to)
+
 (defn replace!
   "Replace `node` in its tree with `replacement` (`node.replace(replacement)`)."
   [^Expr node replacement]

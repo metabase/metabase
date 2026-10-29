@@ -136,7 +136,7 @@
 
 (defn- set-identifier!
   "Set `arg` of `node` to the identifier `ident-name`: quoted if the identifier it replaces was, if `ident-name`
-  comes quoted, or if it needs quoting.
+  comes quoted, or if it needs quoting. The comments the parser attached to the old identifier move to the new one.
 
   A name that is not one identifier is quoted whole, so it can only ever be read back as that one name. sql_tools.py
   instead raises for some such names (`x;y`) and writes others into the SQL as they are (`x,y`)."
@@ -147,7 +147,8 @@
                         (nil? parsed)
                         was-quoted?
                         (needs-quoting? ident-name))]
-    (ast/set-arg! node arg (ast/identifier (if was-quoted? (ast/node-name parsed) ident-name) quoted?))))
+    (ast/set-arg! node arg (ast/copy-comments! (ast/arg node arg)
+                                               (ast/identifier (if was-quoted? (ast/node-name parsed) ident-name) quoted?)))))
 
 (defn- replace-table!
   "Apply a table replacement to the name parts `node` keeps under `catalog`, `db` and `table-arg`. A string renames
