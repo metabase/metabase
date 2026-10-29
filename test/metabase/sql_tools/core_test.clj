@@ -584,7 +584,7 @@
 
 (deftest ^:parallel read-only-select?-dash-comment-unicode-space-test
   (testing "-- before a non-ASCII space is not a comment on MySQL, so the text after it is refused"
-    (doseq [space [" " " " " " " " "　" "\u0085" " "]]
+    (doseq [space ["\u00a0" "\u2000" "\u2003" "\u200a" "\u3000" "\u0085" "\u2028"]]
       (testing (format "U+%04X" (int (first space)))
         (is (= {:reason :bare-dash-comment, :detail nil}
                (sql-tools/read-only-select-problem
@@ -637,7 +637,7 @@
 
 (deftest ^:parallel read-only-select?-tsql-statement-word-in-token-test
   (testing "a statement word glued to a name by a character that is not part of a word is refused"
-    (doseq [glue ["​" "‌" "⁠" "﻿"]]
+    (doseq [glue ["\u200b" "\u200c" "\u2060" "\ufeff"]]
       (testing (format "U+%04X" (int (first glue)))
         (is (= {:reason :statement-word, :detail "EXEC"}
                (sql-tools/read-only-select-problem :sqlserver (str "select * from t" glue "EXEC('select 1')")))))))
