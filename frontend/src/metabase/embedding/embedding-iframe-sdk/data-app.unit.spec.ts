@@ -132,11 +132,17 @@ describe("metabase-data-app", () => {
     );
   });
 
-  it.each([
-    { isGuest: true },
-    { useExistingUserSession: true },
-    { guestEmbedProviderUri: "/guest" },
-  ])("rejects unsupported auth methods: %p", (config) => {
+  it.each<[Record<string, unknown>, string]>([
+    [{ isGuest: true }, "Guest embeds are not supported for data apps."],
+    [
+      { useExistingUserSession: true },
+      "Using existing browser sessions are not supported for data apps.",
+    ],
+    [
+      { guestEmbedProviderUri: "/guest" },
+      "Guest embeds are not supported for data apps.",
+    ],
+  ])("rejects unsupported auth methods: %p", (config, message) => {
     window.metabaseConfig = { instanceUrl: INSTANCE_URL, ...config };
     const element = setup();
     expect(element.querySelector("iframe")).toBeNull();
@@ -144,7 +150,7 @@ describe("metabase-data-app", () => {
     expect(consoleError).toHaveBeenCalledWith(
       "[metabase.embed.error]",
       expect.objectContaining({
-        message: "Data apps require SSO authentication.",
+        message,
       }),
     );
   });
