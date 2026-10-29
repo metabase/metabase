@@ -1,32 +1,18 @@
 (ns dev.dbt-import.parse-test
   (:require
-   [clojure.java.io :as io]
    [clojure.test :refer [are deftest is testing]]
    [dev.dbt-import.parse :as parse]
    [dev.dbt-import.schemas.ir :as ir]
    [dev.dbt-import.test-util :as tu :refer [fld]]
    [mb.hawk.assert-exprs]
-   [medley.core :as m]
    [metabase.util.malli.registry :as mr])
   (:import
    (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
 
-(def ^:private flexanalytics-manifest-filename
-  "The flexanalytics/dbt-business-intelligence manifest, trimmed to the sections the converter reads."
-  (.getPath ^java.net.URL (io/resource "dbt_import/flexanalytics_manifest.json")))
-
-(defn- flexanalytics-manifest
-  "The fixture, read and decoded but not yet parsed into the IR."
-  []
-  (parse/read-manifest flexanalytics-manifest-filename))
-
-(defn- metric-named [parsed metric-name]
-  (m/find-first (comp #{metric-name} :name) (:metrics parsed)))
-
 (deftest ^:parallel parse-semantic-model-test
-  (let [manifest (flexanalytics-manifest)
+  (let [manifest (tu/flexanalytics-manifest)
         parsed   (parse/parse-semantic-model manifest (get-in manifest [:semantic_models "semantic_model.dbt_business_intelligence.fact_sales"]))]
     (is (mr/validate ::ir/semantic-model parsed))
     (is (= {:database "dbt_bi", :schema "public", :table "fact_sales"}
@@ -48,7 +34,7 @@
           "SQL exprs pass through untouched; emit decides what to do with them"))))
 
 (deftest ^:parallel parse-manifest-test
-  (let [parsed (parse/parse-manifest-file flexanalytics-manifest-filename)]
+  (let [parsed (tu/flexanalytics-ir)]
     (is (mr/validate ::ir/manifest parsed))
     (is (= {:tool "dbt", :version "1.12.6", :project "dbt_business_intelligence"}
            (:source parsed)))
@@ -68,17 +54,17 @@
       (is (= {:name "sales", :label "Sales", :semantic-model "fact_sales", :measure "sales"
               :agg :sum, :expr "sales", :agg-time-dimension "date_day", :filters [], :fill-nulls-with nil
               :join-to-timespine false}
-             (-> (metric-named parsed "sales")
+             (-> (tu/metric-named (:metrics parsed) "sales")
                  (select-keys [:name :label :semantic-model :measure :agg :expr :agg-time-dimension :filters
                                :fill-nulls-with :join-to-timespine])))))
     (testing "a hand-written metric takes its own label and meta over the measure's"
       (is (= {:label "Sales to Target Ratio", :agg :average, :expr "sales / target"
               :meta {:format {"type" "percent", "decimalPlaces" 1, "suffix" "%"}, :synonyms ["Sales Coverage Ratio"]}}
-             (-> (metric-named parsed "sales_to_target")
+             (-> (tu/metric-named (:metrics parsed) "sales_to_target")
                  (select-keys [:label :agg :expr :meta])))))))
 
 (deftest ^:parallel parse-metric-unsupported-test
-  (let [manifest        (flexanalytics-manifest)
+  (let [manifest        (tu/flexanalytics-manifest)
         semantic-models (update-vals (:semantic_models manifest) #(parse/parse-semantic-model manifest %))
         sales           (get-in manifest [:metrics "metric.dbt_business_intelligence.sales"])]
     (testing "a ratio metric parses to its two inputs, which it refers to by name"
@@ -123,15 +109,15 @@
       (is (= ["{{ Dimension('order__status') }} = 'Shipped'" "{{ Dimension('x') }} = 1"]
              (:filters (parse/parse-metric semantic-models
                                            (-> sales
-                                               (assoc :filter {:where_filters [{:where_sql_template "{{ Dimension('order__status') }} = 'Shipped'"}]})
-                                               (assoc-in [:type_params :measure :filter] {:where_filters [{:where_sql_template "{{ Dimension('x') }} = 1"}]})))))))
+                                               (assoc :filter (tu/where-filters "{{ Dimension('order__status') }} = 'Shipped'"))
+                                               (assoc-in [:type_params :measure :filter] (tu/where-filters "{{ Dimension('x') }} = 1"))))))))
     (testing "a blank label falls back to the name, like a missing one"
       (is (= "sales" (:label (parse/parse-metric semantic-models (assoc sales :label "")))))
       (is (= "sales" (:label (parse/parse-metric semantic-models (assoc sales :label nil))))))))
 
 (deftest ^:parallel advanced-metric-shapes-test
   (testing "the shapes dbt 1.12 writes for the metric types QRES-5 covers decode the way the manifest schema expects"
-    (let [manifest (flexanalytics-manifest)
+    (let [manifest (tu/flexanalytics-manifest)
           metric   #(get-in manifest [:metrics (str "metric.dbt_business_intelligence." %)])]
       (testing "ratio: numerator and denominator name metrics, and depends_on lists those metrics rather than a semantic model"
         (is (=? {:type        :ratio
@@ -144,7 +130,7 @@
       (testing "a ratio input carries its own filter and alias"
         (is (=? {:type_params {:numerator   {:name   "order_count"
                                              :alias  "cancelled_orders"
-                                             :filter {:where_filters [{:where_sql_template "{{ Dimension('order__order_status_dim') }} = 'Cancelled'"}]}}
+                                             :filter (tu/where-filters "{{ Dimension('order__order_status_dim') }} = 'Cancelled'")}
                                :denominator {:name "order_count", :alias nil, :filter nil}}
                  :depends_on  {:nodes ["metric.dbt_business_intelligence.order_count"]}}
                 (metric "cancelled_order_share"))))
@@ -181,8 +167,6 @@
                                                         :window       {"count" 30, "granularity" "day"}}}}
                 (metric "customer_reorder_rate")))))))
 
-(def ^:private sum-sales [:sum {} (fld "sales" :type/Float)])
-
 (defn- schema-version [v]
   (fn [m] (assoc-in m [:metadata :dbt_schema_version] (format "https://schemas.getdbt.com/dbt/manifest/%s.json" v))))
 
@@ -197,12 +181,12 @@
 
 (deftest ^:parallel manifest-version-test
   (testing "manifest schema v12 is the only one accepted"
-    (is (= sum-sales (tu/aggregation {:edit (schema-version "v12")})))
+    (is (= tu/sum-sales (tu/aggregation {:edit (schema-version "v12")})))
     (are [v] (thrown-with-msg? ExceptionInfo #"Unsupported dbt manifest.*manifest/v1[0-3]\.json"
                                (tu/convert {:edit (schema-version v)}))
       "v10" "v11" "v13"))
   (testing "dbt 1.12 and later are accepted, including pre-releases and a future major"
-    (are [v] (= sum-sales (tu/aggregation {:edit (dbt-version v)}))
+    (are [v] (= tu/sum-sales (tu/aggregation {:edit (dbt-version v)}))
       "1.12.0" "1.12.6" "1.13.0-b2" "1.20.1" "2.0.0"))
   (testing "manifests from dbt before 1.12 are rejected up front, by their version rather than by the keys they lack"
     (are [v] (thrown-with-msg? ExceptionInfo
@@ -221,14 +205,14 @@
 
 (deftest ^:parallel unknown-manifest-content-test
   (testing "unknown top-level keys and fields pass through"
-    (is (= sum-sales (tu/aggregation {:edit (fn [m]
+    (is (= tu/sum-sales (tu/aggregation {:edit (fn [m]
                                               (-> m
                                                   (assoc :saved_queries {} :unit_tests {})
                                                   (assoc-in [:metrics "metric.p.m" :brand_new_field] {:x 1})))}))))
   (testing "a custom time_granularity on the metric is a free-form string; one Metabase has a unit for converts"
-    (is (= sum-sales (tu/aggregation {:metric {:time_granularity "fiscal_quarter"}}))))
+    (is (= tu/sum-sales (tu/aggregation {:metric {:time_granularity "fiscal_quarter"}}))))
   (testing "an entity needs only a name and a type, as in the manifest JSON schema"
-    (is (= sum-sales (tu/aggregation {:edit (fn [m]
+    (is (= tu/sum-sales (tu/aggregation {:edit (fn [m]
                                               (update-in m [:semantic_models tu/sm-id :entities] conj
                                                          {:name "bare", :type "foreign"}))}))))
   (testing "aggregation, metric type, entity type and dimension granularity are closed enums in dbt's manifest schema"
@@ -257,11 +241,11 @@
 
 (deftest ^:parallel source-node-test
   (testing "a semantic model built on a seed or a snapshot finds its columns"
-    (are [node-id resource-type] (= sum-sales (tu/aggregation {:edit (re-home-model node-id resource-type)}))
+    (are [node-id resource-type] (= tu/sum-sales (tu/aggregation {:edit (re-home-model node-id resource-type)}))
       "seed.p.fact_sales"     "seed"
       "snapshot.p.fact_sales" "snapshot"))
   (testing "when depends_on lists several nodes, the one matching node_relation has the columns"
-    (is (= sum-sales (tu/aggregation {:edit (fn [m]
+    (is (= tu/sum-sales (tu/aggregation {:edit (fn [m]
                                               (-> m
                                                   (assoc-in [:nodes "model.p.other"]
                                                             (assoc (tu/model-node {"sales" "text"})
@@ -269,9 +253,9 @@
                                                   (assoc-in [:semantic_models tu/sm-id :depends_on :nodes]
                                                             ["model.p.other" tu/model-id])))}))))
   (testing "the metrics map key need not be the unique_id"
-    (is (= sum-sales (tu/aggregation {:edit (fn [m] (update m :metrics (fn [ms] {"metric.p.weird_key" (val (first ms))})))}))))
+    (is (= tu/sum-sales (tu/aggregation {:edit (fn [m] (update m :metrics (fn [ms] {"metric.p.weird_key" (val (first ms))})))}))))
   (testing "a semantic model with no default agg_time_dimension"
-    (is (= sum-sales (tu/aggregation {:edit (fn [m] (assoc-in m [:semantic_models tu/sm-id :defaults] nil))})))))
+    (is (= tu/sum-sales (tu/aggregation {:edit (fn [m] (assoc-in m [:semantic_models tu/sm-id :defaults] nil))})))))
 
 (deftest ^:parallel dangling-reference-test
   (is (re-find #"semantic model nil not found"
@@ -366,19 +350,19 @@
          more))
 
 (deftest ^:parallel inline-spec-test
-  (is (= sum-sales (tu/aggregation (inline {:agg "sum", :expr "sales"}))))
+  (is (= tu/sum-sales (tu/aggregation (inline {:agg "sum", :expr "sales"}))))
   (is (= [:distinct {} (fld "customer_key" :type/Text)]
          (tu/aggregation (inline {:agg "count_distinct", :expr "customer_key"}))))
   (is (= [:percentile {} (fld "sales" :type/Float) 0.9]
          (tu/aggregation (inline {:agg "percentile", :expr "sales", :agg_params {:percentile 0.9}}))))
   (is (= [:count {}] (tu/aggregation (inline {:agg "count", :expr "1"}))))
   (testing "no expr defaults to the metric name, documented column or not"
-    (is (= sum-sales (tu/aggregation (inline {:agg "sum"} :metric {:name "sales", :unique_id "metric.p.sales"}))))
+    (is (= tu/sum-sales (tu/aggregation (inline {:agg "sum"} :metric {:name "sales", :unique_id "metric.p.sales"}))))
     (is (= [:sum {} (fld "m" nil)] (tu/aggregation (inline {:agg "sum"})))))
   (testing "agg_time_dimension override is accepted"
-    (is (= sum-sales (tu/aggregation (inline {:agg "sum", :expr "sales", :agg_time_dimension "nope"})))))
+    (is (= tu/sum-sales (tu/aggregation (inline {:agg "sum", :expr "sales", :agg_time_dimension "nope"})))))
   (testing "fill_nulls_with on the metric"
-    (is (= [:coalesce {} sum-sales 0]
+    (is (= [:coalesce {} tu/sum-sales 0]
            (tu/aggregation (update (inline {:agg "sum", :expr "sales"}) :type-params assoc :fill_nulls_with 0)))))
   (is (re-find #"neither a measure nor metric_aggregation_params"
                (tu/unsupported {:type-params {:measure nil, :input_measures [], :metric_aggregation_params nil}})))
@@ -386,6 +370,6 @@
                (tu/unsupported (inline {:agg "sum", :expr "sales"
                                         :non_additive_dimension {:name "date_day", :window_choice "max"}}))))
   (testing "a measure and inline params both present: the measure wins"
-    (is (= sum-sales (tu/aggregation {:type-params {:expr "sales"
+    (is (= tu/sum-sales (tu/aggregation {:type-params {:expr "sales"
                                                     :metric_aggregation_params {:semantic_model "fact_sales", :agg "max", :agg_params nil
                                                                                 :agg_time_dimension nil, :non_additive_dimension nil}}})))))

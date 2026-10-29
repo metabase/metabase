@@ -12,19 +12,18 @@
   construct.
 
   Column references are resolved through a callback, so this namespace knows nothing about semantic models or
-  Metabase metadata. Unsupported constructs are signalled with [[unsupported]], an exception the resolve stage turns
-  into a report entry; see [[unsupported?]]."
+  Metabase metadata. Unsupported constructs are thrown with [[unsupported/throw!]], which the resolve stage turns
+  into a report entry."
   (:require
    [better-cond.core :as b]
    [clojure.string :as str]
+   [dev.dbt-import.unsupported :as unsupported]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr])
-  (:import
-   (clojure.lang ExceptionInfo)))
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -48,16 +47,6 @@
    [:args  :map]
    [:func  {:optional true} :string]])
 
-(defn unsupported
-  "Throw the exception that marks a SQL construct the converter cannot express; `fmt` and `args` are for `format`."
-  [fmt & args]
-  (throw (ex-info (apply format fmt args) {::unsupported true})))
-
-(defn unsupported?
-  "Was `e` thrown by [[unsupported]]?"
-  [e]
-  (boolean (and (instance? ExceptionInfo e) (::unsupported (ex-data e)))))
-
 (def ^:private string-literal-re
   "A single-quoted SQL string, with doubled quotes inside it."
   #"'(?:[^']|'')*'")
@@ -68,17 +57,17 @@
   (str/includes? (str/replace sql string-literal-re "''") "{{"))
 
 (mu/defn- parse :- ::node
-  "Parse the SQL expression `sql` in `dialect`, or throw [[unsupported]] saying why it could not be parsed."
+  "Parse the SQL expression `sql` in `dialect`, or throw [[unsupported/throw!]] saying why it could not be parsed."
   [dialect :- ::dialect
    sql     :- :string]
   ;; sqlglot reads `{{ ... }}` as a struct literal, so catch Jinja the filter renderer did not recognise first
   (when (jinja? sql)
-    (unsupported "could not parse %s: it still contains Jinja" (pr-str sql)))
+    (unsupported/throw! "could not parse %s: it still contains Jinja" (pr-str sql)))
   (try
     (sql-parsing/parse-expression dialect sql)
     (catch Exception e
       (if (sql-parsing/parse-error? e)
-        (unsupported "could not parse %s: %s" (pr-str sql) (first (str/split-lines (str (sql-parsing/parse-error-message e)))))
+        (unsupported/throw! "could not parse %s: %s" (pr-str sql) (first (str/split-lines (str (sql-parsing/parse-error-message e)))))
         (throw e)))))
 
 (defn- arg
@@ -112,22 +101,22 @@
 (defmethod ->value :default
   [node _]
   (if-let [function-name (:func node)]
-    (unsupported "the function %s is not supported" (u/lower-case-en function-name))
-    (unsupported "%s is not supported" (describe node))))
+    (unsupported/throw! "the function %s is not supported" (u/lower-case-en function-name))
+    (unsupported/throw! "%s is not supported" (describe node))))
 
 (defmethod ->predicate :default
   [node _]
-  (unsupported "%s is not supported as a condition" (describe node)))
+  (unsupported/throw! "%s is not supported as a condition" (describe node)))
 
 (defmethod ->value "Column"
   [node resolve-column]
   ;; the table qualifier, if any, is dropped: a metric has one table
   (resolve-column (arg (arg node :this) :this)))
 
-(defn- parse-number [^String s]
-  (if (re-matches #"-?\d+" s)
-    (Long/parseLong s)
-    (Double/parseDouble s)))
+(mu/defn- parse-number :- number?
+  "The number a SQL numeric literal `s` is: a long when it fits one, otherwise a double."
+  [s :- :string]
+  (or (parse-long s) (parse-double s)))
 
 (defmethod ->value "Literal"
   [node _]
@@ -191,7 +180,7 @@
     ;; floats, so the number would silently differ. MySQL, Snowflake, BigQuery and Oracle divide as decimals, as
     ;; Metabase does, and are not marked.
     (when (and (arg node :typed) (integer-typed? dividend) (integer-typed? divisor))
-      (unsupported (str "%s divides an integer by an integer, which the warehouse truncates to a whole number and"
+      (unsupported/throw! (str "%s divides an integer by an integer, which the warehouse truncates to a whole number and"
                         " Metabase does not; cast an operand to a decimal or float")
                    (:sql node)))
     (lib// dividend divisor)))
@@ -225,7 +214,7 @@
   (let [target (arg (arg node :to) :this)]
     (if-let [cast (get cast-targets target)]
       (cast (->value (arg node :this) resolve-column))
-      (unsupported "a cast to %s, %s, is not supported" target (:sql node)))))
+      (unsupported/throw! "a cast to %s, %s, is not supported" target (:sql node)))))
 
 (defmethod ->value "Case"
   [node resolve-column]
@@ -275,7 +264,7 @@
   (let [base-node (when (arg node :expression) (arg node :this))
         x-node    (or (arg node :expression) (arg node :this))]
     (when (and base-node (not= 10 (literal-number base-node)))
-      (unsupported "log to a base other than 10 is not supported: %s" (:sql node)))
+      (unsupported/throw! "log to a base other than 10 is not supported: %s" (:sql node)))
     (lib/log (->value x-node resolve-column))))
 
 (defmethod ->value "Round"
@@ -285,7 +274,7 @@
         decimals (when-let [decimals-node (arg node :decimals)]
                    (let [n (literal-number decimals-node)]
                      (when-not (and (integer? n) (not (neg? n)))
-                       (unsupported "round to %s decimals is not supported; only a literal number of decimals is"
+                       (unsupported/throw! "round to %s decimals is not supported; only a literal number of decimals is"
                                     (:sql decimals-node)))
                      n))]
     (if (or (nil? decimals) (zero? decimals))
@@ -310,7 +299,7 @@
   [node resolve-column]
   (let [characters (arg node :expression)]
     (when (and characters (not= " " (->value characters resolve-column)))
-      (unsupported "TRIM of characters other than spaces is not supported: %s" (:sql node)))
+      (unsupported/throw! "TRIM of characters other than spaces is not supported: %s" (:sql node)))
     (unary (case (arg node :position)
              "LEADING"  lib/ltrim
              "TRAILING" lib/rtrim
@@ -320,7 +309,7 @@
 (defmethod ->value "Replace"
   [node resolve-column]
   (when-not (arg node :replacement)
-    (unsupported "REPLACE without a replacement is not supported: %s" (:sql node)))
+    (unsupported/throw! "REPLACE without a replacement is not supported: %s" (:sql node)))
   (lib/replace (->value (arg node :this) resolve-column)
                (->value (arg node :expression) resolve-column)
                (->value (arg node :replacement) resolve-column)))
@@ -371,7 +360,7 @@
   (let [part (arg (arg node :this) :this)]
     (if-let [get-part (get extract-parts part)]
       (get-part (->value (arg node :expression) resolve-column))
-      (unsupported "extracting %s from a date is not supported" part))))
+      (unsupported/throw! "extracting %s from a date is not supported" part))))
 
 (def ^:private truncation-units
   "The units `date_trunc('unit', x)` takes, as sqlglot spells them, that are Metabase temporal units."
@@ -391,9 +380,9 @@
         unit      (get truncation-units unit-name)
         value     (->value (arg node :this) resolve-column)]
     (when-not unit
-      (unsupported "truncating a date to %s is not supported" unit-name))
+      (unsupported/throw! "truncating a date to %s is not supported" unit-name))
     (when-not (lib/clause-of-type? value :field)
-      (unsupported "date_trunc over an expression is not supported, only over a column: %s" (:sql node)))
+      (unsupported/throw! "date_trunc over an expression is not supported, only over a column: %s" (:sql node)))
     (lib/with-temporal-bucket value unit)))
 
 ;; sqlglot parses `date_trunc` as one or the other depending on the dialect; both have the same children
@@ -414,7 +403,7 @@
   ;; else cannot be, and the warehouse would reject it where Lib's `[:= x true]` would run
   (let [value (->value node resolve-column)]
     (when-not (boolean-typed? value)
-      (unsupported "%s is not a boolean column, so it cannot stand alone as a condition" (:sql node)))
+      (unsupported/throw! "%s is not a boolean column, so it cannot stand alone as a condition" (:sql node)))
     (lib/= value true)))
 
 (defn- without-null-operands
@@ -423,7 +412,7 @@
   `x IS NULL`) and matches the null rows instead."
   [node nodes]
   (when (some #(= "Null" (:class (unparenthesized %))) nodes)
-    (unsupported "%s compares against NULL, which is never true in SQL; use IS [NOT] NULL" (describe node))))
+    (unsupported/throw! "%s compares against NULL, which is never true in SQL; use IS [NOT] NULL" (describe node))))
 
 (defn- comparison
   "`(lib-fn left right)` over the operands of comparison `node`, neither of which may be `NULL` (see
@@ -459,13 +448,13 @@
                   (if negate?
                     (lib/or (lib/!= (x) b) (lib/is-null (x)))
                     (lib/= (x) b)))
-      (unsupported "%s is not supported, only IS [NOT] NULL, TRUE or FALSE" (describe node)))))
+      (unsupported/throw! "%s is not supported, only IS [NOT] NULL, TRUE or FALSE" (describe node)))))
 
 (defn- in
   "`x IN (...)`, or with `lib/not-in` as `lib-fn`, `x NOT IN (...)`."
   [node resolve-column lib-fn]
   (when (arg node :query)
-    (unsupported "IN over a subquery is not supported, only over a list of values"))
+    (unsupported/throw! "IN over a subquery is not supported, only over a list of values"))
   (without-null-operands node (cons (arg node :this) (arg node :expressions)))
   (apply lib-fn
          (->value (arg node :this) resolve-column)
@@ -488,7 +477,7 @@
                            (and (lib/clause? (a)) (lib/clause? (b))) nil
                            (lib/clause? (a))                          [a (b)]
                            (lib/clause? (b))                          [b (a)]
-                           :else (unsupported "%s compares two literals" (describe node)))]
+                           :else (unsupported/throw! "%s compares two literals" (describe node)))]
     (cond
       (and column (nil? literal))
       (if distinct? (lib/not-null (column)) (lib/is-null (column)))
@@ -565,7 +554,7 @@
 
         (= c escape)
         (do (when (empty? more)
-              (unsupported "the pattern %s ends with its escape character" (pr-str pattern)))
+              (unsupported/throw! "the pattern %s ends with its escape character" (pr-str pattern)))
             (recur (rest more) (.append literal (char (first more))) tokens))
 
         (= c \%)
@@ -651,12 +640,12 @@
       (regex-match (if case-insensitive? (lib/lower (value)) (value)) (like-regex tokens lower-case) false))))
 
 (defn- pattern-literal
-  "The string literal the pattern of `node` (a `LIKE`, `ILIKE` or `SIMILAR TO`) is, or [[unsupported]]: a pattern
+  "The string literal the pattern of `node` (a `LIKE`, `ILIKE` or `SIMILAR TO`) is, or [[unsupported/throw!]]: a pattern
   that is a column or an expression has no Lib equivalent."
   [node resolve-column keyword-name]
   (let [pattern (->value (arg node :expression) resolve-column)]
     (when-not (string? pattern)
-      (unsupported "%s with a pattern that is not a string literal is not supported" keyword-name))
+      (unsupported/throw! "%s with a pattern that is not a string literal is not supported" keyword-name))
     pattern))
 
 (defn- like
@@ -684,7 +673,7 @@
 
       (and (= c escape) (not in-bracket?))
       (do (when (empty? more)
-            (unsupported "the pattern %s ends with its escape character" (pr-str pattern)))
+            (unsupported/throw! "the pattern %s ends with its escape character" (pr-str pattern)))
           (recur (rest more) in-bracket? (.append out (regex-quote (str (first more))))))
 
       in-bracket?
@@ -712,13 +701,13 @@
   (let [escape-string (->value (arg node :expression) resolve-column)
         inner         (arg node :this)]
     (when-not (and (string? escape-string) (= 1 (count escape-string)))
-      (unsupported "ESCAPE %s is not supported, only a one-character string literal is" (:sql (arg node :expression))))
+      (unsupported/throw! "ESCAPE %s is not supported, only a one-character string literal is" (:sql (arg node :expression))))
     (let [escape (first escape-string)]
       (case (:class inner)
         "Like"      (like inner resolve-column false escape)
         "ILike"     (like inner resolve-column true escape)
         "SimilarTo" (similar-to inner resolve-column escape)
-        (unsupported "%s is not supported as a condition" (describe node))))))
+        (unsupported/throw! "%s is not supported as a condition" (describe node))))))
 
 (defn- regexp-like
   "`x ~ 'regex'` (`regexp_like(x, 'regex')`), or `x ~* 'regex'` when `case-insensitive?`, as a regex match."
@@ -732,7 +721,7 @@
 
 (mu/defn expression->mbql :- ::value
   "The Lib expression for the SQL value expression `sql` in `dialect`, resolving column names with `resolve-column`. A
-  literal comes back as itself. Throws [[unsupported]] for SQL the subset does not cover."
+  literal comes back as itself. Throws [[unsupported/throw!]] for SQL the subset does not cover."
   [dialect        :- ::dialect
    sql            :- :string
    resolve-column :- ::resolve-column]
@@ -740,7 +729,7 @@
 
 (mu/defn condition->mbql :- ::lib.schema.expression/boolean
   "The Lib filter clause for the SQL condition `sql` in `dialect`, resolving column names with `resolve-column`.
-  Throws [[unsupported]] for SQL the subset does not cover."
+  Throws [[unsupported/throw!]] for SQL the subset does not cover."
   [dialect        :- ::dialect
    sql            :- :string
    resolve-column :- ::resolve-column]
@@ -805,22 +794,25 @@
    "Entity"        :entity
    "Metric"        :metric})
 
+(mu/defn- parse-reference :- ::reference
+  "What the MetricFlow reference `text`, one match of [[reference-re]], refers to."
+  [text :- :string]
+  (let [[_ object single-1 double-1 single-2 double-2 remainder chain] (re-matches reference-re text)
+        {:keys [grain methods]}                                       (chained-methods chain)]
+    {:kind      (reference-kinds object)
+     :name      (or single-1 double-1)
+     :grain     (or grain single-2 double-2)
+     :arguments (extra-arguments remainder)
+     :methods   methods}))
+
 (mu/defn render-filter :- ::rendered-filter
   "Replace each MetricFlow reference in the filter `template` with a placeholder identifier, so the rest parses as SQL
   with [[condition->mbql]], whose column callback then sees the placeholders as column names. `:references` says what
-  each placeholder stood for, arguments the converter does not read included, for the resolver to report. Jinja the
-  regex does not recognise is left alone and fails to parse."
+  each placeholder stood for, arguments the converter does not read included, for the resolver to report. The same
+  reference written twice is one placeholder. Jinja the regex does not recognise is left alone and fails to parse."
   [template :- :string]
-  (let [references (volatile! (transient {}))
-        sql        (str/replace template reference-re
-                                (fn [[_ object single-1 double-1 single-2 double-2 remainder chain]]
-                                  (let [placeholder     (format "__dbt_ref_%d__" (count @references))
-                                        {:keys [grain methods]} (chained-methods chain)]
-                                    (vswap! references assoc! placeholder {:kind      (reference-kinds object)
-                                                                           :name      (or single-1 double-1)
-                                                                           :grain     (or grain single-2 double-2)
-                                                                           :arguments (extra-arguments remainder)
-                                                                           :methods   methods})
-                                    placeholder)))]
-    {:sql        sql
-     :references (persistent! @references)}))
+  (let [placeholders (into {}
+                           (map-indexed (fn [i text] [text (format "__dbt_ref_%d__" i)]))
+                           (distinct (map first (re-seq reference-re template))))]
+    {:sql        (str/replace template reference-re (fn [[text]] (placeholders text)))
+     :references (into {} (map (fn [[text placeholder]] [placeholder (parse-reference text)])) placeholders)}))

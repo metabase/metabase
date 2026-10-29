@@ -157,7 +157,9 @@
   [:map
    [:agg_time_dimension [:maybe :string]]])
 
-(mr/def ::semantic-model.config
+(mr/def ::node-config
+  "The `config` of a semantic model or a metric: only `enabled` is read, and only by dbt itself when it writes the
+  manifest."
   [:map
    [:enabled {:optional true} :boolean]])
 
@@ -177,7 +179,7 @@
    [:dimensions     [:sequential ::dimension]]
    [:measures       [:sequential ::measure]]
    [:depends_on     ::depends-on]
-   [:config         {:optional true} ::semantic-model.config]])
+   [:config         {:optional true} ::node-config]])
 
 (mr/def ::time-window
   "`count` + `granularity`, e.g. `{:count 7 :granularity \"day\"}`. Used by cumulative `window` and derived
@@ -266,10 +268,6 @@
    [:fill_nulls_with           [:maybe :int]]
    [:join_to_timespine         {:optional true} :boolean]])
 
-(mr/def ::metric.config
-  [:map
-   [:enabled {:optional true} :boolean]])
-
 (mr/def ::metric
   "One entry of the top-level `metrics` map. `meta` is free-form user metadata; the flexanalytics project puts
   `format` (percent, decimal places) and `synonyms` there."
@@ -284,7 +282,7 @@
    [:time_granularity {:optional true} [:maybe :string]]
    [:meta             {:optional true} [:maybe :map]]
    [:depends_on       ::depends-on]
-   [:config           {:optional true} ::metric.config]])
+   [:config           {:optional true} ::node-config]])
 
 (mr/def ::column
   "One entry of a node's `columns` map. `data_type` comes from the project's `schema.yml` and is often absent, in

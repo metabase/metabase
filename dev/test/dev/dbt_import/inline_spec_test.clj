@@ -10,19 +10,14 @@
   adds. These tests pin that shape down, metric by metric, and check that the rest of the pipeline converts the result
   the same way it does legacy-spec metrics."
   (:require
-   [clojure.java.io :as io]
    [clojure.test :refer [deftest is testing]]
    [dev.dbt-import.emit :as emit]
    [dev.dbt-import.parse :as parse]
    [dev.dbt-import.resolve :as resolve]
    [dev.dbt-import.schemas.ir :as ir]
+   [dev.dbt-import.test-util :as tu]
    [mb.hawk.assert-exprs]
    [metabase.util.malli.registry :as mr]))
-
-(set! *warn-on-reflection* true)
-
-(def ^:private manifest-filename
-  (.getPath ^java.net.URL (io/resource "dbt_import/parcel_delivery_manifest.json")))
 
 (def ^:private db "The Metabase database the fixture's warehouse database `parcels` maps to." "Parcels")
 
@@ -31,16 +26,13 @@
    :driver        :postgres
    :creator-email "admin@example.com"})
 
-(defn- fld
-  "The `:field` clause serdes writes for `column` on `public.<table>`."
+(defn- parcels-field
+  "The `:field` clause serdes writes for `column` on `public.<table>` of [[db]]."
   [table column base-type]
-  [:field {:base-type base-type, :effective-type base-type} [db "public" table column]])
+  (tu/fld db "public" table column base-type))
 
 (def ^:private parsed
-  (delay (parse/parse-manifest-file manifest-filename)))
-
-(defn- metric-named [metric-name]
-  (some #(when (= metric-name (:name %)) %) (:metrics @parsed)))
+  (delay (parse/parse-manifest-file tu/parcel-delivery-manifest-filename)))
 
 (def ^:private converted
   "What resolve and emit make of the parsed fixture: `:unsupported` as metric name → reason, and `:metrics` as metric
@@ -52,7 +44,7 @@
                           (for [{:keys [metric]} (emit/files config resolved)
                                 :when metric
                                 :let  [stage (-> (emit/dataset-query metric) :stages first)]]
-                            [(-> metric :metric :name)
+                            [(-> metric :ir :name)
                              {:entity-id              (:entity-id metric)
                               :aggregation            (first (:aggregation stage))
                               :filters                (:filters stage [])
@@ -134,12 +126,12 @@
       (is (= #{nil} (into #{} (map :measure) (filter :semantic-model metrics)))))
     (testing "labels and descriptions come through"
       (is (= {:label "90th Percentile Route Hours", :description "The 90th percentile of hours spent on a route."}
-             (select-keys (metric-named "p90_route_hours") [:label :description]))))
+             (select-keys (tu/metric-named (:metrics @parsed) "p90_route_hours") [:label :description]))))
     (testing "agg_params: dbt writes them for every aggregation, with a percentile only for percentile ones; percentile_type continuous is written as approximate, not discrete"
       (is (= {:percentile nil, :use_discrete_percentile false, :use_approximate_percentile false}
-             (:agg-params (metric-named "total_route_hours"))))
+             (:agg-params (tu/metric-named (:metrics @parsed) "total_route_hours"))))
       (is (= {:percentile 0.5, :use_discrete_percentile false, :use_approximate_percentile true}
-             (:agg-params (metric-named "median_route_hours")))))
+             (:agg-params (tu/metric-named (:metrics @parsed) "median_route_hours")))))
     (testing "filters on the metric"
       (is (= {"open_exceptions"     ["{{ Dimension('delivery_exception__status') }} != 'resolved'"]
               "resolved_exceptions" ["{{ Dimension('delivery_exception__status') }} = 'resolved'"]
@@ -150,15 +142,15 @@
       (is (= {:type        :ratio
               :numerator   {:metric "parcels_delayed", :alias nil, :filters []}
               :denominator {:metric "parcels_received", :alias nil, :filters []}}
-             (select-keys (metric-named "delay_rate") [:type :numerator :denominator])))
+             (select-keys (tu/metric-named (:metrics @parsed) "delay_rate") [:type :numerator :denominator])))
       (is (= {:type   :derived
               :expr   "damaged / NULLIF(received, 0) + 1"
               :inputs [{:metric "parcels_damaged", :alias "damaged", :filters []}
                        {:metric "parcels_received", :alias "received", :filters []}]}
-             (select-keys (metric-named "damage_index") [:type :expr :inputs]))))))
+             (select-keys (tu/metric-named (:metrics @parsed) "damage_index") [:type :expr :inputs]))))))
 
 (deftest ^:parallel parse-cumulative-input-test
-  (let [manifest        (parse/read-manifest manifest-filename)
+  (let [manifest        (parse/read-manifest tu/parcel-delivery-manifest-filename)
         semantic-models (update-vals (:semantic_models manifest) #(parse/parse-semantic-model manifest %))
         metrics         (:metrics manifest)
         to-date         (get metrics "metric.parcel_delivery.parcels_to_date")
@@ -167,9 +159,9 @@
       (is (= ["{{ Dimension('parcel__is_delivered') }}" "{{ Dimension('parcel__is_insured') }}"]
              (:filters (parse/parse-metric semantic-models
                                            (assoc-in metrics ["metric.parcel_delivery.parcel_count" :filter]
-                                                     {:where_filters [{:where_sql_template "{{ Dimension('parcel__is_delivered') }}"}]})
+                                                     (tu/where-filters "{{ Dimension('parcel__is_delivered') }}"))
                                            (assoc-in to-date [:type_params :cumulative_type_params :metric :filter]
-                                                     {:where_filters [{:where_sql_template "{{ Dimension('parcel__is_insured') }}"}]}))))))
+                                                     (tu/where-filters "{{ Dimension('parcel__is_insured') }}")))))))
     (testing "the input metric has to be in the manifest, and be a simple metric"
       (is (= "input metric \"metric.parcel_delivery.parcel_count\" not found in manifest"
              (:reason (parse/parse-metric semantic-models to-date)))
@@ -190,28 +182,28 @@
               "depots_to_date"  "a running count_distinct has no Metabase equivalent: only a running sum or row count does"}
              unsupported)))
     (testing "the other seventeen convert to the same clauses the legacy spec does"
-      (is (= {"avg_route_hours"     [:avg {} (fld "delivery_runs" "route_hours" :type/Float)]
-              "depots_with_parcels" [:distinct {} (fld "parcels" "depot_id" :type/Text)]
+      (is (= {"avg_route_hours"     [:avg {} (parcels-field "delivery_runs" "route_hours" :type/Float)]
+              "depots_with_parcels" [:distinct {} (parcels-field "parcels" "depot_id" :type/Text)]
               "disputed_exceptions" [:count {}]
               "exception_count"     [:count {}]
-              "median_route_hours"  [:percentile {} (fld "delivery_runs" "route_hours" :type/Float) 0.5]
-              "new_parcels"         [:sum {} [:case {} [[[:= {} (fld "parcels" "revision" :type/Integer) 0] 1]] 0]]
+              "median_route_hours"  [:percentile {} (parcels-field "delivery_runs" "route_hours" :type/Float) 0.5]
+              "new_parcels"         [:sum {} [:case {} [[[:= {} (parcels-field "parcels" "revision" :type/Integer) 0] 1]] 0]]
               "open_exceptions"     [:count {}]
-              "p90_route_hours"     [:percentile {} (fld "delivery_runs" "route_hours" :type/Float) 0.9]
-              "parcel_count"        [:distinct {} (fld "parcels" "parcel_id" :type/Text)]
-              "parcels_damaged"     [:sum {} (fld "daily_depot_volume" "parcels_damaged" :type/Integer)]
-              "parcels_delayed"     [:sum {} (fld "daily_depot_volume" "parcels_delayed" :type/Integer)]
-              "parcels_received"    [:sum {} (fld "daily_depot_volume" "parcels_received" :type/Integer)]
+              "p90_route_hours"     [:percentile {} (parcels-field "delivery_runs" "route_hours" :type/Float) 0.9]
+              "parcel_count"        [:distinct {} (parcels-field "parcels" "parcel_id" :type/Text)]
+              "parcels_damaged"     [:sum {} (parcels-field "daily_depot_volume" "parcels_damaged" :type/Integer)]
+              "parcels_delayed"     [:sum {} (parcels-field "daily_depot_volume" "parcels_delayed" :type/Integer)]
+              "parcels_received"    [:sum {} (parcels-field "daily_depot_volume" "parcels_received" :type/Integer)]
               "resolved_exceptions" [:count {}]
-              "run_count"           [:count-where {} [:not-null {} (fld "delivery_runs" "run_id" :type/Text)]]
-              "total_route_hours"   [:sum {} (fld "delivery_runs" "route_hours" :type/Float)]
+              "run_count"           [:count-where {} [:not-null {} (parcels-field "delivery_runs" "run_id" :type/Text)]]
+              "total_route_hours"   [:sum {} (parcels-field "delivery_runs" "route_hours" :type/Float)]
               "delay_rate"          [:/ {} [:metric {} (entity-id "parcels_delayed")] [:metric {} (entity-id "parcels_received")]]
               "damage_index"        [:+ {} [:/ {} [:metric {} (entity-id "parcels_damaged")] [:metric {} (entity-id "parcels_received")]] 1]}
              (update-vals metrics :aggregation))))
     (testing "the metric filters resolve against the primary entity's dimensions"
-      (is (= {"open_exceptions"     [[:!= {} (fld "delivery_exceptions" "status" :type/Text) "resolved"]]
-              "resolved_exceptions" [[:= {} (fld "delivery_exceptions" "status" :type/Text) "resolved"]]
-              "disputed_exceptions" [[:= {} (fld "delivery_exceptions" "status" :type/Text) "disputed"]]
+      (is (= {"open_exceptions"     [[:!= {} (parcels-field "delivery_exceptions" "status" :type/Text) "resolved"]]
+              "resolved_exceptions" [[:= {} (parcels-field "delivery_exceptions" "status" :type/Text) "resolved"]]
+              "disputed_exceptions" [[:= {} (parcels-field "delivery_exceptions" "status" :type/Text) "disputed"]]
               "exception_count"     []}
              (into {} (map (juxt key (comp :filters val)))
                    (filter #(= [db "public" "delivery_exceptions"] (:source-table (val %))) metrics)))))

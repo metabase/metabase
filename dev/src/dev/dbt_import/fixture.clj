@@ -10,9 +10,9 @@
     1.12 inline spec (`semantic_model:` nested under `models:`, entities and dimensions on `columns:`, metrics with
     their own `agg` and `expr`). It is what the inline spec looks like in a manifest, QRES-6.
 
-  [[regenerate!]] copies the project to a scratch directory, writes a `profiles.yml` there (`dbt parse` needs a
-  profile for the adapter and the warehouse database name, but never connects), runs `dbt parse` and trims the
-  resulting `target/manifest.json` to the sections the converter reads:
+  [[regenerate!]] copies the project to a scratch directory with a `profiles.yml` of its own (see
+  [[with-scratch-project]]; `dbt parse` needs a profile for the adapter and the warehouse database name, but never
+  connects), runs `dbt parse` and trims the resulting `target/manifest.json` to the sections the converter reads:
 
   * `metadata`: `dbt_schema_version`, `dbt_version`, `project_name`, `adapter_type`, `generated_at`
   * `nodes`: the project's own model nodes, each reduced to its identity, relation and columns (`name`, `description`,
@@ -43,7 +43,8 @@
    (java.io File)
    (java.nio.file Files)
    (java.nio.file.attribute FileAttribute)
-   (java.util LinkedHashMap Map)))
+   (java.util LinkedHashMap Map)
+   (org.apache.commons.io FileUtils)))
 
 (set! *warn-on-reflection* true)
 
@@ -66,6 +67,16 @@
    [:database      {:optional true} :string]
    [:extra-metrics {:optional true} :string]
    [:metrics-yaml  {:optional true} :string]])
+
+(mr/def ::connection
+  "A Postgres connection for a project's `profiles.yml`: the warehouse dbt builds in, or, for a `dbt parse` that never
+  connects, nonsense around the database name the manifest should record."
+  [:map {:closed true}
+   [:host     :string]
+   [:port     :int]
+   [:user     :string]
+   [:password [:maybe :string]]
+   [:dbname   :string]])
 
 (def fixtures
   "The fixtures, see the namespace docstring."
@@ -116,27 +127,33 @@
   (or (second (re-find #"(?m)^profile:\s*['\"]?([^'\"\n]+?)['\"]?\s*$" (slurp (io/file project "dbt_project.yml"))))
       (throw (ex-info "dbt_project.yml names no profile" {:project project}))))
 
+(mu/defn- profiles-yaml :- :string
+  "A `profiles.yml` with one Postgres profile, `profile-name`, pointing dbt at `connection` and building in schema
+  `public`, as the README's does."
+  [profile-name                             :- :string
+   {:keys [host port user password dbname]} :- ::connection]
+  (str/join "\n" [(str profile-name ":")
+                  "  target: dev"
+                  "  outputs:"
+                  "    dev:"
+                  "      type: postgres"
+                  (str "      host: " host)
+                  (str "      port: " port)
+                  (str "      user: " user)
+                  (str "      password: " (pr-str (or password "")))
+                  (str "      dbname: " dbname)
+                  "      schema: public"
+                  "      threads: 4"
+                  ""]))
+
 (mu/defn- write-profile!
-  "Write a `profiles.yml` for `project` into `profiles-dir`: a Postgres profile naming `database`, so macros resolve
-  against the Postgres adapter and relations are written in that database. Nothing connects to it, so the host and
-  credentials are nonsense."
+  "Write a `profiles.yml` for `project` into `profiles-dir`, pointing dbt at `connection` (see [[profiles-yaml]]),
+  so macros resolve against the Postgres adapter and relations are written in that database."
   [^File project      :- (ms/InstanceOfClass File)
    ^File profiles-dir :- (ms/InstanceOfClass File)
-   database           :- :string]
+   connection         :- ::connection]
   (.mkdirs profiles-dir)
-  (spit (io/file profiles-dir "profiles.yml")
-        (str/join "\n" [(str (profile-name project) ":")
-                        "  target: dev"
-                        "  outputs:"
-                        "    dev:"
-                        "      type: postgres"
-                        "      host: localhost"
-                        "      port: 5432"
-                        "      user: nobody"
-                        "      password: nothing"
-                        (str "      dbname: " database)
-                        "      schema: public"
-                        ""])))
+  (spit (io/file profiles-dir "profiles.yml") (profiles-yaml (profile-name project) connection)))
 
 (mu/defn- splice-metrics :- :string
   "`yaml` with `extra` appended to its top-level `metrics:` list: before the next top-level key, or at the end."
@@ -166,6 +183,28 @@
         {:keys [exit out err]} (apply sh/sh (concat (dbt-command) args ["--no-use-colors" :dir scratch :env env]))]
     (when-not (zero? exit)
       (throw (ex-info (format "dbt %s failed (exit %d)" (str/join " " args) exit) {:out out, :err err})))))
+
+(mu/defn with-scratch-project
+  "Run `f` with a scratch copy of the dbt project at `project` (see [[copy-project]]) and a directory holding a
+  `profiles.yml` for `connection` (see [[write-profile!]]), with the project's packages installed (`dbt deps`, unless
+  the copy brought them along), as `(f scratch profiles-dir)`; the scratch directory is deleted afterwards, whatever
+  happened. The project itself is never modified."
+  [^File project :- (ms/InstanceOfClass File)
+   connection    :- ::connection
+   f             :- fn?]
+  (when-not (.isFile (io/file project "dbt_project.yml"))
+    (throw (ex-info (str project " is not a dbt project; pass :project") {})))
+  (let [scratch      (.toFile (Files/createTempDirectory "dbt-import-scratch" (make-array FileAttribute 0)))
+        profiles-dir (io/file scratch ".profiles")]
+    (try
+      (copy-project project scratch)
+      (write-profile! project profiles-dir connection)
+      (when (and (.isFile (io/file scratch "packages.yml"))
+                 (not (.isDirectory (io/file scratch "dbt_packages"))))
+        (dbt! scratch profiles-dir "deps"))
+      (f scratch profiles-dir)
+      (finally
+        (FileUtils/deleteDirectory scratch)))))
 
 (def ^:private ^ObjectMapper reader
   "Reads JSON objects as `LinkedHashMap`s, so key order is kept, and floats as `BigDecimal`s, so they are written back
@@ -224,11 +263,6 @@
       (.put "semantic_models" (.get manifest "semantic_models"))
       (.put "metrics" (.get manifest "metrics")))))
 
-(defn delete-recursively!
-  "Delete `dir` and everything under it."
-  [^File dir]
-  (run! io/delete-file (reverse (file-seq dir))))
-
 (mu/defn regenerate! :- :string
   "Regenerate the fixture `fixture-key` (see [[fixtures]]; default `:flexanalytics`), with `overrides` merged over its
   definition, e.g. `{:project \"/path/to/checkout\"}`. Returns a one-line summary of what was written."
@@ -240,28 +274,19 @@
 
   ([fixture-key :- (into [:enum] (keys fixtures))
     overrides   :- ::fixture-overrides]
-   (let [{:keys [project out database extra-metrics metrics-yaml] :as fixture} (merge (fixtures fixture-key) overrides)
-         project (io/file project)]
+   (let [{:keys [project out database extra-metrics metrics-yaml] :as fixture} (merge (fixtures fixture-key) overrides)]
      (when-let [error (mr/explain ::fixture fixture)]
        (throw (ex-info "bad fixture definition" {:errors (me/humanize error)})))
-     (when-not (.isFile (io/file project "dbt_project.yml"))
-       (throw (ex-info (str project " is not a dbt project; pass :project") {})))
-     (let [scratch      (.toFile (Files/createTempDirectory "dbt-import-fixture" (make-array FileAttribute 0)))
-           profiles-dir (io/file scratch ".profiles")]
-       (try
-         (copy-project project scratch)
-         (write-profile! project profiles-dir database)
+     ;; `dbt parse` never connects, so everything but the database name is nonsense
+     (with-scratch-project (io/file project)
+       {:host "localhost", :port 5432, :user "nobody", :password "nothing", :dbname database}
+       (fn [scratch profiles-dir]
          (when extra-metrics
            (let [yaml-file (io/file scratch metrics-yaml)]
              (spit yaml-file (splice-metrics (slurp yaml-file) (slurp extra-metrics)))))
-         (when (and (.isFile (io/file scratch "packages.yml"))
-                    (not (.isDirectory (io/file scratch "dbt_packages"))))
-           (dbt! scratch profiles-dir "deps"))
          (dbt! scratch profiles-dir "parse")
          (let [manifest ^Map (.readValue reader (io/file scratch "target" "manifest.json") Map)
                metrics  ^Map (.get manifest "metrics")]
            (.writeValue writer (io/file out) (trim-manifest manifest))
            (format "wrote %s: %d metrics (%s)" out (.size metrics)
-                   (str/join ", " (sort (into #{} (map #(.get ^Map % "type")) (.values metrics))))))
-         (finally
-           (delete-recursively! scratch)))))))
+                   (str/join ", " (sort (into #{} (map #(.get ^Map % "type")) (.values metrics)))))))))))

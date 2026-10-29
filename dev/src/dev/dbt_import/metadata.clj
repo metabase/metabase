@@ -20,13 +20,16 @@
    [medley.core :as m]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu])
+  (:import
+   (metabase.lib.metadata.cached_provider CachedProxyMetadataProvider)))
 
 (set! *warn-on-reflection* true)
 
@@ -70,7 +73,19 @@
               [identity
                u/upper-case-en])))))
 
-;;; the provider
+(mu/defn find-named :- [:maybe [:or ::ir/column ::lib.schema.metadata/column]]
+  "The IR column or Field among `named` (nil for none) called `the-name`: matched exactly, or failing that ignoring
+  case, since a warehouse may fold the case of an unquoted identifier and a project write it either way."
+  [named    :- [:maybe [:sequential [:or ::ir/column ::lib.schema.metadata/column]]]
+   the-name :- :string]
+  (or (m/find-first #(= the-name (:name %)) named)
+      (m/find-first #(= (u/lower-case-en the-name) (u/lower-case-en (:name %))) named)))
+
+(mu/defn model-database :- [:maybe :string]
+  "The Metabase database the config maps `model`'s warehouse database to; nil when it maps none."
+  [config             :- ::resolved/config
+   {:keys [relation]} :- ::ir/semantic-model]
+  (get-in config [:databases (:database relation)]))
 
 (defn- metadatas-of-type [state metadata-type]
   (case metadata-type
@@ -79,10 +94,13 @@
     :metadata/card   (:cards state)
     []))
 
-;; Everything the provider knows is in memory, so it is its own cache: Lib's calculations ask for one
-;; (see [[metabase.lib.metadata.cache]]) and warn at every call when there is none. The general cache is dropped
-;; whenever a column or card is added, so nothing computed before knows a stale world.
-(deftype ManifestMetadataProvider [state]
+;; Everything the provider knows is in memory, in `state`: the tables and fields the manifest documents, and what the
+;; resolve stage adds as it goes, a column the project never documented (see [[column]]) and the card of each
+;; converted metric (see [[add-metric!]]). That is why this is a type of its own and not a mock provider over a fixed
+;; map. Lib's calculations ask the provider for a cache (see [[metabase.lib.metadata.cache]]) and warn at every call
+;; when there is none, so [[metadata-provider]] wraps it in Lib's own caching proxy, whose cache is dropped whenever
+;; something is added (see [[add!]]), so nothing computed before knows a stale world.
+(deftype ManifestMetadata [state]
   lib.metadata.protocols/MetadataProvider
   (database [_this]
     (:database @state))
@@ -91,33 +109,23 @@
           (lib.metadata.protocols/default-spec-filter-xform metadata-spec)
           (metadatas-of-type @state metadata-type)))
   (setting [_this _setting-key]
-    nil)
-
-  lib.metadata.protocols/CachedMetadataProvider
-  (cached-metadatas [_this metadata-type metadata-ids]
-    (let [ids (set metadata-ids)]
-      (filterv #(contains? ids (:id %)) (metadatas-of-type @state metadata-type))))
-  (store-metadata! [_this _object]
-    ;; the manifest is the authority on what exists
-    nil)
-  (cached-value [_this k not-found]
-    (get-in @state [:cache k] not-found))
-  (cache-value! [_this k v]
-    (swap! state assoc-in [:cache k] v)
-    nil)
-  (has-cache? [_this]
-    true)
-  (clear-cache! [_this]
-    (swap! state assoc :cache {})
     nil))
 
-(defn- state [^ManifestMetadataProvider provider]
-  (.state provider))
+(defn- state [^CachedProxyMetadataProvider provider]
+  (.state ^ManifestMetadata (.-metadata-provider provider)))
 
 (defn- next-id!
-  "A fresh id in `provider`, which is about to learn something new: the general cache is dropped."
+  "A fresh id in `provider`."
   [provider]
-  (:next-id (swap! (state provider) #(-> % (update :next-id inc) (assoc :cache {})))))
+  (:next-id (swap! (state provider) update :next-id inc)))
+
+(defn- add!
+  "Add `metadata` to the `k` (`:fields` or `:cards`) of `provider`, which now knows something new: its cache is
+  dropped. Returns `metadata`."
+  [provider k metadata]
+  (swap! (state provider) update k conj metadata)
+  (lib.metadata.protocols/clear-cache! provider)
+  metadata)
 
 (mu/defn- field-metadata :- ::lib.schema.metadata/column
   [id              :- ::lib.schema.id/field
@@ -139,8 +147,7 @@
   [{:keys [driver base-types] :as config} :- ::resolved/config
    {:keys [semantic-models]}              :- ::ir/manifest
    database-name                          :- :string]
-  (let [models  (filter #(= database-name (get-in config [:databases (-> % :relation :database)]))
-                        (vals semantic-models))
+  (let [models  (filter #(= database-name (model-database config %)) (vals semantic-models))
         next-id (volatile! 0)
         id!     #(vswap! next-id inc)
         tables  (for [{:keys [relation]} models]
@@ -153,17 +160,17 @@
         fields  (for [[table-id {:keys [columns]}] (map vector (map :id tables) models)
                       {column-name :name, :keys [data-type]} (vals columns)]
                   (field-metadata (id!) table-id column-name (or (base-type driver base-types data-type) :type/*)))]
-    (->ManifestMetadataProvider
-     (atom {:database {:lib/type :metadata/database
-                       :id       1
-                       :name     database-name
-                       :engine   driver
-                       :features #{}}
-            :tables   (vec tables)
-            :fields   (vec fields)
-            :cards    []
-            :cache    {}
-            :next-id  @next-id}))))
+    (lib.metadata.cached-provider/cached-metadata-provider
+     (->ManifestMetadata
+      (atom {:database {:lib/type :metadata/database
+                        :id       1
+                        :name     database-name
+                        :engine   driver
+                        :features #{}}
+             :tables   (vec tables)
+             :fields   (vec fields)
+             :cards    []
+             :next-id  @next-id})))))
 
 (mu/defn providers :- [:map-of :string ::lib.schema.metadata/metadata-provider]
   "A [[metadata-provider]] for every Metabase database the config maps a warehouse database to, keyed by its name."
@@ -173,27 +180,22 @@
         (map (fn [database-name] [database-name (metadata-provider config ir database-name)]))
         (distinct (vals (:databases config)))))
 
-(mu/defn table :- [:maybe ::lib.schema.metadata/table]
-  "The Table for a semantic model's relation, by schema and name."
-  [provider   :- ::lib.schema.metadata/metadata-provider
-   schema     :- [:maybe :string]
-   table-name :- :string]
-  (m/find-first #(and (= schema (:schema %)) (= table-name (:name %)))
+(mu/defn model-table :- [:maybe ::lib.schema.metadata/table]
+  "The Table in `provider` for `model`'s relation, by schema and name."
+  [provider           :- ::lib.schema.metadata/metadata-provider
+   {:keys [relation]} :- ::ir/semantic-model]
+  (m/find-first #(and (= (:schema relation) (:schema %)) (= (:table relation) (:name %)))
                 (lib.metadata/tables provider)))
 
 (mu/defn column :- ::lib.schema.metadata/column
-  "The Field named `column-name` on `table-id`, matched exactly or ignoring case. A column the project did not document
-  is added, with no known type, so the instance supplies it when the import binds the field; a column that does not
-  exist in the warehouse fails there, with the authoritative metadata."
+  "The Field named `column-name` on `table-id`, matched exactly or ignoring case (see [[find-named]]). A column the
+  project did not document is added, with no known type, so the instance supplies it when the import binds the field;
+  a column that does not exist in the warehouse fails there, with the authoritative metadata."
   [provider    :- ::lib.schema.metadata/metadata-provider
    table-id    :- ::lib.schema.id/table
    column-name :- :string]
-  (let [fields (lib.metadata/fields provider table-id)]
-    (or (m/find-first #(= column-name (:name %)) fields)
-        (m/find-first #(= (u/lower-case-en column-name) (u/lower-case-en (:name %))) fields)
-        (let [field (field-metadata (next-id! provider) table-id column-name :type/*)]
-          (swap! (state provider) update :fields conj field)
-          field))))
+  (or (find-named (lib.metadata/fields provider table-id) column-name)
+      (add! provider :fields (field-metadata (next-id! provider) table-id column-name :type/*))))
 
 (mu/defn add-metric! :- ::lib.schema.id/card
   "Add a Metric card for a converted metric to `provider`, so a `[:metric id]` reference to it resolves (Lib types it
@@ -206,18 +208,15 @@
        [:table-id      ::lib.schema.id/table]
        [:dataset-query ::lib.schema/query]
        [:entity-id     :string]]]
-  (let [id (next-id! provider)]
-    (swap! (state provider) update :cards conj
-           {:lib/type      :metadata/card
-            :id            id
-            :name          card-name
-            :description   description
-            :database-id   1
-            :table-id      table-id
-            :type          :metric
-            :dataset-query dataset-query
-            :entity-id     entity-id})
-    id))
+  (:id (add! provider :cards {:lib/type      :metadata/card
+                              :id            (next-id! provider)
+                              :name          card-name
+                              :description   description
+                              :database-id   1
+                              :table-id      table-id
+                              :type          :metric
+                              :dataset-query dataset-query
+                              :entity-id     entity-id})))
 
 (mu/defn portable-card-ref :- :string
   "The `entity_id` serdes writes for the Metric card `card-id`."

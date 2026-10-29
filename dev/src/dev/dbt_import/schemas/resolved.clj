@@ -8,7 +8,8 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 (mr/def ::config.base-types
   [:map-of :string ::lib.schema.common/base-type])
@@ -37,11 +38,6 @@
    ;; needs no entry.
    [:entity-models   {:optional true} [:map-of :string :string]]])
 
-;; TODO (Cam 2026-10-22) there has to be an existing schema for this somewhere in the codebase already
-(mr/def ::entity-id
-  "A 21-character NanoID, as used for `entity_id`."
-  [:re #"^[A-Za-z0-9_-]{21}$"])
-
 (mr/def ::unsupported-dimension
   "A dbt dimension of a converted metric that could not become one of its curated dimensions, and why."
   [:map
@@ -49,15 +45,19 @@
    [:reason :string]])
 
 (mr/def ::metric
-  "An IR metric bound to Metabase: the Lib query that computes it and its curated dimensions and mappings, built
+  "An IR metric (`ir`) bound to Metabase: the Lib query that computes it and its curated dimensions and mappings, built
   against the [[dev.dbt-import.metadata]] provider for its database, which is what turns their ids back into names
-  when they are written out. `unsupported-dimensions` lists the dbt dimensions that could not be curated dimensions.
-  `card-id` is the metric's id in that provider, which a ratio or derived metric's `[:metric id]` references use."
+  when they are written out. `semantic-model` names the model the query is over and `agg-time-dimension` its default
+  time dimension; for a ratio or derived metric both come from its inputs. `unsupported-dimensions` lists the dbt
+  dimensions that could not be curated dimensions. `card-id` is the metric's id in that provider, which a ratio or
+  derived metric's `[:metric id]` references use."
   [:map
-   [:metric                 ::ir/metric]
-   [:entity-id              ::entity-id]
+   [:ir                     ::ir/metric]
+   [:entity-id              ms/NanoIdString]
    [:card-id                ::lib.schema.id/card]
    [:metadata-provider      ::lib.schema.metadata/metadata-provider]
+   [:semantic-model         :string]
+   [:agg-time-dimension     [:maybe :string]]
    [:query                  ::lib.schema/query]
    [:dimensions             ::lib-metric.schema/persisted-dimensions]
    [:dimension-mappings     [:sequential ::lib-metric.schema/dimension-mapping]]
@@ -67,7 +67,7 @@
   "The collection the metrics are written into."
   [:map
    [:name      :string]
-   [:entity-id ::entity-id]])
+   [:entity-id ms/NanoIdString]])
 
 (mr/def ::manifest
   "The resolve stage's output: what the emit stage needs, plus everything that could not be resolved and why.

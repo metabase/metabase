@@ -13,31 +13,29 @@
    [clojure.set :as set]
    [clojure.test :refer [are deftest is testing]]
    [dev.dbt-import.emit :as emit]
-   [dev.dbt-import.parse :as parse]
-   [dev.dbt-import.resolve :as resolve]
    [dev.dbt-import.test-util :as tu :refer [fld]]
    [medley.core :as m]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
+   [metabase.lib-metric.dimension.jvm :as lib-metric.dimension.jvm]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.metrics.core :as metrics]
    [metabase.models.serialization :as serdes]
+   [metabase.test :as mt]
    [metabase.util.malli.registry :as mr]
    [metabase.util.yaml :as yaml]))
 
-(set! *warn-on-reflection* true)
-
 (def ^:private main-group
   "The group of the metric's own columns, named after its semantic model, which has no label, so after its table."
-  {:id (tu/group-id "main" "fact_sales"), :type "main", :display-name "fact_sales"})
+  {:id (lib-metric.dimension.jvm/group-id "main" "fact_sales"), :type "main", :display-name "fact_sales"})
 
 (def ^:private product-group
   "The group of the columns joined from `dim_product`, named after the semantic model's label."
-  {:id (tu/group-id "connection" "Product"), :type "connection", :display-name "Product"})
+  {:id (lib-metric.dimension.jvm/group-id "connection" "Product"), :type "connection", :display-name "Product"})
 
 (def ^:private order-group
   "The group of the columns joined from `dim_order`, which has no label, so named after its table."
-  {:id (tu/group-id "connection" "dim_order"), :type "connection", :display-name "dim_order"})
+  {:id (lib-metric.dimension.jvm/group-id "connection" "dim_order"), :type "connection", :display-name "dim_order"})
 
 (defn- local-dimension
   "What [[tu/dimension-set]] shows for a dimension over `column` of `fact_sales`, before its name and display name."
@@ -165,7 +163,7 @@
     (testing "a filter still refers to the dimension by its dbt reference, as before"
       (is (= [[:= {} (tu/joined-fld "order_key" "dim_order" "status" :type/Text) "Shipped"]]
              (tu/filters {:edit   same-name
-                          :metric {:filter {:where_filters [{:where_sql_template "{{ Dimension('order__status') }} = 'Shipped'"}]}}}))))))
+                          :metric {:filter (tu/where-filters "{{ Dimension('order__status') }} = 'Shipped'")}}))))))
 
 (defn- defaults-of
   "The names of the default dimensions of the metric [[tu/convert]] builds from `tweaks`."
@@ -248,7 +246,7 @@
           (testing "and a filter through the entity joins to the same model"
             (is (= [[:= {} (tu/joined-fld "product_key" "dim_product" "product_category" :type/Text) "Planes"]]
                    (tu/filters (with-twin {:config {:entity-models {"product" "dim_product"}}
-                                           :metric {:filter {:where_filters [{:where_sql_template "{{ Dimension('product__product_category_dim') }} = 'Planes'"}]}}})))))))
+                                           :metric {:filter (tu/where-filters "{{ Dimension('product__product_category_dim') }} = 'Planes'")}})))))))
       (testing "an :entity-models entry naming a model that is not primary for the entity is reported"
         (let [reasons (tu/unsupported-dimensions (with-twin {:config {:entity-models {"product" "dim_order"}}}))]
           (is (re-find #":entity-models names semantic model \"dim_order\" for entity \"product\", but the models with it as their primary or a unique entity are \"dim_product\", \"dim_product_2\""
@@ -277,7 +275,7 @@
       (testing "and a filter through the entity joins to it"
         (is (= [[:= {} (tu/joined-fld "product_key" "dim_product" "product_category" :type/Text) "Planes"]]
                (tu/filters {:edit   unique-target
-                            :metric {:filter {:where_filters [{:where_sql_template "{{ Dimension('product__product_category_dim') }} = 'Planes'"}]}}}))))))
+                            :metric {:filter (tu/where-filters "{{ Dimension('product__product_category_dim') }} = 'Planes'")}}))))))
   (testing "a unique entity on the metric's own model reaches the model keyed by it, like a foreign entity"
     (let [unique-source (retype-entity tu/sm-id "order" "unique")]
       (is (= (get (tu/dimension-set {}) "order_status_dim")
@@ -285,7 +283,7 @@
       (is (= (tu/dimension-names {}) (tu/dimension-names {:edit unique-source})))
       (is (= [[:= {} (tu/joined-fld "order_key" "dim_order" "status" :type/Text) "Shipped"]]
              (tu/filters {:edit   unique-source
-                          :metric {:filter {:where_filters [{:where_sql_template "{{ Dimension('order__order_status_dim') }} = 'Shipped'"}]}}})))))
+                          :metric {:filter (tu/where-filters "{{ Dimension('order__order_status_dim') }} = 'Shipped'")}})))))
   (testing "a unique entity no other model is keyed by is just a key: nothing joined, nothing reported, no join to the model itself"
     (let [lone-unique (tu/edit-semantic-model #(update % :entities conj (tu/entity "sale_alt" "unique" :expr "fact_sales_key")))]
       (is (= (tu/dimension-names {}) (tu/dimension-names {:edit lone-unique})))
@@ -298,7 +296,7 @@
           "no model is keyed by the entity, so there is nothing behind it to report")
       (is (re-find #"no semantic model has entity \"product\" as its primary or a unique entity"
                    (tu/unsupported {:edit   foreign-target
-                                    :metric {:filter {:where_filters [{:where_sql_template "{{ Dimension('product__product_category_dim') }} = 'Planes'"}]}}}))))))
+                                    :metric {:filter (tu/where-filters "{{ Dimension('product__product_category_dim') }} = 'Planes'")}}))))))
 
 (deftest ^:parallel metric-time-granularity-test
   (testing "a metric's time_granularity is the default temporal unit of its default dimension"
@@ -343,13 +341,8 @@
       (is (= #{(:id main-group) (:id product-group) (:id order-group)}
              (into #{} (map (comp :id :group)) dimensions))))))
 
-(defn- flexanalytics-resolved []
-  (->> (.getPath ^java.net.URL (io/resource "dbt_import/flexanalytics_manifest.json"))
-       parse/parse-manifest-file
-       (resolve/resolve-manifest tu/default-config)))
-
 (deftest ^:parallel flexanalytics-test
-  (let [resolved   (flexanalytics-resolved)
+  (let [resolved   (tu/flexanalytics-resolved)
         entity-for (fn [metric-name] (tu/card-entity tu/default-config resolved metric-name))
         names-of   (fn [entity] (mapv :name (:dimensions entity)))
         sales      (entity-for "sales")
@@ -373,43 +366,42 @@
           (is (= (names-of sales) (names-of (entity-for metric-name)))))))
     (testing "the SQL dimensions are reported, not dropped"
       (is (= #{"is_aviation_order" "is_cancelled_order"}
-             (into #{} (map :name) (:unsupported-dimensions (m/find-first #(= "sales" (-> % :metric :name)) (:metrics resolved)))))))))
+             (into #{} (map :name) (:unsupported-dimensions (tu/resolved-metric-named resolved "sales"))))))))
 
 (deftest yaml-round-trip-test
   (testing "the dimensions and mappings read back from YAML the way a serdes import reads them, and are valid"
-    (let [config           tu/default-config
-          files            (emit/files config (tu/resolve-manifest-map (tu/build-manifest {})))
-          dir              (tu/temp-dir)
-          _                (emit/write! dir files)
-          {:keys [path entity]} (m/find-first :metric files)
-          card             (yaml/parse-string (slurp (io/file dir path)) :key-fn serdes.ingest/parse-key)
-          ;; stand in for the instance: a made-up id for every table and field the YAML names, the same every time
-          ids              (atom {})
-          id-for           (fn [portable-ref]
-                             (or (get @ids portable-ref)
-                                 (get (swap! ids #(assoc % portable-ref (inc (count %)))) portable-ref)))]
-      (is (= (count (:dimensions entity)) (count (:dimensions card)) (count (:dimension_mappings card)))
-          "every dimension and mapping is written")
-      (binding [serdes/*import-table-fk* id-for
-                serdes/*import-field-fk* id-for]
-        (let [dimensions  (metrics/import-dimensions (:dimensions card))
-              mappings    (metrics/import-dimension-mappings (:dimension_mappings card))
-              mapping-for (m/index-by :dimension-id mappings)
-              named       (fn [dimension-name] (m/find-first #(= dimension-name (:name %)) dimensions))]
-          (testing "valid against the persisted schemas"
-            (is (mr/validate ::lib-metric.schema/persisted-dimensions dimensions))
-            (doseq [mapping mappings]
-              (is (mr/validate ::lib-metric.schema/dimension-mapping mapping))))
-          (testing "ids survive"
-            (is (= (map :id (:dimensions entity)) (map :id dimensions)))
-            (is (= (set (map :id dimensions)) (set (keys mapping-for)))))
-          (testing "keyword values come back as keywords and the default survives"
-            (is (= {:name "date_day", :default true, :default-temporal-unit :day, :effective-type :type/Date}
-                   (select-keys (named "date_day") [:name :default :default-temporal-unit :effective-type])))
-            (is (= [{:type :field, :field-id (id-for (tu/portable-field "fact_sales" "date_day"))}]
-                   (:sources (named "date_day")))))
-          (testing "a joined mapping's table and foreign key are bound to the instance's ids"
-            (let [{:keys [table-id target]} (mapping-for (:id (named "product_category_dim")))]
-              (is (= (id-for (tu/portable-table "dim_product")) table-id))
-              (is (= (id-for (tu/portable-field "dim_product" "product_category")) (nth target 2)))
-              (is (= (id-for (tu/portable-field "fact_sales" "product_key")) (get-in target [1 :source-field]))))))))))
+    (mt/with-temp-dir [dir nil]
+      (let [files            (emit/files tu/default-config (tu/resolve-manifest-map (tu/build-manifest {})))
+            _                (emit/write! dir files)
+            {:keys [path entity]} (m/find-first :metric files)
+            card             (yaml/parse-string (slurp (io/file dir path)) :key-fn serdes.ingest/parse-key)
+            ;; stand in for the instance: a made-up id for every table and field the YAML names, the same every time
+            ids              (atom {})
+            id-for           (fn [portable-ref]
+                               (or (get @ids portable-ref)
+                                   (get (swap! ids #(assoc % portable-ref (inc (count %)))) portable-ref)))]
+        (is (= (count (:dimensions entity)) (count (:dimensions card)) (count (:dimension_mappings card)))
+            "every dimension and mapping is written")
+        (binding [serdes/*import-table-fk* id-for
+                  serdes/*import-field-fk* id-for]
+          (let [dimensions  (metrics/import-dimensions (:dimensions card))
+                mappings    (metrics/import-dimension-mappings (:dimension_mappings card))
+                mapping-for (m/index-by :dimension-id mappings)
+                named       (fn [dimension-name] (m/find-first #(= dimension-name (:name %)) dimensions))]
+            (testing "valid against the persisted schemas"
+              (is (mr/validate ::lib-metric.schema/persisted-dimensions dimensions))
+              (doseq [mapping mappings]
+                (is (mr/validate ::lib-metric.schema/dimension-mapping mapping))))
+            (testing "ids survive"
+              (is (= (map :id (:dimensions entity)) (map :id dimensions)))
+              (is (= (set (map :id dimensions)) (set (keys mapping-for)))))
+            (testing "keyword values come back as keywords and the default survives"
+              (is (= {:name "date_day", :default true, :default-temporal-unit :day, :effective-type :type/Date}
+                     (select-keys (named "date_day") [:name :default :default-temporal-unit :effective-type])))
+              (is (= [{:type :field, :field-id (id-for (tu/portable-field "fact_sales" "date_day"))}]
+                     (:sources (named "date_day")))))
+            (testing "a joined mapping's table and foreign key are bound to the instance's ids"
+              (let [{:keys [table-id target]} (mapping-for (:id (named "product_category_dim")))]
+                (is (= (id-for (tu/portable-table "dim_product")) table-id))
+                (is (= (id-for (tu/portable-field "dim_product" "product_category")) (nth target 2)))
+                (is (= (id-for (tu/portable-field "fact_sales" "product_key")) (get-in target [1 :source-field])))))))))))
