@@ -20,6 +20,7 @@ import type { Database } from "metabase-types/api";
 import { COMMON_DATABASE_FEATURES } from "metabase-types/api/mocks";
 import {
   PEOPLE,
+  PEOPLE_STATE_VALUES,
   PRODUCT_CATEGORY_VALUES,
   PRODUCT_VENDOR_VALUES,
   createSampleDatabase,
@@ -62,7 +63,11 @@ function setup({
   const onChange = jest.fn();
   const onBack = jest.fn();
 
-  setupFieldsValuesEndpoints([PRODUCT_CATEGORY_VALUES, PRODUCT_VENDOR_VALUES]);
+  setupFieldsValuesEndpoints([
+    PRODUCT_CATEGORY_VALUES,
+    PRODUCT_VENDOR_VALUES,
+    PEOPLE_STATE_VALUES,
+  ]);
   setupDatabaseEndpoints(database);
 
   const state = createMockState({
@@ -130,18 +135,28 @@ describe("StringFilterPicker", () => {
       expect(screen.getByRole("button", { name: "Add filter" })).toBeDisabled();
     });
 
-    it("should list operators", async () => {
-      setup();
+    it.each([
+      ["a text", "PRODUCTS", "DESCRIPTION"],
+      ["a location", "PEOPLE", "STATE"],
+    ])(
+      "should list operators for %s column",
+      async (_, tableName, columnName) => {
+        const query = createQuery();
+        setup({
+          query,
+          column: findStringColumn(query, tableName, columnName),
+        });
 
-      await userEvent.click(screen.getByLabelText("Filter operator"));
-      const menu = await screen.findByRole("menu");
-      const menuItems = within(menu).getAllByRole("menuitem");
+        await userEvent.click(screen.getByLabelText("Filter operator"));
+        const menu = await screen.findByRole("menu");
+        const menuItems = within(menu).getAllByRole("menuitem");
 
-      expect(menuItems).toHaveLength(EXPECTED_OPERATORS.length);
-      EXPECTED_OPERATORS.forEach((operatorName) =>
-        expect(within(menu).getByText(operatorName)).toBeInTheDocument(),
-      );
-    });
+        expect(menuItems).toHaveLength(EXPECTED_OPERATORS.length);
+        EXPECTED_OPERATORS.forEach((operatorName) =>
+          expect(within(menu).getByText(operatorName)).toBeInTheDocument(),
+        );
+      },
+    );
 
     it("should handle fields with listable values", async () => {
       const query = createQuery();
