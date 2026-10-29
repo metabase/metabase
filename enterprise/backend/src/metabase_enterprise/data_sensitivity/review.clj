@@ -2,8 +2,8 @@
   "Review of the pending AI proposals of a database or its tables: counts per table, the proposals, and apply. The
   review UI keeps the selection and the edits until apply, which takes the accepted proposals and the edited values
   in one request. Apply writes the accepted proposals as AI values, which readers see over the deterministic value
-  and under a person's value, and deletes their rows. Apply with `reject_all` deletes every pending proposal of a
-  database.
+  and under a person's value, and deletes their rows. Apply with `reject_all` deletes every pending proposal of the
+  visible fields of the visible tables of a database.
 
   `source` and `current_value` are computed when a proposal is read, from the value readers see now. A proposal with
   source `human` would replace a value a person set; apply of such a proposal clears the person's value.
@@ -162,7 +162,7 @@
   "Give `accept` (ids) and `edits`, or `reject_all` with `database_id`. `edits` maps a proposal id to the value that
   replaces its proposed value; an edit also accepts its proposal. `proposed_values` maps a proposal id to the
   proposed value that the client saw, and `sources` maps it to the source that the client saw. `reject_all` deletes
-  every pending proposal of the database `database_id`."
+  every pending proposal of the visible fields of the visible tables of the database `database_id`."
   [:map {:closed true}
    [:accept          {:optional true} [:maybe [:sequential ms/PositiveInt]]]
    [:edits           {:optional true} [:maybe [:map-of ms/PositiveInt :string]]]
@@ -326,11 +326,11 @@
 (mu/defn apply! :- ::apply-result
   "Apply the review that `request` gives, as `user-id`: write the accepted proposals, the edited ones as the person's
   values and the others as AI values, and delete their rows; or, with `reject_all`, delete every pending proposal of
-  the database. Ids that name no proposal are ignored, unless `proposed_values` has them: then they are listed in
-  `failures` as `changed`, as is a proposal whose value is not the one in `proposed_values`, and an unedited proposal
-  with a seen value that is over a human value now whose source in `sources` is not `human`. An invalid edit is a 400
-  and nothing is written. Each table is one transaction. A proposal that cannot be written keeps its row and is
-  listed in `failures`."
+  the visible fields of the visible tables of the database. Ids that name no proposal are ignored, unless
+  `proposed_values` has them: then they are listed in `failures` as `changed`, as is a proposal whose value is not the
+  one in `proposed_values`, and an unedited proposal with a seen value that is over a human value now whose source in
+  `sources` is not `human`. An invalid edit is a 400 and nothing is written. Each table is one transaction. A proposal
+  that cannot be written keeps its row and is listed in `failures`."
   [request :- ::apply-request
    user-id :- ms/PositiveInt]
   (check-request request)
