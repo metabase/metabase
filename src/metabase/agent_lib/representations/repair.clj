@@ -2856,24 +2856,27 @@
         (assoc 1 (merge opts types)))
       clause)))
 
-(defn- previous-stage-alias?
-  "True if `field-ref` has no join alias, or one that some column in `cols` came through."
+(defn- cols-through-alias
+  "Return the columns in `cols` that `field-ref` can name: those that came through its join alias, or all of them
+  when it has none."
   [cols field-ref]
-  (let [alias (get (nth field-ref 1) "join-alias")]
-    (or (nil? alias) (some #(= alias (:join-alias %)) cols))))
+  (if-let [alias (get (nth field-ref 1) "join-alias")]
+    (filterv #(= alias (:join-alias %)) cols)
+    cols))
 
 (defn- infer-cross-stage-field-types-in-stage
   "Stamp types from `cols` on every by-name field ref in `stage` that lacks `\"base-type\"`, including the
   refs in its joins' `conditions`.
+  A ref through a join alias is matched only against the columns that came through that alias.
   Leaves alone a ref through a join alias that no column in `cols` came through, for validation to reject.
   Skips each join's own `stages`, which resolve on their own and can't reach this stage's columns."
   [stage cols]
   (let [aliases (stage-join-aliases stage)]
     (postwalk-outside-join-stages
      (fn [node]
-       (if (and (string-cross-stage-field-clause? aliases node)
-                (previous-stage-alias? cols node))
-         (maybe-fill-cross-stage-types node cols)
+       (if-let [ref-cols (when (string-cross-stage-field-clause? aliases node)
+                           (not-empty (cols-through-alias cols node)))]
+         (maybe-fill-cross-stage-types node ref-cols)
          node))
      stage)))
 
@@ -3112,13 +3115,16 @@
 
 (defn- first-unresolved-cross-stage-ref
   "Return the first [[unstamped-cross-stage-ref?]] clause in `stage` that matches no column in `cols`, or nil.
-  Skips each join's own `stages`, which resolve on their own, and refs that aren't [[previous-stage-alias?]]."
+  A ref through a join alias is matched only against the columns that came through that alias.
+  Skips each join's own `stages`, which resolve on their own.
+  Also skips a ref through a join alias that no column in `cols` came through."
   [stage cols]
   (let [aliases (stage-join-aliases stage)]
     (match/match-one (without-join-stages stage)
       (node :guard (and (unstamped-cross-stage-ref? aliases node)
-                        (previous-stage-alias? cols node)
-                        (nil? (match-cross-stage-column cols (nth node 2)))))
+                        (let [ref-cols (cols-through-alias cols node)]
+                          (and (seq ref-cols)
+                               (nil? (match-cross-stage-column ref-cols (nth node 2)))))))
       node)))
 
 (defn- assert-cross-stage-refs-resolved*
