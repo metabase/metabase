@@ -61,7 +61,9 @@ function VersionMessage({
       align="center"
       justify="space-between"
       p="lg"
-      bg={isEol ? "background_surface-warning" : "core-brand"}
+      bg={
+        isEol ? "background_surface-warning" : "background_surface-brand-strong"
+      }
       bd={isEol ? "1px solid var(--mb-color-feedback-warning)" : undefined}
       bdrs="sm"
     >
