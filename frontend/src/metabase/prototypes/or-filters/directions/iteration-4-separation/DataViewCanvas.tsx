@@ -446,6 +446,7 @@ function SummaryFilterPills({
       <AddSummaryFilter
         className={BarS.summaryAddButton}
         dropdownClassName={BarS.summaryAddDropdown}
+        icon="filter"
         columns={columns}
         summaryCount={summaries.length}
         label={thresholds.length === 0 ? t`Filter the summary` : undefined}

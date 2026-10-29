@@ -13,6 +13,7 @@ import {
   UnstyledButton,
 } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import type { IconName } from "metabase-types/api";
 
 import { FilterTokenView } from "./ExpressionBar";
 import S from "./ExpressionBar.module.css";
@@ -187,6 +188,8 @@ type AddSummaryFilterProps = {
   className?: string;
   /** Extra class on the dropdown, e.g. to recolor its icons. */
   dropdownClassName?: string;
+  /** The icon on the button and beside each aggregation; Σ by default. */
+  icon?: IconName;
   onAdd: (column: SummaryColumn, filterable: Lib.Filterable) => void;
 };
 
@@ -198,6 +201,7 @@ export function AddSummaryFilter({
   isNested = false,
   className,
   dropdownClassName,
+  icon = "sum",
   onAdd,
 }: AddSummaryFilterProps) {
   const [isOpened, setIsOpened] = useState(false);
@@ -215,7 +219,7 @@ export function AddSummaryFilter({
           size="compact-sm"
           variant="subtle"
           className={cx(S.summaryAddButton, className)}
-          leftSection={<Icon name="sum" size={12} />}
+          leftSection={<Icon name={icon} size={12} />}
           rightSection={label ? undefined : <Icon name="add" size={10} />}
           onClick={() => setIsOpened((opened) => !opened)}
         >
@@ -224,6 +228,7 @@ export function AddSummaryFilter({
       </Popover.Target>
       <AddSummaryFilterDropdown
         className={dropdownClassName}
+        icon={icon}
         columns={columns}
         summaryCount={summaryCount}
         onAdd={(column, filterable) => {
@@ -240,6 +245,7 @@ type AddSummaryFilterDropdownProps = Pick<
   "columns" | "summaryCount" | "onAdd"
 > & {
   className?: string;
+  icon?: IconName;
 };
 
 /**
@@ -249,6 +255,7 @@ type AddSummaryFilterDropdownProps = Pick<
  */
 export function AddSummaryFilterDropdown({
   className,
+  icon = "sum",
   columns,
   summaryCount,
   onAdd,
@@ -281,7 +288,7 @@ export function AddSummaryFilterDropdown({
               className={S.suggestion}
               onClick={() => setColumn(candidate)}
             >
-              <Icon name="sum" size={18} className={S.suggestionSummaryIcon} />
+              <Icon name={icon} size={18} className={S.suggestionSummaryIcon} />
               <Text fw="bold" className={S.suggestionTitle}>
                 {
                   Lib.displayInfo(

@@ -84,7 +84,7 @@
   cursor: text;
 }
 
-/* The Σ+ button in the filter color, like the pills around it. */
+/* The add button in the filter color, like the pills around it. */
 .summaryAddButton,
 .summaryAddButton:hover {
   color: var(--mb-color-core-filter);
@@ -94,7 +94,7 @@
   background-color: var(--mb-color-button-light-filter-hover);
 }
 
-/* Its dropdown's Σ icons in the filter color as well. */
+/* Its dropdown's icons in the filter color as well. */
 .summaryAddDropdown {
   --summary-icon-color: var(--mb-color-core-filter);
 }
