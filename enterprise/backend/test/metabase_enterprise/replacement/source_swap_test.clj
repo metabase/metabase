@@ -166,6 +166,7 @@
               (replacement.source-swap/swap-source! [:card card-id]
                                                     [:card old-source-id]
                                                     [:card new-source-id])
+              (deps.test/synchronously-run-backfill!)
               (is (= {:id new-source-id :type "card" :column "count"}
                      (:graph.goal_value (t2/select-one-fn :visualization_settings :model/Card card-id))))
               (is (not (t2/exists? :model/Dependency
@@ -191,6 +192,7 @@
               (replacement.source-swap/swap-source! [:card card-id]
                                                     [:card old-source-id]
                                                     [:table (mt/id :orders)])
+              (deps.test/synchronously-run-backfill!)
               (is (= old-source-id
                      (-> (t2/select-one-fn :visualization_settings :model/Card card-id) :graph.goal_value :id)))
               (is (t2/exists? :model/Dependency
@@ -216,6 +218,7 @@
                                       (replacement.source-swap/swap-source! [:card card-id]
                                                                             [:card old-source-id]
                                                                             [:card new-source-id]))))
+              (deps.test/synchronously-run-backfill!)
               (is (t2/exists? :model/Dependency
                               :from_entity_type :card :from_entity_id card-id
                               :to_entity_type :card :to_entity_id old-source-id))
@@ -246,6 +249,7 @@
                              :no-error
                              (catch clojure.lang.ExceptionInfo e
                                (:status-code (ex-data e)))))))
+              (deps.test/synchronously-run-backfill!)
               (is (= old-source-id
                      (-> (t2/select-one-fn :visualization_settings :model/Card card-id) :graph.goal_value :id)))
               (is (t2/exists? :model/Dependency
@@ -591,6 +595,7 @@
               (replacement.source-swap/swap-source! [:card card-id]
                                                     [:table (mt/id :orders)]
                                                     [:table (mt/id :reviews)])
+              (deps.test/synchronously-run-backfill!)
               (is (not (t2/exists? :model/Dependency
                                    :from_entity_type :card :from_entity_id card-id
                                    :to_entity_type :table :to_entity_id (mt/id :orders)))
@@ -620,6 +625,7 @@
               (replacement.source-swap/swap-source! [:segment segment-id]
                                                     [:table (mt/id :orders)]
                                                     [:table (mt/id :reviews)])
+              (deps.test/synchronously-run-backfill!)
               (is (not (t2/exists? :model/Dependency
                                    :from_entity_type :segment :from_entity_id segment-id
                                    :to_entity_type :table :to_entity_id (mt/id :orders)))
@@ -650,6 +656,7 @@
               (replacement.source-swap/swap-source! [:measure measure-id]
                                                     [:table (mt/id :orders)]
                                                     [:table (mt/id :reviews)])
+              (deps.test/synchronously-run-backfill!)
               (is (not (t2/exists? :model/Dependency
                                    :from_entity_type :measure :from_entity_id measure-id
                                    :to_entity_type :table :to_entity_id (mt/id :orders)))
@@ -679,6 +686,7 @@
               (replacement.source-swap/swap-source! [:transform transform-id]
                                                     [:table (mt/id :orders)]
                                                     [:table (mt/id :reviews)])
+              (deps.test/synchronously-run-backfill!)
               (is (not (t2/exists? :model/Dependency
                                    :from_entity_type :transform :from_entity_id transform-id
                                    :to_entity_type :table :to_entity_id (mt/id :orders)))

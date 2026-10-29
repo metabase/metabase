@@ -660,16 +660,6 @@
              :from_entity_type entity-type
              :from_entity_id entity-id))
 
-(mu/defn dependency-exists?
-  "Whether the entity `from-type` `from-id` depends on the entity `to-type` `to-id`."
-  [from-type :- EntityType
-   from-id   :- ms/PositiveInt
-   to-type   :- EntityType
-   to-id     :- ms/PositiveInt]
-  (t2/exists? :model/Dependency
-              :from_entity_type from-type :from_entity_id from-id
-              :to_entity_type to-type :to_entity_id to-id))
-
 (mu/defn insert-dependencies!
   "Insert the Dependency `rows`, returning the number inserted."
   [rows :- [:sequential [:map {:closed true}
@@ -680,35 +670,10 @@
                          [:to_entity_id     {:optional true} [:maybe ms/PositiveInt]]]]]
   (t2/insert! :model/Dependency rows))
 
-(mu/defn retarget-dependency!
-  "Point the Dependency of the entity `from-type` `from-id` on the entity `old-to-type` `old-to-id` at the entity
-  `new-to-type` `new-to-id`, returning the number updated."
-  [from-type   :- EntityType
-   from-id     :- ms/PositiveInt
-   old-to-type :- EntityType
-   old-to-id   :- ms/PositiveInt
-   new-to-type :- EntityType
-   new-to-id   :- ms/PositiveInt]
-  (t2/update! :model/Dependency
-              {:from_entity_type from-type :from_entity_id from-id
-               :to_entity_type old-to-type :to_entity_id old-to-id}
-              {:to_entity_type new-to-type :to_entity_id new-to-id}))
-
 (mu/defn delete-dependencies!
   "Delete the Dependencies with `dependency-ids`, returning the number deleted."
   [dependency-ids :- [:sequential ms/PositiveInt]]
   (t2/delete! :model/Dependency :id [:in dependency-ids]))
-
-(mu/defn delete-dependency!
-  "Delete the Dependency of the entity `from-type` `from-id` on the entity `to-type` `to-id`, returning the number
-  deleted."
-  [from-type :- EntityType
-   from-id   :- ms/PositiveInt
-   to-type   :- EntityType
-   to-id     :- ms/PositiveInt]
-  (t2/delete! :model/Dependency
-              :from_entity_type from-type :from_entity_id from-id
-              :to_entity_type to-type :to_entity_id to-id))
 
 (mu/defn delete-dependencies-from!
   "Delete the Dependencies of the entities `entity-type` `entity-ids`, returning the number deleted."

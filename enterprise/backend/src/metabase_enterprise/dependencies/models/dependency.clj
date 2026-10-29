@@ -278,23 +278,3 @@
         (dependencies.db/delete-dependencies! to-remove))
       (when (seq to-add)
         (dependencies.db/insert-dependencies! to-add)))))
-
-(defn swap-dependency!
-  "Efficiently swap a dependency from old-source to new-source during replacement operations.
-  This is more efficient than full dependency analysis since we know exactly what changed.
-
-  If the new dependency already exists, we just delete the old one (to avoid duplicate key violation).  If the old
-  dependency doesn't exist, this is a no-op.
-
-  Parameters:
-  - entity-type: The type of the entity whose dependency is changing (e.g., :card)
-  - entity-id: The ID of the entity
-  - old-source: The source being replaced, as [source-type source-id] (e.g., [:card 783])
-  - new-source: The new source, as [source-type source-id] (e.g., [:table 164])"
-  [entity-type entity-id [old-source-type old-source-id] [new-source-type new-source-id]]
-  (let [already-present? (dependencies.db/dependency-exists? entity-type entity-id new-source-type new-source-id)]
-    (if already-present?
-      (dependencies.db/delete-dependency! entity-type entity-id old-source-type old-source-id)
-      (dependencies.db/retarget-dependency! entity-type entity-id
-                                            old-source-type old-source-id
-                                            new-source-type new-source-id))))

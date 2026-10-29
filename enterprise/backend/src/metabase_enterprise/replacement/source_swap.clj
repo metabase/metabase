@@ -2,17 +2,9 @@
   "Swap sources namespace. Entrypoint is [[swap-source!]]. Internally, we rely on the field references having been
   already upgraded. Then we only have to swap concrete usages.
 
-  We also need to update dependencies, which we do in two ways. We explicitly
-  call [[models.dependency/swap-dependency!]] regardless of whether the query actually changed (dependency edges may
-  shift even without query text changes), except for a card whose dynamic goal still reads the old source. Then we
-  fire the entity's update event only when actual changes occurred; the event handler will redo dependency
-  calculation, but also triggers other necessary side-effects like revisions.
-  This means dependency analysis runs twice when there are changes, which is intentional: suppressing the event
-  handler's dependency work would be complicated and could risk the dep graph getting out of sync. If we measure a
-  performance problem here, that would be a good optimization step. In practice most swaps don't change queries
-  (the table was already upgraded and the query references are the same), so this is rarely an issue."
+  We write an entity only when the swap changes it, then fire its update event for side effects like revisions. Its
+  dependencies follow from the write: the model hooks mark it stale and the backfill job recomputes its edges."
   (:require
-   [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase-enterprise.replacement.db :as replacement.db]
    [metabase-enterprise.replacement.util :as replacement.util]
    [metabase-enterprise.replacement.walk :as replacement.walk]
@@ -34,7 +26,6 @@
             changes (cond-> {}
                       (not= query query')
                       (assoc :source (assoc (:source transform) :query query')))]
-        (models.dependency/swap-dependency! :transform (:id transform) old-source new-source)
         (when (seq changes)
           (replacement.db/update-transform! (:id transform) changes)
           (events/publish-event! :event/transform-update
@@ -108,11 +99,7 @@
         (events/publish-event! :event/card-update
                                {:object (merge card changes)
                                 :user-id api/*current-user-id*
-                                :previous-object card}))
-      ;; after the write, so a refused write leaves the edge where the goal still points; a goal still reading
-      ;; `old-source` (a swap to a non-card) keeps the edge
-      (when-not (goal-reads? viz-settings' old-source)
-        (models.dependency/swap-dependency! :card (:id card) old-source new-source)))))
+                                :previous-object card})))))
 
 (defn- segment-swap-source!
   [segment old-source new-source]
@@ -126,7 +113,6 @@
                       (assoc :definition query')
                       (not= table-id table-id')
                       (assoc :table_id table-id'))]
-      (models.dependency/swap-dependency! :segment (:id segment) old-source new-source)
       (when (seq changes)
         (replacement.db/update-segment! (:id segment) changes)
         (events/publish-event! :event/segment-update
@@ -144,7 +130,6 @@
                       (assoc :definition query')
                       (not= table-id table-id')
                       (assoc :table_id table-id'))]
-      (models.dependency/swap-dependency! :measure (:id measure) old-source new-source)
       (when (seq changes)
         (replacement.db/update-measure! (:id measure) changes)
         (events/publish-event! :event/measure-update
