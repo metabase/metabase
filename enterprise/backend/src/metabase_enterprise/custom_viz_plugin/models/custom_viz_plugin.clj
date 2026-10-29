@@ -66,9 +66,9 @@
 
 ;; A plugin serializes as `custom_viz_plugins/<identifier>/custom_viz_plugin.yaml` with its bundle unpacked beside it,
 ;; laid out as `npx @metabase/custom-viz pack` archives it: `metabase-plugin.json` at the root, `dist/index.js`, and
-;; the icon the manifest names under `dist/assets/`. The YAML holds only what the bundle can't derive. An import
-;; packs those files back into an archive, so a plugin's files are what a repository reviews and what an instance
-;; stores.
+;; the icon the manifest names under `dist/assets/`. The YAML declares those files alongside the plugin settings.
+;; An import packs those files back into an archive, so a plugin's files are what a repository reviews
+;; and what an instance stores.
 
 (def ^:private index-file
   "The resource file holding the plugin's built JavaScript, relative to its YAML file."
@@ -128,7 +128,9 @@
    :defaults  {:enabled true}
    :transform {:bundle {:as                  :serdes/resources
                         :export-with-context export-bundle
-                        :import              import-bundle}}})
+                        :import              import-bundle}}
+   :post-extract (fn [entity]
+                   (assoc entity :files (vec (sort (keys (:serdes/resources entity))))))})
 
 (defn- case-colliding-identifiers
   "The lower-cased identifiers that more than one of `identifiers` share: their plugins would be one directory on a
@@ -235,8 +237,11 @@
    {:label identifier :key identifier :style :slug}
    {:label "custom_viz_plugin"}])
 
-(defmethod serdes/resource-paths "CustomVizPlugin" [_ingested read-text]
-  (served-paths read-text))
+(defmethod serdes/resource-paths "CustomVizPlugin" [{:keys [files]}]
+  (when-not (or (nil? files) (sequential? files))
+    (throw (ex-info (format "CustomVizPlugin files must be a list of paths, got: %s" (pr-str files))
+                    {:files files})))
+  files)
 
 (defmethod serdes/binary-resources? "CustomVizPlugin" [_ingested]
   true)

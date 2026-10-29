@@ -170,7 +170,7 @@
                           (let [entity (yaml/parse-string (source.p/read-file snapshot path)
                                                           {:key-fn serialization/parse-key})]
                             (map #(str dir "/" %)
-                                 (serdes/resource-paths entity #(source.p/read-file snapshot (str dir "/" %)))))
+                                 (serdes/resource-paths entity)))
                           (catch Exception _
                             nil)))))
         (source.p/list-dir snapshot dir)))

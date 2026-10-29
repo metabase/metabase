@@ -95,7 +95,7 @@
 (defn read-resources
   "Attach an entity's resource files and directory name for import."
   [entity ^String directory-name read-text read-bytes]
-  (if-let [paths (seq (serdes/resource-paths entity read-text))]
+  (if-let [paths (seq (serdes/resource-paths entity))]
     (let [read-fn (if (serdes/binary-resources? entity) read-bytes read-text)]
       (assoc entity
              :serdes/directory directory-name

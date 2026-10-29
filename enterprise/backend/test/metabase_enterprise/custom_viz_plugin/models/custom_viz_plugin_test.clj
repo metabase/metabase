@@ -39,7 +39,7 @@
       (when (map? exported)
         (let [ingested (ingest/read-resources
                         {:serdes/meta [{:model "CustomVizPlugin" :id identifier}]
-                         :identifier identifier :enabled true}
+                         :identifier identifier :enabled true :files (vec (keys exported))}
                         identifier
                         (fn [path] (when-let [^bytes content (get exported path)] (String. content "UTF-8")))
                         exported)]
@@ -140,7 +140,7 @@
         (is (= id (:id found)))))))
 
 (deftest make-spec-test
-  (testing "the file holds only what the bundle can't derive; the bundle itself is unpacked into resource files"
+  (testing "the YAML holds plugin settings and declares the unpacked bundle files"
     (let [spec (serdes/make-spec "CustomVizPlugin" {})]
       (is (= #{:identifier :enabled} (set (:copy spec))))
       (is (= {:enabled true} (:defaults spec)) "enabled is written only when false; absent means enabled, as on upload")
@@ -159,25 +159,24 @@
                             seq))))
       (testing "the same files always pack to the same bytes, so the hash is stable across imports"
         (is (= (seq (import files)) (seq (import files)))))))
-  (testing "the resource files are the manifest, the JavaScript, and the icon the manifest names, read as bytes"
-    (let [ingested  {:serdes/meta [{:model "CustomVizPlugin" :id "my-viz"}]}
-          read-text (fn [path]
-                      (when (= path "metabase-plugin.json")
-                        (json/encode {:name "my-viz" :icon "icon.svg"})))]
-      (is (= ["metabase-plugin.json" "dist/index.js" "dist/assets/icon.svg"]
-             (serdes/resource-paths ingested read-text)))
-      (is (true? (serdes/binary-resources? ingested))))
-    (testing "an icon the instance would not serve is not a resource"
-      (doseq [icon ["../x" "icon.exe"]]
-        (is (= ["metabase-plugin.json" "dist/index.js"]
-               (serdes/resource-paths {:serdes/meta [{:model "CustomVizPlugin" :id "my-viz"}]}
-                                      (constantly (json/encode {:name "my-viz" :icon icon}))))
-            icon)))
-    (testing "without a readable manifest, the fixed files"
-      (is (= ["metabase-plugin.json" "dist/index.js"]
-             (serdes/resource-paths {:serdes/meta [{:model "CustomVizPlugin" :id "my-viz"}]} (constantly nil))))
-      (is (= ["metabase-plugin.json" "dist/index.js"]
-             (serdes/resource-paths {:serdes/meta [{:model "CustomVizPlugin" :id "my-viz"}]} (constantly "{not json")))))))
+  (testing "resource paths come from YAML, including assets unknown to the manifest"
+    (let [paths ["metabase-plugin.json" "dist/index.js" "dist/assets/icon.svg" "dist/assets/extra.png"]
+          ingested {:serdes/meta [{:model "CustomVizPlugin" :id "my-viz"}]
+                    :files paths}]
+      (is (= paths (serdes/resource-paths ingested)))
+      (is (true? (serdes/binary-resources? ingested)))))
+  (testing "export declares exactly the resources it writes, unpacking the bundle once"
+    (let [unpack cache/bundle->files
+          calls (atom 0)]
+      (mt/with-dynamic-fn-redefs [cache/bundle->files (fn [bundle]
+                                                        (swap! calls inc)
+                                                        (unpack bundle))]
+        (let [entity (serdes/extract-one "CustomVizPlugin" {}
+                                         {:identifier "my-viz" :enabled true
+                                          :bundle (cache/files->bundle (bundle-files {:name "my-viz"} "svg"))})]
+          (is (= "my-viz" (:identifier entity)))
+          (is (= (sort (keys (:serdes/resources entity))) (:files entity)))
+          (is (= 1 @calls)))))))
 
 (defn- ingested-plugin
   "Build an ingested plugin from bundle files."
