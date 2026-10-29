@@ -154,7 +154,10 @@
 
 (def ^:private tab-ops
   "The ops whose `tab_id` names the tab they act on."
-  #{"rename_tab" "move_tab" "duplicate_tab" "remove_tab"})
+  #{"duplicate_tab"
+    "move_tab"
+    "remove_tab"
+    "rename_tab"})
 
 (defn- op-label
   "What the op prefix names for error `code` from the op called `op-name`.
@@ -183,8 +186,9 @@
       (message/msg ["%s"] detail))))
 
 (defn compile-ops
-  "[[dashboard-ops/compile-ops]], with its errors rethrown as MCP teaching errors.
-   Each teaching error keeps the compiler's error as its cause."
+  "Runs [[dashboard-ops/compile-ops]] and rethrows its errors as MCP teaching errors.
+   Each teaching error keeps the compiler's error as its cause.
+   Other exceptions pass through unchanged."
   [current ops cards]
   (try
     (dashboard-ops/compile-ops current ops cards)

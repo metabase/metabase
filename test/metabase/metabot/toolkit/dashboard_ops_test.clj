@@ -71,14 +71,15 @@
 
 (defn- op-error
   "The error data `compile-ops` throws for `ops` against `current`, or nil when it compiles.
-   It also checks the data against the schema [[dashboard-ops/errors]] declares for its code."
+   It also checks the data against the schema [[dashboard-ops/errors]] declares for its code.
+   It rethrows an exception that is not a compiler error, so the test reports it as it is."
   ([current ops] (op-error current ops {}))
   ([current ops cards]
    (try
      (dashboard-ops/compile-ops current ops cards)
      nil
      (catch clojure.lang.ExceptionInfo e
-       (let [{code ::dashboard-ops/error :as data} (dashboard-ops/error-data e)]
+       (let [{code ::dashboard-ops/error :as data} (or (dashboard-ops/error-data e) (throw e))]
          (is (mr/validate (get dashboard-ops/errors code) (dissoc data ::dashboard-ops/error :op-index :op-name))
              "the error data matches its schema in `errors`")
          data)))))
