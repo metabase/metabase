@@ -127,17 +127,22 @@
                       (common/field-metadata-name-for-logging table metabase-field)
                       old-base-type
                       new-base-type)
-           (when-not (= old-base-type :type/*)
-             (field-user-settings/unset-user-settings!
-              (select-keys metabase-field [:id]) [:effective_type :coercion_strategy :semantic_type]))
-           {:base_type           new-base-type
-            :effective_type      new-base-type
-            :coercion_strategy   nil
-            ;; reset fingerprint version so this field will get re-fingerprinted and analyzed
-            :fingerprint_version 0
-            :fingerprint         nil
-            ;; semantic type needs to be set to nil so that the fingerprinter can re-infer it during analysis
-            :semantic_type       nil})
+           (let [previously-untyped? (= old-base-type :type/*)]
+             (when-not previously-untyped?
+               (field-user-settings/unset-user-settings!
+                (select-keys metabase-field [:id]) [:effective_type :coercion_strategy :semantic_type]))
+             (cond-> {:base_type           new-base-type
+                      :effective_type      new-base-type
+                      :coercion_strategy   nil
+                      ;; reset fingerprint version so this field will get re-fingerprinted and analyzed
+                      :fingerprint_version 0
+                      :fingerprint         nil}
+               ;; semantic type needs to be set to nil so that the fingerprinter can re-infer it during analysis. A
+               ;; field whose base type was `:type/*` is getting a real type for the first time, e.g. a binary column
+               ;; becoming `:type/Binary` after an upgrade: the column itself hasn't changed, so keep its semantic type.
+               ;; Otherwise a binary PK or FK loses `:type/FK` for good, since `mark-fk!` only writes it when the target
+               ;; changes.
+               (not previously-untyped?) (assoc :semantic_type nil))))
          (when (and (not new-base-type?)
                     (nil? old-coercion-strategy)
                     (some? old-effective-type)

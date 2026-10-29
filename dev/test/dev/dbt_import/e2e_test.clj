@@ -36,18 +36,27 @@
                                           (slurp (io/resource "dbt_import/flexanalytics_marts.edn")))))
 
 (defn- convert-and-import!
-  "Convert the fixture manifest for the current test database and import the result, the way the README says to.
-  Returns the converter's report."
+  "Convert the fixture manifest for the current test database, check the result against the instance and import it,
+  the way the README says to. Returns the converter's report, with what the preflight check reported under
+  `:preflight`."
   []
   (mt/with-temp-dir [out-dir nil]
-    (let [report (dbt-import/convert! {:manifest tu/flexanalytics-manifest-filename
-                                       :out-dir  out-dir
-                                       :config   {:databases     {"dbt_bi" (:name (mt/db))}
-                                                  :driver        :postgres
-                                                  :creator-email (:email (mt/fetch-user :crowberto))}})]
+    (let [report    (dbt-import/convert! {:manifest tu/flexanalytics-manifest-filename
+                                          :out-dir  out-dir
+                                          :config   {:databases     {"dbt_bi" (:name (mt/db))}
+                                                     :driver        :postgres
+                                                     :creator-email (:email (mt/fetch-user :crowberto))}})
+          preflight (dbt-import/preflight {:out-dir out-dir})]
       (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
         (serdes.load/load-metabase! (serdes.ingest/ingest-yaml out-dir)))
-      report)))
+      (assoc report :preflight preflight))))
+
+(defn- warehouse-row-counts
+  "How many Databases, Tables and Fields the app DB has: what an import that could not bind a reference adds to."
+  []
+  {:databases (t2/count :model/Database)
+   :tables    (t2/count :model/Table)
+   :fields    (t2/count :model/Field)})
 
 (defn- imported-cards
   "The imported Card for each converted metric, by metric name."
@@ -121,8 +130,13 @@
   (mt/test-driver :postgres
     (mt/dataset (marts-dataset)
       (mt/with-model-cleanup [:model/Card :model/Collection]
-        (let [report (convert-and-import!)
+        (let [before (warehouse-row-counts)
+              report (convert-and-import!)
               cards  (imported-cards report)]
+          (testing "the preflight check binds every reference against the synced tables"
+            (is (= [] (:preflight report))))
+          (testing "the import made up no Database, Table or Field for a reference it could not bind"
+            (is (= before (warehouse-row-counts))))
           (testing "every converted metric imported as a metric card in the collection"
             (is (= (set (keys hand-written-sql)) (set (keys cards))))
             (is (every? #(= :metric (:type %)) (vals cards)))

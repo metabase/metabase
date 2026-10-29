@@ -338,11 +338,13 @@
               ["./bin/mage project-tests backend" "Run backend checks"]
               ["./bin/mage project-tests migrations" "Run migration checks"]
               ["./bin/mage project-tests modules" "Run module checks"]
+              ["./bin/mage project-tests dbt-import" "Run the dbt metrics converter's tests (dev/test/dev/dbt_import)"]
               ["./bin/mage project-tests ratchets" "Check the repository's kondo suppression ratchets"]]
    :arg-schema [:or
                 [:tuple]
                 [:tuple [:enum {:name "suite"}
                          "backend"
+                         "dbt-import"
                          "migrations"
                          "modules"
                          "ratchets"]]]

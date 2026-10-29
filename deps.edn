@@ -293,7 +293,7 @@
     ring/ring-devel              {:mvn/version "1.15.3"}                    ; reload clojure files on the fly
     ring/ring-mock               {:mvn/version "0.6.2"}                     ; creating Ring request maps for testing purposes
     talltale/talltale            {:mvn/version "0.5.14"}}                   ; generates fake data, useful for prototyping or load testing
-   :extra-paths ["dev/src" "dev/test" "local/src" "test" "test_resources" ".clj-kondo/src" ".clj-kondo/test" "dev/resources"]
+   :extra-paths ["dev/src" "local/src" "test" "test_resources" ".clj-kondo/src" ".clj-kondo/test" "dev/resources"]
    :jvm-opts    ["-Dmb.run.mode=dev"
                  "-Dmb.field.filter.operators.enabled=true"
                  "-Dmb.test.env.setting=ABCDEFG"
@@ -572,6 +572,9 @@
     "test"
     "enterprise/backend/src"
     "enterprise/backend/test"
+    ;; The rest of dev/ is not lint-clean; the dbt metrics converter is, and its tests run in CI.
+    "dev/src/dev/dbt_import"
+    "dev/test/dev/dbt_import"
     "dev/test/metabase"
     "bin/build/src"
     "bin/build/test"

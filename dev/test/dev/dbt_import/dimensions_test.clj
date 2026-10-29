@@ -2,45 +2,44 @@
   "The curated dimension set of a converted metric: dbt dimensions on the metric's own semantic model become
   dimensions of its table, dimensions on the semantic models its foreign entities join to become dimensions reached by
   an implicit join through the entity's column, and the measure's `agg_time_dimension` is the default. Dimensions
-  that cannot be a Metabase dimension (a dimension mapping targets a column, never SQL) are reported per metric, not
-  dropped.
+  that cannot be a Metabase dimension (a dimension mapping targets a column, never SQL; a dimension set has no validity
+  window) are reported per metric, not dropped.
 
   Everything is checked in the portable form [[emit/files]] writes, see [[tu/dimension-set]]. The written files being
   byte-identical across runs is covered by [[dev.dbt-import.emit-test/determinism-test]], whose fixture carries
   dimensions."
   (:require
-   [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.test :refer [are deftest is testing]]
    [dev.dbt-import.emit :as emit]
    [dev.dbt-import.test-util :as tu :refer [fld]]
    [medley.core :as m]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
-   [metabase.lib-metric.dimension.jvm :as lib-metric.dimension.jvm]
+   [metabase.lib-metric.core :as lib-metric]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.metrics.core :as metrics]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
-   [metabase.util.malli.registry :as mr]
-   [metabase.util.yaml :as yaml]))
+   [metabase.util.malli.registry :as mr]))
 
 (def ^:private main-group
   "The group of the metric's own columns, named after its semantic model, which has no label, so after its table."
-  {:id (lib-metric.dimension.jvm/group-id "main" "fact_sales"), :type "main", :display-name "fact_sales"})
+  {:id (lib-metric/group-id "main" "fact_sales"), :type "main", :display-name "fact_sales"})
 
 (def ^:private product-group
   "The group of the columns joined from `dim_product`, named after the semantic model's label."
-  {:id (lib-metric.dimension.jvm/group-id "connection" "Product"), :type "connection", :display-name "Product"})
+  {:id (lib-metric/group-id "connection" "Product"), :type "connection", :display-name "Product"})
 
 (def ^:private order-group
   "The group of the columns joined from `dim_order`, which has no label, so named after its table."
-  {:id (lib-metric.dimension.jvm/group-id "connection" "dim_order"), :type "connection", :display-name "dim_order"})
+  {:id (lib-metric/group-id "connection" "dim_order"), :type "connection", :display-name "dim_order"})
 
 (defn- local-dimension
   "What [[tu/dimension-set]] shows for a dimension over `column` of `fact_sales`, before its name and display name."
   [column base-type]
   {:effective-type base-type
+   :status         :status/active
    :sources        [{:type :field, :field-id (tu/portable-field "fact_sales" column)}]
    :group          main-group
    :table-id       (tu/portable-table "fact_sales")
@@ -51,6 +50,7 @@
   through `fk-column`, before its name and display name."
   [fk-column table column base-type group]
   {:effective-type base-type
+   :status         :status/active
    :sources        [{:type :field, :field-id (tu/portable-field table column)}]
    :group          group
    :table-id       (tu/portable-table table)
@@ -58,20 +58,20 @@
 
 (deftest ^:parallel local-dimensions-test
   (let [dimensions (tu/dimension-set {})]
-    (testing "a categorical dimension over a column of the metric's own table"
-      (is (= (assoc (local-dimension "status" :type/Text) :name "status", :display-name "status")
+    (testing "a categorical dimension over a column of the metric's own table, its display name the humanized name"
+      (is (= (assoc (local-dimension "status" :type/Text) :name "status", :display-name "Status")
              (get dimensions "status")))
-      (is (= (assoc (local-dimension "amount" :type/Decimal) :name "amount", :display-name "amount")
+      (is (= (assoc (local-dimension "amount" :type/Decimal) :name "amount", :display-name "Amount")
              (get dimensions "amount")))
-      (is (= (assoc (local-dimension "is_returned" :type/Boolean) :name "is_returned", :display-name "is_returned")
+      (is (= (assoc (local-dimension "is_returned" :type/Boolean) :name "is_returned", :display-name "Is Returned")
              (get dimensions "is_returned"))))
     (testing "a time dimension's granularity is its default temporal unit"
       (is (= (assoc (local-dimension "created_at" :type/DateTime)
-                    :name "created_at", :display-name "created_at", :default-temporal-unit :day)
+                    :name "created_at", :display-name "Created At", :default-temporal-unit :day)
              (get dimensions "created_at"))))
     (testing "the measure's agg_time_dimension is the default dimension"
       (is (= (assoc (local-dimension "date_day" :type/Date)
-                    :name "date_day", :display-name "date_day", :default-temporal-unit :day, :default true)
+                    :name "date_day", :display-name "Date Day", :default-temporal-unit :day, :default true)
              (get dimensions "date_day"))))
     (testing "and the only one"
       (is (= ["date_day"] (keys (m/filter-vals :default dimensions)))))))
@@ -84,18 +84,18 @@
              (get dimensions "product_category_dim"))))
     (testing "a dimension with no expr is the column of its name"
       (is (= (assoc (joined-dimension "product_key" "dim_product" "msrp" :type/Integer product-group)
-                    :name "msrp", :display-name "msrp")
+                    :name "msrp", :display-name "Msrp")
              (get dimensions "msrp"))))
     (testing "a joined time dimension buckets like a local one"
       (is (= (assoc (joined-dimension "order_key" "dim_order" "order_date" :type/Date order-group)
                     :name "order_date", :display-name "Ordered on", :default-temporal-unit :day)
              (get dimensions "order_date")))
       (is (= (assoc (joined-dimension "product_key" "dim_product" "first_order_date" :type/Date product-group)
-                    :name "first_order_date", :display-name "first_order_date", :default-temporal-unit :day)
+                    :name "first_order_date", :display-name "First Order Date", :default-temporal-unit :day)
              (get dimensions "first_order_date"))))
     (testing "the group is named after the semantic model's label, or its table when it has none"
       (is (= (assoc (joined-dimension "order_key" "dim_order" "status" :type/Text order-group)
-                    :name "order_status_dim", :display-name "order_status_dim")
+                    :name "order_status_dim", :display-name "Order Status Dim")
              (get dimensions "order_status_dim"))))))
 
 (deftest ^:parallel dimension-order-test
@@ -149,11 +149,11 @@
                names))
         (is (apply distinct? names))
         (testing "the metric's own keeps its name and column"
-          (is (= (assoc (local-dimension "status" :type/Text) :name "status", :display-name "status")
+          (is (= (assoc (local-dimension "status" :type/Text) :name "status", :display-name "Status")
                  (get dimensions "status"))))
         (testing "the joined one keeps its display name, column and group"
           (is (= (assoc (joined-dimension "order_key" "dim_order" "status" :type/Text order-group)
-                        :name "order__status", :display-name "status")
+                        :name "order__status", :display-name "Status")
                  (get dimensions "order__status"))))))
     (testing "the other dimensions' ids do not change: they were derived from the reference all along"
       (let [ids-of (fn [tweaks] (into {} (map (juxt :name :id)) (:dimensions (tu/convert tweaks))))]
@@ -202,9 +202,6 @@
 
 (def ^:private planes-filter
   (tu/where-filters "{{ Dimension('product__product_category_dim') }} = 'Planes'"))
-
-(def ^:private shipped-order-filter
-  (tu/where-filters "{{ Dimension('order__order_status_dim') }} = 'Shipped'"))
 
 (deftest ^:parallel unsupported-dimensions-test
   (let [reasons (tu/unsupported-dimensions {})]
@@ -301,7 +298,7 @@
       (is (= (tu/dimension-names {}) (tu/dimension-names {:edit unique-source})))
       (is (= [[:= {} (tu/joined-fld "order_key" "dim_order" "status" :type/Text) "Shipped"]]
              (tu/filters {:edit   unique-source
-                          :metric {:filter shipped-order-filter}})))))
+                          :metric {:filter tu/shipped-order-filter}})))))
   (testing (str "a unique entity no other model is keyed by is just a key: nothing joined, nothing reported, no join"
                 " to the model itself")
     (let [sale-alt    (tu/entity "sale_alt" "unique" :expr "fact_sales_key")
@@ -338,8 +335,8 @@
             (is (= reason (reason-for reasons dimension-name)))))
         (is (not-any? (set order-dimensions) (tu/dimension-names {:config config, :edit other-db})))))
     (testing "and a filter through the entity is reported the same way"
-      (is (= (str "filter " (pr-str "{{ Dimension('order__order_status_dim') }} = 'Shipped'") ": " reason)
-             (tu/unsupported {:config config, :edit other-db, :metric {:filter shipped-order-filter}}))))))
+      (is (= (str "filter " (pr-str tu/shipped-order-template) ": " reason)
+             (tu/unsupported {:config config, :edit other-db, :metric {:filter tu/shipped-order-filter}}))))))
 
 (deftest ^:parallel primary-entity-without-entity-test
   (testing "a semantic model whose primary_entity names no entity of its own has no column to join on"
@@ -350,8 +347,8 @@
       (doseq [dimension-name order-dimensions]
         (testing dimension-name
           (is (= reason (reason-for reasons dimension-name)))))
-      (is (= (str "filter " (pr-str "{{ Dimension('order__order_status_dim') }} = 'Shipped'") ": " reason)
-             (tu/unsupported {:edit virtual-order, :metric {:filter shipped-order-filter}}))))))
+      (is (= (str "filter " (pr-str tu/shipped-order-template) ": " reason)
+             (tu/unsupported {:edit virtual-order, :metric {:filter tu/shipped-order-filter}}))))))
 
 (deftest ^:parallel literal-expr-test
   (testing "a dimension whose expr is a literal is neither a column nor SQL, and is reported as such"
@@ -378,7 +375,7 @@
 (deftest ^:parallel metric-time-granularity-test
   (testing "a metric's time_granularity is the default temporal unit of its default dimension"
     (are [grain unit] (= (assoc (local-dimension "date_day" :type/Date)
-                                :name "date_day", :display-name "date_day", :default true, :default-temporal-unit unit)
+                                :name "date_day", :display-name "Date Day", :default true, :default-temporal-unit unit)
                          (get (tu/dimension-set {:metric {:time_granularity grain}}) "date_day"))
       "month"          :month
       "year"           :year
@@ -419,7 +416,7 @@
       (is (= #{(:id main-group) (:id product-group) (:id order-group)}
              (into #{} (map (comp :id :group)) dimensions))))))
 
-(deftest ^:parallel flexanalytics-test
+(deftest ^:parallel flexanalytics-dimensions-test
   (let [resolved   (tu/flexanalytics-resolved)
         entity-for (fn [metric-name] (tu/card-entity tu/default-config resolved metric-name))
         names-of   (fn [entity] (mapv :name (:dimensions entity)))
@@ -456,7 +453,7 @@
       (let [files            (emit/files tu/default-config (tu/resolve-manifest-map (tu/build-manifest {})))
             _                (emit/write! dir files)
             {:keys [path entity]} (m/find-first :metric files)
-            card             (yaml/parse-string (slurp (io/file dir path)) :key-fn serdes.ingest/parse-key)
+            card             (tu/read-yaml dir path :key-fn serdes.ingest/parse-key)
             ;; stand in for the instance: a made-up id for every table and field the YAML names, the same every time
             ids              (atom {})
             id-for           (fn [portable-ref]
@@ -488,3 +485,129 @@
                 (is (= (id-for (tu/portable-field "dim_product" "product_category")) (nth target 2)))
                 (is (= (id-for (tu/portable-field "fact_sales" "product_key"))
                        (get-in target [1 :source-field])))))))))))
+
+(deftest ^:parallel status-test
+  (let [resolved (tu/resolve-manifest-map (tu/build-manifest {}))
+        {:keys [dimensions dimension-mappings]} (tu/resolved-metric-named resolved "m")]
+    (testing "every dimension is written active, the status the instance gives a dimension whose column it finds"
+      (is (seq dimensions))
+      (is (every? #(= :status/active (:status %)) dimensions)))
+    (testing (str "so the instance's first refresh of the set, which finds every column the mappings target, changes"
+                  " nothing and does not rewrite the card")
+      (let [computed (mapv (fn [mapping]
+                             {:dimension {:id nil, :name (:dimension-id mapping)}
+                              :mapping   (dissoc mapping :dimension-id)})
+                           dimension-mappings)
+            {refreshed :dimensions} (lib-metric/reconcile-existing-dimensions computed dimensions dimension-mappings)]
+        (is (= (count dimensions) (count refreshed)))
+        (is (not (lib-metric/dimensions-changed? dimensions refreshed)))
+        (testing "where a set written without a status would be rewritten"
+          (is (lib-metric/dimensions-changed? (mapv #(dissoc % :status) dimensions) refreshed)))))))
+
+(deftest ^:parallel display-name-test
+  (let [relabel (fn [dimension-name label]
+                  (tu/edit-semantic-model
+                   #(update % :dimensions (partial mapv (fn [{:keys [name] :as dimension}]
+                                                         (cond-> dimension
+                                                           (= dimension-name name) (assoc :label label)))))))
+        name-of (fn [tweaks dimension-name] (:display-name (get (tu/dimension-set tweaks) dimension-name)))]
+    (testing "a dimension's label is its display name"
+      (is (= "Day of sale" (name-of {:edit (relabel "date_day" "Day of sale")} "date_day"))))
+    (testing "without one, the humanized name, as the instance names a Field"
+      (is (= "Date Day" (name-of {} "date_day")))
+      (is (= "Is Returned" (name-of {} "is_returned"))))
+    (testing "a blank label is no label"
+      (is (= "Date Day" (name-of {:edit (relabel "date_day" "")} "date_day")))
+      (is (= "Status" (name-of {:edit (relabel "status" "  ")} "status"))))
+    (testing "the name itself is untouched"
+      (is (= "date_day" (:name (get (tu/dimension-set {}) "date_day")))))))
+
+(deftest ^:parallel validity-params-test
+  (let [scd     (tu/edit-semantic-model
+                 #(update % :dimensions conj
+                          (assoc-in (tu/dimension "valid_from" "time") [:type_params :validity_params]
+                                    {:is_start true, :is_end false})
+                          (assoc-in (tu/dimension "valid_to" "time") [:type_params :validity_params]
+                                    {:is_start false, :is_end true})))
+        reasons (tu/unsupported-dimensions {:edit scd})]
+    (testing "a time dimension that bounds a slowly changing dimension's validity window is reported, not written"
+      (is (= (str "dimension \"valid_from\" bounds a validity window (validity_params), the start of a slowly"
+                  " changing dimension's versions; a dimension set has no notion of one")
+             (reason-for reasons "valid_from")))
+      (is (= (str "dimension \"valid_to\" bounds a validity window (validity_params), the end of a slowly"
+                  " changing dimension's versions; a dimension set has no notion of one")
+             (reason-for reasons "valid_to")))
+      (is (not-any? #{"valid_from" "valid_to"} (tu/dimension-names {:edit scd}))))
+    (testing "the other dimensions are unaffected"
+      (is (= (tu/dimension-set {}) (tu/dimension-set {:edit scd}))))))
+
+(deftest ^:parallel natural-entity-test
+  (testing "a foreign entity that joins to a model's natural entity, a slowly changing dimension, is reported once"
+    (let [scd-product (retype-entity tu/product-sm-id "product" "natural")
+          reason      (str "entity \"product\" is the natural entity of semantic model \"dim_product\", a slowly"
+                           " changing dimension; a join to it needs the validity window of its time dimensions,"
+                           " which an implicit join cannot express")
+          reasons     (tu/unsupported-dimensions {:edit scd-product})]
+      (is (= reason (reason-for reasons "product")))
+      (testing "naming the entity, not its dimensions"
+        (is (= {} (select-keys reasons ["product_category_dim" "msrp" "first_order_date" "is_aviation_order"])))
+        (is (not-any? #{"product_category_dim" "msrp" "first_order_date"} (tu/dimension-names {:edit scd-product}))))
+      (testing "and a filter through the entity is reported the same way"
+        (is (= (str "filter " (pr-str "{{ Dimension('product__product_category_dim') }} = 'Planes'") ": " reason)
+               (tu/unsupported {:edit scd-product, :metric {:filter planes-filter}}))))))
+  (testing "a natural entity on the metric's own model is reported once when another model is keyed by it"
+    (let [natural-order (retype-entity tu/sm-id "order" "natural")
+          reasons       (tu/unsupported-dimensions {:edit natural-order})]
+      (is (= (str "entity \"order\" is a natural entity, the key of a slowly changing dimension; a join from it to"
+                  " \"dim_order\" needs the validity window of this model's time dimensions, which an implicit join"
+                  " cannot express")
+             (reason-for reasons "order")))
+      (is (= {} (select-keys reasons order-dimensions)))
+      (is (not-any? (set order-dimensions) (tu/dimension-names {:edit natural-order})))))
+  (testing "a natural entity no other model is keyed by is just a key: nothing joined, nothing reported"
+    (let [natural-customer (retype-entity tu/sm-id "customer" "natural")]
+      (is (= (tu/dimension-names {}) (tu/dimension-names {:edit natural-customer})))
+      (is (= (tu/unsupported-dimensions {}) (tu/unsupported-dimensions {:edit natural-customer}))))))
+
+(defn- derived-over
+  "[[tu/build-manifest]] tweaks for a derived metric `m`, `sales - target`, over simple metrics `sales` and `target`
+  whose measures have the `agg_time_dimension`s `sales-time` and `target-time`, with `metric` merged into `m`."
+  [sales-time target-time metric]
+  (let [simple (fn [base measure-name]
+                 (-> base
+                     (assoc :name measure-name, :unique_id (str "metric.p." measure-name), :label measure-name
+                            :type "simple", :time_granularity nil, :depends_on {:macros [], :nodes [tu/sm-id]})
+                     (assoc-in [:type_params :expr] nil)
+                     (assoc-in [:type_params :metrics] [])
+                     (tu/over-measure measure-name)))]
+    {:measures    [(assoc (tu/base-measure) :name "sales", :agg_time_dimension sales-time)
+                   (assoc (tu/base-measure) :name "target", :expr "target", :agg_time_dimension target-time)]
+     :columns     {"target" "float"}
+     :metric      (merge {:type "derived", :depends_on {:macros [], :nodes ["metric.p.sales" "metric.p.target"]}}
+                         metric)
+     :type-params {:measure        nil
+                   :expr           "sales - target"
+                   :metrics        [(tu/metric-input "sales") (tu/metric-input "target")]
+                   :input_measures [(tu/input-measure {:name "sales"}) (tu/input-measure {:name "target"})]}
+     :edit        (comp (tu/add-metric "sales" #(simple % "sales"))
+                        (tu/add-metric "target" #(simple % "target")))}))
+
+(deftest ^:parallel composed-time-granularity-test
+  (testing "a derived metric whose inputs agree on an agg_time_dimension buckets it by its time_granularity"
+    (let [dimensions (tu/dimension-set (derived-over "created_at" "created_at" {:time_granularity "month"}))]
+      (is (= {:default true, :default-temporal-unit :month} (select-keys (get dimensions "created_at")
+                                                                          [:default :default-temporal-unit])))
+      (is (not (contains? (tu/unsupported-dimensions (derived-over "created_at" "created_at"
+                                                                   {:time_granularity "month"}))
+                          "metric_time")))))
+  (testing "inputs that disagree leave the metric no default dimension, and its time_granularity is reported"
+    (let [tweaks (derived-over "date_day" "created_at" {:time_granularity "month"})]
+      (is (= [] (defaults-of tweaks)))
+      (is (= (str "time_granularity \"month\" buckets the metric's agg_time_dimension, and the metric has none to"
+                  " apply it to: its inputs do not agree on one, or its measure declares none")
+             (reason-for (tu/unsupported-dimensions tweaks) "metric_time")))
+      (testing "the dimensions themselves are the inputs' table's, at their own grain"
+        (is (= (tu/dimension-names {}) (tu/dimension-names tweaks)))
+        (is (= :day (:default-temporal-unit (get (tu/dimension-set tweaks) "date_day")))))))
+  (testing "without a time_granularity there is nothing to report"
+    (is (not (contains? (tu/unsupported-dimensions (derived-over "date_day" "created_at" {})) "metric_time")))))

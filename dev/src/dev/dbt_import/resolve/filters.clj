@@ -4,8 +4,8 @@
   A template is SQL around MetricFlow references, `{{ Dimension('order__status') }} = 'Shipped'`.
   [[sql/render-filter]] stands a placeholder in for each reference and [[sql/condition->mbql]] parses the rest in the
   dialect of the config's `:driver`; the references are resolved here (see [[reference-clause]]). A dimension reached
-  through the model's own primary entity (or `metric_time`) is one of its columns; one reached through another entity
-  is on the semantic model that entity joins to (see [[resolve.columns/join-context]]). A `TimeDimension`, or a
+  through the semantic model's own primary entity (or `metric_time`) is one of its columns; one reached through another
+  entity is on the semantic model that entity joins to (see [[resolve.columns/join-context]]). A `TimeDimension`, or a
   `.grain()`, buckets the column by the grain, when the column can be (see [[available-unit]])."
   (:require
    [better-cond.core :as b]
@@ -30,27 +30,34 @@
    [:context   ::resolve.columns/context]])
 
 (mu/defn- own-dimension :- ::located-dimension
-  "The dimension named `dimension-name` on `context`'s model."
-  [{:keys [model] :as context} :- ::resolve.columns/context
-   dimension-name              :- :string]
-  (if-let [dimension (m/find-first #(= dimension-name (:name %)) (:dimensions model))]
+  "The dimension named `dimension-name` on `context`'s semantic model."
+  [{:keys [semantic-model] :as context} :- ::resolve.columns/context
+   dimension-name                       :- :string]
+  (if-let [dimension (m/find-first #(= dimension-name (:name %)) (:dimensions semantic-model))]
     {:dimension dimension, :context context}
-    (unsupported/throw! "dimension %s is not on semantic model %s" (pr-str dimension-name) (pr-str (:name model)))))
+    (unsupported/throw! "dimension %s is not on semantic model %s"
+                        (pr-str dimension-name) (pr-str (:name semantic-model)))))
 
 (mu/defn- locate-dimension :- ::located-dimension
   "The dimension `dimension-path` names and the context its expr is written against. dbt writes a dimension path as
-  `<entity>__<dimension>`: through the model's primary entity it is one of the model's own dimensions, through a
-  foreign entity it is on the semantic model that entity is primary for (see [[resolve.columns/join-context]]).
+  `<entity>__<dimension>`: through the semantic model's primary entity it is one of its own dimensions, through a
+  foreign entity it is on the semantic model that entity joins to (see [[resolve.columns/join-context]]).
   `metric_time` is the metric's `agg_time_dimension`."
-  [{:keys [model agg-time-dimension] :as context} :- ::resolve.columns/context
-   dimension-path                                 :- :string]
+  [{:keys [semantic-model agg-time-dimension] :as context} :- ::resolve.columns/context
+   dimension-path                                          :- :string]
   (b/cond
     (= dimension-path "metric_time")
     (if agg-time-dimension
       (own-dimension context agg-time-dimension)
       (unsupported/throw! "metric_time: the measure has no agg_time_dimension"))
 
-    :let [[prefix dimension-name & more] (str/split dimension-path #"__")]
+    :let [parts                            (str/split dimension-path #"__" -1)
+          [prefix dimension-name & more]   parts]
+
+    ;; `''`, `'order__'` or `'__status'`: a part of the path is missing
+    (some str/blank? parts)
+    (unsupported/throw! "%s is not a dimension reference: expected <entity>__<dimension>, or a dimension name"
+                        (pr-str dimension-path))
 
     ;; no entity prefix at all
     (nil? dimension-name)
@@ -60,7 +67,7 @@
     (unsupported/throw! "%s reaches a dimension through more than one entity, which is not supported"
                         (pr-str dimension-path))
 
-    (= prefix (:primary-entity model))
+    (= prefix (:primary-entity semantic-model))
     (own-dimension context dimension-name)
 
     :else
@@ -73,20 +80,14 @@
 
 (mu/defn- grain->unit :- [:maybe ::lib.schema.temporal-bucketing/unit.date-time.truncate]
   "The Metabase truncation unit the dbt granularity `grain` names, for the dimension `dimension-name`; nil when
-  Metabase has no unit of that name (`nanosecond`). A dbt granularity truncates, so it is never an extraction unit
-  like `day-of-week`."
+  Metabase has no unit of that name (`nanosecond`). The accepted units are those of `date_trunc` in SQL, see
+  [[sql/truncation-unit]]: a dbt granularity truncates, so it is never an extraction unit like `day-of-week`."
   [grain          :- :string
    dimension-name :- :string]
-  (let [unit-name (get grain-aliases grain grain)
-        unit      (keyword unit-name)]
-    (when (mr/validate ::lib.schema.temporal-bucketing/unit.date-time.truncate unit)
+  (let [unit-name (get grain-aliases grain grain)]
+    (when-let [unit (sql/truncation-unit unit-name)]
       (when-not (= unit-name grain)
         (log/infof "Reading the %s granularity of %s as %s" grain dimension-name unit-name))
-      ;; dbt weeks are ISO weeks; a Metabase week starts on the day the instance's start-of-week setting names
-      (when (= unit :week)
-        (log/warnf (str "The week granularity of %s is read as a Metabase week, which starts on the day the instance's"
-                        " start-of-week setting names; dbt weeks start on Monday")
-                   dimension-name))
       unit)))
 
 (mu/defn available-unit :- [:maybe ::lib.schema.temporal-bucketing/unit]
@@ -94,7 +95,7 @@
   `dimension-name`, can be bucketed by it; nil otherwise. For a column of known type Lib says which units it supports
   (a date has no `hour`). A column the project does not type is a Field of unknown type, which Lib cannot bucket at
   all; dbt declares the dimension `type: time`, and that is trusted: the unit applies as written, and the instance's
-  own metadata is the check, when the import binds the field."
+  metadata decides when the card runs (the import itself binds any name, see [[dev.dbt-import.preflight]])."
   [{:keys [query]} :- ::resolve.columns/context
    column          :- ::lib.schema.ref/ref
    grain           :- :string
@@ -164,17 +165,17 @@
 
 (mu/defn- filter-clause :- ::lib.schema.expression/boolean
   "The Lib filter clause for one `where_sql_template`."
-  [{:keys [dialect resolve-column] :as context} :- ::resolve.columns/context
-   template                                     :- :string]
+  [{:keys [env resolve-column] :as context} :- ::resolve.columns/context
+   template                                 :- :string]
   (let [{:keys [sql references]} (sql/render-filter template)]
     ;; a template that still holds Jinja the renderer did not recognise, `{{ var('x') }}` or a reference written
     ;; in a way it does not read, is better reported as that than as referring to nothing, which the parse does
     (when (and (empty? references) (not (sql/jinja? sql)))
       (unsupported/throw! "the filter references no dimension or entity"))
-    (sql/condition->mbql dialect sql (fn [identifier]
-                                       (if-let [reference (get references identifier)]
-                                         (reference-clause context reference)
-                                         (resolve-column identifier))))))
+    (sql/condition->mbql (:dialect env) sql (fn [identifier]
+                                              (if-let [reference (get references identifier)]
+                                                (reference-clause context reference)
+                                                (resolve-column identifier))))))
 
 (mu/defn filter-clauses :- [:sequential ::lib.schema.expression/boolean]
   "The Lib filter clauses for `templates`, each failure saying which template."

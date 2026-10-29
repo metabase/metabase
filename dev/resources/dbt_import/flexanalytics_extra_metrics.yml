@@ -1,8 +1,9 @@
 # Metrics the converter's fixture adds to the flexanalytics/dbt-business-intelligence project, which defines only
-# simple metrics. Two ratio, three derived and three cumulative metrics plus one conversion metric, so the fixture
-# exercises every row of the README's "Advanced metric types" table, and the reported cases next to it, with shapes
-# dbt itself wrote. `cumulative_sales` sets `period_agg: last`, the one value the converter accepts: dbt's default,
-# `first`, is the running total at the start of each period, which Metabase does not compute.
+# simple metrics. Two ratio, three derived and three cumulative metrics plus one conversion metric, so that the main
+# rows of the README's "Metrics that compose other metrics" table, and the reported cumulative window, grain_to_date
+# and offset_window cases next to it, have shapes dbt itself wrote (the README's "The test fixtures" says which rows
+# rely on hand-built manifests instead). `cumulative_sales` sets `period_agg: last`, the one value the converter
+# accepts: dbt's default, `first`, is the running total at the start of each period, which Metabase does not compute.
 #
 # `dev.dbt-import.fixture/regenerate!` splices this list into the project's `models/semantic_models.yml` under
 # `metrics:`, runs `dbt parse` and trims the result into `flexanalytics_manifest.json`. Indentation matches that

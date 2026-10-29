@@ -4,46 +4,51 @@
   Each metric gets the dbt dimensions of its own semantic model, the dimensions of every semantic model its foreign
   and unique entities join to (see [[resolve.columns/join-context]]), and the metric's `agg_time_dimension` as the
   default, bucketed by the metric's `time_granularity` when it has one (see [[dimension-set]]). A dimension mapping
-  targets a column, so a dimension whose `expr` is SQL is reported per metric rather than written. Ids are derived,
-  not generated, so a re-run writes the same ids and a re-import updates the dimensions in place."
+  targets a column, so a dimension whose `expr` is SQL is reported per metric rather than written, as is a dimension
+  that bounds a slowly changing dimension's validity window and an entity that joins through one (see
+  [[resolve.columns/natural-targets]]). Ids are derived, not generated, so a re-run writes the same ids and a
+  re-import updates the dimensions in place. Every dimension is written `:status/active`, the status the instance
+  gives a dimension whose column it finds, so its first refresh of the set changes nothing."
   (:require
    [better-cond.core :as b]
+   [clojure.string :as str]
+   [dev.dbt-import.ids :as ids]
    [dev.dbt-import.resolve.columns :as resolve.columns]
    [dev.dbt-import.resolve.filters :as resolve.filters]
    [dev.dbt-import.schemas.ir :as ir]
    [dev.dbt-import.schemas.resolved :as resolved]
    [dev.dbt-import.unsupported :as unsupported]
    [medley.core :as m]
-   [metabase.lib-metric.dimension.jvm :as lib-metric.dimension.jvm]
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.util :as u]
+   [metabase.util.humanization :as u.humanization]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
-(mu/defn- dimension-id :- ::lib-metric.schema/dimension-id
-  "The id of the curated dimension at `dimension-path` (`<entity>__<dimension>`, or a bare name for the model's own)
-  of the metric `metric-unique-id`. Derived, not generated, so a re-run writes the same ids and a re-import updates the
-  dimensions in place; scoped to the metric, as Metabase scopes the ids it computes (see
-  [[lib-metric.dimension.jvm/dimension-id]])."
-  [metric-unique-id :- :string
-   dimension-path   :- :string]
-  (u/name-uuid (str "dbt-import/dimension/" metric-unique-id "/" dimension-path)))
-
 (mu/defn- dimension-group :- ::lib.schema.metadata/dimension-group
-  "The group of the dimensions of `model`: the metric's own table (`main`) or one joined to (`connection`), named
-  after the model's label, or its table when it has none. The id is the one Metabase derives for the same group (see
-  [[lib-metric.dimension.jvm/group-id]]), so these are the groups the instance computes."
+  "The group of the dimensions of `semantic-model`: the metric's own table (`main`) or one joined to (`connection`),
+  named after the semantic model's label, or its table when it has none. The id is derived from that name (see
+  [[ids/group-id]]), so a re-run writes the same ids; same-named groups are stable, not identical to the instance's."
   [group-type               :- [:enum "main" "connection"]
    {:keys [label relation]} :- ::ir/semantic-model]
-  (let [display-name (or label (:table relation))]
-    {:id           (lib-metric.dimension.jvm/group-id group-type display-name)
+  (let [group-name (or label (:table relation))]
+    {:id           (ids/group-id group-type group-name)
      :type         group-type
-     :display-name display-name}))
+     :display-name group-name}))
+
+(mu/defn- display-name :- ::lib.schema.common/non-blank-string
+  "The display name of the dimension `dimension-name` with the dbt `label`: the label when the project gives one, else
+  the name humanized (`date_day` is \"Date Day\"), as the instance names a Field. A blank label is no label."
+  [label          :- [:maybe :string]
+   dimension-name :- :string]
+  (if (str/blank? label)
+    (u.humanization/name->human-readable-name :simple dimension-name)
+    label))
 
 (mu/defn- default-temporal-unit :- [:maybe ::lib.schema.temporal-bucketing/unit]
   "The unit a time dimension's `granularity` names, when Lib can bucket `column` by it; nil otherwise."
@@ -55,7 +60,7 @@
 
 (mr/def ::dimension-pair
   "A curated dimension and the mapping that binds it to a column, with the dbt `path` they were made from
-  (`<entity>__<dimension>`, or a bare name for the metric's own model), see [[with-unique-names]]."
+  (`<entity>__<dimension>`, or a bare name for the metric's own semantic model), see [[with-unique-names]]."
   [:map {:closed true}
    [:dimension ::lib-metric.schema/persisted-dimension]
    [:mapping   ::lib-metric.schema/dimension-mapping]
@@ -74,22 +79,36 @@
       (unsupported/throw! "dimension %s is %s, not a column" (pr-str dimension-name) (pr-str expr)))))
 
 (mu/defn- dimension-pair :- ::dimension-pair
-  "The curated dimension and mapping for the dbt `dimension` of `context`'s model, in `group`. `dimension-path` is the
-  dbt spelling of the dimension from the metric's model, which seeds the id."
+  "The curated dimension and mapping for the dbt `dimension` of `context`'s semantic model, in `group`.
+  `dimension-path` is the dbt spelling of the dimension from the metric's semantic model, which seeds the id (see
+  [[ids/dimension-id]]). The dimension is written
+  `:status/active`, what the instance's refresh sets on a dimension whose column it finds, so the refresh after the
+  import rewrites nothing (see [[metabase.lib-metric.dimension/dimensions-changed?]]). A time dimension that bounds a
+  slowly changing dimension's validity window (`validity_params`) is [[unsupported/throw!]]: a dimension set has no
+  notion of a window, and breaking a metric out by the window's start or end would count every version of a row."
   [{:keys [query provider metric-unique-id resolve-column] :as context}      :- ::resolve.columns/context
    group                                                                     :- ::lib.schema.metadata/dimension-group
    dimension-path                                                            :- :string
-   {dimension-name :name, dimension-type :type, :keys [label], :as dimension} :- ::ir/dimension]
+   {dimension-name :name, dimension-type :type, :keys [label validity-params], :as dimension} :- ::ir/dimension]
+  (when validity-params
+    (unsupported/throw! (str "dimension %s bounds a validity window (validity_params), the %s of a slowly changing"
+                             " dimension's versions; a dimension set has no notion of one")
+                        (pr-str dimension-name)
+                        (cond
+                          (and (:is-start validity-params) (:is-end validity-params)) "start and end"
+                          (:is-start validity-params)                                 "start"
+                          :else                                                       "end")))
   (let [column-ref (resolve-column (dimension-column dimension))
         field-id   (lib/field-ref-id column-ref)
         field      (lib.metadata/field provider field-id)
         base-type  (lib/type-of query column-ref)
         unit       (when (= dimension-type :time)
                      (default-temporal-unit context dimension column-ref))
-        id         (dimension-id metric-unique-id dimension-path)]
+        id         (ids/dimension-id metric-unique-id dimension-path)]
     {:dimension (cond-> {:id           id
                          :name         dimension-name
-                         :display-name (or label dimension-name)
+                         :display-name (display-name label dimension-name)
+                         :status       :status/active
                          :sources      [{:type :field, :field-id field-id}]
                          :group        group}
                   (resolve.columns/known-type? base-type) (assoc :effective-type base-type)
@@ -110,32 +129,58 @@
    reason         :- :string]
   {:name dimension-name, :reason reason})
 
-(mu/defn- model-dimensions :- [:sequential ::dimension-result]
-  "A [[dimension-pair]] for every dimension of `context`'s model, or the reason it cannot be one. `entity-name`
-  prefixes the dimensions' paths; nil for the metric's own model."
-  [{:keys [model] :as context} :- ::resolve.columns/context
-   group                       :- ::lib.schema.metadata/dimension-group
-   entity-name                 :- [:maybe :string]]
-  (vec (for [{dimension-name :name, :as dimension} (:dimensions model)
+(mu/defn- own-dimensions :- [:sequential ::dimension-result]
+  "A [[dimension-pair]] for every dimension of `context`'s semantic model, or the reason it cannot be one.
+  `entity-name` prefixes the dimensions' paths; nil for the metric's own semantic model."
+  [{:keys [semantic-model] :as context} :- ::resolve.columns/context
+   group                                :- ::lib.schema.metadata/dimension-group
+   entity-name                          :- [:maybe :string]]
+  (vec (for [{dimension-name :name, :as dimension} (:dimensions semantic-model)
              :let [dimension-path (if entity-name (str entity-name "__" dimension-name) dimension-name)]]
          (unsupported/catching #(dimension-pair context group dimension-path dimension)
                                #(unsupported-dimension dimension-name %)))))
 
 (mu/defn- joined-dimensions :- [:sequential ::dimension-result]
-  "The dimensions reached through the foreign or unique `entity` of `context`'s model, see
-  [[resolve.columns/join-context]]. When the join itself cannot be made, every dimension of the models the entity
-  would join to is reported with the reason, so a dimension the project declares is never silently dropped; an entity
-  no other model is keyed by has no dimensions behind it, and is just a key."
+  "The dimensions reached through the foreign or unique `entity` of `context`'s semantic model, see
+  [[resolve.columns/join-context]]. When the join itself cannot be made, every dimension of the semantic models the
+  entity would join to is reported with the reason, so a dimension the project declares is never silently dropped; an
+  entity no other semantic model is keyed by has no dimensions behind it, and is just a key. An entity that is the
+  natural entity of another semantic model, a slowly changing dimension, is one entry naming the entity (see
+  [[resolve.columns/natural-targets]]): the semantic models behind it are reported once, not once per dimension."
   [context                         :- ::resolve.columns/context
    {entity-name :name, :as entity} :- ::ir/entity]
   (unsupported/catching
    (fn []
-     (let [{:keys [model] :as join} (resolve.columns/join-context context entity)]
-       (model-dimensions join (dimension-group "connection" model) entity-name)))
+     (let [{:keys [semantic-model] :as join} (resolve.columns/join-context context entity)]
+       (own-dimensions join (dimension-group "connection" semantic-model) entity-name)))
    (fn [reason]
-     (vec (for [target    (resolve.columns/join-targets context entity-name)
-                dimension (:dimensions target)]
-            (unsupported-dimension (:name dimension) reason))))))
+     (let [targets (resolve.columns/join-targets context entity-name)]
+       (cond
+         (seq targets)
+         (vec (for [target    targets
+                    dimension (:dimensions target)]
+                (unsupported-dimension (:name dimension) reason)))
+
+         (seq (resolve.columns/natural-targets context entity-name))
+         [(unsupported-dimension entity-name reason)]
+
+         :else
+         [])))))
+
+(mu/defn- natural-entity :- [:sequential ::dimension-result]
+  "The report entry for the natural `entity` of `context`'s semantic model, when another semantic model is keyed by it
+  (see [[resolve.columns/join-targets]]): the converter joins through foreign and unique entities only, and the
+  dimensions behind a natural one exist, so the entity is named once rather than dropped. A natural entity no other
+  semantic model is keyed by is just a key."
+  [context             :- ::resolve.columns/context
+   {entity-name :name} :- ::ir/entity]
+  (if-let [targets (seq (resolve.columns/join-targets context entity-name))]
+    [(unsupported-dimension entity-name
+                           (format (str "entity %s is a natural entity, the key of a slowly changing dimension; a join"
+                                        " from it to %s needs the validity window of this model's time dimensions,"
+                                        " which an implicit join cannot express")
+                                   (pr-str entity-name) (str/join ", " (map (comp pr-str :name) targets))))]
+    []))
 
 (mr/def ::dimension-set
   "A metric's curated dimensions, their mappings, and the dbt dimensions that could not become one."
@@ -158,19 +203,29 @@
                           (pr-str time-granularity) (pr-str dimension-name))))
 
 (mu/defn- with-default-dimension :- [:sequential ::dimension-result]
-  "`results`, the metric's own model's dimensions, with its `agg_time_dimension` marked as the default, and bucketed by
-  the metric's `time_granularity` when it has one (see [[metric-time-unit]]). An `agg_time_dimension` that is not a
-  dimension of the model is reported; one that is but could not be converted already is."
-  [{:keys [model agg-time-dimension time-granularity] :as context} :- ::resolve.columns/context
-   results                                                        :- [:sequential ::dimension-result]]
+  "`results`, the metric's own semantic model's dimensions, with its `agg_time_dimension` marked as the default, and
+  bucketed by the metric's `time_granularity` when it has one (see [[metric-time-unit]]). An `agg_time_dimension` that
+  is not a dimension of the semantic model is reported; one that is but could not be converted already is. A
+  `time_granularity` on a metric with no `agg_time_dimension` to carry it (a ratio or derived metric whose inputs
+  disagree on one, see [[dev.dbt-import.resolve/resolve-composed]]) is reported under dbt's name for the dimension it
+  buckets, `metric_time`, rather than dropped."
+  [{:keys [semantic-model agg-time-dimension time-granularity] :as context} :- ::resolve.columns/context
+   results                                                                 :- [:sequential ::dimension-result]]
   (b/cond
+    (and (nil? agg-time-dimension) time-granularity)
+    (conj results (unsupported-dimension "metric_time"
+                                         (format (str "time_granularity %s buckets the metric's agg_time_dimension,"
+                                                      " and the metric has none to apply it to: its inputs do not"
+                                                      " agree on one, or its measure declares none")
+                                                 (pr-str time-granularity))))
+
     (nil? agg-time-dimension)
     results
 
-    (not (m/find-first #(= agg-time-dimension (:name %)) (:dimensions model)))
+    (not (m/find-first #(= agg-time-dimension (:name %)) (:dimensions semantic-model)))
     (conj results (unsupported-dimension agg-time-dimension
                                          (format "agg_time_dimension %s is not a dimension of semantic model %s"
-                                                 (pr-str agg-time-dimension) (pr-str (:name model)))))
+                                                 (pr-str agg-time-dimension) (pr-str (:name semantic-model)))))
 
     :else
     (mapv (fn [{:keys [dimension mapping] :as result}]
@@ -202,15 +257,20 @@
           results)))
 
 (mu/defn dimension-set :- ::dimension-set
-  "The curated dimension set of the metric `context` is for: its own model's dimensions first, with the default among
-  them (see [[with-default-dimension]]), then those reached through each of its foreign and unique entities, in the
-  order the model declares them. A unique entity is a key into another model keyed by it just as a foreign entity is;
-  the model's primary entity names its own dimensions. No two dimensions share a name (see [[with-unique-names]])."
-  [{:keys [model] :as context} :- ::resolve.columns/context]
-  (let [results (-> (with-default-dimension context (model-dimensions context (dimension-group "main" model) nil))
-                    (into (comp (filter #(#{:foreign :unique} (:type %)))
-                                (mapcat #(joined-dimensions context %)))
-                          (:entities model))
+  "The curated dimension set of the metric `context` is for: its own semantic model's dimensions first, with the
+  default among them (see [[with-default-dimension]]), then those reached through each of its foreign and unique
+  entities, in the order the semantic model declares them. A unique entity is a key into another semantic model keyed
+  by it just as a foreign entity is; the semantic model's primary entity names its own dimensions, and a natural entity
+  is reported (see [[natural-entity]]). No two dimensions share a name (see [[with-unique-names]])."
+  [{:keys [semantic-model] :as context} :- ::resolve.columns/context]
+  (let [results (-> (with-default-dimension context
+                      (own-dimensions context (dimension-group "main" semantic-model) nil))
+                    (into (mapcat (fn [{entity-type :type, :as entity}]
+                                    (case entity-type
+                                      (:foreign :unique) (joined-dimensions context entity)
+                                      :natural           (natural-entity context entity)
+                                      :primary           [])))
+                          (:entities semantic-model))
                     with-unique-names)
         pairs   (filter :mapping results)]
     {:dimensions             (mapv :dimension pairs)

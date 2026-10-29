@@ -628,7 +628,12 @@
   A function node also carries `:func`, its SQL name. Column names sit in an `Identifier` node's `:this`, literals in
   a `Literal` node's `:this` as a string, with `:is_string` saying whether the SQL quoted it.
 
-  Throws a parse error (see [[parse-error?]]) when the SQL does not parse, is empty, or is more than one statement."
+  Throws a parse error (see [[parse-error?]]) when the SQL does not parse, is empty, is more than one statement, is a
+  statement rather than an expression (`SELECT 1`, `DROP TABLE t`), is longer than `MAX_EXPRESSION_LENGTH` characters
+  or nests deeper than `MAX_EXPRESSION_DEPTH` levels (both in `sql_tools.py`; the tree carries every node's `:sql`, so
+  a long chain of `AND`s is quadratic in size, and rendering recurses once per level). Two failures are not parse
+  errors: an unknown `dialect` is a `ValueError` on the Python side, and a call that outruns the Python timeout
+  (see [[metabase.sql-parsing.graal]]) is reported by the transport."
   [dialect :- [:maybe :string]
    sql     :- :string]
   (protocol/parse-expression (parser) dialect sql))

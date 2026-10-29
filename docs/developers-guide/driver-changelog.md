@@ -10,7 +10,16 @@ title: Driver interface changelog
   `varbinary`, Oracle `RAW`, and the like. Drivers should return it from `sql-jdbc.sync/database-type->base-type` for
   such columns instead of `:type/*`. It derives from `:type/fingerprint-unsupported` and
   `:type/field-values-unsupported`, so sync neither samples these columns for a fingerprint nor scans their distinct
-  values. It is still a plain base type under `:type/*`, not a semantic type. The bundled drivers return it.
+  values. It is still a plain base type under `:type/*`, not a semantic type. The coercion strategies
+  `:Coercion/YYYYMMDDHHMMSSBytes->Temporal` and `:Coercion/ISO8601Bytes->Temporal` apply to `:type/Binary` as well as
+  to `:type/*`.
+
+  The bundled JDBC drivers return it for their binary column types: H2, MySQL, Postgres, SQLite, Athena, Oracle,
+  Presto, Redshift, Snowflake, SQL Server, Starburst, Vertica, and the Hive-like drivers (Spark SQL, Databricks).
+  BigQuery still maps `BYTES` to `:type/*` and MongoDB maps `binData` to `:type/MongoBinData`. Third-party drivers may
+  map their binary types to `:type/Binary`; a column whose base type changes from `:type/*` to `:type/Binary` on the
+  first sync after upgrading keeps its semantic type (sync no longer clears it when the old base type was `:type/*`)
+  but gets its effective type, coercion strategy and fingerprint reset.
 
 ## Metabase 0.65.3
 

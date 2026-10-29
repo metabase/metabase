@@ -43,4 +43,29 @@
   {:name    "not SQL"
    :dialect "postgres"
    :sql     "distinct customer_key"
-   :error   "Invalid expression"}]}
+   :error   "Invalid expression"}
+
+  {:name    "a query is a statement, not an expression"
+   :dialect "postgres"
+   :sql     "SELECT 1"
+   :error   "expected an expression, got a statement (Select)"}
+
+  {:name    "DDL is a statement, not an expression"
+   :dialect "postgres"
+   :sql     "DROP TABLE orders"
+   :error   "expected an expression, got a statement (Drop)"}
+
+  {:name    "DML is a statement, not an expression"
+   :dialect "postgres"
+   :sql     "DELETE FROM orders"
+   :error   "expected an expression, got a statement (Delete)"}
+
+  {:name    "a command sqlglot does not parse further is a statement, not an expression"
+   :dialect "postgres"
+   :sql     "SHOW TABLES"
+   :error   "expected an expression, got a statement (Command)"}
+
+  {:name    "nested parentheses deeper than the parser's stack"
+   :dialect "postgres"
+   :sql     "((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((x))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))"
+   :error   "expression nests too deeply to parse"}]}

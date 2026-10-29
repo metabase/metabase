@@ -508,10 +508,11 @@
    ::pk?              (isa? (:semantic_type field) :type/PK)})
 
 (def ^:private unwritable-field?
-  "Whether an implicit action can't write `field`: an unfolded JSON field, a structured or JSON parent field, or a field of
-  an unknown type."
+  "Whether an implicit action can't write `field`: an unfolded JSON field, a structured or JSON parent field, a binary
+  field, or a field of an unknown type."
   (some-fn :nfc_path
            (comp #(isa? % :type/Structured) :effective_type)
+           (comp #(isa? % :type/Binary) :effective_type)
            (comp #{:type/*} :effective_type)))
 
 (defn- model-implicit-parameters

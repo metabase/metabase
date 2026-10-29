@@ -14,6 +14,7 @@ import sqlglot.optimizer as optimizer
 import sqlglot.optimizer.qualify as qualify
 from sqlglot import exp
 from sqlglot.dialects.clickhouse import ClickHouse
+from sqlglot.dialects.dialect import Dialect
 from sqlglot.errors import OptimizeError, ParseError
 from sqlglot.optimizer.normalize_identifiers import normalize_identifiers
 
@@ -2126,17 +2127,111 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
     return json.dumps(result)
 
 
-def _expression_to_json(node, dialect):
+MAX_EXPRESSION_LENGTH = 10_000
+"""The longest SQL `parse_expression` reads, in characters. It is meant for the expression of a measure or a filter,
+which is short; the tree it answers with carries the SQL of every node, so its size grows with the square of a
+left-leaning expression's size (a chain of ANDs), and the recursion of parsing and rendering grows with its depth."""
+
+MAX_EXPRESSION_DEPTH = 250
+"""The deepest tree `parse_expression` answers with: a chain of two hundred and fifty ANDs. Copying and serializing
+the tree recurse once per level, and GraalPy's stack runs out somewhere past 350 levels, where Python raises
+RecursionError; the parser's own recursion runs out sooner for nested parentheses, at about fifty. Both are caught
+and reported as ParseError, so this is the limit callers can count on rather than the limit of the interpreter."""
+
+_STATEMENT_TYPES = (
+    exp.Query,
+    exp.DDL,
+    exp.DML,
+    exp.Command,
+    # statements sqlglot does not derive from DDL or DML
+    exp.Alter,
+    exp.AlterSession,
+    exp.Attach,
+    exp.Clone,
+    exp.Comment,
+    exp.Commit,
+    exp.Declare,
+    exp.Describe,
+    exp.Detach,
+    exp.Drop,
+    exp.Execute,
+    exp.Export,
+    exp.Install,
+    exp.Kill,
+    exp.LoadData,
+    exp.Pragma,
+    exp.Rollback,
+    exp.Set,
+    exp.Show,
+    exp.Summarize,
+    exp.SwapTable,
+    exp.Transaction,
+    exp.TruncateTable,
+    exp.Undrop,
+    exp.Use,
+)
+"""What parses as a statement rather than an expression: a query, DDL, DML, a command sqlglot did not parse further,
+and the statements sqlglot derives from neither DDL nor DML."""
+
+
+def _tree_depth(root):
+    """How many levels of Expression nodes `root` has, counted without recursion."""
+    depth = 0
+    stack = [(root, 1)]
+    while stack:
+        node, level = stack.pop()
+        depth = max(depth, level)
+        stack.extend((child, level + 1) for child in node.iter_expressions())
+    return depth
+
+
+def _sql_by_node(root, dialect):
+    """The SQL of each node under `root`, keyed by the node's identity, from one rendering of the whole tree. The
+    generator renders a tree by calling its `sql` on every node, so a generator that records what `sql` returns
+    renders every node in that one pass; rendering each node's subtree on its own, as `node.sql()` does, renders a
+    node once per ancestor, which is quadratic in the size of a left-leaning expression (two seconds for a chain of
+    two hundred ANDs). The generator mutates what it renders, so it renders a copy, whose nodes are matched to the
+    original's by walking both in the same order. A node the generator never asked `sql` for (one rendered through
+    its parent's handler) is missing from the result and is rendered on its own by the caller."""
+    dialect = Dialect.get_or_raise(dialect)
+    copy = root.copy()
+    original_by_copy = {id(copied): original for original, copied in zip(root.dfs(), copy.dfs())}
+    rendered = {}
+
+    class RecordingGenerator(dialect.generator_class):
+        def sql(self, expression, key=None, comment=True):
+            result = super().sql(expression, key, comment)
+            if key is None and isinstance(expression, exp.Expression):
+                original = original_by_copy.get(id(expression))
+                # a node is rendered with its comments by its parent and without them by `maybe_comment`; keep the
+                # former, as `node.sql()` would
+                if original is not None and (comment or id(original) not in rendered):
+                    rendered[id(original)] = result
+            return result
+
+    RecordingGenerator(dialect=dialect).generate(copy, copy=False)
+    # The generator renders a chain of ANDs (or ORs) in one loop over its operands, so the chain's inner nodes
+    # never pass through `sql`; each is its two sides joined by its keyword, which is what the loop writes for
+    # them. Children come after parents in a depth-first walk, so the chain is filled in from the bottom.
+    for node in reversed(list(root.dfs())):
+        if id(node) not in rendered and isinstance(node, exp.Connector):
+            left, right = node.this, node.expression
+            if id(left) in rendered and id(right) in rendered:
+                rendered[id(node)] = f"{rendered[id(left)]} {node.key.upper()} {rendered[id(right)]}"
+    return rendered
+
+
+def _expression_to_json(node, dialect, sql_by_node):
     """The sqlglot expression tree `node` as JSON-serializable data: an Expression becomes
     {"class": ..., "sql": ..., "args": {...}} (a Func also carries "func", its SQL name), a list a list, an
     enum member its name, and anything else (str, bool, int, None) itself. Args that are None or empty are
-    left out."""
+    left out. `sql_by_node` is what `_sql_by_node` rendered; a node it misses is rendered here."""
     if isinstance(node, exp.Expression):
         serialized = {
             "class": type(node).__name__,
-            "sql": node.sql(dialect=dialect),
+            "sql": sql_by_node[id(node)] if id(node) in sql_by_node else node.sql(dialect=dialect),
             "args": {
-                key: _expression_to_json(value, dialect)
+                key: _expression_to_json(value, dialect, sql_by_node)
                 for key, value in node.args.items()
                 if value is not None and value != []
             },
@@ -2145,7 +2240,7 @@ def _expression_to_json(node, dialect):
             serialized["func"] = node.name if isinstance(node, exp.Anonymous) else node.sql_name()
         return serialized
     if isinstance(node, list):
-        return [_expression_to_json(value, dialect) for value in node]
+        return [_expression_to_json(value, dialect, sql_by_node) for value in node]
     if isinstance(node, enum.Enum):
         return node.name
     return node
@@ -2154,8 +2249,27 @@ def _expression_to_json(node, dialect):
 def parse_expression(sql: str, dialect: str = None) -> str:
     """Parse `sql`, a single expression with no surrounding SELECT such as `sales / target` or
     `status = 'Shipped' AND amount > 0`, and return its sqlglot tree as JSON (see _expression_to_json).
-    Raises ParseError when the SQL does not parse, is empty, or is more than one statement."""
-    expressions = [e for e in sqlglot.parse(sql, read=dialect) if e is not None]
+    Raises ParseError when the SQL does not parse, is empty, is more than one statement, is a statement rather than
+    an expression (`SELECT 1`, `DROP TABLE t`), is longer than MAX_EXPRESSION_LENGTH, or nests deeper than
+    MAX_EXPRESSION_DEPTH (or deeper than the interpreter's stack, which comes first for nested parentheses).
+    An unknown `dialect` is a ValueError, as for every other function here."""
+    if len(sql) > MAX_EXPRESSION_LENGTH:
+        raise ParseError(
+            f"expression is {len(sql)} characters long; the most parse_expression reads is {MAX_EXPRESSION_LENGTH}"
+        )
+    try:
+        expressions = [e for e in sqlglot.parse(sql, read=dialect) if e is not None]
+    except RecursionError:
+        raise ParseError(f"expression nests too deeply to parse; the most parse_expression reads is {MAX_EXPRESSION_DEPTH} levels")
     if len(expressions) != 1:
         raise ParseError(f"expected a single expression, got {len(expressions)} statements")
-    return json.dumps(_expression_to_json(expressions[0], dialect))
+    expression = expressions[0]
+    if isinstance(expression, _STATEMENT_TYPES):
+        raise ParseError(f"expected an expression, got a statement ({type(expression).__name__})")
+    depth = _tree_depth(expression)
+    if depth > MAX_EXPRESSION_DEPTH:
+        raise ParseError(f"expression nests {depth} levels deep; the most parse_expression reads is {MAX_EXPRESSION_DEPTH}")
+    try:
+        return json.dumps(_expression_to_json(expression, dialect, _sql_by_node(expression, dialect)))
+    except RecursionError:
+        raise ParseError(f"expression nests too deeply to render; the most parse_expression reads is {MAX_EXPRESSION_DEPTH} levels")

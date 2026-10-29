@@ -80,9 +80,51 @@
   need not repeat."
   [node]
   (cond
-    (map? node)    (into {} (map (fn [[k v]] [k (without-sql v)])) (dissoc node :sql))
+    (map? node)    (update-vals (dissoc node :sql) without-sql)
     (vector? node) (mapv without-sql node)
     :else          node))
+
+(defn- and-chain
+  "`n` conditions joined by AND: a left-leaning tree `n` levels deep, the shape that made the tree quadratic to render
+  before every node's SQL came out of one rendering of the whole."
+  [n]
+  (str/join " AND " (for [i (range n)] (str "c" i " > 0"))))
+
+(defn- node-sqls
+  "The `:sql` of every node of a [[sql-parsing/parse-expression]] tree, root first."
+  [node]
+  (cond
+    (map? node)    (into (if (:sql node) [(:sql node)] []) (mapcat node-sqls) (vals (:args node)))
+    (vector? node) (into [] (mapcat node-sqls) node)
+    :else          []))
+
+(deftest ^:parallel parse-expression-node-sql-test
+  (testing "every node carries the SQL it renders back to, the inner nodes of an AND chain included"
+    (let [tree (sql-parsing/parse-expression "postgres" (and-chain 3))]
+      (is (= ["c0 > 0 AND c1 > 0 AND c2 > 0" "c0 > 0 AND c1 > 0" "c0 > 0" "c0" "c0" "0" "c1 > 0" "c1" "c1" "0"
+              "c2 > 0" "c2" "c2" "0"]
+             (node-sqls tree))))))
+
+(deftest ^:parallel parse-expression-size-limits-test
+  (testing "a chain of two hundred ANDs parses, and in well under the Python timeout"
+    (let [started (System/nanoTime)
+          tree    (sql-parsing/parse-expression "postgres" (and-chain 200))]
+      (is (= "And" (:class tree)))
+      (is (< (/ (- (System/nanoTime) started) 1e9) 10) "seconds")))
+  (testing "an expression longer than the parser reads is refused up front, as a parse error"
+    (let [e (is (thrown? Exception (sql-parsing/parse-expression "postgres" (and-chain 900))))]
+      (is (sql-parsing/parse-error? e))
+      (is (re-find #"expression is \d+ characters long; the most parse_expression reads is 10000"
+                   (sql-parsing/parse-error-message e)))))
+  (testing "an expression nesting deeper than the parser renders is refused, as a parse error"
+    (let [e (is (thrown? Exception (sql-parsing/parse-expression "postgres" (and-chain 300))))]
+      (is (sql-parsing/parse-error? e))
+      (is (re-find #"expression nests 302 levels deep; the most parse_expression reads is 250"
+                   (sql-parsing/parse-error-message e)))))
+  (testing "an unknown dialect is not a parse error"
+    (let [e (is (thrown? Exception (sql-parsing/parse-expression "no-such-dialect" "x")))]
+      (is (not (sql-parsing/parse-error? e)))
+      (is (str/includes? (ex-message e) "ValueError")))))
 
 (deftest ^:parallel parse-expression-test
   (testing "the sqlglot tree of a bare expression, as the dbt metrics converter reads it"

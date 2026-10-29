@@ -129,12 +129,16 @@
 
 (deftest hydrate-implicit-action-test-3
   (testing "Implicit actions do not map parameters to binary fields, the same way JSON fields are excluded"
-    (mt/test-driver :postgres
+    (mt/test-drivers #{:h2 :postgres}
       (mt/dataset (mt/dataset-definition
                    "binary-field-dataset"
                    [["binary_table"
                      [{:field-name "name", :base-type :type/Text}
-                      {:field-name "bytea_col", :base-type {:native "bytea"}, :effective-type :type/*}]
+                      {:field-name      "bytea_col"
+                       :base-type       {:native (case driver/*driver*
+                                                   :h2       "VARBINARY"
+                                                   :postgres "bytea")}
+                       :effective-type  :type/Binary}]
                      [["Row One" (byte-array [0 1])]
                       ["Row Two" (byte-array [2 3])]]]])
         (mt/with-actions-enabled
