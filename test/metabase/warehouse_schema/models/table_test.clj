@@ -147,7 +147,7 @@
     (data-perms/set-table-permission! (perms-group/all-users) table-id-1 :perms/download-results :one-million-rows)
     (data-perms/set-table-permission! (perms-group/all-users) table-id-1 :perms/manage-table-metadata :yes)
     (is (true? (t2/exists? :model/DataPermissions :table_id table-id-1)))
-    (t2/delete! :model/Table table-id-1)
+    (t2/delete! :model/Table :id table-id-1)
     (testing "Table-level permissions are deleted when we delete the table"
       (is (false? (t2/exists? :model/DataPermissions :table_id table-id-1))))))
 
@@ -158,7 +158,7 @@
   (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :name)))
   (is (=? {(mt/id :venues :price) (mt/malli=? [:sequential {:min 1} :any])
            (mt/id :venues :name)  (mt/malli=? [:sequential {:min 1} :any])}
-          (-> (t2/select-one :model/Table (mt/id :venues))
+          (-> (t2/select-one :model/Table :id (mt/id :venues))
               (t2/hydrate :field_values)
               :field_values)))
   (testing "batched hydration of several tables"
@@ -173,7 +173,7 @@
 
 (deftest pk-field-hydration-test
   (is (= (mt/id :venues :id)
-         (-> (t2/select-one :model/Table (mt/id :venues))
+         (-> (t2/select-one :model/Table :id (mt/id :venues))
              (t2/hydrate :pk_field)
              :pk_field))))
 
@@ -495,30 +495,30 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Cannot change data_source from metabase-transform"
-             (t2/update! :model/Table table-id {:data_source :transform}))))
+             (t2/update! :model/Table :id table-id {:data_source :transform}))))
       (testing "to nil"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Cannot change data_source from metabase-transform"
-             (t2/update! :model/Table table-id {:data_source nil}))))))
+             (t2/update! :model/Table :id table-id {:data_source nil}))))))
   (testing "Cannot change data_source to metabase-transform"
     (mt/with-temp [:model/Table {table-id :id} {:data_source :ingested}]
       (testing "from another value"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Cannot set data_source to metabase-transform"
-             (t2/update! :model/Table table-id {:data_source :metabase-transform}))))
+             (t2/update! :model/Table :id table-id {:data_source :metabase-transform}))))
       (testing "but can change to other non-metabase-transform values"
-        (is (some? (t2/update! :model/Table table-id {:data_source :ingested})))
+        (is (some? (t2/update! :model/Table :id table-id {:data_source :ingested})))
         (is (= :ingested (t2/select-one-fn :data_source :model/Table :id table-id))))
       (testing "can also change it to nil"
-        (is (some? (t2/update! :model/Table table-id {:data_source nil})))
+        (is (some? (t2/update! :model/Table :id table-id {:data_source nil})))
         (is (nil? (t2/select-one-fn :data_source :model/Table :id table-id))))))
   (testing "data_source guard is relaxed for nil -> metabase-transform during deserialization (GDGT-2445)"
     (testing "can set data_source to metabase-transform on an existing synced table"
       (mt/with-temp [:model/Table {table-id :id} {:data_source nil}]
         (binding [mi/*deserializing?* true]
-          (is (some? (t2/update! :model/Table table-id {:data_source :metabase-transform}))))
+          (is (some? (t2/update! :model/Table :id table-id {:data_source :metabase-transform}))))
         (is (= :metabase-transform (t2/select-one-fn :data_source :model/Table :id table-id)))))
     (testing "reverse direction stays blocked even during deserialization"
       (mt/with-temp [:model/Table {table-id :id} {:data_source :metabase-transform}]
@@ -526,7 +526,7 @@
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"Cannot change data_source from metabase-transform"
-               (t2/update! :model/Table table-id {:data_source nil}))))))))
+               (t2/update! :model/Table :id table-id {:data_source nil}))))))))
 
 (deftest is-published-and-collection-id-test
   (testing "is_published defaults to false"
@@ -596,7 +596,7 @@
       (data-perms/set-database-permission! pg db-id :perms/create-queries :query-builder)
       (data-perms/set-table-permission! pg table-id :perms/view-data :unrestricted)
       (mt/with-test-user :rasta
-        (is (true? (mi/can-read? (t2/select-one :model/Table table-id))))))))
+        (is (true? (mi/can-read? (t2/select-one :model/Table :id table-id))))))))
 
 (deftest table-can-read?-with-view-data-permission-test
   (testing "User with view-data and create-queries permission can read table"
@@ -609,7 +609,7 @@
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (data-perms/set-table-permission! pg table-id :perms/view-data :unrestricted)
       (mt/with-test-user :rasta
-        (is (false? (boolean (mi/can-read? (t2/select-one :model/Table table-id)))))))))
+        (is (false? (boolean (mi/can-read? (t2/select-one :model/Table :id table-id)))))))))
 
 (deftest table-can-read?-with-manage-table-metadata-permission-test
   (testing "User with manage-table-metadata permission can read table"
@@ -622,7 +622,7 @@
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (data-perms/set-table-permission! pg table-id :perms/manage-table-metadata :yes)
       (mt/with-test-user :rasta
-        (is (true? (mi/can-read? (t2/select-one :model/Table table-id))))))))
+        (is (true? (mi/can-read? (t2/select-one :model/Table :id table-id))))))))
 
 (deftest table-can-read?-without-permissions-test
   (testing "User with neither permission cannot read table"
@@ -634,7 +634,7 @@
       (data-perms/set-database-permission! pg db-id :perms/view-data :blocked)
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (mt/with-test-user :rasta
-        (is (false? (mi/can-read? (t2/select-one :model/Table table-id))))))))
+        (is (false? (mi/can-read? (t2/select-one :model/Table :id table-id))))))))
 
 ;;; ---------------------------------------- can-query? permission tests ----------------------------------------
 
@@ -650,11 +650,11 @@
       ;; Only view-data - not enough
       (data-perms/set-table-permission! pg table-id :perms/view-data :unrestricted)
       (mt/with-test-user :rasta
-        (is (false? (mi/can-query? (t2/select-one :model/Table table-id)))))
+        (is (false? (mi/can-query? (t2/select-one :model/Table :id table-id)))))
       ;; Add create-queries - now can query
       (data-perms/set-table-permission! pg table-id :perms/create-queries :query-builder)
       (mt/with-test-user :rasta
-        (is (true? (mi/can-query? (t2/select-one :model/Table table-id))))))))
+        (is (true? (mi/can-query? (t2/select-one :model/Table :id table-id))))))))
 
 (deftest table-can-query?-manage-table-metadata-does-not-grant-query-access-test
   (testing "manage-table-metadata alone does NOT grant query access"
@@ -667,7 +667,7 @@
       (data-perms/set-database-permission! pg db-id :perms/create-queries :no)
       (data-perms/set-table-permission! pg table-id :perms/manage-table-metadata :yes)
       (mt/with-test-user :rasta
-        (is (false? (mi/can-query? (t2/select-one :model/Table table-id))))))))
+        (is (false? (mi/can-query? (t2/select-one :model/Table :id table-id))))))))
 
 ;;; ---------------------------------------- can_query hydration test ----------------------------------------
 

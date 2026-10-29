@@ -87,14 +87,12 @@
       "members": [
         "eliotmetabase",
         "npfitz",
-        "johnswanson",
         "nvoxland",
         "bshepherdson",
         "deniskaber",
         "andsalves",
         "kevinkelleher12",
         "AndreyChernykh",
-        "bowbahdoe",
         "appleby"
       ]
     },
@@ -134,7 +132,9 @@
       "name": "Security Engineering",
       "label": ".Team/SecurityEngineering",
       "members": [
-        "enthym-aa"
+        "bowbahdoe",
+        "enthym-aa",
+        "johnswanson"
       ]
     }
   ]

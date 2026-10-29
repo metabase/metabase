@@ -1257,7 +1257,7 @@
 (defn- orders-query
   "A portable MBQL 5 query over the test data Orders table."
   []
-  (let [table (t2/select-one :model/Table (mt/id :orders))]
+  (let [table (t2/select-one :model/Table :id (mt/id :orders))]
     {:lib/type "mbql/query"
      :stages   [{:lib/type     "mbql.stage/mbql"
                  :source-table [(:name (mt/db)) (:schema table) (:name table)]
