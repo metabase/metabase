@@ -153,7 +153,7 @@
   (if (seq table-ids)
     (t2/select :model/Table
                {:from     [(warehouse-schema-overlay/table-query)]
-                :where    [:and [:= :active true] [:in :id table-ids]]
+                :where    [:and [:= :active true] [:in :id [:auto/param table-ids]]]
                 :order-by [[:name :asc] [:id :asc]]})
     []))
 

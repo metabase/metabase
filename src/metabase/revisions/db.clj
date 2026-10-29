@@ -110,7 +110,7 @@
    dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-pks-set :model/Card
                      {:where [:and
-                              [:in :id card-ids]
+                              [:in :id [:auto/param card-ids]]
                               [:= :archived false]
                               [:or
                                [:= :dashboard_id [:auto/param dashboard-id]]
@@ -119,7 +119,7 @@
 (mu/defn active-card-ids
   "The ids among `card-ids` of unarchived Cards."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select-pks-set :model/Card {:where [:and [:in :id card-ids] [:= :archived false]]}))
+  (t2/select-pks-set :model/Card {:where [:and [:in :id [:auto/param card-ids]] [:= :archived false]]}))
 
 (mu/defn lock-revisions!
   "Lock the Revisions of the `model-name` row with `model-id` for update."
@@ -273,7 +273,7 @@
     :where     [:and
                 [:= :r.most_recent true]
                 [:= :r.model [:auto/param db-model]]
-                [:in :r.model_id ids]]}))
+                [:in :r.model_id [:auto/param ids]]]}))
 
 (mu/defn latest-changes
   "The editing User, model, model id, and timestamp of the most recent Revisions of the Cards with `card-ids`

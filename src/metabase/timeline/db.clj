@@ -88,7 +88,7 @@
    end          :- [:maybe ms/TemporalInstant]]
   (t2/select :model/TimelineEvent
              {:where [:and
-                      [:in :timeline_id timeline-ids]
+                      [:in :timeline_id [:auto/param timeline-ids]]
                       (when-not all?
                         [:= :archived false])
                       (when (or start end)

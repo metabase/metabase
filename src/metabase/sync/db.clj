@@ -81,8 +81,8 @@
                                 [:and
                                  [:= :is_sample true]
                                  [:= :metadata_sync_schedule [:auto/param old-sample-metadata-cron]]]
-                                [:in :metadata_sync_schedule metadata-crons]
-                                [:in :cache_field_values_schedule cache-field-values-crons]]}))
+                                [:in :metadata_sync_schedule [:auto/param metadata-crons]]
+                                [:in :cache_field_values_schedule [:auto/param cache-field-values-crons]]]}))
 
 (mu/defn update-database!
   "Apply `changes` to the Database with `database-id`, returning the number updated."

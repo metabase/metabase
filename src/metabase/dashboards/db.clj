@@ -71,7 +71,7 @@
               :left-join [[:report_card :card] [:= :dashcard.card_id :card.id]
                           [:collection :collection] [:= :collection.id :card.collection_id]]
               :where     [:and
-                          [:in :dashcard.dashboard_id dashboard-ids]
+                          [:in :dashcard.dashboard_id [:auto/param dashboard-ids]]
                           [:or
                            ;; show it if:
                            ;; - the card isn't archived
@@ -176,7 +176,7 @@
               :visualization_settings :collection_id :card_schema :entity_id :result_metadata
               :dimensions :dimension_mappings :series.dashboardcard_id]
              {:left-join [[:dashboardcard_series :series] [:= :report_card.id :series.card_id]]
-              :where     [:in :series.dashboardcard_id dashcard-ids]
+              :where     [:in :series.dashboardcard_id [:auto/param dashcard-ids]]
               :order-by  [[:series.position :asc]]}))
 
 (mu/defn dashcard

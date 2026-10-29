@@ -365,7 +365,7 @@
   (t2/query {:select [[:p.id :id] [:b.exploration_thread_id :thread_id]]
              :from   [[:exploration_page :p]]
              :join   [[:exploration_block :b] [:= :b.id :p.exploration_block_id]]
-             :where  [:in :b.exploration_thread_id thread-ids]}))
+             :where  [:in :b.exploration_thread_id [:auto/param thread-ids]]}))
 
 (mu/defn insert-page!
   "Insert `page` and return its ID."
@@ -451,7 +451,7 @@
    query-ids      :- [:sequential ms/PositiveInt]]
   (t2/count :model/ExplorationQuery
             {:where [:and
-                     [:in :id query-ids]
+                     [:in :id [:auto/param query-ids]]
                      [:in :exploration_thread_id
                       ^:allow-subquery {:select [:id]
                                         :from   [:exploration_thread]
@@ -527,7 +527,7 @@
   [query-ids :- [:sequential ms/PositiveInt]]
   (t2/query {:update (t2/table-name :model/ExplorationQuery)
              :set    {:status "canceled"}
-             :where  [:in :id query-ids]}))
+             :where  [:in :id [:auto/param query-ids]]}))
 
 (mu/defn delete-queries-for-thread!
   "Delete the ExplorationQueries of the ExplorationThread with `thread-id`."
@@ -565,7 +565,7 @@
               :exploration_query_result.exploration_query_id
               [:stored_result.row_count :row_count]]
              {:join  [:stored_result [:= :stored_result.id :exploration_query_result.stored_result_id]]
-              :where [:in :exploration_query_result.exploration_query_id query-ids]}))
+              :where [:in :exploration_query_result.exploration_query_id [:auto/param query-ids]]}))
 
 (mu/defn insert-query-result!
   "Insert `query-result`."

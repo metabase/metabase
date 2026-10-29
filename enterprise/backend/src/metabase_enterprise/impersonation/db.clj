@@ -47,7 +47,7 @@
              {:where [:and
                       (when database-id [:= :db_id [:auto/param database-id]])
                       (when group-id [:= :group_id [:auto/param group-id]])
-                      (when group-ids [:in :group_id group-ids])
+                      (when group-ids [:in :group_id [:auto/param group-ids]])
                       (when excluded-database-id [:not [:= :db_id [:auto/param excluded-database-id]]])]}))
 
 (mu/defn impersonation-exists-for-database?
@@ -80,7 +80,7 @@
                              [:= :db_id [:auto/param database-id]]
                              [:= :table_id nil]
                              [:= :perm_type "perms/view-data"]
-                             [:in :group_id group-ids]]}))
+                             [:in :group_id [:auto/param group-ids]]]}))
 
 (mu/defn group-ids-for-user
   "The IDs of the PermissionsGroups the User with `user-id` belongs to, or nil when `user-id` is nil (e.g. no

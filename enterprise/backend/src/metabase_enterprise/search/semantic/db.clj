@@ -46,7 +46,7 @@
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/reducible-select [:model/Dashboard :id]
                        {:where [:and [:= :archived false]
-                                [:in :collection_id collection-ids]]}))
+                                [:in :collection_id [:auto/param collection-ids]]]}))
 
 (mu/defn collection-owners-and-locations
   "The ID, owner, and location of the Collections with `collection-ids`."

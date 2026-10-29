@@ -67,7 +67,7 @@
                        [:= :s.table_id :t.id]]
               :where  [:and
                        (when group-id [:= :s.group_id [:auto/param group-id]])
-                       (when group-ids [:in :s.group_id group-ids])
+                       (when group-ids [:in :s.group_id [:auto/param group-ids]])
                        (when db-id [:= :t.db_id [:auto/param db-id]])
                        (when excluded-db-id [:not [:= :t.db_id [:auto/param excluded-db-id]]])]}))
 

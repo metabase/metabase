@@ -201,7 +201,7 @@
                             :join  [(warehouse-schema-overlay/table-query {:user-settings? false})
                                     [:= :metabase_field.table_id :metabase_table.id]]
                             :where [:and
-                                    [:in :metabase_field.fk_target_field_id field-ids]
+                                    [:in :metabase_field.fk_target_field_id [:auto/param field-ids]]
                                     [:= :metabase_field.active true]
                                     [:= :metabase_table.active true]]}))
 

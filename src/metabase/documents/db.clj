@@ -97,7 +97,7 @@
   "The Cards with `card-ids` that do not belong to the Document with `document-id`."
   [card-ids    :- [:sequential ::lib.schema.id/card]
    document-id :- ms/PositiveInt]
-  (t2/select :model/Card {:where [:and [:in :id card-ids]
+  (t2/select :model/Card {:where [:and [:in :id [:auto/param card-ids]]
                                   [:or [:<> :document_id [:auto/param document-id]]
                                    [:= :document_id nil]]]}))
 

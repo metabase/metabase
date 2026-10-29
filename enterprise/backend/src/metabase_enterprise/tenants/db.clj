@@ -92,7 +92,7 @@
   (t2/query {:select   [[:tenant_id] [[:count :*] :count]]
              :from     [(t2/table-name :model/User)]
              :where    [:and
-                        [:in :tenant_id tenant-ids]
+                        [:in :tenant_id [:auto/param tenant-ids]]
                         [:= :type "personal"]
                         :is_active]
              :group-by [:tenant_id]}))
@@ -134,4 +134,4 @@
   "Delete the Permissions rows for `objects`, returning the number deleted."
   [objects :- [:sequential :string]]
   (t2/query-one {:delete-from :permissions
-                 :where       [:in :object objects]}))
+                 :where       [:in :object [:auto/param objects]]}))

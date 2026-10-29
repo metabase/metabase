@@ -116,7 +116,7 @@
   [ids   :- [:sequential ms/PositiveInt]
    where :- vector?]
   (t2/select-pks-set :model/ContentDiagnosticsFinding
-                     {:where [:and [:in :id ids] [:= :invalidated_at nil] where]}))
+                     {:where [:and [:in :id [:auto/param ids]] [:= :invalidated_at nil] where]}))
 
 (mu/defn findings-page
   "One page of findings matching `where`, sorted by `order-by`; `limit`/`offset` may be nil for no
@@ -410,7 +410,7 @@
   (t2/query {:select [[:dc.dashboard_id :dashboard_id] [:dc.card_id :card_id]]
              :from   [[:report_dashboardcard :dc]]
              :join   [[:report_dashboard :d] [:= :d.id :dc.dashboard_id]]
-             :where  [:and eligible-clause [:in :dc.card_id card-ids]]}))
+             :where  [:and eligible-clause [:in :dc.card_id [:auto/param card-ids]]]}))
 
 (mu/defn dashboard-series-card-pairs
   "The `(dashboard_id, card_id)` pairs where a Dashboard matching `eligible-clause` renders one of
@@ -421,7 +421,7 @@
              :from   [[:dashboardcard_series :s]]
              :join   [[:report_dashboardcard :dc] [:= :dc.id :s.dashboardcard_id]
                       [:report_dashboard :d]      [:= :d.id :dc.dashboard_id]]
-             :where  [:and eligible-clause [:in :s.card_id card-ids]]}))
+             :where  [:and eligible-clause [:in :s.card_id [:auto/param card-ids]]]}))
 
 ;;; ------------------------------------------------- Documents -----------------------------------------------
 

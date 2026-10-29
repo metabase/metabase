@@ -64,7 +64,7 @@
   [user-ids :- [:sequential ::lib.schema.id/user]]
   (t2/select-fn-set :email :model/User {:where [:and
                                                 [:= :is_active true]
-                                                [:in :id user-ids]]}))
+                                                [:in :id [:auto/param user-ids]]]}))
 
 (mu/defn user-ids-with-permission
   "The ids of the Users belonging to a PermissionsGroup that holds `permission-path`."

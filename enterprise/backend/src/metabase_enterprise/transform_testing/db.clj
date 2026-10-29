@@ -75,7 +75,7 @@
   [transform-test-ids :- [:set ms/PositiveInt]]
   (t2/select :model/TransformTestRun
              {:where [:and
-                      [:in :transform_test_run.transform_test_id transform-test-ids]
+                      [:in :transform_test_run.transform_test_id [:auto/param transform-test-ids]]
                       [:not [:exists ^:allow-subquery {:select [1]
                                                        :from   [[:transform_test_run :newer]]
                                                        :where  [:and

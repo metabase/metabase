@@ -378,9 +378,9 @@
    updated-before  :- ms/TemporalInstant]
   (t2/query-one {:delete-from [(t2/table-name :model/SearchIndexMetadata)]
                  :where       [:or
-                               [:not-in :version recent-versions]
+                               [:not-in :version [:auto/param recent-versions]]
                                [:and
-                                [:not-in :version keep-versions]
+                                [:not-in :version [:auto/param keep-versions]]
                                 [:< :updated_at [:auto/param updated-before]]]]}))
 
 (mu/defn non-destination-database-ids

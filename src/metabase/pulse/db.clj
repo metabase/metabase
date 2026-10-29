@@ -189,7 +189,7 @@
               :join   [[:pulse_card :pc] [:= :p.id :pc.pulse_id]]
               :where  [:and
                        [:not= :p.alert_condition nil]
-                       [:in :pc.card_id card-ids]
+                       [:in :pc.card_id [:auto/param card-ids]]
                        [:= :p.archived [:auto/param archived?]]]}))
 
 (mu/defn legacy-pulse-count
@@ -233,7 +233,7 @@
                 [:report_card :c] [:= :c.id :pc.card_id]]
     :left-join [[:report_dashboardcard :dc] [:= :pc.dashboard_card_id :dc.id]]
     :where     [:and
-                [:in :p.id pulse-ids]
+                [:in :p.id [:auto/param pulse-ids]]
                 (when-not include-archived? [:= :c.archived false])]
     :order-by [[:pc.position :asc]]}))
 
@@ -362,7 +362,7 @@
   (t2/select [:model/User :id :email :first_name :last_name :pcr.pulse_channel_id]
              {:left-join [[:pulse_channel_recipient :pcr] [:= :core_user.id :pcr.user_id]]
               :where     [:and
-                          [:in :pcr.pulse_channel_id channel-ids]
+                          [:in :pcr.pulse_channel_id [:auto/param channel-ids]]
                           [:= :core_user.is_active true]]
               :order-by [[:core_user.id :asc]]}))
 

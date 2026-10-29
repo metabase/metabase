@@ -68,7 +68,7 @@
   [card-ids      :- [:set ::lib.schema.id/card]
    collection-id :- ::lib.schema.id/collection]
   (t2/select-pks-set :model/Card {:where [:and
-                                          [:in :id card-ids]
+                                          [:in :id [:auto/param card-ids]]
                                           [:or [:= :collection_id nil] [:not= :collection_id [:auto/param collection-id]]]]}))
 
 (mu/defn collection-exists?
@@ -247,7 +247,7 @@
   (t2/query {:select    [:action.id :db.settings]
              :from      [[(t2/table-name :model/Action) :action]]
              :left-join (action-database-joins)
-             :where     [:and [:in :action.id action-ids] [:not= :db.id nil]]}))
+             :where     [:and [:in :action.id [:auto/param action-ids]] [:not= :db.id nil]]}))
 
 (mu/defn card-scope-columns
   "The query-relevant columns of the Card with `card-id`, plus its Collection id and display, or nil."

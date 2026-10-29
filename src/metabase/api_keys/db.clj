@@ -63,7 +63,7 @@
              :from   [[:permissions_group :pg]]
              :join   [[:permissions_group_membership :pgm] [:= :pgm.group_id :pg.id]
                       :api_key [:= :api_key.user_id :pgm.user_id]]
-             :where  [:in :api_key.id api-key-ids]}))
+             :where  [:in :api_key.id [:auto/param api-key-ids]]}))
 
 (mu/defn rename-api-key-user!
   "Set the first name (and clear the last name) of the api-key User with `user-id`."

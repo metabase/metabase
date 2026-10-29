@@ -166,7 +166,7 @@
   (t2/query-one {:select [[[:count [:distinct :request_id]] :cnt]]
                  :from   [:ai_usage_log]
                  :where  (cond-> (usage-window-expr period-start user-id tenant-id)
-                           (seq sources) (conj [:in :source sources])
+                           (seq sources) (conj [:in :source [:auto/param sources]])
                            request-id    (conj [:not= :request_id [:auto/param request-id]]))}))
 
 (mu/defn delete-usage-logs-created-before!

@@ -40,7 +40,7 @@
   [source-types :- [:set :string]
    database-id  :- [:maybe ::lib.schema.id/database]]
   (t2/select :model/Transform {:where    [:and
-                                          [:in :source_type source-types]
+                                          [:in :source_type [:auto/param source-types]]
                                           (when database-id [:= :source_database_id [:auto/param database-id]])]
                                :order-by [[:id :asc]]}))
 
@@ -414,7 +414,7 @@
                                                                        :order-by     [[:start_time :desc]]}]]
                                              :rn]]
                                    :from   [:transform_run]
-                                   :where  [:in :transform_id transform-ids]}]]
+                                   :where  [:in :transform_id [:auto/param transform-ids]]}]]
                         :select [:*]
                         :from   [:latest_runs]
                         :where  [:= :rn [:inline 1]]}))
@@ -435,7 +435,7 @@
 (mu/defn lock-active-runs
   "The active TransformRuns among `run-ids`, locked for update."
   [run-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/TransformRun {:where [:and [:= :is_active true] [:in :id run-ids]]
+  (t2/select :model/TransformRun {:where [:and [:= :is_active true] [:in :id [:auto/param run-ids]]]
                                   :for   :update}))
 
 (mu/defn last-success-times
@@ -444,7 +444,7 @@
   (t2/select :model/TransformRun
              {:select   [:transform_id [[:max :end_time] :last_success]]
               :where    [:and
-                         [:in :transform_id transform-ids]
+                         [:in :transform_id [:auto/param transform-ids]]
                          [:= :status "succeeded"]]
               :group-by [:transform_id]}))
 
@@ -629,7 +629,7 @@
                                                                        :order-by     [[:start_time :desc]]}]]
                                              :rn]]
                                    :from   [:transform_job_run]
-                                   :where  [:in :job_id job-ids]}]]
+                                   :where  [:in :job_id [:auto/param job-ids]]}]]
                         :select [:*]
                         :from   [:ranked_runs]
                         :where  [:= :rn [:inline 1]]}))

@@ -72,8 +72,8 @@
                       :where (let [selector-expr (table-selectors-expr selectors)]
                                (if (seq extra-table-ids)
                                  [:or selector-expr (case extra-mode
-                                                      :unpublished [:and [:in :id extra-table-ids] [:= :is_published false]]
-                                                      :any         [:in :id extra-table-ids])]
+                                                      :unpublished [:and [:in :id [:auto/param extra-table-ids]] [:= :is_published false]]
+                                                      :any         [:in :id [:auto/param extra-table-ids]])]
                                  selector-expr))}))
 
 (mu/defn published-table-ids

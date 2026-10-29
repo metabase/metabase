@@ -22,7 +22,7 @@
   "The subset of `ids` for which an instance of `model` exists."
   [model :- :keyword
    ids   :- [:sequential ms/PositiveInt]]
-  (t2/select-pks-set model {:where [:in :id ids]}))
+  (t2/select-pks-set model {:where [:in :id [:auto/param ids]]}))
 
 (mu/defn instance-exists?
   "Whether an instance of `model` whose primary key is `id` exists."
@@ -49,5 +49,5 @@
   [card-ids       :- [:sequential ::lib.schema.id/card]
    collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select-pks-set :model/Card {:where [:and
-                                          [:in :id card-ids]
-                                          [:in :collection_id collection-ids]]}))
+                                          [:in :id [:auto/param card-ids]]
+                                          [:in :collection_id [:auto/param collection-ids]]]}))

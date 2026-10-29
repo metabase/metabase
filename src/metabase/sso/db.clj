@@ -15,7 +15,7 @@
   (t2/select-fn-set :group_id :model/PermissionsGroupMembership
                     {:where [:and
                              [:= :user_id [:auto/param user-id]]
-                             [:not-in :group_id excluded-group-ids]]}))
+                             [:not-in :group_id [:auto/param excluded-group-ids]]]}))
 
 (mu/defn user-group-ids-among
   "The ids among `group-ids` of the PermissionsGroups the User with `user-id` belongs to, other than
@@ -26,8 +26,8 @@
   (t2/select-fn-set :group_id :model/PermissionsGroupMembership
                     {:where [:and
                              [:= :user_id [:auto/param user-id]]
-                             [:in :group_id group-ids]
-                             [:not-in :group_id excluded-group-ids]]}))
+                             [:in :group_id [:auto/param group-ids]]
+                             [:not-in :group_id [:auto/param excluded-group-ids]]]}))
 
 (mu/defn auth-identity-exists?
   "Whether the User with `user-id` has an AuthIdentity for `provider`."

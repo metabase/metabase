@@ -44,8 +44,8 @@
                                 [:= :dim.human_readable_field_id :target_field.id]]
                        :where  [:and
                                 [:= :dim.type "external"]
-                                [:in input-table-id table-ids]
-                                [:not [:in output-table-id exclude-table-ids]]]}))
+                                [:in input-table-id [:auto/param table-ids]]
+                                [:not [:in output-table-id [:auto/param exclude-table-ids]]]]}))
 
 (mu/defn fk-remapped-table-ids-for-selectors
   "The `:table_id`s reached through external Dimensions from the Tables picked out by `selectors`, reading the

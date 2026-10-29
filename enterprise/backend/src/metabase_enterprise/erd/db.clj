@@ -36,7 +36,7 @@
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Field {:from     [(warehouse-schema-overlay/field-query)]
                            :where    [:and
-                                      [:in :table_id table-ids]
+                                      [:in :table_id [:auto/param table-ids]]
                                       [:= :active true]]
                            :order-by schema.table/field-order-rule}))
 

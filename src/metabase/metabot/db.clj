@@ -61,7 +61,7 @@
 (mu/defn prompts-for-metabots
   "The MetabotPrompts of the Metabots with `metabot-ids`."
   [metabot-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/MetabotPrompt {:where [:in :metabot_id metabot-ids]}))
+  (t2/select :model/MetabotPrompt {:where [:in :metabot_id [:auto/param metabot-ids]]}))
 
 (defn- prompts-for-metabot-query
   "Honey SQL `:join`/`:where` restricting to MetabotPrompts of the Metabot with `metabot-id` whose Card is within
@@ -576,8 +576,8 @@
                          (seq excluded-table-ids)
                          (update :where (fn [where-clause]
                                           (if where-clause
-                                            [:and where-clause [:not-in :id excluded-table-ids]]
-                                            [:not-in :id excluded-table-ids]))))))
+                                            [:and where-clause [:not-in :id [:auto/param excluded-table-ids]]]
+                                            [:not-in :id [:auto/param excluded-table-ids]]))))))
 
 (mu/defn most-viewed-tables-visible-to-current-user
   "The ID, Database ID, name, schema, and description of up to `limit` active, unhidden Tables in the Database with

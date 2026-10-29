@@ -876,7 +876,7 @@
                       [:= :entity_type (name :data-app)]
                       [:in :entity_id ^:allow-subquery {:select [:id]
                                                         :from   [(t2/table-name :model/DataApp)]
-                                                        :where  [:in :resource_collection_id collection-ids]}]]}))
+                                                        :where  [:in :resource_collection_id [:auto/param collection-ids]]}]]}))
 
 (mu/defn mark-result-metadata-statuses-stale!
   "Mark the ResultMetadataStatuses of the entities `type->ids` stale, so the result metadata job re-derives them."
@@ -1081,7 +1081,7 @@
   (or (t2/select-fn-set :table_id [:model/Field :metabase_field.table_id]
                         {:from  [(warehouse-schema-overlay/field-query {:user-settings? false})]
                          :join  [:dimension [:= :dimension.field_id :metabase_field.id]]
-                         :where [:in :dimension.human_readable_field_id field-ids]})
+                         :where [:in :dimension.human_readable_field_id [:auto/param field-ids]]})
       #{}))
 
 (mu/defn internal-remap? :- :boolean

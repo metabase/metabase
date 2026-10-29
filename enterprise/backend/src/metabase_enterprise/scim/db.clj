@@ -75,7 +75,7 @@
 (mu/defn user-ids-by-entity-ids
   "The IDs of the Users with `entity-ids`."
   [entity-ids :- [:sequential :string]]
-  (t2/select-fn-set :id :model/User {:where [:in :entity_id entity-ids]}))
+  (t2/select-fn-set :id :model/User {:where [:in :entity_id [:auto/param entity-ids]]}))
 
 (mu/defn insert-user!
   "Insert the User `row`, returning the number inserted."
@@ -96,7 +96,7 @@
   (t2/select [:model/PermissionsGroupMembership :pgm.user_id :pg.name :pg.entity_id]
              {:from  [[:permissions_group_membership :pgm]]
               :join  [[:permissions_group :pg] [:= :pg.id :group_id]]
-              :where (into [:and [:in :user_id user-ids]]
+              :where (into [:and [:in :user_id [:auto/param user-ids]]]
                            (map (fn [group-id] [:not= :pg.id group-id]))
                            excluded-group-ids)}))
 
@@ -164,4 +164,4 @@
   (t2/select [:model/PermissionsGroupMembership :pgm.group_id :u.email :u.entity_id]
              {:from  [[:permissions_group_membership :pgm]]
               :join  [[:core_user :u] [:= :u.id :pgm.user_id]]
-              :where [:in :pgm.group_id group-ids]}))
+              :where [:in :pgm.group_id [:auto/param group-ids]]}))

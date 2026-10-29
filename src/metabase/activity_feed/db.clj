@@ -21,7 +21,7 @@
               :entity_id :result_metadata :dimensions :dimension_mappings
               :collection.authority_level [:collection.name :collection_name]
               [:dashboard.name :dashboard_name] :dashboard_id]
-             {:where     [:in :report_card.id ids]
+             {:where     [:in :report_card.id [:auto/param ids]]
               :left-join [:collection [:= :collection.id :report_card.collection_id]
                           [:report_dashboard :dashboard] [:= :dashboard.id :report_card.dashboard_id]]}))
 
@@ -32,7 +32,7 @@
               :id :name :collection_id :description
               :archived
               :collection.authority_level [:collection.name :collection_name]]
-             {:where     [:in :report_dashboard.id ids]
+             {:where     [:in :report_dashboard.id [:auto/param ids]]
               :left-join [:collection [:= :collection.id :report_dashboard.collection_id]]}))
 
 (mu/defn recent-tables
@@ -44,7 +44,7 @@
               [:visibility_type :visibility_type]
               [:metabase_database.name :database-name]]
              {:from [(warehouse-schema-overlay/table-query)]
-              :where     [:in :metabase_table.id ids]
+              :where     [:in :metabase_table.id [:auto/param ids]]
               :left-join [:metabase_database [:= :metabase_database.id :metabase_table.db_id]]}))
 
 (mu/defn recent-dashboard-and-table-views
@@ -229,7 +229,7 @@
                        [:collection.name :collection_name]
                        [:collection.authority_level :collection_authority_level]]
               :from [[:report_card :card]]
-              :where [:in :card.id card-ids]
+              :where [:in :card.id [:auto/param card-ids]]
               :left-join [[:moderation_review :mr]
                           [:and
                            [:= :mr.moderated_item_id :card.id]
@@ -256,7 +256,7 @@
                        [:c.authority_level :collection_authority_level]
                        [:mr.status :moderated-status]]
               :from [[:report_dashboard :dash]]
-              :where [:in :dash.id dashboard-ids]
+              :where [:in :dash.id [:auto/param dashboard-ids]]
               :left-join [[:moderation_review :mr]
                           [:and
                            [:= :mr.moderated_item_id :dash.id]
@@ -274,7 +274,7 @@
              {:select [:id :name :description :authority_level
                        :archived :location :type]
               :where [:and
-                      [:in :id collection-ids]
+                      [:in :id [:auto/param collection-ids]]
                       [:= :archived false]]}))
 
 (mu/defn visible-tables-for-recent-views
@@ -291,7 +291,7 @@
                       [:or
                        [:= :visibility_type nil]
                        [:!= :visibility_type "hidden"]]
-                      [:in :t.id table-ids]]
+                      [:in :t.id [:auto/param table-ids]]]
               :left-join [[:metabase_database :db]
                           [:= :db.id :t.db_id]]}))
 
@@ -309,9 +309,9 @@
               :from      [[:recent_views :rv]]
               :where     [:and
                           [:= :rv.user_id [:auto/param user-id]]
-                          [:in :rv.context contexts]
+                          [:in :rv.context [:auto/param contexts]]
                           (when (seq db-models)
-                            [:in :rv.model db-models])
+                            [:in :rv.model [:auto/param db-models]])
                           ;; Additionally filter by card type to distinguish questions/models/metrics
                           (when (seq card-types)
                             [:or
@@ -359,7 +359,7 @@
                        [:c.name :collection_name]
                        [:c.authority_level :collection_authority_level]]
               :from [[:document :d]]
-              :where [:in :d.id document-ids]
+              :where [:in :d.id [:auto/param document-ids]]
               :left-join [[:collection :c]
                           [:and
                            [:= :c.id :d.collection_id]

@@ -67,7 +67,7 @@
                                   [:not= :result_metadata nil]
                                   [:= :archived false]
                                   [:in :type [(u/qualified-name card-type) "metric"]]
-                                  [:in :database_id database-ids]
+                                  [:in :database_id [:auto/param database-ids]]
                                   (cond
                                     (nil? collection-scope)          nil
                                     (= collection-scope :root)       [:= :collection_id nil]

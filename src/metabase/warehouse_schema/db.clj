@@ -215,7 +215,7 @@
              {:select   [:u.* [:f.table_id :table_id] [:f.name :field_name]]
               :from     [[(t2/table-name :model/FieldUserSettings) :u]]
               :join     [(warehouse-schema-overlay/field-query {:alias :f, :user-settings? false}) [:= :f.id :u.field_id]]
-              :where    [:in :f.table_id table-ids]
+              :where    [:in :f.table_id [:auto/param table-ids]]
               :order-by [[:f.name :asc]]}))
 
 (mu/defn insert-field-user-settings!
@@ -344,7 +344,7 @@
              {:join  [(warehouse-schema-overlay/field-query {:alias :field})
                       [:= :metabase_fieldvalues.field_id :field.id]]
               :where [:and
-                      [:in :field.table_id table-ids]
+                      [:in :field.table_id [:auto/param table-ids]]
                       [:= :field.visibility_type "normal"]
                       [:= :metabase_fieldvalues.type "full"]]}))
 

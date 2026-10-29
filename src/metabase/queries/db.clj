@@ -163,10 +163,10 @@
   (t2/query {:select   [[:%count.* :count] :card_id]
              :from     [[^:allow-subquery {:union-all [^:allow-subquery {:select [:card_id]
                                                                          :from   [:report_dashboardcard]
-                                                                         :where  [:in :card_id card-ids]}
+                                                                         :where  [:in :card_id [:auto/param card-ids]]}
                                                        ^:allow-subquery {:select [:card_id]
                                                                          :from   [:dashboardcard_series]
-                                                                         :where  [:in :card_id card-ids]}]}
+                                                                         :where  [:in :card_id [:auto/param card-ids]]}]}
                          :placements]]
              :group-by [:card_id]}))
 
@@ -175,7 +175,7 @@
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/query {:select   [[:%count.* :count] :card_id]
              :from     [:parameter_card]
-             :where    [:in :card_id card-ids]
+             :where    [:in :card_id [:auto/param card-ids]]
              :group-by [:card_id]}))
 
 (mu/defn average-running-times-by-card
@@ -186,7 +186,7 @@
              :where    [:and
                         [:not= :running_time nil]
                         [:not= :cache_hit true]
-                        [:in :card_id card-ids]]
+                        [:in :card_id [:auto/param card-ids]]]
              :group-by [:card_id]}))
 
 (mu/defn last-query-starts-by-card
@@ -197,7 +197,7 @@
              :where    [:and
                         [:not= :running_time nil]
                         [:not= :cache_hit true]
-                        [:in :card_id card-ids]]
+                        [:in :card_id [:auto/param card-ids]]]
              :group-by [:card_id]}))
 
 (defn card-dashboards
@@ -219,7 +219,7 @@
                                                                         :d.enable_embedding]
                                                              :from     [[:report_dashboardcard :dc]]
                                                              :join     [[:report_dashboard :d] [:= :dc.dashboard_id :d.id]]
-                                                             :where    [:in :dc.card_id card-ids]
+                                                             :where    [:in :dc.card_id [:auto/param card-ids]]
                                                              :order-by [[:d.id :asc]]}}
                          ^:allow-subquery {:nest
                                            ^:allow-subquery {:select   [[:dcs.card_id :card_id]
@@ -232,7 +232,7 @@
                                                              :from     [[:dashboardcard_series :dcs]]
                                                              :join     [[:report_dashboardcard :dc] [:= :dc.id :dcs.dashboardcard_id]
                                                                         [:report_dashboard :d] [:= :d.id :dc.dashboard_id]]
-                                                             :where    [:in :dcs.card_id card-ids]
+                                                             :where    [:in :dcs.card_id [:auto/param card-ids]]
                                                              :order-by [[:d.id :asc]]}}]}))
 
 ;;; ------------------------------------------- Related models --------------------------------------------
@@ -257,7 +257,7 @@
              :from      [[:metabase_field :field]]
              :left-join [(warehouse-schema-overlay/table-query {:alias :table, :user-settings? false})
                          [:= :field.table_id :table.id]]
-             :where     [:in :field.id field-ids]}))
+             :where     [:in :field.id [:auto/param field-ids]]}))
 
 (mu/defn field-table-ids
   "The set of Table IDs of the Fields with `field-ids`."

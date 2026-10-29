@@ -207,7 +207,7 @@
    collection-ids :- [:sequential ::lib.schema.id/collection]
    archived-key   :- [:maybe :keyword]]
   (t2/select model {:where [:and
-                            [:in :collection_id collection-ids]
+                            [:in :collection_id [:auto/param collection-ids]]
                             (when archived-key [:= archived-key false])]}))
 
 (mu/defn instances-with-columns-by-entity-ids
@@ -306,12 +306,12 @@
   "The ids of the Tables published in the Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
   (set (t2/select-pks-set :model/Table {:from  [(warehouse-schema-overlay/table-query {:alias :t})]
-                                        :where [:and [:= :t.is_published true] [:in :t.collection_id collection-ids]]})))
+                                        :where [:and [:= :t.is_published true] [:in :t.collection_id [:auto/param collection-ids]]]})))
 
 (mu/defn table-ids-with-user-settings
   "The ids of the Tables among `table-ids` that have a TableUserSettings row."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select-fn-vec :table_id :model/TableUserSettings {:select [:table_id] :where [:in :table_id table-ids]}))
+  (t2/select-fn-vec :table_id :model/TableUserSettings {:select [:table_id] :where [:in :table_id [:auto/param table-ids]]}))
 
 (mu/defn field-ids-with-user-settings
   "The ids of the Fields of the Tables with `table-ids` that have a FieldUserSettings row."
@@ -320,7 +320,7 @@
                     {:select [:u.field_id]
                      :from   [[(t2/table-name :model/FieldUserSettings) :u]]
                      :join   [(warehouse-schema-overlay/field-query {:alias :f :user-settings? false}) [:= :f.id :u.field_id]]
-                     :where  [:in :f.table_id table-ids]}))
+                     :where  [:in :f.table_id [:auto/param table-ids]]}))
 
 (mu/defn field-ids-with-dimensions
   "The ids of the Fields of the Tables with `table-ids` that have a Dimension."
@@ -329,7 +329,7 @@
                     {:select [:d.field_id]
                      :from   [[(t2/table-name :model/Dimension) :d]]
                      :join   [(warehouse-schema-overlay/field-query {:alias :f :user-settings? false}) [:= :f.id :d.field_id]]
-                     :where  [:in :f.table_id table-ids]}))
+                     :where  [:in :f.table_id [:auto/param table-ids]]}))
 
 (mu/defn delete-table-user-settings!
   "Delete the TableUserSettings of the Tables with `table-ids`, returning the number deleted."
@@ -355,7 +355,7 @@
   "The `:id`, name, table id, collection id, and table name of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (let [{:keys [select from join]} (tracking-select-parts :model/FieldUserSettings)]
-    (t2/query {:select (into [:f.id] select) :from from :join join :where [:in :f.id field-ids]})))
+    (t2/query {:select (into [:f.id] select) :from from :join join :where [:in :f.id [:auto/param field-ids]]})))
 
 (mu/defn snippets
   "The `:id`, `:name`, and `:collection_id` of every NativeQuerySnippet."
@@ -428,7 +428,7 @@
              {:where [:and
                       [:= :model_id nil]
                       (if (seq collection-ids)
-                        [:or [:= :collection_id nil] [:in :collection_id collection-ids]]
+                        [:or [:= :collection_id nil] [:in :collection_id [:auto/param collection-ids]]]
                         [:= :collection_id nil])]}))
 
 (mu/defn snippet-collections
@@ -501,7 +501,7 @@
        (t2/exists? :model/Timeline :collection_id [:in collection-ids])
        (t2/exists? :model/Action :collection_id [:in collection-ids])
        (t2/exists? :model/Table {:from  [(warehouse-schema-overlay/table-query)]
-                                 :where [:and [:= :is_published true] [:in :collection_id collection-ids]]}))))
+                                 :where [:and [:= :is_published true] [:in :collection_id [:auto/param collection-ids]]]}))))
 
 (mu/defn remote-synced-subtree-collection-ids
   "The IDs of the remote-synced Collections among `collections` and their descendants."
@@ -525,7 +525,7 @@
   [collection-ids :- [:set ::lib.schema.id/collection]]
   (t2/query {:update (t2/table-name :model/Collection)
              :set    {:is_remote_synced false}
-             :where  [:in :id collection-ids]}))
+             :where  [:in :id [:auto/param collection-ids]]}))
 
 (defn- contents-rso-expr
   "Matches the RemoteSyncObject rows of `collection-ids` and of their contents."
@@ -604,7 +604,7 @@
                        [:not= :status "synced"]
                        (when (seq excluded-model-types)
                          [:or
-                          [:not-in :model_type excluded-model-types]
+                          [:not-in :model_type [:auto/param excluded-model-types]]
                           [:in :status ["removed" "delete"]]])]}))
 
 (mu/defn dirty-rsos
@@ -615,7 +615,7 @@
                       [:not= :status "synced"]
                       (when (seq excluded-model-types)
                         [:or
-                         [:not-in :model_type excluded-model-types]
+                         [:not-in :model_type [:auto/param excluded-model-types]]
                          [:in :status ["removed" "delete"]]])]}))
 
 (mu/defn rsos-of-types

@@ -53,7 +53,7 @@
   (t2/count :model/Table {:from [(warehouse-schema-overlay/table-query)]
                           :where [:and
                                   [:= :is_published true]
-                                  [:in :collection_id collection-ids]]}))
+                                  [:in :collection_id [:auto/param collection-ids]]]}))
 
 (mu/defn unarchived-metric-count-in-collections
   "The number of unarchived metric Cards in the Collections with `collection-ids`."
@@ -61,7 +61,7 @@
   (t2/count :model/Card {:where [:and
                                  [:= :type "metric"]
                                  [:= :archived false]
-                                 [:in :collection_id collection-ids]]}))
+                                 [:in :collection_id [:auto/param collection-ids]]]}))
 
 (mu/defn permissions-group-count
   "The number of PermissionsGroups."
@@ -305,7 +305,7 @@
 (mu/defn database-engines-among
   "The set of engines of the Databases whose engine is one of `engine-names`."
   [engine-names :- [:sequential :string]]
-  (t2/select-fn-set :engine :model/Database {:where [:in :engine engine-names]}))
+  (t2/select-fn-set :engine :model/Database {:where [:in :engine [:auto/param engine-names]]}))
 
 (mu/defn embedded-dashboard-exists?
   "Whether a Dashboard with embedding enabled exists."

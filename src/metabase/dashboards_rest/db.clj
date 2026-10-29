@@ -161,7 +161,7 @@
               {:where [:and
                        [:not= :dashboard_id [:auto/param dashboard-id]]
                        [:not= :dashboard_id nil]
-                       [:in :id card-ids]]}))
+                       [:in :id [:auto/param card-ids]]]}))
 
 (mu/defn insert-dashboard-tabs!
   "Insert the DashboardTab `rows` and return their ids."

@@ -20,7 +20,7 @@
              :from     [:metabase_field]
              :where    [:and
                         [:= :active true]
-                        [:in :table_id table-ids]]
+                        [:in :table_id [:auto/param table-ids]]]
              :group-by [:table_id]}))
 
 (mu/defn unarchived-measure-names

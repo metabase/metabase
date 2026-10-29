@@ -418,7 +418,7 @@
                                                     :left-join [[(t2/table-name :model/Card) :model]
                                                                 [:= :model.id :action.model_id]]
                                                     :where     [:and
-                                                                [:in :action.collection_id collection-ids]
+                                                                [:in :action.collection_id [:auto/param collection-ids]]
                                                                 [:= :action.archived true]
                                                                 [:= :action.archived_directly false]
                                                                 [:or [:= :action.model_id nil] [:= :model.archived false]]]})))]
@@ -574,7 +574,7 @@
              :from            :report_card
              :where           [:and
                                [:= :archived false]
-                               [:in :dashboard_id dashboard-ids]
+                               [:in :dashboard_id [:auto/param dashboard-ids]]
                                [:exists ^:allow-subquery {:select 1
                                                           :from   :report_dashboardcard
                                                           :where  [:and
@@ -658,7 +658,7 @@
                                            [:permissions_group_membership :pgm] [:= :pgm.group_id :pg.id]]
                                   :where  [:and
                                            [:= :pgm.user_id [:auto/param user-id]]
-                                           [:in :p.object objects]]}))
+                                           [:in :p.object [:auto/param objects]]]}))
 
 (mu/defn group-ids-with-permission-object
   "The set of group IDs holding a Permissions row for `object`."
@@ -679,7 +679,7 @@
   "Delete the Permissions rows for `objects`, returning the number deleted."
   [objects :- [:sequential :string]]
   (t2/query-one {:delete-from :permissions
-                 :where       [:in :object objects]}))
+                 :where       [:in :object [:auto/param objects]]}))
 
 ;;; ---------------------------------------------------- Users ----------------------------------------------------
 

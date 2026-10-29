@@ -124,7 +124,7 @@
                (sql.helpers/where [:< :id [:auto/param last-cursor]])
 
                (seq exclude-ids)
-               (sql.helpers/where [:not [:in :id exclude-ids]])
+               (sql.helpers/where [:not [:in :id [:auto/param exclude-ids]]])
 
                name-pattern
                (sql.helpers/where [:like :%lower.name name-pattern])
@@ -165,7 +165,7 @@
    new-collection-id-or-nil :- [:maybe ms/PositiveInt]]
   (t2/select [:model/Card :id :collection_id :collection_position :dataset_query :card_schema :type
               :entity_id :result_metadata :dimensions :dimension_mappings]
-             {:where [:and [:in :id card-ids]
+             {:where [:and [:in :id [:auto/param card-ids]]
                       [:or [:not= :collection_id [:auto/param new-collection-id-or-nil]]
                        (when new-collection-id-or-nil
                          [:= :collection_id nil])]]}))

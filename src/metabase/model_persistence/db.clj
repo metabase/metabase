@@ -44,7 +44,7 @@
                                   [:= :c.archived false]]
                       :order-by  [[:p.refresh_begin :desc]]}
                persisted-info-id (sql.helpers/where [:= :p.id [:auto/param persisted-info-id]])
-               (seq db-ids)      (sql.helpers/where [:in :p.database_id db-ids])
+               (seq db-ids)      (sql.helpers/where [:in :p.database_id [:auto/param db-ids]])
                card-id           (sql.helpers/where [:= :p.card_id [:auto/param card-id]])
                limit             (sql.helpers/limit limit)
                offset            (sql.helpers/offset offset))))

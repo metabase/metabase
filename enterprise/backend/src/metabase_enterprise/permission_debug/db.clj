@@ -56,4 +56,4 @@
    table-ids            :- [:set ::lib.schema.id/table]
    permissions-blocking :- perms/PermissionMapping
    permissions-granting :- perms/PermissionMapping]
-  (t2/query (blocked-tables-select user-id [:in :blocked.id table-ids] permissions-blocking permissions-granting)))
+  (t2/query (blocked-tables-select user-id [:in :blocked.id [:auto/param table-ids]] permissions-blocking permissions-granting)))

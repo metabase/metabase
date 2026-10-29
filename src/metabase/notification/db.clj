@@ -317,7 +317,7 @@
                                    [:= :nr.notification_handler_id :notification_handler.id]]
                        :left-join [[:core_user :cu] [:= :cu.id :nr.user_id]]
                        :where     (if (seq raw-value-handler-ids)
-                                    [:or user-clause [:in :notification_handler.id raw-value-handler-ids]]
+                                    [:or user-clause [:in :notification_handler.id [:auto/param raw-value-handler-ids]]]
                                     user-clause)})))
 
 (mu/defn insert-handler!
@@ -414,7 +414,7 @@
              {:where    [:and
                          [:= :run_type [:auto/param run-type]]
                          [:= :notification_id [:auto/param notification-id]]
-                         [:in :status statuses]
+                         [:in :status [:auto/param statuses]]
                          [:> :started_at (admin-lookback-cutoff)]]
               :order-by [[:started_at :desc] [:id :desc]]
               :limit    limit}))
@@ -459,7 +459,7 @@
                                    :rn]]
                          :from   [:task_history]
                          :where  [:and
-                                  [:in :run_id run-ids]
+                                  [:in :run_id [:auto/param run-ids]]
                                   [:in :status ["failed" "abandoned"]]
                                   (when task-name [:= :task [:auto/param task-name]])]}
                         :sub]]

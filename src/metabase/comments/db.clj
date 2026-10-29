@@ -82,7 +82,7 @@
                                                                    [:= :parent_comment_id [:auto/param parent-comment-id]]]}]
                                [:= :id [:auto/param creator-id]])
                              (when (seq mention-ids)
-                               [:in :id mention-ids])]}))
+                               [:in :id [:auto/param mention-ids]])]}))
 
 (mu/defn insert-comment!
   "Insert the Comment `row` and return the inserted instance."
@@ -168,5 +168,5 @@
   "The CommentReactions on the Comments with `comment-ids`, ordered by comment, time, and emoji."
   [comment-ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/CommentReaction
-             {:where    [:in :comment_id comment-ids]
+             {:where    [:in :comment_id [:auto/param comment-ids]]
               :order-by [[:comment_id :asc] [:created_at :asc] [:emoji :asc]]}))

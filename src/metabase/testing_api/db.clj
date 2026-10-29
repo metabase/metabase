@@ -69,12 +69,12 @@
 (mu/defn delete-ai-usage-logs-for-conversations!
   "Delete the AiUsageLog rows for `conversation-ids`."
   [conversation-ids :- [:sequential :string]]
-  (t2/delete! :model/AiUsageLog {:where [:in :conversation_id conversation-ids]}))
+  (t2/delete! :model/AiUsageLog {:where [:in :conversation_id [:auto/param conversation-ids]]}))
 
 (mu/defn delete-metabot-conversations!
   "Delete the MetabotConversations with `conversation-ids`."
   [conversation-ids :- [:sequential :string]]
-  (t2/delete! :model/MetabotConversation {:where [:in :id conversation-ids]}))
+  (t2/delete! :model/MetabotConversation {:where [:in :id [:auto/param conversation-ids]]}))
 
 (mu/defn insert-metabot-conversation!
   "Insert the MetabotConversation `row`. A conversation carries its own id: the app DB does not mint one."

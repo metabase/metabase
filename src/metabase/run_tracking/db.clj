@@ -52,14 +52,14 @@
    ids              :- [:sequential ms/PositiveInt]]
   (t2/query {:update (t2/table-name model)
              :set    {heartbeat-column :%now}
-             :where  [:and (active-clause active) [:in :id ids]]}))
+             :where  [:and (active-clause active) [:in :id [:auto/param ids]]]}))
 
 (mu/defn active-ids
   "The ids among `ids` of the `model` rows matching `active`."
   [model  :- :keyword
    active :- ActivePredicate
    ids    :- [:sequential ms/PositiveInt]]
-  (t2/select-fn-set :id model {:where [:and [:in :id ids] (active-clause active)]}))
+  (t2/select-fn-set :id model {:where [:and [:in :id [:auto/param ids]] (active-clause active)]}))
 
 (mu/defn lock-active-stale-rows
   "The `model` rows matching `active` and any one of `stale`, locked for update."
@@ -86,4 +86,4 @@
                 [:message   {:optional true} [:maybe :string]]]]
   (t2/query {:update (t2/table-name model)
              :set    terminal
-             :where  [:and (active-clause active) [:in :id ids]]}))
+             :where  [:and (active-clause active) [:in :id [:auto/param ids]]]}))

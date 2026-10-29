@@ -31,7 +31,7 @@
                         [[:sum [:case [:= :status (h2x/literal "success")] [:inline 1] :else [:inline 0]]] :success_count]
                         [[:sum [:case [:= :status (h2x/literal "failed")] [:inline 1] :else [:inline 0]]] :failed_count]]
              :from     :task_history
-             :where    [:in :run_id run-ids]
+             :where    [:in :run_id [:auto/param run-ids]]
              :group-by [:run_id]}))
 
 (defn- run-where

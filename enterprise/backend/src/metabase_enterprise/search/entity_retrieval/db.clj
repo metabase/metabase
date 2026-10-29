@@ -15,7 +15,7 @@
    id             :- [:maybe ::lib.schema.id/card]]
   (t2/select [:model/Card :id :name :description :type]
              {:where [:and
-                      [:in :collection_id collection-ids]
+                      [:in :collection_id [:auto/param collection-ids]]
                       [:= :archived false]
                       [:in :type ["metric" "model"]]
                       (when id [:= :id [:auto/param id]])]}))
@@ -28,7 +28,7 @@
   (t2/select [:model/Table :id :name :display_name :description]
              {:from [(warehouse-schema-overlay/table-query)]
               :where [:and
-                      [:in :collection_id collection-ids]
+                      [:in :collection_id [:auto/param collection-ids]]
                       [:= :is_published true]
                       [:= :active true]
                       (when id [:= :id [:auto/param id]])]}))
@@ -40,7 +40,7 @@
    id        :- [:maybe ::lib.schema.id/measure]]
   (t2/select [:model/Measure :id :name :description]
              {:where [:and
-                      [:in :table_id table-ids]
+                      [:in :table_id [:auto/param table-ids]]
                       [:= :archived false]
                       (when id [:= :id [:auto/param id]])]}))
 
@@ -51,7 +51,7 @@
    id        :- [:maybe ::lib.schema.id/segment]]
   (t2/select [:model/Segment :id :name :description]
              {:where [:and
-                      [:in :table_id table-ids]
+                      [:in :table_id [:auto/param table-ids]]
                       [:= :archived false]
                       (when id [:= :id [:auto/param id]])]}))
 

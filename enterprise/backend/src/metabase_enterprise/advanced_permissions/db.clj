@@ -47,7 +47,7 @@
                       [:= :s.table_id :t.id]]
              :where  [:and
                       [:= :s.group_id [:auto/param group-id]]
-                      [:in :t.db_id database-ids]]}))
+                      [:in :t.db_id [:auto/param database-ids]]]}))
 
 (mu/defn blocked-group-ids
   "The subset of `group-ids` blocked from viewing some Database."
@@ -88,7 +88,7 @@
              :join   [(warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})
                       [:= :t.id :s.table_id]]
              :where  [:and
-                      [:in :s.group_id group-ids]
+                      [:in :s.group_id [:auto/param group-ids]]
                       [:= :t.db_id [:auto/param database-id]]]}))
 
 (mu/defn application-permissions

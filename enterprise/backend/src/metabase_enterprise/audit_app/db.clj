@@ -184,7 +184,7 @@
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/query {:select-distinct [:table_id]
              :from            [(t2/table-name :model/Card)]
-             :where           [:in :table_id table-ids]}))
+             :where           [:in :table_id [:auto/param table-ids]]}))
 
 (mu/defn update-card!
   "Apply `changes` to the Card with `card-id`."
