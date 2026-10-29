@@ -1201,8 +1201,8 @@
                                   [:unvalidatable (str "SELECT 1 WHERE 1 IN (" (str/join ", " (range 3000)) ")")]]]
               (testing result
                 (let [sql      (str "/* " (mt/random-name) " */ " sql)
-                      uncached (with-redefs [query-cache/validated-query (fn [_engine _allow-write? _admin? _native validate]
-                                                                           (validate))]
+                      uncached (mt/with-dynamic-fn-redefs [query-cache/validated-query (fn [_engine _allow-write? _admin? _native validate]
+                                                                                         (validate))]
                                  (run-query sql))]
                   (is (= result (get-in uncached [:refusal-data :impersonation/result])))
                   (is (= uncached (run-query sql)))
