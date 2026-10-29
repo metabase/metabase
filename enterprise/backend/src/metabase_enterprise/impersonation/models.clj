@@ -26,7 +26,8 @@
   (derive :hook/created-at-timestamped?))
 
 (t2/deftransforms :model/ImpersonationQueryCache
-  {:result mi/transform-keyword})
+  {:input_engine mi/transform-keyword
+   :result       mi/transform-keyword})
 
 (defenterprise add-impersonations-to-permissions-graph
   "Augment a provided permissions graph with active connection impersonation policies."

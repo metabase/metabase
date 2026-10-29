@@ -19,30 +19,27 @@
    [:group_id  {:optional true} [:maybe ms/PositiveInt]]
    [:attribute {:optional true} [:maybe :string]]])
 
-(mr/def ::query-cache.input
-  "The `input` columns that look up an ImpersonationQueryCache row."
-  [:map {:closed true}
-   [:input_version     :string]
-   [:input_engine      :string]
-   [:input_allow_write :boolean]
-   [:input_admin       :boolean]
-   [:input_query_hash  :string]
-   [:input_query       :string]])
-
 (mr/def ::query-cache.result
-  "The `result` columns of an ImpersonationQueryCache row."
-  [:map {:closed true}
-   [:result        [:enum :valid :unparseable :unvalidatable :invalid]]
-   [:result_query  {:optional true} [:maybe :string]]
-   [:result_reason {:optional true} [:maybe :string]]])
+  "The outcome of validating an impersonated native query, as an ImpersonationQueryCache records it."
+  [:enum :valid :unparseable :unvalidatable :invalid])
 
-(mr/def ::query-cache.row
-  "What an insert of an ImpersonationQueryCache row accepts."
-  [:merge ::query-cache.input ::query-cache.result])
-
-(mr/def ::query-cache.cached
-  "An ImpersonationQueryCache row as looked up: its `input_query` and its results."
+(mr/def ::query-cache
+  "An ImpersonationQueryCache as selected from the app DB: every column of `:impersonation_query_cache`."
   [:merge
+   ::query-cache.update
    [:map {:closed true}
-    [:input_query :string]]
-   ::query-cache.result])
+    [:id ms/PositiveInt]]])
+
+(mr/def ::query-cache.update
+  "What an update (or insert) of an ImpersonationQueryCache accepts: every column of `:impersonation_query_cache` except `id`, all optional."
+  [:map {:closed true}
+   [:input_version     {:optional true} :string]
+   [:input_engine      {:optional true} :keyword]
+   [:input_allow_write {:optional true} :boolean]
+   [:input_admin       {:optional true} :boolean]
+   [:input_query_hash  {:optional true} :string]
+   [:input_query       {:optional true} :string]
+   [:result            {:optional true} ::query-cache.result]
+   [:result_query      {:optional true} [:maybe :string]]
+   [:result_reason     {:optional true} [:maybe :string]]
+   [:created_at        {:optional true} (ms/InstanceOfClass java.time.temporal.Temporal)]])

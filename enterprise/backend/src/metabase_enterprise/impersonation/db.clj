@@ -88,24 +88,24 @@
   [user-id :- [:maybe ::lib.schema.id/user]]
   (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id))
 
-(mu/defn query-cache-row :- [:maybe ::impersonation.schema/query-cache.cached]
-  "The `input_query` and results of the ImpersonationQueryCache row with the lookup key of `input`, or nil."
+(mu/defn query-cache :- [:maybe ::impersonation.schema/query-cache]
+  "The ImpersonationQueryCache with the lookup key of `input`, or nil."
   [{:keys [input_query_hash input_engine input_allow_write input_admin input_version]}
-   :- ::impersonation.schema/query-cache.input]
-  (t2/select-one [:model/ImpersonationQueryCache :input_query :result :result_query :result_reason]
+   :- ::impersonation.schema/query-cache.update]
+  (t2/select-one :model/ImpersonationQueryCache
                  :input_query_hash  input_query_hash
                  :input_engine      input_engine
                  :input_allow_write input_allow_write
                  :input_admin       input_admin
                  :input_version     input_version))
 
-(mu/defn insert-query-cache-row!
+(mu/defn insert-query-cache!
   "Insert the ImpersonationQueryCache `row`."
-  [row :- ::impersonation.schema/query-cache.row]
+  [row :- ::impersonation.schema/query-cache.update]
   (t2/insert! :model/ImpersonationQueryCache row))
 
-(mu/defn delete-outdated-query-cache-rows! :- :int
-  "Delete the ImpersonationQueryCache rows cached by a Metabase version other than `version` or before `cutoff`,
+(mu/defn delete-outdated-query-caches! :- :int
+  "Delete the ImpersonationQueryCaches cached by a Metabase version other than `version` or before `cutoff`,
   returning the number deleted."
   [version :- :string
    cutoff  :- (ms/InstanceOfClass java.time.OffsetDateTime)]
