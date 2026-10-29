@@ -2,30 +2,17 @@ import Color from "color";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { ColorSelector } from "metabase/common/components/ColorSelector";
-import {
-  ActionIcon,
-  Box,
-  Button,
-  Group,
-  Icon,
-  Stack,
-  Text,
-  Tooltip,
-} from "metabase/ui";
+import { Button, Icon, Stack, Text } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import { getAccentColors } from "metabase/ui/colors/groups";
 import type { ChartSettingSegmentsEditorProps } from "metabase/viz-core";
 import {
   getGoalSegmentBounds,
-  getSegmentColor,
   getUnansweredGoalEntities,
 } from "metabase/viz-core";
 import type { GoalSegment } from "metabase-types/api";
 
-import { ChartSettingInput } from "../ChartSettingInput";
-
-import { SegmentBoundInput } from "./SegmentBoundInput";
+import { SegmentEditor } from "./SegmentEditor";
 
 export const ChartSettingSegmentsEditor = ({
   data,
@@ -44,6 +31,7 @@ export const ChartSettingSegmentsEditor = ({
     ]);
 
   const canRemove = segments.length > 1 || canRemoveAll;
+  const colors = getColorPalette();
 
   const referencedEntities =
     data !== undefined
@@ -55,75 +43,24 @@ export const ChartSettingSegmentsEditor = ({
       {segments.length > 0 ? (
         <Stack gap="lg">
           {segments.map((segment, index) => (
-            <Stack gap="sm" key={index}>
-              <ChartSettingInput
-                aria-label={t`Range ${index + 1} label`}
-                leftSection={
-                  <ColorSelector
-                    pillSize="small"
-                    value={getSegmentColor(segment)}
-                    colors={getColorPalette()}
-                    onChange={(newColor) => {
-                      updateSegment(index, { color: newColor });
-                    }}
-                  />
-                }
-                placeholder={t`Value ${index + 1}`}
-                rightSection={
-                  canRemove ? (
-                    <Tooltip label={t`Remove range`}>
-                      <ActionIcon
-                        aria-label={t`Remove range ${index + 1}`}
-                        size="sm"
-                        variant="subtle"
-                        onClick={() => {
-                          const newSegments = segments.filter(
-                            (_v, segmentIndex) => segmentIndex !== index,
-                          );
-                          onChange(newSegments);
-                        }}
-                      >
-                        <Icon name="trash" />
-                      </ActionIcon>
-                    </Tooltip>
-                  ) : undefined
-                }
-                value={segment.label}
-                onChange={(label) => updateSegment(index, { label })}
-              />
-
-              <Group align="flex-start" gap="sm" wrap="nowrap">
-                <SegmentBoundInput
-                  aria-label={t`Range ${index + 1} minimum`}
-                  data={data}
-                  datasetQuery={datasetQuery}
-                  display={display}
-                  formatOptions={formatOptions}
-                  id={`segment-min-${index}`}
-                  placeholder={t`Min`}
-                  referencedEntities={referencedEntities}
-                  value={segment.min}
-                  onChange={(min) => updateSegment(index, { min })}
-                />
-
-                <Box pt={12}>
-                  <Icon name="arrow_right" size={12} c="text-secondary" />
-                </Box>
-
-                <SegmentBoundInput
-                  aria-label={t`Range ${index + 1} maximum`}
-                  data={data}
-                  datasetQuery={datasetQuery}
-                  display={display}
-                  formatOptions={formatOptions}
-                  id={`segment-max-${index}`}
-                  placeholder={t`Max`}
-                  referencedEntities={referencedEntities}
-                  value={segment.max}
-                  onChange={(max) => updateSegment(index, { max })}
-                />
-              </Group>
-            </Stack>
+            <SegmentEditor
+              key={index}
+              canRemove={canRemove}
+              colors={colors}
+              data={data}
+              datasetQuery={datasetQuery}
+              display={display}
+              formatOptions={formatOptions}
+              index={index}
+              referencedEntities={referencedEntities}
+              segment={segment}
+              onChange={(changes) => updateSegment(index, changes)}
+              onRemove={() => {
+                onChange(
+                  segments.filter((_v, segmentIndex) => segmentIndex !== index),
+                );
+              }}
+            />
           ))}
         </Stack>
       ) : (

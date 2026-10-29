@@ -7,6 +7,7 @@ import {
   setupMeasureEndpoint,
 } from "__support__/server-mocks";
 import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
+import type * as Analytics from "metabase/analytics";
 import { checkNotNull } from "metabase/utils/types";
 import type {
   Card,
@@ -30,6 +31,9 @@ import {
   ChartSettingSegmentsEditor,
   getColorPalette,
 } from "./ChartSettingSegmentsEditor";
+
+const { trackSimpleEvent } =
+  jest.requireMock<typeof Analytics>("metabase/analytics");
 
 const createMockSegment = (opts?: Partial<GoalSegment>): GoalSegment => {
   return { label: "", min: 0, max: 100, color: "red", ...opts };
@@ -525,6 +529,74 @@ describe("ChartSettingSegmentsEditor", () => {
     expect(onChange).toHaveBeenCalledWith([
       expect.objectContaining({ min: 0, max: 1, color: expect.anything() }),
     ]);
+  });
+
+  describe("analytics", () => {
+    const data = createMockDatasetData({
+      cols: [createMockColumn({ name: "count", base_type: "type/Integer" })],
+      rows: [[10]],
+      referenced_entities: {
+        card: {
+          [CARD_ID]: createMockReferencedEntityResult({
+            column: "total",
+            value: 250,
+          }),
+        },
+      },
+    });
+    const value = [
+      createMockSegment({
+        min: "count",
+        max: { type: "card", id: CARD_ID, column: "total" },
+      }),
+      createMockSegment({ min: 300, max: 400 }),
+    ];
+
+    beforeEach(() => {
+      jest.mocked(trackSimpleEvent).mockClear();
+    });
+
+    it("tracks removing each dynamic bound of a deleted range", async () => {
+      const { onChange } = setup({
+        card: createMockCard({ id: CARD_ID, name: "Orders", type: "metric" }),
+        data,
+        value,
+      });
+
+      const [, cardPill] = screen.getAllByRole("button", {
+        name: "Change value source",
+      });
+      await userEvent.hover(cardPill);
+      expect(await screen.findByText("Orders → total")).toBeInTheDocument();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Remove range 1" }),
+      );
+
+      expect(onChange).toHaveBeenCalledWith([value[1]]);
+      expect(trackSimpleEvent).toHaveBeenCalledTimes(2);
+      expect(trackSimpleEvent).toHaveBeenNthCalledWith(1, {
+        event: "dynamic_goal_removed",
+        triggered_from: "gauge",
+        event_detail: "self_column",
+      });
+      expect(trackSimpleEvent).toHaveBeenNthCalledWith(2, {
+        event: "dynamic_goal_removed",
+        triggered_from: "gauge",
+        event_detail: "metric",
+      });
+    });
+
+    it("does not track deleting a range with static bounds", async () => {
+      const { onChange } = setup({ data, value });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Remove range 2" }),
+      );
+
+      expect(onChange).toHaveBeenCalledWith([value[0]]);
+      expect(trackSimpleEvent).not.toHaveBeenCalled();
+    });
   });
 });
 
