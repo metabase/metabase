@@ -73,6 +73,11 @@
   [region]
   (str "//athena." region ".amazonaws.com" (when (str/starts-with? region "cn-") ".cn") ":443"))
 
+;; the URL is built from the hostname, or from the region when there is none; everything else is a property
+(defmethod driver/url-building-detail-keys :athena
+  [_driver]
+  [:hostname :region])
+
 (defmethod driver/connection-hosts :athena
   [_driver {:keys [hostname region]}]
   (driver/hosts-from-details

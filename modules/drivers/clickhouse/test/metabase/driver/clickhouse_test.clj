@@ -13,6 +13,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
@@ -886,3 +887,16 @@
     ;; a lone double-quote is a one-character role name, not an already-quoted empty one -- it must still come
     ;; out as a terminated identifier
     "\""                            "SET ROLE \"\"\"\""))
+
+(deftest ^:parallel url-building-details-reject-separators-test
+  (doseq [details [{:host "https://a/b;c" :port 8443 :dbname "d"}
+                   {:host "https://a/b?c" :port 8443 :dbname "d"}]]
+    (testing (pr-str details)
+      (is (=? {:status-code 400}
+              (try (driver.u/validate-connection-parameters! :clickhouse details)
+                   nil
+                   (catch clojure.lang.ExceptionInfo e
+                     (ex-data e)))))))
+  (testing "a host written as a URL with a scheme and path is still allowed"
+    (is (nil? (driver.u/validate-connection-parameters!
+               :clickhouse {:host "https://ch.example.com/x" :port 8443 :dbname "d"})))))

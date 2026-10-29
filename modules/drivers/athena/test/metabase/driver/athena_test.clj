@@ -9,6 +9,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -679,3 +680,13 @@
           ;; should escape single quotes
           "'); OR 1 = 1 --"
           "SELECT * FROM categories WHERE regexp_like(name, '''); OR 1 = 1 --')")))))
+
+(deftest ^:parallel url-building-details-reject-separators-test
+  (doseq [details [{:hostname "a;b" :region "us-east-1" :s3_staging_dir "s3://b/"}
+                   {:region "us-east-1;b" :s3_staging_dir "s3://b/"}]]
+    (testing (pr-str details)
+      (is (=? {:status-code 400}
+              (try (driver.u/validate-connection-parameters! :athena details)
+                   nil
+                   (catch clojure.lang.ExceptionInfo e
+                     (ex-data e))))))))
