@@ -30,6 +30,7 @@ import { SegmentBoundInput } from "./SegmentBoundInput";
 export const ChartSettingSegmentsEditor = ({
   data,
   datasetQuery,
+  display,
   formatOptions,
   value: segments,
   onChange,
@@ -96,6 +97,7 @@ export const ChartSettingSegmentsEditor = ({
                   aria-label={t`Range ${index + 1} minimum`}
                   data={data}
                   datasetQuery={datasetQuery}
+                  display={display}
                   formatOptions={formatOptions}
                   id={`segment-min-${index}`}
                   placeholder={t`Min`}
@@ -112,6 +114,7 @@ export const ChartSettingSegmentsEditor = ({
                   aria-label={t`Range ${index + 1} maximum`}
                   data={data}
                   datasetQuery={datasetQuery}
+                  display={display}
                   formatOptions={formatOptions}
                   id={`segment-max-${index}`}
                   placeholder={t`Max`}

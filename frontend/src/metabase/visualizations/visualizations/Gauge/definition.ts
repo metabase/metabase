@@ -85,6 +85,7 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
         return {
           data,
           datasetQuery: card.dataset_query,
+          display: card.display,
           formatOptions: column && settings.column?.(column),
         };
       },

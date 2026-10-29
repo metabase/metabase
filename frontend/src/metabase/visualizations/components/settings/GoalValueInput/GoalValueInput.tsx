@@ -3,6 +3,7 @@ import { type KeyboardEvent, useCallback, useRef, useState } from "react";
 import { useUnmount } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { useLazyGetCardQuery, useLazyGetMeasureQuery } from "metabase/api";
 import { isEmbedding } from "metabase/embedding/config";
@@ -17,8 +18,18 @@ import {
   Tooltip,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import {
+  type DynamicGoalSource,
+  trackDynamicGoalRemoved,
+  trackDynamicGoalReplaced,
+  trackDynamicGoalSet,
+} from "metabase/visualizations/analytics";
 import { useAnsweredGoalValue } from "metabase/visualizations/hooks/use-answered-goal-value";
-import { getGoalErrorMessage, resolveGoalValue } from "metabase/viz-core";
+import {
+  type ReferencedEntityKind,
+  getGoalErrorMessage,
+  resolveGoalValue,
+} from "metabase/viz-core";
 import type {
   CardId,
   ColumnSettings,
@@ -30,6 +41,7 @@ import type {
   MeasureId,
   ReferencedEntity,
   ReferencedEntityType,
+  VisualizationDisplay,
 } from "metabase-types/api";
 import {
   isGoalForeignColumnRef,
@@ -42,6 +54,7 @@ import S from "./GoalValueInput.module.css";
 import { GoalValuePill } from "./GoalValuePill";
 import { StaticGoalValueInput } from "./StaticGoalValueInput";
 import type { ColumnOption, PickedItem } from "./types";
+import { useDynamicGoalSource } from "./use-dynamic-goal-source";
 import { useEntityColumnValues } from "./use-entity-column-values";
 import { useReferencedEntity } from "./use-referenced-entity";
 import { getNumericColumnOptions } from "./utils";
@@ -53,10 +66,13 @@ type MenuLevel = "root" | "self" | "entity";
 
 type PickedEntity = GoalForeignEntityRef & { name: string };
 
+type SoleColumn = { name: string; kind: ReferencedEntityKind };
+
 export type GoalValueInputProps = {
   "aria-label"?: string;
   data: DatasetData;
   datasetQuery: DatasetQuery | undefined;
+  display: VisualizationDisplay;
   excludedSelfColumn?: string;
   /**
    * Formatting settings of the current chart, not of the card the dynamic goal
@@ -77,6 +93,7 @@ export const GoalValueInput = ({
   "aria-label": ariaLabel,
   data,
   datasetQuery,
+  display,
   excludedSelfColumn,
   formatOptions,
   id,
@@ -112,6 +129,7 @@ export const GoalValueInput = ({
   const entityInfo = useReferencedEntity(entity);
   const entityName = entityInfo.name ?? pickedEntity?.name;
   const sourceInfo = useReferencedEntity(foreignRef);
+  const currentSource = useDynamicGoalSource(value);
   const sourceUrl = isEmbedding() ? undefined : sourceInfo.url;
   const resolveEntityColumnValue = useEntityColumnValues(
     datasetQuery,
@@ -165,9 +183,34 @@ export const GoalValueInput = ({
     closeMenu();
   };
 
+  const setDynamicValue = (newValue: GoalValue, source: DynamicGoalSource) => {
+    const isChanged = !_.isEqual(newValue, value);
+
+    if (isChanged && currentSource != null) {
+      trackDynamicGoalReplaced(display, source);
+    } else if (isChanged) {
+      trackDynamicGoalSet(display, source);
+    }
+    commitValue(newValue);
+  };
+
+  const removeDynamicValue = () => {
+    if (currentSource != null) {
+      trackDynamicGoalRemoved(display, currentSource);
+    }
+    commitValue(null);
+  };
+
+  const selectSelfColumn = (columnName: string) => {
+    setDynamicValue(columnName, "self_column");
+  };
+
   const selectEntityColumn = (columnName: string) => {
     if (entity != null) {
-      commitValue({ type: entity.type, id: entity.id, column: columnName });
+      setDynamicValue(
+        { type: entity.type, id: entity.id, column: columnName },
+        entityInfo.kind ?? entity.type,
+      );
     }
   };
 
@@ -191,7 +234,7 @@ export const GoalValueInput = ({
 
   const selectSelfOption = () => {
     if (selfColumns.length === 1) {
-      commitValue(selfColumns[0].name);
+      selectSelfColumn(selfColumns[0].name);
     } else {
       setMenuLevel("self");
     }
@@ -203,15 +246,17 @@ export const GoalValueInput = ({
     entityPicker.open();
   };
 
-  // Resolves with string when entity only has 1 column - null otherwise
-  const fetchSingleColumn = async (
+  // Resolves with the column when entity only has 1 column - null otherwise
+  const fetchSoleColumn = async (
     type: ReferencedEntityType,
     entityId: CardId | MeasureId,
-  ): Promise<string | null> => {
+  ): Promise<SoleColumn | null> => {
     try {
       if (type === "measure") {
         const measure = await fetchMeasure(entityId, true).unwrap();
-        return measure.result_column_name ?? null;
+        return measure.result_column_name != null
+          ? { name: measure.result_column_name, kind: "measure" }
+          : null;
       }
 
       const card = await fetchCard(
@@ -221,7 +266,9 @@ export const GoalValueInput = ({
       const numericColumns = getNumericColumnOptions(
         card.result_metadata ?? [],
       );
-      return numericColumns.length === 1 ? numericColumns[0].name : null;
+      return numericColumns.length === 1
+        ? { name: numericColumns[0].name, kind: card.type }
+        : null;
     } catch {
       return null;
     }
@@ -236,14 +283,17 @@ export const GoalValueInput = ({
       item.model === "measure" ? "measure" : "card";
     const pickToken = ++pickTokenRef.current;
 
-    const soleColumn = await fetchSingleColumn(type, item.id);
+    const soleColumn = await fetchSoleColumn(type, item.id);
 
     if (pickToken !== pickTokenRef.current) {
       return;
     }
 
     if (soleColumn != null) {
-      commitValue({ type, id: item.id, column: soleColumn });
+      setDynamicValue(
+        { type, id: item.id, column: soleColumn.name },
+        soleColumn.kind,
+      );
       return;
     }
 
@@ -260,7 +310,7 @@ export const GoalValueInput = ({
 
   const handlePillKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Backspace" || event.key === "Delete") {
-      commitValue(null);
+      removeDynamicValue();
       setTimeout(() => numberInputRef.current?.focus(), 0);
     }
   };
@@ -288,7 +338,7 @@ export const GoalValueInput = ({
               onKeyDown={handlePillKeyDown}
               onOpenMenu={openMenuFromPill}
               onOpenSource={sourceUrl != null ? openSourceInNewTab : undefined}
-              onRemove={() => commitValue(null)}
+              onRemove={removeDynamicValue}
             />
           ) : (
             <Box>
@@ -363,7 +413,7 @@ export const GoalValueInput = ({
                   label={column.label}
                   resolvedValue={resolveGoalValue(data, column.name).value}
                   selected={value === column.name}
-                  onClick={() => commitValue(column.name)}
+                  onClick={() => selectSelfColumn(column.name)}
                 />
               ))}
             </>

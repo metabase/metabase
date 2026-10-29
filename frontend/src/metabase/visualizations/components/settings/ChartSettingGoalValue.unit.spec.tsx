@@ -29,6 +29,7 @@ function setup({ showSelfColumns, value = 5 }: SetupOpts = {}) {
     <ChartSettingGoalValue
       data={DATA}
       datasetQuery={createMockStructuredDatasetQuery()}
+      display="line"
       id="goal"
       showSelfColumns={showSelfColumns}
       value={value}
@@ -79,6 +80,7 @@ describe("ChartSettingGoalValue", () => {
     renderWithProviders(
       <ChartSettingGoalValue
         data={DATA}
+        display="line"
         formatOptions={{ prefix: "~" }}
         id="goal"
         value="count"

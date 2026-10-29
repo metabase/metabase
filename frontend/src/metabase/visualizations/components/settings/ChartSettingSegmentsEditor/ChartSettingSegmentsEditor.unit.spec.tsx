@@ -71,6 +71,7 @@ function setup({
       canRemoveAll={canRemoveAll}
       data={data}
       datasetQuery={DATASET_QUERY}
+      display="gauge"
       formatOptions={formatOptions}
       value={value}
       onChange={onChange}
