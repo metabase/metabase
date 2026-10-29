@@ -8,6 +8,7 @@
    [metabase.activity-feed.core :as activity-feed]
    [metabase.api-scope.core :as api-scope]
    [metabase.channel.settings :as channel.settings]
+   [metabase.config.core :as config]
    [metabase.content-verification.core :as moderation]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -1017,33 +1018,35 @@
               (is (re-find #"(?i)permission" answer)))))))))
 
 (deftest library-table-read-grant-comes-from-user-settings-test
-  (testing "a table published through the Data Studio keeps its published flag in its user settings, and the read
+  ;; the Library grant exists only on EE
+  (when config/ee-available?
+    (testing "a table published through the Data Studio keeps its published flag in its user settings, and the read
             check sees it: a user with no query permission reads it through its Library collection"
-    (mt/with-temp [:model/Collection {lib :id} {:type "library-data" :name "data library"}
-                   :model/Table {table-id :id} {:db_id      (mt/id)
-                                                :name       "published_by_settings"
-                                                :schema     "LIBRARY_SCHEMA"
-                                                :active     true
-                                                :data_layer :final}
-                   :model/TableUserSettings _ {:table_id      table-id
-                                               :is_published  true
-                                               :collection_id lib}
-                   :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
-      (mt/with-no-data-perms-for-all-users!
-        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
-        (mt/with-current-user (mt/user->id :rasta)
-          (let [[resource] (read-uris metabot :internal (str "metabase://table/" table-id))]
-            (is (nil? (:error resource)) (:error resource))
-            (is (= table-id (get-in resource [:content :structured-output :id]))))
-          (testing "and the listings, which keep the tables and schemas the user can read"
-            (let [items (fn [uri]
-                          (let [[resource] (read-uris metabot :internal uri)]
-                            (is (nil? (:error resource)) (:error resource))
-                            (into #{} (map :name) (get-in resource [:content :structured-output :items]))))
-                  db    (str "metabase://database/" (mt/id))]
-              (is (contains? (items (str db "/tables")) "published_by_settings"))
-              (is (contains? (items (str db "/schemas")) "LIBRARY_SCHEMA"))
-              (is (contains? (items (str db "/schemas/LIBRARY_SCHEMA/tables")) "published_by_settings")))))))))
+      (mt/with-temp [:model/Collection {lib :id} {:type "library-data" :name "data library"}
+                     :model/Table {table-id :id} {:db_id      (mt/id)
+                                                  :name       "published_by_settings"
+                                                  :schema     "LIBRARY_SCHEMA"
+                                                  :active     true
+                                                  :data_layer :final}
+                     :model/TableUserSettings _ {:table_id      table-id
+                                                 :is_published  true
+                                                 :collection_id lib}
+                     :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
+        (mt/with-no-data-perms-for-all-users!
+          (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+          (mt/with-current-user (mt/user->id :rasta)
+            (let [[resource] (read-uris metabot :internal (str "metabase://table/" table-id))]
+              (is (nil? (:error resource)) (:error resource))
+              (is (= table-id (get-in resource [:content :structured-output :id]))))
+            (testing "and the listings, which keep the tables and schemas the user can read"
+              (let [items (fn [uri]
+                            (let [[resource] (read-uris metabot :internal uri)]
+                              (is (nil? (:error resource)) (:error resource))
+                              (into #{} (map :name) (get-in resource [:content :structured-output :items]))))
+                    db    (str "metabase://database/" (mt/id))]
+                (is (contains? (items (str db "/tables")) "published_by_settings"))
+                (is (contains? (items (str db "/schemas")) "LIBRARY_SCHEMA"))
+                (is (contains? (items (str db "/schemas/LIBRARY_SCHEMA/tables")) "published_by_settings"))))))))))
 
 (deftest check-curated-query-native-stages-test
   (testing "a native stage is left to the SQL gates and the structured stages around it are judged: a native join
@@ -1210,52 +1213,54 @@
                      curated-eid plain-eid))))))))
 
 (deftest unreadable-entities-in-listings-answer-the-same-whether-curated-test
-  (testing "a listing under curated-only judges only what the user can read, so its membership reveals nothing about
+  ;; the user reads the published table through the Library grant, which exists only on EE
+  (when config/ee-available?
+    (testing "a listing under curated-only judges only what the user can read, so its membership reveals nothing about
             the curation of an entity they cannot read"
-    (testing "the schema listing and a model's sources, with tables the user cannot read"
-      (mt/with-temp [:model/Database {db-id :id} {}
-                     :model/Table {published :id} {:db_id db-id :schema "A" :name "a_published" :active true
-                                                   :is_published true :data_layer :final}
-                     :model/Table {raw :id} {:db_id db-id :schema "B" :name "b_raw" :active true}
-                     :model/Field _ {:table_id published :name "X" :base_type :type/Integer}
-                     :model/Field _ {:table_id raw :name "X" :base_type :type/Integer}
-                     :model/Collection {official :id} {:name "official" :authority_level "official"}
-                     :model/Card {over-published :id} {:collection_id official :type :model :name "over published"
-                                                       :database_id db-id :table_id published
-                                                       :dataset_query {:database db-id :type :query
-                                                                       :query {:source-table published}}}
-                     :model/Card {over-raw :id} {:collection_id official :type :model :name "over raw"
-                                                 :database_id db-id :table_id raw
-                                                 :dataset_query {:database db-id :type :query
-                                                                 :query {:source-table raw}}}
-                     :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
-        (mt/with-no-data-perms-for-all-users!
-          (mt/with-current-user (mt/user->id :rasta)
-            (let [items (fn [uri]
-                          (let [[resource] (read-uris metabot :internal uri)]
-                            (is (nil? (:error resource)) (:error resource))
-                            (get-in resource [:content :structured-output :items])))]
-              (is (empty? (items (str "metabase://database/" db-id "/schemas")))
-                  "neither schema is listed: the user can read no table in them")
-              (is (= (map :type (items (str "metabase://model/" over-published "/sources")))
-                     (map :type (items (str "metabase://model/" over-raw "/sources"))))
-                  "the sources listings of the two models have the same shape"))))))
-    (testing "the metrics embedded in a table's details, with metrics the user cannot read"
-      (mt/with-non-admin-groups-no-root-collection-perms
-        (mt/with-temp [:model/Collection {official :id} {:name "official" :authority_level "official"}
-                       :model/Collection {plain :id} {:name "plain"}
-                       :model/Card {curated-metric :id} {:collection_id official :type :metric :name "official count"
-                                                         :dataset_query (count-metric-query (orders-query))}
-                       :model/Card {plain-metric :id} {:collection_id plain :type :metric :name "plain count"
-                                                       :dataset_query (count-metric-query (orders-query))}
+      (testing "the schema listing and a model's sources, with tables the user cannot read"
+        (mt/with-temp [:model/Database {db-id :id} {}
+                       :model/Table {published :id} {:db_id db-id :schema "A" :name "a_published" :active true
+                                                     :is_published true :data_layer :final}
+                       :model/Table {raw :id} {:db_id db-id :schema "B" :name "b_raw" :active true}
+                       :model/Field _ {:table_id published :name "X" :base_type :type/Integer}
+                       :model/Field _ {:table_id raw :name "X" :base_type :type/Integer}
+                       :model/Collection {official :id} {:name "official" :authority_level "official"}
+                       :model/Card {over-published :id} {:collection_id official :type :model :name "over published"
+                                                         :database_id db-id :table_id published
+                                                         :dataset_query {:database db-id :type :query
+                                                                         :query {:source-table published}}}
+                       :model/Card {over-raw :id} {:collection_id official :type :model :name "over raw"
+                                                   :database_id db-id :table_id raw
+                                                   :dataset_query {:database db-id :type :query
+                                                                   :query {:source-table raw}}}
                        :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
-          (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+          (mt/with-no-data-perms-for-all-users!
             (mt/with-current-user (mt/user->id :rasta)
-              (let [[resource] (read-uris metabot :internal (str "metabase://table/" (mt/id :orders)))
-                    metric-ids (into #{} (map :id) (get-in resource [:content :structured-output :metrics]))]
-                (is (nil? (:error resource)) (:error resource))
-                (is (not (contains? metric-ids curated-metric)) "an unreadable curated metric is not listed")
-                (is (not (contains? metric-ids plain-metric)))))))))))
+              (let [items (fn [uri]
+                            (let [[resource] (read-uris metabot :internal uri)]
+                              (is (nil? (:error resource)) (:error resource))
+                              (get-in resource [:content :structured-output :items])))]
+                (is (empty? (items (str "metabase://database/" db-id "/schemas")))
+                    "neither schema is listed: the user can read no table in them")
+                (is (= (map :type (items (str "metabase://model/" over-published "/sources")))
+                       (map :type (items (str "metabase://model/" over-raw "/sources"))))
+                    "the sources listings of the two models have the same shape"))))))
+      (testing "the metrics embedded in a table's details, with metrics the user cannot read"
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (mt/with-temp [:model/Collection {official :id} {:name "official" :authority_level "official"}
+                         :model/Collection {plain :id} {:name "plain"}
+                         :model/Card {curated-metric :id} {:collection_id official :type :metric :name "official count"
+                                                           :dataset_query (count-metric-query (orders-query))}
+                         :model/Card {plain-metric :id} {:collection_id plain :type :metric :name "plain count"
+                                                         :dataset_query (count-metric-query (orders-query))}
+                         :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
+            (mt/with-temp-vals-in-db :model/Table (mt/id :orders) {:is_published true :data_layer :final}
+              (mt/with-current-user (mt/user->id :rasta)
+                (let [[resource] (read-uris metabot :internal (str "metabase://table/" (mt/id :orders)))
+                      metric-ids (into #{} (map :id) (get-in resource [:content :structured-output :metrics]))]
+                  (is (nil? (:error resource)) (:error resource))
+                  (is (not (contains? metric-ids curated-metric)) "an unreadable curated metric is not listed")
+                  (is (not (contains? metric-ids plain-metric))))))))))))
 
 (deftest question-named-as-metric-is-refused-by-kind-test
   (testing "the metric path serves only metrics: a curated question named there is refused as the wrong kind, the same
@@ -1278,30 +1283,32 @@
                   "a metric's base table is its source"))))))))
 
 (deftest uncurated-metric-over-an-unreadable-table-fails-closed-test
-  (testing "an uncurated metric the user can read is judged by its definition only when they can query its table: over
+  ;; the user reads the published table through the Library grant, which exists only on EE
+  (when config/ee-available?
+    (testing "an uncurated metric the user can read is judged by its definition only when they can query its table: over
             a table they cannot, it is refused whether that table is curated or not, so the answer reveals nothing"
-    (mt/with-temp [:model/Database {db-id :id} {}
-                   :model/Table {published :id} {:db_id db-id :name "hidden_published" :active true
-                                                 :is_published true :data_layer :final}
-                   :model/Table {raw :id} {:db_id db-id :name "hidden_raw" :active true}
-                   :model/Field _ {:table_id published :name "A" :base_type :type/Integer}
-                   :model/Field _ {:table_id raw :name "A" :base_type :type/Integer}
-                   :model/Card {over-published :id} {:type :metric :name "count over published" :database_id db-id
-                                                     :table_id published
-                                                     :dataset_query {:database db-id :type :query
-                                                                     :query {:source-table published
-                                                                             :aggregation  [[:count]]}}}
-                   :model/Card {over-raw :id} {:type :metric :name "count over raw" :database_id db-id :table_id raw
-                                               :dataset_query {:database db-id :type :query
-                                                               :query {:source-table raw :aggregation [[:count]]}}}
-                   :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
-      (mt/with-no-data-perms-for-all-users!
-        (mt/with-current-user (mt/user->id :rasta)
-          (let [read (fn [id] (first (read-uris metabot :internal (str "metabase://metric/" id))))
-                mask (fn [resource id] (str/replace (str (:error resource)) (str id) "<ID>"))]
-            (is (denied? (read over-raw)))
-            (is (denied? (read over-published)))
-            (is (= (mask (read over-raw) over-raw) (mask (read over-published) over-published)))))))))
+      (mt/with-temp [:model/Database {db-id :id} {}
+                     :model/Table {published :id} {:db_id db-id :name "hidden_published" :active true
+                                                   :is_published true :data_layer :final}
+                     :model/Table {raw :id} {:db_id db-id :name "hidden_raw" :active true}
+                     :model/Field _ {:table_id published :name "A" :base_type :type/Integer}
+                     :model/Field _ {:table_id raw :name "A" :base_type :type/Integer}
+                     :model/Card {over-published :id} {:type :metric :name "count over published" :database_id db-id
+                                                       :table_id published
+                                                       :dataset_query {:database db-id :type :query
+                                                                       :query {:source-table published
+                                                                               :aggregation  [[:count]]}}}
+                     :model/Card {over-raw :id} {:type :metric :name "count over raw" :database_id db-id :table_id raw
+                                                 :dataset_query {:database db-id :type :query
+                                                                 :query {:source-table raw :aggregation [[:count]]}}}
+                     :model/Metabot metabot {:name "curated metabot" :use_verified_content true}]
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-current-user (mt/user->id :rasta)
+            (let [read (fn [id] (first (read-uris metabot :internal (str "metabase://metric/" id))))
+                  mask (fn [resource id] (str/replace (str (:error resource)) (str id) "<ID>"))]
+              (is (denied? (read over-raw)))
+              (is (denied? (read over-published)))
+              (is (= (mask (read over-raw) over-raw) (mask (read over-published) over-published))))))))))
 
 (deftest id-taking-tools-missing-id-reads-as-missing-test
   (with-slack
