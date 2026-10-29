@@ -1420,38 +1420,6 @@
   [driver [_ _opts arg pattern replacement]]
   [:replace (->honeysql driver arg) (->honeysql driver pattern) (->honeysql driver replacement)])
 
-;;; ---------------------------------------------- dialect functions -----------------------------------------------
-
-(defmulti dialect-functions
-  "The database's own functions that `:dialect-fn` and `:dialect-aggregation` clauses may call, as a map of function
-  name to `:scalar` or `:aggregate`. A query can only call a function listed here, and only as the kind it is listed
-  as. None by default."
-  {:added "0.65.0" :arglists '([driver])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod dialect-functions :sql
-  [_driver]
-  {})
-
-(defn- dialect-call [driver [tag _opts function-name & args]]
-  (let [kind     (get (dialect-functions driver) function-name)
-        expected (case tag :dialect-fn :scalar :dialect-aggregation :aggregate)]
-    (when-not (= kind expected)
-      (throw (ex-info (if kind
-                        (tru "{0} is a {1} function, so it can''t be used as an {2} one" function-name (name kind) (name expected))
-                        (tru "This database has no function {0} that queries can call" function-name))
-                      {:type driver-api/qp.error-type.invalid-query, :driver driver, :function function-name})))
-    (into [(keyword (str "'" function-name))] (map #(->honeysql driver %)) args)))
-
-(defmethod ->honeysql [:sql :dialect-fn]
-  [driver clause]
-  (dialect-call driver clause))
-
-(defmethod ->honeysql [:sql :dialect-aggregation]
-  [driver clause]
-  (dialect-call driver clause))
-
 (defmethod ->honeysql [:sql :concat]
   [driver [_ _opts & args]]
   (into [:concat] (map (partial ->honeysql driver)) args))

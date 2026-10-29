@@ -758,14 +758,3 @@
 (defmethod sql.params.substitution/->replacement-snippet-info [:clickhouse UUID]
   [_driver this]
   {:replacement-snippet (format "CAST('%s' AS UUID)" (str this))})
-
-(defmethod sql.qp/dialect-functions :clickhouse
-  [_driver]
-  (merge
-   (zipmap ["count" "uniqExact" "sum" "min" "max" "countIf" "uniqExactIf" "sumIf" "minIf" "groupArray" "any"]
-           (repeat :aggregate))
-   (zipmap ["toString" "toInt64" "toUInt8" "toUInt32" "nullIf" "if" "multiIf" "ifNull" "length" "round" "negate"
-            "has" "tupleElement" "tuple" "toUnixTimestamp" "toStartOfWeek" "toStartOfMonth" "toStartOfInterval"
-            "toStartOfDay" "parseDateTimeBestEffort" "notEmpty" "greatest" "dateDiff" "countEqual" "concat"
-            "arrayPushBack" "arraySlice" "arrayPopBack" "arrayMin" "arrayMax" "arrayEnumerate" "arrayElement" "array"]
-           (repeat :scalar))))

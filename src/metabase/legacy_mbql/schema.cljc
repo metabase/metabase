@@ -524,21 +524,6 @@
 
 (defmethod options-style-method :offset [_tag] ::options-style.mbql5)
 
-;; See [[metabase.lib.schema.expression.dialect]]. Here only because drivers still run the legacy form of a query.
-(defclause dialect-fn
-  opts     [:ref ::lib.schema.common/options]
-  function :string
-  args     (rest [:ref ::ExpressionArg]))
-
-(defmethod options-style-method :dialect-fn [_tag] ::options-style.mbql5)
-
-(defclause dialect-aggregation
-  opts     [:ref ::lib.schema.common/options]
-  function :string
-  args     (rest [:ref ::ExpressionArg]))
-
-(defmethod options-style-method :dialect-aggregation [_tag] ::options-style.mbql5)
-
 ;; See [[metabase.lib.schema.expression.window]]. Here only because drivers still run the legacy form of a query, so
 ;; the arguments pass through unchecked.
 (defclause window
@@ -584,7 +569,7 @@
 ;; TODO (Tamas 2026-01-05): Remove :measure from this set once FE tests switch to using MBQL5
 (def ^:private aggregations
   #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct
-    :distinct-where :metric :measure :aggregation-options :count :offset :dialect-aggregation})
+    :distinct-where :metric :measure :aggregation-options :count :offset})
 
 (def ^:private datetime-functions
   "Functions that return Date or DateTime values. Should match `::DatetimeExpression`."

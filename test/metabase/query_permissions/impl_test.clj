@@ -318,9 +318,8 @@
                               :joins    [(join "u" (mt/id :users) "ID" "ID")]}
                              {:lib/type     :mbql.stage/mbql
                               :source-stage "venues"
-                              :expressions  [[:dialect-fn {:lib/uuid (uuid), :base-type :type/Text
-                                                           :lib/expression-name "upper_name"}
-                                              "upper" [:field {:lib/uuid (uuid), :base-type :type/Text} "NAME"]]]
+                              :expressions  [[:upper {:lib/uuid (uuid), :lib/expression-name "upper_name"}
+                                              [:field {:lib/uuid (uuid), :base-type :type/Text} "NAME"]]]
                               :joins        [(join "c" (mt/id :categories) "CATEGORY_ID" "ID")]}]})
           table-ids (map mt/id [:venues :users :categories])]
       (is (= {:perms/view-data      (zipmap table-ids (repeat :unrestricted))

@@ -17,10 +17,8 @@ Status:
 | ~~D3–D5~~ | ~~Select stages, PA endpoints, native perms, ClickHouse only~~ | Paid: `dan/pa-mbql` has none of them (D21) |
 | D8  | Legacy conversion expands named stages into a tree   | Only execution still needs it (D18)                     |
 | D9  | Drivers without CTEs refuse named stages             | Subselect expansion in the compiler, or accept refusal  |
-| D11 | Dialect functions: no parametric calls, lambdas, windows | Grow the clause when a real analysis needs it        |
 | D13 | Week start and timezone come from settings, not the query | Query-level options (projects D and week start)    |
 | D14 | Editing helpers (`remove-replace`, next stage) assume a line | Teach them `source-stage` when the FE edits named stages |
-| D15 | `auto-bucket-datetimes` re-buckets a dialect breakout | Skip clauses with an explicit `:base-type`              |
 | D16 | Saved PA cards store compiled SQL                    | Save the MBQL query (project A, saved queries)          |
 | D18 | Drivers run the legacy form; new clauses need legacy schema | Drivers take MBQL 5 at execution                |
 | D22 | MBQL planners: no drills, chart order, or app wiring yet | Port drills; switch `use-analysis-query` to MBQL   |
@@ -100,23 +98,21 @@ Status:
 - On those drivers, `reads-named-stage?` throws `unsupported-feature`.
 - Rejected: silently inlining stages as subselects. That would duplicate work, and nobody asked for it yet.
 
-## D10: Dialect functions are an MBQL clause with a driver allowlist
+## D10: Dialect functions as an MBQL clause (removed)
 
-- **keep**, 435c2f17447.
-- Shape: `[:dialect-fn {:base-type …} "name" & args]` and `:dialect-aggregation`.
-- Lib types the clause from `:base-type`. `sql.qp/dialect-functions` maps each name to `:scalar` or `:aggregate`,
-  and the default is `{}`, so it fails closed. The name must match `^[A-Za-z_][A-Za-z0-9_]*$` and is emitted as a
-  quoted identifier.
-- Why: an escape hatch that still sits inside MBQL. Columns, types and permissions stay intact, and there is no
-  raw SQL.
-- Rejected: forking a clause per database; a raw SQL fragment clause, which reopens D6.2.
-- Rule: the allowlist excludes functions that take table names, such as `hasColumnInTable` and `joinGet`. That is
-  where functions meet permissions.
-
-## D11: Dialect functions cover plain calls only
-
-- **budget**, 435c2f17447.
-- No parametric calls (`quantile(0.5)(x)`), lambdas, or window functions. `range` is excluded.
+- **removed** (was 8606608ca24, `[:dialect-fn {:base-type …} "name" & args]` and `:dialect-aggregation`, with a
+  per-driver allowlist `sql.qp/dialect-functions`). D11 (plain calls only) and D15 (auto-bucketing re-bucketed a
+  dialect breakout) go with it.
+- Why it was added: the string planners called about 49 ClickHouse functions, and it wasn't known how many MBQL could
+  express. An escape hatch that stayed inside MBQL (typed, permission-checked, allowlisted) hedged against getting stuck.
+- Why it went: the port answered the question. Every analysis is written in portable MBQL (`:distinct`,
+  `:count-where`, `:case`, joins, `:window`, `:values`) and no planner calls it. Kept, it was a second way to say what
+  MBQL already says, non-portable by design, with a caller-asserted return type, a per-driver list and legacy schema
+  entries (D18).
+- What it taught: it was the probe that exposed permissions running on legacy MBQL (D12) and drivers receiving the
+  legacy form (D18).
+- If it comes back, it comes back for a named use case (for example a ClickHouse `windowFunnel` fast path, which D6.1
+  would also have to allow), not as a standing hedge.
 
 ## D12: Permissions walk MBQL 5 directly
 
@@ -158,11 +154,6 @@ Status:
 - **budget**.
 - `remove-replace` and next-stage editing are still linear. Reading a stage by name works, editing one doesn't
   yet.
-
-## D15: `auto-bucket-datetimes` re-buckets a dialect breakout
-
-- **budget**.
-- A DateTime `:dialect-fn` breakout gets a default temporal unit.
 
 ## D16: Saved PA cards store compiled SQL
 
