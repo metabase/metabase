@@ -153,11 +153,7 @@ This command will create a new service file that systemd will use. You can test 
 
 You should see something like:
 
-```
-● metabase.service - Metabase container
-     Loaded: loaded (/home/user/.config/containers/systemd/metabase.container; enabled; preset: disabled)
-     Active: inactive (dead)
-```
+` Loaded: loaded (/run/user/1000/systemd/generator/metabase.service; generated`
 
 If you don't see the service has loaded, you can use systemd's generator tool to help debug:
 
