@@ -149,13 +149,13 @@
       ;; A bare raw message renders quoted, so wrap it to keep it as text.
       (message/msg ["%s"] detail))))
 
-(defn compile-ops
-  "Runs [[dashboard-ops/compile-ops]] and rethrows its errors as MCP teaching errors.
-   Each teaching error keeps the compiler's error as its cause.
+(defn do-with-teaching-errors
+  "Calls `thunk`, and rethrows any error from [[dashboard-ops/errors]] it throws as an MCP teaching error.
+   Each teaching error keeps the original error as its cause.
    Other exceptions pass through unchanged."
-  [current ops cards]
+  [thunk]
   (try
-    (dashboard-ops/compile-ops current ops cards)
+    (thunk)
     (catch clojure.lang.ExceptionInfo e
       (throw (if-let [data (dashboard-ops/error-data e)]
                (common/message-ex-info (error-message data) {:status-code 400} e)

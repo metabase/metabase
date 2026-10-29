@@ -8,7 +8,6 @@
    [metabase.mcp.v2.dashboard-errors :as dashboard-errors]
    [metabase.mcp.v2.message :as message]
    [metabase.metabot.toolkit.dashboard-ops :as dashboard-ops]
-   [metabase.test :as mt]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -23,7 +22,7 @@
    (error-text current ops (u/for-map [id (mapcat dashboard-ops/card-refs ops)] [id {:id id}])))
   ([current ops cards]
    (try
-     (dashboard-errors/compile-ops current ops cards)
+     (dashboard-errors/do-with-teaching-errors #(dashboard-ops/compile-ops current ops cards))
      nil
      (catch clojure.lang.ExceptionInfo e
        (ex-message e)))))
@@ -124,14 +123,14 @@
 
 (deftest ^:parallel teaching-error-keeps-its-cause-test
   (testing "the teaching error is a 400 whose cause is the compiler's own error"
-    (let [e (try (dashboard-errors/compile-ops empty-dash [{:op "frobnicate"}] {})
+    (let [e (try (dashboard-errors/do-with-teaching-errors
+                  #(dashboard-ops/compile-ops empty-dash [{:op "frobnicate"}] {}))
                  (catch clojure.lang.ExceptionInfo e e))]
       (is (=? {:status-code 400} (ex-data e)))
       (is (=? {::dashboard-ops/error :invalid-op} (dashboard-ops/error-data (ex-cause e)))))))
 
-(deftest other-errors-pass-through-test
-  (testing "an exception that is not a compiler error is rethrown as it is"
+(deftest ^:parallel other-errors-pass-through-test
+  (testing "an exception that is not a dashboard op error is rethrown as it is"
     (let [e (ex-info "boom" {:x 1})]
-      (mt/with-dynamic-fn-redefs [dashboard-ops/compile-ops (fn [& _] (throw e))]
-        (is (identical? e (try (dashboard-errors/compile-ops empty-dash [] {})
-                               (catch clojure.lang.ExceptionInfo caught caught))))))))
+      (is (identical? e (try (dashboard-errors/do-with-teaching-errors #(throw e))
+                             (catch clojure.lang.ExceptionInfo caught caught)))))))

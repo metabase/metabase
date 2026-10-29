@@ -160,8 +160,17 @@
                 "size_y, dashboard_tab_id, card_id, action_id, series, id) are rejected; use move, "
                 "resize, replace_card, or set_series.")
            [[:dashcard_id dashcard-ref-schema]
-            [:patch [:map {:description (str "Dashcard properties to merge; `visualization_settings` "
-                                             "merges key by key rather than replacing the map.")}]]])
+            [:patch
+             ;; Open, so a layout or unknown key reaches the compiler, which names the op that owns it.
+             [:map {:description (str "Dashcard properties to merge; `visualization_settings` "
+                                      "merges key by key rather than replacing the map.")}
+              [:visualization_settings {:optional true}
+               [:maybe [:map {:description "Visualization settings to merge into the dashcard's own."}]]]
+              [:parameter_mappings {:optional true}
+               [:maybe [:sequential [:map {:description "A parameter mapping, replacing the dashcard's list."}
+                                     [:parameter_id {:optional true} [:maybe [:string {:min 1}]]]
+                                     [:target {:optional true} [:maybe [:sequential :any]]]]]]]
+              [:inline_parameters {:optional true} inline-parameters-schema]]]])
    (op-map "add_tab" (str "Add a tab. Existing cards are adopted only when the save ends with "
                           "exactly one tab; adding several at once leaves them orphaned — `move` "
                           "them onto a tab in the same call.")

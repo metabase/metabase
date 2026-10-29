@@ -137,11 +137,11 @@
 
 (defn- move-row
   "Move the row with `id` so it sits at `index` among the remaining rows.
-   Nil when `index` falls outside `[0, count-after-removal]`."
+   Nil when `index` is not an integer in `[0, count-after-removal]`."
   [state coll id index]
   (let [row   (find-row state coll id)
         rest* (filterv #(not= id (:id %)) (get state coll))]
-    (when (<= 0 index (count rest*))
+    (when (and (integer? index) (<= 0 index (count rest*)))
       (assoc state coll (vec (concat (subvec rest* 0 index) [row] (subvec rest* index)))))))
 
 (defn- map-rows
@@ -726,7 +726,7 @@
 ;;; ------------------------------------------------ Entry ---------------------------------------------------------
 
 (defn card-refs
-  "The ids of the cards `op` references.
+  "The ids of the cards `op`, an op from [[prepare-ops]], references.
    Those are the cards it puts on the dashboard, and the card a parameter it adds or updates draws its values from.
    The caller resolves these into the `cards` map for [[compile-ops]], which rejects any it left out."
   [op]
@@ -764,12 +764,21 @@
   [op]
   (into {} (remove (comp nil? val)) op))
 
-(defn- checked-op
+(defn- prepared-op
   "The op at `idx`, checked against [[dashboard-op-schema/op-schema]] and then stripped of null values."
   [idx op]
   (at-op idx op #(if-let [explanation (mr/explain dashboard-op-schema/op-schema op)]
                    (fail! :invalid-op {:explanation (me/humanize explanation)})
                    (compact-op op))))
+
+(defn prepare-ops
+  "The ops, each checked against [[dashboard-op-schema/op-schema]] and then stripped of null values.
+   Throws `:invalid-op` when `ops` is not a sequence, or for the first op that breaks the schema.
+   Run it before anything reads the ops, such as [[card-refs]]."
+  [ops]
+  (when-not (sequential? ops)
+    (fail! :invalid-op {:explanation ["ops must be a list"]}))
+  (into [] (map-indexed prepared-op) ops))
 
 (defn- apply-op-at
   "Runs [[apply-op]] on `op`, the op at `idx`, then checks that the cards it references are resolved."
@@ -782,7 +791,7 @@
   "Fold `ops` over `current`, a dashboard hydrated with `[:dashcards :series :card] :tabs`.
    Returns `{:dashcards :tabs :parameters}`, the full-replacement payload `update-dashboard!` saves.
    New rows carry the caller's negative ids.
-   Every op is checked against [[dashboard-op-schema/op-schema]] before any is applied.
+   It runs the ops through [[prepare-ops]] before applying any, so it also takes ops that have not been through it.
    The `cards` map holds the row of each card the ops may touch, keyed by id.
    It covers the cards [[card-refs]] finds in `ops` and the cards already on the dashboard.
    It leaves out cards the user cannot read.
@@ -791,6 +800,6 @@
   [current ops cards]
   (-> (reduce-kv apply-op-at
                  (init-state current cards)
-                 (into [] (map-indexed checked-op) ops))
+                 (prepare-ops ops))
       check-tab-coverage!
       (select-keys [:dashcards :tabs :parameters])))
