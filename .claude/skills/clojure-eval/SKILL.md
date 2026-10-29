@@ -15,14 +15,6 @@ Use this skill when you need to:
 - Require or load namespaces for testing
 - Validate that code changes work before committing
 
-## Use a Cheaper Model
-
-Evaluating code, reloading namespaces, and running tests through `clj-nrepl-eval` is mechanical work:
-run the command, read the output, report pass/fail or the error. It does not need the most capable model.
-When you delegate it to a subagent (for example to run a test namespace or check that edited files compile),
-pass `model: "haiku"` (or `"sonnet"` if the task needs some judgment about the output). Reserve the
-default model for deciding *what* to evaluate and for interpreting non-obvious failures.
-
 ## How It Works
 
 The `clj-nrepl-eval` command evaluates Clojure code against an nREPL server. **Session state persists between evaluations**, so you can require a namespace in one evaluation and use it in subsequent calls. Each host:port combination maintains its own session file.
@@ -158,7 +150,6 @@ clj-nrepl-eval -p <PORT> --reset-session "(def x 1)"
 
 ## Important Notes
 
-- **Use a cheaper model:** Delegate evaluation and test runs to a subagent on `haiku` or `sonnet`; see [Use a Cheaper Model](#use-a-cheaper-model)
 - **Prefer command-line arguments:** Pass code as quoted strings: `clj-nrepl-eval -p <PORT> "(+ 1 2 3)"` - works with existing permissions
 - **Heredoc for complex code:** Use heredoc (`<<'EOF' ... EOF`) for truly multiline code, but note it may require permission approval
 - **Sessions persist:** State (vars, namespaces, loaded libraries) persists across invocations until the nREPL server restarts or `--reset-session` is used
