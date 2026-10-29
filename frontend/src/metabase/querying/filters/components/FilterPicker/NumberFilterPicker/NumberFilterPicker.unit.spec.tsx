@@ -42,6 +42,18 @@ const EXPECTED_OPERATORS = [
   "Not empty",
 ];
 
+const EXPECTED_KEY_OPERATORS = [
+  "Is",
+  "Is not",
+  "Between",
+  "Greater than",
+  "Greater than or equal to",
+  "Less than",
+  "Less than or equal to",
+  "Is empty",
+  "Not empty",
+];
+
 type SetupOpts = {
   query?: Lib.Query;
   column?: Lib.ColumnMetadata;
@@ -129,6 +141,25 @@ describe("NumberFilterPicker", () => {
 
       expect(menuItems).toHaveLength(EXPECTED_OPERATORS.length);
       EXPECTED_OPERATORS.forEach((operatorName) =>
+        expect(within(menu).getByText(operatorName)).toBeInTheDocument(),
+      );
+    });
+
+    it.each([
+      ["primary", "ID"],
+      ["foreign", "PRODUCT_ID"],
+    ])("should list operators for a %s key column", async (_, columnName) => {
+      const query = createQuery();
+      const columns = Lib.filterableColumns(query, 0);
+      const column = columnFinder(query, columns)("ORDERS", columnName);
+      setup({ query, column });
+
+      await userEvent.click(screen.getByLabelText("Filter operator"));
+      const menu = await screen.findByRole("menu");
+      const menuItems = within(menu).getAllByRole("menuitem");
+
+      expect(menuItems).toHaveLength(EXPECTED_KEY_OPERATORS.length);
+      EXPECTED_KEY_OPERATORS.forEach((operatorName) =>
         expect(within(menu).getByText(operatorName)).toBeInTheDocument(),
       );
     });
