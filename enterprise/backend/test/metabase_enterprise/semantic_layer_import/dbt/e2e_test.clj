@@ -131,7 +131,9 @@
   (mt/test-driver :postgres
     (mt/dataset (marts-dataset)
       (mt/with-model-cleanup [:model/Card :model/Collection]
-        (let [before (warehouse-row-counts)
+        ;; the dataset's database is created on first use: create it before counting what the import adds
+        (let [_      (mt/db)
+              before (warehouse-row-counts)
               report (convert-and-import!)
               cards  (imported-cards report)]
           (testing "the preflight check binds every reference against the synced tables"

@@ -107,6 +107,9 @@
 
 (deftest ^:parallel parse-expression-size-limits-test
   (testing "a chain of two hundred ANDs parses, and in well under the Python timeout"
+    ;; time the parse, not the start of the first GraalPy context, which takes seconds in a cold JVM and is outside
+    ;; the Python timeout
+    (sql-parsing/parse-expression "postgres" "1")
     (let [started (System/nanoTime)
           tree    (sql-parsing/parse-expression "postgres" (and-chain 200))]
       (is (= "And" (:class tree)))
