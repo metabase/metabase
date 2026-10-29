@@ -731,6 +731,8 @@
    ;; SQL parsing metrics
    (prometheus/counter :metabase-sql-parsing/context-timeouts
                        {:description "Number of Python/GraalVM SQL parsing execution timeouts."})
+   (prometheus/counter :metabase-sql-parsing/sqlglot-java-timeouts
+                       {:description "Number of SQL parsing calls to the Java port of sqlglot that timed out."})
    (prometheus/counter :metabase-sql-parsing/context-acquisitions
                        {:description "Number of Python contexts acquired from the pool."})
    (prometheus/counter :metabase-sql-parsing/context-creations

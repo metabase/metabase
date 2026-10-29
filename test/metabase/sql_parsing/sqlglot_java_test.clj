@@ -10,7 +10,9 @@
    [metabase.sql-tools.core :as sql-tools]
    [metabase.sql-tools.interface]
    [metabase.sql-tools.settings :as settings]
-   [metabase.test :as mt]))
+   [metabase.test :as mt])
+  (:import
+   (java.util.concurrent TimeoutException)))
 
 (set! *warn-on-reflection* true)
 
@@ -57,6 +59,21 @@
           (is (= (protocol/single-stmt-of-type graal "postgres" sql "read-only")
                  (protocol/single-stmt-of-type java "postgres" sql "read-only")))))
       (is (= "multiple_statements" (:reason (protocol/transpile-sql java "SELECT 1; SELECT 2" "postgres" "mysql")))))))
+
+(deftest slow-call-times-out-test
+  (testing "a call that takes longer than the deadline throws a TimeoutException and interrupts the port's thread"
+    (let [interrupted (promise)]
+      (with-redefs [sqlglot-java/call-timeout-ms 50]
+        (is (thrown? TimeoutException
+                     (#'sqlglot-java/call (fn []
+                                            (try
+                                              (Thread/sleep 10000)
+                                              (catch InterruptedException _
+                                                (deliver interrupted true))))))))
+      (is (true? (deref interrupted 5000 false)))))
+  (testing "a port error inside the deadline is reported as before"
+    (is (thrown-with-msg? Exception #"ParseError"
+                          (protocol/referenced-tables (sqlglot-java/parser) "postgres" "SELECT FROM WHERE (")))))
 
 (deftest backend-dispatch-test
   (testing "every sql-tools multimethod runs its :sqlglot method for :sqlglot-java, through the backend hierarchy"

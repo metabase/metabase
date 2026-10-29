@@ -11,6 +11,7 @@
   `AssertionError`, `AttributeError`, `RecursionError`, `TypeError` for nil SQL), and any other JVM exception carries
   its Java class name."
   (:require
+   [metabase.analytics-interface.core :as analytics]
    [metabase.sql-parsing.common :as common]
    [metabase.sql-parsing.protocol :as protocol]
    [metabase.sql-parsing.sqlglot-java.ast :as ast]
@@ -20,9 +21,11 @@
    [metabase.sql-parsing.sqlglot-java.rewrite :as rewrite]
    [metabase.sql-parsing.sqlglot-java.statements :as statements]
    [metabase.sql-parsing.sqlglot-java.transpile :as transpile]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.util.log :as log])
   (:import
-   (com.metabase.sqlglot.reference Parser$DialectError)))
+   (com.metabase.sqlglot.reference Parser$DialectError)
+   (java.util.concurrent ExecutionException TimeoutException)))
 
 (set! *warn-on-reflection* true)
 
@@ -55,7 +58,7 @@
     (instance? NullPointerException e)   "TypeError"
     :else                                (.getSimpleName (class e))))
 
-(defn- call
+(defn- call-port
   "Call `f`, turning any failure into the exception every parser throws, whose message and cause read
   `ErrorType: message` as the GraalPy transport's do, so [[metabase.sql-parsing.core/parse-error-message]] reads both
   the same way. SQL nested too deeply for the stack is a RecursionError, with GraalPy's message."
@@ -68,6 +71,31 @@
     (catch Exception e
       (let [error (str (error-type e) ": " (ex-message e))]
         (throw (common/call-failed-ex error (ex-info error {} e)))))))
+
+(def ^:private call-timeout-ms
+  "How long a call may take, as for the GraalPy parser: a degenerate query can keep the port busy for much longer."
+  30000)
+
+(defn- call
+  "[[call-port]] on another thread, with [[call-timeout-ms]] to finish. A call that takes longer is cancelled, which
+  interrupts its thread (the port stops at the interrupt), and throws a TimeoutException, as the GraalPy parser does."
+  [f]
+  (let [fut (future (call-port f))]
+    (try
+      (let [result (deref fut call-timeout-ms ::timeout)]
+        (if (= result ::timeout)
+          (do
+            (future-cancel fut)
+            ;; A misconfigured registry must not replace the timeout with its own error.
+            (try (analytics/inc! :metabase-sql-parsing/sqlglot-java-timeouts)
+                 (catch Throwable e
+                   (log/warn e "Failed to increment :metabase-sql-parsing/sqlglot-java-timeouts")))
+            (throw (TimeoutException. (str "SQL parsing timed out after " call-timeout-ms "ms"))))
+          result))
+      (catch ExecutionException e
+        (throw (or (.getCause e) e)))
+      (finally
+        (future-cancel fut)))))
 
 (defn- json-shaped
   "`x` with keyword keys and values as strings, the shape `sql_tools.py` reads its JSON arguments in."
