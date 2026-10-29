@@ -186,6 +186,29 @@ describe("QuestionFiltersHeader", () => {
     expect(Lib.filters(query, 1)).toHaveLength(1);
   });
 
+  it("should hide the filter panel after removing all filters", async () => {
+    const { getNextQuery } = setup();
+    const removeFilter = (filterName: string) =>
+      userEvent.click(
+        within(screen.getByText(filterName)).getByLabelText("Remove"),
+      );
+
+    await removeFilter("Quantity is greater than 4");
+    expect(screen.getByTestId("qb-filters-panel")).toBeInTheDocument();
+
+    await removeFilter("Count is greater than 5");
+    expect(screen.getByTestId("qb-filters-panel")).toBeInTheDocument();
+
+    await removeFilter("User → Source is Organic");
+    expect(screen.queryByTestId("qb-filters-panel")).not.toBeInTheDocument();
+    const query = getNextQuery();
+    expect(
+      Lib.stageIndexes(query).flatMap((stageIndex) =>
+        Lib.filters(query, stageIndex),
+      ),
+    ).toHaveLength(0);
+  });
+
   it("should remove a filter from the previous stage", async () => {
     const { getNextQuery } = setup();
 
