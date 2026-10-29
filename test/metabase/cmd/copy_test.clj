@@ -37,6 +37,7 @@
     :model/DatabaseRouter
     :model/Dependency
     :model/DependencyStatus
+    :model/ImpersonationQueryCache
     :model/PythonLibrary
     :model/PremiumFeaturesCache
     :model/Query

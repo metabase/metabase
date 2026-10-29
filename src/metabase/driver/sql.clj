@@ -242,6 +242,23 @@
    native-query :- :metabase.lib.schema/native-only-query]
   (sql-tools/validate-query driver native-query))
 
+(mu/defn impersonated-query-refusal :- [:fn #(instance? clojure.lang.ExceptionInfo %)]
+  "The [[metabase.query-processor.error-type/invalid-query]] `ex-info` refusing the impersonated native `sql`
+  with `result`: `:unparseable` or `:invalid`, with the validator's `reason` if any. `write?` says whether the
+  query had to be a write statement rather than a select."
+  [result :- [:enum :unparseable :invalid]
+   sql    :- :string
+   write? :- [:maybe :boolean]
+   reason :- [:maybe :string]]
+  (ex-info (case result
+             :unparseable (tru "Unable to parse native query. There might be something wrong with your query.")
+             :invalid     (tru "Invalid impersonated native query. Must be a single {0} statement."
+                               (if write? (tru "insert, update, or delete") (tru "select"))))
+           (cond-> {:type                 qp.error-type/invalid-query
+                    :impersonation/result result
+                    :sql                  sql}
+             reason (assoc :reason reason))))
+
 (defn validate-impersonated-query*
   "Validates a native query by parsing it and ensuring that it is a single statement.
    Checks driver.conn/*connection-type* to determine if it is a regular impersonated query or a custom action.
@@ -252,21 +269,16 @@
           (fn [stages]
             (mapv (fn [stage]
                     (if (lib.util/native-stage? stage)
-                      (let [[stmt-type allowed-stmts] (if (= driver.conn/*connection-type* :write-data)
-                                                        ["write" (tru "insert, update, or delete")]
-                                                        ["read" (tru "select")])
+                      (let [write?    (= driver.conn/*connection-type* :write-data)
+                            stmt-type (if write? "write" "read")
                             {:keys [is-single-stmt? sql error]}
                             (sql-tools/is-single-stmt-of-type? driver (:native stage) stmt-type)]
                         (cond error
                               (do
                                 (log/warnf "Failed to parse native query: %s\n: Query: %s" error (:native stage))
-                                (throw (ex-info (tru "Unable to parse native query. There might be something wrong with your query.")
-                                                {:type qp.error-type/invalid-query
-                                                 :sql  (:native stage)})))
+                                (throw (impersonated-query-refusal :unparseable (:native stage) write? nil)))
                               (not is-single-stmt?)
-                              (throw (ex-info (tru "Invalid impersonated native query. Must be a single {0} statement." allowed-stmts)
-                                              {:type qp.error-type/invalid-query
-                                               :sql  (:native stage)}))
+                              (throw (impersonated-query-refusal :invalid (:native stage) write? nil))
                               :else (assoc stage :native sql)))
                       stage))
                   stages))))
