@@ -19,18 +19,18 @@
    [:group_id  {:optional true} [:maybe ms/PositiveInt]]
    [:attribute {:optional true} [:maybe :string]]])
 
-(mr/def ::query-cache.result
+(mr/def ::impersonation-query-cache.result
   "The outcome of validating an impersonated native query, as an ImpersonationQueryCache records it."
   [:enum :valid :unparseable :unvalidatable :invalid])
 
-(mr/def ::query-cache
+(mr/def ::impersonation-query-cache
   "An ImpersonationQueryCache as selected from the app DB: every column of `:impersonation_query_cache`."
   [:merge
-   ::query-cache.update
+   ::impersonation-query-cache.update
    [:map {:closed true}
     [:id ms/PositiveInt]]])
 
-(mr/def ::query-cache.update
+(mr/def ::impersonation-query-cache.update
   "What an update (or insert) of an ImpersonationQueryCache accepts: every column of `:impersonation_query_cache` except `id`, all optional."
   [:map {:closed true}
    [:input_version     {:optional true} :string]
@@ -39,7 +39,7 @@
    [:input_admin       {:optional true} :boolean]
    [:input_query_hash  {:optional true} :string]
    [:input_query       {:optional true} :string]
-   [:result            {:optional true} ::query-cache.result]
+   [:result            {:optional true} ::impersonation-query-cache.result]
    [:result_query      {:optional true} [:maybe :string]]
    [:result_reason     {:optional true} [:maybe :string]]
    [:created_at        {:optional true} (ms/InstanceOfClass java.time.temporal.Temporal)]])

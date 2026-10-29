@@ -88,10 +88,10 @@
   [user-id :- [:maybe ::lib.schema.id/user]]
   (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id))
 
-(mu/defn query-cache :- [:maybe ::impersonation.schema/query-cache]
+(mu/defn query-cache :- [:maybe ::impersonation.schema/impersonation-query-cache]
   "The ImpersonationQueryCache with the lookup key of `input`, or nil."
   [{:keys [input_query_hash input_engine input_allow_write input_admin input_version]}
-   :- ::impersonation.schema/query-cache.update]
+   :- ::impersonation.schema/impersonation-query-cache.update]
   (t2/select-one :model/ImpersonationQueryCache
                  :input_query_hash  input_query_hash
                  :input_engine      input_engine
@@ -101,7 +101,7 @@
 
 (mu/defn insert-query-cache!
   "Insert the ImpersonationQueryCache `row`."
-  [row :- ::impersonation.schema/query-cache.update]
+  [row :- ::impersonation.schema/impersonation-query-cache.update]
   (t2/insert! :model/ImpersonationQueryCache row))
 
 (mu/defn delete-outdated-query-caches! :- :int

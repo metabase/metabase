@@ -15,7 +15,7 @@
 
 (set! *warn-on-reflection* true)
 
-(mu/defn- query-cache-input :- ::impersonation.schema/query-cache.update
+(mu/defn- query-cache-input :- ::impersonation.schema/impersonation-query-cache.update
   "The lookup key of validating the native SQL `native` for `engine`."
   [engine       :- :keyword
    allow-write? :- [:maybe :boolean]
@@ -28,9 +28,9 @@
    :input_query_hash  (codecs/bytes->hex (buddy-hash/sha256 ^String native))
    :input_query       native})
 
-(mu/defn- cached-result :- [:maybe ::impersonation.schema/query-cache]
+(mu/defn- cached-result :- [:maybe ::impersonation.schema/impersonation-query-cache]
   "The cached result for `input`, or nil when there is none or the cache cannot be read."
-  [input :- ::impersonation.schema/query-cache.update]
+  [input :- ::impersonation.schema/impersonation-query-cache.update]
   (try
     (let [row (impersonation.db/query-cache input)]
       (when (= (:input_query input) (:input_query row))
@@ -42,8 +42,8 @@
 (mu/defn- save-result! :- :nil
   "Cache `result` for `input`, leaving the cache as it is when the insert fails, e.g. because another node cached
   the same result first."
-  [input  :- ::impersonation.schema/query-cache.update
-   result :- ::impersonation.schema/query-cache.update]
+  [input  :- ::impersonation.schema/impersonation-query-cache.update
+   result :- ::impersonation.schema/impersonation-query-cache.update]
   (try
     (impersonation.db/insert-query-cache! (merge input result))
     (catch Throwable e
@@ -52,7 +52,7 @@
 
 (mu/defn- replay-result :- :string
   "The validated SQL of the cached `result` for the native SQL `native`, or the refusal it records thrown."
-  [{:keys [result result_query result_reason]} :- ::impersonation.schema/query-cache
+  [{:keys [result result_query result_reason]} :- ::impersonation.schema/impersonation-query-cache
    native                                      :- :string
    allow-write?                                :- [:maybe :boolean]]
   (if (= result :valid)
@@ -61,7 +61,7 @@
 
 (mu/defn- validate-and-save! :- :string
   "Call `validate` and cache what it returns, or the refusal it throws when that refusal records its result."
-  [input    :- ::impersonation.schema/query-cache.update
+  [input    :- ::impersonation.schema/impersonation-query-cache.update
    validate :- fn?]
   (try
     (let [validated (validate)]
