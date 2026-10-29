@@ -8,12 +8,14 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema :as lib.schema]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.interface :as qp.i]
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]))
 
 (defn- validates-native-queries?
   "Does `driver` supply its own `driver/validate-impersonated-query`?"
@@ -30,9 +32,11 @@
     (throw (ex-info (tru "Connection impersonation does not support native queries on this database.")
                     {:type qp.error-type/invalid-query}))))
 
-(defn- validate-native-stage
+(mu/defn- validate-native-stage :- ::lib.schema/stage.native
   "Validate the native `stage` of `query` for `driver` on its own, through the impersonation query cache."
-  [driver query stage]
+  [driver :- :keyword
+   query  :- ::lib.schema/query
+   stage  :- ::lib.schema/stage.native]
   (let [admin? api/*is-superuser?*]
     (assoc stage :native
            (query-cache/validated-query

@@ -20,7 +20,7 @@
    [:attribute {:optional true} [:maybe :string]]])
 
 (mr/def ::query-cache.input
-  "The `input_` columns that look up an ImpersonationQueryCache row."
+  "The `input` columns that look up an ImpersonationQueryCache row."
   [:map {:closed true}
    [:input_version     :string]
    [:input_engine      :string]

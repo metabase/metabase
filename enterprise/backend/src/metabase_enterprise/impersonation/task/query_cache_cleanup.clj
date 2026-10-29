@@ -9,7 +9,8 @@
    [metabase-enterprise.impersonation.db :as impersonation.db]
    [metabase.config.core :as config]
    [metabase.task.core :as task]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -20,7 +21,7 @@
 (def ^:private cleanup-job-key (jobs/key "metabase.task.impersonation.query-cache-cleanup.job"))
 (def ^:private cleanup-trigger-key (triggers/key "metabase.task.impersonation.query-cache-cleanup.trigger"))
 
-(defn- cleanup-query-cache!
+(mu/defn- cleanup-query-cache! :- :nil
   "Delete the outdated impersonation query cache rows."
   []
   (let [cutoff  (t/minus (t/offset-date-time) (t/days max-age-days))

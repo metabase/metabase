@@ -337,11 +337,14 @@
    native-query :- :metabase.lib.schema/native-only-query]
   (sql-tools/validate-query driver native-query))
 
-(defn impersonated-query-refusal
+(mu/defn impersonated-query-refusal :- [:fn #(instance? clojure.lang.ExceptionInfo %)]
   "The [[metabase.query-processor.error-type/invalid-query]] `ex-info` refusing the impersonated native `sql`
   with `result`: `:unparseable`, `:unvalidatable` (with the validator's `reason`) or `:invalid`. `write?` says
   whether the query had to be a write statement rather than a select."
-  [result sql write? reason]
+  [result :- [:enum :unparseable :unvalidatable :invalid]
+   sql    :- :string
+   write? :- [:maybe :boolean]
+   reason :- [:maybe :string]]
   (ex-info (case result
              :unparseable   (tru "Unable to parse native query. There might be something wrong with your query.")
              :unvalidatable (tru "Unable to validate this native query on an impersonated database. Reduce the size of any large VALUES, IN, or ARRAY lists.")
