@@ -200,3 +200,11 @@
               ;; Since we couldn't use with-temp, we need to clean up manually.
               (finally
                 (t2/delete! :model/Setting search-col search-value)))))))))
+
+(deftest query-binds-marked-values-test
+  (testing "a marker in a query map is bound as a parameter rather than reaching SQL"
+    (mt/with-temp [:model/User {user-id :id, email :email} {}]
+      (is (= [{:id user-id}]
+             (mdb.query/query {:select [:id] :from [:core_user] :where [:= :email [:auto/param email]]})))
+      (is (= [{:id user-id}]
+             (mdb.query/query {:select [:id] :from [:core_user] :where [:in :id [:auto/param [user-id]]]}))))))

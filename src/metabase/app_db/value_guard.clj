@@ -246,19 +246,7 @@
                             ;; A marked kv-arg has to come back out as a comparison, since Toucan
                             ;; folded the column into the marker rather than building one.
                             wrap (if kv? #(vector := (second x) %) identity)]
-                        (when (and (coll? v) (empty? v) (not (map? v)))
-                          ;; Toucan rewrites `[:in col []]` to `false`, because `IN ()` is invalid
-                          ;; SQL, and that rewrite runs inside the compile step this wraps -- so a
-                          ;; lifted empty collection would hide it and leave `IN ()`, which Postgres
-                          ;; rejects and H2 quietly accepts. Whether the rewrite applies depends on
-                          ;; the enclosing operator, which is not visible here, so refuse rather
-                          ;; than guess.
-                          (throw (ex-info (str "Marked an empty collection: " (pr-str x)
-                                               ". Leave it unmarked -- an empty collection is not a"
-                                               " value that needs binding, and Toucan rewrites an"
-                                               " empty `:in` that it can see.")
-                                          {:type ::marked-empty-collection, :form x})))
-                        (if (nil? v)
+                        (if (or (nil? v) (and (coll? v) (empty? v) (not (map? v))))
                           ;; HoneySQL turns a literal nil in a comparison into `IS NULL`, where a
                           ;; bound parameter would get `= ?` and match nothing. Leave it to HoneySQL.
                           (wrap v)
@@ -277,6 +265,14 @@
     (throw (ex-info "[:auto/param ...] would reach SQL unlifted. It belongs in a value slot of a query map."
                     {:type ::marker-reached-sql, :query query}))))
 
+(defn lift
+  "Rewrite the markers in query map `query` into `[:param k]` forms, returning `[rewritten-query params-map]`."
+  [query]
+  (check-marker-placement query)
+  (let [[query params] (auto-param query)]
+    (assert-no-marker-survived! query)
+    [query params]))
+
 (methodical/defmethod t2.pipeline/compile :around :default
   [query-type model built-query]
   ;; Toucan re-enters `compile` with the `[sql & args]` vector it produced, so only a map is worth
@@ -284,9 +280,7 @@
   (if-not (map? built-query)
     (do (assert-no-marker-survived! built-query)
         (next-method query-type model built-query))
-    (let [_              (check-marker-placement built-query)
-          [query params] (auto-param built-query)]
-      (assert-no-marker-survived! query)
+    (let [[query params] (lift built-query)]
       (if-not (seq params)
         (next-method query-type model query)
         ;; HoneySQL takes params as a format option rather than a query clause. Merge so that an

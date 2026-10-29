@@ -1,23 +1,23 @@
 (ns metabase.app-db.empty-in-test
-  "A marked empty collection is refused: whether Toucan's empty-`:in` rewrite applies depends on the
-   enclosing operator, which the lift cannot see."
+  "A marked empty collection stays inline, so Toucan's empty-`:in` rewrite still applies."
   (:require
    [clojure.test :refer :all]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
-(deftest marked-empty-collection-is-rejected-test
-  (are [form] (thrown-with-msg? clojure.lang.ExceptionInfo #"Marked an empty collection"
-                                (t2/select :model/ContentTranslation form))
-    {:where [:in :id [:auto/param []]]}
-    {:where [:= :locale [:auto/param []]]}))
-
-(deftest an-unmarked-empty-in-is-still-rewritten-test
-  (testing "leaving it unmarked keeps Toucan's rewrite, which turns IN () into FALSE"
+(deftest empty-in-is-rewritten-marked-or-not-test
+  (testing "Toucan's rewrite turns IN () into FALSE whether or not the collection is marked"
     ;; Match the clause rather than the whole statement: each app DB quotes identifiers its own way.
-    (let [[sql] (t2/compile (t2/select :model/ContentTranslation {:where [:in :id []]}))]
-      (is (re-find #"(?i)WHERE FALSE" sql))
-      (is (not (re-find #"IN \(\)" sql))))))
+    (doseq [v [[] [:auto/param []] [:auto/param #{}]]]
+      (testing (pr-str v)
+        (let [[sql] (t2/compile (t2/select :model/ContentTranslation {:where [:in :id v]}))]
+          (is (re-find #"(?i)WHERE FALSE" sql))
+          (is (not (re-find #"IN \(\)" sql))))))))
+
+(deftest marked-empty-in-matches-nothing-test
+  (mt/with-temp [:model/ContentTranslation _ {:locale "de" :msgid "a" :msgstr "b"}]
+    (is (empty? (t2/select :model/ContentTranslation {:where [:in :locale [:auto/param []]]})))
+    (is (empty? (t2/select :model/ContentTranslation :locale [:in [:auto/param []]])))))
 
 (deftest a-non-empty-collection-still-binds-test
   (mt/with-temp [:model/ContentTranslation _ {:locale "de" :msgid "a" :msgstr "b"}
