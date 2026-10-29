@@ -107,6 +107,7 @@ export function DataAppEmbed() {
     >
       <DataAppEmbedContent
         name={name}
+        path={embedSettings.path}
         onProviderPropsLoaded={setMetabaseProviderProps}
       />
     </ComponentProvider>

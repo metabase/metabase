@@ -9,12 +9,20 @@ import { Center, Loader } from "metabase/ui";
 import { useDataAppBundle } from "../../lib/use-data-app-bundle";
 import { BundleErrorBoundary } from "../DataAppIframeApp/DataAppIframeApp";
 
+import { useDataAppPathNavigation } from "./hooks/use-data-app-path-navigation";
+
 type Props = {
   name: string;
+  path: string;
+
   onProviderPropsLoaded: (props: DataAppMetabaseProviderProps) => void;
 };
 
-export function DataAppEmbedContent({ name, onProviderPropsLoaded }: Props) {
+export function DataAppEmbedContent({
+  name,
+  path,
+  onProviderPropsLoaded,
+}: Props) {
   const loginStatus = useSdkSelector(getLoginStatus);
 
   if (loginStatus.status === "error") {
@@ -32,13 +40,20 @@ export function DataAppEmbedContent({ name, onProviderPropsLoaded }: Props) {
   return (
     <DataAppEmbedAuthenticatedView
       name={name}
+      path={path}
       onProviderPropsLoaded={onProviderPropsLoaded}
     />
   );
 }
 
-function DataAppEmbedAuthenticatedView({ name, onProviderPropsLoaded }: Props) {
+function DataAppEmbedAuthenticatedView({
+  name,
+  path,
+  onProviderPropsLoaded,
+}: Props) {
   const { data, failed, error } = useDataAppBundle(name, { embedded: true });
+
+  useDataAppPathNavigation({ name, path });
 
   useEffect(() => {
     if (data) {
