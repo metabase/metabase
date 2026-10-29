@@ -572,9 +572,6 @@
     "test"
     "enterprise/backend/src"
     "enterprise/backend/test"
-    ;; The rest of dev/ is not lint-clean; the dbt metrics converter is, and its tests run in CI.
-    "dev/src/dev/dbt_import"
-    "dev/test/dev/dbt_import"
     "dev/test/metabase"
     "bin/build/src"
     "bin/build/test"

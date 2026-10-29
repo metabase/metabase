@@ -4426,6 +4426,30 @@
    :model-exports #{:model/SecurityAdvisory}
    :model-imports #{:model/User}}
 
+  enterprise/semantic-layer-import
+  {:team "Querying Platform"
+   :api  #{metabase-enterprise.semantic-layer-import.core}
+   :uses #{driver
+           lib
+           lib.metadata
+           lib.metric
+           lib.schema
+           metrics
+           models
+           sql-tools
+           sql-tools.parsing
+           util
+           warehouse-schema-overlay
+           enterprise/serialization}
+   :model-imports #{:model/Card
+                    :model/Collection
+                    :model/Field
+                    :model/Table}}
+
+  enterprise/semantic-layer-import.dbt
+  {:api  #{}
+   :uses #{util enterprise/semantic-layer-import}}
+
   enterprise/serialization
   {:team "Graphy"
    :api  #{metabase-enterprise.serialization.api

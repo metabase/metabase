@@ -169,6 +169,7 @@ backend_specs: &backend_specs
   - "test/**"
   - "dev/test/**"
   - "enterprise/backend/test/**"
+  - "enterprise/backend/test_resources/**"
   - "test_modules/**"
   - "modules/drivers/*/test/**"
   - "test_config/**"
@@ -199,8 +200,6 @@ project_tests_infra: &project_tests_infra
 project_backend_checks:
   - *project_tests_infra
   - "{src,test,enterprise,dev,bin,mage}/**/*.{clj,cljc,cljs}"
-  # Fixtures of the dbt-import tests, which the backend suite runs.
-  - "dev/resources/dbt_import/**"
   - "modules/**/*.clj"
   - "modules/**/*.cljc"
   - "modules/**/*.cljs"

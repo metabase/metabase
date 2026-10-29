@@ -49,21 +49,7 @@
                       metabase.core.kondo-ratchet-test
                       metabase.core.kondo-ratchet-check-test
                       metabase.core.namespace-uniqueness-test
-                      metabase.core.table-or-field-raw-usage-test
-                      dev.dbt-import.parse-test
-                      dev.dbt-import.inline-spec-test
-                      dev.dbt-import.resolve-test
-                      dev.dbt-import.advanced-metrics-test
-                      dev.dbt-import.dimensions-test
-                      dev.dbt-import.emit-test
-                      dev.dbt-import.core-test
-                      dev.dbt-import.fixture-test
-                      dev.dbt-import.marts-test
-                      dev.dbt-import.sql-test
-                      dev.dbt-import.adapter-test
-                      dev.dbt-import.preflight-test
-                      dev.dbt-import.identifiers-test
-                      dev.dbt-import.generative-test])]]
+                      metabase.core.table-or-field-raw-usage-test])]]
              calls)))
     (testing "the failed suite is reported"
       (is (= ["migrations"] failed))
@@ -109,13 +95,6 @@
     (is (= [["clojure" "-X:dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:ci" ":only"
              "[dev.modules-config-test metabase.core.module-cycles-test metabase.core.modules-test]"]]
            (:calls (run-suites! [] ["modules"])))))
-  (testing "dbt-import runs only the converter's namespaces, without the Postgres-only e2e test"
-    (let [[[_ aliases _ namespaces]] (:calls (run-suites! [] ["dbt-import"]))
-          namespaces                  (read-string namespaces)]
-      (is (= "-X:dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:ci" aliases))
-      (is (= 14 (count namespaces)))
-      (is (every? #(str/starts-with? (str %) "dev.dbt-import.") namespaces))
-      (is (not (contains? (set namespaces) 'dev.dbt-import.e2e-test)))))
   (testing "ratchets checks the repository's policy file"
     (is (= [["./bin/mage" "kondo-ratchets"]]
            (:calls (run-suites! [] ["ratchets"]))))))

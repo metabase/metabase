@@ -23,31 +23,11 @@
 (def ^:private source-layout-check-namespaces
   '[metabase.core.namespace-uniqueness-test])
 
-(def ^:private dbt-import-check-namespaces
-  ;; The dbt metrics converter under dev/src/dev/dbt_import/. Its tests live in dev/test, which the backend test
-  ;; matrix never scans ([[metabase.test-runner]] only looks for `metabase.*` namespaces), so they run here.
-  ;; `dev.dbt-import.e2e-test` is left out: it needs a Postgres warehouse and passes with no assertions without one.
-  '[dev.dbt-import.parse-test
-    dev.dbt-import.inline-spec-test
-    dev.dbt-import.resolve-test
-    dev.dbt-import.advanced-metrics-test
-    dev.dbt-import.dimensions-test
-    dev.dbt-import.emit-test
-    dev.dbt-import.core-test
-    dev.dbt-import.fixture-test
-    dev.dbt-import.marts-test
-    dev.dbt-import.sql-test
-    dev.dbt-import.adapter-test
-    dev.dbt-import.preflight-test
-    dev.dbt-import.identifiers-test
-    dev.dbt-import.generative-test])
-
 (def ^:private backend-check-namespaces
   (vec (concat module-check-namespaces
                ratchet-test-namespaces
                source-layout-check-namespaces
-               honey-sql-check-namespaces
-               dbt-import-check-namespaces)))
+               honey-sql-check-namespaces)))
 
 (def ^:private default-suites
   "Suites the bare `project-tests` command runs, in order."
@@ -72,7 +52,6 @@
 
 (def ^:private suite-labels
   {"backend"    "backend checks"
-   "dbt-import" "dbt-import checks"
    "migrations" "migration checks"
    "modules"    "module checks"
    "ratchets"   "ratchet checks"})
@@ -85,7 +64,6 @@
   (try
     (:exit (case suite
              "backend"    (run-clojure-checks! sh backend-check-namespaces)
-             "dbt-import" (run-clojure-checks! sh dbt-import-check-namespaces)
              "migrations" (run-migration-checks! sh)
              "modules"    (run-clojure-checks! sh module-check-namespaces)
              "ratchets"   (run-ratchet-checks! sh)))
