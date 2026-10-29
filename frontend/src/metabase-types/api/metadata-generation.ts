@@ -141,7 +141,7 @@ export type MetadataGenerationProposal = {
  * accepts its proposal. `proposed_values` gives the proposed value the client saw: a proposal that a run changed
  * since is skipped as `changed`. `sources` gives the source the client saw: an unedited proposal that is over a human
  * value now, with a source other than `human` here, is skipped as `changed`. `reject_all` deletes every pending
- * proposal of the database.
+ * proposal of the visible fields of the visible tables of the database.
  */
 export type ApplyMetadataGenerationProposalsRequest = {
   accept?: MetadataGenerationProposalId[];
