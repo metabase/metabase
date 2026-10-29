@@ -433,7 +433,7 @@
       (fail! :unpatchable-key {:key (name k), :use-op (get patch-rejected-keys k)})
 
       (not (contains? patchable-keys k))
-      (fail! :unknown-patch-key {:key (if (keyword? k) (name k) (pr-str k))})))
+      (fail! :unknown-patch-key {:key (if (or (keyword? k) (string? k)) (name k) (pr-str k))})))
   (update-row state :dashcards dashcard_id
               (fn [dc]
                 (cond-> (merge dc (dissoc patch :visualization_settings))
@@ -750,14 +750,23 @@
   (when (= :card (some-> (:values_source_type parameter) keyword))
     (get-in parameter [:values_source_config :card_id])))
 
-(defn card-refs
-  "The ids of the cards `op`, an op from [[prepare-ops]], may need a row for.
-   Those are the cards it puts on the dashboard, and the source card in a parameter config it sends.
-   The caller resolves these into the `cards` map for [[compile-ops]], which rejects any it needs and left out."
-  [op]
-  (concat (placed-card-ids op)
-          (when (contains? parameter-ops (:op op))
-            (some-> (get-in op [:values_source_config :card_id]) vector))))
+(defn referenced-card-ids
+  "The ids of the cards [[compile-ops]] may need a row for when applying `ops`, ops from [[prepare-ops]], to `dash`.
+   Those are the cards on its dashcards and the cards the ops put on it.
+   They also include the card in each config a parameter op sends or touches, since the op may make it the source.
+   The caller resolves these into the `cards` map, leaving out the ones its user cannot read."
+  [dash ops]
+  (let [id->parameter (into {} (map (juxt :id identity)) (:parameters dash))
+        op-card-ids   (fn [op]
+                        (concat (placed-card-ids op)
+                                (when (contains? parameter-ops (:op op))
+                                  (for [p     [op (id->parameter (:parameter_id op))]
+                                        :let  [card-id (get-in p [:values_source_config :card_id])]
+                                        :when card-id]
+                                    card-id))))]
+    (-> (set (keep :card_id (:dashcards dash)))
+        (into (mapcat op-card-ids) ops)
+        (disj nil))))
 
 (defn- dashboard-card-ids
   "The ids of every card `dash` references: on its dashcards, in their series, and as a parameter's card source.
@@ -811,12 +820,20 @@
 
 (defn prepare-ops
   "The ops, each checked against [[dashboard-op-schema/op-schema]] and then stripped of null values.
+   A nil `ops` means none, and prepares to an empty vector.
    Throws `:invalid-op` when `ops` is not a sequence, or for the first op that breaks the schema.
-   Run it before anything reads the ops, such as [[card-refs]]."
+   Run it before anything reads the ops, such as [[referenced-card-ids]].
+   Ops it has already prepared come back as they are, so calling it again costs nothing."
   [ops]
-  (when-not (sequential? ops)
-    (fail! :invalid-op {:explanation ["ops must be a list"]}))
-  (into [] (map-indexed prepared-op) ops))
+  (cond
+    (::prepared (meta ops))
+    ops
+
+    (or (nil? ops) (sequential? ops))
+    (with-meta (into [] (map-indexed prepared-op) ops) {::prepared true})
+
+    :else
+    (fail! :invalid-op {:explanation ["ops must be a list"]})))
 
 (defn- apply-op-at
   "Runs [[apply-op]] on `op`, the op at `idx`, then checks that the cards it references are resolved."
@@ -831,9 +848,7 @@
    New rows carry the caller's negative ids.
    It runs the ops through [[prepare-ops]] before applying any, so it also takes ops that have not been through it.
    The `cards` map holds the row of each card the ops may touch, keyed by id.
-   It covers the cards [[card-refs]] finds in `ops` and the cards already on the dashboard.
-   Those include the source cards of the dashboard's parameters.
-   It leaves out cards the user cannot read.
+   It covers the cards [[referenced-card-ids]] finds, leaving out the ones the user cannot read.
    A card the dashboard already references needs no row, as the save leaves stored references alone.
    This namespace does no I/O, so the caller resolves them.
    Throws an error from [[errors]] on the first invalid op; read it with [[error-data]]."

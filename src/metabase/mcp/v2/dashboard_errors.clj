@@ -14,7 +14,9 @@
 (def ^:private details
   "For each error code in [[dashboard-ops/errors]], a function from the error data to the message explaining it.
    The message has no op prefix."
-  {:invalid-op
+  {;; MCP's registry checks the same op schema first, so MCP's own calls never reach this. It is worded for any
+   ;; caller of the toolkit that skips that check, and because every code needs a wording.
+   :invalid-op
    (fn [{:keys [explanation]}]
      (message/msg ["invalid op: %s — see the tool description for each op's arguments."]
                   (common/humanize-detail explanation)))

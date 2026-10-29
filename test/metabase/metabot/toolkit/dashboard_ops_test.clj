@@ -24,7 +24,7 @@
 (defn- resolved-cards
   "A bare card row for each card `ops` name, as a caller that can read them all resolves them."
   [ops]
-  (u/for-map [id (mapcat dashboard-ops/card-refs ops)] [id {:id id}]))
+  (u/for-map [id (dashboard-ops/referenced-card-ids nil ops)] [id {:id id}]))
 
 (defn- compile-with-stub-cards
   "Runs [[dashboard-ops/compile-ops]] with every card `ops` name resolved.
@@ -151,17 +151,41 @@
                       [{:op "move_parameter" :parameter_id "p1" :index nil :dashcard_id nil}])))))
 
 (deftest ^:parallel prepare-ops-test
-  (testing "prepare-ops checks the ops before anything reads them, so card-refs never sees a malformed one"
+  (testing "prepare-ops checks the ops before anything reads them, so referenced-card-ids sees only valid ones"
     (is (=? {::dashboard-ops/error :invalid-op, :op-index 0, :explanation #(contains? % :series)}
-            (try (doall (mapcat dashboard-ops/card-refs
-                                (dashboard-ops/prepare-ops [{:op "add_card" :id -1 :card_id 1 :series 5}])))
+            (try (dashboard-ops/referenced-card-ids
+                  nil (dashboard-ops/prepare-ops [{:op "add_card" :id -1 :card_id 1 :series 5}]))
                  (catch clojure.lang.ExceptionInfo e (dashboard-ops/error-data e))))))
   (testing "ops that are not a list are rejected"
     (is (=? {::dashboard-ops/error :invalid-op}
             (op-error empty-dash 5 {}))))
   (testing "a prepared op has no null-valued keys"
     (is (= [{:op "move" :dashcard_id 7}]
-           (dashboard-ops/prepare-ops [{:op "move" :dashcard_id 7 :tab nil :position nil}])))))
+           (dashboard-ops/prepare-ops [{:op "move" :dashcard_id 7 :tab nil :position nil}]))))
+  (testing "nil means no ops, and ops it already prepared come back as they are"
+    (is (= [] (dashboard-ops/prepare-ops nil)))
+    (let [ops (dashboard-ops/prepare-ops [{:op "remove" :dashcard_id 7}])]
+      (is (identical? ops (dashboard-ops/prepare-ops ops))))))
+
+(deftest ^:parallel referenced-card-ids-test
+  (testing "the cards a compile may need: on the dashcards, placed by the ops, and in configs a parameter op touches"
+    (let [dash {:dashcards  [{:id 7 :card_id 9} {:id 8}]
+                :parameters [{:id "p1" :values_source_type "static-list" :values_source_config {:card_id 45}}
+                             {:id "p2" :values_source_type "card" :values_source_config {:card_id 46}}]}]
+      (is (= #{9 42 43 45 47}
+             (dashboard-ops/referenced-card-ids
+              dash
+              (dashboard-ops/prepare-ops [{:op "add_card" :id -1 :card_id 42 :series [43]}
+                                          {:op "update_parameter" :parameter_id "p1" :values_source_type "card"}
+                                          {:op                   "add_parameter"
+                                           :parameter_id         "p3"
+                                           :name                 "P3"
+                                           :values_source_type   "card"
+                                           :values_source_config {:card_id 47}}]))))
+      (testing "and nothing from a parameter no op touches"
+        (is (= #{9}
+               (dashboard-ops/referenced-card-ids
+                dash (dashboard-ops/prepare-ops [{:op "remove" :dashcard_id 7}]))))))))
 
 (deftest ^:parallel every-schema-op-has-a-method-test
   (testing "the op schema and the compiler name the same ops"
@@ -478,7 +502,11 @@
   (testing "a key that is not a keyword is rejected too, rather than crashing"
     (is (=? {::dashboard-ops/error :unknown-patch-key, :key "5"}
             (op-error (dash-with [a-dashcard])
-                      [{:op "patch_dashcard" :dashcard_id 7 :patch {5 "x"}}])))))
+                      [{:op "patch_dashcard" :dashcard_id 7 :patch {5 "x"}}]))))
+  (testing "a string key is named as it is, not quoted twice"
+    (is (=? {::dashboard-ops/error :unknown-patch-key, :key "foo"}
+            (op-error (dash-with [a-dashcard])
+                      [{:op "patch_dashcard" :dashcard_id 7 :patch {"foo" "x"}}])))))
 
 (deftest ops-apply-in-order-test
   (testing "GHY-4147: a later op sees the effect of an earlier one — add then move the same new card"

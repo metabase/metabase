@@ -19,7 +19,7 @@
   "The teaching error text MCP returns for `ops` against `current` and `cards`, or nil when they compile.
    It defaults `cards` to a stub row for every card `ops` name."
   ([current ops]
-   (error-text current ops (u/for-map [id (mapcat dashboard-ops/card-refs ops)] [id {:id id}])))
+   (error-text current ops (u/for-map [id (dashboard-ops/referenced-card-ids nil ops)] [id {:id id}])))
   ([current ops cards]
    (try
      (dashboard-errors/do-with-teaching-errors #(dashboard-ops/compile-ops current ops cards))
