@@ -196,6 +196,34 @@ describe("Tooltip", () => {
     expect(firstTooltip).not.toHaveAttribute("data-replaced");
   });
 
+  it("keeps showing a brought-back tooltip while it fades out", async () => {
+    const { user } = setupNeighbouringTargets();
+
+    await user.tab();
+    const firstTooltip = await screen.findByRole("tooltip", {
+      name: "First tooltip",
+    });
+
+    const secondTarget = screen.getByRole("button", { name: "Second" });
+    await user.hover(secondTarget);
+    const secondTooltip = await screen.findByRole("tooltip", {
+      name: "Second tooltip",
+    });
+    await user.unhover(secondTarget);
+    await waitFor(() => {
+      expect(firstTooltip).not.toHaveAttribute("data-replaced");
+    });
+
+    // Close the first tooltip while the second is still fading out.
+    await user.click(screen.getByText("Elsewhere"));
+    await waitFor(() => {
+      expect(firstTooltip).not.toHaveAttribute("data-hoverable");
+    });
+    expect(secondTooltip).toBeInTheDocument();
+    expect(secondTooltip).toHaveAttribute("data-replaced");
+    expect(firstTooltip).not.toHaveAttribute("data-replaced");
+  });
+
   it("fades in the next tooltip as usual after a shown one is removed", async () => {
     const { user, removeFirstTarget } = setupNeighbouringTargets();
 

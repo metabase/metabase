@@ -9,14 +9,14 @@ import {
 
 type TooltipPhase = "closed" | "entering" | "open" | "exiting";
 
-type ShownTooltip = { id: string; isExiting: boolean };
-
 /**
- * In the order they appeared, so closing a tooltip reveals the one it replaced.
- * Multiple tooltips can be "active" at the same time if e.g. one is hovered
- * and another is focused.
+ * Uncontrolled tooltips that are open, oldest first, so closing one reveals
+ * the one it replaced. Several can be open at once if e.g. one is hovered and
+ * another is focused.
  */
-let shownTooltips: ShownTooltip[] = [];
+let openTooltipIds: string[] = [];
+/** The tooltip fading out, which shows only while no other tooltip is open. */
+let fadingOutTooltipId: string | null = null;
 const listeners = new Set<() => void>();
 
 /**
@@ -34,7 +34,7 @@ export function useTooltipVisibility(
   const isShown = phase !== "closed";
   const isReplaced = useSyncExternalStore(
     subscribe,
-    () => !isControlled && isShown && isOtherTooltipActive(id),
+    () => !isControlled && isShown && isOtherTooltipVisible(id),
   );
 
   // A tooltip removed while it's showing never reaches `onExited`.
@@ -46,7 +46,7 @@ export function useTooltipVisibility(
       onEnter: () => {
         setPhase("entering");
         if (!isControlled) {
-          setIsReplacing(isOtherTooltipActive(id));
+          setIsReplacing(isOtherTooltipVisible(id));
           showTooltip(id);
         }
         transitionProps?.onEnter?.();
@@ -77,41 +77,51 @@ export function useTooltipVisibility(
   };
 }
 
-// The newest tooltip that isn't closing, or the newest closing one if they all are.
-function isOtherTooltipActive(id: string) {
-  const activeTooltip =
-    shownTooltips.findLast(({ isExiting }) => !isExiting) ??
-    shownTooltips.at(-1);
-  return activeTooltip !== undefined && activeTooltip.id !== id;
+function isOtherTooltipVisible(id: string) {
+  const visibleTooltipId = openTooltipIds.at(-1) ?? fadingOutTooltipId;
+  return visibleTooltipId !== null && visibleTooltipId !== id;
 }
 
-function setShownTooltips(nextShownTooltips: ShownTooltip[]) {
-  shownTooltips = nextShownTooltips;
+function setTooltips(
+  nextOpenTooltipIds: string[],
+  nextFadingOutTooltipId: string | null,
+) {
+  openTooltipIds = nextOpenTooltipIds;
+  fadingOutTooltipId = nextFadingOutTooltipId;
   listeners.forEach((listener) => listener());
 }
 
 function showTooltip(id: string) {
-  setShownTooltips([...withoutTooltip(id), { id, isExiting: false }]);
+  setTooltips(
+    [...withoutTooltip(id), id],
+    fadingOutTooltipId === id ? null : fadingOutTooltipId,
+  );
 }
 
 function exitTooltip(id: string) {
-  if (shownTooltips.some((tooltip) => tooltip.id === id)) {
-    setShownTooltips(
-      shownTooltips.map((tooltip) =>
-        tooltip.id === id ? { ...tooltip, isExiting: true } : tooltip,
-      ),
+  if (openTooltipIds.includes(id)) {
+    const remainingTooltipIds = withoutTooltip(id);
+    // Only the last open tooltip fades out. Closing any other one reveals a
+    // tooltip that's still open, so it hides at once instead.
+    const isLastOpenTooltip = remainingTooltipIds.length === 0;
+    setTooltips(
+      remainingTooltipIds,
+      isLastOpenTooltip ? id : fadingOutTooltipId,
     );
   }
 }
 
 function releaseTooltip(id: string) {
-  if (shownTooltips.some((tooltip) => tooltip.id === id)) {
-    setShownTooltips(withoutTooltip(id));
+  if (openTooltipIds.includes(id) || fadingOutTooltipId === id) {
+    setTooltips(
+      withoutTooltip(id),
+      fadingOutTooltipId === id ? null : fadingOutTooltipId,
+    );
   }
 }
 
 function withoutTooltip(id: string) {
-  return shownTooltips.filter((tooltip) => tooltip.id !== id);
+  return openTooltipIds.filter((openTooltipId) => openTooltipId !== id);
 }
 
 function subscribe(listener: () => void) {
