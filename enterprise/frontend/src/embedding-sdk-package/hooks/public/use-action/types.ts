@@ -155,6 +155,19 @@ export type ActionParameterSchema = {
 };
 
 /**
+ * What a table action does, as a data app typed schema gives it in `implicitKind`.
+ *
+ * @category useAction
+ */
+export type ActionImplicitKind =
+  | "row/create"
+  | "row/update"
+  | "row/delete"
+  | "bulk/create"
+  | "bulk/update"
+  | "bulk/delete";
+
+/**
  * Shape of a single action entry in a data app typed schema.
  * The entry is what `defineAction` wraps; `parameters` drives
  * `ActionParametersFromDataAppSchema`, and `type` and `implicitKind` drive
@@ -167,7 +180,7 @@ export type ActionSchema = {
   id: number | string;
   name?: string;
   type?: "query" | "implicit";
-  implicitKind?: string;
+  implicitKind?: ActionImplicitKind;
   parameters: readonly ActionParameterSchema[];
   description?: string;
   entityId?: string;
@@ -223,20 +236,18 @@ export type ActionKindFromDataAppSchema<TAction> = TAction extends {
   type: "query";
 }
   ? "sql"
-  : TAction extends { implicitKind: infer TImplicitKind }
-    ? ImplicitActionKindToActionKind<TImplicitKind>
+  : TAction extends { implicitKind: ActionImplicitKind }
+    ? ActionKindByImplicitKind[TAction["implicitKind"]]
     : ActionKind;
 
-type ImplicitActionKindToActionKind<TImplicitKind> =
-  TImplicitKind extends "row/create"
-    ? "create"
-    : TImplicitKind extends "row/update"
-      ? "update"
-      : TImplicitKind extends "row/delete"
-        ? "delete"
-        : TImplicitKind extends `bulk/${string}`
-          ? "bulk"
-          : ActionKind;
+type ActionKindByImplicitKind = {
+  "row/create": "create";
+  "row/update": "update";
+  "row/delete": "delete";
+  "bulk/create": "bulk";
+  "bulk/update": "bulk";
+  "bulk/delete": "bulk";
+};
 
 /**
  * @interface

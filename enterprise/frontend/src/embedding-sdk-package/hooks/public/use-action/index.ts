@@ -1,6 +1,7 @@
 export { useAction, useDataAppAction } from "./use-action";
 export type {
   ActionExecuteError,
+  ActionImplicitKind,
   ActionKind,
   ActionKindFromDataAppSchema,
   ActionParameterSchema,
