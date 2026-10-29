@@ -154,7 +154,7 @@ describe("Data Studio data apps route", () => {
     });
 
     expect(
-      await screen.findByRole("heading", { name: "Build custom data apps" }),
+      await screen.findByRole("heading", { name: "Build data apps" }),
     ).toBeInTheDocument();
   });
 });
