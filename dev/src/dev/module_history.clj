@@ -554,12 +554,13 @@
 (defn- config-commits
   "Commits of `ref` since `date` that changed the module config.
   Before [[modules-config-path]] existed that is a change to [[legacy-config-path]], which is followed only
-  up to the commit that moved the config out of it, or to `ref` when `ref` predates that commit."
+  up to the commit that moved the config out of it, or to `ref` when `ref` predates that commit.
+  The walk starts from that commit, which is itself a config change: [[sample-commits]] removes the duplicate."
   [ref date]
   (let [introduced (last (str/split-lines (git! ["log" "--first-parent" "--diff-filter=A" "--format=%H" ref
                                                  "--" modules-config-path])))]
     (concat (commits-since ref date [modules-config-path])
-            (commits-since (if (str/blank? introduced) ref (str introduced "^")) date [legacy-config-path]))))
+            (commits-since (if (str/blank? introduced) ref introduced) date [legacy-config-path]))))
 
 (defn- last-commit-before
   "The last first-parent commit of `ref` before each of `dates`."
@@ -573,6 +574,14 @@
   (let [today (LocalDate/now ZoneOffset/UTC)]
     (take-while #(not (.isAfter ^LocalDate % today)) (iterate step start))))
 
+(defn require-full-history!
+  "Throw when the repo is a shallow clone. Its history stops at the clone's boundary, so a sample taken there would
+  miss commits, or start from the wrong one, without saying so."
+  []
+  (when (= "true" (str/trim (git! ["rev-parse" "--is-shallow-repository"])))
+    (throw (ex-info "Sampling needs the full git history, but this is a shallow clone: run `git fetch --unshallow`"
+                    {}))))
+
 (defn sample-commits
   "Commits to measure on the first-parent history of `ref` (default `origin/master`), oldest first:
 
@@ -583,6 +592,7 @@
 
   Dates are days in UTC."
   [{:keys [ref since backend-since weekly-since monthly-since extra], :or {ref "origin/master"}}]
+  (require-full-history!)
   (let [changed  (concat (when since (config-commits ref since))
                          (when backend-since (concat (commits-since ref backend-since source-pathspecs)
                                                      (config-commits ref backend-since))))
