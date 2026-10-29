@@ -16,6 +16,17 @@ import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
 // Let embedded children detect that their parent is a Metabase instance.
 window.METABASE = true;
 
+// PROTOTYPE: Useberry usability-test tracking, main app only (public and embed
+// entries don't import this file). The script is a verbatim copy of
+// https://api.useberry.com/integrations/liveUrl/scripts/useberryScript.js,
+// served from our own origin because the main document's CSP `script-src` has
+// no nonce and doesn't allow that host. It watches the DOM for URL changes, so
+// one load covers every client-side route.
+const useberryScript = document.createElement("script");
+useberryScript.type = "text/javascript";
+useberryScript.src = "app/useberryScript.js";
+document.head.appendChild(useberryScript);
+
 // If any of these receives a 403, we should display the "not authorized" page.
 const NOT_AUTHORIZED_TRIGGERS = [
   /\/api\/dashboard\/\d+$/,
