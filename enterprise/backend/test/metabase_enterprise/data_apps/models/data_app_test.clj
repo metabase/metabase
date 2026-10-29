@@ -19,20 +19,20 @@
 
 (deftest bundle-hash-follows-the-bundle-test
   (mt/with-temp [:model/DataApp {id :id} {:bundle bundle-bytes}]
-    (let [hash #(t2/select-one-fn :bundle_hash :model/DataApp id)
+    (let [hash #(t2/select-one-fn :bundle_hash :model/DataApp :id id)
           v1   (hash)]
       (is (= 64 (count v1)) "the insert computes the hash from the bundle")
-      (t2/update! :model/DataApp id {:display_name "Renamed"})
+      (t2/update! :model/DataApp :id id {:display_name "Renamed"})
       (is (= v1 (hash)) "a change that leaves the bundle alone keeps its hash")
-      (t2/update! :model/DataApp id {:display_name "Renamed"})
+      (t2/update! :model/DataApp :id id {:display_name "Renamed"})
       (is (= v1 (hash)) "an update that changes nothing is a no-op")
-      (t2/update! :model/DataApp id {:bundle (.getBytes "OTHER" "UTF-8")})
+      (t2/update! :model/DataApp :id id {:bundle (.getBytes "OTHER" "UTF-8")})
       (is (not= v1 (hash)))
-      (t2/update! :model/DataApp id {:bundle nil})
+      (t2/update! :model/DataApp :id id {:bundle nil})
       (is (nil? (hash)))
       (testing "the hash is never written directly"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"bundle hash is computed from its bundle"
-                              (t2/update! :model/DataApp id {:bundle_hash "stale"})))))))
+                              (t2/update! :model/DataApp :id id {:bundle_hash "stale"})))))))
 
 (deftest insert-requires-resource-collection-test
   (testing "the API creates an app's collection, so an insert without one is refused"
@@ -44,29 +44,29 @@
   (mt/with-temp [:model/Collection {other-id :id} {:name "Other" :namespace :data-apps}
                  :model/DataApp    {id :id collection-id :resource_collection_id} {}]
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"resource collection cannot be changed"
-                          (t2/update! :model/DataApp id {:resource_collection_id other-id})))
+                          (t2/update! :model/DataApp :id id {:resource_collection_id other-id})))
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"resource collection cannot be changed"
-                          (t2/update! :model/DataApp id {:resource_collection_id nil})))
-    (is (= collection-id (t2/select-one-fn :resource_collection_id :model/DataApp id)))
+                          (t2/update! :model/DataApp :id id {:resource_collection_id nil})))
+    (is (= collection-id (t2/select-one-fn :resource_collection_id :model/DataApp :id id)))
     (testing "an update that names the same collection is not a change"
-      (t2/update! :model/DataApp id {:resource_collection_id collection-id :display_name "Renamed"})
-      (is (= "Renamed" (t2/select-one-fn :display_name :model/DataApp id))))))
+      (t2/update! :model/DataApp :id id {:resource_collection_id collection-id :display_name "Renamed"})
+      (is (= "Renamed" (t2/select-one-fn :display_name :model/DataApp :id id))))))
 
 (deftest app-without-collection-can-be-given-one-test
   (mt/with-temp [:model/DataApp    {id :id collection-id :resource_collection_id} {}
                  :model/DataApp    {taken-id :resource_collection_id} {}
                  :model/Collection {other-id :id} {:namespace :data-apps}]
-    (t2/delete! :model/Collection collection-id)
-    (is (nil? (t2/select-one-fn :resource_collection_id :model/DataApp id)))
+    (t2/delete! :model/Collection :id collection-id)
+    (is (nil? (t2/select-one-fn :resource_collection_id :model/DataApp :id id)))
     (testing "another app's collection is refused"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"already belongs to another data app"
-                            (t2/update! :model/DataApp id {:resource_collection_id taken-id}))))
-    (t2/update! :model/DataApp id {:resource_collection_id other-id})
-    (is (= other-id (t2/select-one-fn :resource_collection_id :model/DataApp id)))))
+                            (t2/update! :model/DataApp :id id {:resource_collection_id taken-id}))))
+    (t2/update! :model/DataApp :id id {:resource_collection_id other-id})
+    (is (= other-id (t2/select-one-fn :resource_collection_id :model/DataApp :id id)))))
 
 (deftest delete-removes-the-resource-collection-the-app-owns-test
   (mt/with-temp [:model/DataApp {id :id collection-id :resource_collection_id} {}]
-    (t2/delete! :model/DataApp id)
+    (t2/delete! :model/DataApp :id id)
     (is (not (t2/exists? :model/Collection :id collection-id)))))
 
 (deftest writes-are-normalized-and-validated-against-the-schema-test
@@ -74,11 +74,11 @@
                                           :bundle_path   "./dist/index.js"
                                           :allowed_hosts ["https://API.example.com/"]}]
     (is (=? {:display_name "M" :bundle_path "dist/index.js" :version 1 :allowed_hosts ["https://api.example.com"]}
-            (t2/select-one :model/DataApp id)))
+            (t2/select-one :model/DataApp :id id)))
     (testing "an update with an invalid column is refused"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"does not match schema"
-                            (t2/update! :model/DataApp id {:bundle_path "../escape.js"})))
-      (is (= "dist/index.js" (t2/select-one-fn :bundle_path :model/DataApp id)))))
+                            (t2/update! :model/DataApp :id id {:bundle_path "../escape.js"})))
+      (is (= "dist/index.js" (t2/select-one-fn :bundle_path :model/DataApp :id id)))))
   (testing "an insert without a required manifest column is refused"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"does not match schema"
                           (t2/insert! :model/DataApp {:name "x" :bundle_path "i.js"}))))
@@ -88,7 +88,7 @@
 
 (deftest to-json-never-includes-the-bundle-bytes-test
   (mt/with-temp [:model/DataApp {id :id} {:display_name "M" :bundle bundle-bytes}]
-    (let [app     (t2/select-one [:model/DataApp :bundle :display_name] id)
+    (let [app     (t2/select-one [:model/DataApp :bundle :display_name] :id id)
           decoded (json/decode (json/encode app))]
       (is (contains? app :bundle) "the instance selected with its bundle carries the raw bytes")
       (is (not (contains? decoded "bundle"))
@@ -99,7 +99,7 @@
   (mt/with-temp [:model/DataApp {id :id app-name :name} {:display_name  "M"
                                                          :bundle        bundle-bytes
                                                          :allowed_hosts ["https://api.example.com"]}]
-    (is (not (contains? (t2/select-one :model/DataApp id) :bundle)))
+    (is (not (contains? (t2/select-one :model/DataApp :id id) :bundle)))
     (is (= "BUNDLEBYTES" (String. ^bytes (data-apps.db/data-app-bundle id) "UTF-8")))
     (testing "data-app-by-slug returns metadata without the bundle blob"
       (let [app (data-apps.db/data-app-by-slug app-name)]
@@ -111,10 +111,10 @@
   (mt/with-temp [:model/DataApp {without-id :id} {}
                  :model/DataApp {with-id :id}    {:allowed_hosts ["https://a.com" "https://b.com"]}]
     (testing "a row stored with NULL allowed_hosts reads back as []"
-      (is (= [] (:allowed_hosts (t2/select-one :model/DataApp without-id)))))
+      (is (= [] (:allowed_hosts (t2/select-one :model/DataApp :id without-id)))))
     (testing "a stored list round-trips through the JSON transform"
       (is (= ["https://a.com" "https://b.com"]
-             (:allowed_hosts (t2/select-one :model/DataApp with-id)))))))
+             (:allowed_hosts (t2/select-one :model/DataApp :id with-id)))))))
 
 (deftest permissions-test
   (mt/with-temp [:model/DataApp {id :id} {}]

@@ -9,9 +9,9 @@
 (mu/defn card-exists?
   "Whether a Card with `id` exists."
   [id :- ::lib.schema.id/card]
-  (t2/exists? :model/Card id))
+  (t2/exists? :model/Card :id id))
 
 (mu/defn dashboard-exists?
   "Whether a Dashboard with `id` exists."
   [id :- ::lib.schema.id/dashboard]
-  (t2/exists? :model/Dashboard id))
+  (t2/exists? :model/Dashboard :id id))

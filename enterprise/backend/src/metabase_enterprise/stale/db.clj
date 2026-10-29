@@ -7,6 +7,11 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
+(mu/defn collection
+  "The Collection with `collection-id`, or nil."
+  [collection-id :- ::lib.schema.id/collection]
+  (t2/select-one :model/Collection :id [:auto/param collection-id]))
+
 (mu/defn collections-by-id
   "A map of ID to Collection for `collection-ids`."
   [collection-ids :- [:set ::lib.schema.id/collection]]

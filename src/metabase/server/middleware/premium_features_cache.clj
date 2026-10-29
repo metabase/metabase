@@ -1,14 +1,13 @@
 (ns metabase.server.middleware.premium-features-cache
   "Ring middleware to propagate premium-features cache invalidation across instances via a cookie.
   When one instance refreshes features (via POST /api/premium-features/token/refresh), it sets a cookie
-  with the current timestamp. Other instances see this cookie and drop their in-process token caches so
-  the next feature check re-validates against the shared DB cache, and only re-fetches from the MetaStore
-  if that shows the other instance really did get a different token status.
+  with the current timestamp. Other instances see this cookie and compare the status they hold with the shared hash
+  row in the app DB, refreshing their own token status from the MetaStore only when no status is held or the row
+  is missing or differs. A cookie therefore costs at most an app DB read unless another instance really has a newer status.
 
   The cookie is client-controlled and arrives on unauthenticated requests, so it is a hint, never an
   authority: it must parse as a timestamp, must not be in the future, must be newer than the last
-  invalidation this instance saw, and can only ever clear this instance's in-memory caches. It never deletes
-  the deployment's shared DB cache."
+  invalidation this instance saw, and can only ever trigger a refresh of this instance's own token status."
   (:require
    [metabase.premium-features.core :as premium-features]
    [metabase.util.log :as log]
@@ -31,7 +30,7 @@
 
 (def ^:private last-known-invalidation
   "The newest invalidation this instance has seen or emitted, as an `Instant`. Any cookie at or before it is ignored,
-  so a given cookie value can trigger a local clear at most once."
+  so a given cookie value can trigger a local refresh at most once."
   (atom nil))
 
 (defn- parse-cookie-timestamp
@@ -59,12 +58,12 @@
     (not= old new)))
 
 (defn- check-and-invalidate-features-cache
-  "If the request cookie carries a valid timestamp newer than the last invalidation this instance knows about, drop
-  this instance's in-process token caches. Never touches the shared DB cache."
+  "If the request cookie carries a valid timestamp newer than the last invalidation this instance knows about, have
+  this instance refresh its token status if it is out of date."
   [request]
   (when-let [cookie-timestamp (parse-cookie-timestamp (get-in request [:cookies cookie-name :value]))]
     (when (advance-last-known-invalidation! cookie-timestamp)
-      (log/info "Premium features cookie indicates local cache is out of date. Clearing...")
+      (log/info "Premium features cookie indicates the local token status may be out of date. Checking...")
       (premium-features/clear-local-cache!))))
 
 (defn- maybe-set-premium-features-cookie
@@ -82,10 +81,10 @@
     response))
 
 (defn wrap-premium-features-cache-check
-  "Middleware that checks if the local premium features cache needs to be invalidated based on a cookie.
+  "Middleware that checks if the local premium features token status needs a refresh based on a cookie.
 
   When premium features are refreshed on one instance, the API sets a cookie with the current timestamp.
-  This middleware checks that cookie on subsequent requests and clears the local cache if needed,
+  This middleware checks that cookie on subsequent requests and refreshes the local status if it is out of date,
   ensuring consistency in multi-instance deployments."
   [handler]
   (fn [request respond raise]

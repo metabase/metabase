@@ -1199,7 +1199,7 @@
         metadata (get-in results [:data :results_metadata :columns])]
     (is (seq metadata))
     (mt/with-test-user :crowberto
-      (t2/update! :model/Card card-id {:result_metadata metadata}))))
+      (t2/update! :model/Card :id card-id {:result_metadata metadata}))))
 
 (deftest native-fk-remapping-test
   (testing "FK remapping should still work for questions with native sandboxes (EE #520)"
@@ -1625,9 +1625,9 @@
                                               :model/Sandbox
                                               :group_id (:id &group)
                                               :table_id (mt/id :venues))]
-        (is (nil? (t2/select-one-fn :result_metadata :model/Card sandbox-card-id)))
+        (is (nil? (t2/select-one-fn :result_metadata :model/Card :id sandbox-card-id)))
         (is (= 10 (count (mt/rows (streaming.test-util/process-query-basic-streaming :api (mt/mbql-query venues))))))
-        (is (not (nil? (t2/select-one-fn :result_metadata :model/Card sandbox-card-id))))))))
+        (is (not (nil? (t2/select-one-fn :result_metadata :model/Card :id sandbox-card-id))))))))
 
 (deftest filter-by-column-sandboxing-test
   (mt/test-drivers (mt/normal-drivers)

@@ -9,7 +9,6 @@
    [metabase.lib-metric.metadata.provider :as lib-metric.provider]
    [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
-   [metabase.queries.db :as queries.db]
    [metabase.util.performance :as perf])
   (:import (java.util UUID)))
 
@@ -130,7 +129,7 @@
           (lib-metric.provider/database-provider-for-table mp table-id))
         (when-let [card-id (lib.util/source-card-id query-with-mp)]
           (when-let [{:keys [table_id database_id]}
-                     (queries.db/card card-id)]
+                     (lib-metric.db/card-table-and-database-id card-id)]
             (or (when table_id
                   (lib-metric.provider/database-provider-for-table mp table_id))
                 (when database_id

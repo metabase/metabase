@@ -80,7 +80,7 @@
 (defn- target-table-gen [prefix]
   {:type     :table
    :name     prefix
-   :schema   (t2/select-one-fn :schema :model/Table (mt/id :order_status))
+   :schema   (t2/select-one-fn :schema :model/Table :id (mt/id :order_status))
    :database (mt/id)})
 
 (defn- merge-source-query []
@@ -115,7 +115,7 @@
 (defn- insert-order-status!
   "Append `rows` (vectors of `[order-id status change-seq]`) to the source table."
   [rows]
-  (let [[schema table-name] (t2/select-one-fn (juxt :schema :name) :model/Table (mt/id :order_status))
+  (let [[schema table-name] (t2/select-one-fn (juxt :schema :name) :model/Table :id (mt/id :order_status))
         spec   (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
         values (str/join ", " (map (fn [[oid st sq]] (format "(%d, '%s', %d)" oid st sq)) rows))
         sql    (format "INSERT INTO %s (%s) VALUES %s"
@@ -150,7 +150,7 @@
                        (target-status-by-order target-table))))
               (testing "new events update existing keys in place and insert new ones"
                 (insert-order-status! [[1 "shipped" 4] [4 "created" 5]])
-                (transforms.execute/execute! (t2/select-one :model/Transform (:id transform))
+                (transforms.execute/execute! (t2/select-one :model/Transform :id (:id transform))
                                              {:run-method :manual})
                 (is (= {1 "shipped", 2 "created", 3 "created", 4 "created"}
                        (target-status-by-order target-table))
@@ -164,7 +164,7 @@
           (with-transform-cleanup! [target-table {:type     :table
                                                   :name     "merge_temporal"
                                                   :schema   (t2/select-one-fn :schema :model/Table
-                                                                              (mt/id :order_status_ts))
+                                                                              :id (mt/id :order_status_ts))
                                                   :database (mt/id)}]
             (let [q           (fn [f] (sql.u/quote-name driver/*driver* :field f))
                   ts-field-id (t2/select-one-pk :model/Field :name "changed_at"
@@ -191,7 +191,7 @@
                                                                                           :unique-key [{:name "order_id"}]}})}
                   insert!      (fn [rows]
                                  (let [[schema tbl] (t2/select-one-fn (juxt :schema :name) :model/Table
-                                                                      (mt/id :order_status_ts))
+                                                                      :id (mt/id :order_status_ts))
                                        spec         (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                                        values       (str/join ", " (map (fn [[oid st ts]]
                                                                           (format "(%d, '%s', '%s')" oid st ts))
@@ -217,7 +217,7 @@
                          (read-target))))
                 (testing "a second run with a temporal watermark upserts changed keys and inserts new ones"
                   (insert! [[1 "shipped" "2026-02-01T10:00:00"] [4 "created" "2026-02-02T10:00:00"]])
-                  (transforms.execute/execute! (t2/select-one :model/Transform (:id transform))
+                  (transforms.execute/execute! (t2/select-one :model/Transform :id (:id transform))
                                                {:run-method :manual})
                   (is (= {1 "shipped", 2 "created", 3 "created", 4 "created"}
                          (read-target))
@@ -234,7 +234,7 @@
                   "no field-id before the first run — the target table doesn't exist yet")
               (transforms.execute/execute! transform {:run-method :manual})
               (transforms.tu/wait-for-table (:name target-table) 10000)
-              (let [reloaded      (t2/select-one :model/Transform (:id transform))
+              (let [reloaded      (t2/select-one :model/Transform :id (:id transform))
                     unique-key    (-> reloaded :target :target-incremental-strategy :unique-key)
                     target-tbl-id (:target_table_id reloaded)
                     expected      (t2/select-one-pk :model/Field :name "order_id"
@@ -251,7 +251,7 @@
           (with-transform-cleanup! [target-table {:type     :table
                                                   :name     "merge_lookback"
                                                   :schema   (t2/select-one-fn :schema :model/Table
-                                                                              (mt/id :order_status_lb))
+                                                                              :id (mt/id :order_status_lb))
                                                   :database (mt/id)}]
             (let [q            (fn [f] (sql.u/quote-name driver/*driver* :field f))
                   ts-field-id  (t2/select-one-pk :model/Field :name "changed_at"
@@ -279,7 +279,7 @@
                                                                                           :unique-key [{:name "order_id"}]}})}
                   insert!      (fn [rows]
                                  (let [[schema tbl] (t2/select-one-fn (juxt :schema :name) :model/Table
-                                                                      (mt/id :order_status_lb))
+                                                                      :id (mt/id :order_status_lb))
                                        spec         (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                                        values       (str/join ", " (map (fn [[oid st ts]]
                                                                           (format "(%d, '%s', '%s')" oid st ts))
@@ -300,13 +300,13 @@
                                     :count    (count rows)}))
                   delete-order! (fn [order-id]
                                   (let [[schema tbl] (t2/select-one-fn (juxt :schema :name) :model/Table
-                                                                       (mt/id :order_status_lb))
+                                                                       :id (mt/id :order_status_lb))
                                         spec         (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                                         sql          (format "DELETE FROM %s WHERE %s = %d"
                                                              (sql.u/quote-name driver/*driver* :table schema tbl)
                                                              (q "order_id") order-id)]
                                     (driver/execute-raw-queries! driver/*driver* spec [[sql]])))
-                  watermark    (fn [id] (t2/select-one-fn :last_checkpoint_value :model/Transform id))]
+                  watermark    (fn [id] (t2/select-one-fn :last_checkpoint_value :model/Transform :id id))]
               (mt/with-temp [:model/Transform transform payload]
                 (testing "first run builds the full target and records the watermark"
                   (transforms.execute/execute! transform {:run-method :manual})
@@ -320,7 +320,7 @@
                   ;; inside the window; order 1's original row (01-30T10:00) is outside it.
                   (let [wm-before (watermark (:id transform))]
                     (insert! [[1 "shipped" "2026-01-31T00:00:00"] [4 "created" "2026-02-01T10:00:00"]])
-                    (transforms.execute/execute! (t2/select-one :model/Transform (:id transform))
+                    (transforms.execute/execute! (t2/select-one :model/Transform :id (:id transform))
                                                  {:run-method :manual})
                     (is (= {:by-order {1 "shipped", 2 "created", 3 "created", 4 "created"} :count 4}
                            (read-target))
@@ -332,7 +332,7 @@
                                (:checkpoint_lo_value run)))))))
                 (testing "a run with no new rows leaves the target and the watermark unchanged"
                   (let [before (watermark (:id transform))]
-                    (transforms.execute/execute! (t2/select-one :model/Transform (:id transform))
+                    (transforms.execute/execute! (t2/select-one :model/Transform :id (:id transform))
                                                  {:run-method :manual})
                     (is (= {:by-order {1 "shipped", 2 "created", 3 "created", 4 "created"} :count 4}
                            (read-target)))
@@ -345,7 +345,7 @@
                   ;; slide back (see get-source-range-params' `hi`).
                   (let [before (watermark (:id transform))]
                     (delete-order! 4)
-                    (transforms.execute/execute! (t2/select-one :model/Transform (:id transform))
+                    (transforms.execute/execute! (t2/select-one :model/Transform :id (:id transform))
                                                  {:run-method :manual})
                     (is (= before (watermark (:id transform)))
                         "the watermark must not regress when the max row disappears from the source")
@@ -361,11 +361,11 @@
           (with-transform-cleanup! [target-table {:type     :table
                                                   :name     "merge_lookback_unix"
                                                   :schema   (t2/select-one-fn :schema :model/Table
-                                                                              (mt/id :order_status_unix))
+                                                                              :id (mt/id :order_status_unix))
                                                   :database (mt/id)}]
             (let [q           (fn [f] (sql.u/quote-name driver/*driver* :field f))
                   ts-field-id (mt/id :order_status_unix :changed_at)
-                  _           (t2/update! :model/Field ts-field-id
+                  _           (t2/update! :model/Field :id ts-field-id
                                           {:coercion_strategy :Coercion/UNIXSeconds->DateTime
                                            :effective_type    :type/Instant})
                   payload     {:name               "Unix Timestamp Lookback Merge"
@@ -383,7 +383,7 @@
                                                                                          :unique-key [{:name "order_id"}]}})}
                   insert!     (fn [rows]
                                 (let [[schema tbl] (t2/select-one-fn (juxt :schema :name) :model/Table
-                                                                     (mt/id :order_status_unix))
+                                                                     :id (mt/id :order_status_unix))
                                       spec         (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                                       values       (str/join ", " (map (fn [[oid st ts]]
                                                                          (format "(%d, '%s', %d)" oid st ts))
@@ -408,7 +408,7 @@
                   (transforms.tu/wait-for-table (:name target-table) 10000)
                   (is (= {:by-order {1 "created", 2 "created", 3 "created"} :count 3}
                          (read-target)))
-                  (let [wm (t2/select-one-fn :last_checkpoint_value :model/Transform (:id transform))]
+                  (let [wm (t2/select-one-fn :last_checkpoint_value :model/Transform :id (:id transform))]
                     (is (re-find #"T" (str wm))
                         "the watermark encodes as a temporal value, not the raw epoch number")))
                 (testing "a late-arriving epoch inside the lookback window is upserted on rerun"
@@ -416,7 +416,7 @@
                   ;; epoch 1950000 is behind the watermark but inside the window; order 1's
                   ;; original row (1000000) is outside it.
                   (insert! [[1 "shipped" 2100000] [4 "created" 1950000]])
-                  (transforms.execute/execute! (t2/select-one :model/Transform (:id transform))
+                  (transforms.execute/execute! (t2/select-one :model/Transform :id (:id transform))
                                                {:run-method :manual})
                   (is (= {:by-order {1 "shipped", 2 "created", 3 "created", 4 "created"} :count 4}
                          (read-target))
@@ -430,7 +430,7 @@
           (with-transform-cleanup! [target-table {:type     :table
                                                   :name     "merge_composite"
                                                   :schema   (t2/select-one-fn :schema :model/Table
-                                                                              (mt/id :order_region_status))
+                                                                              :id (mt/id :order_region_status))
                                                   :database (mt/id)}]
             (let [q            (fn [f] (sql.u/quote-name driver/*driver* :field f))
                   seq-field-id (t2/select-one-pk :model/Field :name "change_seq"
@@ -458,7 +458,7 @@
                                                                                                        {:name "region"}]}})}
                   insert!      (fn [rows]
                                  (let [[schema tbl] (t2/select-one-fn (juxt :schema :name) :model/Table
-                                                                      (mt/id :order_region_status))
+                                                                      :id (mt/id :order_region_status))
                                        spec         (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                                        values       (str/join ", " (map (fn [[oid rg st sq]]
                                                                           (format "(%d, '%s', '%s', %d)" oid rg st sq))
@@ -484,7 +484,7 @@
                          (read-target))))
                 (testing "new events upsert one composite key and insert another"
                   (insert! [[1 "us" "shipped" 4] [3 "us" "created" 5]])
-                  (transforms.execute/execute! (t2/select-one :model/Transform (:id transform))
+                  (transforms.execute/execute! (t2/select-one :model/Transform :id (:id transform))
                                                {:run-method :manual})
                   (is (= {[1 "us"] "shipped", [1 "eu"] "created", [2 "us"] "created", [3 "us"] "created"}
                          (read-target))

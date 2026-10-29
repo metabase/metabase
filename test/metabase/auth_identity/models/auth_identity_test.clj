@@ -49,7 +49,7 @@
       (let [auth-identity (t2/select-one :model/AuthIdentity :user_id user-id :provider "password")
             auth-identity-id (:id auth-identity)
             new-password "new-password-456"]
-        (t2/update! :model/AuthIdentity auth-identity-id
+        (t2/update! :model/AuthIdentity :id auth-identity-id
                     {:credentials {:plaintext_password new-password}})
         (let [updated (t2/select-one :model/AuthIdentity :id auth-identity-id)
               {:keys [password_hash password_salt]} (:credentials updated)]
@@ -70,7 +70,7 @@
             auth-identity-id (:id auth-identity)
             original-hash (get-in auth-identity [:credentials :password_hash])
             original-salt (get-in auth-identity [:credentials :password_salt])]
-        (t2/update! :model/AuthIdentity auth-identity-id
+        (t2/update! :model/AuthIdentity :id auth-identity-id
                     {:metadata {:last_login "2024-01-01"}})
         (let [updated (t2/select-one :model/AuthIdentity :id auth-identity-id)]
           (is (= original-hash (get-in updated [:credentials :password_hash]))
@@ -98,7 +98,7 @@
                             :provider "google"
                             :metadata {:email "old@example.com"}})
             auth-identity-id (:id auth-identity)]
-        (t2/update! :model/AuthIdentity auth-identity-id
+        (t2/update! :model/AuthIdentity :id auth-identity-id
                     {:metadata {:email "new@example.com"}})
         (let [updated (t2/select-one :model/AuthIdentity :id auth-identity-id)]
           (is (= "new@example.com" (get-in updated [:metadata :email]))
