@@ -24,7 +24,7 @@ describe("scenarios > filters", () => {
     cy.signInAsAdmin();
   });
 
-  it("should filter a joined, summarized question before and after the aggregation (metabase#13534, metabase#11957, metabase#24994, metabase#30312)", () => {
+  it("should filter a joined, summarized question before and after the aggregation (metabase#13534, metabase#11957, metabase#24994)", () => {
     H.visitQuestionAdhoc({
       dataset_query: {
         database: SAMPLE_DB_ID,
@@ -141,6 +141,41 @@ describe("scenarios > filters", () => {
       .should("be.visible");
     H.assertQueryBuilderRowCount(1);
     H.tableInteractiveBody().findByText("Gadget").should("be.visible");
+  });
+
+  it("should filter an aggregation from its column header on a question with one stage (metabase#30312)", () => {
+    H.createQuestion(
+      {
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              ORDERS.CREATED_AT,
+              { "base-type": "type/DateTime", "temporal-unit": "month" },
+            ],
+          ],
+          limit: 5,
+        },
+        display: "table",
+      },
+      { visitQuestion: true },
+    );
+
+    H.tableHeaderClick("Count");
+    H.popover().findByText("Filter by this column").click();
+    H.selectFilterOperator("Equal to");
+    H.clickActionsPopover().within(() => {
+      cy.findByPlaceholderText("Enter a number").type("10");
+      cy.realPress("Tab");
+      cy.button("Add filter").should("be.enabled").click();
+    });
+
+    H.queryBuilderFiltersPanel()
+      .findByTestId("filter-pill")
+      .should("have.text", "Count is equal to 10");
+    H.queryBuilderMain().findByText("No results").should("be.visible");
   });
 
   it("should add a filter to the first stage of a question summarized twice (metabase#15620)", () => {
@@ -456,7 +491,11 @@ describe("scenarios > filters", () => {
       cy.findByText("Custom Expression").click();
     });
     H.popover().contains('contains([Reviewer], "MULLER", "case-insensitive")');
+    cy.intercept("POST", "/api/dataset").as("caseInsensitiveQuery");
     cy.button("Update").click();
+    cy.wait("@caseInsensitiveQuery")
+      .its("response.body.data.rows")
+      .should("have.length", 1);
     H.assertQueryBuilderRowCount(1);
     H.queryBuilderMain().findByText("wilma-muller").should("be.visible");
   });
