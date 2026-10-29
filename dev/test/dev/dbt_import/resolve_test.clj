@@ -270,7 +270,8 @@
       "TIMESTAMP WITH TIME ZONE" :type/DateTimeWithLocalTZ
       "DECIMAL(10,2)"            :type/Decimal))
   (testing "an unknown driver fails the run instead of producing cards"
-    (is (thrown? Exception (tu/convert {:config {:driver :not-a-real-driver}})))))
+    (is (thrown-with-msg? ExceptionInfo #"not a driver the instance can load, got: :not-a-real-driver"
+                          (tu/convert {:config {:driver :not-a-real-driver}})))))
 
 (deftest ^:parallel column-type-test
   (testing "the manifest's columns are documentation: a column without a type resolves without a base type"
@@ -338,7 +339,11 @@
         "sales / quantity"       [:/ {} sales quantity]
         "(sales - quantity) * 2" [:* {} [:- {} sales quantity] 2]
         "sales * -1"             [:* {} sales -1]
-        "sales * 1.5"            [:* {} sales 1.5]))
+        "sales * 1.5"            [:* {} sales 1.5]
+        ;; unary minus on a literal is the negative number; on anything else it is 0 - x
+        "-sales"                 [:- {} 0 sales]
+        "sales * -quantity"      [:* {} sales [:- {} 0 quantity]]
+        "-(sales + 1)"           [:- {} 0 [:+ {} sales 1]]))
     (testing "dividing by NULLIF(x, 0) is plain division: Metabase's / already returns NULL for a zero divisor"
       (are [expr clause] (= [:sum {} clause] (aggregation-of-expr expr))
         "sales / nullif(quantity, 0)"     [:/ {} sales quantity]
@@ -356,7 +361,12 @@
         "case when status = 'a' then 1 when status = 'b' then 2 end"
         [:case {} [[[:= {} status "a"] 1] [[:= {} status "b"] 2]]]
         "CASE WHEN quantity > 1 AND NOT is_returned THEN sales END"
-        [:case {} [[[:and {} [:> {} quantity 1] [:not {} [:= {} is-returned true]]] sales]]]))
+        [:case {} [[[:and {} [:> {} quantity 1] [:not {} [:= {} is-returned true]]] sales]]]
+        ;; a parenthesised condition is the condition
+        "case when (sales > 100) then 1 else 0 end"             [:case {} [[[:> {} sales 100] 1]] 0]
+        ;; NULL and the booleans as branch values
+        "case when is_returned then null else sales end"       [:case {} [[[:= {} is-returned true] nil]] sales]
+        "case when is_returned then true else false end"       [:case {} [[[:= {} is-returned true] true]] false]))
     (testing "a column with a trailing comment is just the column"
       (is (= tu/sum-sales (aggregation-of-expr "sales -- revenue"))))
     (testing "sum_boolean over a condition counts the rows where it holds"
@@ -652,6 +662,7 @@
       "{{ Dimension('fact_sales_key__amount') }} < 100"                       [:< {} amount 100]
       "{{ Dimension('fact_sales_key__amount') }} <= 100"                      [:<= {} amount 100]
       "{{ Dimension('fact_sales_key__amount') }} = -1"                        [:= {} amount -1]
+      "-{{ Dimension('fact_sales_key__amount') }} < 0"                        [:< {} [:- {} 0 amount] 0]
       "{{ Dimension('fact_sales_key__amount') }} BETWEEN 10 AND 100"          [:between {} amount 10 100]
       "{{ Dimension('fact_sales_key__amount') }} NOT BETWEEN 10 AND 100"      [:not {} [:between {} amount 10 100]]))
   (testing "string literals"
@@ -674,7 +685,16 @@
     "{{ Dimension('fact_sales_key__is_returned') }}"          [:= {} is-returned true]
     "{{ Dimension('fact_sales_key__is_returned') }} = true"   [:= {} is-returned true]
     "{{ Dimension('fact_sales_key__is_returned') }} = false"  [:= {} is-returned false]
+    "{{ Dimension('fact_sales_key__is_returned') }} = TRUE"   [:= {} is-returned true]
+    "{{ Dimension('fact_sales_key__is_returned') }} != FALSE" [:!= {} is-returned false]
     "NOT {{ Dimension('fact_sales_key__is_returned') }}"      [:not {} [:= {} is-returned true]]
+    ;; parentheses group, and nothing else
+    "({{ Dimension('fact_sales_key__status') }} = 'Shipped')" [:= {} status "Shipped"]
+    (str "(({{ Dimension('fact_sales_key__status') }} = 'Shipped')"
+         " AND ({{ Dimension('fact_sales_key__amount') }} > 0))")
+    [:and {} [:= {} status "Shipped"] [:> {} amount 0]]
+    "NOT ({{ Dimension('fact_sales_key__status') }} = 'a' OR {{ Dimension('fact_sales_key__amount') }} > 0)"
+    [:not {} [:or {} [:= {} status "a"] [:> {} amount 0]]]
     "{{ Dimension('fact_sales_key__status') }} = 'Shipped' OR {{ Dimension('fact_sales_key__status') }} = 'Delivered'"
     [:or {} [:= {} status "Shipped"] [:= {} status "Delivered"]]
     (str "({{ Dimension('fact_sales_key__status') }} = 'Shipped' AND {{ Dimension('fact_sales_key__amount') }} > 0)"
@@ -705,6 +725,17 @@
     (is (re-find #"status is not a boolean column" (expr-reason "case when status then sales else 0 end")))
     (is (= [:sum {} [:case {} [[[:= {} is-returned true] (fld "sales" :type/Float)]] 0]]
            (aggregation-of-expr "case when is_returned then sales else 0 end")))))
+
+(deftest ^:parallel non-boolean-condition-test
+  (testing "an expression or literal that is not a boolean has no place where a condition is expected"
+    (are [expr reason] (re-find reason (expr-reason expr))
+      "case when sales + 1 then 1 end"   #"sales \+ 1 \(Add\) is not supported as a condition"
+      "case when true then 1 else 0 end" #"TRUE \(Boolean\) is not supported as a condition"
+      "case when null then 1 else 0 end" #"NULL \(Null\) is not supported as a condition")
+    (are [template reason] (re-find reason (filter-reason template))
+      "{{ Dimension('fact_sales_key__amount') }} + 1"           #"\+ 1 \(Add\) is not supported as a condition"
+      "{{ Dimension('fact_sales_key__status') }} = 'a' AND TRUE" #"TRUE \(Boolean\) is not supported as a condition"
+      "{{ Dimension('fact_sales_key__status') }} = 'a' OR NULL"  #"NULL \(Null\) is not supported as a condition")))
 
 (deftest ^:parallel filter-time-dimension-test
   (testing "TimeDimension buckets the column by the granularity; metric_time is the measure's agg_time_dimension"
@@ -979,9 +1010,10 @@
 
         "{{ Dimension('fact_sales_key__status') }} LIKE 'a%' ESCAPE '!!'"
         #"ESCAPE .* only a one-character string literal"))
-    (testing "the pattern has to be a literal"
-      (is (re-find #"LIKE with a pattern that is not a string literal"
-                   (filter-reason "{{ Dimension('fact_sales_key__status') }} LIKE upper('a%')"))))))
+    (testing "the pattern has to be a literal: neither an expression nor a column"
+      (are [template] (re-find #"LIKE with a pattern that is not a string literal" (filter-reason template))
+        "{{ Dimension('fact_sales_key__status') }} LIKE upper('a%')"
+        "{{ Dimension('fact_sales_key__status') }} LIKE {{ Entity('customer') }}"))))
 
 (deftest ^:parallel filter-regex-test
   (testing (str "a regex match is the first match being not null, the regex wrapped in a group of its own; ~* is"
@@ -1100,8 +1132,13 @@
       "{{ Dimension('fact_sales_key__status') }} = 'Shipped' OR {{ Dimension('fact_sales_key__amount') }} = NULL"
       "CASE WHEN {{ Dimension('fact_sales_key__status') }} = NULL THEN 1 ELSE 0 END = 1"))
   (testing "NULL as a value, rather than compared against, is fine"
-    (is (= [:= {} [:case {} [[[:= {} status "x"] nil]] status] "y"]
-           (filter-of "nullif({{ Dimension('fact_sales_key__status') }}, 'x') = 'y'")))))
+    (are [template clause] (= clause (filter-of template))
+      "nullif({{ Dimension('fact_sales_key__status') }}, 'x') = 'y'"
+      [:= {} [:case {} [[[:= {} status "x"] nil]] status] "y"]
+      "coalesce({{ Dimension('fact_sales_key__status') }}, NULL) = 'a'"
+      [:= {} [:coalesce {} status nil] "a"]
+      "case when {{ Dimension('fact_sales_key__is_returned') }} then NULL else 1 end = 1"
+      [:= {} [:case {} [[[:= {} is-returned true] nil]] 1] 1])))
 
 (deftest ^:parallel filter-reference-arguments-test
   (testing "entity_path picks a join path the converter cannot follow, so it is reported rather than dropped"
