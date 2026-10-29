@@ -85,7 +85,7 @@
 (mu/defn user
   "The User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one :model/User user-id))
+  (t2/select-one :model/User :id [:auto/param user-id]))
 
 (mu/defn user-by-email
   "The User whose email matches `email` case-insensitively, or nil."

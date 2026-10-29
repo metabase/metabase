@@ -759,7 +759,7 @@
 (mu/defn task
   "The RemoteSyncTask with `task-id`, or nil."
   [task-id :- ms/PositiveInt]
-  (t2/select-one :model/RemoteSyncTask task-id))
+  (t2/select-one :model/RemoteSyncTask :id [:auto/param task-id]))
 
 (mu/defn lock-task
   "The RemoteSyncTask with `task-id`, locked for update, or nil."
