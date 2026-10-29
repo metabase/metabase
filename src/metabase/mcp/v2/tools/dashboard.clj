@@ -182,8 +182,12 @@
   "Compile `ops` against `dash` and save, returning the projection row. With `validate-only?` the
    would-be row is built from the compiled payload instead and nothing is written."
   [dash ops attrs validate-only?]
-  (let [cards   (fetch-cards (referenced-card-ids dash ops))
-        payload (normalize-parameters (dashboard-errors/compile-ops dash ops cards))]
+  (let [{:keys [payload cards]}
+        (dashboard-errors/do-with-teaching-errors
+         #(let [ops   (dashboard-ops/prepare-ops ops)
+                cards (fetch-cards (referenced-card-ids dash ops))]
+            {:payload (normalize-parameters (dashboard-ops/compile-ops dash ops cards))
+             :cards   cards}))]
     (validate-payload! (merge attrs payload))
     (if validate-only?
       (dry-run-row dash attrs payload cards)

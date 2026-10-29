@@ -120,21 +120,30 @@
             :op-index             0
             :op-name              "move_tab"}
            (op-error empty-dash [{:op "move_tab" :tab_id 1}])))
-    (are [op] (=? {::dashboard-ops/error :invalid-op, :op-index 0, :op-name (:op op)}
-                  (op-error empty-dash [op] {}))
+    (are [op field] (=? {::dashboard-ops/error :invalid-op
+                         :op-index             0
+                         :op-name              (:op op)
+                         :explanation          #(contains? % field)}
+                        (op-error empty-dash [op] {}))
       ;; GHY-4147: a positive id would silently target a real row
-      {:op "add_card" :id 5 :card_id 42}
+      {:op "add_card" :id 5 :card_id 42}                                                 :id
       ;; an op the compiler does not know, or none at all
-      {:op "frobnicate"}
-      {:id -1}
-      ;; a referenced id left out
-      {:op "remove"}
-      {:op "remove_tab"}
-      {:op "add_parameter" :name "Country" :type "string/="}
+      {:op "frobnicate"}                                                                 :op
+      {:id -1}                                                                           :op
+      ;; GHY-4544: a referenced id left out
+      {:op "remove"}                                                                     :dashcard_id
+      {:op "remove_tab"}                                                                 :tab_id
+      {:op "remove_parameter"}                                                           :parameter_id
+      {:op "add_parameter" :name "Country" :type "string/="}                             :parameter_id
       ;; a value of the wrong type, or a key the op does not take
-      {:op "add_card" :id -1 :card_id 1 :series 5}
-      {:op "set_series" :dashcard_id 7 :card_ids 5}
-      {:op "add_text" :id -1 :markdown "hi" :card_id 42}))
+      {:op "add_card" :id -1 :card_id 1 :series 5}                                       :series
+      {:op "set_series" :dashcard_id 7 :card_ids 5}                                      :card_ids
+      {:op "add_text" :id -1 :markdown "hi" :card_id 42}                                 :card_id
+      ;; a patch value the compiler could not merge
+      {:op "patch_dashcard" :dashcard_id 7 :patch {:parameter_mappings 5}}               :patch
+      {:op "patch_dashcard" :dashcard_id 7 :patch {:parameter_mappings [{:target 5}]}}   :patch
+      {:op "patch_dashcard" :dashcard_id 7 :patch {:visualization_settings 5}}           :patch
+      {:op "patch_dashcard" :dashcard_id 7 :patch {:inline_parameters 5}}                :patch))
   (testing "every op is checked before any is applied"
     (is (=? {::dashboard-ops/error :invalid-op, :op-index 1}
             (op-error empty-dash [{:op "remove" :dashcard_id 999} {:op "frobnicate"}]))))
@@ -142,6 +151,19 @@
     (is (=? {::dashboard-ops/error :missing-parameter-destination}
             (op-error (assoc empty-dash :parameters [{:id "p1"}])
                       [{:op "move_parameter" :parameter_id "p1" :index nil :dashcard_id nil}])))))
+
+(deftest ^:parallel prepare-ops-test
+  (testing "prepare-ops checks the ops before anything reads them, so card-refs never sees a malformed one"
+    (is (=? {::dashboard-ops/error :invalid-op, :op-index 0, :explanation #(contains? % :series)}
+            (try (doall (mapcat dashboard-ops/card-refs
+                                (dashboard-ops/prepare-ops [{:op "add_card" :id -1 :card_id 1 :series 5}])))
+                 (catch clojure.lang.ExceptionInfo e (dashboard-ops/error-data e))))))
+  (testing "ops that are not a list are rejected"
+    (is (=? {::dashboard-ops/error :invalid-op}
+            (op-error empty-dash 5 {}))))
+  (testing "a prepared op has no null-valued keys"
+    (is (= [{:op "move" :dashcard_id 7}]
+           (dashboard-ops/prepare-ops [{:op "move" :dashcard_id 7 :tab nil :position nil}])))))
 
 (deftest ^:parallel every-schema-op-has-a-method-test
   (testing "the op schema and the compiler name the same ops"
@@ -942,7 +964,10 @@
            (frequencies (:tabs (#'dashboard-ops/move-row rows-state :tabs 11 0))))))
   (testing "nil when the index falls outside [0, count-after-removal], so the op owns its error"
     (is (nil? (#'dashboard-ops/move-row rows-state :tabs 11 -1)))
-    (is (nil? (#'dashboard-ops/move-row rows-state :tabs 11 3)))))
+    (is (nil? (#'dashboard-ops/move-row rows-state :tabs 11 3))))
+  (testing "nil for an index that is not an integer, whoever calls it"
+    (is (nil? (#'dashboard-ops/move-row rows-state :tabs 11 nil)))
+    (is (nil? (#'dashboard-ops/move-row rows-state :tabs 11 "1")))))
 
 (deftest upsert-mapping-test
   (let [dc {:id 7 :card_id 9
