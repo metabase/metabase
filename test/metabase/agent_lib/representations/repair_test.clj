@@ -4184,6 +4184,10 @@
              (base-type (first (join-fields (orders-stage {"aggregation" [["count" {}]]
                                                            "breakout"    [(orders-col "USER_ID")]})))))))))
 
+(def ^:private prev-joined-stage
+  "Orders with a `Prev` join of each user's first order, returning all its columns."
+  (orders-stage {"joins" [(assoc (join "Prev" [first-orders-stage]) "fields" "all")]}))
+
 (deftest ^:parallel previous-stage-ref-in-join-condition-test
   (let [joined-on (fn [lhs] (query first-orders-stage (stage {"joins" [(join "First" [first-orders-stage] :lhs lhs)]})))]
     (testing "a by-name ref to the previous stage in a join's conditions is typed from that stage"
@@ -4197,8 +4201,7 @@
               :let   [field-ref ["field" {"join-alias" "first"} column]]]
         (is (= field-ref (get-in (repair* (joined-on field-ref)) ["stages" 1 "joins" 0 "conditions" 0 2])))))
     (let [prev-joined-on (fn [lhs]
-                           (query (orders-stage {"joins" [(assoc (join "Prev" [first-orders-stage]) "fields" "all")]})
-                                  (stage {"joins" [(join "First" [first-orders-stage] :lhs lhs)]})))]
+                           (query prev-joined-stage (stage {"joins" [(join "First" [first-orders-stage] :lhs lhs)]})))]
       (testing "a ref there through a join of the previous stage is typed from that stage"
         (is (= "type/Date"
                (base-type (get-in (repair* (prev-joined-on ["field" {"join-alias" "Prev"} "min"]))
@@ -4216,9 +4219,7 @@
           (is (str/starts-with? (:message e) "No column named \"TOTAL\" from join \"Prev\" is available")))))))
 
 (deftest ^:parallel previous-stage-join-alias-ref-test
-  (let [filtered-on (fn [field-ref]
-                      (query (orders-stage {"joins" [(assoc (join "Prev" [first-orders-stage]) "fields" "all")]})
-                             (stage {"filters" [["not-null" {} field-ref]]})))]
+  (let [filtered-on (fn [field-ref] (query prev-joined-stage (stage {"filters" [["not-null" {} field-ref]]})))]
     (testing "a ref through a join of the previous stage is typed from that join's columns"
       (is (= "type/Date"
              (base-type (get-in (repair* (filtered-on ["field" {"join-alias" "Prev"} "min"]))
