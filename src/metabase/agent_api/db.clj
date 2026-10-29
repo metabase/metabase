@@ -18,22 +18,22 @@
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))
+  (t2/select-one :model/Card :id [:auto/param card-id]))
 
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/Dashboard :id dashboard-id))
+  (t2/select-one :model/Dashboard :id [:auto/param dashboard-id]))
 
 (mu/defn dashboard-tab-names
   "The id and name of the DashboardTabs of the Dashboard with `dashboard-id`, in position order."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select [:model/DashboardTab :id :name] :dashboard_id dashboard-id {:order-by [[:position :asc] [:id :asc]]}))
+  (t2/select [:model/DashboardTab :id :name] :dashboard_id [:auto/param dashboard-id] {:order-by [[:position :asc] [:id :asc]]}))
 
 (mu/defn dashboard-tab-ids
   "The ids of the DashboardTabs of the Dashboard with `dashboard-id`, in position order."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-pks-vec :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc] [:id :asc]]}))
+  (t2/select-pks-vec :model/DashboardTab :dashboard_id [:auto/param dashboard-id] {:order-by [[:position :asc] [:id :asc]]}))
 
 (mu/defn insert-dashboard!
   "Insert the Dashboard `row` and return the inserted instance."
@@ -48,30 +48,30 @@
 (mu/defn dashcard-ids-in-layout-order
   "The ids of the DashboardCards of the Dashboard with `dashboard-id`, in row then column order."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-fn-vec :id :model/DashboardCard :dashboard_id dashboard-id {:order-by [[:row :asc] [:col :asc]]}))
+  (t2/select-fn-vec :id :model/DashboardCard :dashboard_id [:auto/param dashboard-id] {:order-by [[:row :asc] [:col :asc]]}))
 
 (mu/defn dashcards
   "The DashboardCards of the Dashboard with `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select :model/DashboardCard :dashboard_id dashboard-id))
+  (t2/select :model/DashboardCard :dashboard_id [:auto/param dashboard-id]))
 
 (mu/defn dashcard-in-dashboard
   "The DashboardCard with `dashcard-id` on the Dashboard with `dashboard-id`, or nil."
   [dashcard-id  :- ::lib.schema.id/dashcard
    dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/DashboardCard :id dashcard-id :dashboard_id dashboard-id))
+  (t2/select-one :model/DashboardCard :id [:auto/param dashcard-id] :dashboard_id [:auto/param dashboard-id]))
 
 (mu/defn update-dashcard!
   "Apply `changes` to the DashboardCard with `dashcard-id`, returning the number updated."
   [dashcard-id :- ::lib.schema.id/dashcard
    changes     :- (mut/select-keys ::dashboards.schema/dashboard-card.update [:visualization_settings :row :col])]
-  (t2/update! :model/DashboardCard :id dashcard-id changes))
+  (t2/update! :model/DashboardCard :id [:auto/param dashcard-id] changes))
 
 (mu/defn update-dashboard!
   "Apply `changes` to the Dashboard with `dashboard-id`, returning the number updated."
   [dashboard-id :- ::lib.schema.id/dashboard
    changes      :- (mut/select-keys ::dashboards.schema/dashboard.update [:name :description :collection_id :archived :archived_directly])]
-  (t2/update! :model/Dashboard :id dashboard-id changes))
+  (t2/update! :model/Dashboard :id [:auto/param dashboard-id] changes))
 
 (mu/defn active-user-by-email
   "The active User with `email`, compared case-insensitively, or nil."

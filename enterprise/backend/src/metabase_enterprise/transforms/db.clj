@@ -21,5 +21,5 @@
              :from     [[:transform_run :r]]
              :where    [:and
                         [:= :r.status "succeeded"]
-                        [:= [:cast :r.end_time :date] [:cast date :date]]]
+                        [:= [:cast :r.end_time :date] [:cast [:auto/param date] :date]]]
              :group-by [:r.metered_as]}))

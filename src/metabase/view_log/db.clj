@@ -16,7 +16,7 @@
   (t2/query {:update (t2/table-name model)
              :set    {:view_count [:+ :view_count (into [:case]
                                                         (mapcat (fn [[cnt ids]]
-                                                                  [[:in :id ids] cnt])
+                                                                  [[:in :id [:auto/param ids]] [:auto/param cnt]])
                                                                 count->ids))]}
              :where  [:in :id (apply concat (vals count->ids))]}))
 
@@ -52,7 +52,7 @@
 (mu/defn card-type
   "The `:type` of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :type :model/Card :id card-id))
+  (t2/select-one-fn :type :model/Card :id [:auto/param card-id]))
 
 (mu/defn update-dashboards-last-viewed-at!
   "Move `last_viewed_at` of each Dashboard in `dashboard-id->timestamp` forward to its timestamp, without touching
@@ -63,7 +63,7 @@
   (t2/query {:update (t2/table-name :model/Dashboard)
              :set    {:last_viewed_at (into [:case]
                                             (mapcat (fn [[id timestamp]]
-                                                      [[:= :id id] [:greatest [:coalesce :last_viewed_at (t/offset-date-time 0)] timestamp]])
+                                                      [[:= :id [:auto/param id]] [:greatest [:coalesce :last_viewed_at (t/offset-date-time 0)] [:auto/param timestamp]]])
                                                     dashboard-id->timestamp))
                       :updated_at :updated_at}
              :where  [:in :id (keys dashboard-id->timestamp)]}))

@@ -24,7 +24,7 @@
   "Set the name of the Collection with `collection-id`."
   [collection-id   :- ::lib.schema.id/collection
    collection-name :- :string]
-  (t2/update! :model/Collection :id collection-id {:name collection-name}))
+  (t2/update! :model/Collection :id [:auto/param collection-id] {:name collection-name}))
 
 (mu/defn users-with-columns
   "The `columns` of the Users matching `filters` (see [[metabase.users.schema/user-filters]])."
@@ -49,7 +49,7 @@
 (mu/defn user-sso-source
   "The SSO source of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one-fn :sso_source :model/User :id user-id))
+  (t2/select-one-fn :sso_source :model/User :id [:auto/param user-id]))
 
 (mu/defn has-visible-card?
   "Whether an unarchived, non-internal Card visible to the current user exists, optionally narrowed to `card-type`
@@ -60,7 +60,7 @@
                              [:= :archived false]
                              (collection/visible-collection-filter-clause)
                              (mi/exclude-internal-content-hsql :model/Card)]
-                            (when card-type [[:= :type card-type]]))}))
+                            (when card-type [[:= :type [:auto/param card-type]]]))}))
 
 (mu/defn has-visible-dashboard?
   "Whether an unarchived, non-internal Dashboard visible to the current user exists."
@@ -74,14 +74,14 @@
 (mu/defn first-login
   "The timestamp of the earliest LoginHistory of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/LoginHistory :timestamp] :user_id user-id {:order-by [[:timestamp :asc]]}))
+  (t2/select-one [:model/LoginHistory :timestamp] :user_id [:auto/param user-id] {:order-by [[:timestamp :asc]]}))
 
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil. `dashboard-id` may be nil (e.g. when no custom homepage dashboard is
   configured) or a stale/invalid id (e.g. a deleted custom homepage Dashboard) that matches no Dashboard, in which
   case the result is nil."
   [dashboard-id :- [:maybe :int]]
-  (t2/select-one :model/Dashboard :id dashboard-id))
+  (t2/select-one :model/Dashboard :id [:auto/param dashboard-id]))
 
 (mu/defn writable-collection-exists?
   "Whether the current user can write to at least one Collection (excluding the Trash and archived items)."
@@ -97,40 +97,40 @@
   "Whether a User other than `user-id` has an email matching `email` case-insensitively."
   [email   :- :string
    user-id :- ::lib.schema.id/user]
-  (t2/exists? :model/User, :%lower.email (u/lower-case-en email), :id [:not= user-id]))
+  (t2/exists? :model/User, :%lower.email (u/lower-case-en email), :id [:not= [:auto/param user-id]]))
 
 (mu/defn update-user!
   "Apply `changes` to the User with `user-id`."
   [user-id :- ::lib.schema.id/user
    changes :- ::users.schema/user.update]
-  (t2/update! :model/User :id user-id changes))
+  (t2/update! :model/User :id [:auto/param user-id] changes))
 
 (mu/defn user
   "The User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one :model/User :id user-id))
+  (t2/select-one :model/User :id [:auto/param user-id]))
 
 (mu/defn personal-user-columns
   "The id, email, name, active flag, SSO source, and tenant id of the personal User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
   (t2/select-one [:model/User :id :email :first_name :last_name :is_active :sso_source :tenant_id]
                  :type :personal
-                 :id user-id))
+                 :id [:auto/param user-id]))
 
 (mu/defn active-personal-user-login-columns
   "The id, email, last login, and `sso_source` of the active personal User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :id :email :last_login :sso_source], :id user-id, :type :personal, :is_active true))
+  (t2/select-one [:model/User :id :email :last_login :sso_source], :id [:auto/param user-id], :type :personal, :is_active true))
 
 (mu/defn user-active-type-and-sso-source
   "The id, active flag, type, and sso_source of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :id :is_active :type :sso_source] :id user-id))
+  (t2/select-one [:model/User :id :is_active :type :sso_source] :id [:auto/param user-id]))
 
 (mu/defn user-exists?
   "Whether a User with `user-id` exists."
   [user-id :- ::lib.schema.id/user]
-  (t2/exists? :model/User :id user-id))
+  (t2/exists? :model/User :id [:auto/param user-id]))
 
 (mu/defn update-personal-user!
   "Apply `changes` to the personal User with `user-id`, returning the number of rows updated."
@@ -142,4 +142,4 @@
   "Fetches the `mfa_auth_identity_id` from the session with the given hashed key"
   [key-hashed :- string?]
   (t2/select-one [:model/Session :mfa_auth_identity_id]
-                 :key_hashed key-hashed))
+                 :key_hashed [:auto/param key-hashed]))

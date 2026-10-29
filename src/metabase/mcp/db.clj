@@ -41,12 +41,12 @@
   "The Table with `table-id`, or nil. Unlike [[select-one-by-id]], a nil `table-id` is answered with nil
   rather than refused — callers reach here with a column value, not with an id an agent supplied."
   [table-id]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :id [:auto/param table-id] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (defn field-types
   "The `base_type` and `effective_type` of the Field with `field-id`, or nil."
   [field-id]
-  (t2/select-one [:model/Field :base_type :effective_type] :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-one [:model/Field :base_type :effective_type] :id [:auto/param field-id] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (defn nullable-fields-with-fingerprints
   "The Fields among `field-ids` the warehouse declares nullable, carrying their `:fingerprint`.
@@ -54,19 +54,19 @@
   so callers guard it."
   [field-ids]
   (t2/select [:model/Field :id :database_is_nullable :fingerprint]
-             :id [:in field-ids]
+             :id [:in [:auto/param field-ids]]
              :database_is_nullable true
              {:from [(warehouse-schema-overlay/field-query)]}))
 
 (defn active-user-exists?
   "Whether an active User with `user-id` exists."
   [user-id]
-  (t2/exists? :model/User :id user-id :is_active true))
+  (t2/exists? :model/User :id [:auto/param user-id] :is_active true))
 
 (defn dashboard-parameters
   "The `parameters` of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id]
-  (t2/select-one-fn :parameters :model/Dashboard :id dashboard-id))
+  (t2/select-one-fn :parameters :model/Dashboard :id [:auto/param dashboard-id]))
 
 (defn browsable-database
   "The Database with `database-id` restricted by the HoneySQL `browsable-where` clause, or nil.
@@ -75,7 +75,7 @@
   as [[select-users-where]]: which databases an agent may reach at all is a permission decision and
   belongs with the permission check."
   [database-id browsable-where]
-  (t2/select-one :model/Database :id database-id {:where browsable-where}))
+  (t2/select-one :model/Database :id [:auto/param database-id] {:where browsable-where}))
 
 (defn browsable-databases
   "The `columns` of the Databases matching the HoneySQL `browsable-where` clause, in name order. Naming the
@@ -89,7 +89,7 @@
   "The subset of `database-ids` matching the HoneySQL `browsable-where` clause, as a set. `database-ids` is
   expected non-empty — an empty `:in` is a SQL error rather than an empty result, so callers guard it."
   [database-ids browsable-where]
-  (t2/select-pks-set :model/Database {:where [:and [:in :id database-ids] browsable-where]}))
+  (t2/select-pks-set :model/Database {:where [:and [:in :id [:auto/param database-ids]] browsable-where]}))
 
 (defn unarchived-models-in-database
   "The `columns` of the unarchived Models of the Database with `database-id`, in name order."
@@ -100,7 +100,7 @@
   "The active Tables with `table-ids`. `table-ids` is expected non-empty — an empty `:in` is a SQL error
   rather than an empty result, so callers guard it."
   [table-ids]
-  (t2/select :model/Table :id [:in table-ids] :active true {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select :model/Table :id [:in [:auto/param table-ids]] :active true {:from [(warehouse-schema-overlay/table-query)]}))
 
 (defn active-visible-fields-for-tables
   "The id, name, table id, and position of the active, non-hidden Fields of the Tables with `table-ids`, in
@@ -108,7 +108,7 @@
   an empty result, so callers guard it."
   [table-ids]
   (t2/select [:model/Field :id :name :table_id :position]
-             :table_id [:in table-ids]
+             :table_id [:in [:auto/param table-ids]]
              :active true
              :visibility_type [:not-in ["hidden" "sensitive" "retired"]]
              {:from [(warehouse-schema-overlay/field-query)]
@@ -118,14 +118,14 @@
   "The Collections with `ids`, carrying the columns [[metabase.models.interface/can-read?]] consults.
   `:namespace` and `:type` are selected for that check, not for display."
   [ids]
-  (t2/select [:model/Collection :id :name :namespace :type] :id [:in ids]))
+  (t2/select [:model/Collection :id :name :namespace :type] :id [:in [:auto/param ids]]))
 
 (defn collection-id->name+location
   "Map of collection id -> `[name location]` for the Collections with `ids`."
   [ids]
   (t2/select-fn->fn :id (juxt :name :location)
                     [:model/Collection :id :name :location]
-                    :id [:in ids]))
+                    :id [:in [:auto/param ids]]))
 
 (defn snippets-by-archived-state
   "The NativeQuerySnippets in the given archived state, ordered by lower-cased name. Selects only the
@@ -199,13 +199,13 @@
                   :from   [[:mcp_query_handle :mqh]]
                   :join   [[:core_session :cs] [:= :cs.id :mqh.core_session_id]]
                   :where  [:and
-                           [:= :mqh.id handle-id]
-                           [:= :cs.user_id user-id]]}))
+                           [:= :mqh.id [:auto/param handle-id]]
+                           [:= :cs.user_id [:auto/param user-id]]]}))
 
 (defn delete-query-handles-created-before!
   "Delete every McpQueryHandle created before `cutoff`, returning the number deleted."
   [cutoff]
-  (t2/delete! :model/McpQueryHandle {:where [:< :created_at cutoff]}))
+  (t2/delete! :model/McpQueryHandle {:where [:< :created_at [:auto/param cutoff]]}))
 
 (mu/defn delete-session-for-user!
   "Delete the `core_session` with `key-hashed` if it belongs to the User with `user-id`."
@@ -213,8 +213,8 @@
    user-id    :- ::lib.schema.id/user]
   (t2/query {:delete-from :core_session
              :where       [:and
-                           [:= :key_hashed key-hashed]
-                           [:= :user_id user-id]]}))
+                           [:= :key_hashed [:auto/param key-hashed]]
+                           [:= :user_id [:auto/param user-id]]]}))
 
 (defn delete-query-handles-for-user-session!
   "Delete the McpQueryHandles of MCP session `mcp-session-id` that belong to the User with `user-id`, plus any
@@ -225,14 +225,14 @@
   [mcp-session-id key-hashed user-id]
   (t2/query {:delete-from :mcp_query_handle
              :where       [:and
-                           [:= :mcp_session_id mcp-session-id]
+                           [:= :mcp_session_id [:auto/param mcp-session-id]]
                            [:or
                             [:= :core_session_id nil]
                             [:in :core_session_id ^:allow-subquery {:select [:id]
                                                                     :from   [:core_session]
                                                                     :where  [:and
-                                                                             [:= :key_hashed key-hashed]
-                                                                             [:= :user_id user-id]]}]]]}))
+                                                                             [:= :key_hashed [:auto/param key-hashed]]
+                                                                             [:= :user_id [:auto/param user-id]]]}]]]}))
 
 (defn hydrate-moderation-reviews
   "`card` with `:moderation_reviews` hydrated, each review carrying its `:moderator_details`."
@@ -242,12 +242,12 @@
 (defn notification-by-payload-type
   "The Notification with `id` whose `payload_type` is `payload-type`, or nil."
   [id payload-type]
-  (t2/select-one :model/Notification :id id :payload_type payload-type))
+  (t2/select-one :model/Notification :id [:auto/param id] :payload_type [:auto/param payload-type]))
 
 (defn subscription-pulse-exists?
   "Whether a Pulse with `pulse-id` exists and is a subscription — a nil `alert_condition` — rather than an alert."
   [pulse-id]
-  (t2/exists? :model/Pulse :id pulse-id :alert_condition nil))
+  (t2/exists? :model/Pulse :id [:auto/param pulse-id] :alert_condition nil))
 
 (defn hydrate-notification
   "`notification` with its payload, subscriptions, and handler channels and recipients hydrated.
@@ -287,5 +287,5 @@
   (when-let [invalid (seq (remove int? user-ids))]
     (throw (ex-info "MCP: user ids must be a collection of integers" {:invalid (vec invalid)})))
   (if (seq user-ids)
-    (t2/select-pk->fn :tenant_id :model/User :id [:in user-ids])
+    (t2/select-pk->fn :tenant_id :model/User :id [:in [:auto/param user-ids]])
     {}))

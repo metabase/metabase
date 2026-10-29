@@ -58,7 +58,7 @@
                                   [:= :dim.human_readable_field_id :target_field.id]]
                          :where  [:and
                                   [:= :dim.type "external"]
-                                  [:in input-table-id table-ids]
+                                  [:in input-table-id [:auto/param table-ids]]
                                   not-in-tables]})))
 
 (mu/defn table-ids-matching-selectors
@@ -72,19 +72,19 @@
                       :where (let [selector-expr (table-selectors-expr selectors)]
                                (if (seq extra-table-ids)
                                  [:or selector-expr (case extra-mode
-                                                      :unpublished [:and [:in :id extra-table-ids] [:= :is_published false]]
-                                                      :any         [:in :id extra-table-ids])]
+                                                      :unpublished [:and [:in :id [:auto/param extra-table-ids]] [:= :is_published false]]
+                                                      :any         [:in :id [:auto/param extra-table-ids]])]
                                  selector-expr))}))
 
 (mu/defn published-table-ids
   "The IDs of the published Tables among `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select-pks-set :model/Table :id [:in table-ids] :is_published true {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-pks-set :model/Table :id [:in [:auto/param table-ids]] :is_published true {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select :model/Table :id [:in [:auto/param table-ids]] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn collection
   "The Collection with `collection-id`, or nil."
@@ -97,7 +97,7 @@
   (t2/select-one [:model/AuditLog :timestamp :topic :user_id]
                  :topic [:in [:table-publish :table-unpublish]]
                  :model "Table"
-                 :model_id table-id
+                 :model_id [:auto/param table-id]
                  {:order-by [[:timestamp :desc] [:id :desc]]}))
 
 (mu/defn user-name-and-email
@@ -126,7 +126,7 @@
   (t2/exists? :model/Table
               {:from  [(warehouse-schema-overlay/table-query)]
                :where [:and
-                       [:= :id table-id]
+                       [:= :id [:auto/param table-id]]
                        [:= :is_published true]
                        (collection/visible-collection-filter-clause
                         :collection_id {} {:current-user-id user-id
@@ -147,6 +147,6 @@
   (t2/exists? :model/Table
               {:from [(warehouse-schema-overlay/table-query)]
                :where [:and
-                       [:= :db_id database-id]
+                       [:= :db_id [:auto/param database-id]]
                        [:= :is_published true]
                        (collection/visible-collection-filter-clause :collection_id)]}))

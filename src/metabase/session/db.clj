@@ -94,10 +94,10 @@
   "Delete the Sessions whose recorded ending is more than [[ended-session-retention-days]] old, returning the number
   deleted. A live session is never deleted, whatever its age."
   []
-  (let [db-type (mdb/db-type)
-        cutoff  (h2x/add-interval-honeysql-form db-type (h2x/current-datetime-honeysql-form db-type)
-                                                (- ended-session-retention-days) :day)]
-    (t2/delete! :model/Session :ended_at [:< cutoff])))
+  (let [db-type (mdb/db-type)]
+    (t2/delete! :model/Session :ended_at [:< (h2x/add-interval-honeysql-form db-type
+                                                                             (h2x/current-datetime-honeysql-form db-type)
+                                                                             (- ended-session-retention-days) :day)])))
 
 (mu/defn delete-expired-mcp-sessions! :- ms/IntGreaterThanOrEqualToZero
   "Delete the MCP-backed `core_session` rows older than `max-age-minutes`, past their own `expires_at`, or (when
@@ -143,12 +143,12 @@
   "Set the `credentials` of the AuthIdentity with `auth-identity-id`."
   [auth-identity-id :- ms/PositiveInt
    credentials      :- [:maybe ::auth-identity.schema/auth-identity.credentials]]
-  (t2/update! :model/AuthIdentity :id auth-identity-id {:credentials credentials}))
+  (t2/update! :model/AuthIdentity :id [:auto/param auth-identity-id] {:credentials credentials}))
 
 (mu/defn auth-identity-provider
   "The `:provider` of the AuthIdentity with `auth-identity-id`, or nil."
   [auth-identity-id :- ms/PositiveInt]
-  (t2/select-one [:model/AuthIdentity :provider] :id auth-identity-id))
+  (t2/select-one [:model/AuthIdentity :provider] :id [:auto/param auth-identity-id]))
 
 (mu/defn user-by-email
   "The id, SSO source, and active flag of the User whose email matches `email` case-insensitively, or nil."
@@ -158,9 +158,9 @@
 (mu/defn user
   "The User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one :model/User :id user-id))
+  (t2/select-one :model/User :id [:auto/param user-id]))
 
 (mu/defn user-login-status
   "The id, active flag, last login, and tenant id of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id user-id))
+  (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id [:auto/param user-id]))

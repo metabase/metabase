@@ -21,14 +21,14 @@
                       [:target_t.db_id :target_db_id]]
              :from      [(warehouse-schema-overlay/field-query {:alias :sf})]
              :join   [(warehouse-schema-overlay/table-query {:alias :source_t}) [:= :sf.table_id :source_t.id]
-                      (warehouse-schema-overlay/field-query {:alias :tf}) [:= :tf.id target-field-id]
+                      (warehouse-schema-overlay/field-query {:alias :tf}) [:= :tf.id [:auto/param target-field-id]]
                       (warehouse-schema-overlay/table-query {:alias :target_t}) [:= :tf.table_id :target_t.id]]
-             :where  [:= :sf.id source-field-id]}))
+             :where  [:= :sf.id [:auto/param source-field-id]]}))
 
 (mu/defn field
   "The Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-one :model/Field :id [:auto/param field-id] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn set-nested-fields-active!
   "Set the active flag of the Fields of the Table with `table-id` whose NFC path matches the SQL LIKE
@@ -36,12 +36,12 @@
   [table-id          :- ::lib.schema.id/table
    nfc-path-pattern  :- :string
    active?           :- :boolean]
-  (t2/update! :model/Field :table_id table-id :nfc_path [:like nfc-path-pattern] {:active active?}))
+  (t2/update! :model/Field :table_id [:auto/param table-id] :nfc_path [:like [:auto/param nfc-path-pattern]] {:active active?}))
 
 (mu/defn dimension-for-field
   "The Dimension of the Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Dimension :field_id field-id))
+  (t2/select-one :model/Dimension :field_id [:auto/param field-id]))
 
 (mu/defn insert-dimension!
   "Insert the Dimension `row`."
@@ -52,23 +52,23 @@
   "Apply `changes` to the Dimension with `id`."
   [id      :- ::lib.schema.id/dimension
    changes :- (mut/select-keys ::warehouse-schema.schema/dimension.update [:type :name :human_readable_field_id])]
-  (t2/update! :model/Dimension :id id changes))
+  (t2/update! :model/Dimension :id [:auto/param id] changes))
 
 (mu/defn rename-dimension-for-field!
   "Set the name of the Dimension of the Field with `field-id`."
   [field-id       :- ::lib.schema.id/field
    dimension-name :- :string]
-  (t2/update! :model/Dimension :field_id field-id {:name dimension-name}))
+  (t2/update! :model/Dimension :field_id [:auto/param field-id] {:name dimension-name}))
 
 (mu/defn delete-dimension!
   "Delete the Dimension with `id`."
   [id :- ::lib.schema.id/dimension]
-  (t2/delete! :model/Dimension :id id))
+  (t2/delete! :model/Dimension :id [:auto/param id]))
 
 (mu/defn delete-dimensions-for-field!
   "Delete the Dimensions of the Field with `field-id`."
   [field-id :- ::lib.schema.id/field]
-  (t2/delete! :model/Dimension :field_id field-id))
+  (t2/delete! :model/Dimension :field_id [:auto/param field-id]))
 
 (mu/defn matching-tables
   "The Tables (active, or with `transform_target` when `include-transform-targets?`) matching `term` (a glob pattern
@@ -128,12 +128,12 @@
 (mu/defn tables-by-ids
   "The Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select :model/Table :id [:in [:auto/param table-ids]] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :id [:auto/param table-id] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn database
   "The Database with `database-id`, or nil."
@@ -143,28 +143,28 @@
 (mu/defn non-destination-database
   "The Database with `database-id` if it is not a routing destination, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id database-id :router_database_id nil))
+  (t2/select-one :model/Database :id [:auto/param database-id] :router_database_id nil))
 
 (mu/defn collection
   "The Collection with `collection-id`, or nil."
   [collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/select-one :model/Collection :id collection-id))
+  (t2/select-one :model/Collection :id [:auto/param collection-id]))
 
 (mu/defn active-unretired-field-ids-for-table
   "The ids of the active, unretired Fields of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-pks-set :model/Field :table_id table-id :visibility_type [:not= "retired"] :active true
+  (t2/select-pks-set :model/Field :table_id [:auto/param table-id] :visibility_type [:not= "retired"] :active true
                      {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn field-ids-for-table
   "The ids of the Fields of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-pks-set :model/Field :table_id table-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-pks-set :model/Field :table_id [:auto/param table-id] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn active-fields-targeting
   "The active Fields whose FK target, as users see it, is one of `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select :model/Field :fk_target_field_id [:in field-ids] :active true {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select :model/Field :fk_target_field_id [:in [:auto/param field-ids]] :active true {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn delete-field-values-for-fields!
   "Delete the FieldValues of the Fields with `field-ids`."
@@ -177,6 +177,6 @@
   [field-id               :- ::lib.schema.id/field
    values                 :- [:maybe ms/FieldValues]
    human-readable-values  :- [:maybe ms/FieldValues]]
-  (app-db/update-or-insert! :model/FieldValues {:field_id field-id, :type :full}
+  (app-db/update-or-insert! :model/FieldValues {:field_id [:auto/param field-id], :type :full}
                             (constantly {:values                values
                                          :human_readable_values human-readable-values})))

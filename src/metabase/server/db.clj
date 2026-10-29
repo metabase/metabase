@@ -142,18 +142,18 @@
   whose ApiKey starts with `key-prefix`, or nil if there is none."
   [key-prefix                   :- :string
    enable-advanced-permissions? :- :boolean]
-  (t2/query-one (cons (user-data-for-api-key-prefix-query enable-advanced-permissions?) [key-prefix])))
+  (t2/query-one (cons (user-data-for-api-key-prefix-query enable-advanced-permissions?) [[:auto/param key-prefix]])))
 
 (mu/defn oauth-user-info
   "The user id, superuser/data-analyst/group-manager flags, and locale for the active User with `user-id`, or nil if
   there is none."
   [user-id                      :- ::lib.schema.id/user
    enable-advanced-permissions? :- :boolean]
-  (t2/query-one (cons (user-data-for-id-query enable-advanced-permissions?) [user-id])))
+  (t2/query-one (cons (user-data-for-id-query enable-advanced-permissions?) [[:auto/param user-id]])))
 
 (mu/defn touch-session!
   "Set `last_active_at` of the Session with `key-hashed` to now."
   [key-hashed :- :string]
   (t2/query-one {:update (t2/table-name :model/Session)
                  :set    {:last_active_at :%now}
-                 :where  [:= :key_hashed key-hashed]}))
+                 :where  [:= :key_hashed [:auto/param key-hashed]]}))

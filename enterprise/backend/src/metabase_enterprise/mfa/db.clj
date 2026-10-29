@@ -61,32 +61,32 @@
 (mu/defn user
   "The User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one :model/User :id user-id))
+  (t2/select-one :model/User :id [:auto/param user-id]))
 
 (mu/defn user-email
   "The email of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one-fn :email :model/User :id user-id))
+  (t2/select-one-fn :email :model/User :id [:auto/param user-id]))
 
 (mu/defn lock-user
   "The `:id` row of the User with `user-id`, locked for update."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :id] :id user-id {:for :update}))
+  (t2/select-one [:model/User :id] :id [:auto/param user-id] {:for :update}))
 
 (mu/defn totp-identity
   "The TOTP AuthIdentity of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one :model/AuthIdentity :user_id user-id :provider totp-provider))
+  (t2/select-one :model/AuthIdentity :user_id [:auto/param user-id] :provider [:auto/param totp-provider]))
 
 (mu/defn lock-totp-identity
   "The TOTP AuthIdentity of the User with `user-id`, locked for update, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one :model/AuthIdentity :user_id user-id :provider totp-provider {:for :update}))
+  (t2/select-one :model/AuthIdentity :user_id [:auto/param user-id] :provider [:auto/param totp-provider] {:for :update}))
 
 (mu/defn password-credentials
   "The password credentials of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one-fn :credentials :model/AuthIdentity :user_id user-id :provider "password"))
+  (t2/select-one-fn :credentials :model/AuthIdentity :user_id [:auto/param user-id] :provider "password"))
 
 (mu/defn insert-auth-identity!
   "Insert the AuthIdentity `row`, returning the number inserted."
@@ -108,17 +108,17 @@
   "Apply `changes` to the AuthIdentity with `auth-identity-id`, returning the number updated."
   [auth-identity-id :- ms/PositiveInt
    changes          :- (mut/select-keys ::auth-identity.schema/auth-identity.update [:credentials :confirmed_at])]
-  (t2/update! :model/AuthIdentity :id auth-identity-id changes))
+  (t2/update! :model/AuthIdentity :id [:auto/param auth-identity-id] changes))
 
 (mu/defn delete-totp-identity!
   "Delete the TOTP AuthIdentity of the User with `user-id`, returning the number deleted."
   [user-id :- ::lib.schema.id/user]
-  (t2/delete! :model/AuthIdentity :user_id user-id :provider totp-provider))
+  (t2/delete! :model/AuthIdentity :user_id [:auto/param user-id] :provider [:auto/param totp-provider]))
 
 (mu/defn confirmed-totp-count
   "The number of confirmed TOTP enrollments."
   []
-  (t2/count :model/AuthIdentity :provider totp-provider :confirmed_at [:not= nil]))
+  (t2/count :model/AuthIdentity :provider [:auto/param totp-provider] :confirmed_at [:not= nil]))
 
 (mu/defn unenrolled-user-count
   "The number of active personal Users without a confirmed TOTP enrollment."

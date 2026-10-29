@@ -10,7 +10,7 @@
 (mu/defn cloud-migration-not-in-states
   "A CloudMigration whose state is not one of `states`, or nil."
   [states :- [:set [:or :keyword :string]]]
-  (t2/select-one :model/CloudMigration :state [:not-in states]))
+  (t2/select-one :model/CloudMigration :state [:not-in [:auto/param states]]))
 
 (mu/defn insert-cloud-migration!
   "Insert the CloudMigration `row` and return the inserted instance."
@@ -32,7 +32,7 @@
 (mu/defn cancel-cloud-migrations-not-in-states!
   "Cancel every CloudMigration whose state is not one of `states`."
   [states :- [:set [:or :keyword :string]]]
-  (t2/update! :model/CloudMigration {:state [:not-in states]} {:state :cancelled}))
+  (t2/update! :model/CloudMigration {:state [:not-in [:auto/param states]]} {:state :cancelled}))
 
 (mu/defn quartz-node-count
   "The number of Quartz scheduler nodes recorded in the app DB."
@@ -48,10 +48,10 @@
    states   :- [:set [:or :keyword :string]]
    state    :- [:or :keyword :string]
    progress :- :int]
-  (t2/update! :model/CloudMigration :id id :state [:not-in states] {:state state :progress progress}))
+  (t2/update! :model/CloudMigration :id [:auto/param id] :state [:not-in [:auto/param states]] {:state state :progress progress}))
 
 (mu/defn set-cloud-migration-state!
   "Set the state of the CloudMigration with `id`."
   [id    :- ms/PositiveInt
    state :- [:or :keyword :string]]
-  (t2/update! :model/CloudMigration :id id {:state state}))
+  (t2/update! :model/CloudMigration :id [:auto/param id] {:state state}))

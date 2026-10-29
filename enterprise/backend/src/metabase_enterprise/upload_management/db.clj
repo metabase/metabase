@@ -15,7 +15,7 @@
 (mu/defn non-upload-tables-for-database
   "The active Tables of the Database with `database-id` that were not uploaded."
   [database-id :- ::lib.schema.id/database]
-  (t2/select :model/Table :db_id database-id :active true :is_upload false {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select :model/Table :db_id [:auto/param database-id] :active true :is_upload false {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn upload-tables
   "The active uploaded Tables, ordered by name."
@@ -26,4 +26,4 @@
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :id [:auto/param table-id] {:from [(warehouse-schema-overlay/table-query)]}))

@@ -10,19 +10,19 @@
 (mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id database-id))
+  (t2/select-one :model/Database :id [:auto/param database-id]))
 
 (mu/defn destination-database-id
   "The ID of the destination Database of the router with `router-database-id` named `database-name`, or nil."
   [router-database-id :- ::lib.schema.id/database
    database-name      :- :string]
-  (t2/select-one-pk :model/Database :router_database_id router-database-id :name database-name))
+  (t2/select-one-pk :model/Database :router_database_id [:auto/param router-database-id] :name [:auto/param database-name]))
 
 (mu/defn destination-name-exists?
   "Whether the router with `router-database-id` already has a destination Database named one of `names`."
   [router-database-id :- ::lib.schema.id/database
    names              :- [:sequential :string]]
-  (t2/exists? :model/Database :router_database_id router-database-id :name [:in names]))
+  (t2/exists? :model/Database :router_database_id [:auto/param router-database-id] :name [:in [:auto/param names]]))
 
 (mu/defn insert-databases!
   "Insert the Database `rows` and return the new instances."
@@ -33,22 +33,22 @@
 (mu/defn transform-exists-for-source-database?
   "Whether a Transform reads from the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Transform :source_database_id database-id))
+  (t2/exists? :model/Transform :source_database_id [:auto/param database-id]))
 
 (mu/defn router-exists?
   "Whether the Database with `database-id` is a router."
   [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/DatabaseRouter :database_id database-id))
+  (t2/exists? :model/DatabaseRouter :database_id [:auto/param database-id]))
 
 (mu/defn router-for-database
   "The DatabaseRouter of the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/DatabaseRouter :database_id database-id))
+  (t2/select-one :model/DatabaseRouter :database_id [:auto/param database-id]))
 
 (mu/defn router-user-attribute
   "The user attribute the router of the Database with `database-id` routes on."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :user_attribute :model/DatabaseRouter :database_id database-id))
+  (t2/select-one-fn :user_attribute :model/DatabaseRouter :database_id [:auto/param database-id]))
 
 (mu/defn all-router-user-attributes :- [:maybe [:map-of ::lib.schema.id/database :string]]
   "A map of router Database ID to routing user attribute for every DatabaseRouter."
@@ -58,7 +58,7 @@
 (mu/defn router-user-attributes-by-database
   "A map of Database ID to routing user attribute for `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select-fn->fn :database_id :user_attribute :model/DatabaseRouter :database_id [:in database-ids]))
+  (t2/select-fn->fn :database_id :user_attribute :model/DatabaseRouter :database_id [:in [:auto/param database-ids]]))
 
 (mu/defn insert-router!
   "Insert a DatabaseRouter for the Database with `database-id` routing on `user-attribute`."
@@ -70,9 +70,9 @@
   "Set the routing user attribute of the router of the Database with `database-id`."
   [database-id    :- ::lib.schema.id/database
    user-attribute :- :string]
-  (t2/update! :model/DatabaseRouter :database_id database-id {:user_attribute user-attribute}))
+  (t2/update! :model/DatabaseRouter :database_id [:auto/param database-id] {:user_attribute user-attribute}))
 
 (mu/defn delete-router!
   "Delete the DatabaseRouter of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/DatabaseRouter :database_id database-id))
+  (t2/delete! :model/DatabaseRouter :database_id [:auto/param database-id]))

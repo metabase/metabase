@@ -9,4 +9,4 @@
 (mu/defn users-except
   "Every User other than the one with `user-id`."
   [user-id :- ::lib.schema.id/user]
-  (t2/select :model/User {:where [:not= :id user-id]}))
+  (t2/select :model/User {:where [:not= :id [:auto/param user-id]]}))

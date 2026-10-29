@@ -11,14 +11,14 @@
 (mu/defn transform-source
   "The source of the Transform with `transform-id`, or nil."
   [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one-fn :source [:model/Transform :id :source] :id transform-id))
+  (t2/select-one-fn :source [:model/Transform :id :source] :id [:auto/param transform-id]))
 
 (mu/defn transforms-for-ordering
   "The id, name, target, target Table id, source Database id, and table dependencies of every Transform
    excluding [[transform-id]]."
   [transform-id :- ::lib.schema.id/transform]
   (t2/select [:model/Transform :id :name :target :target_table_id :source_database_id :table_dependencies]
-             :id [:not= transform-id]))
+             :id [:not= [:auto/param transform-id]]))
 
 (mu/defn transform
   "The Transform with `transform-id`, or nil."
@@ -31,7 +31,7 @@
    changes      :- [:map {:closed true}
                     [:last_checkpoint_value {:optional true} [:maybe :string]]
                     [:target_table_id       {:optional true} [:maybe ::lib.schema.id/table]]]]
-  (t2/update! :model/Transform :id transform-id changes))
+  (t2/update! :model/Transform :id [:auto/param transform-id] changes))
 
 (mu/defn update-transform-run!
   "Apply `changes` to the TransformRun with `run-id`."
@@ -40,17 +40,17 @@
                [:checkpoint_filter_field_id {:optional true} [:maybe ::lib.schema.id/field]]
                [:checkpoint_lo_value        {:optional true} [:maybe :string]]
                [:checkpoint_hi_value        {:optional true} [:maybe :string]]]]
-  (t2/update! :model/TransformRun :id run-id changes))
+  (t2/update! :model/TransformRun :id [:auto/param run-id] changes))
 
 (mu/defn database-exists?
   "Whether a Database with `database-id` exists."
   [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Database :id database-id))
+  (t2/exists? :model/Database :id [:auto/param database-id]))
 
 (mu/defn field-table-id
   "The Table id of the Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :table_id :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-one-fn :table_id :model/Field :id [:auto/param field-id] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn target-table
   "The Table named `table-name` in `schema` of the Database with `database-id` also matching the key-value
@@ -64,14 +64,14 @@
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :id [:auto/param table-id] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn table-for-transform
   "The Table owned by the Transform with `transform-id`, or nil. `transform-id` is nil for a transform
   that hasn't been saved yet, in which case there is no owned Table either."
   [transform-id :- [:maybe ::lib.schema.id/transform]]
   (when transform-id
-    (t2/select-one :model/Table :transform_id transform-id {:from [(warehouse-schema-overlay/table-query)]})))
+    (t2/select-one :model/Table :transform_id [:auto/param transform-id] {:from [(warehouse-schema-overlay/table-query)]})))
 
 (mu/defn update-table!
   "Apply `changes` to the Table with `table-id`."
@@ -80,7 +80,7 @@
                 [:schema       {:optional true} [:maybe :string]]
                 [:active       {:optional true} [:maybe :boolean]]
                 [:transform_id {:optional true} [:maybe ::lib.schema.id/transform]]]]
-  (t2/update! :model/Table :id table-id changes))
+  (t2/update! :model/Table :id [:auto/param table-id] changes))
 
 (mu/defn mark-table-index-failed!
   "Mark the TableIndex named `index-name` of the Transform with `transform-id` failed with `error-message`."
@@ -88,13 +88,13 @@
    index-name    :- :string
    error-message :- :string]
   (t2/update! :model/TableIndex
-              :transform_id transform-id :index_name index-name
+              :transform_id [:auto/param transform-id] :index_name [:auto/param index-name]
               {:status :failed :error_message error-message :last_executed_at :%now}))
 
 (mu/defn delete-table-indexes!
   "Delete the TableIndexes with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/TableIndex :id [:in ids]))
+  (t2/delete! :model/TableIndex :id [:in [:auto/param ids]]))
 
 (mu/defn update-table-indexes!
   "Apply `changes` to the TableIndexes with `ids`, stamping `last_executed_at` with the app DB's now."
@@ -102,13 +102,13 @@
    changes :- [:map {:closed true}
                [:status        {:optional true} [:maybe [:or :keyword :string]]]
                [:error_message {:optional true} [:maybe :string]]]]
-  (t2/update! :model/TableIndex :id [:in ids] (merge {:last_executed_at :%now} changes)))
+  (t2/update! :model/TableIndex :id [:in [:auto/param ids]] (merge {:last_executed_at :%now} changes)))
 
 (mu/defn active-field-names-for-table
   "The names of the active Fields of the Table with `table-id`, in position order."
   [table-id :- ::lib.schema.id/table]
   (t2/select-fn-vec :name [:model/Field :name :position]
-                    :table_id table-id :active true
+                    :table_id [:auto/param table-id] :active true
                     {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]
                      :order-by [[:position :asc]]}))
 
@@ -121,14 +121,14 @@
               :where (into [:or]
                            (map (fn [[db-id schema table-name]]
                                   [:and
-                                   [:= :db_id db-id]
+                                   [:= :db_id [:auto/param db-id]]
                                    (if (some? schema)
-                                     [:= :schema schema]
+                                     [:= :schema [:auto/param schema]]
                                      [:is :schema nil])
-                                   [:= :name table-name]]))
+                                   [:= :name [:auto/param table-name]]]))
                            refs)}))
 
 (mu/defn table-refs
   "The id, Database id, schema, and name of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :db_id :schema :name] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select [:model/Table :id :db_id :schema :name] :id [:in [:auto/param table-ids]] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))

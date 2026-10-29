@@ -40,7 +40,7 @@
 (mu/defn collection-by-type
   "The id and location of a Collection of `collection-type`, or nil."
   [collection-type :- :string]
-  (t2/select-one [:model/Collection :id :location] :type collection-type))
+  (t2/select-one [:model/Collection :id :location] :type [:auto/param collection-type]))
 
 (mu/defn descendant-collection-ids
   "The ids of the Collections whose location starts with `location-prefix`, or nil."
@@ -53,7 +53,7 @@
   (t2/count :model/Table {:from [(warehouse-schema-overlay/table-query)]
                           :where [:and
                                   [:= :is_published true]
-                                  [:in :collection_id collection-ids]]}))
+                                  [:in :collection_id [:auto/param collection-ids]]]}))
 
 (mu/defn unarchived-metric-count-in-collections
   "The number of unarchived metric Cards in the Collections with `collection-ids`."
@@ -61,7 +61,7 @@
   (t2/count :model/Card {:where [:and
                                  [:= :type "metric"]
                                  [:= :archived false]
-                                 [:in :collection_id collection-ids]]}))
+                                 [:in :collection_id [:auto/param collection-ids]]]}))
 
 (mu/defn permissions-group-count
   "The number of PermissionsGroups."
@@ -253,7 +253,7 @@
   [joined-before :- ms/TemporalInstant
    limit         :- ms/PositiveInt]
   (t2/count :model/User {:where [:and
-                                 [:<= :date_joined joined-before]
+                                 [:<= :date_joined [:auto/param joined-before]]
                                  (mi/exclude-internal-content-hsql :model/User)]
                          :limit limit}))
 
@@ -263,7 +263,7 @@
    limit       :- ms/PositiveInt]
   (t2/select-fn-set :id :model/QueryExecution
                     {:where [:or
-                             [:not= :database_id database-id]
+                             [:not= :database_id [:auto/param database-id]]
                              [:= :database_id nil]]
                      :limit limit}))
 
@@ -275,7 +275,7 @@
 (mu/defn transform-run-count-since
   "The number of TransformRuns started at or after `since`."
   [since :- ms/TemporalInstant]
-  (t2/count :model/TransformRun :start_time [:>= since]))
+  (t2/count :model/TransformRun :start_time [:>= [:auto/param since]]))
 
 (mu/defn unarchived-model-count
   "The number of unarchived model Cards."
@@ -285,12 +285,12 @@
 (mu/defn new-embedded-dashboard-count-since
   "The number of unarchived Dashboards with embedding enabled created at or after `since`."
   [since :- ms/TemporalInstant]
-  (t2/count :model/Dashboard :enable_embedding true :archived false :created_at [:>= since]))
+  (t2/count :model/Dashboard :enable_embedding true :archived false :created_at [:>= [:auto/param since]]))
 
 (mu/defn new-active-user-count-since
   "The number of active Users who joined at or after `since`."
   [since :- ms/TemporalInstant]
-  (t2/count :model/User :is_active true :date_joined [:>= since]))
+  (t2/count :model/User :is_active true :date_joined [:>= [:auto/param since]]))
 
 (mu/defn unarchived-pivot-table-count
   "The number of unarchived pivot table Cards."
@@ -300,12 +300,12 @@
 (mu/defn query-execution-count-since
   "The number of QueryExecutions started at or after `since`."
   [since :- ms/TemporalInstant]
-  (t2/count :model/QueryExecution :started_at [:>= since]))
+  (t2/count :model/QueryExecution :started_at [:>= [:auto/param since]]))
 
 (mu/defn database-engines-among
   "The set of engines of the Databases whose engine is one of `engine-names`."
   [engine-names :- [:sequential :string]]
-  (t2/select-fn-set :engine :model/Database {:where [:in :engine engine-names]}))
+  (t2/select-fn-set :engine :model/Database {:where [:in :engine [:auto/param engine-names]]}))
 
 (mu/defn embedded-dashboard-exists?
   "Whether a Dashboard with embedding enabled exists."

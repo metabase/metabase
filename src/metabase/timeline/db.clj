@@ -22,52 +22,52 @@
   [archived :- :boolean]
   (t2/select :model/Timeline
              {:where    [:and
-                         [:= :archived archived]
+                         [:= :archived [:auto/param archived]]
                          (collection/visible-collection-filter-clause)]
               :order-by [[:%lower.name :asc]]}))
 
 (mu/defn timeline
   "The Timeline with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/Timeline :id id))
+  (t2/select-one :model/Timeline :id [:auto/param id]))
 
 (mu/defn timeline-icon
   "The icon of the Timeline with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one-fn :icon :model/Timeline :id id))
+  (t2/select-one-fn :icon :model/Timeline :id [:auto/param id]))
 
 (mu/defn timelines-by-id
   "A map of id to Timeline for the Timelines with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pk->fn identity :model/Timeline :id [:in ids]))
+  (t2/select-pk->fn identity :model/Timeline :id [:in [:auto/param ids]]))
 
 (mu/defn timelines-for-collection
   "The Timelines of the Collection with `collection-id` whose archived flag is `archived`."
   [collection-id :- [:maybe ::lib.schema.id/collection]
    archived      :- :boolean]
-  (t2/select :model/Timeline :collection_id collection-id :archived archived))
+  (t2/select :model/Timeline :collection_id [:auto/param collection-id] :archived [:auto/param archived]))
 
 (mu/defn update-timeline!
   "Apply `changes` to the Timeline with `id`, returning the number updated."
   [id      :- ms/PositiveInt
    changes :- (mut/select-keys ::timeline.schema/timeline.update [:name :default :description :icon :collection_id :archived])]
-  (t2/update! :model/Timeline :id id changes))
+  (t2/update! :model/Timeline :id [:auto/param id] changes))
 
 (mu/defn set-timeline-events-archived!
   "Set the archived flag of the TimelineEvents of the Timeline with `timeline-id`, returning the number updated."
   [timeline-id :- ms/PositiveInt
    archived    :- :boolean]
-  (t2/update! :model/TimelineEvent {:timeline_id timeline-id} {:archived archived}))
+  (t2/update! :model/TimelineEvent {:timeline_id [:auto/param timeline-id]} {:archived archived}))
 
 (mu/defn delete-timeline!
   "Delete the Timeline with `id`, returning the number deleted."
   [id :- ms/PositiveInt]
-  (t2/delete! :model/Timeline :id id))
+  (t2/delete! :model/Timeline :id [:auto/param id]))
 
 (mu/defn collection
   "The Collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one :model/Collection :id collection-id))
+  (t2/select-one :model/Collection :id [:auto/param collection-id]))
 
 (mu/defn insert-timeline-event!
   "Insert the TimelineEvent `row` and return the inserted instance."
@@ -77,7 +77,7 @@
 (mu/defn timeline-event
   "The TimelineEvent with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/TimelineEvent :id id))
+  (t2/select-one :model/TimelineEvent :id [:auto/param id]))
 
 (mu/defn timeline-events-for-timelines
   "The TimelineEvents of the Timelines with `timeline-ids`, unarchived only unless `all?`, and (when `start` and/or
@@ -88,7 +88,7 @@
    end          :- [:maybe ms/TemporalInstant]]
   (t2/select :model/TimelineEvent
              {:where [:and
-                      [:in :timeline_id timeline-ids]
+                      [:in :timeline_id [:auto/param timeline-ids]]
                       (when-not all?
                         [:= :archived false])
                       (when (or start end)
@@ -98,7 +98,7 @@
                           (when start
                             [:<= start :timestamp])
                           (when end
-                            [:<= :timestamp end])]
+                            [:<= :timestamp [:auto/param end]])]
                          [:and
                           [:= :time_matters false]
                           (when start
@@ -110,9 +110,9 @@
   "Apply `changes` to the TimelineEvent with `id`, returning the number updated."
   [id      :- ms/PositiveInt
    changes :- (mut/select-keys ::timeline.schema/timeline-event.update [:name :description :timestamp :time_matters :timezone :icon :timeline_id :archived])]
-  (t2/update! :model/TimelineEvent :id id changes))
+  (t2/update! :model/TimelineEvent :id [:auto/param id] changes))
 
 (mu/defn delete-timeline-event!
   "Delete the TimelineEvent with `id`, returning the number deleted."
   [id :- ms/PositiveInt]
-  (t2/delete! :model/TimelineEvent :id id))
+  (t2/delete! :model/TimelineEvent :id [:auto/param id]))

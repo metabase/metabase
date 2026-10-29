@@ -20,4 +20,4 @@
 (mu/defn user
   "The User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one :model/User :id user-id))
+  (t2/select-one :model/User :id [:auto/param user-id]))

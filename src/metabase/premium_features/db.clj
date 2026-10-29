@@ -16,14 +16,14 @@
 (mu/defn token-status-cache
   "The `:token_status_hash` and `:updated_at` cached for `token-hash`, or nil."
   [token-hash :- :string]
-  (t2/select-one [:model/PremiumFeaturesCache :token_status_hash :updated_at] :token_hash token-hash))
+  (t2/select-one [:model/PremiumFeaturesCache :token_status_hash :updated_at] :token_hash [:auto/param token-hash]))
 
 (mu/defn update-token-status-cache!
   "Set the cached status hash for `token-hash`, returning the number of rows updated."
   [token-hash        :- :string
    token-status-hash :- :string
    updated-at        :- ms/TemporalInstant]
-  (t2/update! :model/PremiumFeaturesCache :token_hash token-hash
+  (t2/update! :model/PremiumFeaturesCache :token_hash [:auto/param token-hash]
               {:token_status_hash token-status-hash, :updated_at updated-at}))
 
 (mu/defn insert-token-status-cache!

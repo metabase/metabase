@@ -14,7 +14,7 @@
 (mu/defn conversation
   "The MetabotConversation with `conversation-id`, or nil."
   [conversation-id :- :string]
-  (t2/select-one :model/MetabotConversation :id conversation-id))
+  (t2/select-one :model/MetabotConversation :id [:auto/param conversation-id]))
 
 (defn- date-range-expr
   "A half-open predicate on `col` from the serialized date-param string `date-string`. Throws 400 on a malformed
@@ -149,13 +149,13 @@
 (mu/defn messages-for-conversation
   "The MetabotMessages of the MetabotConversation with `conversation-id`, oldest first."
   [conversation-id :- :string]
-  (t2/select :model/MetabotMessage :conversation_id conversation-id {:order-by [[:created_at :asc] [:id :asc]]}))
+  (t2/select :model/MetabotMessage :conversation_id [:auto/param conversation-id] {:order-by [[:created_at :asc] [:id :asc]]}))
 
 (mu/defn message-data-for-conversations
   "The conversation, data, and data version of the MetabotMessages of the MetabotConversations with
   `conversation-ids`."
   [conversation-ids :- [:sequential :string]]
-  (t2/select [:model/MetabotMessage :conversation_id :data :data_version] :conversation_id [:in conversation-ids]))
+  (t2/select [:model/MetabotMessage :conversation_id :data :data_version] :conversation_id [:in [:auto/param conversation-ids]]))
 
 (mu/defn feedback-for-conversation
   "The MetabotFeedback rows on the messages of the MetabotConversation with `conversation-id`, oldest first."
@@ -172,7 +172,7 @@
                          :metabot_feedback.updated_at]
               :from     [:metabot_feedback]
               :join     [[:metabot_message :mm] [:= :mm.id :metabot_feedback.message_id]]
-              :where    [:= :mm.conversation_id conversation-id]
+              :where    [:= :mm.conversation_id [:auto/param conversation-id]]
               :order-by [[:metabot_feedback.created_at :asc]
                          [:metabot_feedback.message_id :asc]
                          [:metabot_feedback.user_id :asc]]}))

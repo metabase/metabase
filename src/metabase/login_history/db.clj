@@ -25,7 +25,7 @@
               :from      [[:login_history :lh]]
               :left-join (into [[:core_session :session] [:= :session.id :lh.session_id]]
                                session/session-left-joins)
-              :where     [:= :lh.user_id user-id]
+              :where     [:= :lh.user_id [:auto/param user-id]]
               :order-by  [[:lh.timestamp :desc]]}))
 
 (mu/defn insert-login-history!
@@ -37,14 +37,14 @@
   "Up to `limit` LoginHistory ids of the User with `user-id`."
   [user-id :- ::lib.schema.id/user
    limit   :- ms/PositiveInt]
-  (t2/select [:model/LoginHistory :id] :user_id user-id {:limit limit}))
+  (t2/select [:model/LoginHistory :id] :user_id [:auto/param user-id] {:limit limit}))
 
 (mu/defn login-history-ids-for-user-device
   "Up to `limit` LoginHistory ids of the User with `user-id` on the device with `device-id`."
   [user-id   :- ::lib.schema.id/user
    device-id :- :string
    limit     :- ms/PositiveInt]
-  (t2/select [:model/LoginHistory :id] :user_id user-id, :device_id device-id, {:limit limit}))
+  (t2/select [:model/LoginHistory :id] :user_id [:auto/param user-id], :device_id [:auto/param device-id], {:limit limit}))
 
 (mu/defn first-device-login-count-since
   "The number of LoginHistory rows of the User with `user-id` in the last `window-hours` that are the first
@@ -53,7 +53,7 @@
    window-hours :- ms/PositiveInt]
   (t2/count :model/LoginHistory
             {:where [:and
-                     [:= :user_id user-id]
+                     [:= :user_id [:auto/param user-id]]
                      [:> :timestamp (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- window-hours) :hour)]
                      [:not [:exists
                             ^:allow-subquery

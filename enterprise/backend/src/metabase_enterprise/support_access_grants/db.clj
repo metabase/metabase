@@ -14,12 +14,12 @@
 (mu/defn active-grant-exists?
   "Whether a SupportAccessGrantLog is unrevoked and ends after `now`."
   [now :- ms/TemporalInstant]
-  (t2/exists? :model/SupportAccessGrantLog :revoked_at nil :grant_end_timestamp [:> now]))
+  (t2/exists? :model/SupportAccessGrantLog :revoked_at nil :grant_end_timestamp [:> [:auto/param now]]))
 
 (mu/defn grant
   "The SupportAccessGrantLog with `grant-id`, or nil."
   [grant-id :- ms/PositiveInt]
-  (t2/select-one :model/SupportAccessGrantLog :id grant-id))
+  (t2/select-one :model/SupportAccessGrantLog :id [:auto/param grant-id]))
 
 (mu/defn current-grant
   "The newest unrevoked SupportAccessGrantLog that has not ended, or nil."
@@ -73,7 +73,7 @@
   "Apply `changes` to the SupportAccessGrantLog with `grant-id`, returning the number updated."
   [grant-id :- ms/PositiveInt
    changes  :- (mut/select-keys ::support-access-grants.schema/support-access-grant-log.update [:revoked_at :revoked_by_user_id])]
-  (t2/update! :model/SupportAccessGrantLog :id grant-id changes))
+  (t2/update! :model/SupportAccessGrantLog :id [:auto/param grant-id] changes))
 
 (mu/defn user
   "The User with `user-id`, or nil."
@@ -83,17 +83,17 @@
 (mu/defn user-by-email
   "The User with `email`, or nil."
   [email :- :string]
-  (t2/select-one :model/User :email email))
+  (t2/select-one :model/User :email [:auto/param email]))
 
 (mu/defn user-superuser-flag-by-email
   "The `:id` and `:is_superuser` of the User with `email`, or nil."
   [email :- :string]
-  (t2/select-one [:model/User :id :is_superuser] :email email))
+  (t2/select-one [:model/User :id :is_superuser] :email [:auto/param email]))
 
 (mu/defn user-names-and-emails
   "A map of User ID to first name and email for `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
-  (t2/select-pk->fn #(select-keys % [:first_name :email]) [:model/User :id :first_name :email] :id [:in user-ids]))
+  (t2/select-pk->fn #(select-keys % [:first_name :email]) [:model/User :id :first_name :email] :id [:in [:auto/param user-ids]]))
 
 (mu/defn insert-user!
   "Insert `user` and return the new instance."
@@ -104,22 +104,22 @@
   "Apply `changes` to the User with `user-id`, returning the number updated."
   [user-id :- ::lib.schema.id/user
    changes :- (mut/select-keys ::users.schema/user.update [:is_active :is_superuser])]
-  (t2/update! :model/User :id user-id changes))
+  (t2/update! :model/User :id [:auto/param user-id] changes))
 
 (mu/defn unended-session-exists-for-user?
   "Whether the User with `user-id` has a Session whose ending has not been recorded."
   [user-id :- ::lib.schema.id/user]
-  (t2/exists? :model/Session :user_id user-id :ended_at nil))
+  (t2/exists? :model/Session :user_id [:auto/param user-id] :ended_at nil))
 
 (mu/defn auth-identity-ids-of-user
   "The IDs of the AuthIdentities of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-pks-vec :model/AuthIdentity :user_id user-id))
+  (t2/select-pks-vec :model/AuthIdentity :user_id [:auto/param user-id]))
 
 (mu/defn support-access-auth-identity-id
   "The ID of the support-access-grant AuthIdentity of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one-pk :model/AuthIdentity :user_id user-id :provider "support-access-grant"))
+  (t2/select-one-pk :model/AuthIdentity :user_id [:auto/param user-id] :provider "support-access-grant"))
 
 (mu/defn insert-auth-identity!
   "Insert the AuthIdentity `row`, returning the number inserted."
@@ -155,10 +155,10 @@
                                    [:map {:closed true}
                                     [:user_agent {:optional true} [:maybe :string]]
                                     [:timestamp  {:optional true} [:or ms/TemporalInstant :string]]]]]]]]]
-  (t2/update! :model/AuthIdentity :id auth-identity-id changes))
+  (t2/update! :model/AuthIdentity :id [:auto/param auth-identity-id] changes))
 
 (mu/defn expire-auth-identities!
   "Set the expiry of the AuthIdentities with `auth-identity-ids` to `expires-at`, returning the number updated."
   [auth-identity-ids :- [:sequential ms/PositiveInt]
    expires-at        :- ms/TemporalInstant]
-  (t2/update! :model/AuthIdentity :id [:in auth-identity-ids] {:expires_at expires-at}))
+  (t2/update! :model/AuthIdentity :id [:in [:auto/param auth-identity-ids]] {:expires_at expires-at}))

@@ -60,13 +60,13 @@
   [parameterized-object-type :- :string
    parameterized-object-id   :- ms/PositiveInt]
   (t2/select-fn-vec :card_id :model/ParameterCard
-                    :parameterized_object_type parameterized-object-type
-                    :parameterized_object_id   parameterized-object-id))
+                    :parameterized_object_type [:auto/param parameterized-object-type]
+                    :parameterized_object_id   [:auto/param parameterized-object-id]))
 
 (mu/defn dashboard-card-ids
   "The Card ids of the DashboardCards of the Dashboard with `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-fn-vec :card_id :model/DashboardCard :dashboard_id dashboard-id))
+  (t2/select-fn-vec :card_id :model/DashboardCard :dashboard_id [:auto/param dashboard-id]))
 
 (mu/defn dashboard-series-card-ids
   "The Card ids of the DashboardCardSeries of the Dashboard with `dashboard-id`."
@@ -75,34 +75,34 @@
                     {:where [:in :dashboardcard_id
                              ^:allow-subquery {:select [:id]
                                                :from   [(t2/table-name :model/DashboardCard)]
-                                               :where  [:= :dashboard_id dashboard-id]}]}))
+                                               :where  [:= :dashboard_id [:auto/param dashboard-id]]}]}))
 
 (mu/defn card-queries
   "A map of Card id to query for the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select-pk->fn :dataset_query :model/Card :id [:in card-ids]))
+  (t2/select-pk->fn :dataset_query :model/Card :id [:in [:auto/param card-ids]]))
 
 (mu/defn revision
   "The Revision with `revision-id` of the `model-name` row with `model-id`, or nil."
   [model-name  :- :string
    model-id    :- ms/PositiveInt
    revision-id :- ms/PositiveInt]
-  (t2/select-one :model/Revision :model model-name, :model_id model-id, :id revision-id))
+  (t2/select-one :model/Revision :model [:auto/param model-name], :model_id [:auto/param model-id], :id [:auto/param revision-id]))
 
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))
+  (t2/select-one :model/Card :id [:auto/param card-id]))
 
 (mu/defn dashcards
   "The DashboardCards of the Dashboard with `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select :model/DashboardCard :dashboard_id dashboard-id))
+  (t2/select :model/DashboardCard :dashboard_id [:auto/param dashboard-id]))
 
 (mu/defn dashboard-tabs
   "The DashboardTabs of the Dashboard with `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select :model/DashboardTab :dashboard_id dashboard-id))
+  (t2/select :model/DashboardTab :dashboard_id [:auto/param dashboard-id]))
 
 (mu/defn active-card-ids-for-dashboard
   "The ids among `card-ids` of unarchived Cards that belong to the Dashboard with `dashboard-id` or to no Dashboard."
@@ -110,16 +110,16 @@
    dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-pks-set :model/Card
                      {:where [:and
-                              [:in :id card-ids]
+                              [:in :id [:auto/param card-ids]]
                               [:= :archived false]
                               [:or
-                               [:= :dashboard_id dashboard-id]
+                               [:= :dashboard_id [:auto/param dashboard-id]]
                                [:= :dashboard_id nil]]]}))
 
 (mu/defn active-card-ids
   "The ids among `card-ids` of unarchived Cards."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select-pks-set :model/Card {:where [:and [:in :id card-ids] [:= :archived false]]}))
+  (t2/select-pks-set :model/Card {:where [:and [:in :id [:auto/param card-ids]] [:= :archived false]]}))
 
 (mu/defn lock-revisions!
   "Lock the Revisions of the `model-name` row with `model-id` for update."
@@ -128,8 +128,8 @@
   (t2/query {:select [:id]
              :from [:revision]
              :where [:and
-                     [:= :model model-name]
-                     [:= :model_id model-id]]
+                     [:= :model [:auto/param model-name]]
+                     [:= :model_id [:auto/param model-id]]]
              :for :update}))
 
 (mu/defn revision-ids-newest-first
@@ -137,15 +137,15 @@
   [model-name :- :string
    model-id   :- ms/PositiveInt]
   (t2/select-fn-vec :id :model/Revision
-                    :model    model-name
-                    :model_id model-id
+                    :model    [:auto/param model-name]
+                    :model_id [:auto/param model-id]
                     {:order-by [[:timestamp :desc]
                                 [:id :desc]]}))
 
 (mu/defn delete-revisions!
   "Delete the Revisions with `ids`, returning the number deleted."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/Revision :id [:in ids]))
+  (t2/delete! :model/Revision :id [:in [:auto/param ids]]))
 
 (mu/defn unmark-most-recent-revisions!
   "Clear `most_recent` on the Revisions of the `model-name` row with `model-id` other than `revision-id`, returning
@@ -162,26 +162,26 @@
   "The Revisions of the `model-name` row with `model-id`, newest first."
   [model-name :- :string
    model-id   :- ms/PositiveInt]
-  (t2/select :model/Revision :model model-name :model_id model-id {:order-by [[:id :desc]]}))
+  (t2/select :model/Revision :model [:auto/param model-name] :model_id [:auto/param model-id] {:order-by [[:id :desc]]}))
 
 (mu/defn latest-revision
   "The newest Revision of the `model-name` row with `model-id`, or nil."
   [model-name :- :string
    model-id   :- ms/PositiveInt]
-  (t2/select-one :model/Revision :model model-name, :model_id model-id, {:order-by [[:id :desc]]}))
+  (t2/select-one :model/Revision :model [:auto/param model-name], :model_id [:auto/param model-id], {:order-by [[:id :desc]]}))
 
 (mu/defn latest-revision-object
   "The serialized object of the newest Revision of the `model-name` row with `model-id`, or nil."
   [model-name :- :string
    model-id   :- ms/PositiveInt]
-  (t2/select-one-fn :object :model/Revision :model model-name :model_id model-id {:order-by [[:id :desc]]}))
+  (t2/select-one-fn :object :model/Revision :model [:auto/param model-name] :model_id [:auto/param model-id] {:order-by [[:id :desc]]}))
 
 (mu/defn revision-object
   "The serialized object of the Revision with `revision-id` of the `model-name` row with `model-id`, or nil."
   [model-name  :- :string
    model-id    :- ms/PositiveInt
    revision-id :- ms/PositiveInt]
-  (t2/select-one-fn :object :model/Revision :model model-name :model_id model-id :id revision-id))
+  (t2/select-one-fn :object :model/Revision :model [:auto/param model-name] :model_id [:auto/param model-id] :id [:auto/param revision-id]))
 
 (def ^:private revision-object-extra-keys
   "Extra keys [[metabase.revisions.impl.dashboard/serialize-instance]] and friends add to some models' revision
@@ -272,8 +272,8 @@
     :left-join [[:core_user :u] [:= :u.id :r.user_id]]
     :where     [:and
                 [:= :r.most_recent true]
-                [:= :r.model db-model]
-                [:in :r.model_id ids]]}))
+                [:= :r.model [:auto/param db-model]]
+                [:in :r.model_id [:auto/param ids]]]}))
 
 (mu/defn latest-changes
   "The editing User, model, model id, and timestamp of the most recent Revisions of the Cards with `card-ids`
@@ -288,5 +288,5 @@
                          (into [:or]
                                (keep (fn [[model-name ids]]
                                        (when (seq ids)
-                                         [:and [:= :model model-name] [:in :model_id ids]])))
+                                         [:and [:= :model [:auto/param model-name]] [:in :model_id [:auto/param ids]]])))
                                [["Card" card-ids] ["Dashboard" dashboard-ids]])]}))

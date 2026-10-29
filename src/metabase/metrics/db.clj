@@ -40,12 +40,12 @@
 (mu/defn metric-card
   "The metric Card with `id`, or nil."
   [id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id id :type "metric"))
+  (t2/select-one :model/Card :id [:auto/param id] :type "metric"))
 
 (mu/defn measure
   "The Measure with `id`, or nil."
   [id :- ::lib.schema.id/measure]
-  (t2/select-one :model/Measure :id id))
+  (t2/select-one :model/Measure :id [:auto/param id]))
 
 (mu/defn raw-metric-cards-for-database
   "The id and dimensions of the metric Cards of the Database with `database-id`.
@@ -65,4 +65,4 @@
 (mu/defn field
   "The Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-one :model/Field :id [:auto/param field-id] {:from [(warehouse-schema-overlay/field-query)]}))

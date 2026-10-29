@@ -13,25 +13,25 @@
 (mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id database-id))
+  (t2/select-one :model/Database :id [:auto/param database-id]))
 
 (mu/defn table
   "The Table with `table-id`, or nil. `table-id` may be nil (some callers pass a Card's or Metric's possibly-absent
   table id), in which case this returns nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :id [:auto/param table-id] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select :model/Table :id [:in [:auto/param table-ids]] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn tables-in-schema
   "The Tables in `schema` of the Database with `database-id`. `schema` may be nil (some drivers have no
   schema concept)."
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]]
-  (t2/select :model/Table :db_id database-id :schema schema {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select :model/Table :db_id [:auto/param database-id] :schema [:auto/param schema] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn sibling-tables
   "The active, visible Tables in `schema` of the Database with `database-id` other than `table-id`. `schema`
@@ -40,9 +40,9 @@
    schema      :- [:maybe :string]
    table-id    :- ::lib.schema.id/table]
   (t2/select :model/Table
-             :db_id           database-id
-             :schema          schema
-             :id              [:not= table-id]
+             :db_id           [:auto/param database-id]
+             :schema          [:auto/param schema]
+             :id              [:not= [:auto/param table-id]]
              :visibility_type nil
              :active          true {:from [(warehouse-schema-overlay/table-query)]}))
 
@@ -73,20 +73,20 @@
                             [:> :ts.count 0]
                             [:!= :ts.count :ts.count_pks_and_fks]]]
               :where (cond-> [:and
-                              [:= :db_id database-id]
+                              [:= :db_id [:auto/param database-id]]
                               [:= :visibility_type nil]
                               [:= :active true]]
-                       schema (conj [:= :schema schema]))}))
+                       schema (conj [:= :schema [:auto/param schema]]))}))
 
 (mu/defn field
   "The Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-one :model/Field :id [:auto/param field-id] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn field-name
   "The name of the Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :name :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-one-fn :name :model/Field :id [:auto/param field-id] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn metadata-column
   "The `:metadata/column` with `field-id`, or nil."
@@ -96,23 +96,23 @@
 (mu/defn fields-targeting
   "The Fields whose FK target is the Field with `field-id`."
   [field-id :- ::lib.schema.id/field]
-  (t2/select :model/Field :fk_target_field_id field-id {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select :model/Field :fk_target_field_id [:auto/param field-id] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn fk-fields-for-tables
   "The FK Fields of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Field :fk_target_field_id [:not= nil] :table_id [:in table-ids] {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select :model/Field :fk_target_field_id [:not= nil] :table_id [:in [:auto/param table-ids]] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn active-fk-fields-for-table
   "The active FK Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select :model/Field :table_id table-id :fk_target_field_id [:not= nil] :active true {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select :model/Field :table_id [:auto/param table-id] :fk_target_field_id [:not= nil] :active true {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn fk-target-field-ids-for-table
   "The FK target Field ids of the active Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
   (t2/select-fn-set :fk_target_field_id :model/Field
-                    :table_id           table-id
+                    :table_id           [:auto/param table-id]
                     :fk_target_field_id [:not= nil]
                     :active             true
                     {:from [(warehouse-schema-overlay/field-query)]}))
@@ -120,18 +120,18 @@
 (mu/defn active-field-ids-for-table
   "The ids of the active Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-fn-set :id :model/Field :table_id table-id :active true {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-fn-set :id :model/Field :table_id [:auto/param table-id] :active true {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn table-ids-of-fields-targeting
   "The Table ids of the active Fields whose FK target is one of `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select-fn-set :table_id :model/Field :fk_target_field_id [:in field-ids] :active true {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-fn-set :table_id :model/Field :fk_target_field_id [:in [:auto/param field-ids]] :active true {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn visible-fields-for-tables
   "The active, normally visible, previewable Fields of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select :model/Field
-             :table_id [:in table-ids]
+             :table_id [:in [:auto/param table-ids]]
              :visibility_type "normal"
              :preview_display true
              :active true
@@ -142,8 +142,8 @@
   [table-id :- [:maybe ::lib.schema.id/table]
    field-id :- [:maybe ::lib.schema.id/field]]
   (t2/select :model/Field
-             :table_id        table-id
-             :id              [:not= field-id]
+             :table_id        [:auto/param table-id]
+             :id              [:not= [:auto/param field-id]]
              :visibility_type "normal"
              :active          true
              {:from [(warehouse-schema-overlay/field-query)]}))
@@ -151,30 +151,30 @@
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))
+  (t2/select-one :model/Card :id [:auto/param card-id]))
 
 (mu/defn model-card
   "The model Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id :type :model))
+  (t2/select-one :model/Card :id [:auto/param card-id] :type :model))
 
 (mu/defn cards-in-collection
   "The Cards in the Collection with `collection-id`."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select :model/Card :collection_id collection-id))
+  (t2/select :model/Card :collection_id [:auto/param collection-id]))
 
 (mu/defn unarchived-cards-for-table-of-types
   "The unarchived Cards of the Table with `table-id` whose type is one of `card-types`. `table-id` may be nil
   (a native-query or nested-query Card has no resolved table id)."
   [table-id   :- [:maybe ::lib.schema.id/table]
    card-types :- [:sequential :keyword]]
-  (t2/select :model/Card :table_id table-id :type [:in card-types] :archived false))
+  (t2/select :model/Card :table_id [:auto/param table-id] :type [:in [:auto/param card-types]] :archived false))
 
 (mu/defn unarchived-metrics-for-table
   "The unarchived metric Cards of the Table with `table-id`. `table-id` may be nil (the caller's Table is
   itself sometimes absent)."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select :model/Card :table_id table-id :type :metric :archived false))
+  (t2/select :model/Card :table_id [:auto/param table-id] :type :metric :archived false))
 
 (mu/defn insert-card!
   "Insert the Card `card` and return the inserted instance."
@@ -184,34 +184,34 @@
 (mu/defn delete-cards-in-collection!
   "Delete the Cards in the Collection with `collection-id`, returning the number deleted."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/delete! :model/Card :collection_id collection-id))
+  (t2/delete! :model/Card :collection_id [:auto/param collection-id]))
 
 (mu/defn segment
   "The Segment with `segment-id`, or nil."
   [segment-id :- ::lib.schema.id/segment]
-  (t2/select-one :model/Segment :id segment-id))
+  (t2/select-one :model/Segment :id [:auto/param segment-id]))
 
 (mu/defn unarchived-segments-for-table
   "The unarchived Segments of the Table with `table-id`. `table-id` may be nil (the caller's Table is
   itself sometimes absent)."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select :model/Segment :table_id table-id :archived false))
+  (t2/select :model/Segment :table_id [:auto/param table-id] :archived false))
 
 (mu/defn collection
   "The Collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one :model/Collection :id collection-id))
+  (t2/select-one :model/Collection :id [:auto/param collection-id]))
 
 (mu/defn collection-location-columns
   "The location and id of the Collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one [:model/Collection :location :id] :id collection-id))
+  (t2/select-one [:model/Collection :location :id] :id [:auto/param collection-id]))
 
 (mu/defn collection-id-by-name-and-location
   "The id of the Collection named `collection-name` at `location`, or nil."
   [collection-name :- :string
    location        :- :string]
-  (t2/select-one-pk :model/Collection :name collection-name :location location))
+  (t2/select-one-pk :model/Collection :name [:auto/param collection-name] :location [:auto/param location]))
 
 (mu/defn automagic-dashboards-collection
   "The unarchived automatically generated dashboards Collection at `location`, or nil."
@@ -219,7 +219,7 @@
   (t2/select-one :model/Collection
                  :name "Automatically Generated Dashboards"
                  :archived false
-                 :location location))
+                 :location [:auto/param location]))
 
 (mu/defn insert-collection!
   "Insert the Collection `row` and return the inserted instance."
@@ -234,32 +234,32 @@
 (mu/defn dashboards
   "The Dashboards with `dashboard-ids`."
   [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
-  (t2/select :model/Dashboard :id [:in dashboard-ids]))
+  (t2/select :model/Dashboard :id [:in [:auto/param dashboard-ids]]))
 
 (mu/defn recently-edited-dashboard-ids-for-user
   "The ids of the Dashboards the User with `user-id` has revised, most recent first."
   [user-id :- [:maybe ::lib.schema.id/user]]
   (t2/select-fn-set :model_id :model/Revision
                     :model     "Dashboard"
-                    :user_id   user-id
+                    :user_id   [:auto/param user-id]
                     {:order-by [[:timestamp :desc]]}))
 
 (mu/defn dashboard-ids-for-card
   "The Dashboard ids of the DashboardCards showing the Card with `card-id`. `card-id` may be nil (an ad-hoc
   query has no saved Card id), in which case this returns nil."
   [card-id :- [:maybe ::lib.schema.id/card]]
-  (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id card-id))
+  (t2/select-fn-set :dashboard_id :model/DashboardCard :card_id [:auto/param card-id]))
 
 (mu/defn card-ids-for-dashboard
   "The Card ids of the DashboardCards of the Dashboard with `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id dashboard-id))
+  (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id [:auto/param dashboard-id]))
 
 (mu/defn other-card-ids-on-dashboards
   "The Card ids other than `card-id` of the DashboardCards of the Dashboards with `dashboard-ids`."
   [dashboard-ids :- [:set ::lib.schema.id/dashboard]
    card-id       :- ::lib.schema.id/card]
-  (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id [:in dashboard-ids] :card_id [:not= card-id]))
+  (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id [:in [:auto/param dashboard-ids]] :card_id [:not= [:auto/param card-id]]))
 
 (mu/defn dashcard-card-and-dashboard-ids
   "The Card and Dashboard ids of the DashboardCards, optionally narrowed to `card-ids` and/or excluding

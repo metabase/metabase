@@ -12,32 +12,32 @@
 (mu/defn cards
   "The Cards with `card-ids` (nil entries, e.g. from virtual dashcards, are ignored)."
   [card-ids :- [:sequential [:maybe ::lib.schema.id/card]]]
-  (t2/select :model/Card :id [:in card-ids]))
+  (t2/select :model/Card :id [:in [:auto/param card-ids]]))
 
 (mu/defn audit-log-topic-exists?
   "Whether an AuditLog entry with `topic` exists."
   [topic :- [:or :keyword :string]]
-  (t2/exists? :model/AuditLog :topic topic))
+  (t2/exists? :model/AuditLog :topic [:auto/param topic]))
 
 (mu/defn collection-with-entity-id
   "The Collection with `entity-id`, or nil."
   [entity-id :- :string]
-  (t2/select-one :model/Collection :entity_id entity-id))
+  (t2/select-one :model/Collection :entity_id [:auto/param entity-id]))
 
 (mu/defn dashboard-with-entity-id
   "The Dashboard with `entity-id`, or nil."
   [entity-id :- :string]
-  (t2/select-one :model/Dashboard :entity_id entity-id))
+  (t2/select-one :model/Dashboard :entity_id [:auto/param entity-id]))
 
 (mu/defn card-name-and-description
   "The name and description of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :name :description], :id card-id))
+  (t2/select-one [:model/Card :name :description], :id [:auto/param card-id]))
 
 (mu/defn table-database-id
   "The Database id of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table, :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one-fn :db_id :model/Table, :id [:auto/param table-id] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn insert-audit-log!
   "Insert an AuditLog entry."
@@ -64,7 +64,7 @@
                          :id
                          ^:allow-subquery {:select [:id]
                                            :from table
-                                           :where [:<= time-column cutoff]
+                                           :where [:<= time-column [:auto/param cutoff]]
                                            :order-by [[:id :asc]]
                                            :limit batch-size}]}))
 
@@ -75,5 +75,5 @@
    cutoff      :- ms/TemporalInstant
    batch-size  :- ms/PositiveInt]
   (t2/query-one {:delete-from table
-                 :where [:<= time-column cutoff]
+                 :where [:<= time-column [:auto/param cutoff]]
                  :limit batch-size}))

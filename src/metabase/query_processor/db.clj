@@ -19,19 +19,19 @@
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :id [:auto/param table-id] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn dashcard-series-exists?
   "Whether the Card with `card-id` is a series of the DashboardCard with `dashcard-id`."
   [card-id     :- [:maybe ::lib.schema.id/card]
    dashcard-id :- [:maybe ::lib.schema.id/dashcard]]
-  (t2/exists? :model/DashboardCardSeries :card_id card-id :dashboardcard_id dashcard-id))
+  (t2/exists? :model/DashboardCardSeries :card_id [:auto/param card-id] :dashboardcard_id [:auto/param dashcard-id]))
 
 (mu/defn cache-entry
   "`row-fn` applied to the results and updated-at of the QueryCache entry for `query-hash`, or nil."
   [row-fn     :- fn?
    query-hash :- bytes?]
-  (t2/select-one-fn row-fn [:model/QueryCache :results :updated_at] :query_hash query-hash))
+  (t2/select-one-fn row-fn [:model/QueryCache :results :updated_at] :query_hash [:auto/param query-hash]))
 
 (mu/defn claim-cache-refresh-lease!
   "Set `refresh_started_at` of the QueryCache entry for `query-hash` to `started-at` if its lease (defaulting to
@@ -67,8 +67,8 @@
   "Set the result metadata of the Card with `card-id` without touching `updated_at`."
   [card-id         :- ::lib.schema.id/card
    result-metadata :- [:maybe ::lib.schema.metadata/card.result-metadata]]
-  (t2/update! :model/Card :id card-id {:result_metadata result-metadata
-                                       :updated_at      :updated_at}))
+  (t2/update! :model/Card :id [:auto/param card-id] {:result_metadata result-metadata
+                                                     :updated_at      :updated_at}))
 
 (mu/defn update-cards-last-used-at!
   "Move `last_used_at` of each Card in `card-id->timestamp` forward to its timestamp, without touching `updated_at`."
@@ -77,14 +77,14 @@
              :where  [:in :id (keys card-id->timestamp)]
              :set    {:last_used_at (into [:case]
                                           (mapcat (fn [[id timestamp]]
-                                                    [[:= :id id] [:greatest [:coalesce :last_used_at (t/offset-date-time 0)] timestamp]])
+                                                    [[:= :id [:auto/param id]] [:greatest [:coalesce :last_used_at (t/offset-date-time 0)] [:auto/param timestamp]]])
                                                   card-id->timestamp))
                       :updated_at :updated_at}}))
 
 (mu/defn card-database-ids
   "The `:id` and `:database_id` of the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :database_id] :id [:in card-ids]))
+  (t2/select [:model/Card :id :database_id] :id [:in [:auto/param card-ids]]))
 
 (mu/defn upsert-cache-entry!
   "Insert or update the QueryCache entry for `query-hash`, setting `:results` to `results` and `:updated_at` to
@@ -92,7 +92,7 @@
   [query-hash :- bytes?
    timestamp  :- Temporal
    results    :- bytes?]
-  (app-db/update-or-insert! :model/QueryCache {:query_hash query-hash}
+  (app-db/update-or-insert! :model/QueryCache {:query_hash [:auto/param query-hash]}
                             (constantly {:updated_at         timestamp
                                          :results            results
                                          :refresh_started_at nil})))

@@ -24,7 +24,7 @@
 (mu/defn measure
   "The Measure with `id`, or nil."
   [id :- ::lib.schema.id/measure]
-  (t2/select-one :model/Measure :id id))
+  (t2/select-one :model/Measure :id [:auto/param id]))
 
 (mu/defn unarchived-measures
   "The unarchived Measures, in case-insensitive name order."
@@ -34,32 +34,32 @@
 (mu/defn table-database-ids
   "The set of Database ids of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select-fn-set :db_id :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-fn-set :db_id :model/Table :id [:in [:auto/param table-ids]] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn update-measure!
   "Apply `changes` to the Measure with `id`."
   [id      :- ::lib.schema.id/measure
    changes :- (mut/select-keys ::measures.schema/measure.update [:name :description :archived :definition])]
-  (t2/update! :model/Measure :id id changes))
+  (t2/update! :model/Measure :id [:auto/param id] changes))
 
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :id [:auto/param table-id] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn table-perms-columns
   "The Database id, schema, and id of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one [:model/Table :db_id :schema :id] :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one [:model/Table :db_id :schema :id] :id [:auto/param table-id] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn collections
   "The Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select :model/Collection :id [:in collection-ids]))
+  (t2/select :model/Collection :id [:in [:auto/param collection-ids]]))
 
 (mu/defn set-measure-dimensions!
   "Set the dimensions and dimension mappings of the Measure with `id`."
   [id                 :- ::lib.schema.id/measure
    dimensions         :- [:maybe sequential?]
    dimension-mappings :- [:maybe [:sequential ::measures.schema/measure.dimension-mapping]]]
-  (t2/update! :model/Measure :id id {:dimensions dimensions, :dimension_mappings dimension-mappings}))
+  (t2/update! :model/Measure :id [:auto/param id] {:dimensions dimensions, :dimension_mappings dimension-mappings}))

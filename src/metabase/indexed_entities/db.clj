@@ -12,12 +12,12 @@
 (mu/defn model-index
   "The ModelIndex with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/ModelIndex :id id))
+  (t2/select-one :model/ModelIndex :id [:auto/param id]))
 
 (mu/defn model-indexes-for-model
   "The ModelIndexes of the model Card with `model-id`."
   [model-id :- ms/PositiveInt]
-  (t2/select :model/ModelIndex :model_id model-id))
+  (t2/select :model/ModelIndex :model_id [:auto/param model-id]))
 
 (mu/defn all-model-indexes
   "Every ModelIndex."
@@ -27,51 +27,51 @@
 (mu/defn model-indexes-except
   "The ModelIndexes whose id is not in `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/ModelIndex :id [:not-in ids]))
+  (t2/select :model/ModelIndex :id [:not-in [:auto/param ids]]))
 
 (mu/defn delete-model-index!
   "Delete the ModelIndex with `id`, returning the number deleted."
   [id :- ms/PositiveInt]
-  (t2/delete! :model/ModelIndex :id id))
+  (t2/delete! :model/ModelIndex :id [:auto/param id]))
 
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))
+  (t2/select-one :model/Card :id [:auto/param card-id]))
 
 (mu/defn model-index-values
   "The ModelIndexValues of the ModelIndex with `model-index-id`."
   [model-index-id :- ms/PositiveInt]
-  (t2/select :model/ModelIndexValue :model_index_id model-index-id))
+  (t2/select :model/ModelIndexValue :model_index_id [:auto/param model-index-id]))
 
 (mu/defn model-index-values-reducible
   "A reducible of the ModelIndexValues of the ModelIndex with `model-index-id`."
   [model-index-id :- ms/PositiveInt]
-  (t2/reducible-select :model/ModelIndexValue :model_index_id model-index-id))
+  (t2/reducible-select :model/ModelIndexValue :model_index_id [:auto/param model-index-id]))
 
 (mu/defn mark-model-index-error!
   "Record `error-message` on the ModelIndex with `id` and stamp its indexing time, returning the number updated."
   [id            :- ms/PositiveInt
    error-message :- :string]
-  (t2/update! :model/ModelIndex :id id {:state      "error"
-                                        :error      error-message
-                                        :indexed_at :%now}))
+  (t2/update! :model/ModelIndex :id [:auto/param id] {:state      "error"
+                                                      :error      error-message
+                                                      :indexed_at :%now}))
 
 (mu/defn mark-model-index-indexed!
   "Set the ModelIndex with `id` to `state`, clear its error, and stamp its indexing time, returning the number
   updated."
   [id    :- ms/PositiveInt
    state :- :string]
-  (t2/update! :model/ModelIndex :id id {:indexed_at :%now
-                                        :error      nil
-                                        :state      state}))
+  (t2/update! :model/ModelIndex :id [:auto/param id] {:indexed_at :%now
+                                                      :error      nil
+                                                      :state      state}))
 
 (mu/defn delete-model-index-values!
   "Delete the ModelIndexValues of the ModelIndex with `model-index-id` for the model primary keys `model-pks`,
   returning the number deleted."
   [model-index-id :- ms/PositiveInt
    model-pks      :- [:sequential :int]]
-  (t2/delete! :model/ModelIndexValue :model_index_id model-index-id :model_pk [:in model-pks]))
+  (t2/delete! :model/ModelIndexValue :model_index_id [:auto/param model-index-id] :model_pk [:in [:auto/param model-pks]]))
 
 (mu/defn insert-model-index-values!
   "Insert the ModelIndexValue `rows`, returning the number inserted."

@@ -24,17 +24,17 @@
                             :where [:and
                                     [:= :active true]
                                     [:= :is_upload true]
-                                    [:= :db_id database-id]]}))
+                                    [:= :db_id [:auto/param database-id]]]}))
 
 (defn user-created-dashboard?
   "Whether an unarchived dashboard exists outside `example-dashboard-id` and `audit-collection-ids`."
   [example-dashboard-id audit-collection-ids]
   (t2/exists? :model/Dashboard {:where (cond-> [:and
                                                 [:= :archived false]]
-                                         example-dashboard-id (conj [:not= :id example-dashboard-id])
+                                         example-dashboard-id (conj [:not= :id [:auto/param example-dashboard-id]])
                                          (seq audit-collection-ids) (conj [:or
                                                                            [:is :collection_id nil]
-                                                                           [:not-in :collection_id audit-collection-ids]]))}))
+                                                                           [:not-in :collection_id [:auto/param audit-collection-ids]]]))}))
 
 (defn user-created-model?
   "Whether an unarchived model exists outside the audit collection with `audit-collection-id` and the sample
@@ -45,7 +45,7 @@
                                    [:= :archived false]
                                    [:or
                                     [:and
-                                     [:!= :collection_id audit-collection-id]
+                                     [:!= :collection_id [:auto/param audit-collection-id]]
                                      [:not [:exists ^:allow-subquery
                                             {:select [1]
                                              :from   [[(t2/table-name :model/Collection) :sample_coll]]
@@ -82,7 +82,7 @@
   "Whether an unarchived dashboard lives in the collection with `collection-id`."
   [collection-id]
   (t2/exists? :model/Dashboard {:where [:and
-                                        [:= :collection_id collection-id]
+                                        [:= :collection_id [:auto/param collection-id]]
                                         [:= :archived false]]}))
 
 (defn connection-impersonation?

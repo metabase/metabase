@@ -17,12 +17,12 @@
                           :session.saml_name_id :session.saml_name_id_format]
                  :from   [[:core_user :u]]
                  :join   [[:core_session :session] [:= :u.id :session.user_id]]
-                 :where  [:= :key_hashed session-key-hashed]}))
+                 :where  [:= :key_hashed [:auto/param session-key-hashed]]}))
 
 (mu/defn group-ids-by-name
   "The IDs of the PermissionsGroups named one of `group-names`."
   [group-names :- [:set :string]]
-  (t2/select-pks-set :model/PermissionsGroup :name [:in group-names]))
+  (t2/select-pks-set :model/PermissionsGroup :name [:in [:auto/param group-names]]))
 
 (mu/defn insert-relay-state!
   "Insert the SsoRelayState `row`, returning the number inserted."
@@ -38,14 +38,14 @@
   "The SsoRelayState with `hashed-key` expiring after `now`, or nil."
   [hashed-key :- :string
    now        :- ms/TemporalInstant]
-  (t2/select-one :model/SsoRelayState :id hashed-key :expires_at [:> now]))
+  (t2/select-one :model/SsoRelayState :id [:auto/param hashed-key] :expires_at [:> [:auto/param now]]))
 
 (mu/defn delete-relay-state!
   "Delete the SsoRelayState with `hashed-key`, returning the number deleted."
   [hashed-key :- :string]
-  (t2/delete! :model/SsoRelayState :id hashed-key))
+  (t2/delete! :model/SsoRelayState :id [:auto/param hashed-key]))
 
 (mu/defn delete-relay-states-expired-at!
   "Delete the SsoRelayStates expired at or before `now`, returning the number deleted."
   [now :- ms/TemporalInstant]
-  (t2/delete! :model/SsoRelayState :expires_at [:<= now]))
+  (t2/delete! :model/SsoRelayState :expires_at [:<= [:auto/param now]]))

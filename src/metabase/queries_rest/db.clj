@@ -21,17 +21,17 @@
 (mu/defn unarchived-cards-by-creator
   "The unarchived Cards created by the User with `creator-id`, in case-insensitive name order."
   [creator-id :- ::lib.schema.id/user]
-  (t2/select :model/Card, :creator_id creator-id, :archived false, order-by-name))
+  (t2/select :model/Card, :creator_id [:auto/param creator-id], :archived false, order-by-name))
 
 (mu/defn unarchived-cards-for-database
   "The unarchived Cards of the Database with `database-id`, in case-insensitive name order."
   [database-id :- ::lib.schema.id/database]
-  (t2/select :model/Card, :database_id database-id, :archived false, order-by-name))
+  (t2/select :model/Card, :database_id [:auto/param database-id], :archived false, order-by-name))
 
 (mu/defn unarchived-cards-for-table
   "The unarchived Cards of the Table with `table-id`, in case-insensitive name order."
   [table-id :- ::lib.schema.id/table]
-  (t2/select :model/Card, :table_id table-id, :archived false, order-by-name))
+  (t2/select :model/Card, :table_id [:auto/param table-id], :archived false, order-by-name))
 
 (mu/defn archived-cards
   "The archived Cards, in case-insensitive name order."
@@ -41,12 +41,12 @@
 (mu/defn cards-with-query-like
   "The Cards whose query matches the SQL LIKE `pattern`, in case-insensitive name order."
   [pattern :- :string]
-  (t2/select :model/Card (merge order-by-name {:where [:like :dataset_query pattern]})))
+  (t2/select :model/Card (merge order-by-name {:where [:like :dataset_query [:auto/param pattern]]})))
 
 (mu/defn card-bookmarks-for-user
   "The Card ids bookmarked by the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
-  (t2/select [:model/CardBookmark :card_id] :user_id user-id))
+  (t2/select [:model/CardBookmark :card_id] :user_id [:auto/param user-id]))
 
 (mu/defn cards-using-model
   "The unarchived Cards of the same Database as the model Card with `model-id` whose query mentions it, in
@@ -59,7 +59,7 @@
                                                     [:or
                                                      [:like :c.dataset_query (format "%%card__%s%%" model-id)]
                                                      [:like :c.dataset_query (format "%%#%s%%" model-id)]]]]
-                          :where [:and [:= :m.id model-id] [:not :c.archived]]
+                          :where [:and [:= :m.id [:auto/param model-id]] [:not :c.archived]]
                           :order-by [[[:lower :c.name] :asc]]}))
 
 (mu/defn public-cards
@@ -78,32 +78,32 @@
   (t2/select-one-fn :db_id :model/Table {:select [:t.db_id]
                                          :from [(warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})]
                                          :join [[:segment :m] [:= :t.id :m.table_id]]
-                                         :where [:= :m.id segment-id]}))
+                                         :where [:= :m.id [:auto/param segment-id]]}))
 
 (mu/defn table-database-id
   "The Database id of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table, :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one-fn :db_id :model/Table, :id [:auto/param table-id] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))
+  (t2/select-one :model/Card :id [:auto/param card-id]))
 
 (mu/defn cards-by-id
   "A map of Card id to Card for the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select-fn->fn :id identity :model/Card :id [:in card-ids]))
+  (t2/select-fn->fn :id identity :model/Card :id [:in [:auto/param card-ids]]))
 
 (mu/defn card-query
   "The query of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :dataset_query :model/Card :id card-id))
+  (t2/select-one-fn :dataset_query :model/Card :id [:auto/param card-id]))
 
 (mu/defn card-public-uuid-columns
   "The public uuid of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :public_uuid] :id card-id))
+  (t2/select-one [:model/Card :public_uuid] :id [:auto/param card-id]))
 
 (mu/defn compatible-series-cards
   "The unarchived Cards other than `excluded-card-id` displayed as one of `display-types`, newest first, whose id is
@@ -117,17 +117,17 @@
    limit :- [:maybe ms/PositiveInt]]
   (t2/select :model/Card
              :archived false
-             :display [:in display-types]
-             :id [:not= excluded-card-id]
+             :display [:in [:auto/param display-types]]
+             :id [:not= [:auto/param excluded-card-id]]
              (cond-> {:order-by [[:id :desc]]}
                last-cursor
-               (sql.helpers/where [:< :id last-cursor])
+               (sql.helpers/where [:< :id [:auto/param last-cursor]])
 
                (seq exclude-ids)
-               (sql.helpers/where [:not [:in :id exclude-ids]])
+               (sql.helpers/where [:not [:in :id [:auto/param exclude-ids]]])
 
                name-pattern
-               (sql.helpers/where [:like :%lower.name name-pattern])
+               (sql.helpers/where [:like :%lower.name [:auto/param name-pattern]])
 
                limit
                (assoc :limit limit))))
@@ -141,22 +141,22 @@
   "Apply `changes` to the Card with `card-id`."
   [card-id :- ::lib.schema.id/card
    changes :- (mut/select-keys ::queries.schema/card.update [:collection_position :collection_id :public_uuid :made_public_by_id])]
-  (t2/update! :model/Card :id card-id changes))
+  (t2/update! :model/Card :id [:auto/param card-id] changes))
 
 (mu/defn actions-for-model
   "The Actions of the model Card with `model-id`."
   [model-id :- ::lib.schema.id/card]
-  (t2/select :model/Action :model_id model-id))
+  (t2/select :model/Action :model_id [:auto/param model-id]))
 
 (mu/defn delete-card!
   "Delete the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
-  (t2/delete! :model/Card :id card-id))
+  (t2/delete! :model/Card :id [:auto/param card-id]))
 
 (mu/defn max-collection-position
   "The `:max_position` of the Cards in the Collection with `collection-id` (nil for the root)."
   [collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/select-one [:model/Card [:%max.collection_position :max_position]] :collection_id collection-id))
+  (t2/select-one [:model/Card [:%max.collection_position :max_position]] :collection_id [:auto/param collection-id]))
 
 (mu/defn cards-to-move-to-collection
   "The id, Collection, position, query, and schema of the Cards among `card-ids` not already in
@@ -165,12 +165,12 @@
    new-collection-id-or-nil :- [:maybe ms/PositiveInt]]
   (t2/select [:model/Card :id :collection_id :collection_position :dataset_query :card_schema :type
               :entity_id :result_metadata :dimensions :dimension_mappings]
-             {:where [:and [:in :id card-ids]
-                      [:or [:not= :collection_id new-collection-id-or-nil]
+             {:where [:and [:in :id [:auto/param card-ids]]
+                      [:or [:not= :collection_id [:auto/param new-collection-id-or-nil]]
                        (when new-collection-id-or-nil
                          [:= :collection_id nil])]]}))
 
 (mu/defn stored-result
   "The StoredResult with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/StoredResult :id id))
+  (t2/select-one :model/StoredResult :id [:auto/param id]))

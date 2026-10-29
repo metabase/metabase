@@ -28,12 +28,12 @@
 (mu/defn api-key-by-name
   "The ApiKey named `api-key-name`, or nil."
   [api-key-name :- :string]
-  (t2/select-one :model/ApiKey :name api-key-name))
+  (t2/select-one :model/ApiKey :name [:auto/param api-key-name]))
 
 (mu/defn api-key-prefix-exists?
   "Whether an ApiKey with `prefix` exists."
   [prefix :- :string]
-  (t2/exists? :model/ApiKey :key_prefix prefix))
+  (t2/exists? :model/ApiKey :key_prefix [:auto/param prefix]))
 
 (mu/defn insert-api-key!
   "Insert `api-key` and return the new instance. `::api-keys/unhashed-key` has a special meaning to the ApiKey
@@ -44,7 +44,7 @@
 (mu/defn user-by-email
   "The User with `email`, or nil."
   [email :- :string]
-  (t2/select-one :model/User :email email))
+  (t2/select-one :model/User :email [:auto/param email]))
 
 (mu/defn user-columns-by-email
   "The `columns` of the User with `email`, or nil."
@@ -61,7 +61,7 @@
   "Apply `changes` to the User with `user-id`."
   [user-id :- ::lib.schema.id/user
    changes :- ::users.schema/user.update]
-  (t2/update! :model/User :id user-id changes))
+  (t2/update! :model/User :id [:auto/param user-id] changes))
 
 (mu/defn sample-database-exists?
   "Whether the sample Database exists."
@@ -71,7 +71,7 @@
 (mu/defn database-by-name
   "The `:id` and `:is_stub` of the Database named `database-name`, or nil."
   [database-name :- :string]
-  (t2/select-one [:model/Database :id :is_stub] :name database-name))
+  (t2/select-one [:model/Database :id :is_stub] :name [:auto/param database-name]))
 
 (mu/defn database
   "The Database with `database-id`, or nil."
@@ -87,9 +87,9 @@
   "Apply `changes` to the Database with `database-id`."
   [database-id :- ::lib.schema.id/database
    changes :- ::warehouses.schema/database.update]
-  (t2/update! :model/Database :id database-id changes))
+  (t2/update! :model/Database :id [:auto/param database-id] changes))
 
 (mu/defn delete-database!
   "Delete the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/Database :id database-id))
+  (t2/delete! :model/Database :id [:auto/param database-id]))

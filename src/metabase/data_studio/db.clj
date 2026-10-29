@@ -44,8 +44,8 @@
                                 [:= :dim.human_readable_field_id :target_field.id]]
                        :where  [:and
                                 [:= :dim.type "external"]
-                                [:in input-table-id table-ids]
-                                [:not [:in output-table-id exclude-table-ids]]]}))
+                                [:in input-table-id [:auto/param table-ids]]
+                                [:not [:in output-table-id [:auto/param exclude-table-ids]]]]}))
 
 (mu/defn fk-remapped-table-ids-for-selectors
   "The `:table_id`s reached through external Dimensions from the Tables picked out by `selectors`, reading the
@@ -68,7 +68,7 @@
                                   [:not [:exists ^:allow-subquery
                                          {:select [1]
                                           :from   [(warehouse-schema-overlay/table-query)]
-                                          :where  [:and where [:= :id output-table-id]]}]]]})))
+                                          :where  [:and where [:= :id [:auto/param output-table-id]]]}]]]})))
 
 (mu/defn database
   "The Database with `database-id`, or nil."
@@ -78,7 +78,7 @@
 (mu/defn databases
   "The Databases with `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select :model/Database :id [:in database-ids]))
+  (t2/select :model/Database :id [:in [:auto/param database-ids]]))
 
 (mu/defn tables-matching-selectors
   "The Tables picked out by `selectors`, a map of `:database_ids`, `:schema_ids`, and/or `:table_ids`."
@@ -95,7 +95,7 @@
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select :model/Table :id [:in [:auto/param table-ids]] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn selection-columns-for-selectors
   "Up to `limit` id, database, name, schema, and published flag of the Tables picked out by `selectors`."
@@ -108,7 +108,7 @@
 (mu/defn selection-columns-for-tables
   "The id, database, name, schema, and published flag of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :db_id :name :display_name :schema :is_published] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select [:model/Table :id :db_id :name :display_name :schema :is_published] :id [:in [:auto/param table-ids]] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn delete-field-values-for-tables!
   "Delete the FieldValues of the Fields of the Tables with `table-ids`, returning the number deleted."

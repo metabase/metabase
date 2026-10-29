@@ -16,7 +16,7 @@
   (t2/select-pks-set :model/Table
                      {:from  [(warehouse-schema-overlay/table-query)]
                       :where [:and
-                              [:= :db_id database-id]
+                              [:= :db_id [:auto/param database-id]]
                               ;; `lower()` cannot use an index on the name column, but it still beats fetching every
                               ;; row for the Database.
                               [:in [:lower :name] (into #{} (map u/lower-case-en) table-names)]

@@ -26,9 +26,9 @@
   "Insert the EmbeddingSdkReact18Host `host` seen at `seen-at`, or move its `last_seen_at` forward to `seen-at`."
   [host    :- :string
    seen-at :- ms/TemporalInstant]
-  (mdb/update-or-insert! :model/EmbeddingSdkReact18Host {:host host}
+  (mdb/update-or-insert! :model/EmbeddingSdkReact18Host {:host [:auto/param host]}
                          (fn [existing]
                            ;; the INSERT also uses this, and GREATEST needs an existing row
                            (if existing
-                             {:last_seen_at [:greatest :last_seen_at seen-at]}
+                             {:last_seen_at [:greatest :last_seen_at [:auto/param seen-at]]}
                              {:last_seen_at seen-at}))))

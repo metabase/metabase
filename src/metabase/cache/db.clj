@@ -14,27 +14,27 @@
 (mu/defn database-with-ids
   "A Database whose id is in `ids`, or nil."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select-one :model/Database :id [:in ids]))
+  (t2/select-one :model/Database :id [:in [:auto/param ids]]))
 
 (mu/defn dashboard-with-ids
   "A Dashboard whose id is in `ids`, or nil."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select-one :model/Dashboard :id [:in ids]))
+  (t2/select-one :model/Dashboard :id [:in [:auto/param ids]]))
 
 (mu/defn card-with-ids
   "A Card whose id is in `ids`, or nil."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select-one :model/Card :id [:in ids]))
+  (t2/select-one :model/Card :id [:in [:auto/param ids]]))
 
 (mu/defn dashboard-collection-id
   "The `:collection_id` of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one [:model/Dashboard :collection_id] :id dashboard-id))
+  (t2/select-one [:model/Dashboard :collection_id] :id [:auto/param dashboard-id]))
 
 (mu/defn card-collection-id
   "The `:collection_id` of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :collection_id] :id card-id))
+  (t2/select-one [:model/Card :collection_id] :id [:auto/param card-id]))
 
 (mu/defn cache-config
   "The CacheConfig with primary key `pk`, or nil."
@@ -118,43 +118,43 @@
   "The CacheConfig for `model` and `model-id` locked for update, or nil."
   [model    :- :string
    model-id :- ms/IntGreaterThanOrEqualToZero]
-  (t2/select-one :model/CacheConfig :model model :model_id model-id {:for :update}))
+  (t2/select-one :model/CacheConfig :model [:auto/param model] :model_id [:auto/param model-id] {:for :update}))
 
 (mu/defn upsert-cache-config!
   "Insert or replace the CacheConfig for `model` and `model-id` with `data`, returning its ID."
   [model    :- :string
    model-id :- ms/IntGreaterThanOrEqualToZero
    data     :- (mut/select-keys ::cache.schema/cache-config.update [:model :model_id :strategy :config :refresh_automatically])]
-  (app-db/update-or-insert! :model/CacheConfig {:model model :model_id model-id}
+  (app-db/update-or-insert! :model/CacheConfig {:model [:auto/param model] :model_id [:auto/param model-id]}
                             (constantly data)))
 
 (mu/defn cache-configs-for
   "The CacheConfigs for `model` and `model-ids`."
   [model     :- :string
    model-ids :- [:sequential ms/IntGreaterThanOrEqualToZero]]
-  (t2/select :model/CacheConfig :model model :model_id [:in model-ids]))
+  (t2/select :model/CacheConfig :model [:auto/param model] :model_id [:in [:auto/param model-ids]]))
 
 (mu/defn delete-cache-configs!
   "Delete the CacheConfigs for `model` and `model-ids`, returning the number deleted."
   [model     :- :string
    model-ids :- [:sequential ms/IntGreaterThanOrEqualToZero]]
-  (t2/delete! :model/CacheConfig :model model :model_id [:in model-ids]))
+  (t2/delete! :model/CacheConfig :model [:auto/param model] :model_id [:in [:auto/param model-ids]]))
 
 (mu/defn card-ids-for-databases
   "The ids of the Cards of the Databases with `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select-fn-vec :id [:model/Card :id] :database_id [:in database-ids]))
+  (t2/select-fn-vec :id [:model/Card :id] :database_id [:in [:auto/param database-ids]]))
 
 (mu/defn dashboard-card-ids
   "The Card ids of the DashboardCards of the Dashboards with `dashboard-ids` (nil for DashboardCards without a Card)."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
-  (t2/select-fn-vec :card_id [:model/DashboardCard :card_id] :dashboard_id [:in dashboard-ids]))
+  (t2/select-fn-vec :card_id [:model/DashboardCard :card_id] :dashboard_id [:in [:auto/param dashboard-ids]]))
 
 (mu/defn invalidate-cards!
   "Set `cache_invalidated_at` of the Cards with `card-ids` to `invalidated-at`, returning the number updated."
   [card-ids       :- [:sequential ::lib.schema.id/card]
    invalidated-at :- ms/TemporalInstant]
-  (t2/update! :model/Card :id [:in card-ids] {:cache_invalidated_at invalidated-at}))
+  (t2/update! :model/Card :id [:in [:auto/param card-ids]] {:cache_invalidated_at invalidated-at}))
 
 (mu/defn invalidate-cache-configs!
   "Set `invalidated_at` of the CacheConfigs identified by the `[model model-id]` pairs to `invalidated-at`, returning
@@ -164,7 +164,7 @@
   (t2/query-one {:update (t2/table-name :model/CacheConfig)
                  :set    {:invalidated_at invalidated-at}
                  :where  (into [:or] (for [[model model-id] model+ids]
-                                       [:and [:= :model model] [:= :model_id model-id]]))}))
+                                       [:and [:= :model [:auto/param model]] [:= :model_id [:auto/param model-id]]]))}))
 
 (mu/defn cache-config-exists?
   "Whether any CacheConfig exists."

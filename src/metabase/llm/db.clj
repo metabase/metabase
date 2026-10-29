@@ -12,7 +12,7 @@
 (mu/defn database-engine
   "The engine of the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :engine :model/Database :id database-id))
+  (t2/select-one-fn :engine :model/Database :id [:auto/param database-id]))
 
 (defn- table-match-clause
   "Match a Table by name and, when given, schema, both case-insensitively."
@@ -34,7 +34,7 @@
   (t2/select :model/Table
              {:from [(warehouse-schema-overlay/table-query)]
               :where [:and
-                      [:= :db_id database-id]
+                      [:= :db_id [:auto/param database-id]]
                       [:= :active true]
                       (into [:or] (map table-match-clause) tables)]}))
 
@@ -52,8 +52,8 @@
                                {:perms/view-data      :unrestricted
                                 :perms/create-queries :query-builder-and-native})]
     (t2/select :model/Table
-               :id [:in table-ids]
-               :db_id database-id
+               :id [:in [:auto/param table-ids]]
+               :db_id [:auto/param database-id]
                :active true
                :visibility_type nil
                (cond-> {:from  [(warehouse-schema-overlay/table-query)]
@@ -63,9 +63,9 @@
 (mu/defn unarchived-cards
   "The unarchived Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select :model/Card :id [:in card-ids] :archived false))
+  (t2/select :model/Card :id [:in [:auto/param card-ids]] :archived false))
 
 (mu/defn field-names-and-tables
   "The id, name, and Table id of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :name :table_id] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select [:model/Field :id :name :table_id] :id [:in [:auto/param field-ids]] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))

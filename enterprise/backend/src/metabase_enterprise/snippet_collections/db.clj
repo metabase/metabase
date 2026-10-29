@@ -11,4 +11,4 @@
   bare column lookup, this distinguishes a missing snippet (nil) from one filed under the root collection
   (`{:collection_id nil}`)."
   [id :- ::lib.schema.id/native-query-snippet]
-  (t2/select-one [:model/NativeQuerySnippet :collection_id] :id id))
+  (t2/select-one [:model/NativeQuerySnippet :collection_id] :id [:auto/param id]))

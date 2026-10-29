@@ -89,8 +89,8 @@
   [scan-id       :- :string
    finding-types :- [:set :keyword]]
   (t2/update! :model/ContentDiagnosticsFinding
-              {:scan_id        [:not= scan-id]
-               :finding_type   [:in finding-types]
+              {:scan_id        [:not= [:auto/param scan-id]]
+               :finding_type   [:in [:auto/param finding-types]]
                :invalidated_at nil}
               {:invalidated_at (mi/now)}))
 
@@ -99,8 +99,8 @@
   [entity-type :- :keyword
    entity-id   :- ms/PositiveInt]
   (t2/update! :model/ContentDiagnosticsFinding
-              {:entity_type    entity-type
-               :entity_id      entity-id
+              {:entity_type    [:auto/param entity-type]
+               :entity_id      [:auto/param entity-id]
                :invalidated_at nil}
               {:invalidated_at (mi/now)}))
 
@@ -116,7 +116,7 @@
   [ids   :- [:sequential ms/PositiveInt]
    where :- vector?]
   (t2/select-pks-set :model/ContentDiagnosticsFinding
-                     {:where [:and [:in :id ids] [:= :invalidated_at nil] where]}))
+                     {:where [:and [:in :id [:auto/param ids]] [:= :invalidated_at nil] where]}))
 
 (mu/defn findings-page
   "One page of findings matching `where`, sorted by `order-by`; `limit`/`offset` may be nil for no
@@ -193,17 +193,17 @@
   breadcrumb anchor is parsed from, `personal_owner_id`, and the tree's `namespace`."
   [collection-ids :- [:set ::lib.schema.id/collection]]
   (t2/select [:model/Collection :id :description :location :personal_owner_id :namespace]
-             :id [:in collection-ids]))
+             :id [:in [:auto/param collection-ids]]))
 
 (mu/defn collection-names-by-id
   "`{id → name}` for the Collections with `collection-ids`."
   [collection-ids :- [:set ::lib.schema.id/collection]]
-  (t2/select-pk->fn :name [:model/Collection :id :name] :id [:in collection-ids]))
+  (t2/select-pk->fn :name [:model/Collection :id :name] :id [:in [:auto/param collection-ids]]))
 
 (mu/defn collection-namespaces-by-id
   "`{id → namespace}` for the Collections with `collection-ids`."
   [collection-ids :- [:set ::lib.schema.id/collection]]
-  (t2/select-pk->fn :namespace [:model/Collection :id :namespace] :id [:in collection-ids]))
+  (t2/select-pk->fn :namespace [:model/Collection :id :namespace] :id [:in [:auto/param collection-ids]]))
 
 (mu/defn collection-parent-ids-by-id
   "`{id → parent collection id}` for the Collections with `collection-ids`, parsed from `location`; nil
@@ -211,7 +211,7 @@
   [collection-ids :- [:set ::lib.schema.id/collection]]
   (t2/select-pk->fn (comp collection/location-path->parent-id :location)
                     [:model/Collection :id :location]
-                    :id [:in collection-ids]))
+                    :id [:in [:auto/param collection-ids]]))
 
 ;;; --------------------------------------------- Entities of a type ------------------------------------------
 
@@ -259,14 +259,14 @@
   ;; the projection is what `add-common-name` reads - a bare model select would fetch every user
   ;; column to derive one field
   (t2/select-pk->fn :common_name [:model/User :id :email :first_name :last_name]
-                    :id [:in user-ids]))
+                    :id [:in [:auto/param user-ids]]))
 
 (mu/defn user-contacts-by-id
   "`{id → {:id :common_name :email}}` for the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pk->fn #(select-keys % [:id :common_name :email])
                     [:model/User :id :email :first_name :last_name]
-                    :id [:in user-ids]))
+                    :id [:in [:auto/param user-ids]]))
 
 ;;; -------------------------------------------------- Cards --------------------------------------------------
 
@@ -327,7 +327,7 @@
                         :join   [[:report_card :c] [:= :c.id :qe.card_id]]
                         :where  [:and
                                  [:= :c.archived false]
-                                 [:>= :qe.started_at cutoff]
+                                 [:>= :qe.started_at [:auto/param cutoff]]
                                  [:= :qe.parameterized false]
                                  [:= [:coalesce :qe.is_sandboxed false] false]
                                  [:not= :qe.cache_hit true]
@@ -359,14 +359,14 @@
                                    [:not= :qe.running_time nil]
                                    [:not= :qe.cache_hit true]
                                    [:= :c.archived false]
-                                   [:>= :qe.started_at cutoff]
+                                   [:>= :qe.started_at [:auto/param cutoff]]
                                    eligible-clause]}
                          :ranked]]
              :where    [:and
                         [:>= :rn [:/ :cnt 2.0]]
                         [:<= :rn [:+ [:/ :cnt 2.0] 1]]]
              :group-by [:card_id]
-             :having   [:> [:avg :running_time] threshold-ms]}))
+             :having   [:> [:avg :running_time] [:auto/param threshold-ms]]}))
 
 ;;; ------------------------------------------------ Dashboards -----------------------------------------------
 
@@ -410,7 +410,7 @@
   (t2/query {:select [[:dc.dashboard_id :dashboard_id] [:dc.card_id :card_id]]
              :from   [[:report_dashboardcard :dc]]
              :join   [[:report_dashboard :d] [:= :d.id :dc.dashboard_id]]
-             :where  [:and eligible-clause [:in :dc.card_id card-ids]]}))
+             :where  [:and eligible-clause [:in :dc.card_id [:auto/param card-ids]]]}))
 
 (mu/defn dashboard-series-card-pairs
   "The `(dashboard_id, card_id)` pairs where a Dashboard matching `eligible-clause` renders one of
@@ -421,7 +421,7 @@
              :from   [[:dashboardcard_series :s]]
              :join   [[:report_dashboardcard :dc] [:= :dc.id :s.dashboardcard_id]
                       [:report_dashboard :d]      [:= :d.id :dc.dashboard_id]]
-             :where  [:and eligible-clause [:in :s.card_id card-ids]]}))
+             :where  [:and eligible-clause [:in :s.card_id [:auto/param card-ids]]]}))
 
 ;;; ------------------------------------------------- Documents -----------------------------------------------
 
@@ -448,7 +448,7 @@
   (t2/select [:model/Document :id :document :content_type]
              {:where [:and
                       [:= :archived false]
-                      [:= :content_type content-type]
+                      [:= :content_type [:auto/param content-type]]
                       eligible-clause]}))
 
 ;;; ------------------------------------------------- Transforms ----------------------------------------------
@@ -479,7 +479,7 @@
              :from     [:transform_run]
              :where    [:and
                         [:in :status ["succeeded" "failed" "timeout"]]
-                        [:>= :start_time cutoff]]
+                        [:>= :start_time [:auto/param cutoff]]]
              :group-by [:transform_id]}))
 
 ;;; ------------------------------------------------ Task history ---------------------------------------------
@@ -487,4 +487,4 @@
 (mu/defn task-history-details
   "The `task_details` of every `task_history` row for `task-name`."
   [task-name :- :string]
-  (t2/select-fn-vec :task_details [:model/TaskHistory :task_details] :task task-name))
+  (t2/select-fn-vec :task_details [:model/TaskHistory :task_details] :task [:auto/param task-name]))

@@ -75,7 +75,7 @@
 (mu/defn user-ids-by-entity-ids
   "The IDs of the Users with `entity-ids`."
   [entity-ids :- [:sequential :string]]
-  (t2/select-fn-set :id :model/User {:where [:in :entity_id entity-ids]}))
+  (t2/select-fn-set :id :model/User {:where [:in :entity_id [:auto/param entity-ids]]}))
 
 (mu/defn insert-user!
   "Insert the User `row`, returning the number inserted."
@@ -86,7 +86,7 @@
   "Apply `changes` to the User with `user-id`, returning the number updated."
   [user-id :- ::lib.schema.id/user
    changes :- ::users.schema/user.update]
-  (t2/update! :model/User :id user-id changes))
+  (t2/update! :model/User :id [:auto/param user-id] changes))
 
 (mu/defn user-group-memberships
   "Rows of User ID, group name, and group entity ID for the memberships of the Users with `user-ids`, excluding the
@@ -96,8 +96,8 @@
   (t2/select [:model/PermissionsGroupMembership :pgm.user_id :pg.name :pg.entity_id]
              {:from  [[:permissions_group_membership :pgm]]
               :join  [[:permissions_group :pg] [:= :pg.id :group_id]]
-              :where (into [:and [:in :user_id user-ids]]
-                           (map (fn [group-id] [:not= :pg.id group-id]))
+              :where (into [:and [:in :user_id [:auto/param user-ids]]]
+                           (map (fn [group-id] [:not= :pg.id [:auto/param group-id]]))
                            excluded-group-ids)}))
 
 (defn- manageable-group-expr
@@ -145,17 +145,17 @@
   "Apply `changes` to the PermissionsGroup with `group-id`, returning the number updated."
   [group-id :- ms/PositiveInt
    changes  :- (mut/select-keys ::permissions.schema/permissions-group.update [:name :entity_id :magic_group_type :is_tenant_group])]
-  (t2/update! :model/PermissionsGroup :id group-id changes))
+  (t2/update! :model/PermissionsGroup :id [:auto/param group-id] changes))
 
 (mu/defn delete-group!
   "Delete the PermissionsGroup with `group-id`, returning the number deleted."
   [group-id :- ms/PositiveInt]
-  (t2/delete! :model/PermissionsGroup :id group-id))
+  (t2/delete! :model/PermissionsGroup :id [:auto/param group-id]))
 
 (mu/defn group-member-user-ids
   "The user IDs of the members of the PermissionsGroup with `group-id`."
   [group-id :- ms/PositiveInt]
-  (t2/select-fn-set :user_id :model/PermissionsGroupMembership :group_id group-id))
+  (t2/select-fn-set :user_id :model/PermissionsGroupMembership :group_id [:auto/param group-id]))
 
 (mu/defn group-members
   "Rows of group ID, member email, and member entity ID for the memberships of the PermissionsGroups with
@@ -164,4 +164,4 @@
   (t2/select [:model/PermissionsGroupMembership :pgm.group_id :u.email :u.entity_id]
              {:from  [[:permissions_group_membership :pgm]]
               :join  [[:core_user :u] [:= :u.id :pgm.user_id]]
-              :where [:in :pgm.group_id group-ids]}))
+              :where [:in :pgm.group_id [:auto/param group-ids]]}))

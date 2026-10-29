@@ -12,39 +12,39 @@
 (mu/defn router-database-id
   "The router Database id of the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :router_database_id :model/Database :id database-id))
+  (t2/select-one-fn :router_database_id :model/Database :id [:auto/param database-id]))
 
 (mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- [:maybe ::lib.schema.id/database]]
-  (t2/select-one :model/Database :id database-id))
+  (t2/select-one :model/Database :id [:auto/param database-id]))
 
 (mu/defn non-destination-database
   "The Database with `database-id` if it is not a routing destination, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id database-id :router_database_id nil))
+  (t2/select-one :model/Database :id [:auto/param database-id] :router_database_id nil))
 
 (mu/defn databases
   "The Databases with `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select :model/Database :id [:in database-ids]))
+  (t2/select :model/Database :id [:in [:auto/param database-ids]]))
 
 (mu/defn database-by-name
   "The Database named `database-name`, or nil."
   [database-name :- :string]
-  (t2/select-one :model/Database :name database-name))
+  (t2/select-one :model/Database :name [:auto/param database-name]))
 
 (mu/defn set-database-details!
   "Set the connection details of the Database with `database-id`, returning the number updated."
   [database-id :- ::lib.schema.id/database
    details     :- ::warehouses.schema/database.details]
-  (t2/update! :model/Database :id database-id {:details details}))
+  (t2/update! :model/Database :id [:auto/param database-id] {:details details}))
 
 (mu/defn set-database-provider-name!
   "Set the provider name of the Database with `database-id`, returning the number updated."
   [database-id    :- ::lib.schema.id/database
    provider-name  :- :string]
-  (t2/update! :model/Database :id database-id {:provider_name provider-name}))
+  (t2/update! :model/Database :id [:auto/param database-id] {:provider_name provider-name}))
 
 (mu/defn health-check-candidate-ids
   "The `:id` of the lowest-id non-audit, non-sample, non-stub, non-destination Database of each engine."
@@ -86,14 +86,14 @@
                                                            :where  [:= :child_field.parent_id :metabase_field.id]}]])]
     (t2/query-one {:delete-from (t2/table-name :model/Field)
                    :where       [:and
-                                 [:in :table_id table-ids-query]
+                                 [:in :table_id (table-ids-of-database-query database-id)]
                                  extra-clause]})))
 
 (mu/defn delete-cards-for-database-returning-ids-reducible
   "A reducible that deletes the Cards of the Database with `database-id` and yields their `:id`s (Postgres only)."
   [database-id :- ::lib.schema.id/database]
   (t2/reducible-query {:delete-from (t2/table-name :model/Card)
-                       :where       [:= :database_id database-id]
+                       :where       [:= :database_id [:auto/param database-id]]
                        :returning   [:id]}))
 
 (mu/defn card-ids-for-database-reducible
@@ -101,26 +101,26 @@
   [database-id :- ::lib.schema.id/database]
   (t2/reducible-query {:from   [(t2/table-name :model/Card)]
                        :select [:id]
-                       :where  [:= :database_id database-id]}))
+                       :where  [:= :database_id [:auto/param database-id]]}))
 
 (mu/defn delete-actions-for-database!
   "Delete the query Actions whose query runs against the Database with `database-id` and the implicit Actions that write
   to one of its Tables, returning the number deleted."
   [database-id :- ::lib.schema.id/database]
   (let [[table-subquery _] (warehouse-schema-overlay/table-query)]
-    (if-let [action-ids (not-empty (into (t2/select-fn-set :action_id :model/QueryAction :database_id database-id)
+    (if-let [action-ids (not-empty (into (t2/select-fn-set :action_id :model/QueryAction :database_id [:auto/param database-id])
                                          (t2/select-fn-set :action_id :model/ImplicitAction
                                                            {:join  [[table-subquery :table]
                                                                     [:= :table.id :implicit_action.table_id]]
-                                                            :where [:= :table.db_id database-id]})))]
-      (t2/delete! :model/Action :id [:in action-ids])
+                                                            :where [:= :table.db_id [:auto/param database-id]]})))]
+      (t2/delete! :model/Action :id [:in [:auto/param action-ids]])
       0)))
 
 (mu/defn delete-cards-for-database!
   "Delete the Cards of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
   (t2/query {:delete-from (t2/table-name :model/Card)
-             :where       [:= :database_id database-id]}))
+             :where       [:= :database_id [:auto/param database-id]]}))
 
 (mu/defn disable-uploads-for-all-databases!
   "Disable uploads on every Database that has them enabled, returning the number updated."
@@ -130,14 +130,14 @@
 (mu/defn active-tables-for-database
   "The active Tables of the Database with `database-id`, in case-insensitive display name order."
   [database-id :- ::lib.schema.id/database]
-  (t2/select :model/Table :db_id database-id :active true {:from [(warehouse-schema-overlay/table-query)]
-                                                           :order-by [[:%lower.display_name :asc]]}))
+  (t2/select :model/Table :db_id [:auto/param database-id] :active true {:from [(warehouse-schema-overlay/table-query)]
+                                                                         :order-by [[:%lower.display_name :asc]]}))
 
 (mu/defn active-tables-for-databases
   "The active Tables of the Databases with `database-ids`, in database then display name order."
   [database-ids :- [:sequential ::lib.schema.id/database]]
   (t2/select :model/Table
-             :db_id  [:in database-ids]
+             :db_id  [:in [:auto/param database-ids]]
              :active true
              {:from [(warehouse-schema-overlay/table-query)]
               :order-by [[:db_id :asc] [:%lower.display_name :asc]]}))
@@ -145,12 +145,12 @@
 (mu/defn active-table-ids-for-database
   "The ids of the active Tables of the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-pks-set :model/Table, :db_id database-id, :active true {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-pks-set :model/Table, :db_id [:auto/param database-id], :active true {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn pk-fields-for-tables
   "The primary-key Fields of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Field :table_id [:in table-ids] :semantic_type (mdb/isa :type/PK)
+  (t2/select :model/Field :table_id [:in [:auto/param table-ids]] :semantic_type (mdb/isa :type/PK)
              {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn databases-for-serdes-reducible
@@ -163,7 +163,7 @@
   (t2/reducible-select :model/Database
                        {:where [:and
                                 (when filter-column
-                                  [:in filter-column filter-ids])
+                                  [:in filter-column [:auto/param filter-ids]])
                                 [:= :router_database_id nil]
                                 ;; never export the sample database, regardless of its driver
                                 [:not= :is_sample true]
@@ -174,4 +174,4 @@
 (mu/defn table-database-id
   "The Database id of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table, :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one-fn :db_id :model/Table, :id [:auto/param table-id] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))

@@ -25,18 +25,18 @@
     (t2/select :model/Table
                {:from [(warehouse-schema-overlay/table-query)]
                 :select columns
-                :where  (cond-> [:and [:= :db_id database-id] [:= :active true]]
-                          (contains? opts :table-ids) (conj [:in :id table-ids])
+                :where  (cond-> [:and [:= :db_id [:auto/param database-id]] [:= :active true]]
+                          (contains? opts :table-ids) (conj [:in :id [:auto/param table-ids]])
                           (contains? opts :schema)     (conj (if (= schema "")
                                                                [:or [:= :schema nil] [:= :schema ""]]
-                                                               [:= :schema schema])))})))
+                                                               [:= :schema [:auto/param schema]])))})))
 
 (mu/defn active-fields-for-tables
   "The active Fields of the Tables with `table-ids`, in field order."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Field {:from     [(warehouse-schema-overlay/field-query)]
                            :where    [:and
-                                      [:in :table_id table-ids]
+                                      [:in :table_id [:auto/param table-ids]]
                                       [:= :active true]]
                            :order-by schema.table/field-order-rule}))
 
@@ -45,5 +45,5 @@
   [field-ids :- [:or [:set ::lib.schema.id/field] [:sequential ::lib.schema.id/field]]]
   (t2/select :model/Field {:from  [(warehouse-schema-overlay/field-query)]
                            :where [:and
-                                   [:in :id field-ids]
+                                   [:in :id [:auto/param field-ids]]
                                    [:= :active true]]}))

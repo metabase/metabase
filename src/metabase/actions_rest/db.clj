@@ -16,11 +16,11 @@
                                                                  [:model-id {:optional true} [:maybe ::lib.schema.id/card]]
                                                                  [:archived :boolean]]]
   (t2/select-pks-vec :model/Action {:where [:and
-                                            [:= :archived archived]
+                                            [:= :archived [:auto/param archived]]
                                             (when action-type
                                               [:= :type (name action-type)])
                                             (if model-id
-                                              [:= :model_id model-id]
+                                              [:= :model_id [:auto/param model-id]]
                                               [:or
                                                [:and
                                                 [:not= :model_id nil]
@@ -43,16 +43,16 @@
 (mu/defn delete-action!
   "Delete the Action with `action-id`."
   [action-id :- ::lib.schema.id/action]
-  (t2/delete! :model/Action :id action-id))
+  (t2/delete! :model/Action :id [:auto/param action-id]))
 
 (mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id database-id))
+  (t2/select-one :model/Database :id [:auto/param database-id]))
 
 (mu/defn set-action-public-uuid!
   "Set the public uuid of the Action with `action-id` and the User who made it public."
   [action-id         :- ::lib.schema.id/action
    public-uuid       :- [:maybe :string]
    made-public-by-id :- [:maybe ::lib.schema.id/user]]
-  (t2/update! :model/Action :id action-id {:public_uuid public-uuid, :made_public_by_id made-public-by-id}))
+  (t2/update! :model/Action :id [:auto/param action-id] {:public_uuid public-uuid, :made_public_by_id made-public-by-id}))

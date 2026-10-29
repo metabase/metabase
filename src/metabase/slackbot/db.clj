@@ -20,17 +20,17 @@
   "The external id of the MetabotMessage posted to `channel-id` as `slack-msg-id`, or nil."
   [channel-id   :- :string
    slack-msg-id :- :string]
-  (t2/select-one-fn :external_id :model/MetabotMessage :channel_id channel-id :slack_msg_id slack-msg-id))
+  (t2/select-one-fn :external_id :model/MetabotMessage :channel_id [:auto/param channel-id] :slack_msg_id [:auto/param slack-msg-id]))
 
 (mu/defn assistant-messages-by-slack-ids
   "The non-deleted assistant MetabotMessages of `conversation-id` posted as one of `slack-msg-ids`."
   [conversation-id :- :string
    slack-msg-ids   :- [:set :string]]
   (t2/select :model/MetabotMessage
-             :conversation_id conversation-id
+             :conversation_id [:auto/param conversation-id]
              :role "assistant"
              :deleted_at nil
-             :slack_msg_id [:in slack-msg-ids]))
+             :slack_msg_id [:in [:auto/param slack-msg-ids]]))
 
 (mu/defn deleted-assistant-slack-msg-ids
   "The Slack message ids among `slack-msg-ids` of deleted assistant MetabotMessages of `conversation-id`."
@@ -38,17 +38,17 @@
    slack-msg-ids   :- [:set :string]]
   (t2/select-fn-set :slack_msg_id
                     :model/MetabotMessage
-                    :conversation_id conversation-id
+                    :conversation_id [:auto/param conversation-id]
                     :role "assistant"
                     :deleted_at [:not= nil]
-                    :slack_msg_id [:in slack-msg-ids]))
+                    :slack_msg_id [:in [:auto/param slack-msg-ids]]))
 
 (mu/defn assistant-state-messages
   "The id, role, state, error, and finished flag of the non-deleted assistant MetabotMessages of `conversation-id`,
   oldest first."
   [conversation-id :- :string]
   (t2/select [:model/MetabotMessage :id :role :state :error :finished]
-             :conversation_id conversation-id
+             :conversation_id [:auto/param conversation-id]
              :role "assistant"
              :deleted_at nil
              {:order-by [[:created_at :asc] [:id :asc]]}))
@@ -59,11 +59,11 @@
    slack-msg-id :- :string]
   (t2/select-one-fn :user_id
                     :model/MetabotMessage
-                    :channel_id   channel-id
-                    :slack_msg_id slack-msg-id
+                    :channel_id   [:auto/param channel-id]
+                    :slack_msg_id [:auto/param slack-msg-id]
                     :role         "assistant"))
 
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))
+  (t2/select-one :model/Card :id [:auto/param card-id]))

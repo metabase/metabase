@@ -12,13 +12,13 @@
 (mu/defn impersonation
   "The ConnectionImpersonation with `impersonation-id`, or nil."
   [impersonation-id :- ms/PositiveInt]
-  (t2/select-one :model/ConnectionImpersonation :id impersonation-id))
+  (t2/select-one :model/ConnectionImpersonation :id [:auto/param impersonation-id]))
 
 (mu/defn impersonation-for-group-and-database
   "The ConnectionImpersonation of the group with `group-id` on the Database with `database-id`, or nil."
   [group-id    :- ms/PositiveInt
    database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/ConnectionImpersonation :group_id group-id :db_id database-id))
+  (t2/select-one :model/ConnectionImpersonation :group_id [:auto/param group-id] :db_id [:auto/param database-id]))
 
 (mu/defn all-impersonations
   "Every ConnectionImpersonation, in ID order."
@@ -28,13 +28,13 @@
 (mu/defn impersonations-for-groups
   "The ConnectionImpersonations of the groups with `group-ids`."
   [group-ids :- [:set ms/PositiveInt]]
-  (t2/select :model/ConnectionImpersonation :group_id [:in group-ids]))
+  (t2/select :model/ConnectionImpersonation :group_id [:in [:auto/param group-ids]]))
 
 (mu/defn impersonations-for-groups-and-database
   "The ConnectionImpersonations of the groups with `group-ids` on the Database with `database-id`."
   [group-ids   :- [:set ms/PositiveInt]
    database-id :- ::lib.schema.id/database]
-  (t2/select :model/ConnectionImpersonation :group_id [:in group-ids] :db_id database-id))
+  (t2/select :model/ConnectionImpersonation :group_id [:in [:auto/param group-ids]] :db_id [:auto/param database-id]))
 
 (mu/defn impersonations-matching
   "The ConnectionImpersonations narrowed by the optional `database-id`, `group-id`, and `group-ids`, excluding the
@@ -45,15 +45,15 @@
    excluded-database-id  :- [:maybe ::lib.schema.id/database]]
   (t2/select :model/ConnectionImpersonation
              {:where [:and
-                      (when database-id [:= :db_id database-id])
-                      (when group-id [:= :group_id group-id])
-                      (when group-ids [:in :group_id group-ids])
-                      (when excluded-database-id [:not [:= :db_id excluded-database-id]])]}))
+                      (when database-id [:= :db_id [:auto/param database-id]])
+                      (when group-id [:= :group_id [:auto/param group-id]])
+                      (when group-ids [:in :group_id [:auto/param group-ids]])
+                      (when excluded-database-id [:not [:= :db_id [:auto/param excluded-database-id]]])]}))
 
 (mu/defn impersonation-exists-for-database?
   "Whether the Database with `database-id` has a ConnectionImpersonation."
   [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/ConnectionImpersonation :db_id database-id))
+  (t2/exists? :model/ConnectionImpersonation :db_id [:auto/param database-id]))
 
 (mu/defn insert-impersonation!
   "Insert `impersonation` and return the new instance."
@@ -63,13 +63,13 @@
 (mu/defn delete-impersonation!
   "Delete the ConnectionImpersonation with `impersonation-id`."
   [impersonation-id :- ms/PositiveInt]
-  (t2/delete! :model/ConnectionImpersonation :id impersonation-id))
+  (t2/delete! :model/ConnectionImpersonation :id [:auto/param impersonation-id]))
 
 (mu/defn delete-impersonations-for-group-and-database!
   "Delete the ConnectionImpersonations of the group with `group-id` on the Database with `database-id`."
   [group-id    :- ms/PositiveInt
    database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/ConnectionImpersonation :group_id group-id :db_id database-id))
+  (t2/delete! :model/ConnectionImpersonation :group_id [:auto/param group-id] :db_id [:auto/param database-id]))
 
 (mu/defn view-data-permission-values
   "The set of database-level view-data permission values `group-ids` hold on the Database with `database-id`."
@@ -77,13 +77,13 @@
    group-ids   :- [:set ms/PositiveInt]]
   (t2/select-fn-set :perm_value :model/DataPermissions
                     {:where [:and
-                             [:= :db_id database-id]
+                             [:= :db_id [:auto/param database-id]]
                              [:= :table_id nil]
                              [:= :perm_type "perms/view-data"]
-                             [:in :group_id group-ids]]}))
+                             [:in :group_id [:auto/param group-ids]]]}))
 
 (mu/defn group-ids-for-user
   "The IDs of the PermissionsGroups the User with `user-id` belongs to, or nil when `user-id` is nil (e.g. no
   current user, such as an internal or unauthenticated context)."
   [user-id :- [:maybe ::lib.schema.id/user]]
-  (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id))
+  (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id [:auto/param user-id]))

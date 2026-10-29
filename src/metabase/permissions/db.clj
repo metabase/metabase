@@ -101,7 +101,7 @@
                                   [[:max value-rank-case] :mx]]
                        :group-by [:p.perm_type :p.db_id :p.table_id])
                 (update :where conj [:not= :p.table_id nil])
-                (cond-> (seq table-ids) (update :where conj [:in :p.table_id table-ids])))))
+                (cond-> (seq table-ids) (update :where conj [:in :p.table_id [:auto/param table-ids]])))))
 
 (mu/defn schema-permission-rank-pair
   "The `[min max]` value rank pair summarizing the DataPermissions rows of the User with `user-id`'s groups for
@@ -131,11 +131,11 @@
                     {:select [[:p.perm_value :value]]
                      :from   [[:data_permissions :p]]
                      :where  [:and
-                              [:in :p.group_id group-ids]
-                              [:= :p.perm_type perm-type]
-                              [:= :p.db_id database-id]
+                              [:in :p.group_id [:auto/param group-ids]]
+                              [:= :p.perm_type [:auto/param perm-type]]
+                              [:= :p.db_id [:auto/param database-id]]
                               [:or
-                               [:= :table_id table-id]
+                               [:= :table_id [:auto/param table-id]]
                                [:= :table_id nil]]]}))
 
 (mu/defn user-data-permissions
@@ -154,15 +154,15 @@
               :join   [[:permissions_group :pg] [:= :pg.id :pgm.group_id]
                        [:data_permissions :p]   [:= :p.group_id :pg.id]]
               :where  [:and
-                       [:= :pgm.user_id user-id]
-                       (when database-id [:= :db_id database-id])
+                       [:= :pgm.user_id [:auto/param user-id]]
+                       (when database-id [:= :db_id [:auto/param database-id]])
                        (when perm-type [:= :perm_type (u/qualified-name perm-type)])]}))
 
 (mu/defn data-permissions-for-groups-and-databases
   "The DataPermissions of `group-ids` on the Databases with `database-ids`."
   [group-ids    :- [:sequential ms/PositiveInt]
    database-ids :- [:or [:set ::lib.schema.id/database] [:sequential ::lib.schema.id/database]]]
-  (t2/select :model/DataPermissions :group_id [:in group-ids] :db_id [:in database-ids]))
+  (t2/select :model/DataPermissions :group_id [:in [:auto/param group-ids]] :db_id [:in [:auto/param database-ids]]))
 
 (mu/defn database-level-permission
   "The database-level `perm-type` DataPermissions row of the group with `group-id` on the Database with
@@ -172,9 +172,9 @@
    database-id :- ::lib.schema.id/database]
   (t2/select-one :model/DataPermissions
                  {:where [:and
-                          [:= :perm_type perm-type]
-                          [:= :group_id  group-id]
-                          [:= :db_id     database-id]
+                          [:= :perm_type [:auto/param perm-type]]
+                          [:= :group_id  [:auto/param group-id]]
+                          [:= :db_id     [:auto/param database-id]]
                           [:= :table_id  nil]]}))
 
 (mu/defn database-level-permissions
@@ -183,8 +183,8 @@
    group-ids   :- [:sequential ms/PositiveInt]
    perm-types  :- [:sequential [:or :keyword :string]]]
   (t2/select :model/DataPermissions
-             {:where [:and [:= :db_id database-id] [:= :table_id nil]
-                      [:in :group_id group-ids] [:in :perm_type perm-types]]}))
+             {:where [:and [:= :db_id [:auto/param database-id]] [:= :table_id nil]
+                      [:in :group_id [:auto/param group-ids]] [:in :perm_type [:auto/param perm-types]]]}))
 
 (mu/defn distinct-table-level-permission-values
   "The distinct group, permission type, schema, and value combinations of the table-level DataPermissions rows of
@@ -194,8 +194,8 @@
    perm-types  :- [:sequential [:or :keyword :string]]]
   (t2/select :model/DataPermissions
              {:select-distinct [:group_id :perm_type :schema_name :perm_value]
-              :where           [:and [:= :db_id database-id] [:not= :table_id nil]
-                                [:in :group_id group-ids] [:in :perm_type perm-types]]}))
+              :where           [:and [:= :db_id [:auto/param database-id]] [:not= :table_id nil]
+                                [:in :group_id [:auto/param group-ids]] [:in :perm_type [:auto/param perm-types]]]}))
 
 (mu/defn distinct-database-permission-values-for-group
   "The distinct database, permission type, and value combinations of the DataPermissions rows of the group with
@@ -203,7 +203,7 @@
   [group-id :- ms/PositiveInt]
   (t2/select :model/DataPermissions
              {:select-distinct [:db_id :perm_type :perm_value]
-              :where           [:= :group_id group-id]}))
+              :where           [:= :group_id [:auto/param group-id]]}))
 
 (mu/defn other-table-permission-values
   "The distinct `perm-type` values of the group with `group-id` on tables of the Database with `database-id` other
@@ -215,11 +215,11 @@
   (t2/query {:select-distinct [:perm_value]
              :from            [(t2/table-name :model/DataPermissions)]
              :where           [:and
-                               [:= :group_id group-id]
-                               [:= :db_id database-id]
-                               [:= :perm_type perm-type]
+                               [:= :group_id [:auto/param group-id]]
+                               [:= :db_id [:auto/param database-id]]
+                               [:= :perm_type [:auto/param perm-type]]
                                [:not= :table_id nil]
-                               [:not [:in :table_id table-ids]]]}))
+                               [:not [:in :table_id [:auto/param table-ids]]]]}))
 
 (mu/defn table-permission-ids
   "The IDs of the `perm-type` DataPermissions rows of the group with `group-id` on the Tables with `table-ids`."
@@ -228,9 +228,9 @@
    table-ids :- [:set ms/IntGreaterThanOrEqualToZero]]
   (t2/select [:model/DataPermissions :id]
              {:where [:and
-                      [:= :perm_type perm-type]
-                      [:= :group_id group-id]
-                      [:in :table_id table-ids]]}))
+                      [:= :perm_type [:auto/param perm-type]]
+                      [:= :group_id [:auto/param group-id]]
+                      [:in :table_id [:auto/param table-ids]]]}))
 
 (mu/defn non-audit-permission-values-for-groups
   "The distinct group, permission type, and value combinations of the DataPermissions rows of `group-ids` for
@@ -240,8 +240,8 @@
   (t2/query {:select-distinct [:group_id :perm_type :perm_value]
              :from            [[(t2/table-name :model/DataPermissions)]]
              :where           [:and
-                               [:in :group_id group-ids]
-                               [:in :perm_type perm-types]
+                               [:in :group_id [:auto/param group-ids]]
+                               [:in :perm_type [:auto/param perm-types]]
                                [:not [:exists ^:allow-subquery {:select [1]
                                                                 :from   [[(t2/table-name :model/Database) :audit_db]]
                                                                 :where  [:and
@@ -256,14 +256,14 @@
 (mu/defn delete-data-permissions!
   "Delete the DataPermissions with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/DataPermissions :id [:in ids]))
+  (t2/delete! :model/DataPermissions :id [:in [:auto/param ids]]))
 
 ;;; ----------------------------------------------- Permissions -----------------------------------------------
 
 (mu/defn group-ids-with-permission-objects
   "The set of group IDs holding a Permissions row for one of `objects`."
   [objects :- [:sequential :string]]
-  (t2/select-fn-set :group_id :model/Permissions {:where [:in :object objects]}))
+  (t2/select-fn-set :group_id :model/Permissions {:where [:in :object [:auto/param objects]]}))
 
 (defn- related-permission-objects-where
   [group-id path also-under-paths]
@@ -303,29 +303,29 @@
                            :from   [[:permissions_group_membership :pgm]]
                            :join   [[:permissions_group :pg] [:= :pgm.group_id :pg.id]
                                     [:permissions :p]        [:= :p.group_id :pg.id]]
-                           :where  [:= :pgm.user_id user-id]})))
+                           :where  [:= :pgm.user_id [:auto/param user-id]]})))
 
 ;;; --------------------------------------------- PermissionsGroup ---------------------------------------------
 
 (mu/defn magic-group
   "The ID, name, and type of the magic PermissionsGroup of `magic-group-type`, or nil."
   [magic-group-type :- :string]
-  (t2/select-one [:model/PermissionsGroup :id :name :magic_group_type] :magic_group_type magic-group-type))
+  (t2/select-one [:model/PermissionsGroup :id :name :magic_group_type] :magic_group_type [:auto/param magic-group-type]))
 
 (mu/defn group-id-by-magic-type
   "The ID of the PermissionsGroup of `magic-group-type`, or nil."
   [magic-group-type :- :string]
-  (t2/select-one-pk :model/PermissionsGroup :magic_group_type magic-group-type))
+  (t2/select-one-pk :model/PermissionsGroup :magic_group_type [:auto/param magic-group-type]))
 
 (mu/defn group-exists-with-lower-name?
   "Whether a PermissionsGroup whose lower-cased name is `lower-name` exists."
   [lower-name :- :string]
-  (t2/exists? :model/PermissionsGroup :%lower.name lower-name))
+  (t2/exists? :model/PermissionsGroup :%lower.name [:auto/param lower-name]))
 
 (mu/defn groups-except-magic-type
   "The PermissionsGroups other than the magic group of `magic-group-type`."
   [magic-group-type :- :string]
-  (t2/select :model/PermissionsGroup :magic_group_type [:not= magic-group-type]))
+  (t2/select :model/PermissionsGroup :magic_group_type [:not= [:auto/param magic-group-type]]))
 
 (mu/defn non-magic-groups
   "The PermissionsGroups that are not magic groups."
@@ -335,7 +335,7 @@
 (mu/defn tenant-group?
   "Whether the PermissionsGroup with `group-id` is a tenant group."
   [group-id :- ms/PositiveInt]
-  (t2/select-one-fn :is_tenant_group :model/PermissionsGroup :id group-id))
+  (t2/select-one-fn :is_tenant_group :model/PermissionsGroup :id [:auto/param group-id]))
 
 (mu/defn tenant-group-ids
   "The IDs of every tenant PermissionsGroup."
@@ -345,14 +345,14 @@
 (mu/defn group-tenant-flags
   "A map of group ID to `:is_tenant_group` for `group-ids`."
   [group-ids :- [:set ms/PositiveInt]]
-  (t2/select-pk->fn :is_tenant_group [:model/PermissionsGroup :id :is_tenant_group] :id [:in group-ids]))
+  (t2/select-pk->fn :is_tenant_group [:model/PermissionsGroup :id :is_tenant_group] :id [:in [:auto/param group-ids]]))
 
 (mu/defn groups-by-ids
   "The ID, name, and magic type of the requested groups, ordered by name."
   [group-ids :- [:set ms/PositiveInt]]
   (if (seq group-ids)
     (t2/select [:model/PermissionsGroup :id :name :magic_group_type]
-               :id [:in group-ids]
+               :id [:in [:auto/param group-ids]]
                {:order-by [:%lower.name]})
     []))
 
@@ -376,7 +376,7 @@
                           :left-join [[:permissions_group_membership :pgm] [:= :u.id :pgm.user_id]]
                           :where     [:and
                                       [:= :u.is_active true]
-                                      [:in :pgm.group_id group-ids]]
+                                      [:in :pgm.group_id [:auto/param group-ids]]]
                           :order-by  [[[:lower :u.first_name] :asc]
                                       [[:lower :u.last_name] :asc]]}))
 
@@ -430,25 +430,25 @@
   (t2/count :model/PermissionsGroupMembership
             {:join  [[:core_user :user] [:= :user.id :user_id]]
              :where [:and
-                     [:= :group_id group-id]
+                     [:= :group_id [:auto/param group-id]]
                      [:= :user.is_active true]
-                     [:not= :user.id user-id]]}))
+                     [:not= :user.id [:auto/param user-id]]]}))
 
 (mu/defn memberships-for-user
   "The PermissionsGroupMemberships of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
-  (t2/select :model/PermissionsGroupMembership :user_id user-id))
+  (t2/select :model/PermissionsGroupMembership :user_id [:auto/param user-id]))
 
 (mu/defn memberships-for-user-in-groups
   "The PermissionsGroupMemberships of the User with `user-id` in the groups with `group-ids`."
   [user-id   :- ::lib.schema.id/user
    group-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/PermissionsGroupMembership :user_id user-id :group_id [:in group-ids]))
+  (t2/select :model/PermissionsGroupMembership :user_id [:auto/param user-id] :group_id [:in [:auto/param group-ids]]))
 
 (mu/defn memberships-for-group
   "The PermissionsGroupMemberships of the PermissionsGroup with `group-id`."
   [group-id :- ms/PositiveInt]
-  (t2/select :model/PermissionsGroupMembership :group_id group-id))
+  (t2/select :model/PermissionsGroupMembership :group_id [:auto/param group-id]))
 
 (mu/defn existing-membership-pairs :- [:set [:tuple ms/PositiveInt ms/PositiveInt]]
   "The `[user-id group-id]` pairs among `pairs` that already have a PermissionsGroupMembership."
@@ -466,18 +466,18 @@
 (mu/defn delete-memberships-for-user!
   "Delete the PermissionsGroupMemberships of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
-  (t2/delete! :model/PermissionsGroupMembership :user_id user-id))
+  (t2/delete! :model/PermissionsGroupMembership :user_id [:auto/param user-id]))
 
 (mu/defn delete-memberships-for-user-in-groups!
   "Delete the PermissionsGroupMemberships of the User with `user-id` in the groups with `group-ids`."
   [user-id   :- ::lib.schema.id/user
    group-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/PermissionsGroupMembership :user_id user-id :group_id [:in group-ids]))
+  (t2/delete! :model/PermissionsGroupMembership :user_id [:auto/param user-id] :group_id [:in [:auto/param group-ids]]))
 
 (mu/defn delete-memberships-for-group!
   "Delete the PermissionsGroupMemberships of the PermissionsGroup with `group-id`."
   [group-id :- ms/PositiveInt]
-  (t2/delete! :model/PermissionsGroupMembership :group_id group-id))
+  (t2/delete! :model/PermissionsGroupMembership :group_id [:auto/param group-id]))
 
 ;;; ------------------------------------------------ Revisions ------------------------------------------------
 
@@ -540,21 +540,21 @@
   "Apply `changes` to the CollectionPermissionGraphRevision with `revision-id`."
   [revision-id :- ms/PositiveInt
    changes     :- (mut/select-keys ::permissions.schema/collection-permission-graph-revision.update [:before :after])]
-  (t2/update! :model/CollectionPermissionGraphRevision :id revision-id changes))
+  (t2/update! :model/CollectionPermissionGraphRevision :id [:auto/param revision-id] changes))
 
 ;;; ----------------------------------------------- Collections -----------------------------------------------
 
 (mu/defn collection
   "The Collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one :model/Collection :id collection-id))
+  (t2/select-one :model/Collection :id [:auto/param collection-id]))
 
 (mu/defn personal-or-descendant-collection-ids
   "The IDs among `collection-ids` that are personal Collections, or descendants of one."
   [collection-ids :- [:set ::lib.schema.id/collection]]
   (t2/select-pks-set :model/Collection
                      {:where [:and
-                              [:in :id collection-ids]
+                              [:in :id [:auto/param collection-ids]]
                               [:or [:not= :personal_owner_id nil]
                                [:exists ^:allow-subquery
                                 {:select [1]
@@ -569,7 +569,7 @@
   [collection-ids :- [:set ::lib.schema.id/collection]
    namespace      :- [:maybe [:or :keyword :string]]]
   (t2/select-pks-set :model/Collection
-                     {:where [:and [:in :id collection-ids]
+                     {:where [:and [:in :id [:auto/param collection-ids]]
                               (cond->> [[:not= :namespace (some-> namespace name)]]
                                 (nil? namespace)  (into [:and [:not= :namespace "analytics"]])
                                 (some? namespace) (into [:or [:= :namespace nil]]))]}))
@@ -617,7 +617,7 @@
                       [:not :archived]
                       [:= :personal_owner_id nil]
                       (when (seq ids-without-root)
-                        [:in :id ids-without-root])
+                        [:in :id [:auto/param ids-without-root]])
                       [:not [:exists ^:allow-subquery
                              {:select [1]
                               :from   [[:collection :pc]]
@@ -633,14 +633,14 @@
                             [:= :perm_type "perms/collection-access"]
                             [:not= :collection_id nil]]
                            (when (seq group-ids)
-                             [[:in :group_id group-ids]]))}]]
+                             [[:in :group_id [:auto/param group-ids]]]))}]]
     :union-all
     [;; Query 1: Root collection permissions, exclude this query if collection-ids are supplied
      ;; and :root is not present in that collection
      ^:allow-subquery
      {:select   [[:pg.id :group_id]
                  [nil :collection_id]
-                 [[:max [:case [:= :p.object root-object]
+                 [[:max [:case [:= :p.object [:auto/param root-object]]
                          [:inline 1]
                          :else [:inline 0]]] :writable]
                  [[:max [:case [:= :p.object (str root-object "read/")]
@@ -649,11 +649,11 @@
       :from     [[:permissions_group :pg]]
       :join     [[:permissions :p] [:and
                                     [:= :p.group_id :pg.id]
-                                    [:or [:= :p.object root-object]
+                                    [:or [:= :p.object [:auto/param root-object]]
                                      [:= :p.object (str root-object "read/")]]]]
-      :where    (into [:and [:inline include-root?]]
+      :where    (into [:and [:inline [:auto/param include-root?]]]
                       (when (seq group-ids)
-                        [[:in :pg.id group-ids]]))
+                        [[:in :pg.id [:auto/param group-ids]]]))
       :group-by [:pg.id]}
      ;; Query 2: Regular collection permissions
      ^:allow-subquery
@@ -685,17 +685,17 @@
 (mu/defn user-superuser?
   "Whether the User with `user-id` is a superuser."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one-fn :is_superuser :model/User :id user-id))
+  (t2/select-one-fn :is_superuser :model/User :id [:auto/param user-id]))
 
 (mu/defn user-data-analyst?
   "Whether the User with `user-id` is a data analyst."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one-fn :is_data_analyst :model/User :id user-id))
+  (t2/select-one-fn :is_data_analyst :model/User :id [:auto/param user-id]))
 
 (mu/defn user-tenant-ids
   "A map of User ID to `:tenant_id` for `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-pk->fn :tenant_id [:model/User :id :tenant_id] :id [:in user-ids]))
+  (t2/select-pk->fn :tenant_id [:model/User :id :tenant_id] :id [:in [:auto/param user-ids]]))
 
 (mu/defn earliest-user-join-date
   "The earliest `date_joined` of any User, or nil."
@@ -706,13 +706,13 @@
   "Apply `changes` to the User with `user-id`."
   [user-id :- ::lib.schema.id/user
    changes :- (mut/select-keys ::users.schema/user.update [:is_superuser :is_data_analyst])]
-  (t2/update! :model/User :id user-id changes))
+  (t2/update! :model/User :id [:auto/param user-id] changes))
 
 (mu/defn update-users!
   "Apply `changes` to the Users with `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]
    changes  :- (mut/select-keys ::users.schema/user.update [:is_superuser :is_data_analyst])]
-  (t2/update! :model/User :id [:in user-ids] changes))
+  (t2/update! :model/User :id [:in [:auto/param user-ids]] changes))
 
 (mu/defn deactivate-active-tenant-users!
   "Deactivate every active tenant User, marking them as deactivated with their tenant."
@@ -735,7 +735,7 @@
 (mu/defn destination-database?
   "Whether the Database with `database-id` is a routing destination."
   [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Database :id database-id :router_database_id [:not= nil]))
+  (t2/exists? :model/Database :id [:auto/param database-id] :router_database_id [:not= nil]))
 
 (mu/defn table-location
   "The ID, Database ID, schema, and data source of the Table with `table-id`.
@@ -743,22 +743,22 @@
   `:data_source` is included because new-table permission defaults branch on whether the table came from an upload;
   see [[metabase.permissions.models.data-permissions/set-default-table-permissions!]]."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one [:model/Table :id :db_id :schema :data_source] :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one [:model/Table :id :db_id :schema :data_source] :id [:auto/param table-id] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn table-database-id
   "The Database ID of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one-fn :db_id :model/Table :id [:auto/param table-id] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn table-database-ids
   "The ID and Database ID of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :db_id] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select [:model/Table :id :db_id] :id [:in [:auto/param table-ids]] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn active-table-locations-for-database
   "The ID, Database ID, and schema of the active Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/select [:model/Table :id :db_id :schema] :db_id database-id :active true {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select [:model/Table :id :db_id :schema] :db_id [:auto/param database-id] :active true {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn table-ids-and-schemas-excluding
   "The ID and schema of the Tables of the Database with `database-id` other than `excluded-table-ids`."
@@ -767,13 +767,13 @@
   (t2/select [:model/Table :id :schema]
              {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]
               :where [:and
-                      [:= :db_id database-id]
-                      [:not [:in :id excluded-table-ids]]]}))
+                      [:= :db_id [:auto/param database-id]]
+                      [:not [:in :id [:auto/param excluded-table-ids]]]]}))
 
 (mu/defn field-visibility-info
   "The ID, visibility type, and Table ID of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :visibility_type :table_id] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select [:model/Field :id :visibility_type :table_id] :id [:in [:auto/param field-ids]] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn instance-by-id
   "The instance of `model` with `id`, or nil."

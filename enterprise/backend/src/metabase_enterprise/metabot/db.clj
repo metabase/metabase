@@ -29,21 +29,21 @@
                        ^:allow-subquery
                        {:select [:group_id]
                         :from   [(t2/table-name :model/PermissionsGroupMembership)]
-                        :where  [:= :user_id user-id]}]
+                        :where  [:= :user_id [:auto/param user-id]]}]
                       (usage-controls/visible-groups-clause :group_id advanced?)]}))
 
 (mu/defn permission-exists?
   "Whether the group with `group-id` has a MetabotPermissions row of `perm-type`."
   [group-id  :- ms/PositiveInt
    perm-type :- :keyword]
-  (t2/exists? :model/MetabotPermissions :group_id group-id :perm_type perm-type))
+  (t2/exists? :model/MetabotPermissions :group_id [:auto/param group-id] :perm_type [:auto/param perm-type]))
 
 (mu/defn update-permission-value!
   "Set the value of the MetabotPermissions row of `perm-type` for the group with `group-id`."
   [group-id   :- ms/PositiveInt
    perm-type  :- :keyword
    perm-value :- :keyword]
-  (t2/update! :model/MetabotPermissions {:group_id group-id :perm_type perm-type} {:perm_value perm-value}))
+  (t2/update! :model/MetabotPermissions {:group_id [:auto/param group-id] :perm_type [:auto/param perm-type]} {:perm_value perm-value}))
 
 (mu/defn insert-permission!
   "Insert the MetabotPermissions `row`."
@@ -68,7 +68,7 @@
 (mu/defn group-limit
   "The MetabotGroupLimit of the group with `group-id`, or nil."
   [group-id :- ms/PositiveInt]
-  (t2/select-one :model/MetabotGroupLimit :group_id group-id))
+  (t2/select-one :model/MetabotGroupLimit :group_id [:auto/param group-id]))
 
 (mu/defn max-usage-for-user
   "The `:max_usage` row holding the largest group limit of the User with `user-id`, or nil if any of their groups
@@ -80,7 +80,7 @@
                               :max_usage]]
                  :from      [[:permissions_group_membership :pgm]]
                  :left-join [[:metabot_group_limit :gl] [:= :pgm.group_id :gl.group_id]]
-                 :where     [:= :pgm.user_id user-id]}))
+                 :where     [:= :pgm.user_id [:auto/param user-id]]}))
 
 (mu/defn insert-group-limit!
   "Insert the MetabotGroupLimit `row`."
@@ -94,17 +94,17 @@
   "Set the maximum usage of the MetabotGroupLimit with `limit-id`."
   [limit-id  :- ms/PositiveInt
    max-usage :- [:maybe :int]]
-  (t2/update! :model/MetabotGroupLimit :id limit-id {:max_usage max-usage}))
+  (t2/update! :model/MetabotGroupLimit :id [:auto/param limit-id] {:max_usage max-usage}))
 
 (mu/defn delete-group-limit!
   "Delete the MetabotGroupLimit of the group with `group-id`."
   [group-id :- ms/PositiveInt]
-  (t2/delete! :model/MetabotGroupLimit :group_id group-id))
+  (t2/delete! :model/MetabotGroupLimit :group_id [:auto/param group-id]))
 
 (mu/defn instance-limit
   "The MetabotInstanceLimit of the Tenant with `tenant-id` (nil for the instance-wide limit), or nil."
   [tenant-id :- [:maybe ms/PositiveInt]]
-  (t2/select-one :model/MetabotInstanceLimit :tenant_id tenant-id))
+  (t2/select-one :model/MetabotInstanceLimit :tenant_id [:auto/param tenant-id]))
 
 (mu/defn tenant-limits
   "The MetabotInstanceLimits of tenants, ordered by tenant."
@@ -123,12 +123,12 @@
   "Set the maximum usage of the MetabotInstanceLimit with `limit-id`."
   [limit-id  :- ms/PositiveInt
    max-usage :- [:maybe :int]]
-  (t2/update! :model/MetabotInstanceLimit :id limit-id {:max_usage max-usage}))
+  (t2/update! :model/MetabotInstanceLimit :id [:auto/param limit-id] {:max_usage max-usage}))
 
 (mu/defn delete-instance-limit!
   "Delete the MetabotInstanceLimit of the Tenant with `tenant-id`."
   [tenant-id :- [:maybe ms/PositiveInt]]
-  (t2/delete! :model/MetabotInstanceLimit :tenant_id tenant-id))
+  (t2/delete! :model/MetabotInstanceLimit :tenant_id [:auto/param tenant-id]))
 
 (mu/defn insert-usage-log!
   "Insert the AiUsageLog `row`."
@@ -166,10 +166,10 @@
   (t2/query-one {:select [[[:count [:distinct :request_id]] :cnt]]
                  :from   [:ai_usage_log]
                  :where  (cond-> (usage-window-expr period-start user-id tenant-id)
-                           (seq sources) (conj [:in :source sources])
-                           request-id    (conj [:not= :request_id request-id]))}))
+                           (seq sources) (conj [:in :source [:auto/param sources]])
+                           request-id    (conj [:not= :request_id [:auto/param request-id]]))}))
 
 (mu/defn delete-usage-logs-created-before!
   "Delete the AiUsageLogs created before `cutoff`, returning the number deleted."
   [cutoff :- ms/TemporalInstant]
-  (t2/delete! :model/AiUsageLog {:where [:< :created_at cutoff]}))
+  (t2/delete! :model/AiUsageLog {:where [:< :created_at [:auto/param cutoff]]}))

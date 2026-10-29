@@ -57,37 +57,37 @@
 (mu/defn active-user-exists?
   "Whether an active User with `user-id` exists."
   [user-id :- ::lib.schema.id/user]
-  (t2/exists? :model/User :id user-id :is_active true))
+  (t2/exists? :model/User :id [:auto/param user-id] :is_active true))
 
 (mu/defn personal-user?
   "Whether the User with `user-id` is a `:personal` user."
   [user-id :- ::lib.schema.id/user]
-  (t2/exists? :model/User :id user-id :type :personal))
+  (t2/exists? :model/User :id [:auto/param user-id] :type :personal))
 
 (mu/defn oauth-client-exists?
   "Whether an OAuthClient with `client-id` exists."
   [client-id :- :string]
-  (t2/exists? :model/OAuthClient :client_id client-id))
+  (t2/exists? :model/OAuthClient :client_id [:auto/param client-id]))
 
 (mu/defn revoke-access-tokens-for-user!
   "Revoke the unrevoked OAuthAccessTokens of the User with `user-id`, returning the number revoked."
   [user-id :- ::lib.schema.id/user]
-  (t2/update! :model/OAuthAccessToken {:user_id user-id, :revoked_at nil} {:revoked_at :%now}))
+  (t2/update! :model/OAuthAccessToken {:user_id [:auto/param user-id], :revoked_at nil} {:revoked_at :%now}))
 
 (mu/defn revoke-refresh-tokens-for-user!
   "Revoke the unrevoked OAuthRefreshTokens of the User with `user-id`, returning the number revoked."
   [user-id :- ::lib.schema.id/user]
-  (t2/update! :model/OAuthRefreshToken {:user_id user-id, :revoked_at nil} {:revoked_at :%now}))
+  (t2/update! :model/OAuthRefreshToken {:user_id [:auto/param user-id], :revoked_at nil} {:revoked_at :%now}))
 
 (mu/defn delete-authorization-codes-for-user!
   "Delete the OAuthAuthorizationCodes of the User with `user-id`, returning the number deleted."
   [user-id :- ::lib.schema.id/user]
-  (t2/delete! :model/OAuthAuthorizationCode :user_id user-id))
+  (t2/delete! :model/OAuthAuthorizationCode :user_id [:auto/param user-id]))
 
 (mu/defn oauth-client-pk
   "The primary key of the OAuthClient with `client-id`, or nil."
   [client-id :- :string]
-  (t2/select-one-pk :model/OAuthClient :client_id client-id))
+  (t2/select-one-pk :model/OAuthClient :client_id [:auto/param client-id]))
 
 (mu/defn insert-client-event!
   "Insert the OAuthClientEvent `row`, returning the number inserted."
@@ -102,7 +102,7 @@
 (mu/defn oauth-client
   "The OAuthClient with `client-id`, or nil."
   [client-id :- :string]
-  (t2/select-one :model/OAuthClient :client_id client-id))
+  (t2/select-one :model/OAuthClient :client_id [:auto/param client-id]))
 
 (mu/defn insert-oauth-client!
   "Insert the OAuthClient `row`, returning the number inserted."
@@ -113,7 +113,7 @@
   "Apply `row` to the OAuthClient with primary key `id`, returning the number updated."
   [id  :- ms/PositiveInt
    row :- ::oauth-server.schema/oauth-client.update]
-  (t2/update! :model/OAuthClient :id id row))
+  (t2/update! :model/OAuthClient :id [:auto/param id] row))
 
 (mu/defn insert-authorization-code!
   "Insert the OAuthAuthorizationCode `row`, returning the number inserted."
@@ -123,17 +123,17 @@
 (mu/defn authorization-code
   "The OAuthAuthorizationCode `code`, or nil."
   [code :- :string]
-  (t2/select-one :model/OAuthAuthorizationCode :code code))
+  (t2/select-one :model/OAuthAuthorizationCode :code [:auto/param code]))
 
 (mu/defn lock-authorization-code
   "The OAuthAuthorizationCode `code` locked for update, or nil."
   [code :- :string]
-  (t2/select-one :model/OAuthAuthorizationCode :code code {:for :update}))
+  (t2/select-one :model/OAuthAuthorizationCode :code [:auto/param code] {:for :update}))
 
 (mu/defn delete-authorization-code!
   "Delete the OAuthAuthorizationCode `code`, returning the number deleted."
   [code :- :string]
-  (t2/delete! :model/OAuthAuthorizationCode :code code))
+  (t2/delete! :model/OAuthAuthorizationCode :code [:auto/param code]))
 
 (mu/defn insert-access-token!
   "Insert the OAuthAccessToken `row`, returning the number inserted."
@@ -143,7 +143,7 @@
 (mu/defn unrevoked-access-token
   "The unrevoked OAuthAccessToken `token`, or nil."
   [token :- :string]
-  (t2/select-one :model/OAuthAccessToken :token token :revoked_at nil))
+  (t2/select-one :model/OAuthAccessToken :token [:auto/param token] :revoked_at nil))
 
 (mu/defn insert-refresh-token!
   "Insert the OAuthRefreshToken `row`, returning the number inserted."
@@ -153,27 +153,27 @@
 (mu/defn unrevoked-refresh-token
   "The unrevoked OAuthRefreshToken `token`, or nil."
   [token :- :string]
-  (t2/select-one :model/OAuthRefreshToken :token token :revoked_at nil))
+  (t2/select-one :model/OAuthRefreshToken :token [:auto/param token] :revoked_at nil))
 
 (mu/defn revoke-access-token!
   "Revoke the OAuthAccessToken `token`, returning the number revoked."
   [token :- :string]
-  (t2/update! :model/OAuthAccessToken {:token token} {:revoked_at :%now}))
+  (t2/update! :model/OAuthAccessToken {:token [:auto/param token]} {:revoked_at :%now}))
 
 (mu/defn revoke-refresh-token!
   "Revoke the OAuthRefreshToken `token`, returning the number revoked."
   [token :- :string]
-  (t2/update! :model/OAuthRefreshToken {:token token} {:revoked_at :%now}))
+  (t2/update! :model/OAuthRefreshToken {:token [:auto/param token]} {:revoked_at :%now}))
 
 (mu/defn delete-authorization-codes-expired-before!
   "Delete the OAuthAuthorizationCodes that expired before `now`, returning the number deleted."
   [now :- ms/PositiveInt]
-  (t2/delete! :model/OAuthAuthorizationCode :expiry [:< now]))
+  (t2/delete! :model/OAuthAuthorizationCode :expiry [:< [:auto/param now]]))
 
 (mu/defn delete-access-tokens-expired-before!
   "Delete the OAuthAccessTokens that expired before `now`, returning the number deleted."
   [now :- ms/PositiveInt]
-  (t2/delete! :model/OAuthAccessToken :expiry [:< now]))
+  (t2/delete! :model/OAuthAccessToken :expiry [:< [:auto/param now]]))
 
 (mu/defn delete-revoked-access-tokens!
   "Delete the revoked OAuthAccessTokens, returning the number deleted."
@@ -183,7 +183,7 @@
 (mu/defn delete-refresh-tokens-expired-before!
   "Delete the OAuthRefreshTokens that expired before `now`, returning the number deleted."
   [now :- ms/PositiveInt]
-  (t2/delete! :model/OAuthRefreshToken :expiry [:< now]))
+  (t2/delete! :model/OAuthRefreshToken :expiry [:< [:auto/param now]]))
 
 (mu/defn delete-revoked-refresh-tokens!
   "Delete the revoked OAuthRefreshTokens, returning the number deleted."

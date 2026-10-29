@@ -47,12 +47,12 @@
 (mu/defn api-key-exists?
   "Whether an ApiKey with `id` exists."
   [id :- ms/PositiveInt]
-  (t2/exists? :model/ApiKey :id id))
+  (t2/exists? :model/ApiKey :id [:auto/param id]))
 
 (mu/defn delete-api-key!
   "Delete the ApiKey with `id`."
   [id :- ms/PositiveInt]
-  (t2/delete! :model/ApiKey :id id))
+  (t2/delete! :model/ApiKey :id [:auto/param id]))
 
 (mu/defn api-key-groups
   "The group name, group id, and api key id of the PermissionsGroups of the ApiKeys with `api-key-ids`."
@@ -63,18 +63,18 @@
              :from   [[:permissions_group :pg]]
              :join   [[:permissions_group_membership :pgm] [:= :pgm.group_id :pg.id]
                       :api_key [:= :api_key.user_id :pgm.user_id]]
-             :where  [:in :api_key.id api-key-ids]}))
+             :where  [:in :api_key.id [:auto/param api-key-ids]]}))
 
 (mu/defn rename-api-key-user!
   "Set the first name (and clear the last name) of the api-key User with `user-id`."
   [user-id    :- ::lib.schema.id/user
    first-name :- :string]
-  (t2/update! :model/User :id user-id, :type :api-key, {:first_name first-name, :last_name ""}))
+  (t2/update! :model/User :id [:auto/param user-id], :type :api-key, {:first_name first-name, :last_name ""}))
 
 (mu/defn user-type
   "The `:type` of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one-fn :type :model/User :id user-id))
+  (t2/select-one-fn :type :model/User :id [:auto/param user-id]))
 
 (mu/defn deactivate-api-key-user!
   "Deactivate the api-key User with `user-id` (nil for keys without a user, e.g. SCIM keys, which updates nothing)."
@@ -84,12 +84,12 @@
 (mu/defn api-key-prefix-exists?
   "Whether an ApiKey with `prefix` exists."
   [prefix :- :string]
-  (t2/exists? :model/ApiKey :key_prefix prefix))
+  (t2/exists? :model/ApiKey :key_prefix [:auto/param prefix]))
 
 (mu/defn api-key-name-exists?
   "Whether an ApiKey named `key-name` exists."
   [key-name :- :string]
-  (t2/exists? :model/ApiKey :name key-name))
+  (t2/exists? :model/ApiKey :name [:auto/param key-name]))
 
 (mu/defn insert-user!
   "Insert the User `row` and return its id."
@@ -105,7 +105,7 @@
   "Apply `changes` to the ApiKey with `id`."
   [id      :- ms/PositiveInt
    changes :- (mut/select-keys ::api-keys.schema/api-key.update [:key :key_prefix :updated_by_id])]
-  (t2/update! :model/ApiKey :id id changes))
+  (t2/update! :model/ApiKey :id [:auto/param id] changes))
 
 (defn lock-available-key-ids
   "The subset of `ids` not currently locked by another writer, locked for update (`SKIP LOCKED` outside
@@ -114,7 +114,7 @@
   [ids]
   (map :id (t2/query (cond-> {:select [:id]
                               :from   [(t2/table-name :model/ApiKey)]
-                              :where  [:in :id ids]}
+                              :where  [:in :id [:auto/param ids]]}
                        (not= :h2 (mdb/db-type)) (assoc :for [:update :skip-locked])))))
 
 (defn update-api-keys-last-used-at!
@@ -139,14 +139,14 @@
     (let [available-ids (lock-available-key-ids (keys id->timestamp))]
       (when (seq available-ids)
         (t2/query {:update [(t2/table-name :model/ApiKey)]
-                   :where  [:in :id available-ids]
+                   :where  [:in :id [:auto/param available-ids]]
                    :set    {:last_used_at (into [:case]
                                                 (mapcat (fn [id]
-                                                          [[:= :id id]
+                                                          [[:= :id [:auto/param id]]
                                                            [:greatest [:coalesce :last_used_at (t/offset-date-time 0)]
                                                             (get id->timestamp id)]])
                                                         available-ids))
                             :updated_at :updated_at}}))
       (select-keys id->timestamp
                    (when-let [busy (seq (remove (set available-ids) (keys id->timestamp)))]
-                     (t2/select-pks-set :model/ApiKey :id [:in busy]))))))
+                     (t2/select-pks-set :model/ApiKey :id [:in [:auto/param busy]]))))))

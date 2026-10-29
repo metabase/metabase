@@ -76,10 +76,7 @@
   :metabase/t2-query-namespace                               {:level :warning}
   :metabase/t2-implicit-pk                                   {:level :warning}
   :metabase/table-or-field-query                             {:level :warning}
-  ;; App-DB query hygiene: a value reaching a value slot unmarked, and a query written as
-  ;; `:column value` pairs rather than a map. Off by default and enabled per namespace under
-  ;; `:config-in-ns`; flip it on globally once every `db.clj` has been converted.
-  :metabase/unsafe-app-db-query                              {:level :off}
+  :metabase/unsafe-app-db-query                              {:level :warning}
   :metabase/toucan-model-ns                                  {:level :warning}
   :metabase/require-shape-checker                            {:level :warning}
   :metabase/tests-must-live-in-known-modules                 {:level :warning}
@@ -1005,25 +1002,6 @@
 
   agent-exit-namespaces
   {:linters {:metabase/agent-message-exit {:level :warning}}}
-
-  ;; Namespaces whose values are marked. Adding one here is what keeps it that way; see
-  ;; `metabase.app-db.value-guard`.
-  metabase.content-translation.db
-  {:linters {:metabase/unsafe-app-db-query {:level :warning}}}
-  metabase.settings.db
-  {:linters {:metabase/unsafe-app-db-query {:level :warning}}}
-
-  metabase.auth-identity.db
-  {:linters {:metabase/unsafe-app-db-query {:level :warning}}}
-
-  metabase.usage-metadata.db
-  {:linters {:metabase/unsafe-app-db-query {:level :warning}}}
-
-  metabase.user-key-value.db
-  {:linters {:metabase/unsafe-app-db-query {:level :warning}}}
-
-  metabase.public-sharing.db
-  {:linters {:metabase/unsafe-app-db-query {:level :warning}}}
 
   ;; .cljc tests run in both Clojure and ClojureScript — `with-dynamic-fn-redefs` is JVM-only,
   ;; so leave these alone.

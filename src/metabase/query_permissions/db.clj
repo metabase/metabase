@@ -10,21 +10,21 @@
 (mu/defn card-collection-id
   "The `:collection_id` of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :collection_id] :id card-id))
+  (t2/select-one [:model/Card :collection_id] :id [:auto/param card-id]))
 
 (mu/defn card-not-in-database
   "The Card with `card-id` if it does not belong to the Database with `database-id`, or nil."
   [card-id     :- ::lib.schema.id/card
    database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Card :id card-id :database_id [:!= database-id]))
+  (t2/select-one :model/Card :id [:auto/param card-id] :database_id [:!= [:auto/param database-id]]))
 
 (mu/defn field-table-ids
   "The set of Table ids of the Fields with `field-ids`."
   [field-ids :- [:or [:set ::lib.schema.id/field] [:sequential ::lib.schema.id/field]]]
-  (t2/select-fn-set :table_id :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-fn-set :table_id :model/Field :id [:in [:auto/param field-ids]] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn table-id->database-id
   "A map of Table id to Database id for the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select-pk->fn :db_id :model/Table :id [:in table-ids]
+  (t2/select-pk->fn :db_id :model/Table :id [:in [:auto/param table-ids]]
                     {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
