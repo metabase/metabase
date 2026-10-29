@@ -258,6 +258,7 @@ Metabase's reference documentation.
 
 - [Monitor overview](./monitor/start.md)
 - [Dependency diagnostics](./monitor/dependency-diagnostics.md)
+- [Content diagnostics](./monitor/content-diagnostics.md)
 - [Erroring questions](./monitor/erroring-questions.md)
 - [Alerts management](./monitor/alerts-management.md)
 - [Background tasks](./monitor/background-tasks.md)
