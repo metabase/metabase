@@ -4196,11 +4196,16 @@
       (doseq [column ["USER_ID" "nope"]
               :let   [field-ref ["field" {"join-alias" "first"} column]]]
         (is (= field-ref (get-in (repair* (joined-on field-ref)) ["stages" 1 "joins" 0 "conditions" 0 2])))))
-    (testing "a ref there through a join of the previous stage is typed from that stage"
-      (let [prev-min ["field" {"join-alias" "Prev"} "min"]
-            q        (query (orders-stage {"joins" [(assoc (join "Prev" [first-orders-stage]) "fields" "all")]})
-                            (stage {"joins" [(join "First" [first-orders-stage] :lhs prev-min)]}))]
-        (is (= "type/Date" (base-type (get-in (repair* q) ["stages" 1 "joins" 0 "conditions" 0 2]))))))))
+    (let [prev-joined-on (fn [lhs]
+                           (query (orders-stage {"joins" [(assoc (join "Prev" [first-orders-stage]) "fields" "all")]})
+                                  (stage {"joins" [(join "First" [first-orders-stage] :lhs lhs)]})))]
+      (testing "a ref there through a join of the previous stage is typed from that stage"
+        (is (= "type/Date"
+               (base-type (get-in (repair* (prev-joined-on ["field" {"join-alias" "Prev"} "min"]))
+                                  ["stages" 1 "joins" 0 "conditions" 0 2])))))
+      (testing "a ref there through that join to a column only outside it raises the cross-stage error"
+        (is (=? {:error :unresolved-cross-stage-field, :clause ["field" {"join-alias" "Prev"} "TOTAL"]}
+                (repair-error (prev-joined-on ["field" {"join-alias" "Prev"} "TOTAL"]))))))))
 
 (deftest ^:parallel join-alias-field-type-runs-before-cross-stage-inference-test
   (testing "a stage carrying a join-alias ref still resolves as the next stage's prefix"
