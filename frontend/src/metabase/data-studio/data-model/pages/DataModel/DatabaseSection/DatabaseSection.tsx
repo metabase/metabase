@@ -14,11 +14,10 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
-import { getUserIsAdmin } from "metabase/current-user";
 import { dayjs } from "metabase/dayjs";
 import { NameDescriptionInput } from "metabase/metadata/components";
 import { PLUGIN_METADATA_GENERATION } from "metabase/plugins";
-import { useDispatch, useSelector } from "metabase/redux";
+import { useDispatch } from "metabase/redux";
 import { Button, Ellipsified, Group, Icon, Stack, Text } from "metabase/ui";
 import { DAY_OF_WEEK_OPTIONS } from "metabase/utils/date-time";
 import { isSyncInProgress } from "metabase/utils/syncing";
@@ -57,10 +56,9 @@ type DatabaseSectionContentProps = {
 
 function DatabaseSectionContent({ database }: DatabaseSectionContentProps) {
   const dispatch = useDispatch();
-  const isAdmin = useSelector(getUserIsAdmin);
   // The sync, re-scan and update endpoints need write access to the database,
-  // which a data-model-only user and an attached DWH do not give.
-  const canEdit = isAdmin && !database.is_attached_dwh;
+  // which the backend reports as "can-manage" (never for an attached DWH).
+  const canEdit = database["can-manage"] === true;
   const formatNumber = useNumberFormatter({ maximumFractionDigits: 0 });
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const [updateDatabase] = useUpdateDatabaseMutation();

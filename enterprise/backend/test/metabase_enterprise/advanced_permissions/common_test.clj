@@ -832,6 +832,28 @@
       (mt/with-all-users-data-perms-graph! {db-id {:details :yes}}
         (mt/user-http-request :rasta :delete 403 (format "database/%d" db-id))))))
 
+(deftest get-database-can-manage-test
+  (testing "GET /api/database/:id returns can-manage true only for a user who can write the database"
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/with-temp [:model/Database {db-id :id}       {}
+                     :model/Database {attached-id :id} {:is_attached_dwh true}]
+        (letfn [(can-manage [user id]
+                  (:can-manage (mt/user-http-request user :get 200 (format "database/%d" id))))]
+          (testing "an admin can manage the database"
+            (is (true? (can-manage :crowberto db-id))))
+          (testing "a non-admin with manage-database permission can manage the database"
+            (mt/with-all-users-data-perms-graph! {db-id {:view-data :unrestricted :details :yes}}
+              (is (true? (can-manage :rasta db-id)))))
+          (testing "a non-admin with only table-metadata permission cannot manage the database"
+            (mt/with-all-users-data-perms-graph! {db-id {:view-data  :unrestricted
+                                                         :data-model {:schemas :all}
+                                                         :details    :no}}
+              (is (nil? (can-manage :rasta db-id)))))
+          (testing "nobody can manage an attached DWH"
+            (is (nil? (can-manage :crowberto attached-id)))
+            (mt/with-all-users-data-perms-graph! {attached-id {:view-data :unrestricted :details :yes}}
+              (is (nil? (can-manage :rasta attached-id))))))))))
+
 (deftest non-admin-sync-schema-test
   (mt/test-helpers-set-global-values!
     (mt/with-temp [:model/Database {db-id :id} {:engine "h2", :details (:details (mt/db))}]
