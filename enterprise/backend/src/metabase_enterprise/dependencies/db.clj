@@ -679,11 +679,6 @@
    collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select [model :id :collection_id] :collection_id [:in collection-ids]))
 
-(mu/defn card
-  "The Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))
-
 (mu/defn card-types-by-id
   "A map of Card ID to type for `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
@@ -693,16 +688,6 @@
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
-
-(mu/defn dashcard-dashboard-id :- [:maybe ::lib.schema.id/dashboard]
-  "The `:dashboard_id` of the DashboardCard with `dashcard-id`, or nil."
-  [dashcard-id :- ::lib.schema.id/dashcard]
-  (t2/select-one-fn :dashboard_id :model/DashboardCard :id dashcard-id))
-
-(mu/defn field-table-id :- [:maybe ::lib.schema.id/table]
-  "The `:table_id` of the Field with `field-id`, or nil."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :table_id :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn source-database-transform-ids :- [:set ::lib.schema.id/transform]
   "The IDs of the Transforms reading from the Database with `db-id`."
@@ -1004,6 +989,13 @@
    entity-id    :- ms/PositiveInt
    max-failures :- ms/PositiveInt]
   (record-failure! :model/DependencyStatus entity-type entity-id max-failures))
+
+(mu/defn given-up-dependency-statuses :- [:sequential [:map
+                                                       [:entity_type ::deps.dependency-types/dependency-types]
+                                                       [:entity_id   ms/PositiveInt]]]
+  "The entities whose dependencies the dependency job gave up computing until a write changes them."
+  []
+  (t2/select [:model/DependencyStatus :entity_type :entity_id] :terminal true))
 
 (mu/defn clear-dependency-status! :- :boolean
   "Record that the dependency job computed the dependencies of the entity `entity-type` `entity-id` with the analysis

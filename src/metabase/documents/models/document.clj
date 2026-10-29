@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.documents.db :as documents.db]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.documents.schema :as documents.schema]
@@ -15,6 +16,7 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.core :as card]
+   [metabase.queries.db :as queries.db]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.search.config :as search.config]
@@ -28,6 +30,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.instance :as t2.instance]))
@@ -589,9 +592,9 @@
   \"dashboard\") and `id`, or nil."
   [model id]
   (case model
-    ("card" "dataset") (documents.db/card id)
-    "table"            (documents.db/table id)
-    "dashboard"        (documents.db/dashboard id)))
+    ("card" "dataset") (queries.db/card id)
+    "table"            (warehouse-schema.db/table id)
+    "dashboard"        (dashboards.db/dashboard id)))
 
 (def ^:private model->serdes-model
   {"card"      "Card"

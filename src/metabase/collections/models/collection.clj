@@ -158,7 +158,7 @@
   (cond
     (nil? collection-or-id) false ;; the root collection is never remote-synced
     (map? collection-or-id) (boolean (get collection-or-id :is_remote_synced))
-    :else (collections.db/collection-remote-synced? (u/the-id collection-or-id))))
+    :else (:is_remote_synced (collections.db/collection (u/the-id collection-or-id)))))
 
 (defn- is-library?
   "Is this the Library collection?"
@@ -215,7 +215,9 @@
    ^{::memoize/args-fn (fn [[id]] [(mdb/unique-identifier) id])}
    (fn [id]
      (when id
-       (collections.db/root-collection-type-by-id id)))
+       (let [collection (collections.db/collection id)]
+         (when (= "/" (:location collection))
+           (:type collection)))))
    :ttl/threshold (* 60 60 1000)))
 
 (defn root-collection-type
@@ -584,7 +586,7 @@
     (throw (ex-info "Can't create a tenant collection without tenants enabled." {:type (:type collection)})))
   (when location
     (when-let [parent-id (location-path->parent-id location)]
-      (let [parent-namespace (collections.db/collection-namespace parent-id)]
+      (let [parent-namespace (:namespace (collections.db/collection parent-id))]
         (when-not (= (keyword collection-namespace) (keyword parent-namespace))
           (let [msg (tru "Collection must be in the same namespace as its parent")]
             (throw (ex-info msg {:status-code 400, :errors {:location msg}})))))))
@@ -599,7 +601,7 @@
   If a collection's parent is remote-synced, it must also be remote-synced."
   [{:keys [location is_remote_synced]}]
   (when-let [parent-id (and location (location-path->parent-id location))]
-    (let [parent-is-remote-synced? (collections.db/collection-remote-synced? parent-id)]
+    (let [parent-is-remote-synced? (:is_remote_synced (collections.db/collection parent-id))]
       (when (and (or parent-is-remote-synced? is_remote_synced)
                  (not= parent-is-remote-synced? is_remote_synced))
         (let [msg (if is_remote_synced
@@ -1873,7 +1875,7 @@
   (let [orig-children-location (children-location collection)
         new-children-location  (children-location (assoc collection :location new-location))
         will-be-in-trash? (str/starts-with? new-location (trash-path))
-        will-be-in-remote-synced? (collections.db/collection-remote-synced? (parent-id* {:location new-location}))]
+        will-be-in-remote-synced? (some-> (parent-id* {:location new-location}) collections.db/collection :is_remote_synced)]
     (when will-be-in-trash?
       (throw (ex-info "Cannot `move-collection!` into the Trash. Call `archive-collection!` instead."
                       {:collection collection
@@ -2190,7 +2192,7 @@
 (defmethod mi/perms-objects-set :model/Collection
   [collection-or-id read-or-write]
   (let [collection (if (integer? collection-or-id)
-                     (collections.db/collection-id-and-namespace collection-or-id)
+                     (collections.db/collection collection-or-id)
                      collection-or-id)]
     (if (and (= (u/qualified-name (:namespace collection)) "snippets")
              (not (premium-features/enable-snippet-collections?)))
@@ -2244,7 +2246,7 @@
         {["Collection" (u/last path)] {"Collection" id}}))))
 
 (defmethod serdes/descendants "Collection" [_model-name id {:keys [skip-archived]}]
-  (let [location    (when id (collections.db/collection-location id))
+  (let [location    (when id (:location (collections.db/collection id)))
         child-colls (when id ; traversing root coll will return all (even personal) colls, do not do it
                       (into {} (for [child-id (collections.db/child-collection-ids (str location id "/")
                                                                                    trash-collection-type
@@ -2362,7 +2364,7 @@
     (check-collection-namespace Card new-collection-id)"
   [model collection-id]
   (when collection-id
-    (let [collection           (or (collections.db/collection-id-and-namespace collection-id)
+    (let [collection           (or (collections.db/collection collection-id)
                                    (let [msg (tru "Collection does not exist.")]
                                      (throw (ex-info msg {:status-code 404
                                                           :errors      {:collection_id msg}}))))

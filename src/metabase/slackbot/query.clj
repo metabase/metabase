@@ -5,10 +5,10 @@
    [metabase.channel.render.core :as channel.render]
    [metabase.formatter.core :as formatter]
    [metabase.lib.core :as lib]
+   [metabase.queries.db :as queries.db]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.schema :as qp.schema]
-   [metabase.slackbot.db :as slackbot.db]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -265,7 +265,7 @@
    - `table` and display types not supported by static viz render as native Slack table blocks
    - static viz chart types render as PNG"
   [card-id]
-  (let [card      (slackbot.db/card card-id)
+  (let [card      (queries.db/card card-id)
         _         (when-not card
                     (throw (ex-info "Card not found" {:card-id card-id :type :card-not-found})))
         card-name (:name card)

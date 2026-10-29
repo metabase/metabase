@@ -336,16 +336,18 @@
       "update venues set name = 'bill'; some query that can't be parsed;")))
 
 (deftest ^:parallel check-read-only-test-2
-  (testing "not read only statements should fail"
-    (are [query] (thrown?
-                  clojure.lang.ExceptionInfo
-                  #"Only SELECT statements are allowed in a native query."
-                  (mt/with-metadata-provider (mt/id)
-                    (#'h2/check-read-only-statements
-                     {:database 1
-                      :type     :native
-                      :native   {:query query}}))
-                  "update venues set name = 'bill'")
+  (testing "not read only statements are refused as :invalid-query, so callers report a query error, not an internal one"
+    (are [query] (=? {:message "Only SELECT statements are allowed in a native query."
+                      :data    {:type :invalid-query}}
+                     (try
+                       (mt/with-metadata-provider (mt/id)
+                         (#'h2/check-read-only-statements
+                          {:database 1
+                           :type     :native
+                           :native   {:query query}}))
+                       (catch clojure.lang.ExceptionInfo e
+                         {:message (ex-message e), :data (ex-data e)})))
+      "update venues set name = 'bill'"
       "insert into venues (name) values ('bill')"
       "delete venues"
       "select 1; update venues set name = 'bill'; delete venues;"

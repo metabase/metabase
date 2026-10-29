@@ -79,7 +79,7 @@
   - Grant doesn't exist
   - Grant is already revoked"
   [user-id grant-id]
-  (let [grant (support-access-grants.db/grant grant-id)]
+  (let [grant (support-access-grants.db/support-access-grant-log grant-id)]
     (when-not grant
       (throw (ex-info (tru "Grant not found")
                       {:status-code 404})))
@@ -90,7 +90,7 @@
       (support-access-grants.db/update-grant! grant-id
                                               {:revoked_at now
                                                :revoked_by_user_id user-id})
-      (-> (support-access-grants.db/grant grant-id)
+      (-> (support-access-grants.db/support-access-grant-log grant-id)
           (t2/hydrate :user_info)))))
 
 (defn expire-ended-grants!

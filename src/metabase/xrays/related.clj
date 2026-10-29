@@ -4,14 +4,17 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.collections.db :as collections.db]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.util :as lib.schema.util]
    [metabase.models.interface :as mi]
+   [metabase.queries.db :as queries.db]
    [metabase.query-processor.util :as qp.util]
    [metabase.segments.schema :as segments.schema]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.xrays.automagic-dashboards.schema :as ads]
    [metabase.xrays.db :as xrays.db]))
 
@@ -120,9 +123,9 @@
 (defn- linking-to
   [table]
   (->> (xrays.db/fk-target-field-ids-for-table (:id table))
-       (map (comp xrays.db/table
+       (map (comp warehouse-schema.db/table
                   :table_id
-                  xrays.db/field))
+                  warehouse-schema.db/field))
        distinct
        filter-visible
        (take max-matches)))
@@ -131,7 +134,7 @@
   [table]
   (if-let [fields (not-empty (xrays.db/active-field-ids-for-table (:id table)))]
     (->> (xrays.db/table-ids-of-fields-targeting fields)
-         (map xrays.db/table)
+         (map warehouse-schema.db/table)
          filter-visible
          (take max-matches))
     []))
@@ -140,7 +143,7 @@
   [card]
   (if-let [dashboards (some-> (:id card) xrays.db/dashboard-ids-for-card not-empty)]
     (->> (xrays.db/other-card-ids-on-dashboards dashboards (:id card))
-         (map xrays.db/card)
+         (map queries.db/card)
          filter-visible
          (take max-matches))
     []))
@@ -188,7 +191,7 @@
   (->> cards
        (m/distinct-by :collection_id)
        interesting-mix
-       (keep (comp xrays.db/collection :collection_id))
+       (keep (comp collections.db/collection :collection_id))
        filter-visible))
 
 (defmulti related
@@ -198,7 +201,7 @@
 
 (defmethod related :model/Card
   [card]
-  (let [table             (xrays.db/table (:table_id card))
+  (let [table             (warehouse-schema.db/table (:table_id card))
         similar-questions (similar-questions card)
         similar-metrics   (similar-metrics card)]
     {:table             table
@@ -217,7 +220,7 @@
 
 (defmethod related :xrays/Metric
   [metric]
-  (let [table (xrays.db/table (:table_id metric))]
+  (let [table (warehouse-schema.db/table (:table_id metric))]
     {:table    table
      :segments (->> table
                     segments-for-table
@@ -226,7 +229,7 @@
 
 (defmethod related :model/Segment
   [segment]
-  (let [table (xrays.db/table (:table_id segment))]
+  (let [table (warehouse-schema.db/table (:table_id segment))]
     {:table       table
      :metrics     (metrics-for-table table)
      :segments    (->> table
@@ -250,7 +253,7 @@
 
 (defmethod related :model/Field
   [field]
-  (let [table (xrays.db/table (:table_id field))]
+  (let [table (warehouse-schema.db/table (:table_id field))]
     {:table    table
      :segments (->> table
                     segments-for-table
@@ -267,7 +270,7 @@
 
 (defmethod related :model/Dashboard
   [dashboard]
-  (let [cards (map xrays.db/card (xrays.db/card-ids-for-dashboard (:id dashboard)))]
+  (let [cards (map queries.db/card (xrays.db/card-ids-for-dashboard (:id dashboard)))]
     {:cards (->> cards
                  (mapcat similar-questions)
                  (remove (set cards))

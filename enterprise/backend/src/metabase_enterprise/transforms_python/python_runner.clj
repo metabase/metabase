@@ -21,7 +21,9 @@
    [metabase.util.i18n :as i18n]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouses.db :as warehouses.db])
   (:import
    (clojure.lang PersistentQueue)
    (java.io BufferedWriter File InputStream OutputStream OutputStreamWriter)
@@ -290,7 +292,7 @@
 (defn- build-table-query
   "Build a mbql query for table, might add a proper filter for incremental transforms."
   [table-id source-incremental-strategy source-range-params limit]
-  (let [db-id             (transforms-python.db/table-database-id table-id)
+  (let [db-id             (:db_id (warehouse-schema.db/table table-id))
         metadata-provider (lib-be/application-database-metadata-provider db-id)
         table-metadata    (lib.metadata/table metadata-provider table-id)]
     (cond-> (-> (lib/query metadata-provider table-metadata)
@@ -318,8 +320,8 @@
     (let [tmp-data-file (File/createTempFile data-path "")
           tmp-meta-file (File/createTempFile manifest-path "")]
       (try
-        (let [db-id       (transforms-python.db/table-database-id table_id)
-              driver      (transforms-python.db/database-engine db-id)
+        (let [db-id       (:db_id (warehouse-schema.db/table table_id))
+              driver      (:engine (warehouses.db/database db-id))
               fields-meta (fields-metadata driver table_id)
               manifest    (generate-manifest table_id fields-meta)]
           (transforms.instrumentation/with-stage-timing [run-id [:export :dwh-to-file]]

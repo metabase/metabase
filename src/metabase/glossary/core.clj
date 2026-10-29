@@ -36,9 +36,9 @@
   [user-id                   :- ::lib.schema.id/user
    id                        :- ms/PositiveInt
    {:keys [term definition]} :- ::entry-fields]
-  (when-let [previous (glossary.db/glossary-entry id)]
+  (when-let [previous (glossary.db/glossary id)]
     (glossary.db/update-glossary-entry! id term definition)
-    (let [entry (glossary.db/glossary-entry id)]
+    (let [entry (glossary.db/glossary id)]
       (events/publish-event! :event/glossary-update {:object          entry
                                                      :previous-object previous
                                                      :user-id         user-id})
@@ -49,7 +49,7 @@
   deleted entry, or nil when no entry has `id`."
   [user-id :- ::lib.schema.id/user
    id      :- ms/PositiveInt]
-  (when-let [entry (glossary.db/glossary-entry id)]
+  (when-let [entry (glossary.db/glossary id)]
     (glossary.db/delete-glossary-entry! id)
     (events/publish-event! :event/glossary-delete {:object entry :user-id user-id})
     entry))

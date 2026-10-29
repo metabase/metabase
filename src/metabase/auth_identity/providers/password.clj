@@ -42,7 +42,7 @@
   "Find an AuthIdentity record by email address."
   [email :- ms/NonBlankString]
   (when-let [user (auth-identity.db/user-by-email email)]
-    (auth-identity.db/auth-identity (:id user) "password")))
+    (auth-identity.db/auth-identity-for-user-and-provider (:id user) "password")))
 
 (methodical/defmethod provider/authenticate :provider/password
   "Authenticate a user with email and password.

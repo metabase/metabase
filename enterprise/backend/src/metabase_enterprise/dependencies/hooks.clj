@@ -11,10 +11,12 @@
    [metabase-enterprise.dependencies.task.result-metadata :as task.result-metadata]
    [metabase.app-db.core :as mdb]
    [metabase.batch-processing.core :as grouper]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -118,10 +120,11 @@
   (case model
     (:model/DashboardCard :model/DashboardTab)    [:dashboard (:dashboard_id row)]
     :model/DashboardCardSeries                    [:dashboard (some-> (:dashboardcard_id row)
-                                                                      dependencies.db/dashcard-dashboard-id)]
+                                                                      dashboards.db/dashboard-card
+                                                                      :dashboard_id)]
     (:model/QueryAction :model/ImplicitAction)    [:action (:action_id row)]
     (:model/Field :model/TableUserSettings)       [:table (:table_id row)]
-    :model/FieldUserSettings                      [:table (some-> (:field_id row) dependencies.db/field-table-id)]
+    :model/FieldUserSettings                      [:table (some-> (:field_id row) warehouse-schema.db/field :table_id)]
     nil))
 
 (def ^:private part-columns
@@ -169,7 +172,7 @@
 (mu/defn- mark-dimension!
   "Mark what reads the remap of the Dimension `row`, whose Field's Table's entities show it."
   [row :- [:maybe Row]]
-  (when-let [table-id (some-> (:field_id row) dependencies.db/field-table-id)]
+  (when-let [table-id (some-> (:field_id row) warehouse-schema.db/field :table_id)]
     (mark-remapped-tables! #{table-id})))
 
 (mu/defn- mark-field-values! :- :boolean

@@ -3,6 +3,7 @@
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.dependencies.models.dependency :as models.dependency]
    [metabase.api.common :as api]
+   [metabase.collections.db :as collections.db]
    [metabase.graph.core :as graph]
    [metabase.permissions.core :as perms]
    [metabase.settings.core :as setting]
@@ -35,7 +36,7 @@
 (defn- app-collection
   "The resource collection of `app`, or a 404."
   [app]
-  (api/check-404 (some-> (:resource_collection_id app) data-apps.db/resource-collection)))
+  (api/check-404 (some-> (:resource_collection_id app) collections.db/collection)))
 
 (defn add-groups!
   "Grant groups read access to the resource collection of `app`."

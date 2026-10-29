@@ -12,6 +12,7 @@
    [metabase.audit-app.core :as audit]
    [metabase.collections.core :as collections]
    [metabase.collections.curation :as curation]
+   [metabase.collections.db :as collections.db]
    [metabase.util :as u]
    [metabase.util.log :as log]))
 
@@ -173,7 +174,7 @@
   [collection-id]
   (when collection-id
     (into #{collection-id}
-          (when-let [root (data-complexity-score.db/collection collection-id)]
+          (when-let [root (collections.db/collection collection-id)]
             (collections/descendant-ids root)))))
 
 (defn- verified-card-id-set
