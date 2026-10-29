@@ -19,6 +19,22 @@ title: API changelog
 - `POST /api/ee/serialization/export` accepts a `dirname` of 1-255 characters from `A-Z a-z 0-9 _ - . %`
   that does not start with `.` or `-`. Other values get `400 Bad Request`.
 
+- The `collection_preview` card property has been removed.
+  - The following endpoints no longer return `collection_preview` in response objects:
+    - `GET /api/card`
+    - `GET /api/card/:id`
+    - `GET /api/collection/:id/items`
+    - `GET /api/collection/root/items`
+    - `GET /api/dashboard/:id/items`
+    - `GET /api/ee/library`
+    - `GET /api/ee/stale/:id`
+  - The following endpoints ignore `collection_preview` in request bodies:
+    - `POST /api/card`
+    - `PUT /api/card/:id`
+    - `POST /api/card/:id/query`
+  - A metric requested from `POST /api/card/:id/query` with `collection_preview: true` now runs with its saved
+    breakouts, as it does without the flag, instead of returning a single aggregated value.
+
 ## Metabase 0.65.0
 
 - `POST /api/transform` and `PUT /api/transform/:id` answer a target table that already exists with
