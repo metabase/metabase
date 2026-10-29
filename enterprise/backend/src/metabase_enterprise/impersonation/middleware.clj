@@ -1,13 +1,45 @@
 (ns metabase-enterprise.impersonation.middleware
   (:require
    [metabase-enterprise.impersonation.driver :as impersonation.driver]
+   [metabase-enterprise.impersonation.query-cache :as query-cache]
    [metabase.driver :as driver]
+   [metabase.driver.connection :as driver.conn]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema :as lib.schema]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor.interface :as qp.i]
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]))
+
+(mu/defn- validate-native-stage :- ::lib.schema/stage.native
+  "Validate the native `stage` of `query` for `driver` on its own, through the impersonation query cache. This release
+  validates native queries alike for every user, so the cache is not keyed by admin."
+  [driver :- :keyword
+   query  :- ::lib.schema/query
+   stage  :- ::lib.schema/stage.native]
+  (assoc stage :native
+         (query-cache/validated-query
+          driver
+          (= driver.conn/*connection-type* :write-data)
+          false
+          (:native stage)
+          #(-> (driver/validate-impersonated-query driver (assoc query :stages [stage]))
+               :stages
+               first
+               :native))))
+
+(defn- validate-impersonated-query
+  "Enforce the single-statement rule on every native stage of `query` for `driver`."
+  [driver query]
+  (update query :stages (fn [stages]
+                          (mapv (fn [stage]
+                                  (if (lib/native-stage? stage)
+                                    (validate-native-stage driver query stage)
+                                    stage))
+                                stages))))
 
 (defenterprise apply-impersonation
   "Pre-processing middleware. Validates that native queries on impersonated databases are single SELECT statements,
@@ -26,7 +58,7 @@
         impersonation-enabled?
         (as-> q
               (do (premium-features/assert-has-feature :advanced-permissions (tru "Advanced Permissions"))
-                  (driver/validate-impersonated-query driver/*driver* q)))
+                  (validate-impersonated-query driver/*driver* q)))
         ;; Only assign the role for non-admin impersonated users
         role
         (assoc :impersonation/role role)))))
