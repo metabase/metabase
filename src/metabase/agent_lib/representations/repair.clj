@@ -2763,15 +2763,19 @@
            :types             (types-from-column col)})
         cols))
 
+(defn- stages-query
+  "Return `stages` as a standalone query against `database`, which may be nil."
+  [database stages]
+  (cond-> {"lib/type" "mbql/query", "stages" stages}
+    database (assoc "database" database)))
+
 (defn- resolved-columns
   "Resolve `stages` as a standalone query against `database` and return their returned columns as
   a vector of [[column-descriptors]], or nil when anything in the resolve path throws. `what`
   names the stages in the debug log."
   [mp database stages content-store what]
   (try
-    (let [query    (cond-> {"lib/type" "mbql/query" "stages" stages}
-                     database (assoc "database" database))
-          resolved (repr.resolve/resolve-query mp query content-store)]
+    (let [resolved (repr.resolve/resolve-query mp (stages-query database stages) content-store)]
       (column-descriptors (lib/returned-columns (lib/query mp resolved))))
     (catch Exception e
       (log/debugf "[repr-repair] resolve of %s failed; skipping field-type inference: %s" what (ex-message e))
@@ -2834,9 +2838,8 @@
                                    (filter #(= target (normalize-col-key (key-fn %))) cols))]
                       (when (= 1 (count hits))
                         (first hits))))]
-    (if-let [[spelling match] (or (some->> (lib-match col-name) (vector col-name))
-                                  (when (not= stripped col-name)
-                                    (some->> (lib-match stripped) (vector stripped))))]
+    (if-let [[spelling match] (some #(when-let [match (lib-match %)] [% match])
+                                    (distinct [col-name stripped]))]
       [spelling (:types match)]
       (when-let [match (or (loose-on :name stripped)
                            (loose-on :display-name stripped))]
@@ -2851,12 +2854,12 @@
   [clause cols]
   (let [opts     (nth clause 1)
         col-name (nth clause 2)]
-    (if-let [[canonical-name types] (match-cross-stage-column cols col-name)]
+    (if-let [[spelling types] (match-cross-stage-column cols col-name)]
       (cond-> clause
         ;; Rename the ref when it matched only after quote-stripping or loose matching.
         ;; A `base-type` stamp alone would leave it pointing at a column that doesn't exist.
-        (not= canonical-name col-name)
-        (assoc 2 canonical-name)
+        (not= spelling col-name)
+        (assoc 2 spelling)
         ;; Stamp inferred types only when the LLM didn't author a `base-type` already and the
         ;; matched column actually exposes one.
         (and types (not (contains? opts "base-type")))
@@ -3179,8 +3182,7 @@
   (if-not (and (map? join) (vector? (get join "stages")))
     join
     (try
-      (assoc join "stages" (-> (cond-> {"lib/type" "mbql/query", "stages" (get join "stages")}
-                                 database (assoc "database" database))
+      (assoc join "stages" (-> (stages-query database (get join "stages"))
                                (infer-field-types* mp content-store)
                                (get "stages")))
       (catch clojure.lang.ExceptionInfo e

@@ -4175,18 +4175,22 @@
                               "In a join with no alias in stage 0: No column named \"nope\""))))))
 
 (deftest ^:parallel join-fields-ref-without-alias-test
-  (let [join-fields (fn [previous-stage]
+  (let [join-fields (fn [previous-stage fields]
                       (get-in (repair* (query previous-stage
                                               (stage {"joins" [(assoc (join "First" [first-orders-stage] :lhs user-id-by-name)
-                                                                      "fields" [["field" {} "min"]])]})))
+                                                                      "fields" fields)]})))
                               ["stages" 1 "joins" 0 "fields"]))]
     (testing "a by-name ref in a join's fields gets the join's alias and is typed from the join"
       (is (= [["field" {"join-alias" "First", "base-type" "type/Date", "effective-type" "type/Date"} "min"]]
-             (join-fields min-total-by-user-stage))))
+             (join-fields min-total-by-user-stage [["field" {} "min"]]))))
     (testing "the previous stage not having the column doesn't matter"
       (is (= "type/Date"
              (base-type (first (join-fields (orders-stage {"aggregation" [["count" {}]]
-                                                           "breakout"    [(orders-col "USER_ID")]})))))))))
+                                                           "breakout"    [(orders-col "USER_ID")]})
+                                            [["field" {} "min"]]))))))
+    (testing "a path ref in a join's fields is left for lib"
+      (is (= [(orders-col "USER_ID")]
+             (join-fields min-total-by-user-stage [(orders-col "USER_ID")]))))))
 
 (deftest ^:parallel alias-less-join-fields-left-for-validation-test
   (let [fields-of (fn [column]
