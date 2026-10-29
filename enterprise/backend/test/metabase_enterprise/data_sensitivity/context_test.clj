@@ -157,10 +157,16 @@
                      (or (str/includes? (pr-str packet) marker)
                          (str/includes? (llm/user-message packet (:fields packet) #{:data_sensitivity}) marker)))]
     (testing "the packet and the user message do not name a hidden table that a foreign key points to"
-      (mt/with-temp-vals-in-db :model/Table (mt/id :people) {:visibility_type "hidden" :name "PEOPLE_HIDDEN_MARKER"}
+      (mt/with-temp [:model/Table {hidden-table-id :id} {:db_id (mt/id) :name "HIDDEN_TABLE_MARKER"
+                                                         :visibility_type :hidden}
+                     :model/Field {hidden-pk-id :id}    {:table_id hidden-table-id :name "id"
+                                                         :base_type :type/Integer :semantic_type :type/PK}
+                     :model/Field _                     {:table_id (mt/id :orders) :name "fk_to_hidden_table"
+                                                         :base_type :type/Integer :semantic_type :type/FK
+                                                         :fk_target_field_id hidden-pk-id}]
         (let [packet (schema-only-packet (orders))]
-          (is (some? (field-by-name packet (t2/select-one-fn :name :model/Field :id (mt/id :orders :user_id)))))
-          (is (not (names-in? packet "PEOPLE_HIDDEN_MARKER"))))))
+          (is (some? (field-by-name packet "fk_to_hidden_table")))
+          (is (not (names-in? packet "HIDDEN_TABLE_MARKER"))))))
     (mt/with-temp [:model/Field {sensitive-id :id} {:table_id (mt/id :people) :name "sensitive_target_marker"
                                                     :base_type :type/Integer :visibility_type :sensitive}
                    :model/Field {retired-id :id}   {:table_id (mt/id :people) :name "retired_target_marker"
