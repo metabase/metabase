@@ -5,7 +5,7 @@ summary: Data apps are custom apps that an AI coding agent builds on your semant
 
 # Data apps (beta)
 
-![An example data app: a sales overview of a storefront](./images/example-data-app.webp)
+![An example data app: a sales overview of a storefront](./images/example-data-app.png)
 
 > **Beta:** Data apps are in beta.
 
