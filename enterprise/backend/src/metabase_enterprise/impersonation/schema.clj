@@ -28,7 +28,8 @@
   [:merge
    ::impersonation-query-cache.update
    [:map {:closed true}
-    [:id ms/PositiveInt]]])
+    [:id               ms/PositiveInt]
+    [:input_query_hash :string]]])
 
 (mr/def ::impersonation-query-cache.update
   "What an update (or insert) of an ImpersonationQueryCache accepts: every column of `:impersonation_query_cache` except `id`, all optional."
@@ -37,7 +38,6 @@
    [:input_engine      {:optional true} :keyword]
    [:input_allow_write {:optional true} :boolean]
    [:input_admin       {:optional true} :boolean]
-   [:input_query_hash  {:optional true} :string]
    [:input_query       {:optional true} :string]
    [:result            {:optional true} ::impersonation-query-cache.result]
    [:result_query      {:optional true} [:maybe :string]]

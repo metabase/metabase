@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.impersonation.models.impersonation-query-cache :as impersonation-query-cache]
    [metabase-enterprise.impersonation.query-cache :as query-cache]
    [metabase-enterprise.impersonation.task.query-cache-cleanup :as query-cache-cleanup]
    [metabase.config.core :as config]
@@ -68,9 +69,20 @@
   (mt/with-model-cleanup [:model/ImpersonationQueryCache]
     (let [native (mt/random-name)]
       (query-cache/validated-query :postgres false false native (constantly "SELECT 1"))
-      (t2/update! :model/ImpersonationQueryCache :input_query native {:input_query "SELECT 'colliding'"})
+      (t2/update! :impersonation_query_cache :input_query native {:input_query "SELECT 'colliding'"})
       (testing "row whose input_query differs is not used, and failing to insert over it does not fail query"
         (is (= "SELECT 2" (query-cache/validated-query :postgres false false native (constantly "SELECT 2"))))))))
+
+(deftest hash-follows-input-query-test
+  (mt/with-model-cleanup [:model/ImpersonationQueryCache]
+    (let [native  (mt/random-name)
+          changed (mt/random-name)]
+      (query-cache/validated-query :postgres false false native (constantly "SELECT 1"))
+      (is (= (impersonation-query-cache/query-hash native)
+             (t2/select-one-fn :input_query_hash :model/ImpersonationQueryCache :input_query native)))
+      (t2/update! :model/ImpersonationQueryCache :input_query native {:input_query changed})
+      (is (= (impersonation-query-cache/query-hash changed)
+             (t2/select-one-fn :input_query_hash :model/ImpersonationQueryCache :input_query changed))))))
 
 (deftest cleanup-deletes-outdated-rows-test
   (mt/with-temporary-setting-values [impersonation-query-cache-retention-days 7]

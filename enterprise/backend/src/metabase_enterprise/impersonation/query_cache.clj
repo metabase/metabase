@@ -2,8 +2,6 @@
   "Caches the result of validating each native stage of an impersonated query in the app DB, since validation parses
   the SQL and can take seconds."
   (:require
-   [buddy.core.codecs :as codecs]
-   [buddy.core.hash :as buddy-hash]
    [metabase-enterprise.impersonation.db :as impersonation.db]
    [metabase-enterprise.impersonation.schema :as impersonation.schema]
    [metabase.config.core :as config]
@@ -25,7 +23,6 @@
    :input_engine      engine
    :input_allow_write (boolean allow-write?)
    :input_admin       (boolean admin?)
-   :input_query_hash  (codecs/bytes->hex (buddy-hash/sha256 ^String native))
    :input_query       native})
 
 (mu/defn- cached-result :- [:maybe ::impersonation.schema/impersonation-query-cache]

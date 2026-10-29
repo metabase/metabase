@@ -3,6 +3,7 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
    [malli.util :as mut]
+   [metabase-enterprise.impersonation.models.impersonation-query-cache :as impersonation-query-cache]
    [metabase-enterprise.impersonation.schema :as impersonation.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
@@ -90,10 +91,10 @@
 
 (mu/defn query-cache :- [:maybe ::impersonation.schema/impersonation-query-cache]
   "The ImpersonationQueryCache with the lookup key of `input`, or nil."
-  [{:keys [input_query_hash input_engine input_allow_write input_admin input_version]}
+  [{:keys [input_query input_engine input_allow_write input_admin input_version]}
    :- ::impersonation.schema/impersonation-query-cache.update]
   (t2/select-one :model/ImpersonationQueryCache
-                 :input_query_hash  input_query_hash
+                 :input_query_hash  (impersonation-query-cache/query-hash input_query)
                  :input_engine      input_engine
                  :input_allow_write input_allow_write
                  :input_admin       input_admin
