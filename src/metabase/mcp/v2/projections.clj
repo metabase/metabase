@@ -270,10 +270,12 @@
               :default              (:default param)
               :required             (:required param)
               :values_source_type   (:values_source_type param)
-              ;; TODO (Chris 2026-10-29) -- a static list's `values_source_config` carries every value into
-              ;; each concise read and every `dashboard_write` response. A long list fills the agent's
-              ;; context. Trimming it changes what agents see on every surface that reads this row, so
-              ;; decide it with evals.
+              ;; TODO (Chris 2026-10-29) -- decide with evals whether to trim `values_source_config`.
+              ;; A static list carries every value into each concise read and every `dashboard_write`
+              ;; response, and a long one fills the agent's context.
+              ;; A card source shows the card id and its value and label fields even to a user who cannot
+              ;; read that card. That matches `GET /api/dashboard/:id`, which returns stored parameters as
+              ;; they are, so redacting it here alone would hide nothing.
               :values_source_config (:values_source_config param)
               :dashcard_ids         (->> (get param-id->dashcard-ids (u/qualified-name param-id))
                                          (remove nil?)
