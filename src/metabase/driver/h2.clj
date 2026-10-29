@@ -353,7 +353,8 @@
                                                sql)]
       (when-not (read-only-statements? query-classification)
         (throw (ex-info "Only SELECT statements are allowed in a native query."
-                        {:classification query-classification}))))))
+                        {:type           driver-api/qp.error-type.invalid-query
+                         :classification query-classification}))))))
 
 (defmethod driver/execute-reducible-query :h2
   [driver query chans respond]
