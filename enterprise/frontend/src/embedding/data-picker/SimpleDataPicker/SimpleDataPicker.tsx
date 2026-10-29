@@ -101,9 +101,9 @@ export function SimpleDataPicker({
 }
 
 /**
- * Searches the tables and metrics published in the Library when `entityTypes`
- * includes `library`, skipping those `searchModels` already finds everywhere.
- * Returns no data without a Library the user can read.
+ * Searches the tables and metrics published in the semantic layer when `entityTypes`
+ * includes `semantic-layer`, skipping those `searchModels` already finds everywhere.
+ * Returns no data without a semantic layer the user can read.
  */
 function useLibrarySearch({
   entityTypes,
@@ -120,13 +120,14 @@ function useLibrarySearch({
     ? ["table", "metric"]
     : ["table"];
   // The general search already finds published tables and metrics when
-  // `searchModels` asks for them, so only ask the Library for the rest
+  // `searchModels` asks for them, so only ask the semantic layer for the rest
   const libraryModels = publishedModels.filter(
     (model) => !searchModels.includes(model),
   );
   const { data: libraryCollection, isLoading: isLibraryCollectionLoading } =
     PLUGIN_LIBRARY.useGetLibraryCollection({
-      skip: !entityTypes.includes("library") || libraryModels.length === 0,
+      skip:
+        !entityTypes.includes("semantic-layer") || libraryModels.length === 0,
     });
   const { data, isLoading, error } = useSearchQuery(
     libraryCollection && libraryModels.length > 0

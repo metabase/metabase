@@ -8,7 +8,7 @@ export type EmbeddingEntityType =
   | "table"
   | "question"
   | "metric"
-  | "library";
+  | "semantic-layer";
 
 /**
  * `question` only works on multi-stage data picker, not the simple data picker.

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { t } from "ttag";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
 import CS from "metabase/css/core/index.css";
@@ -12,8 +13,8 @@ import type {
 
 import { DataSelectorDataBucketPicker } from "../DataSelectorDataBucketPicker";
 import {
-  LIBRARY_DATA_INFO_ITEM,
-  LIBRARY_METRICS_INFO_ITEM,
+  SEMANTIC_LAYER_DATA_INFO_ITEM,
+  SEMANTIC_LAYER_METRICS_INFO_ITEM,
 } from "../constants";
 import { SavedEntityPicker } from "../saved-entity-picker/SavedEntityPicker";
 import SavedEntityPickerS from "../saved-entity-picker/SavedEntityPicker.module.css";
@@ -21,7 +22,7 @@ import { COLLECTION_TREE_REQUEST } from "../saved-entity-picker/constants";
 import { findCollectionById } from "../saved-entity-picker/utils";
 import type { DataTypeInfoItem } from "../types";
 
-interface LibraryPickerProps {
+interface SemanticLayerPickerProps {
   libraryCollection: LibraryCollection;
   canSelectMetric: boolean;
   databaseId?: DatabaseId | null;
@@ -32,18 +33,18 @@ interface LibraryPickerProps {
 }
 
 /**
- * Offers the Library's Data and Metrics folders like the bucket step, then
+ * Offers the semantic layer's Data and Metrics folders like the bucket step, then
  * opens the chosen one in `SavedEntityPicker`. A folder without tables or
  * metrics isn't offered, and when only one is left it opens straight away.
  */
-export function LibraryPicker({
+export function SemanticLayerPicker({
   libraryCollection,
   canSelectMetric,
   databaseId,
   tableId,
   onSelect,
   onBack,
-}: LibraryPickerProps) {
+}: SemanticLayerPickerProps) {
   const { data: collections } = useListCollectionsTreeQuery(
     COLLECTION_TREE_REQUEST,
   );
@@ -84,10 +85,10 @@ export function LibraryPicker({
         <a
           className={SavedEntityPickerS.BackButton}
           onClick={onBack}
-          data-testid="library-picker-back-navigation"
+          data-testid="semantic-layer-picker-back-navigation"
         >
           <Icon name="chevronleft" className={CS.mr1} />
-          {libraryCollection.name}
+          {t`Semantic layer`}
         </a>
       )}
       <Box p="sm">
@@ -121,9 +122,15 @@ function getLibraryFolders(
 function getLibraryFolder(collection: Collection) {
   switch (collection.type) {
     case "library-data":
-      return { type: "table" as const, infoItem: LIBRARY_DATA_INFO_ITEM };
+      return {
+        type: "table" as const,
+        infoItem: SEMANTIC_LAYER_DATA_INFO_ITEM,
+      };
     case "library-metrics":
-      return { type: "metric" as const, infoItem: LIBRARY_METRICS_INFO_ITEM };
+      return {
+        type: "metric" as const,
+        infoItem: SEMANTIC_LAYER_METRICS_INFO_ITEM,
+      };
     default:
       return null;
   }

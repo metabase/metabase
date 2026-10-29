@@ -566,8 +566,8 @@ describe("scenarios > embedding > full app", () => {
       });
     });
 
-    describe("library", () => {
-      it("should count the metrics in the Library toward the full data picker switch", () => {
+    describe("semantic-layer", () => {
+      it("should count the metrics in the semantic layer toward the full data picker switch", () => {
         const metricDetails = {
           ...ordersCardDetails,
           type: "metric",
@@ -584,8 +584,8 @@ describe("scenarios > embedding > full app", () => {
           cy.findByText("Raw Data").should("not.exist");
         });
 
-        // The other half of the 100 metrics goes into the Library, so only
-        // the Library's metrics can push the count over
+        // The other half of the 100 metrics goes into the semantic layer, so only
+        // the semantic layer's metrics can push the count over
         cy.signInAsAdmin();
         H.createLibrary().then(({ body: library }) => {
           const metricsCollection = library.effective_children.find(
@@ -594,7 +594,7 @@ describe("scenarios > embedding > full app", () => {
           Cypress._.times(50, (index) => {
             H.createQuestion({
               ...metricDetails,
-              name: `Library orders count ${index}`,
+              name: `Semantic layer orders count ${index}`,
             }).then(({ body: metric }) => {
               cy.request("PUT", `/api/card/${metric.id}`, {
                 collection_id: metricsCollection.id,
@@ -606,7 +606,7 @@ describe("scenarios > embedding > full app", () => {
         startNewEmbeddingQuestion();
         H.popover().within(() => {
           cy.findByText("Raw Data").should("be.visible");
-          cy.findByText("Library").should("be.visible");
+          cy.findByText("Semantic layer").should("be.visible");
         });
       });
     });
@@ -797,7 +797,7 @@ describe("scenarios > embedding > full app", () => {
         cy.findByText("Raw Data").should("be.visible");
         cy.findByText("Saved Questions").should("not.exist");
         cy.findByText("Metrics").should("be.visible");
-        cy.findByText("Library").should("be.visible");
+        cy.findByText("Semantic layer").should("be.visible");
       });
 
       cy.log("test providing `entity_types` as an empty string");
@@ -1158,19 +1158,19 @@ describe("scenarios > embedding > full app", () => {
       });
     });
 
-    describe("library", () => {
+    describe("semantic-layer", () => {
       beforeEach(() => {
         cy.signInAsAdmin();
         createLibraryWithTable();
         cy.signInAsNormalUser();
       });
 
-      it("should select a table published in the Library", () => {
+      it("should select a table published in the semantic layer", () => {
         startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
 
         H.popover().within(() => {
           cy.findByText("Raw Data").should("be.visible");
-          cy.findByText("Library").click();
+          cy.findByText("Semantic layer").click();
           cy.findByText("Orders").click();
         });
         cy.wait("@getTableMetadata");
@@ -1178,7 +1178,7 @@ describe("scenarios > embedding > full app", () => {
         H.getNotebookStep("data").findByText("Orders").should("be.visible");
       });
 
-      it("should join a table published in the Library", () => {
+      it("should join a table published in the semantic layer", () => {
         cy.signInAsAdmin();
         H.publishTables({ table_ids: [PRODUCTS_ID] });
         cy.signInAsNormalUser();
@@ -1188,7 +1188,7 @@ describe("scenarios > embedding > full app", () => {
         H.getNotebookStep("data").button("Join data").click();
         goBackToBucketStep();
         H.popover().within(() => {
-          cy.findByText("Library").click();
+          cy.findByText("Semantic layer").click();
           cy.findByText("Products").click();
         });
 
@@ -1198,13 +1198,13 @@ describe("scenarios > embedding > full app", () => {
           .should("be.visible");
       });
 
-      it("should select a table published in a Library subfolder", () => {
+      it("should select a table published in a semantic layer subfolder", () => {
         cy.signInAsAdmin();
         cy.request("GET", "/api/ee/library").then(({ body }) => {
           const dataCollection = body.effective_children.find(
             (collection) => collection.type === "library-data",
           );
-          // A collection created in a Library folder takes that folder's type
+          // A collection created in a semantic layer folder takes that folder's type
           H.createCollection({
             name: "Finance",
             parent_id: dataCollection.id,
@@ -1219,7 +1219,7 @@ describe("scenarios > embedding > full app", () => {
         startNewEmbeddingQuestion({ isMultiStageDataPicker: true });
 
         H.popover().within(() => {
-          cy.findByText("Library").click();
+          cy.findByText("Semantic layer").click();
           cy.findByText("Finance").click();
           cy.findByText("Products").click();
         });
@@ -1228,8 +1228,8 @@ describe("scenarios > embedding > full app", () => {
         H.getNotebookStep("data").findByText("Products").should("be.visible");
       });
 
-      // TODO (Kelvin 2026-10-15) unskip with EMB-2489: the Library bucket counts trashed cards
-      it.skip("should not offer a Library whose only content is archived", () => {
+      // TODO (Kelvin 2026-10-15) unskip with EMB-2489: the semantic layer bucket counts trashed cards
+      it.skip("should not offer a semantic layer whose only content is archived", () => {
         cy.signInAsAdmin();
         H.unpublishTables({ table_ids: [ORDERS_ID] });
         cy.request("GET", "/api/ee/library").then(({ body }) => {
@@ -1250,7 +1250,7 @@ describe("scenarios > embedding > full app", () => {
 
         H.popover().within(() => {
           cy.findByText("Raw Data").should("be.visible");
-          cy.findByText("Library").should("not.exist");
+          cy.findByText("Semantic layer").should("not.exist");
         });
       });
     });

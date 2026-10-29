@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import type { ListCollectionsTreeRequest } from "metabase-types/api";
 
-// Shared by the saved-entity and Library pickers so both request the same tree.
+// Shared by the saved-entity and semantic layer pickers so both request the same tree.
 export const COLLECTION_TREE_REQUEST: ListCollectionsTreeRequest = {
   "exclude-archived": true,
   "include-library": true,

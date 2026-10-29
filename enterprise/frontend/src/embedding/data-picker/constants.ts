@@ -9,14 +9,14 @@ type DataBucket =
   | "RAW_DATA"
   | "SAVED_QUESTIONS"
   | "METRICS"
-  | "LIBRARY";
+  | "SEMANTIC_LAYER";
 
 export const DATA_BUCKET: Record<DataBucket, DataPickerDataType> = {
   MODELS: "models",
   RAW_DATA: "raw-data",
   SAVED_QUESTIONS: "questions",
   METRICS: "metrics",
-  LIBRARY: "library",
+  SEMANTIC_LAYER: "semantic-layer",
 } as const;
 
 export const MODELS_INFO_ITEM: DataTypeInfoItem = {
@@ -63,27 +63,27 @@ export const METRICS_INFO_ITEM: DataTypeInfoItem = {
   },
 };
 
-export const LIBRARY_INFO_ITEM: DataTypeInfoItem = {
-  id: DATA_BUCKET.LIBRARY,
+export const SEMANTIC_LAYER_INFO_ITEM: DataTypeInfoItem = {
+  id: DATA_BUCKET.SEMANTIC_LAYER,
   icon: "repository",
   get name() {
-    return t`Library`;
+    return t`Semantic layer`;
   },
   get description() {
     return t`Curated tables and metrics.`;
   },
 };
 
-export const LIBRARY_DATA_INFO_ITEM: DataTypeInfoItem = {
-  id: "library-data",
+export const SEMANTIC_LAYER_DATA_INFO_ITEM: DataTypeInfoItem = {
+  id: "semantic-layer-data",
   icon: "table",
   get name() {
     return t`Data`;
   },
 };
 
-export const LIBRARY_METRICS_INFO_ITEM: DataTypeInfoItem = {
-  id: "library-metrics",
+export const SEMANTIC_LAYER_METRICS_INFO_ITEM: DataTypeInfoItem = {
+  id: "semantic-layer-metrics",
   icon: "metric",
   get name() {
     return t`Metrics`;

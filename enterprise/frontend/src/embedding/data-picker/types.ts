@@ -4,9 +4,9 @@ export type DataPickerDataType =
   | "raw-data"
   | "questions"
   | "metrics"
-  | "library"
-  | "library-data"
-  | "library-metrics";
+  | "semantic-layer"
+  | "semantic-layer-data"
+  | "semantic-layer-metrics";
 
 export type DataTypeInfoItem = {
   id: DataPickerDataType;
@@ -17,5 +17,5 @@ export type DataTypeInfoItem = {
 
 export type SavedEntityType =
   | Extract<CardType, "model" | "question" | "metric">
-  // Tables published in the Library, which aren't cards
+  // Tables published in the semantic layer, which aren't cards
   | "table";

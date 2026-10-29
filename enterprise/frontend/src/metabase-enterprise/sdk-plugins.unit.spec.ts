@@ -10,7 +10,7 @@ describe("SDK plugins", () => {
     reinitialize();
   });
 
-  it("should give the embedding data pickers the Library", async () => {
+  it("should give the embedding data pickers the semantic layer", async () => {
     mockSettings({
       "token-features": createMockTokenFeatures({ library: true }),
     });

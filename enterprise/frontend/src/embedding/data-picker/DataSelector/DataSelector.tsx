@@ -61,8 +61,8 @@ import {
   type TriggerComponentProps,
 } from "../TriggerComponents";
 import { CONTAINER_WIDTH, DATA_BUCKET } from "../constants";
-import { LibraryPicker } from "../library-picker/LibraryPicker";
 import { SavedEntityPicker } from "../saved-entity-picker/SavedEntityPicker";
+import { SemanticLayerPicker } from "../semantic-layer-picker/SemanticLayerPicker";
 import type { DataPickerDataType, SavedEntityType } from "../types";
 import { getDataTypes } from "../utils";
 
@@ -112,7 +112,7 @@ interface DataSelectorOwnProps {
   canSelectTable: boolean;
   canSelectQuestion: boolean;
   canSelectMetric: boolean;
-  canSelectLibrary: boolean;
+  canSelectSemanticLayer: boolean;
 
   selectedDataBucketId?: DataPickerDataType | null;
   selectedDatabaseId?: DatabaseId | null;
@@ -197,13 +197,15 @@ type SelectedIdsState = Pick<
 >;
 
 export function DataSourceSelector(props: DataSourceSelectorProps) {
-  // Reads the Library through `PLUGIN_LIBRARY`, like the core app's pickers.
+  // Reads the semantic layer through `PLUGIN_LIBRARY`, like the core app's pickers.
   // `libraryCollection` stays `undefined` without the `library` token feature (no
-  // request is made), when no Library exists (`GET /api/ee/library` returns
+  // request is made), when no semantic layer exists (`GET /api/ee/library` returns
   // `{ data: null }`), or when the user can't read it. `allLoading` makes the
   // picker wait for it.
   const { data: libraryCollection, isLoading: isLibraryLoading } =
-    PLUGIN_LIBRARY.useGetLibraryCollection({ skip: !props.canSelectLibrary });
+    PLUGIN_LIBRARY.useGetLibraryCollection({
+      skip: !props.canSelectSemanticLayer,
+    });
 
   return (
     <DataSelector
@@ -516,7 +518,7 @@ export class UnconnectedDataSelector extends Component<
       this.hasUsableModels() ||
       this.hasSavedQuestions() ||
       this.hasUsableMetrics() ||
-      this.hasLibrary()
+      this.hasSemanticLayer()
     );
   };
 
@@ -528,18 +530,19 @@ export class UnconnectedDataSelector extends Component<
     );
   };
 
-  hasLibrary = (): boolean => {
-    const { canSelectLibrary, libraryCollection } = this.props;
+  hasSemanticLayer = (): boolean => {
+    const { canSelectSemanticLayer, libraryCollection } = this.props;
     const libraryContents = libraryCollection?.below ?? [];
     return (
-      canSelectLibrary &&
+      canSelectSemanticLayer &&
       (libraryContents.includes("table") ||
-        (this.canSelectLibraryMetrics() && libraryContents.includes("metric")))
+        (this.canSelectSemanticLayerMetrics() &&
+          libraryContents.includes("metric")))
     );
   };
 
-  // Library metrics follow the Metrics bucket's rules
-  canSelectLibraryMetrics = (): boolean =>
+  // Semantic layer metrics follow the Metrics bucket's rules
+  canSelectSemanticLayerMetrics = (): boolean =>
     !this.isJoinStep() && this.props.hasNestedQueriesEnabled;
 
   // With a single bucket, `skipSteps` opens it straight away, so there's no
@@ -550,7 +553,7 @@ export class UnconnectedDataSelector extends Component<
       hasTables: this.props.canSelectTable,
       hasSavedQuestions: this.hasSavedQuestions(),
       hasMetrics: this.hasMetrics(),
-      hasLibrary: this.hasLibrary(),
+      hasSemanticLayer: this.hasSemanticLayer(),
       hasNestedQueriesEnabled: this.props.hasNestedQueriesEnabled,
     }).length > 1;
 
@@ -642,7 +645,7 @@ export class UnconnectedDataSelector extends Component<
         hasTables: this.props.canSelectTable,
         hasSavedQuestions: this.hasSavedQuestions(),
         hasMetrics: this.hasMetrics(),
-        hasLibrary: this.hasLibrary(),
+        hasSemanticLayer: this.hasSemanticLayer(),
         hasNestedQueriesEnabled: this.props.hasNestedQueriesEnabled,
       });
       if (dataTypes.length === 1) {
@@ -678,7 +681,7 @@ export class UnconnectedDataSelector extends Component<
       index -= 1;
     }
 
-    // data bucket step doesn't make a lot of sense when there're no models, saved questions, metrics, or Library
+    // data bucket step doesn't make a lot of sense when there're no models, saved questions, metrics, or the semantic layer
     if (steps[index] === DATA_BUCKET_STEP && !this.hasUsableSavedEntities()) {
       return null;
     }
@@ -841,8 +844,8 @@ export class UnconnectedDataSelector extends Component<
       return;
     }
 
-    if (selectedDataBucketId === DATA_BUCKET.LIBRARY) {
-      // `renderContent` shows `LibraryPicker` for this bucket; the database step
+    if (selectedDataBucketId === DATA_BUCKET.SEMANTIC_LAYER) {
+      // `renderContent` shows `SemanticLayerPicker` for this bucket; the database step
       // only gives it a step to go back from
       await this.switchToStep(DATABASE_STEP, { selectedDataBucketId }, false);
       return;
@@ -989,7 +992,7 @@ export class UnconnectedDataSelector extends Component<
                 hasTables: this.props.canSelectTable,
                 hasSavedQuestions: this.hasSavedQuestions(),
                 hasMetrics: this.hasMetrics(),
-                hasLibrary: this.hasLibrary(),
+                hasSemanticLayer: this.hasSemanticLayer(),
                 hasNestedQueriesEnabled,
               })}
               {...props}
@@ -1073,11 +1076,14 @@ export class UnconnectedDataSelector extends Component<
     }
 
     if (this.hasDataAccess()) {
-      if (selectedDataBucketId === DATA_BUCKET.LIBRARY && libraryCollection) {
+      if (
+        selectedDataBucketId === DATA_BUCKET.SEMANTIC_LAYER &&
+        libraryCollection
+      ) {
         return (
-          <LibraryPicker
+          <SemanticLayerPicker
             libraryCollection={libraryCollection}
-            canSelectMetric={this.canSelectLibraryMetrics()}
+            canSelectMetric={this.canSelectSemanticLayerMetrics()}
             databaseId={currentDatabaseId}
             tableId={selectedTable?.id}
             onSelect={this.handleSavedEntitySelect}

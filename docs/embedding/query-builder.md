@@ -40,16 +40,16 @@ With the SDK:
 
 ### Customize the data picker in the query builder
 
-The visual query builder uses one of two data pickers. If people have access to fewer than 100 tables, models, and metrics, they get the simple data picker, which lists them all in one dropdown. Otherwise, they get the full data picker, which groups data into **Raw Data**, **Models**, **Metrics**, and **Library**. With the SDK, you can always use the full data picker by setting `dataPicker="staged"`. The `<metabase-question>` web component can't, so it always switches at 100 tables, models, and metrics.
+The visual query builder uses one of two data pickers. If people have access to fewer than 100 tables, models, and metrics, they get the simple data picker, which lists them all in one dropdown. Otherwise, they get the full data picker, which groups data into **Raw Data**, **Models**, **Metrics**, and **Semantic layer**. With the SDK, you can always use the full data picker by setting `dataPicker="staged"`. The `<metabase-question>` web component can't, so it always switches at 100 tables, models, and metrics.
 
 To show fewer entity types, set the `entity-types` attribute (web component), or the `entityTypes` prop (SDK). For example, `entity-types="['table']"` limits the picker to raw tables. Options include:
 
 - `"table"`
 - `"model"`
 - `"metric"`
-- `"library"`
+- `"semantic-layer"`
 
-To limit the picker to the tables and metrics published in the Library, use `entity-types="['library']"`.
+To limit the picker to the tables and metrics published in the semantic layer, use `entity-types="['semantic-layer']"`.
 
 ## Embed the SQL editor
 

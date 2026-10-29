@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
+import { t } from "ttag";
 
 import {
   useGetCollectionQuery,
@@ -36,7 +37,7 @@ import { findCollectionById } from "./utils";
 
 interface SavedEntityPickerProps {
   type: SavedEntityType;
-  /** Lists only this Library folder and its subcollections. */
+  /** Lists only this semantic layer folder and its subcollections. */
   libraryFolder?: Collection;
   collectionId?: CollectionId | null;
   tableId?: TableId;
@@ -139,7 +140,7 @@ function InnerSavedEntityPicker({
 
     return [
       ...(rootCollection ? [getOurAnalyticsCollection(rootCollection)] : []),
-      ...resolveLibraryNodes(
+      ...resolveSemanticLayerNodes(
         buildCollectionTree(preparedCollections, { modelFilter }),
       ),
     ];
@@ -209,14 +210,14 @@ function InnerSavedEntityPicker({
 // single folder is left after filtering, the Library node stands for it:
 // selecting the Library lists that folder's items instead of nothing. Same rule
 // as `useGetResolvedLibraryCollection` in the core pickers.
-function resolveLibraryNodes(
+function resolveSemanticLayerNodes(
   collectionTree: CollectionTreeItem[],
 ): CollectionTreeItem[] {
   return collectionTree.map((collection) =>
     collection.type === "library" && collection.children.length === 1
       ? {
           ...collection.children[0],
-          name: collection.name,
+          name: t`Semantic layer`,
           schemaName: collection.schemaName,
           icon: collection.icon,
         }

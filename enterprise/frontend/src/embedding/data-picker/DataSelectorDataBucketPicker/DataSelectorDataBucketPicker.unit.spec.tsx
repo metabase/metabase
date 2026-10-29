@@ -21,7 +21,7 @@ describe("DataSelectorDataBucketPicker", () => {
       hasTables: true,
       hasSavedQuestions: true,
       hasMetrics: true,
-      hasLibrary: true,
+      hasSemanticLayer: true,
       hasNestedQueriesEnabled: true,
     });
     setup(dataTypes);
@@ -29,7 +29,7 @@ describe("DataSelectorDataBucketPicker", () => {
     expect(screen.getByText("Models")).toBeInTheDocument();
     expect(screen.getByText("Raw Data")).toBeInTheDocument();
     expect(screen.getByText("Metrics")).toBeInTheDocument();
-    expect(screen.getByText("Library")).toBeInTheDocument();
+    expect(screen.getByText("Semantic layer")).toBeInTheDocument();
     expect(screen.queryAllByTestId("data-bucket-list-item").length).toBe(
       dataTypes.length,
     );

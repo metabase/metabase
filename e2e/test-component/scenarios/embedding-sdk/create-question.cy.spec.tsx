@@ -237,7 +237,7 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     });
   });
 
-  it('should list only what is published in the Library when `entityTypes` = ["library"]', () => {
+  it('should list only what is published in the semantic layer when `entityTypes` = ["semantic-layer"]', () => {
     // Publishes only Orders
     createLibraryWithTable();
     cy.signOut();
@@ -245,13 +245,18 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
 
     mountSdkContent(
       <div style={{ display: "flex", padding: "20px" }}>
-        <InteractiveQuestion questionId="new" entityTypes={["library"]} />
+        <InteractiveQuestion
+          questionId="new"
+          entityTypes={["semantic-layer"]}
+        />
       </div>,
     );
 
     getSdkRoot().findByText("Pick your starting data").should("be.visible");
 
-    cy.log("list the table published in the Library, not the raw tables");
+    cy.log(
+      "list the table published in the semantic layer, not the raw tables",
+    );
     H.popover().within(() => {
       cy.findByRole("link", { name: "Orders" }).should("be.visible");
       cy.findByRole("link", { name: "Reviews" }).should("not.exist");
@@ -264,7 +269,7 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     });
   });
 
-  it('should list only what is published in the Library in the staged picker when `entityTypes` = ["library"]', () => {
+  it('should list only what is published in the semantic layer in the staged picker when `entityTypes` = ["semantic-layer"]', () => {
     // Publishes only Orders
     createLibraryWithTable();
     cy.signOut();
@@ -275,7 +280,7 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
         <InteractiveQuestion
           questionId="new"
           dataPicker="staged"
-          entityTypes={["library"]}
+          entityTypes={["semantic-layer"]}
         />
       </div>,
     );
@@ -283,7 +288,7 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     getSdkRoot().findByText("Pick your starting data").should("be.visible");
 
     cy.log(
-      "open on the Library's tables, not the bucket step or the raw tables",
+      "open on the semantic layer's tables, not the bucket step or the raw tables",
     );
     H.popover().within(() => {
       cy.findByTestId("saved-entity-title").should("have.text", "Data");
@@ -299,8 +304,8 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     });
   });
 
-  it('should list a table published in a Library subfolder when `entityTypes` = ["library"]', () => {
-    // Publishes only Orders, into Library > Data > Customer A
+  it('should list a table published in a semantic layer subfolder when `entityTypes` = ["semantic-layer"]', () => {
+    // Publishes only Orders, into Semantic layer > Data > Customer A
     H.createLibrary().then(({ body: library }) => {
       const dataCollection = library.effective_children?.find(
         (collection) => collection.type === "library-data",
@@ -316,7 +321,7 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
         });
 
         // The search index catches up with the publish asynchronously, and the
-        // picker searches the Library only once, when it opens
+        // picker searches the semantic layer only once, when it opens
         H.retryRequest(
           () =>
             cy.request<SearchResponse>(
@@ -331,7 +336,10 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
 
     mountSdkContent(
       <div style={{ display: "flex", padding: "20px" }}>
-        <InteractiveQuestion questionId="new" entityTypes={["library"]} />
+        <InteractiveQuestion
+          questionId="new"
+          entityTypes={["semantic-layer"]}
+        />
       </div>,
     );
 

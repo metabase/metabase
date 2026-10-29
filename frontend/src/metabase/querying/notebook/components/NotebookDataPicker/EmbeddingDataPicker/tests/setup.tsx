@@ -64,7 +64,7 @@ export function setup({
 }: SetupOpts) {
   const query = createEmptyQuery();
 
-  // `mockSettings` has to run first, as the Library plugin reads the token
+  // `mockSettings` has to run first, as the Library plugin (semantic layer) reads the token
   // features when it initializes.
   const settings = mockSettings({
     "enable-nested-queries": hasNestedQueriesEnabled,

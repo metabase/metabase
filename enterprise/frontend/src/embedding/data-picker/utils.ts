@@ -1,9 +1,9 @@
 import {
-  LIBRARY_INFO_ITEM,
   METRICS_INFO_ITEM,
   MODELS_INFO_ITEM,
   RAW_DATA_INFO_ITEM,
   SAVED_QUESTIONS_INFO_ITEM,
+  SEMANTIC_LAYER_INFO_ITEM,
 } from "./constants";
 import type { DataTypeInfoItem } from "./types";
 
@@ -12,14 +12,14 @@ export function getDataTypes({
   hasTables,
   hasSavedQuestions,
   hasMetrics,
-  hasLibrary,
+  hasSemanticLayer,
   hasNestedQueriesEnabled,
 }: {
   hasTables: boolean;
   hasModels: boolean;
   hasSavedQuestions: boolean;
   hasMetrics: boolean;
-  hasLibrary: boolean;
+  hasSemanticLayer: boolean;
   hasNestedQueriesEnabled: boolean;
 }): DataTypeInfoItem[] {
   const dataTypes: DataTypeInfoItem[] = [];
@@ -40,8 +40,8 @@ export function getDataTypes({
     dataTypes.push(METRICS_INFO_ITEM);
   }
 
-  if (hasLibrary) {
-    dataTypes.push(LIBRARY_INFO_ITEM);
+  if (hasSemanticLayer) {
+    dataTypes.push(SEMANTIC_LAYER_INFO_ITEM);
   }
 
   return dataTypes;
