@@ -10,12 +10,18 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
-(mu/defn document :- [:maybe ::documents.schema/document]
-  "The ::documents.schema/document with `id`, or nil."
+(mu/defn document
+  "The Document with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/Document :id [:auto/param id]))
+  (t2/select-one :model/Document :id id))
+
+(mu/defn unarchived-document
+  "The Document with `id` if it is not archived, or nil."
+  [id :- ms/PositiveInt]
+  (t2/select-one :model/Document :id id :archived false))
 
 (mu/defn visible-unarchived-documents
   "The unarchived Documents not attached to an Exploration, in a Collection visible to the current user."
@@ -60,7 +66,7 @@
   "Apply `changes` to the Document with `id`, returning the number updated."
   [id      :- ms/PositiveInt
    changes :- ::documents.schema/document.update]
-  (t2/update! :model/Document id changes))
+  (t2/update! :model/Document :id id changes))
 
 (mu/defn delete-document!
   "Delete the Document with `id`, returning the number deleted."
@@ -72,10 +78,25 @@
   [document-id :- ms/PositiveInt]
   (t2/delete! :model/Card :document_id document-id))
 
+(mu/defn document-public-uuid
+  "The public uuid of the Document with `id`, or nil."
+  [id :- ms/PositiveInt]
+  (t2/select-one-fn :public_uuid :model/Document :id id))
+
+(mu/defn document-exploration-id
+  "The Exploration id of the Document with `id`, or nil."
+  [id :- ms/PositiveInt]
+  (t2/select-one-fn :exploration_id :model/Document :id id))
+
 (mu/defn public-documents
   "The name, id, and public uuid of the unarchived Documents that are publicly shared."
   []
   (t2/select [:model/Document :name :id :public_uuid], :public_uuid [:not= nil], :archived false))
+
+(mu/defn card
+  "The Card with `card-id`, or nil."
+  [card-id :- ::lib.schema.id/card]
+  (t2/select-one :model/Card :id [:auto/param card-id]))
 
 (mu/defn cards-not-in-document
   "The Cards with `card-ids` that do not belong to the Document with `document-id`."
@@ -105,7 +126,7 @@
   "Apply `changes` to the Card with `card-id`, returning the number updated."
   [card-id :- ::lib.schema.id/card
    changes :- (mut/select-keys ::queries.schema/card.update [:archived :archived_directly])]
-  (t2/update! :model/Card card-id changes))
+  (t2/update! :model/Card :id card-id changes))
 
 (mu/defn update-cards-for-document!
   "Apply `changes` to the Cards of the Document with `document-id`, returning the number updated."
@@ -122,6 +143,16 @@
   "The id, email, and name of the Users with `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
   (t2/select [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
+
+(mu/defn table
+  "The Table with `id`, or nil."
+  [id :- [:maybe ::lib.schema.id/table]]
+  (t2/select-one :model/Table :id id {:from [(warehouse-schema-overlay/table-query)]}))
+
+(mu/defn dashboard
+  "The Dashboard with `id`, or nil."
+  [id :- ::lib.schema.id/dashboard]
+  (t2/select-one :model/Dashboard :id id))
 
 (mu/defn update-documents-last-viewed-at!
   "Move `last_viewed_at` of each Document in `document-id->timestamp` forward to its timestamp, without touching

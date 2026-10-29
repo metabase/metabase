@@ -89,6 +89,6 @@
             (mt/with-dynamic-fn-redefs [premium-features/security-center-enabled? (constantly true)
                                         fetch/sync-advisories!                    (constantly nil)]
               (#'sync-advisories/sync-and-evaluate!)
-              (let [updated (t2/select-one :model/SecurityAdvisory (:id advisory))]
+              (let [updated (t2/select-one :model/SecurityAdvisory :id (:id advisory))]
                 (is (= :active (:match_status updated)))
                 (is (some? (:last_evaluated_at updated)))))))))))

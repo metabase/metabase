@@ -112,16 +112,16 @@
   (do-with-dashboard-subscription!
    (fn [{:keys [dash-id pulse-id pc-id]}]
      (let [pc-ids-before (trigger-pc-ids pulse-id)]
-       (t2/update! :model/Dashboard dash-id {:archived true})
+       (t2/update! :model/Dashboard :id dash-id {:archived true})
        (testing "archiving a Dashboard keeps its Pulse, PulseChannel, PulseCard and SendPulse trigger"
-         (is (=? {:archived false} (t2/select-one :model/Pulse pulse-id)))
-         (is (=? {:enabled true} (t2/select-one :model/PulseChannel pc-id)))
+         (is (=? {:archived false} (t2/select-one :model/Pulse :id pulse-id)))
+         (is (=? {:enabled true} (t2/select-one :model/PulseChannel :id pc-id)))
          (is (= 1 (t2/count :model/PulseCard :pulse_id pulse-id)))
          (is (= pc-ids-before (trigger-pc-ids pulse-id))))
-       (t2/update! :model/Dashboard dash-id {:archived false})
+       (t2/update! :model/Dashboard :id dash-id {:archived false})
        (testing "restoring the Dashboard leaves the subscription as it was"
-         (is (=? {:archived false} (t2/select-one :model/Pulse pulse-id)))
-         (is (=? {:enabled true} (t2/select-one :model/PulseChannel pc-id)))
+         (is (=? {:archived false} (t2/select-one :model/Pulse :id pulse-id)))
+         (is (=? {:enabled true} (t2/select-one :model/PulseChannel :id pc-id)))
          (is (= 1 (t2/count :model/PulseCard :pulse_id pulse-id)))
          (is (= pc-ids-before (trigger-pc-ids pulse-id))))))))
 
@@ -129,10 +129,10 @@
   (do-with-dashboard-subscription!
    (fn [{:keys [dash-id pulse-id]}]
      (testing "a subscription the user deleted before the Dashboard was trashed stays deleted after restore"
-       (t2/update! :model/Pulse pulse-id {:archived true})
-       (t2/update! :model/Dashboard dash-id {:archived true})
-       (t2/update! :model/Dashboard dash-id {:archived false})
-       (is (=? {:archived true} (t2/select-one :model/Pulse pulse-id)))
+       (t2/update! :model/Pulse :id pulse-id {:archived true})
+       (t2/update! :model/Dashboard :id dash-id {:archived true})
+       (t2/update! :model/Dashboard :id dash-id {:archived false})
+       (is (=? {:archived true} (t2/select-one :model/Pulse :id pulse-id)))
        (is (= #{} (pulse-channel-test/send-pulse-triggers pulse-id)))))))
 
 (deftest archive-collection-keeps-dashboard-subscriptions-test
@@ -140,29 +140,29 @@
    (fn [{:keys [coll-id dash-id pulse-id pc-id]}]
      (let [pc-ids-before (trigger-pc-ids pulse-id)]
        (mt/with-current-user (mt/user->id :crowberto)
-         (collection/archive-or-unarchive-collection! (t2/select-one :model/Collection coll-id) {:archived true})
+         (collection/archive-or-unarchive-collection! (t2/select-one :model/Collection :id coll-id) {:archived true})
          (testing "archiving the parent Collection leaves the subscription and its trigger as they were"
            ;; the trashed Dashboard is what stops the trigger from sending
-           (is (=? {:archived true} (t2/select-one :model/Dashboard dash-id)))
-           (is (=? {:archived false} (t2/select-one :model/Pulse pulse-id)))
-           (is (=? {:enabled true} (t2/select-one :model/PulseChannel pc-id)))
+           (is (=? {:archived true} (t2/select-one :model/Dashboard :id dash-id)))
+           (is (=? {:archived false} (t2/select-one :model/Pulse :id pulse-id)))
+           (is (=? {:enabled true} (t2/select-one :model/PulseChannel :id pc-id)))
            (is (= pc-ids-before (trigger-pc-ids pulse-id))))
-         (collection/archive-or-unarchive-collection! (t2/select-one :model/Collection coll-id) {:archived false})
+         (collection/archive-or-unarchive-collection! (t2/select-one :model/Collection :id coll-id) {:archived false})
          (testing "restoring the Collection leaves the subscription and its trigger as they were"
-           (is (=? {:archived false} (t2/select-one :model/Pulse pulse-id)))
-           (is (=? {:enabled true} (t2/select-one :model/PulseChannel pc-id)))
+           (is (=? {:archived false} (t2/select-one :model/Pulse :id pulse-id)))
+           (is (=? {:enabled true} (t2/select-one :model/PulseChannel :id pc-id)))
            (is (= pc-ids-before (trigger-pc-ids pulse-id)))))))))
 
 (deftest archive-collection-keeps-deleted-subscription-deleted-test
   (do-with-dashboard-subscription!
    (fn [{:keys [coll-id pulse-id pc-id]}]
      (testing "a subscription the user deleted before its Collection was trashed stays deleted after restore"
-       (t2/update! :model/Pulse pulse-id {:archived true})
+       (t2/update! :model/Pulse :id pulse-id {:archived true})
        (mt/with-current-user (mt/user->id :crowberto)
-         (collection/archive-or-unarchive-collection! (t2/select-one :model/Collection coll-id) {:archived true})
-         (collection/archive-or-unarchive-collection! (t2/select-one :model/Collection coll-id) {:archived false}))
-       (is (=? {:archived true} (t2/select-one :model/Pulse pulse-id)))
-       (is (=? {:enabled false} (t2/select-one :model/PulseChannel pc-id)))
+         (collection/archive-or-unarchive-collection! (t2/select-one :model/Collection :id coll-id) {:archived true})
+         (collection/archive-or-unarchive-collection! (t2/select-one :model/Collection :id coll-id) {:archived false}))
+       (is (=? {:archived true} (t2/select-one :model/Pulse :id pulse-id)))
+       (is (=? {:enabled false} (t2/select-one :model/PulseChannel :id pc-id)))
        (is (= #{} (pulse-channel-test/send-pulse-triggers pulse-id)))))))
 
 (deftest delete-dashboard-deletes-subscriptions-test
@@ -171,9 +171,9 @@
       (do-with-dashboard-subscription!
        (fn [{:keys [dash-id pulse-id]}]
          (when archived?
-           (t2/update! :model/Dashboard dash-id {:archived true}))
-         (t2/delete! :model/Dashboard dash-id)
-         (is (nil? (t2/select-one :model/Pulse pulse-id)))
+           (t2/update! :model/Dashboard :id dash-id {:archived true}))
+         (t2/delete! :model/Dashboard :id dash-id)
+         (is (nil? (t2/select-one :model/Pulse :id pulse-id)))
          (is (= #{} (pulse-channel-test/send-pulse-triggers pulse-id))))))))
 
 (deftest delete-dashboard-runs-card-delete-hooks-test
@@ -183,7 +183,7 @@
                    :model/Card      other     {}
                    :model/Revision  _         {:model "Card", :model_id (:id card), :user_id (mt/user->id :crowberto), :object {}}
                    :model/Revision  _         {:model "Card", :model_id (:id other), :user_id (mt/user->id :crowberto), :object {}}]
-      (t2/delete! :model/Dashboard (:id dashboard))
+      (t2/delete! :model/Dashboard :id (:id dashboard))
       (is (not (t2/exists? :model/Card :id (:id card))))
       (testing "the Card's revisions are deleted by its delete hook"
         (is (not (t2/exists? :model/Revision :model "Card" :model_id (:id card)))))
@@ -195,9 +195,9 @@
   (testing "hard deleting a Collection holding a directly trashed Dashboard deletes its Pulse and SendPulse triggers"
     (do-with-dashboard-subscription!
      (fn [{:keys [coll-id dash-id pulse-id]}]
-       (t2/update! :model/Dashboard dash-id {:archived true})
-       (t2/delete! :model/Collection coll-id)
-       (is (nil? (t2/select-one :model/Pulse pulse-id)))
+       (t2/update! :model/Dashboard :id dash-id {:archived true})
+       (t2/delete! :model/Collection :id coll-id)
+       (is (nil? (t2/select-one :model/Pulse :id pulse-id)))
        (is (= #{} (pulse-channel-test/send-pulse-triggers pulse-id)))))))
 
 (deftest ^:parallel parameter-card-test
@@ -217,9 +217,9 @@
     (mt/with-temp [:model/Card      {card-id :id}      {}
                    :model/Dashboard {dashboard-id :id} {:parameters [default-parameter]}]
       (is (nil? (t2/select-one :model/ParameterCard :card_id card-id)))
-      (t2/update! :model/Dashboard dashboard-id {:parameters [(merge default-parameter
-                                                                     {:values_source_type    "card"
-                                                                      :values_source_config {:card_id card-id}})]})
+      (t2/update! :model/Dashboard :id dashboard-id {:parameters [(merge default-parameter
+                                                                         {:values_source_type    "card"
+                                                                          :values_source_config {:card_id card-id}})]})
       (is (=? {:card_id                   card-id
                :parameterized_object_type :dashboard
                :parameterized_object_id   dashboard-id
@@ -246,7 +246,7 @@
                                                                       :values_source_type    "card"
                                                                       :values_source_config {:card_id source-card-id}}]}]
       (mt/with-dynamic-fn-redefs [parameter-card/upsert-or-delete-from-parameters! (fn [& _] (throw (ex-info "Should not be called" {})))]
-        (t2/update! :model/Dashboard dashboard-id {:name "new name"})))))
+        (t2/update! :model/Dashboard :id dashboard-id {:name "new name"})))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Collections Permissions Tests                                          |
@@ -317,7 +317,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"A Dashboard can only go in Collections in the \"default\"(?: or :[a-z\-]+)+ namespace."
-             (t2/update! :model/Dashboard card-id {:collection_id collection-id})))))))
+             (t2/update! :model/Dashboard :id card-id {:collection_id collection-id})))))))
 
 (deftest ^:parallel validate-parameters-test
   (testing "Should validate Dashboard :parameters when"
@@ -334,7 +334,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #":parameters must be a sequence of maps with :id and :type keys"
-             (t2/update! :model/Dashboard id {:parameters [{:id 100}]})))))))
+             (t2/update! :model/Dashboard :id id {:parameters [{:id 100}]})))))))
 
 (deftest normalize-parameters-test
   (testing ":parameters should get normalized when coming out of the DB"

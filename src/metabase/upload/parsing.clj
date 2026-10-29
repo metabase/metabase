@@ -169,10 +169,10 @@
 ;; returning the wrong number. We give each thread its own formatter per locale via ThreadLocal,
 ;; so a thread reuses its copy across every cell instead of reallocating one per value.
 ;; See https://linear.app/metabase/issue/GDGT-304
-(let [us (number-format-thread-local (Locale. "en" "US"))
-      de (number-format-thread-local (Locale. "de" "DE"))
-      fr (number-format-thread-local (Locale. "fr" "FR"))
-      ch (number-format-thread-local (Locale. "de" "CH"))]
+(let [us (number-format-thread-local (Locale/of "en" "US"))
+      de (number-format-thread-local (Locale/of "de" "DE"))
+      fr (number-format-thread-local (Locale/of "fr" "FR"))
+      ch (number-format-thread-local (Locale/of "de" "CH"))]
   (defn- parse-plain-number [number-separators s]
     (let [has-parens?       (re-matches #"\(.*\)" s)
           deparenthesized-s (str/replace s #"[()]" "")

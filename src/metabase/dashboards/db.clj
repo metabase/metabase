@@ -8,17 +8,17 @@
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.serialization :as serdes]
-   [metabase.queries.db :as queries.db]
+   [metabase.queries.core :as queries]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn dashboard :- [:maybe ::dashboards.schema/dashboard]
-  "The ::dashboards.schema/dashboard with `dashboard-id`, or nil."
+(mu/defn dashboard
+  "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/Dashboard :id [:auto/param dashboard-id]))
+  (t2/select-one :model/Dashboard :id dashboard-id))
 
 (mu/defn insert-dashboard!
   "Insert the Dashboard `row` and return the inserted instance."
@@ -34,7 +34,7 @@
   `:archived`, `:collection_id`, `:cache_ttl`, ...), and a narrowed schema refuses every one of them."
   [dashboard-id :- ::lib.schema.id/dashboard
    changes      :- ::dashboards.schema/dashboard.update]
-  (t2/update! :model/Dashboard dashboard-id changes))
+  (t2/update! :model/Dashboard :id dashboard-id changes))
 
 (mu/defn delete-dashboard-revisions!
   "Delete the Revisions of the Dashboard with `dashboard-id`, returning the number deleted."
@@ -118,10 +118,15 @@
    collection-id :- [:maybe ::lib.schema.id/collection]]
   (t2/update! :model/Card :dashboard_id dashboard-id {:collection_id collection-id}))
 
+(mu/defn card
+  "The Card with `card-id`, or nil."
+  [card-id :- ::lib.schema.id/card]
+  (t2/select-one :model/Card :id card-id))
+
 (mu/defn card-query-columns
   "The query-relevant columns of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (queries.db/card-query-info card-id))
+  (queries/card-query-info card-id))
 
 (mu/defn card-queries
   "A map of Card id to query for the Cards with `card-ids`."
@@ -179,10 +184,10 @@
               :where     [:in :series.dashboardcard_id dashcard-ids]
               :order-by  [[:series.position :asc]]}))
 
-(mu/defn dashboard-card :- [:maybe ::dashboards.schema/dashboard-card]
-  "The ::dashboards.schema/dashboard-card with `dashcard-id`, or nil."
+(mu/defn dashcard
+  "The DashboardCard with `dashcard-id`, or nil."
   [dashcard-id :- ::lib.schema.id/dashcard]
-  (t2/select-one :model/DashboardCard :id [:auto/param dashcard-id]))
+  (t2/select-one :model/DashboardCard :id dashcard-id))
 
 (mu/defn multi-cards-for-dashcard
   "The unarchived Cards added to the DashboardCard with `dashcard-id` as series (the 'add series' feature)."
@@ -218,7 +223,7 @@
   "Apply `changes` to the DashboardCard with `dashcard-id`, returning the number updated."
   [dashcard-id :- ::lib.schema.id/dashcard
    changes     :- ::dashboards.schema/dashboard-card.update]
-  (t2/update! :model/DashboardCard dashcard-id changes))
+  (t2/update! :model/DashboardCard :id dashcard-id changes))
 
 (mu/defn delete-dashcards!
   "Delete the DashboardCards with `dashcard-ids`, returning the number deleted."
@@ -360,7 +365,8 @@
   [[link-card-info-rows]], or nil."
   [model :- :string
    id    :- [:or :int :string]]
-  (t2/select-one (serdes/link-card-model->toucan-model model) (link-card-info-query-for-model model id)))
+  (t2/select-one (serdes/link-card-model->toucan-model model)
+                 (h2x/assert-map-or-nil! (link-card-info-query-for-model model id))))
 
 (defn- link-card-info-query
   [link-card-model->ids]
@@ -376,10 +382,10 @@
   [link-card-model->ids :- [:sequential [:tuple :string [:or [:set [:or :int :string]] [:sequential [:or :int :string]]]]]]
   (t2/query (link-card-info-query link-card-model->ids)))
 
-(mu/defn dashboard-tab :- [:maybe ::dashboards.schema/dashboard-tab]
-  "The ::dashboards.schema/dashboard-tab with `tab-id`, or nil."
+(mu/defn dashboard-tab
+  "The DashboardTab with `tab-id`, or nil."
   [tab-id :- ms/PositiveInt]
-  (t2/select-one :model/DashboardTab :id [:auto/param tab-id]))
+  (t2/select-one :model/DashboardTab :id tab-id))
 
 (mu/defn insert-dashboard-tabs!
   "Insert the DashboardTab `rows` and return their ids."
@@ -391,7 +397,7 @@
   "Apply `changes` to the DashboardTab with `tab-id`, returning the number updated."
   [tab-id  :- ms/PositiveInt
    changes :- (mut/select-keys ::dashboards.schema/dashboard-tab.update [:name :position])]
-  (t2/update! :model/DashboardTab tab-id changes))
+  (t2/update! :model/DashboardTab :id tab-id changes))
 
 (mu/defn delete-dashboard-tabs!
   "Delete the DashboardTabs with `tab-ids`, returning the number deleted."

@@ -33,7 +33,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
-   [metabase.queries.db :as queries.db]
    [metabase.query-processor.core :as qp]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -617,7 +616,7 @@
 
       numeric-card
       (let [card-id  numeric-card
-            card     (queries.db/card card-id)
+            card     (metabot.db/card card-id)
             ;; Read-check here rather than let the 403 escape: an unreadable card and an absent
             ;; one must be reported identically, or the status code tells a caller whether a
             ;; hidden card exists. Same collapse the read-checked content store applies to every

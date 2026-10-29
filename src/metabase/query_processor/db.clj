@@ -8,12 +8,18 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    ^{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
 (def ^:private Temporal
   "A `java.time` instant, date, or date-time."
   [:fn #(instance? java.time.temporal.Temporal %)])
+
+(mu/defn table
+  "The Table with `table-id`, or nil."
+  [table-id :- [:maybe ::lib.schema.id/table]]
+  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn dashcard-series-exists?
   "Whether the Card with `card-id` is a series of the DashboardCard with `dashcard-id`."
@@ -61,8 +67,8 @@
   "Set the result metadata of the Card with `card-id` without touching `updated_at`."
   [card-id         :- ::lib.schema.id/card
    result-metadata :- [:maybe ::lib.schema.metadata/card.result-metadata]]
-  (t2/update! :model/Card card-id {:result_metadata result-metadata
-                                   :updated_at      :updated_at}))
+  (t2/update! :model/Card :id card-id {:result_metadata result-metadata
+                                       :updated_at      :updated_at}))
 
 (mu/defn update-cards-last-used-at!
   "Move `last_used_at` of each Card in `card-id->timestamp` forward to its timestamp, without touching `updated_at`."

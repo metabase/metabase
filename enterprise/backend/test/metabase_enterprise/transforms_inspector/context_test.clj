@@ -250,7 +250,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "build-context populates column-matches when target exists"
       ;; Use products table as a fake target to avoid running a transform
-      (let [products-table (t2/select-one :model/Table (mt/id :products))
+      (let [products-table (t2/select-one :model/Table :id (mt/id :products))
             transform {:id     1
                        :source {:type :query
                                 :query (joined-orders-products-query)}

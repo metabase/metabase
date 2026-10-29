@@ -10,9 +10,7 @@
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.tools.core :as tools]
    [metabase.models.interface :as mi]
-   [metabase.queries.db :as queries.db]
-   [metabase.util :as u]
-   [metabase.warehouse-schema.db :as warehouse-schema.db]))
+   [metabase.util :as u]))
 
 (defn handle-agent-error
   "Return an agent output for agent errors, re-throw `e` otherwise.
@@ -164,10 +162,10 @@
       api/read-check))
 
 (defn get-table
-  "Get the active table with ID `id`, if the current user can read it."
-  [id]
-  (let [table (warehouse-schema.db/table id)]
-    (api/read-check (when (:active table) table))))
+  "Get the `fields` of the table with ID `id`."
+  [id & fields]
+  (-> (metabot.db/active-table-with-columns (into [:model/Table :id] fields) id)
+      api/read-check))
 
 (tools/defrecoverable wrong-source-type!
   "The card ID identifies a different kind of data source."
@@ -183,7 +181,7 @@
 (defn get-card
   "Retrieve a readable card by ID, optionally requiring a particular card type."
   ([id]
-   (-> (queries.db/card id)
+   (-> (metabot.db/card id)
        api/read-check))
   ([id expected-type]
    (let [card (get-card id)]
@@ -232,7 +230,7 @@
 (defn table-query
   "Return a query based on the table with ID `table-id`."
   [table-id]
-  (when-let [table (get-table table-id)]
+  (when-let [table (get-table table-id :db_id)]
     (let [mp (lib-be/application-database-metadata-provider (:db_id table))]
       (lib/query mp (lib.metadata/table mp table-id)))))
 

@@ -12,7 +12,7 @@
   (mt/with-discard-model-updates! [:model/Database]
     (testing "returns the uploads-enabled database"
       (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false})
-      (t2/update! :model/Database (mt/id) {:uploads_enabled true})
+      (t2/update! :model/Database :id (mt/id) {:uploads_enabled true})
       (is (= (mt/id)
              (:id (upload.db/current-database)))))
     (testing "returns nil when uploads are disabled"

@@ -58,6 +58,16 @@
              [:like :%lower.last_name  pattern]
              [:like :%lower.email      pattern]]))))
 
+(mu/defn user
+  "The User with `user-id`, or nil."
+  [user-id :- ::lib.schema.id/user]
+  (t2/select-one :model/User :id user-id))
+
+(mu/defn user-email
+  "The email of the User with `user-id`."
+  [user-id :- ::lib.schema.id/user]
+  (t2/select-one-fn :email :model/User :id user-id))
+
 (mu/defn lock-user
   "The `:id` row of the User with `user-id`, locked for update."
   [user-id :- ::lib.schema.id/user]
@@ -98,7 +108,7 @@
   "Apply `changes` to the AuthIdentity with `auth-identity-id`, returning the number updated."
   [auth-identity-id :- ms/PositiveInt
    changes          :- (mut/select-keys ::auth-identity.schema/auth-identity.update [:credentials :confirmed_at])]
-  (t2/update! :model/AuthIdentity auth-identity-id changes))
+  (t2/update! :model/AuthIdentity :id auth-identity-id changes))
 
 (mu/defn delete-totp-identity!
   "Delete the TOTP AuthIdentity of the User with `user-id`, returning the number deleted."

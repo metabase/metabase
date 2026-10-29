@@ -5,6 +5,8 @@
    [clojure.core.memoize :as memoize]
    [instaparse.core :as insta]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private plural-form-parser
   "This is a parser for the C-like syntax used to express pluralization rules in the Plural-Forms header in
   translation files.
@@ -94,7 +96,7 @@
    :and-expr  #(to-int (and (to-bool %1) (to-bool %2)))
    :or-expr   #(to-int (or (to-bool %1) (to-bool %2)))
    :ternary   #(to-int (if (to-bool %1) %2 %3))
-   :integer   #(Integer. ^String %)
+   :integer   #(Integer/valueOf ^String %)
    :variable  (constantly n)
    :expr      identity})
 

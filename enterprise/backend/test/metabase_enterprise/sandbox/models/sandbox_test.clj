@@ -25,7 +25,7 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"You cannot change the table ID of a sandbox once it has been created"
-           (t2/update! :model/Sandbox (:id gtap) {:table_id (mt/id :checkins)}))))))
+           (t2/update! :model/Sandbox :id (:id gtap) {:table_id (mt/id :checkins)}))))))
 
 (deftest disallow-queries-that-add-columns-test
   (testing "Don't allow saving a Sandboxing query that contains columns not in the Table it replaces (#13715)"
@@ -44,7 +44,7 @@
                                                                           :result_metadata (qp.preprocess/query->expected-cols query)}
                                       :model/Sandbox gtap {:table_id (mt/id :venues)
                                                            :group_id (u/the-id (perms-group/all-users))}]
-                         (t2/update! :model/Sandbox (:id gtap) {:card_id (:id card)})
+                         (t2/update! :model/Sandbox :id (:id gtap) {:card_id (:id card)})
                          :ok))
 
                      "Update query for Card associated with an existing GTAP"
@@ -54,7 +54,7 @@
                                       :model/Sandbox _    {:table_id (mt/id :venues)
                                                            :group_id (u/the-id (perms-group/all-users))
                                                            :card_id  (:id card)}]
-                         (t2/update! :model/Card (:id card) {:dataset_query query})
+                         (t2/update! :model/Card :id (:id card) {:dataset_query query})
                          :ok))}]
       (testing (str "\n" msg "\n")
         (testing "sanity check"
@@ -87,7 +87,7 @@
                                                                             :result_metadata metadata}
                                         :model/Sandbox gtap {:table_id (mt/id :venues)
                                                              :group_id (u/the-id (perms-group/all-users))}]
-                           (t2/update! :model/Sandbox (:id gtap) {:card_id (:id card)})
+                           (t2/update! :model/Sandbox :id (:id gtap) {:card_id (:id card)})
                            :ok))
 
                        "Update query for Card associated with an existing GTAP"
@@ -97,7 +97,7 @@
                                         :model/Sandbox _    {:table_id (mt/id :venues)
                                                              :group_id (u/the-id (perms-group/all-users))
                                                              :card_id  (:id card)}]
-                           (t2/update! :model/Card (:id card) {:result_metadata metadata})
+                           (t2/update! :model/Card :id (:id card) {:result_metadata metadata})
                            :ok))}]
         (testing (str "\n" msg "\n")
           (is (thrown-with-msg?
@@ -226,15 +226,15 @@
     (guarded-writes-test
      with-card-policy
      (fn [{:keys [card]}]
-       [["query"           card-msg #(t2/update! :model/Card (:id card) {:dataset_query (mt/mbql-query venues {:limit 1})})]
-        ["result metadata" card-msg #(t2/update! :model/Card (:id card)
+       [["query"           card-msg #(t2/update! :model/Card :id (:id card) {:dataset_query (mt/mbql-query venues {:limit 1})})]
+        ["result metadata" card-msg #(t2/update! :model/Card :id (:id card)
                                                  {:result_metadata (venues-cols "ID" "NAME" "LATITUDE")})]
-        ["archive"         card-msg #(t2/update! :model/Card (:id card) {:archived true})]
-        ["delete"  card-msg #(t2/delete! :model/Card (:id card))]]))
+        ["archive"         card-msg #(t2/update! :model/Card :id (:id card) {:archived true})]
+        ["delete"  card-msg #(t2/delete! :model/Card :id (:id card))]]))
     (untouched-test
      with-card-policy
      (fn [{:keys [other]}]
-       (t2/update! :model/Card (:id other) {:dataset_query (mt/mbql-query venues {:limit 1})})))))
+       (t2/update! :model/Card :id (:id other) {:dataset_query (mt/mbql-query venues {:limit 1})})))))
 
 (defn- with-snippet-policy
   "A policy whose snippet `outer` splices in snippet `inner`, which in turn reads Card `nested-card` through a
@@ -261,21 +261,21 @@
     (guarded-writes-test
      with-snippet-policy
      (fn [{:keys [inner outer nested-card]}]
-       [["content"                       snippet-msg #(t2/update! :model/NativeQuerySnippet (:id outer)
+       [["content"                       snippet-msg #(t2/update! :model/NativeQuerySnippet :id (:id outer)
                                                                   {:content "1 = 1"})]
-        ["name"                          snippet-msg #(t2/update! :model/NativeQuerySnippet (:id outer)
+        ["name"                          snippet-msg #(t2/update! :model/NativeQuerySnippet :id (:id outer)
                                                                   {:name (mt/random-name)})]
-        ["archive"                       snippet-msg #(t2/update! :model/NativeQuerySnippet (:id outer)
+        ["archive"                       snippet-msg #(t2/update! :model/NativeQuerySnippet :id (:id outer)
                                                                   {:archived true})]
-        ["content of the nested snippet" snippet-msg #(t2/update! :model/NativeQuerySnippet (:id inner)
+        ["content of the nested snippet" snippet-msg #(t2/update! :model/NativeQuerySnippet :id (:id inner)
                                                                   {:content "2 = 2"})]
-        ["query of the nested Card"      card-msg    #(t2/update! :model/Card (:id nested-card)
+        ["query of the nested Card"      card-msg    #(t2/update! :model/Card :id (:id nested-card)
                                                                   {:dataset_query (mt/mbql-query venues)})]
-        ["delete"                        snippet-msg #(t2/delete! :model/NativeQuerySnippet (:id outer))]]))
+        ["delete"                        snippet-msg #(t2/delete! :model/NativeQuerySnippet :id (:id outer))]]))
     (untouched-test
      with-snippet-policy
      (fn [{:keys [other]}]
-       (t2/update! :model/NativeQuerySnippet (:id other) {:content "2 = 2"})))))
+       (t2/update! :model/NativeQuerySnippet :id (:id other) {:content "2 = 2"})))))
 
 (defn- venues-query []
   (let [mp (mt/metadata-provider)]
@@ -309,16 +309,16 @@
     (guarded-writes-test
      with-segment-policy
      (fn [{:keys [inner outer]}]
-       [["definition"                       segment-msg #(t2/update! :model/Segment (:id outer)
+       [["definition"                       segment-msg #(t2/update! :model/Segment :id (:id outer)
                                                                      {:definition (price-above 4)})]
-        ["archive"                          segment-msg #(t2/update! :model/Segment (:id outer) {:archived true})]
-        ["definition of the nested segment" segment-msg #(t2/update! :model/Segment (:id inner)
+        ["archive"                          segment-msg #(t2/update! :model/Segment :id (:id outer) {:archived true})]
+        ["definition of the nested segment" segment-msg #(t2/update! :model/Segment :id (:id inner)
                                                                      {:definition (price-above 4)})]
-        ["delete"                           segment-msg #(t2/delete! :model/Segment (:id outer))]]))
+        ["delete"                           segment-msg #(t2/delete! :model/Segment :id (:id outer))]]))
     (untouched-test
      with-segment-policy
      (fn [{:keys [other]}]
-       (t2/update! :model/Segment (:id other) {:definition (price-above 5)})))))
+       (t2/update! :model/Segment :id (:id other) {:definition (price-above 5)})))))
 
 (defn- sum-where-measure-definition
   "A Measure definition summing VENUES.PRICE over the rows matching `segment-id`."
@@ -368,16 +368,16 @@
     (guarded-writes-test
      with-measure-policy
      (fn [{:keys [segment measure]}]
-       [["definition of the nested segment" segment-msg #(t2/update! :model/Segment (:id segment)
+       [["definition of the nested segment" segment-msg #(t2/update! :model/Segment :id (:id segment)
                                                                      {:definition (price-above 3)})]
-        ["definition"                       measure-msg #(t2/update! :model/Measure (:id measure)
+        ["definition"                       measure-msg #(t2/update! :model/Measure :id (:id measure)
                                                                      {:definition (sum-of-price 2)})]
-        ["archive"                          measure-msg #(t2/update! :model/Measure (:id measure) {:archived true})]
-        ["delete"                           measure-msg #(t2/delete! :model/Measure (:id measure))]]))
+        ["archive"                          measure-msg #(t2/update! :model/Measure :id (:id measure) {:archived true})]
+        ["delete"                           measure-msg #(t2/delete! :model/Measure :id (:id measure))]]))
     (untouched-test
      with-measure-policy
      (fn [{:keys [other]}]
-       (t2/update! :model/Measure (:id other) {:definition (sum-of-price 2)})))))
+       (t2/update! :model/Measure :id (:id other) {:definition (sum-of-price 2)})))))
 
 (deftest non-admin-cannot-rewrite-a-policy-snippet-through-the-api-test
   (testing "SEC-1094: a non-admin with native access to an unrelated Database only cannot rewrite a policy snippet"
@@ -453,7 +453,7 @@
               run-card     (fn [user]
                              (mt/rows (mt/user-http-request user :post 202 (format "card/%d/query" card-id))))]
           (mt/with-test-user :crowberto
-            (t2/update! :model/Card card-id {:result_metadata (venues-cols "ID" "NAME")}))
+            (t2/update! :model/Card :id card-id {:result_metadata (venues-cols "ID" "NAME")}))
           (testing "the non-admin's query succeeds"
             (is (seq (run-card :rasta))))
           (testing "the drifted metadata is not overwritten by the non-admin's run"
@@ -552,7 +552,7 @@
                   (testing "deleting is refused and nothing is deleted"
                     (let [before (+ (t2/count :model/Card :collection_id (:id coll))
                                     (t2/count :model/NativeQuerySnippet :collection_id (:id coll)))]
-                      (is (thrown-with-msg? clojure.lang.ExceptionInfo msg (t2/delete! :model/Collection (:id coll))))
+                      (is (thrown-with-msg? clojure.lang.ExceptionInfo msg (t2/delete! :model/Collection :id (:id coll))))
                       (is (t2/exists? :model/Collection :id (:id coll)))
                       (is (= before (+ (t2/count :model/Card :collection_id (:id coll))
                                        (t2/count :model/NativeQuerySnippet :collection_id (:id coll)))))))))
@@ -562,7 +562,7 @@
                     (archive-collection! coll)
                     (is (true? (archived? coll))))
                   (testing "and deleted"
-                    (is (= 1 (t2/delete! :model/Collection (:id coll)))))))))))
+                    (is (= 1 (t2/delete! :model/Collection :id (:id coll)))))))))))
       (testing "an admin may archive and then delete all of them"
         (with-mixed-policies!
           (fn [colls]
@@ -573,7 +573,7 @@
                   (is (true? (archived? coll)))))
               (doseq [coll (vals colls)]
                 (testing (:name coll)
-                  (is (= 1 (t2/delete! :model/Collection (:id coll)))))))))))))
+                  (is (= 1 (t2/delete! :model/Collection :id (:id coll)))))))))))))
 
 (defn- with-container-policy
   "A policy whose Card is saved in a Dashboard, and one whose Card is saved in an archived Document."
@@ -596,13 +596,13 @@
       (guarded-writes-test
        with-container-policy
        (fn [{:keys [dashboard document]}]
-         [["delete the Dashboard" card-msg #(t2/delete! :model/Dashboard (:id dashboard))]
-          ["delete the Document"  card-msg #(t2/delete! :model/Document (:id document))]]))
+         [["delete the Dashboard" card-msg #(t2/delete! :model/Dashboard :id (:id dashboard))]
+          ["delete the Document"  card-msg #(t2/delete! :model/Document :id (:id document))]]))
       (testing "the policy Card is still there after a refused delete"
         (with-container-policy
           (fn [{:keys [dashboard]}]
             (mt/with-test-user :rasta
-              (is (thrown-with-msg? clojure.lang.ExceptionInfo card-msg (t2/delete! :model/Dashboard (:id dashboard)))))
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo card-msg (t2/delete! :model/Dashboard :id (:id dashboard)))))
             (is (t2/exists? :model/Card :dashboard_id (:id dashboard)))
             (is (t2/exists? :model/Dashboard :id (:id dashboard)))))))))
 
@@ -616,7 +616,7 @@
           (perms/grant-collection-readwrite-permissions! (:id &group) collection/root-collection)
           (let [card-id (t2/select-one-fn :card_id :model/Sandbox :table_id (mt/id :venues) :group_id (:id &group))]
             (mt/with-test-user :crowberto
-              (t2/update! :model/Card card-id {:dashboard_id (:id dashboard)}))
+              (t2/update! :model/Card :id card-id {:dashboard_id (:id dashboard)}))
             (is (= "You do not have permissions to modify a question that is used for row and column level security."
                    (mt/user-http-request :rasta :delete 403 (str "dashboard/" (:id dashboard)))))
             (is (t2/exists? :model/Card :id card-id))

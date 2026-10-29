@@ -7,7 +7,6 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.util :as u]
-   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouses.models.database :as database]))
 
 (defenterprise current-user-can-write-field?
@@ -17,7 +16,7 @@
   :feature :advanced-permissions
   [instance]
   (let [table (or (:table instance)
-                  (warehouse-schema.db/table (:table_id instance)))]
+                  (advanced-permissions.db/table (:table_id instance)))]
     (and (remote-sync/table-editable? table)
          (let [db-id (or (:db_id table)
                          (database/table-id->database-id (:table_id instance)))]
