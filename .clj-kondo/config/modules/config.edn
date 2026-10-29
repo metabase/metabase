@@ -303,7 +303,7 @@
                     :model/User}}
 
   api-keys
-  {:team "UX West"
+  {:team "Security Engineering"
    :api  #{metabase.api-keys.api
            metabase.api-keys.core
            metabase.api-keys.schema
@@ -327,7 +327,7 @@
    :uses :any}
 
   api-scope
-  {:team "Metabot"
+  {:team "Security Engineering"
    :api  #{metabase.api-scope.core
            metabase.api-scope.data-app
            metabase.api-scope.init}
@@ -1481,7 +1481,7 @@
                     :model/User}}
 
   mcp.oauth-server
-  {:team "UX West"
+  {:team "Security Engineering"
    :ns-prefix "metabase.oauth-server"
    :api #{metabase.oauth-server.api
           metabase.oauth-server.api.admin
@@ -1761,7 +1761,7 @@
    :model-imports #{:model/Card :model/Field}}
 
   mfa
-  {:team "UX West"
+  {:team "Security Engineering"
    :api  #{metabase.mfa.init metabase.mfa.settings}
    :uses #{premium-features
            settings
@@ -2000,7 +2000,7 @@
            util}}
 
   permissions
-  {:team "UX West"
+  {:team "Security Engineering"
    :api  #{metabase.permissions.core
            metabase.permissions.init
            metabase.permissions.metric
@@ -2039,7 +2039,7 @@
                     :model/User}}
 
   permissions.rest
-  {:team "UX West"
+  {:team "Security Engineering"
    :ns-prefix "metabase.permissions-rest"
    :api  #{metabase.permissions-rest.api}
    :uses #{api
@@ -2306,7 +2306,7 @@
                     :model/Table}}
 
   query-permissions
-  {:team "UX West"
+  {:team "Security Engineering"
    :api  #{metabase.query-permissions.core}
    :uses #{api
            lib
@@ -2699,7 +2699,7 @@
    :model-imports #{:model/Session}}
 
   session
-  {:team "UX West"
+  {:team "Security Engineering"
    :module-exports #{session.login-history}
    :api  #{metabase.session.api
            metabase.session.core
@@ -2728,7 +2728,7 @@
    :model-imports #{:model/AuthIdentity :model/User}}
 
   session.login-history
-  {:team "UX West"
+  {:team "Security Engineering"
    :ns-prefix "metabase.login-history"
    :api #{metabase.login-history.api metabase.login-history.core metabase.login-history.init}
    :uses #{analytics
@@ -2817,7 +2817,7 @@
    :uses #{analytics.interface util}}
 
   sso
-  {:team "UX West"
+  {:team "Security Engineering"
    :module-exports #{sso.auth-identity
                      sso.auth-wrapper}
    :api     #{metabase.sso.api
@@ -2839,7 +2839,7 @@
    :model-imports #{:model/AuthIdentity :model/PermissionsGroupMembership}}
 
   sso.auth-identity
-  {:team "UX West"
+  {:team "Security Engineering"
    :ns-prefix "metabase.auth-identity"
    :api #{metabase.auth-identity.core
           metabase.auth-identity.db
@@ -2861,7 +2861,7 @@
    :model-imports #{:model/Session :model/User}}
 
   sso.auth-wrapper
-  {:team "UX West"
+  {:team "Security Engineering"
    :api  #{metabase.sso.auth-wrapper}
    :uses #{api
            sso
@@ -3295,7 +3295,7 @@
                     :model/Tenant}}
 
   users.rest
-  {:team "UX West"
+  {:team "Security Engineering"
    :ns-prefix "metabase.users-rest"
    :api  #{metabase.users-rest.api}
    :uses #{api
@@ -3652,7 +3652,7 @@
            util}}
 
   enterprise/api-keys
-  {:team "UX West"
+  {:team "Security Engineering"
    :api  #{metabase-enterprise.api-keys.init}
    :uses #{analytics
            api-keys
@@ -4207,7 +4207,7 @@
                     :model/Table}}
 
   enterprise/mfa
-  {:team "UX West"
+  {:team "Security Engineering"
    :api #{metabase-enterprise.mfa.core metabase-enterprise.mfa.init metabase-enterprise.mfa.routes}
    :uses #{api
            appearance
@@ -4237,7 +4237,7 @@
    :model-imports #{:model/NativeQuerySnippet}}
 
   enterprise/permissions
-  {:team "UX West"
+  {:team "Security Engineering"
    :ns-prefix "metabase-enterprise.advanced-permissions"
    :module-exports #{enterprise/permissions.debug
                      enterprise/permissions.impersonation
@@ -4265,7 +4265,7 @@
                     :model/Sandbox}}
 
   enterprise/permissions.debug
-  {:team "UX West"
+  {:team "Security Engineering"
    :ns-prefix "metabase-enterprise.permission-debug"
    :api #{metabase-enterprise.permission-debug.api}
    :uses #{api
@@ -4281,7 +4281,7 @@
    :model-imports #{:model/Card}}
 
   enterprise/permissions.impersonation
-  {:team "Graphy"
+  {:team "Security Engineering"
    :ns-prefix "metabase-enterprise.impersonation"
    :api #{metabase-enterprise.impersonation.api}
    :uses #{api
@@ -4300,7 +4300,7 @@
    :model-imports #{:model/DataPermissions :model/PermissionsGroupMembership}}
 
   enterprise/permissions.sandbox
-  {:team "UX West"
+  {:team "Security Engineering"
    :ns-prefix "metabase-enterprise.sandbox"
    :api #{metabase-enterprise.sandbox.api.routes metabase-enterprise.sandbox.api.util metabase-enterprise.sandbox.schema}
    :uses #{analytics
@@ -4523,7 +4523,7 @@
    :model-imports :bypass}
 
   enterprise/session-management
-  {:team "UX West"
+  {:team "Security Engineering"
    :api  #{metabase-enterprise.session-management.api}
    :uses #{api
            events
@@ -4535,7 +4535,7 @@
    :model-imports #{:model/User}}
 
   enterprise/sso
-  {:team "UX West"
+  {:team "Security Engineering"
    :module-exports #{enterprise/sso.auth-identity
                      enterprise/sso.scim}
    :api  #{metabase-enterprise.sso.api.routes
@@ -4558,7 +4558,7 @@
    :model-imports #{:model/PermissionsGroup}}
 
   enterprise/sso.auth-identity
-  {:team "UX West"
+  {:team "Security Engineering"
    :ns-prefix "metabase-enterprise.auth-identity"
    :uses #{premium-features}}
 
@@ -4599,7 +4599,7 @@
    :model-imports #{:model/Card :model/Collection :model/Dashboard}}
 
   enterprise/support-access-grants
-  {:team "UX West"
+  {:team "Security Engineering"
    :api  #{metabase-enterprise.support-access-grants.api
            metabase-enterprise.support-access-grants.init}
    :uses #{api
