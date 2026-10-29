@@ -1,32 +1,32 @@
-import cx from "classnames";
+import type { KeyboardEvent } from "react";
 import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import type { GlossaryItem } from "metabase/api";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
-import { Table as CommonTable } from "metabase/common/components/Table/Table";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
-import { useSetting } from "metabase/settings";
 import {
-  ActionIcon,
   Box,
   Button,
+  Card,
   Center,
-  Group,
+  Flex,
   Icon,
-  Text,
-  Tooltip,
+  SortableHeaderPill,
+  Stack,
+  TextInput,
 } from "metabase/ui";
 import type { SortDirection } from "metabase-types/api";
 
 import { EmptyState } from "../EmptyState";
 
 import S from "./Glossary.module.css";
-import { GlossaryRowEditor } from "./GlossaryRowEditor";
-import type { GlossaryField } from "./types";
+import { GlossaryNewRow } from "./GlossaryNewRow";
+import { GlossaryRow } from "./GlossaryRow";
+
+type SortColumn = "term" | "definition";
 
 export type GlossaryTableProps = {
-  className?: string;
   glossary: GlossaryItem[];
   readOnly?: boolean;
   onCreate?: (term: string, definition: string) => Promise<void> | void;
@@ -39,7 +39,6 @@ export type GlossaryTableProps = {
 };
 
 export function GlossaryTable({
-  className,
   glossary,
   readOnly = false,
   onCreate,
@@ -47,191 +46,133 @@ export function GlossaryTable({
   onDelete,
 }: GlossaryTableProps) {
   const [isCreating, setIsCreating] = useState(false);
-  const metabotName = useSetting("metabot-name");
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editingField, setEditingField] = useState<GlossaryField | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [deletingItem, setDeletingItem] = useState<GlossaryItem | null>(null);
-  const [sortColumnName, setSortColumnName] = useState<
-    keyof GlossaryItem | null
-  >(null);
+  const [sortColumn, setSortColumn] = useState<SortColumn | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
-  const startEditing = (id: number, field: GlossaryField) => {
-    if (readOnly) {
-      return;
+  const trimmedSearchQuery = searchQuery.trim();
+  const rows = useMemo(() => {
+    const filtered = filterGlossary(glossary, trimmedSearchQuery);
+    if (!sortColumn) {
+      return filtered;
     }
-    if (isCreating) {
-      setIsCreating(false);
-    }
-    setEditingId(id);
-    setEditingField(field);
-  };
-
-  const sortedRows = useMemo(() => {
-    if (!sortColumnName) {
-      return [
-        ...(isCreating ? [{ id: -1, kind: "create" as const }] : []),
-        ...glossary,
-      ];
-    }
-    const data = glossary.toSorted((a, b) => {
-      const ak = a[sortColumnName] ?? "";
-      const bk = b[sortColumnName] ?? "";
-      const cmp = String(ak).localeCompare(String(bk));
+    return filtered.toSorted((a, b) => {
+      const cmp = a[sortColumn].localeCompare(b[sortColumn]);
       return sortDirection === "asc" ? cmp : -cmp;
     });
-    return [
-      ...(isCreating ? [{ id: -1, kind: "create" as const }] : []),
-      ...data,
-    ];
-  }, [isCreating, glossary, sortColumnName, sortDirection]);
+  }, [glossary, trimmedSearchQuery, sortColumn, sortDirection]);
+
+  const terms = useMemo(() => glossary.map((item) => item.term), [glossary]);
+
+  const handleSort = (column: SortColumn) => {
+    const isAscending = sortColumn === column && sortDirection === "asc";
+    setSortColumn(column);
+    setSortDirection(isAscending ? "desc" : "asc");
+  };
+
+  const renderHeader = (column: SortColumn, name: string) => {
+    const sort = sortColumn === column ? sortDirection : undefined;
+    return (
+      <th
+        aria-sort={
+          sort ? (sort === "asc" ? "ascending" : "descending") : undefined
+        }
+        tabIndex={0}
+        onClick={() => handleSort(column)}
+        onKeyDown={(event: KeyboardEvent) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            handleSort(column);
+          }
+        }}
+      >
+        <Flex>
+          <SortableHeaderPill name={name} sort={sort} />
+        </Flex>
+      </th>
+    );
+  };
 
   return (
-    <>
-      <Group justify="space-between" mb="xxs">
-        <Text>
-          {t`Define terms to help your team and ${metabotName} understand your data.`}
-        </Text>
+    <Stack flex={1} mih={0}>
+      <Flex gap="lg">
+        <TextInput
+          placeholder={t`Search...`}
+          leftSection={<Icon name="search" />}
+          bdrs="sm"
+          flex="1"
+          value={searchQuery}
+          onChange={(event) => setSearchQuery(event.target.value)}
+        />
         {!readOnly && (
           <Button
-            leftSection={<Icon name="add" />}
-            onClick={() => {
-              if (editingId) {
-                setEditingId(null);
-                setEditingField(null);
-              }
-              setIsCreating(true);
-            }}
+            size="lg"
+            leftSection={<Icon name="add" size={16} />}
+            onClick={() => setIsCreating(true)}
           >
             {t`New term`}
           </Button>
         )}
-      </Group>
-      <CommonTable
-        className={cx(S.table, className)}
-        columns={[
-          { name: t`Term`, key: "term", sortable: true },
-          { name: t`Definition`, key: "definition", sortable: true },
-          { name: "", key: "actions", sortable: false },
-        ]}
-        rows={sortedRows}
-        cols={
-          <>
-            <col style={{ width: "22.5%" }} />
-            <col style={{ width: "65%" }} />
-            <col style={{ width: "5rem" }} />
-          </>
-        }
-        emptyBody={
-          <Center>
-            <Box mb="lg">
-              <EmptyState
-                message={t`No terms yet`}
-                illustrationElement={<NoObjectError mb="-1.5rem" />}
-              />
-            </Box>
-          </Center>
-        }
-        sortColumnName={sortColumnName}
-        sortDirection={sortDirection}
-        onSort={(column, dir) => {
-          // Unjustified type cast. FIXME
-          setSortColumnName(column as keyof GlossaryItem);
-          setSortDirection(dir);
-        }}
-        rowRenderer={(row) => {
-          // Create row
-          if ("kind" in row && row.kind === "create") {
-            const existingTerms = glossary.map((g) => g.term);
-            return (
-              <tr className={cx(S.row, S.rowEditor)}>
-                <GlossaryRowEditor
-                  item={{ term: "", definition: "" }}
-                  existingTerms={existingTerms}
-                  onCancel={() => setIsCreating(false)}
-                  onSave={async (term, definition) => {
-                    await onCreate?.(term, definition);
-                    setIsCreating(false);
-                  }}
-                />
+      </Flex>
+      <Card withBorder shadow="none" p={0} mih={0}>
+        <Box className={S.scrollArea}>
+          <table className={S.table}>
+            <colgroup>
+              <col style={{ width: "22.5%" }} />
+              <col />
+              <col style={{ width: "4rem" }} />
+            </colgroup>
+            <thead>
+              <tr>
+                {renderHeader("term", t`Term`)}
+                {renderHeader("definition", t`Definition`)}
+                <th />
               </tr>
-            );
-          }
-
-          // Unjustified type cast. FIXME
-          const item = row as GlossaryItem;
-          const isEditing = editingId === item.id;
-
-          return (
-            <tr
-              className={cx(S.row, {
-                [S.rowEditor]: isEditing,
-                [S.readOnly]: readOnly,
-              })}
-            >
-              {isEditing ? (
-                <GlossaryRowEditor
-                  item={item}
-                  autoFocusField={editingField ?? "term"}
-                  existingTerms={glossary
-                    .filter((g) => g.id !== item.id)
-                    .map((g) => g.term)}
-                  onCancel={() => setEditingId(null)}
-                  onSave={async (newTerm, newDefinition) => {
-                    await onEdit?.(item.id, newTerm, newDefinition);
-                    setEditingId(null);
-                    setEditingField(null);
+            </thead>
+            <tbody>
+              {isCreating && (
+                <GlossaryNewRow
+                  existingTerms={terms}
+                  onSave={(term, definition) => {
+                    setIsCreating(false);
+                    void onCreate?.(term, definition);
                   }}
+                  onCancel={() => setIsCreating(false)}
                 />
-              ) : (
-                <>
-                  <Box
-                    component="td"
-                    valign="top"
-                    onClick={() => startEditing(item.id, "term")}
-                  >
-                    <Text lh="1.2" fw="bold" pt="xxs">
-                      {item.term}
-                    </Text>
-                  </Box>
-                  <Box
-                    component="td"
-                    valign="top"
-                    style={{ wordBreak: "break-word", whiteSpace: "pre-wrap" }}
-                    onClick={() => startEditing(item.id, "definition")}
-                  >
-                    <Text lh="1.2" pt="xxs">
-                      {item.definition}
-                    </Text>
-                  </Box>
-
-                  <Box
-                    component="td"
-                    valign="top"
-                    align="center"
-                    p="sm"
-                    w="25px"
-                  >
-                    {!readOnly && (
-                      <Tooltip label={t`Delete`}>
-                        <ActionIcon
-                          aria-label={t`Delete`}
-                          variant="subtle"
-                          c="text-disabled"
-                          className={cx(S.action)}
-                          onClick={() => setDeletingItem(item)}
-                        >
-                          <Icon name="trash" />
-                        </ActionIcon>
-                      </Tooltip>
-                    )}
-                  </Box>
-                </>
               )}
-            </tr>
-          );
-        }}
-      />
+              {rows.map((item) => (
+                <GlossaryRow
+                  key={item.id}
+                  item={item}
+                  otherTerms={terms.filter((term) => term !== item.term)}
+                  readOnly={readOnly}
+                  onEdit={onEdit}
+                  onDeleteClick={setDeletingItem}
+                />
+              ))}
+              {!isCreating && rows.length === 0 && (
+                <tr>
+                  <td colSpan={3}>
+                    <Center>
+                      <Box mb="lg">
+                        <EmptyState
+                          message={
+                            trimmedSearchQuery
+                              ? t`No results for "${trimmedSearchQuery}"`
+                              : t`No terms yet`
+                          }
+                          illustrationElement={<NoObjectError mb="-1.5rem" />}
+                        />
+                      </Box>
+                    </Center>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </Box>
+      </Card>
       <ConfirmModal
         opened={deletingItem != null}
         title={t`Delete “${deletingItem?.term}”?`}
@@ -245,6 +186,18 @@ export function GlossaryTable({
           }
         }}
       />
-    </>
+    </Stack>
+  );
+}
+
+function filterGlossary(glossary: GlossaryItem[], searchQuery: string) {
+  if (!searchQuery) {
+    return glossary;
+  }
+  const normalizedQuery = searchQuery.toLocaleLowerCase();
+  return glossary.filter(
+    ({ term, definition }) =>
+      term.toLocaleLowerCase().includes(normalizedQuery) ||
+      definition.toLocaleLowerCase().includes(normalizedQuery),
   );
 }
