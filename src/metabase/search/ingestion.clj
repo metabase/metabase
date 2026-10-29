@@ -12,6 +12,7 @@
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.performance :as perf]
    [metabase.util.queue :as queue]
    [toucan2.realize :as t2.realize])
@@ -22,6 +23,8 @@
 
 ;; Currently we use a single queue, even if multiple engines are enabled, but may want to revisit this.
 (defonce ^:private ^DelayQueue queue (queue/delay-queue))
+
+(defonce ^:private pending-updates (atom 0))
 
 ;; Perhaps this config move up somewhere more visible? Conversely, we may want to specialize it per engine.
 
@@ -286,6 +289,21 @@
 (defn- index-worker-exists? []
   (queue/listener-exists? listener-name))
 
+(mu/defn await-pending-updates! :- :boolean
+  "Wait up to `timeout-ms` for queued and running index updates to finish. Return whether none remain."
+  [timeout-ms :- nat-int?]
+  (boolean (u/poll {:thunk       #(deref pending-updates)
+                    :done?       zero?
+                    :timeout-ms  timeout-ms
+                    :interval-ms 100})))
+
+(mu/defn clear-queue! :- :nil
+  "Discard queued updates without interrupting updates already being indexed."
+  []
+  (doseq [message (.toArray queue)]
+    (when (.remove queue message)
+      (swap! pending-updates dec))))
+
 (defn ingest-maybe-async!
   "Update or create any search index entries related to the given updates.
   Will be async if the worker exists, otherwise it will be done synchronously on the calling thread.
@@ -299,14 +317,14 @@
        (do
          (doseq [update updates]
            (log/trace "Queuing update" update)
+           (swap! pending-updates inc)
            (queue/put-with-delay! queue message-delay-ms update))
          (track-queue-size!)
          true)))))
 
 (defn wait-for-idle!
-  "Block until the ingestion queue has been drained and no more items arrive.
-   Polls the queue and considers it idle when it has been empty for `settle-ms`
-   (default 500ms). Gives up after `timeout-ms` (default 30s)."
+  "Block until no index updates are queued or being processed for `settle-ms` (default 500ms).
+   Log a warning and return after `timeout-ms` (default 30s)."
   [& {:keys [settle-ms timeout-ms poll-ms]
       :or   {settle-ms 500, timeout-ms 30000, poll-ms 50}}]
   (let [deadline-ns (+ (System/nanoTime) (* (long timeout-ms) 1000000))
@@ -314,14 +332,14 @@
         poll-ms     (long poll-ms)
         empty-since (atom nil)]
     (loop []
-      (let [now-ns       (System/nanoTime)
-            sz           (.size queue)
-            remaining-ns (- settle-ns (- now-ns (or @empty-since now-ns)))]
+      (let [now-ns        (System/nanoTime)
+            pending-count @pending-updates
+            remaining-ns  (- settle-ns (- now-ns (or @empty-since now-ns)))]
         (cond
           (>= now-ns deadline-ns)
-          (log/warnf "wait-for-idle! timed out with %d items still in the queue" sz)
+          (log/warnf "wait-for-idle! timed out with %d pending index updates" pending-count)
 
-          (pos? sz)
+          (pos? pending-count)
           (do (reset! empty-since nil)
               (Thread/sleep poll-ms)
               (recur))
@@ -331,11 +349,17 @@
               (Thread/sleep (long (max poll-ms (quot remaining-ns 1000000))))
               (recur)))))))
 
+(defn- ingest-batch! [updates]
+  (try
+    (bulk-ingest! updates)
+    (finally
+      (swap! pending-updates - (count updates)))))
+
 (defn start-listener!
   "Starts the ingestion listener on the queue"
   []
   (when (seq (search.engine/active-engines))
-    (queue/listen! listener-name queue bulk-ingest!
+    (queue/listen! listener-name queue ingest-batch!
                    {:success-handler     (fn [_result _duration _]
                                            (track-queue-size!))
                     :err-handler        (fn [err _]
