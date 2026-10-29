@@ -2079,8 +2079,13 @@ def _hidden_sql(sql: str, dialect: str):
     if dialect == "tsql":
         quoted = (sqlglot.TokenType.STRING, sqlglot.TokenType.NATIONAL_STRING, sqlglot.TokenType.IDENTIFIER)
         for tok in sqlglot.tokenize(sql, read=dialect):
-            if tok.token_type not in quoted and tok.text.upper() in _TSQL_STATEMENT_WORDS:
-                return ("statement-word", tok.text.upper())
+            if tok.token_type in quoted:
+                continue
+            # sqlglot keeps a character such as U+200B inside a word, `t<U+200B>EXEC`, where SQL Server may end the
+            # word. Each piece between characters that cannot be part of a name is checked on its own.
+            for word in re.split(r"[^\w@#$]+", tok.text):
+                if word.upper() in _TSQL_STATEMENT_WORDS:
+                    return ("statement-word", word.upper())
     if dialect in _MYSQL_FAMILY_DIALECTS:
         if "/*!" in sql or "/*M!" in sql:
             return ("executable-comment", None)

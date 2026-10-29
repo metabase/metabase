@@ -589,6 +589,17 @@
       "select * from (select 1 as xlock) d(xlock)"
       "select top 10 a.id, b.name from dbo.t a join dbo.u b on a.id = b.id where a.x > 1 order by a.id")))
 
+(deftest ^:parallel read-only-select?-tsql-statement-word-in-token-test
+  (testing "a statement word glued to a name by a character that is not part of a word is refused"
+    (doseq [glue ["​" "‌" "⁠" "﻿"]]
+      (testing (format "U+%04X" (int (first glue)))
+        (is (= {:reason :statement-word, :detail "EXEC"}
+               (sql-tools/read-only-select-problem :sqlserver (str "select * from t" glue "EXEC('select 1')")))))))
+  (testing "a statement word inside a longer name is allowed"
+    (are [sql] (true? (sql-tools/read-only-select? :sqlserver sql))
+      "select executed_at, @exec_count, updated_by from t"
+      "select [exec] from #temp_exec")))
+
 (deftest ^:parallel read-only-select-problem-test
   (testing "SQL that is a read-only select has no problem"
     (is (nil? (sql-tools/read-only-select-problem :postgres "SELECT 1"))))
