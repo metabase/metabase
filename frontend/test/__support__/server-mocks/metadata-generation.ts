@@ -15,6 +15,22 @@ export function setupGetMetadataGenerationRunEndpoint(
   fetchMock.get(`path:/api/ee/data-sensitivity/runs/${run.id}`, run);
 }
 
+export function setupGetMetadataGenerationRunErrorEndpoint(
+  runId: MetadataGenerationRun["id"],
+  status: number,
+) {
+  fetchMock.get(`path:/api/ee/data-sensitivity/runs/${runId}`, { status });
+}
+
+/** Calling it again replaces the runs that the endpoint returns. */
+export function setupListMetadataGenerationRunsEndpoint(
+  runs: MetadataGenerationRun[],
+) {
+  const name = "metadata-generation-runs";
+  fetchMock.removeRoute(name);
+  fetchMock.get("path:/api/ee/data-sensitivity/runs", runs, { name });
+}
+
 export function setupMetadataGenerationEstimateEndpoint(
   estimate: MetadataGenerationEstimate,
 ) {
@@ -63,8 +79,10 @@ export function setupListMetadataGenerationProposalsEndpoint(
   tableId: ConcreteTableId,
   proposals: MetadataGenerationProposal[],
 ) {
+  const name = `metadata-generation-proposals-${tableId}`;
+  fetchMock.removeRoute(name);
   fetchMock.get("path:/api/ee/data-sensitivity/proposals", proposals, {
-    name: `metadata-generation-proposals-${tableId}`,
+    name,
     query: { "table-id": String(tableId) },
   });
 }

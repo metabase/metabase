@@ -6,17 +6,13 @@ import { getUserIsAdmin } from "metabase/current-user";
 import type { MetadataGenerationDatabaseButtonProps } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Button, Icon, Loader } from "metabase/ui";
-import {
-  useListMetadataGenerationProposalTablesQuery,
-  useListMetadataGenerationRunsQuery,
-} from "metabase-enterprise/api";
+import { useListMetadataGenerationProposalTablesQuery } from "metabase-enterprise/api";
 import type {
   MetadataGenerationRun,
   MetadataGenerationRunId,
 } from "metabase-types/api";
 
-import { useRunPolling } from "../../hooks";
-import { RUN_POLLING_INTERVAL, isRunActive } from "../../utils";
+import { useDatabaseRun } from "../../hooks";
 import { GenerateMetadataModal } from "../GenerateMetadataModal";
 import { ReviewModal } from "../ReviewModal";
 
@@ -40,21 +36,11 @@ function GenerateMetadataButtonContent({
     useDisclosure();
   const [startedRunId, setStartedRunId] =
     useState<MetadataGenerationRunId | null>(null);
-  const [hasActiveRun, setHasActiveRun] = useState(false);
-  const { data: runs } = useListMetadataGenerationRunsQuery(
-    { database_id: databaseId },
-    // The list keeps polling while the run continues in the background, so the
-    // button changes to "Review suggestions" once the run is done.
-    { pollingInterval: hasActiveRun ? RUN_POLLING_INTERVAL : 0 },
-  );
   // The pending suggestions of every run, not only of the latest one.
   const { data: proposalTables } = useListMetadataGenerationProposalTablesQuery(
     { database_id: databaseId },
   );
-  const latestRun = runs?.[0] ?? null;
-  const activeRun =
-    latestRun != null && isRunActive(latestRun) ? latestRun : null;
-  useRunPolling(activeRun != null, setHasActiveRun);
+  const { latestRun, activeRun } = useDatabaseRun(databaseId);
 
   const modalRunId = startedRunId ?? activeRun?.id ?? null;
   const hasPending = (proposalTables?.length ?? 0) > 0;
