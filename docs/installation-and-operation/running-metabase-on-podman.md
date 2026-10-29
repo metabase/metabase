@@ -132,7 +132,7 @@ Create a new file called `metabase.container` in `~/.config/containers/systemd/`
 Description=Metabase container
 [Container]
 ContainerName=metabase
-Environment=MB_DB_TYPE=postgres MB_DB_DBNAME=metabase MB_DB_PORT=5432 MB_DB_USER=name MB_DB_PASS=password MB_DB_HOST=my-database-host
+Environment=MB_DB_TYPE=postgres MB_DB_DBNAME=metabaseappdb MB_DB_PORT=5432 MB_DB_USER=name MB_DB_PASS=password MB_DB_HOST=my-database-host
 Image=docker.io/metabase/metabase:latest
 PublishPort=3000:3000
 [Install]
