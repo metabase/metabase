@@ -34,3 +34,23 @@ export const setupUnsubscribeFromPulseEndpoint = (
 ) => {
   fetchMock.post("path:/api/pulse/unsubscribe", response);
 };
+
+export const setupSubscriptionEndpoint = (
+  subscription: DashboardSubscription,
+) => {
+  fetchMock.get(`path:/api/pulse/${subscription.id}`, subscription);
+};
+
+export const setupUpdateSubscriptionEndpoint = (
+  subscription: DashboardSubscription,
+  response: object | number = subscription,
+) => {
+  fetchMock.put(`path:/api/pulse/${subscription.id}`, response);
+};
+
+export const setupUnsubscribeFromSubscriptionEndpoint = (
+  subscription: DashboardSubscription,
+  response: object | number = 204,
+) => {
+  fetchMock.delete(`path:/api/pulse/${subscription.id}/subscription`, response);
+};
