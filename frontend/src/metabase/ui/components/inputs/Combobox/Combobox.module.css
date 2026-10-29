@@ -105,11 +105,9 @@
   --empty-badge-size: rem(24px);
   --empty-icon-size: rem(12px);
 
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--mantine-spacing-xs);
+  display: grid;
+  justify-items: center;
+  row-gap: var(--mantine-spacing-xs);
   padding: var(--mantine-spacing-xxxl) var(--mantine-spacing-sm);
   color: var(--mb-color-text-secondary);
   font-size: var(--mantine-font-size-sm);
@@ -117,9 +115,15 @@
   text-align: center;
 
   /* The search badge above the message, so every existing empty message gets
-     it without changes at the call sites */
-  &::before {
+     it without changes at the call sites. Badge and icon share the first grid
+     cell, so the icon stays centered whatever padding a call site sets. */
+  &::before,
+  &::after {
     content: "";
+    grid-area: 1 / 1;
+  }
+
+  &::before {
     width: var(--empty-badge-size);
     height: var(--empty-badge-size);
     border-radius: 50%;
@@ -127,16 +131,9 @@
   }
 
   &::after {
-    content: "";
-    position: absolute;
-    top: calc(
-      var(--mantine-spacing-xxxl) +
-        (var(--empty-badge-size) - var(--empty-icon-size)) / 2
-    );
-    left: 50%;
+    align-self: center;
     width: var(--empty-icon-size);
     height: var(--empty-icon-size);
-    transform: translateX(-50%);
     background-color: var(--mb-color-icon-disabled);
     mask: url("../../icons/Icon/icons/search.svg") center / contain no-repeat;
   }
