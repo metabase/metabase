@@ -17,12 +17,12 @@
 (mu/defn session-log-exists?
   "Whether an McpSessionLog with `session-id` exists."
   [session-id :- :string]
-  (t2/exists? :model/McpSessionLog :id session-id))
+  (t2/exists? :model/McpSessionLog :id [:auto/param session-id]))
 
 (mu/defn session-client-identity
   "The client name and version of the McpSessionLog with `session-id`, or nil."
   [session-id :- :string]
-  (t2/select-one [:model/McpSessionLog :client_name :client_version] :id session-id))
+  (t2/select-one [:model/McpSessionLog :client_name :client_version] :id [:auto/param session-id]))
 
 (mu/defn insert-session-log!
   "Insert the McpSessionLog `row`."
@@ -39,7 +39,7 @@
 (mu/defn end-session-log!
   "Stamp `ended_at` on the McpSessionLog with `session-id`."
   [session-id :- :string]
-  (t2/update! :model/McpSessionLog :id session-id {:ended_at :%now}))
+  (t2/update! :model/McpSessionLog :id [:auto/param session-id] {:ended_at :%now}))
 
 (mu/defn insert-tool-call-log!
   "Insert the McpToolCallLog `row`."
@@ -49,12 +49,12 @@
 (mu/defn delete-tool-call-logs-created-before!
   "Delete the McpToolCallLogs created before `cutoff`, returning the number deleted."
   [cutoff :- ms/TemporalInstant]
-  (t2/delete! :model/McpToolCallLog {:where [:< :created_at cutoff]}))
+  (t2/delete! :model/McpToolCallLog {:where [:< :created_at [:auto/param cutoff]]}))
 
 (mu/defn delete-session-logs-created-before!
   "Delete the McpSessionLogs created before `cutoff`, returning the number deleted."
   [cutoff :- ms/TemporalInstant]
-  (t2/delete! :model/McpSessionLog {:where [:< :created_at cutoff]}))
+  (t2/delete! :model/McpSessionLog {:where [:< :created_at [:auto/param cutoff]]}))
 
 (mu/defn advanced-mode? :- :boolean
   "Whether MCP tool access is set per group instead of for All Users only. That is the state in which All Users has no
@@ -83,7 +83,7 @@
                       ^:allow-subquery
                       {:select [:group_id]
                        :from   [(t2/table-name :model/PermissionsGroupMembership)]
-                       :where  [:= :user_id user-id]}]}))
+                       :where  [:= :user_id [:auto/param user-id]]}]}))
 
 (mu/defn all-group-ids
   "Every PermissionsGroup id, in ID order."
@@ -101,8 +101,8 @@
    values   :- [:map {:closed true}
                 [:mcp_enabled :boolean]
                 [:tool_access ::mcp.perms/tool-access]]]
-  (if (t2/exists? :model/McpGroupPermission :group_id group-id)
-    (t2/update! :model/McpGroupPermission {:group_id group-id} values)
+  (if (t2/exists? :model/McpGroupPermission :group_id [:auto/param group-id])
+    (t2/update! :model/McpGroupPermission {:group_id [:auto/param group-id]} values)
     (t2/insert! :model/McpGroupPermission (assoc values :group_id group-id))))
 
 (mu/defn insert-group-permission-unless-exists!
@@ -111,7 +111,7 @@
    values   :- [:map {:closed true}
                 [:mcp_enabled :boolean]
                 [:tool_access ::mcp.perms/tool-access]]]
-  (when-not (t2/exists? :model/McpGroupPermission :group_id group-id)
+  (when-not (t2/exists? :model/McpGroupPermission :group_id [:auto/param group-id])
     (t2/insert! :model/McpGroupPermission (assoc values :group_id group-id))))
 
 (mu/defn hidden-group-permissions

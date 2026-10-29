@@ -682,7 +682,7 @@
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))
+  (t2/select-one :model/Card :id [:auto/param card-id]))
 
 (mu/defn card-types-by-id
   "A map of Card ID to type for `card-ids`."
@@ -697,17 +697,17 @@
 (mu/defn dashcard-dashboard-id :- [:maybe ::lib.schema.id/dashboard]
   "The `:dashboard_id` of the DashboardCard with `dashcard-id`, or nil."
   [dashcard-id :- ::lib.schema.id/dashcard]
-  (t2/select-one-fn :dashboard_id :model/DashboardCard :id dashcard-id))
+  (t2/select-one-fn :dashboard_id :model/DashboardCard :id [:auto/param dashcard-id]))
 
 (mu/defn field-table-id :- [:maybe ::lib.schema.id/table]
   "The `:table_id` of the Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :table_id :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-one-fn :table_id :model/Field :id [:auto/param field-id] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn source-database-transform-ids :- [:set ::lib.schema.id/transform]
   "The IDs of the Transforms reading from the Database with `db-id`."
   [db-id :- ::lib.schema.id/database]
-  (or (t2/select-pks-set :model/Transform :source_database_id db-id) #{}))
+  (or (t2/select-pks-set :model/Transform :source_database_id [:auto/param db-id]) #{}))
 
 ;;; -------------------------------------------------- Dependencies --------------------------------------------------
 
@@ -717,7 +717,7 @@
    entity-id   :- ms/PositiveInt]
   (t2/select [:model/Dependency :id :to_entity_type :to_entity_id]
              :from_entity_type entity-type
-             :from_entity_id entity-id))
+             :from_entity_id [:auto/param entity-id]))
 
 (mu/defn dependency-exists?
   "Whether the entity `from-type` `from-id` depends on the entity `to-type` `to-id`."
@@ -726,8 +726,8 @@
    to-type   :- ::dependencies.schema/entity-type
    to-id     :- ms/PositiveInt]
   (t2/exists? :model/Dependency
-              :from_entity_type from-type :from_entity_id from-id
-              :to_entity_type to-type :to_entity_id to-id))
+              :from_entity_type from-type :from_entity_id [:auto/param from-id]
+              :to_entity_type to-type :to_entity_id [:auto/param to-id]))
 
 (mu/defn insert-dependencies!
   "Insert the Dependency `rows`, returning the number inserted."
@@ -749,8 +749,8 @@
    new-to-type :- ::dependencies.schema/entity-type
    new-to-id   :- ms/PositiveInt]
   (t2/update! :model/Dependency
-              {:from_entity_type from-type :from_entity_id from-id
-               :to_entity_type old-to-type :to_entity_id old-to-id}
+              {:from_entity_type from-type :from_entity_id [:auto/param from-id]
+               :to_entity_type old-to-type :to_entity_id [:auto/param old-to-id]}
               {:to_entity_type new-to-type :to_entity_id new-to-id}))
 
 (mu/defn delete-dependencies!
@@ -766,8 +766,8 @@
    to-type   :- ::dependencies.schema/entity-type
    to-id     :- ms/PositiveInt]
   (t2/delete! :model/Dependency
-              :from_entity_type from-type :from_entity_id from-id
-              :to_entity_type to-type :to_entity_id to-id))
+              :from_entity_type from-type :from_entity_id [:auto/param from-id]
+              :to_entity_type to-type :to_entity_id [:auto/param to-id]))
 
 (mu/defn delete-dependencies-from!
   "Delete the Dependencies of the entities `entity-type` `entity-ids`, returning the number deleted."
@@ -781,7 +781,7 @@
   (t2/select-fn-set :from_entity_id :model/Dependency
                     :from_entity_type :table
                     :to_entity_type   :transform
-                    :to_entity_id     transform-id))
+                    :to_entity_id     [:auto/param transform-id]))
 
 (mu/defn delete-table-dependencies-on-transform!
   "Delete the Dependencies of the Tables with `table-ids` on the Transform with `transform-id`, returning the
@@ -792,7 +792,7 @@
               :from_entity_type :table
               :from_entity_id   [:in table-ids]
               :to_entity_type   :transform
-              :to_entity_id     transform-id))
+              :to_entity_id     [:auto/param transform-id]))
 
 ;;; -------------------------------------------- Statuses, shared by the jobs --------------------------------------------
 
@@ -1087,7 +1087,7 @@
 (mu/defn internal-remap? :- :boolean
   "Whether the Field with `field-id` has an internal remap, which shows its FieldValues' human-readable values."
   [field-id :- ::lib.schema.id/field]
-  (t2/exists? :model/Dimension :field_id field-id :type "internal"))
+  (t2/exists? :model/Dimension :field_id [:auto/param field-id] :type "internal"))
 
 (mu/defn card-state :- [:maybe ::dependencies.schema/card-state]
   "The `updated_at` and `result_metadata` of the Card with `card-id`, locking its row until the transaction ends when
@@ -1095,7 +1095,7 @@
   [card-id :- ::lib.schema.id/card
    lock?   :- :boolean]
   (some-> (t2/select-one [:model/Card :updated_at :result_metadata]
-                         (cond-> {:where [:= :id card-id]} lock? (assoc :for :update)))
+                         (cond-> {:where [:= :id [:auto/param card-id]]} lock? (assoc :for :update)))
           (select-keys [:updated_at :result_metadata])))
 
 (mu/defn set-card-result-metadata!
@@ -1103,8 +1103,8 @@
   `updated_at`."
   [card-id         :- ::lib.schema.id/card
    result-metadata :- [:maybe ::lib.schema.metadata/card.result-metadata]]
-  (t2/update! :model/Card :id card-id {:result_metadata result-metadata
-                                       :updated_at      :updated_at}))
+  (t2/update! :model/Card :id [:auto/param card-id] {:result_metadata result-metadata
+                                                     :updated_at      :updated_at}))
 
 ;;; ------------------------------------------- Analysis finding job -------------------------------------------
 
@@ -1163,13 +1163,13 @@
   "The AnalysisFindingErrors of the entity `entity-type` `entity-id`."
   [entity-type :- ::dependencies.schema/entity-type
    entity-id   :- ms/PositiveInt]
-  (t2/select :model/AnalysisFindingError :analyzed_entity_type entity-type :analyzed_entity_id entity-id))
+  (t2/select :model/AnalysisFindingError :analyzed_entity_type entity-type :analyzed_entity_id [:auto/param entity-id]))
 
 (mu/defn finding-errors-from-source
   "The AnalysisFindingErrors caused by the entity `source-type` `source-id`."
   [source-type :- [:maybe :metabase.lib.schema.validate/source-entity-type]
    source-id   :- ms/PositiveInt]
-  (t2/select :model/AnalysisFindingError :source_entity_type source-type :source_entity_id source-id))
+  (t2/select :model/AnalysisFindingError :source_entity_type source-type :source_entity_id [:auto/param source-id]))
 
 (mu/defn insert-finding-errors!
   "Insert the AnalysisFindingError `rows`, returning the number inserted."
@@ -1180,4 +1180,4 @@
   "Delete the AnalysisFindingErrors of the entity `entity-type` `entity-id`, returning the number deleted."
   [entity-type :- ::dependencies.schema/entity-type
    entity-id   :- ms/PositiveInt]
-  (t2/delete! :model/AnalysisFindingError :analyzed_entity_type entity-type :analyzed_entity_id entity-id))
+  (t2/delete! :model/AnalysisFindingError :analyzed_entity_type entity-type :analyzed_entity_id [:auto/param entity-id]))

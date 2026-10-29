@@ -65,12 +65,12 @@
 (mu/defn permissions-group
   "The PermissionsGroup with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/PermissionsGroup :id id))
+  (t2/select-one :model/PermissionsGroup :id [:auto/param id]))
 
 (mu/defn permissions-group-exists?
   "Whether a PermissionsGroup with `id` exists."
   [id :- ms/PositiveInt]
-  (t2/exists? :model/PermissionsGroup :id id))
+  (t2/exists? :model/PermissionsGroup :id [:auto/param id]))
 
 (mu/defn insert-permissions-group!
   "Insert a PermissionsGroup and return the inserted instance."
@@ -82,12 +82,12 @@
   "Set the name of the PermissionsGroup with `id`, returning the number updated."
   [id         :- ms/PositiveInt
    group-name :- :string]
-  (t2/update! :model/PermissionsGroup :id id {:name group-name}))
+  (t2/update! :model/PermissionsGroup :id [:auto/param id] {:name group-name}))
 
 (mu/defn delete-permissions-group!
   "Delete the PermissionsGroup with `id`, returning the number deleted."
   [id :- ms/PositiveInt]
-  (t2/delete! :model/PermissionsGroup :id id))
+  (t2/delete! :model/PermissionsGroup :id [:auto/param id]))
 
 (mu/defn group-memberships
   "The membership id, group id, user id, and group manager flag of every PermissionsGroupMembership, optionally
@@ -108,25 +108,25 @@
 (mu/defn non-admin-user-exists?
   "Whether the User with `user-id` exists and is not a superuser."
   [user-id :- ::lib.schema.id/user]
-  (t2/exists? :model/User :id user-id :is_superuser false))
+  (t2/exists? :model/User :id [:auto/param user-id] :is_superuser false))
 
 (mu/defn group-membership
   "The PermissionsGroupMembership with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/PermissionsGroupMembership :id id))
+  (t2/select-one :model/PermissionsGroupMembership :id [:auto/param id]))
 
 (mu/defn set-group-membership-manager!
   "Set the group manager flag of the PermissionsGroupMembership with `id`, returning the number updated."
   [id             :- ms/PositiveInt
    group-manager? :- :boolean]
-  (t2/update! :model/PermissionsGroupMembership :id id {:is_group_manager group-manager?}))
+  (t2/update! :model/PermissionsGroupMembership :id [:auto/param id] {:is_group_manager group-manager?}))
 
 (mu/defn non-destination-database-ids
   "The ids of the Databases that are not routing destinations, excluding `excluded-database-id` (nil for no
   exclusion)."
   [excluded-database-id :- [:maybe ::lib.schema.id/database]]
   (t2/select-pks-vec :model/Database {:where [:and
-                                              (when excluded-database-id [:not= :id excluded-database-id])
+                                              (when excluded-database-id [:not= :id [:auto/param excluded-database-id]])
                                               [:= :router_database_id nil]]}))
 
 (mu/defn data-permissions-reducible

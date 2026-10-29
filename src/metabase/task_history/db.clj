@@ -108,12 +108,12 @@
 (mu/defn task-run
   "The TaskRun with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/TaskRun :id id))
+  (t2/select-one :model/TaskRun :id [:auto/param id]))
 
 (mu/defn tasks-for-run
   "The TaskHistory rows of the TaskRun with `run-id`, oldest first."
   [run-id :- ms/PositiveInt]
-  (t2/select :model/TaskHistory :run_id run-id {:order-by [[:started_at :asc]]}))
+  (t2/select :model/TaskHistory :run_id [:auto/param run-id] {:order-by [[:started_at :asc]]}))
 
 (mu/defn distinct-run-entities
   "The distinct entity type and id of the TaskRuns of `run-type` started in [`started-at-start`, `started-at-end`)."
@@ -122,10 +122,10 @@
    started-at-end    :- [:maybe ms/TemporalInstant]]
   (t2/query {:select-distinct [:entity_type :entity_id]
              :from            :task_run
-             :where           (into [:and [:= :run_type run-type]]
+             :where           (into [:and [:= :run_type [:auto/param run-type]]]
                                     (keep identity)
-                                    [(when started-at-start [:>= :started_at started-at-start])
-                                     (when started-at-end [:< :started_at started-at-end])])}))
+                                    [(when started-at-start [:>= :started_at [:auto/param started-at-start]])
+                                     (when started-at-end [:< :started_at [:auto/param started-at-end]])])}))
 
 (mu/defn nth-newest-task-history-ended-at
   "The `ended_at` of the TaskHistory row `offset` rows from the most recently ended, or nil."
@@ -193,7 +193,7 @@
   "Apply `changes` to the TaskHistory row with `id`."
   [id      :- ms/PositiveInt
    changes :- ::task-history.schema/task-history.update]
-  (t2/update! :model/TaskHistory :id id changes))
+  (t2/update! :model/TaskHistory :id [:auto/param id] changes))
 
 (mu/defn insert-task-history!
   "Insert the TaskHistory `row` and return its id."
@@ -208,19 +208,19 @@
 (mu/defn task-statuses-for-run
   "The set of statuses of the TaskHistory rows of the TaskRun with `run-id`."
   [run-id :- ms/PositiveInt]
-  (t2/select-fn-set :status :model/TaskHistory :run_id run-id))
+  (t2/select-fn-set :status :model/TaskHistory :run_id [:auto/param run-id]))
 
 (mu/defn finish-started-task-run!
   "Set the status and end time of the started TaskRun with `run-id`."
   [run-id   :- ms/PositiveInt
    status   :- :keyword
    ended-at :- ms/TemporalInstant]
-  (t2/update! :model/TaskRun {:id run-id :status :started} {:status status, :ended_at ended-at}))
+  (t2/update! :model/TaskRun {:id [:auto/param run-id] :status :started} {:status status, :ended_at ended-at}))
 
 (mu/defn heartbeat-started-task-runs!
   "Touch `updated_at` of the started TaskRuns of `process-uuid` with the app DB's now, returning the number updated."
   [process-uuid :- :string]
-  (t2/update! :model/TaskRun {:status :started, :process_uuid process-uuid} {:updated_at :%now}))
+  (t2/update! :model/TaskRun {:status :started, :process_uuid [:auto/param process-uuid]} {:updated_at :%now}))
 
 (mu/defn mark-started-tasks-unknown!
   "Set the started TaskHistory rows of the TaskRuns with `run-ids` to unknown, ended at the app DB's now, returning

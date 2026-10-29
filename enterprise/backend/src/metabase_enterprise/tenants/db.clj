@@ -13,22 +13,22 @@
 (mu/defn tenant
   "The Tenant with `tenant-id`, or nil."
   [tenant-id :- ms/PositiveInt]
-  (t2/select-one :model/Tenant :id tenant-id))
+  (t2/select-one :model/Tenant :id [:auto/param tenant-id]))
 
 (mu/defn tenant-by-slug
   "The Tenant with `slug`, or nil."
   [slug :- :string]
-  (t2/select-one :model/Tenant :slug slug))
+  (t2/select-one :model/Tenant :slug [:auto/param slug]))
 
 (mu/defn tenant-slug
   "The slug of the Tenant with `tenant-id`."
   [tenant-id :- ms/PositiveInt]
-  (t2/select-one-fn :slug :model/Tenant :id tenant-id))
+  (t2/select-one-fn :slug :model/Tenant :id [:auto/param tenant-id]))
 
 (mu/defn tenant-collection-id
   "The root Collection ID of the Tenant with `tenant-id`."
   [tenant-id :- ms/PositiveInt]
-  (t2/select-one-fn :tenant_collection_id :model/Tenant :id tenant-id))
+  (t2/select-one-fn :tenant_collection_id :model/Tenant :id [:auto/param tenant-id]))
 
 (mu/defn tenants-page
   "The Tenants in ID order, restricted by `status` (`\"all\"`, `\"active\"`, or `\"deactivated\"`) and paged by the
@@ -59,21 +59,21 @@
 (mu/defn active-tenant-exists?
   "Whether the Tenant with `tenant-id` exists and is active."
   [tenant-id :- ms/PositiveInt]
-  (t2/exists? :model/Tenant :id tenant-id :is_active true))
+  (t2/exists? :model/Tenant :id [:auto/param tenant-id] :is_active true))
 
 (mu/defn tenant-name-or-slug-exists?
   "Whether a Tenant named `tenant-name` or with `slug` exists."
   [tenant-name :- :string
    slug        :- :string]
   (t2/exists? :model/Tenant {:where [:or
-                                     [:= :slug slug]
-                                     [:= :name tenant-name]]}))
+                                     [:= :slug [:auto/param slug]]
+                                     [:= :name [:auto/param tenant-name]]]}))
 
 (mu/defn other-tenant-named?
   "Whether a Tenant other than `tenant-id` is named `tenant-name`."
   [tenant-name :- :string
    tenant-id   :- ms/PositiveInt]
-  (t2/exists? :model/Tenant :name tenant-name :id [:not= tenant-id]))
+  (t2/exists? :model/Tenant :name [:auto/param tenant-name] :id [:not= [:auto/param tenant-id]]))
 
 (mu/defn insert-tenant!
   "Insert `tenant` and return the new instance."
@@ -84,7 +84,7 @@
   "Apply `changes` to the Tenant with `tenant-id`, returning the number updated."
   [tenant-id :- ms/PositiveInt
    changes   :- (mut/select-keys ::tenants.schema/tenant.update [:name :attributes :is_active])]
-  (t2/update! :model/Tenant {:id tenant-id} changes))
+  (t2/update! :model/Tenant {:id [:auto/param tenant-id]} changes))
 
 (mu/defn active-member-counts
   "Rows of `:tenant_id` and `:count` of active personal Users for `tenant-ids`."
@@ -101,24 +101,24 @@
   "Deactivate the active Users of the Tenant with `tenant-id`, marking them as deactivated with it, returning the
   number updated."
   [tenant-id :- ms/PositiveInt]
-  (t2/update! :model/User {:is_active true :tenant_id tenant-id} {:is_active false :deactivated_with_tenant true}))
+  (t2/update! :model/User {:is_active true :tenant_id [:auto/param tenant-id]} {:is_active false :deactivated_with_tenant true}))
 
 (mu/defn reactivate-tenant-users!
   "Reactivate the Users of the Tenant with `tenant-id` that were deactivated with it, returning the number updated."
   [tenant-id :- ms/PositiveInt]
-  (t2/update! :model/User {:is_active false :tenant_id tenant-id :deactivated_with_tenant true}
+  (t2/update! :model/User {:is_active false :tenant_id [:auto/param tenant-id] :deactivated_with_tenant true}
               {:is_active true :deactivated_with_tenant nil}))
 
 (mu/defn user-tenant-id
   "The Tenant ID of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one-fn :tenant_id :model/User :id user-id))
+  (t2/select-one-fn :tenant_id :model/User :id [:auto/param user-id]))
 
 (mu/defn collection-with-archived-state
   "The Collection with `collection-id` if its archived flag is `archived?`, or nil."
   [collection-id :- ::lib.schema.id/collection
    archived?     :- :boolean]
-  (t2/select-one :model/Collection :id collection-id :archived archived?))
+  (t2/select-one :model/Collection :id [:auto/param collection-id] :archived [:auto/param archived?]))
 
 (mu/defn descendant-collection-ids
   "The IDs of the Collections under the Collection with `collection-id`."

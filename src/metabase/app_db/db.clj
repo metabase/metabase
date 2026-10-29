@@ -78,13 +78,13 @@
                    [:value_with_aad {:optional true} [:maybe :string]]]]
   (t2/query {:update :setting
              :set    (select-keys changes [:value :value_with_aad])
-             :where  [:= :key setting-key]}))
+             :where  [:= :key [:auto/param setting-key]]}))
 
 (mu/defn delete-setting!
   "Delete the setting row with `setting-key`, returning the number deleted (as a one-element sequence -- `t2/query`
   on a DELETE, unlike `t2/delete!`, does not unwrap it)."
   [setting-key :- :string]
-  (t2/query {:delete-from :setting, :where [:= :key setting-key]}))
+  (t2/query {:delete-from :setting, :where [:= :key [:auto/param setting-key]]}))
 
 (mu/defn reducible-column-values
   "A reducible of the id and `column` value of every row of `table`."
@@ -99,7 +99,7 @@
    column :- :keyword
    id     :- ms/PositiveInt
    value  :- [:maybe [:or :string bytes?]]]
-  (t2/query {:update table, :set {column value}, :where [:= :id id]}))
+  (t2/query {:update table, :set {column value}, :where [:= :id [:auto/param id]]}))
 
 (mu/defn delete-query-cache!
   "Delete every cached query result, returning the number deleted (as a one-element sequence -- `t2/query` on a

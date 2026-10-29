@@ -13,12 +13,12 @@
 (mu/defn advisory
   "The SecurityAdvisory with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/SecurityAdvisory :id id))
+  (t2/select-one :model/SecurityAdvisory :id [:auto/param id]))
 
 (mu/defn advisory-by-advisory-id
   "The SecurityAdvisory with the external `advisory-id`, or nil."
   [advisory-id :- :string]
-  (t2/select-one :model/SecurityAdvisory :advisory_id advisory-id))
+  (t2/select-one :model/SecurityAdvisory :advisory_id [:auto/param advisory-id]))
 
 (mu/defn max-advisory-updated-at
   "The latest `updated_at` across every SecurityAdvisory, or nil when there are none."
@@ -55,19 +55,19 @@
   "Apply `changes` to the SecurityAdvisory with `id`, returning the number updated."
   [id      :- ms/PositiveInt
    changes :- (mut/select-keys ::security-center.schema/security-advisory.update [:match_status :last_evaluated_at :acknowledged_by :acknowledged_at :last_notified_at])]
-  (t2/update! :model/SecurityAdvisory :id id changes))
+  (t2/update! :model/SecurityAdvisory :id [:auto/param id] changes))
 
 (mu/defn record-advisory-evaluation!
   "Apply `changes` to the SecurityAdvisory with `id` and stamp `last_evaluated_at` with now, returning the number
   updated."
   [id      :- ms/PositiveInt
    changes :- (mut/select-keys ::security-center.schema/security-advisory.update [:match_status :acknowledged_by :acknowledged_at])]
-  (t2/update! :model/SecurityAdvisory :id id (assoc changes :last_evaluated_at :%now)))
+  (t2/update! :model/SecurityAdvisory :id [:auto/param id] (assoc changes :last_evaluated_at :%now)))
 
 (mu/defn record-advisory-notification!
   "Set `last_notified_at` of the SecurityAdvisory with `id` to now, returning the number updated."
   [id :- ms/PositiveInt]
-  (t2/update! :model/SecurityAdvisory :id id {:last_notified_at :%now}))
+  (t2/update! :model/SecurityAdvisory :id [:auto/param id] {:last_notified_at :%now}))
 
 (mu/defn upsert-advisory!
   "Insert or update a SecurityAdvisory by `:advisory_id`. On insert, `:match_status` starts as `:unknown` until the

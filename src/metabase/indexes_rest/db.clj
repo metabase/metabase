@@ -11,12 +11,12 @@
 (mu/defn database-exists?
   "Whether a Database with `database-id` exists."
   [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Database :id database-id))
+  (t2/exists? :model/Database :id [:auto/param database-id]))
 
 (mu/defn table-index
   "The TableIndex with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/TableIndex :id id))
+  (t2/select-one :model/TableIndex :id [:auto/param id]))
 
 (mu/defn insert-table-index!
   "Insert the TableIndex `row` and return the inserted instance."
@@ -27,10 +27,10 @@
   "Set the `structured` definition of the TableIndex with `id`."
   [id         :- ms/PositiveInt
    structured :- [:maybe ::indexes.schema/table-index.structured]]
-  (t2/update! :model/TableIndex :id id {:structured structured}))
+  (t2/update! :model/TableIndex :id [:auto/param id] {:structured structured}))
 
 (mu/defn set-table-index-status!
   "Set the `status` of the TableIndex with `id`."
   [id     :- ms/PositiveInt
    status :- [:or :keyword :string]]
-  (t2/update! :model/TableIndex :id id {:status status}))
+  (t2/update! :model/TableIndex :id [:auto/param id] {:status status}))

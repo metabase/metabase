@@ -115,4 +115,4 @@
 (mu/defn delete-token-tracking-created-before!
   "Delete the SemanticSearchTokenTracking rows created before `cutoff`."
   [cutoff :- ms/TemporalInstant]
-  (t2/delete! :model/SemanticSearchTokenTracking {:where [:< :created_at cutoff]}))
+  (t2/delete! :model/SemanticSearchTokenTracking {:where [:< :created_at [:auto/param cutoff]]}))

@@ -13,17 +13,17 @@
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :id [:auto/param table-id] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn active-table
   "The active Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one :model/Table :id table-id :active true {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :id [:auto/param table-id] :active true {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id database-id))
+  (t2/select-one :model/Database :id [:auto/param database-id]))
 
 (mu/defn fields
   "The Fields with `field-ids`."
@@ -33,24 +33,24 @@
 (mu/defn pk-fields-for-table
   "The active primary key Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select :model/Field :table_id table-id :semantic_type :type/PK :active true {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select :model/Field :table_id [:auto/param table-id] :semantic_type :type/PK :active true {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn fields-by-name
   "The Fields of the Table with `table-id` named one of `field-names`."
   [table-id    :- ::lib.schema.id/table
    field-names :- [:sequential :string]]
-  (t2/select :model/Field :table_id table-id :name [:in field-names] {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select :model/Field :table_id [:auto/param table-id] :name [:in field-names] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn active-fields-in-position-order
   "The active Fields of the Table with `table-id`, in position order."
   [table-id :- ::lib.schema.id/table]
-  (t2/select :model/Field :table_id table-id :active true {:from [(warehouse-schema-overlay/field-query)]
-                                                           :order-by [[:position]]}))
+  (t2/select :model/Field :table_id [:auto/param table-id] :active true {:from [(warehouse-schema-overlay/field-query)]
+                                                                         :order-by [[:position]]}))
 
 (mu/defn field-requirements-by-name
   "A map of name to the name, required flag, and base type of the Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-fn->fn :name identity [:model/Field :name :database_required :base_type] :table_id table-id {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-fn->fn :name identity [:model/Field :name :database_required :base_type] :table_id [:auto/param table-id] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn category-list-field-ids-by-name
   "The `:id` and `:lower_name` rows of the category list Fields of the Table with `table-id` whose name matches one
@@ -60,7 +60,7 @@
   (t2/query {:select [:id [[:lower :name] :lower_name]]
              :from   [(warehouse-schema-overlay/field-query)]
              :where  [:and
-                      [:= :table_id table-id]
+                      [:= :table_id [:auto/param table-id]]
                       [:in [:lower :name] (map u/lower-case-en names)]
                       [:in :has_field_values ["list" "auto-list"]]
                       [:= :semantic_type "type/Category"]]}))
@@ -87,8 +87,8 @@
                          {:select [[[(if undo? :max :min) :batch_num]]]
                           :from   [(t2/table-name :model/Undo)]
                           :where  [:and
-                                   [:= :user_id user-id]
-                                   [:= :scope scope]
+                                   [:= :user_id [:auto/param user-id]]
+                                   [:= :scope [:auto/param scope]]
                                    (if undo?
                                      [:not :undone]
                                      :undone)]}]))
@@ -121,13 +121,13 @@
   [batch-num :- ms/IntGreaterThanOrEqualToZero
    scope     :- [:maybe :string]
    user-id   :- [:maybe ::lib.schema.id/user]]
-  (t2/delete! :model/Undo :batch_num [:<= batch-num] {:where (scope-and-user-expr scope user-id)}))
+  (t2/delete! :model/Undo :batch_num [:<= [:auto/param batch-num]] {:where (scope-and-user-expr scope user-id)}))
 
 (mu/defn delete-undone-batches-from!
   "Delete the undone Undo rows in `scope` from batch `batch-num` onwards."
   [batch-num :- ms/PositiveInt
    scope     :- :string]
-  (t2/delete! :model/Undo :batch_num [:>= batch-num] :scope scope :undone true))
+  (t2/delete! :model/Undo :batch_num [:>= [:auto/param batch-num]] :scope [:auto/param scope] :undone true))
 
 (mu/defn insert-undos!
   "Insert the Undo `undos`."
@@ -139,7 +139,7 @@
   "Set the undone flag of the Undo batch `batch-num` to `undone?`."
   [batch-num :- ms/PositiveInt
    undone?   :- :boolean]
-  (t2/update! :model/Undo {:batch_num batch-num} {:undone undone?}))
+  (t2/update! :model/Undo {:batch_num [:auto/param batch-num]} {:undone undone?}))
 
 (mu/defn superseding-change-exists?
   "Whether a later (when `undo?`) or earlier Undo row for the rows `row-pks` of the Tables `table-ids` exists beyond
@@ -151,7 +151,7 @@
   (t2/exists? :model/Undo
               :table_id [:in table-ids]
               :row_pk [:in row-pks]
-              :batch_num [(if undo? :> :<) batch-num]
+              :batch_num [(if undo? :> :<) [:auto/param batch-num]]
               :undone (not undo?)))
 
 (mu/defn lock-sequence-next-val

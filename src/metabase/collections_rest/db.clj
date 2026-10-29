@@ -10,7 +10,7 @@
 (mu/defn collection
   "The Collection with `id`, or nil."
   [id :- [:maybe ::lib.schema.id/collection]]
-  (t2/select-one :model/Collection :id id))
+  (t2/select-one :model/Collection :id [:auto/param id]))
 
 (mu/defn directly-archived-descendant-collections
   "The directly archived Collections whose location starts with `location-prefix`."
@@ -20,7 +20,7 @@
 (mu/defn delete-collection!
   "Delete the Collection with `id`."
   [id :- ::lib.schema.id/collection]
-  (t2/delete! :model/Collection :id id))
+  (t2/delete! :model/Collection :id [:auto/param id]))
 
 (mu/defn unarchived-card-collection-types-reducible
   "A reducible of the distinct Collection id and type of the unarchived Cards."
@@ -51,6 +51,6 @@
   "The Cards in the Collection with `collection-id` that belong to no Dashboard, newest first."
   [collection-id :- [:maybe ::lib.schema.id/collection]]
   (t2/select :model/Card {:where [:and
-                                  [:= :collection_id collection-id]
+                                  [:= :collection_id [:auto/param collection-id]]
                                   [:= :dashboard_id nil]]
                           :order-by [[:id :desc]]}))

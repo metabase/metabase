@@ -18,7 +18,7 @@
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/Dashboard :id dashboard-id))
+  (t2/select-one :model/Dashboard :id [:auto/param dashboard-id]))
 
 (mu/defn insert-dashboard!
   "Insert the Dashboard `row` and return the inserted instance."
@@ -34,17 +34,17 @@
   `:archived`, `:collection_id`, `:cache_ttl`, ...), and a narrowed schema refuses every one of them."
   [dashboard-id :- ::lib.schema.id/dashboard
    changes      :- ::dashboards.schema/dashboard.update]
-  (t2/update! :model/Dashboard :id dashboard-id changes))
+  (t2/update! :model/Dashboard :id [:auto/param dashboard-id] changes))
 
 (mu/defn delete-dashboard-revisions!
   "Delete the Revisions of the Dashboard with `dashboard-id`, returning the number deleted."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/delete! :model/Revision :model "Dashboard" :model_id dashboard-id))
+  (t2/delete! :model/Revision :model "Dashboard" :model_id [:auto/param dashboard-id]))
 
 (mu/defn delete-pulses-for-dashboard!
   "Delete the Pulses of the Dashboard with `dashboard-id`, returning the number deleted."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/delete! :model/Pulse :dashboard_id dashboard-id))
+  (t2/delete! :model/Pulse :dashboard_id [:auto/param dashboard-id]))
 
 (mu/defn dashboard-tabs-for-dashboards
   "The DashboardTabs of the Dashboards with `dashboard-ids`, in dashboard then position order."
@@ -86,7 +86,7 @@
 (mu/defn internal-dashboard-question-ids
   "The ids of the Cards internal to the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-pks-set :model/Card :dashboard_id dashboard-id))
+  (t2/select-pks-set :model/Card :dashboard_id [:auto/param dashboard-id]))
 
 (mu/defn set-cards-archived!
   "Set the archived flags of the Cards with `card-ids`, returning the number updated."
@@ -98,25 +98,25 @@
   "Archive the unarchived Cards internal to the Dashboard with `dashboard-id`, not directly, returning the number
   updated."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/update! :model/Card :dashboard_id dashboard-id :archived false {:archived true :archived_directly false}))
+  (t2/update! :model/Card :dashboard_id [:auto/param dashboard-id] :archived false {:archived true :archived_directly false}))
 
 (mu/defn unarchive-dashboard-questions!
   "Unarchive the Cards internal to the Dashboard with `dashboard-id` that were not archived directly, returning the
   number updated."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/update! :model/Card :dashboard_id dashboard-id :archived true :archived_directly false {:archived false}))
+  (t2/update! :model/Card :dashboard_id [:auto/param dashboard-id] :archived true :archived_directly false {:archived false}))
 
 (mu/defn move-dashboard-questions!
   "Move the Cards internal to the Dashboard with `dashboard-id` to the Collection with `collection-id`, returning
   the number updated."
   [dashboard-id  :- ::lib.schema.id/dashboard
    collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/update! :model/Card :dashboard_id dashboard-id {:collection_id collection-id}))
+  (t2/update! :model/Card :dashboard_id [:auto/param dashboard-id] {:collection_id collection-id}))
 
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))
+  (t2/select-one :model/Card :id [:auto/param card-id]))
 
 (mu/defn card-query-columns
   "The query-relevant columns of the Card with `card-id`, or nil."
@@ -162,7 +162,7 @@
   `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select [:model/DashboardCard :id :card_id :action_id :parameter_mappings :visualization_settings]
-             :dashboard_id dashboard-id))
+             :dashboard_id [:auto/param dashboard-id]))
 
 (mu/defn dashcard-series-columns
   "The id, Card id, and DashboardCard id of the DashboardCardSeries of the DashboardCards with `dashcard-ids`."
@@ -182,7 +182,7 @@
 (mu/defn dashcard
   "The DashboardCard with `dashcard-id`, or nil."
   [dashcard-id :- ::lib.schema.id/dashcard]
-  (t2/select-one :model/DashboardCard :id dashcard-id))
+  (t2/select-one :model/DashboardCard :id [:auto/param dashcard-id]))
 
 (mu/defn multi-cards-for-dashcard
   "The unarchived Cards added to the DashboardCard with `dashcard-id` as series (the 'add series' feature)."
@@ -206,7 +206,7 @@
   "The DashboardCards of the Dashboard with `dashboard-id` on the DashboardTabs with `tab-ids`."
   [dashboard-id :- ::lib.schema.id/dashboard
    tab-ids      :- [:sequential ms/PositiveInt]]
-  (t2/select :model/DashboardCard :dashboard_id dashboard-id :dashboard_tab_id [:in tab-ids]))
+  (t2/select :model/DashboardCard :dashboard_id [:auto/param dashboard-id] :dashboard_tab_id [:in tab-ids]))
 
 (mu/defn insert-dashcards!
   "Insert the DashboardCard `rows` and return their ids."
@@ -218,7 +218,7 @@
   "Apply `changes` to the DashboardCard with `dashcard-id`, returning the number updated."
   [dashcard-id :- ::lib.schema.id/dashcard
    changes     :- ::dashboards.schema/dashboard-card.update]
-  (t2/update! :model/DashboardCard :id dashcard-id changes))
+  (t2/update! :model/DashboardCard :id [:auto/param dashcard-id] changes))
 
 (mu/defn delete-dashcards!
   "Delete the DashboardCards with `dashcard-ids`, returning the number deleted."
@@ -380,7 +380,7 @@
 (mu/defn dashboard-tab
   "The DashboardTab with `tab-id`, or nil."
   [tab-id :- ms/PositiveInt]
-  (t2/select-one :model/DashboardTab :id tab-id))
+  (t2/select-one :model/DashboardTab :id [:auto/param tab-id]))
 
 (mu/defn insert-dashboard-tabs!
   "Insert the DashboardTab `rows` and return their ids."
@@ -392,7 +392,7 @@
   "Apply `changes` to the DashboardTab with `tab-id`, returning the number updated."
   [tab-id  :- ms/PositiveInt
    changes :- (mut/select-keys ::dashboards.schema/dashboard-tab.update [:name :position])]
-  (t2/update! :model/DashboardTab :id tab-id changes))
+  (t2/update! :model/DashboardTab :id [:auto/param tab-id] changes))
 
 (mu/defn delete-dashboard-tabs!
   "Delete the DashboardTabs with `tab-ids`, returning the number deleted."

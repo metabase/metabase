@@ -91,63 +91,63 @@
 (mu/defn card-exists?
   "Whether a Card with `id` exists."
   [id :- ::lib.schema.id/card]
-  (t2/exists? :model/Card :id id))
+  (t2/exists? :model/Card :id [:auto/param id]))
 
 (mu/defn dashboard-exists?
   "Whether a Dashboard with `id` exists."
   [id :- ::lib.schema.id/dashboard]
-  (t2/exists? :model/Dashboard :id id))
+  (t2/exists? :model/Dashboard :id [:auto/param id]))
 
 (mu/defn table-exists?
   "Whether a Table with `id` exists."
   [id :- ::lib.schema.id/table]
-  (t2/exists? :model/Table :id id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/exists? :model/Table :id [:auto/param id] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn collection-exists?
   "Whether a Collection with `id` exists."
   [id :- ::lib.schema.id/collection]
-  (t2/exists? :model/Collection :id id))
+  (t2/exists? :model/Collection :id [:auto/param id]))
 
 (mu/defn document-exists?
   "Whether a Document with `id` exists."
   [id :- ms/PositiveInt]
-  (t2/exists? :model/Document :id id))
+  (t2/exists? :model/Document :id [:auto/param id]))
 
 (mu/defn card
   "The Card with `id`, or nil."
   [id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id id))
+  (t2/select-one :model/Card :id [:auto/param id]))
 
 (mu/defn table
   "The Table with `id`, or nil."
   [id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :id [:auto/param id] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn collection
   "The Collection with `id`, or nil."
   [id :- ::lib.schema.id/collection]
-  (t2/select-one :model/Collection :id id))
+  (t2/select-one :model/Collection :id [:auto/param id]))
 
 (mu/defn document
   "The Document with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/Document :id id))
+  (t2/select-one :model/Document :id [:auto/param id]))
 
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/Dashboard :id dashboard-id))
+  (t2/select-one :model/Dashboard :id [:auto/param dashboard-id]))
 
 (mu/defn card-document-id
   "The Document id of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :document_id :model/Card :id card-id))
+  (t2/select-one-fn :document_id :model/Card :id [:auto/param card-id]))
 
 (mu/defn recent-views-for-user-context
   "The RecentViews of the User with `user-id` in `context`, newest first."
   [user-id :- ::lib.schema.id/user
    context :- [:or :keyword :string]]
-  (t2/select :model/RecentViews :user_id user-id :context context {:order-by [[:timestamp :desc]]}))
+  (t2/select :model/RecentViews :user_id [:auto/param user-id] :context context {:order-by [[:timestamp :desc]]}))
 
 (mu/defn recent-view-ids-to-prune
   "The ids of the RecentViews of the User with `user-id` for `db-model` in `context` beyond the newest `keep` of
@@ -162,8 +162,8 @@
                     {:select [:rv.id]
                      :from [[:recent_views :rv]]
                      :where [:and
-                             [:= :rv.model db-model]
-                             [:= :rv.user_id user-id]
+                             [:= :rv.model [:auto/param db-model]]
+                             [:= :rv.user_id [:auto/param user-id]]
                              [:= :rv.context (h2x/literal context)]
                              (when card-type
                                [:= :rc.type (h2x/literal card-type)])]
@@ -194,9 +194,9 @@
    :model_id
    :model/RecentViews
    {:where    [:and
-               [:= :user_id user-id]
+               [:= :user_id [:auto/param user-id]]
                [:= :model (h2x/literal "dashboard")]
-               [:> :timestamp since]
+               [:> :timestamp [:auto/param since]]
                [:not= :d.archived true]]
     :order-by [[:recent_views.id :desc]]
     :left-join [[:report_dashboard :d]
@@ -308,7 +308,7 @@
              {:select    [:rv.* [:rc.type :card_type]]
               :from      [[:recent_views :rv]]
               :where     [:and
-                          [:= :rv.user_id user-id]
+                          [:= :rv.user_id [:auto/param user-id]]
                           [:in :rv.context contexts]
                           (when (seq db-models)
                             [:in :rv.model db-models])

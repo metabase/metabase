@@ -31,22 +31,22 @@
 (mu/defn plugin-by-identifier
   "The CustomVizPlugin with `identifier`, or nil."
   [identifier :- :string]
-  (t2/select-one :model/CustomVizPlugin :identifier identifier))
+  (t2/select-one :model/CustomVizPlugin :identifier [:auto/param identifier]))
 
 (mu/defn plugin-identifier-exists?
   "Whether a CustomVizPlugin with `identifier` exists."
   [identifier :- :string]
-  (t2/exists? :model/CustomVizPlugin :identifier identifier))
+  (t2/exists? :model/CustomVizPlugin :identifier [:auto/param identifier]))
 
 (mu/defn plugin-bundle
   "The bundle bytes of the CustomVizPlugin with `plugin-id`."
   [plugin-id :- ms/PositiveInt]
-  (t2/select-one-fn :bundle :model/CustomVizPlugin :id plugin-id))
+  (t2/select-one-fn :bundle :model/CustomVizPlugin :id [:auto/param plugin-id]))
 
 (mu/defn plugin-dev-bundle-url
   "The dev bundle URL of the CustomVizPlugin with `plugin-id`."
   [plugin-id :- ms/PositiveInt]
-  (t2/select-one-fn :dev_bundle_url :model/CustomVizPlugin :id plugin-id))
+  (t2/select-one-fn :dev_bundle_url :model/CustomVizPlugin :id [:auto/param plugin-id]))
 
 (mu/defn insert-plugin!
   "Insert `plugin` and return the new instance."
@@ -57,9 +57,9 @@
   "Apply `changes` to the CustomVizPlugin with `plugin-id`, returning the number updated."
   [plugin-id :- ms/PositiveInt
    changes   :- ::custom-viz-plugin.schema/custom-viz-plugin.update]
-  (t2/update! :model/CustomVizPlugin :id plugin-id changes))
+  (t2/update! :model/CustomVizPlugin :id [:auto/param plugin-id] changes))
 
 (mu/defn delete-plugin!
   "Delete the CustomVizPlugin with `plugin-id`, returning the number deleted."
   [plugin-id :- ms/PositiveInt]
-  (t2/delete! :model/CustomVizPlugin :id plugin-id))
+  (t2/delete! :model/CustomVizPlugin :id [:auto/param plugin-id]))

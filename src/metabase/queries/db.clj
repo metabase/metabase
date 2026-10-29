@@ -57,7 +57,7 @@
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))
+  (t2/select-one :model/Card :id [:auto/param card-id]))
 
 (mu/defn cards
   "The Cards with `card-ids` (nil entries, e.g. from virtual dashcards, are ignored)."
@@ -87,24 +87,24 @@
 (mu/defn card-document-id
   "The `:document_id` of the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :document_id :model/Card :id card-id))
+  (t2/select-one-fn :document_id :model/Card :id [:auto/param card-id]))
 
 (mu/defn card-parameters
   "The `:parameters` of the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :parameters [:model/Card :parameters] :id card-id))
+  (t2/select-one-fn :parameters [:model/Card :parameters] :id [:auto/param card-id]))
 
 (mu/defn raw-card-dimensions
   "The raw `:dimensions` row of the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
   (t2/query-one {:select [:dimensions]
                  :from   [:report_card]
-                 :where  [:= :id card-id]}))
+                 :where  [:= :id [:auto/param card-id]]}))
 
 (mu/defn card-database-and-table-ids
   "The database and primary table IDs of the Card with `card-id`, as `:database-id` and `:table-id`."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card [:database_id :database-id] [:table_id :table-id]] :id card-id))
+  (t2/select-one [:model/Card [:database_id :database-id] [:table_id :table-id]] :id [:auto/param card-id]))
 
 (mu/defn cards-queries-info
   "The IDs and query-related fields of the Cards with `card-ids`.
@@ -142,7 +142,7 @@
 (mu/defn document-card-ids
   "The IDs of the Cards that belong to the Document with `document-id`."
   [document-id :- ms/PositiveInt]
-  (t2/select-pks-set :model/Card :document_id document-id))
+  (t2/select-pks-set :model/Card :document_id [:auto/param document-id]))
 
 (mu/defn insert-card!
   "Insert `card` and return the new instance."
@@ -153,7 +153,7 @@
   "Apply `changes` to the Card with `card-id`, returning the number updated."
   [card-id :- ::lib.schema.id/card
    changes :- ::queries.schema/card.update]
-  (t2/update! :model/Card :id card-id changes))
+  (t2/update! :model/Card :id [:auto/param card-id] changes))
 
 ;;; ------------------------------------------- Card statistics -------------------------------------------
 
@@ -245,7 +245,7 @@
 (mu/defn database-name
   "The name of the Database with `database-id`."
   [database-id :- [:maybe ::lib.schema.id/database]]
-  (t2/select-one-fn :name :model/Database :id database-id))
+  (t2/select-one-fn :name :model/Database :id [:auto/param database-id]))
 
 (mu/defn field-database-info-for-ids
   "The id, name, table name, and Database id of the Fields with `field-ids`."
@@ -272,7 +272,7 @@
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/Dashboard :id dashboard-id))
+  (t2/select-one :model/Dashboard :id [:auto/param dashboard-id]))
 
 (mu/defn dashboards
   "The Dashboards with `dashboard-ids`."
@@ -282,23 +282,23 @@
 (mu/defn dashboard-collection-id
   "The `:collection_id` of the Dashboard with `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] :id dashboard-id))
+  (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] :id [:auto/param dashboard-id]))
 
 (mu/defn dashboard-parameters
   "The `:parameters` of the Dashboard with `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one-fn :parameters [:model/Dashboard :parameters] :id dashboard-id))
+  (t2/select-one-fn :parameters [:model/Dashboard :parameters] :id [:auto/param dashboard-id]))
 
 (mu/defn update-dashboard!
   "Apply `changes` to the Dashboard with `dashboard-id`, returning the number updated."
   [dashboard-id :- ::lib.schema.id/dashboard
    changes      :- ::dashboards.schema/dashboard.update]
-  (t2/update! :model/Dashboard :id dashboard-id changes))
+  (t2/update! :model/Dashboard :id [:auto/param dashboard-id] changes))
 
 (mu/defn dashcards-for-card
   "The DashboardCards showing the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
-  (t2/select :model/DashboardCard :card_id card-id))
+  (t2/select :model/DashboardCard :card_id [:auto/param card-id]))
 
 (mu/defn insert-dashcard!
   "Insert `dashcard`, returning the number inserted."
@@ -309,21 +309,21 @@
   "Apply `changes` to the DashboardCard with `dashcard-id`, returning the number updated."
   [dashcard-id :- ::lib.schema.id/dashcard
    changes     :- ::dashboards.schema/dashboard-card.update]
-  (t2/update! :model/DashboardCard :id dashcard-id changes))
+  (t2/update! :model/DashboardCard :id [:auto/param dashcard-id] changes))
 
 (mu/defn delete-dashcards-for-card-on-dashboard!
   "Delete the DashboardCards showing the Card with `card-id` on the Dashboard with `dashboard-id`, returning the
   number deleted."
   [card-id      :- ::lib.schema.id/card
    dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/delete! :model/DashboardCard :card_id card-id :dashboard_id dashboard-id))
+  (t2/delete! :model/DashboardCard :card_id [:auto/param card-id] :dashboard_id [:auto/param dashboard-id]))
 
 (mu/defn delete-dashcards-for-card-off-dashboard!
   "Delete the DashboardCards showing the Card with `card-id` on any Dashboard other than `dashboard-id`, returning
   the number deleted."
   [card-id      :- ::lib.schema.id/card
    dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/delete! :model/DashboardCard :card_id card-id :dashboard_id [:not= dashboard-id]))
+  (t2/delete! :model/DashboardCard :card_id [:auto/param card-id] :dashboard_id [:not= [:auto/param dashboard-id]]))
 
 (mu/defn dashcard-series-for-card-on-dashboard
   "The IDs of the DashboardCardSeries showing the Card with `card-id` on the Dashboard with `dashboard-id`."
@@ -333,8 +333,8 @@
              :from   [[:dashboardcard_series :dcs]]
              :join   [[:report_dashboardcard :dc] [:= :dc.id :dcs.dashboardcard_id]]
              :where  [:and
-                      [:= :dc.dashboard_id dashboard-id]
-                      [:= :dcs.card_id card-id]]}))
+                      [:= :dc.dashboard_id [:auto/param dashboard-id]]
+                      [:= :dcs.card_id [:auto/param card-id]]]}))
 
 (mu/defn dashcard-series-for-card-off-dashboard
   "The IDs of the DashboardCardSeries showing the Card with `card-id` on any Dashboard other than `dashboard-id`."
@@ -344,8 +344,8 @@
              :from   [[:dashboardcard_series :dcs]]
              :join   [[:report_dashboardcard :dc] [:= :dc.id :dcs.dashboardcard_id]]
              :where  [:and
-                      [:= :dcs.card_id card-id]
-                      [:not= :dc.dashboard_id dashboard-id]]}))
+                      [:= :dcs.card_id [:auto/param card-id]]
+                      [:not= :dc.dashboard_id [:auto/param dashboard-id]]]}))
 
 (mu/defn delete-dashcard-series!
   "Delete the DashboardCardSeries with `series-ids`, returning the number deleted."
@@ -358,24 +358,24 @@
   (t2/select-pks-set :model/Action {:select [:action.id]
                                     :from   [:action]
                                     :join   [:implicit_action [:= :action.id :implicit_action.action_id]]
-                                    :where  [:= :action.model_id model-id]}))
+                                    :where  [:= :action.model_id [:auto/param model-id]]}))
 
 (mu/defn move-actions-of-model!
   "Move the Actions of the model Card with `model-id` to the Collection with `collection-id`, returning the number
   updated."
   [model-id      :- ::lib.schema.id/card
    collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/update! :model/Action {:model_id model-id} {:collection_id collection-id}))
+  (t2/update! :model/Action {:model_id [:auto/param model-id]} {:collection_id collection-id}))
 
 (mu/defn delete-actions-of-model!
   "Delete the Actions of the Card with `model-id`, returning the number deleted."
   [model-id :- ms/PositiveInt]
-  (t2/delete! :model/Action :model_id model-id))
+  (t2/delete! :model/Action :model_id [:auto/param model-id]))
 
 (mu/defn actions-for-model
   "The Actions of the model Card with `model-id`."
   [model-id :- ms/PositiveInt]
-  (t2/select :model/Action :model_id model-id))
+  (t2/select :model/Action :model_id [:auto/param model-id]))
 
 (mu/defn delete-actions!
   "Delete the Actions with `action-ids`, returning the number deleted."
@@ -385,12 +385,12 @@
 (mu/defn delete-card-moderation-reviews!
   "Delete the ModerationReviews of the Card with `card-id`, returning the number deleted."
   [card-id :- ::lib.schema.id/card]
-  (t2/delete! :model/ModerationReview :moderated_item_type "card" :moderated_item_id card-id))
+  (t2/delete! :model/ModerationReview :moderated_item_type "card" :moderated_item_id [:auto/param card-id]))
 
 (mu/defn delete-card-revisions!
   "Delete the Revisions of the Card with `card-id`, returning the number deleted."
   [card-id :- ::lib.schema.id/card]
-  (t2/delete! :model/Revision :model "Card" :model_id card-id))
+  (t2/delete! :model/Revision :model "Card" :model_id [:auto/param card-id]))
 
 (mu/defn card-notification-ids
   "The IDs of the card Notifications attached to the Card with `card-id`."
@@ -399,7 +399,7 @@
                      :payload_type :notification/card
                      :payload_id [:in ^:allow-subquery {:select [:id]
                                                         :from   [:notification_card]
-                                                        :where  [:= :card_id card-id]}]))
+                                                        :where  [:= :card_id [:auto/param card-id]]}]))
 
 (mu/defn delete-notifications!
   "Delete the Notifications with `notification-ids`, returning the number deleted."
@@ -411,7 +411,7 @@
 (mu/defn parameter-cards-for-card
   "The ParameterCards drawing values from the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
-  (t2/select :model/ParameterCard :card_id card-id))
+  (t2/select :model/ParameterCard :card_id [:auto/param card-id]))
 
 (mu/defn parameter-card-card-ids
   "The set of Card IDs the parameters of the given parameterized object draw values from."
@@ -419,7 +419,7 @@
    object-id   :- ms/PositiveInt]
   (t2/select-fn-set :card_id :model/ParameterCard
                     :parameterized_object_type object-type
-                    :parameterized_object_id object-id))
+                    :parameterized_object_id [:auto/param object-id]))
 
 (mu/defn parameter-card-exists?
   "Whether the given parameter of the given parameterized object has a ParameterCard."
@@ -428,8 +428,8 @@
    parameter-id :- :string]
   (t2/exists? :model/ParameterCard
               :parameterized_object_type object-type
-              :parameterized_object_id object-id
-              :parameter_id parameter-id))
+              :parameterized_object_id [:auto/param object-id]
+              :parameter_id [:auto/param parameter-id]))
 
 (mu/defn set-parameter-card-card-id!
   "Point the ParameterCard of the given parameter of the given parameterized object at `card-id`, returning the
@@ -440,8 +440,8 @@
    card-id      :- ::lib.schema.id/card]
   (t2/update! :model/ParameterCard
               {:parameterized_object_type object-type
-               :parameterized_object_id   object-id
-               :parameter_id              parameter-id}
+               :parameterized_object_id   [:auto/param object-id]
+               :parameter_id              [:auto/param parameter-id]}
               {:card_id card-id}))
 
 (mu/defn insert-parameter-card!
@@ -452,7 +452,7 @@
 (mu/defn delete-parameter-cards-for-card!
   "Delete the ParameterCards drawing values from the Card with `card-id`, returning the number deleted."
   [card-id :- ::lib.schema.id/card]
-  (t2/delete! :model/ParameterCard :card_id card-id))
+  (t2/delete! :model/ParameterCard :card_id [:auto/param card-id]))
 
 (mu/defn delete-parameter-cards-for-object!
   "Delete every ParameterCard of the given parameterized object, returning the number deleted."
@@ -460,7 +460,7 @@
    object-id   :- ms/PositiveInt]
   (t2/delete! :model/ParameterCard
               :parameterized_object_type object-type
-              :parameterized_object_id object-id))
+              :parameterized_object_id [:auto/param object-id]))
 
 (mu/defn delete-parameter-cards-for-object-except!
   "Delete the ParameterCards of the given parameterized object whose parameter is not one of `parameter-ids`,
@@ -470,7 +470,7 @@
    parameter-ids  :- [:sequential :string]]
   (t2/delete! :model/ParameterCard
               :parameterized_object_type object-type
-              :parameterized_object_id object-id
+              :parameterized_object_id [:auto/param object-id]
               :parameter_id [:not-in parameter-ids]))
 
 ;;; -------------------------------------------------- Query --------------------------------------------------
@@ -566,7 +566,7 @@
   (t2/select :model/StoredResult
              :id [:in ^:allow-subquery {:select [:stored_result_id]
                                         :from   [:stored_result_use]
-                                        :where  [:= :card_id card-id]}]))
+                                        :where  [:= :card_id [:auto/param card-id]]}]))
 
 (mu/defn unpublished-table-names :- [:set :string]
   "Among the Tables with `table-ids`, the names of those not published to the Library."

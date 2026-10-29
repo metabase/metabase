@@ -31,7 +31,7 @@
   (t2/select [:model/AiUsageLog :model [:%sum.total_tokens :tokens]]
              {:where    [:and
                          :ai_proxied
-                         [:= [:cast :created_at :date] [:cast date :date]]]
+                         [:= [:cast :created_at :date] [:cast [:auto/param date] :date]]]
               :group-by [:model]}))
 
 (mu/defn proxied-ai-usage-tokens-on
@@ -41,7 +41,7 @@
                     [:model/AiUsageLog [:%sum.total_tokens :sum]]
                     {:where [:and
                              :ai_proxied
-                             [:= [:cast :created_at :date] [:cast date :date]]]}))
+                             [:= [:cast :created_at :date] [:cast [:auto/param date] :date]]]}))
 
 (mu/defn proxied-metabot-user-message-count-on
   "The number of proxied, unforked user MetabotMessages on `date`."
@@ -52,7 +52,7 @@
                     :forked_from_message_id nil
                     {:where [:and
                              :ai_proxied
-                             [:= [:cast :created_at :date] [:cast date :date]]]}))
+                             [:= [:cast :created_at :date] [:cast [:auto/param date] :date]]]}))
 
 (mu/defn proxied-metabot-user-count-on
   "The `:cnt` of distinct Users with proxied, unforked MetabotMessages on `date`."
@@ -64,7 +64,7 @@
                  :where  [:and
                           :ai_proxied
                           [:= :m.forked_from_message_id nil]
-                          [:= [:cast :m.created_at :date] [:cast date :date]]]}))
+                          [:= [:cast :m.created_at :date] [:cast [:auto/param date] :date]]]}))
 
 (def ^:private sdk-embed-condition
   [:= :embedding_client "embedding-sdk-react"])
@@ -116,7 +116,7 @@
 (mu/defn query-execution-statistics-since
   "The QueryExecution counts per embedding client for executions started after `started-after`."
   [started-after :- ms/TemporalInstant]
-  (t2/select-one query-execution-statistics {:where [:> :started_at started-after]}))
+  (t2/select-one query-execution-statistics {:where [:> :started_at [:auto/param started-after]]}))
 
 (mu/defn query-execution-statistics-between
   "The QueryExecution counts per embedding client for executions started in `[start, end)`."
@@ -124,8 +124,8 @@
    end   :- ms/TemporalInstant]
   ;; A bare range on `started_at` lets the DB use `idx_query_execution_started_at`; casting the column would not.
   (t2/select-one query-execution-statistics {:where [:and
-                                                     [:>= :started_at start]
-                                                     [:< :started_at end]]}))
+                                                     [:>= :started_at [:auto/param start]]
+                                                     [:< :started_at [:auto/param end]]]}))
 
 (defn- and-not-nil
   ([not-nil-field]

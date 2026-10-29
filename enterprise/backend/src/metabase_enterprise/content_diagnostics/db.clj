@@ -89,7 +89,7 @@
   [scan-id       :- :string
    finding-types :- [:set :keyword]]
   (t2/update! :model/ContentDiagnosticsFinding
-              {:scan_id        [:not= scan-id]
+              {:scan_id        [:not= [:auto/param scan-id]]
                :finding_type   [:in finding-types]
                :invalidated_at nil}
               {:invalidated_at (mi/now)}))
@@ -100,7 +100,7 @@
    entity-id   :- ms/PositiveInt]
   (t2/update! :model/ContentDiagnosticsFinding
               {:entity_type    entity-type
-               :entity_id      entity-id
+               :entity_id      [:auto/param entity-id]
                :invalidated_at nil}
               {:invalidated_at (mi/now)}))
 
@@ -327,7 +327,7 @@
                         :join   [[:report_card :c] [:= :c.id :qe.card_id]]
                         :where  [:and
                                  [:= :c.archived false]
-                                 [:>= :qe.started_at cutoff]
+                                 [:>= :qe.started_at [:auto/param cutoff]]
                                  [:= :qe.parameterized false]
                                  [:= [:coalesce :qe.is_sandboxed false] false]
                                  [:not= :qe.cache_hit true]
@@ -359,14 +359,14 @@
                                    [:not= :qe.running_time nil]
                                    [:not= :qe.cache_hit true]
                                    [:= :c.archived false]
-                                   [:>= :qe.started_at cutoff]
+                                   [:>= :qe.started_at [:auto/param cutoff]]
                                    eligible-clause]}
                          :ranked]]
              :where    [:and
                         [:>= :rn [:/ :cnt 2.0]]
                         [:<= :rn [:+ [:/ :cnt 2.0] 1]]]
              :group-by [:card_id]
-             :having   [:> [:avg :running_time] threshold-ms]}))
+             :having   [:> [:avg :running_time] [:auto/param threshold-ms]]}))
 
 ;;; ------------------------------------------------ Dashboards -----------------------------------------------
 
@@ -448,7 +448,7 @@
   (t2/select [:model/Document :id :document :content_type]
              {:where [:and
                       [:= :archived false]
-                      [:= :content_type content-type]
+                      [:= :content_type [:auto/param content-type]]
                       eligible-clause]}))
 
 ;;; ------------------------------------------------- Transforms ----------------------------------------------
@@ -479,7 +479,7 @@
              :from     [:transform_run]
              :where    [:and
                         [:in :status ["succeeded" "failed" "timeout"]]
-                        [:>= :start_time cutoff]]
+                        [:>= :start_time [:auto/param cutoff]]]
              :group-by [:transform_id]}))
 
 ;;; ------------------------------------------------ Task history ---------------------------------------------
@@ -487,4 +487,4 @@
 (mu/defn task-history-details
   "The `task_details` of every `task_history` row for `task-name`."
   [task-name :- :string]
-  (t2/select-fn-vec :task_details [:model/TaskHistory :task_details] :task task-name))
+  (t2/select-fn-vec :task_details [:model/TaskHistory :task_details] :task [:auto/param task-name]))

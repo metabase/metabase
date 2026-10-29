@@ -19,14 +19,14 @@
 (mu/defn run
   "The ReplacementRun with `run-id`, or nil."
   [run-id :- ms/PositiveInt]
-  (t2/select-one :model/ReplacementRun :id run-id))
+  (t2/select-one :model/ReplacementRun :id [:auto/param run-id]))
 
 (mu/defn runs
   "The ReplacementRuns, newest first, restricted to the `is-active` flag when given."
   [is-active :- [:maybe :boolean]]
   (t2/select :model/ReplacementRun
              (cond-> {:order-by [[:start_time :desc]]}
-               (some? is-active) (assoc :where [:= :is_active is-active]))))
+               (some? is-active) (assoc :where [:= :is_active [:auto/param is-active]]))))
 
 (mu/defn active-run
   "The active ReplacementRun, or nil."
@@ -36,7 +36,7 @@
 (mu/defn run-active-flag
   "The `:is_active` row of the ReplacementRun with `run-id`, or nil."
   [run-id :- ms/PositiveInt]
-  (t2/select-one [:model/ReplacementRun :is_active] :id run-id))
+  (t2/select-one [:model/ReplacementRun :is_active] :id [:auto/param run-id]))
 
 (mu/defn insert-run!
   "Insert `run` and return the new instance."
@@ -47,13 +47,13 @@
   "Apply `changes` to the ReplacementRun with `run-id`, returning the number updated."
   [run-id  :- ms/PositiveInt
    changes :- ::replacement.schema/replacement-run.update]
-  (t2/update! :model/ReplacementRun :id run-id changes))
+  (t2/update! :model/ReplacementRun :id [:auto/param run-id] changes))
 
 (mu/defn update-active-run!
   "Apply `changes` to the ReplacementRun with `run-id` if it is active, returning the number updated."
   [run-id  :- ms/PositiveInt
    changes :- ::replacement.schema/replacement-run.update]
-  (t2/update! :model/ReplacementRun :id run-id :is_active true changes))
+  (t2/update! :model/ReplacementRun :id [:auto/param run-id] :is_active true changes))
 
 (mu/defn time-out-active-runs-older-than!
   "Mark the active ReplacementRuns started more than `age` `unit`s ago as timed out, returning the number updated."
@@ -100,7 +100,7 @@
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))
+  (t2/select-one :model/Card :id [:auto/param card-id]))
 
 (mu/defn cards-by-id
   "A map of Card ID to Card for `card-ids`."
@@ -110,89 +110,89 @@
 (mu/defn card-database-id
   "The Database ID of the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :database_id :model/Card :id card-id))
+  (t2/select-one-fn :database_id :model/Card :id [:auto/param card-id]))
 
 (mu/defn card-with-table-exists?
   "Whether one of the Cards with `card-ids` is on the Table with `table-id`."
   [card-ids :- [:set ::lib.schema.id/card]
    table-id :- ::lib.schema.id/table]
-  (t2/exists? :model/Card :id [:in card-ids] :table_id table-id))
+  (t2/exists? :model/Card :id [:in card-ids] :table_id [:auto/param table-id]))
 
 (mu/defn update-card!
   "Apply `changes` to the Card with `card-id`, returning the number updated."
   [card-id :- ::lib.schema.id/card
    changes :- ::queries.schema/card.update]
-  (t2/update! :model/Card :id card-id changes))
+  (t2/update! :model/Card :id [:auto/param card-id] changes))
 
 (mu/defn transform
   "The Transform with `transform-id`, or nil."
   [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one :model/Transform :id transform-id))
+  (t2/select-one :model/Transform :id [:auto/param transform-id]))
 
 (mu/defn update-transform!
   "Apply `changes` to the Transform with `transform-id`, returning the number updated."
   [transform-id :- ::lib.schema.id/transform
    changes      :- ::transforms.schema/transform.update]
-  (t2/update! :model/Transform :id transform-id changes))
+  (t2/update! :model/Transform :id [:auto/param transform-id] changes))
 
 (mu/defn segment
   "The Segment with `segment-id`, or nil."
   [segment-id :- ::lib.schema.id/segment]
-  (t2/select-one :model/Segment :id segment-id))
+  (t2/select-one :model/Segment :id [:auto/param segment-id]))
 
 (mu/defn update-segment!
   "Apply `changes` to the Segment with `segment-id`, returning the number updated."
   [segment-id :- ::lib.schema.id/segment
    changes    :- ::segments.schema/segment.update]
-  (t2/update! :model/Segment :id segment-id changes))
+  (t2/update! :model/Segment :id [:auto/param segment-id] changes))
 
 (mu/defn measure
   "The Measure with `measure-id`, or nil."
   [measure-id :- ::lib.schema.id/measure]
-  (t2/select-one :model/Measure :id measure-id))
+  (t2/select-one :model/Measure :id [:auto/param measure-id]))
 
 (mu/defn update-measure!
   "Apply `changes` to the Measure with `measure-id`, returning the number updated."
   [measure-id :- ::lib.schema.id/measure
    changes    :- ::measures.schema/measure.update]
-  (t2/update! :model/Measure :id measure-id changes))
+  (t2/update! :model/Measure :id [:auto/param measure-id] changes))
 
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/Dashboard :id dashboard-id))
+  (t2/select-one :model/Dashboard :id [:auto/param dashboard-id]))
 
 (mu/defn update-dashboard!
   "Apply `changes` to the Dashboard with `dashboard-id`, returning the number updated."
   [dashboard-id :- ::lib.schema.id/dashboard
    changes      :- ::dashboards.schema/dashboard.update]
-  (t2/update! :model/Dashboard :id dashboard-id changes))
+  (t2/update! :model/Dashboard :id [:auto/param dashboard-id] changes))
 
 (mu/defn dashboard-cards
   "The DashboardCards of the Dashboard with `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select :model/DashboardCard :dashboard_id dashboard-id))
+  (t2/select :model/DashboardCard :dashboard_id [:auto/param dashboard-id]))
 
 (mu/defn update-dashboard-card!
   "Apply `changes` to the DashboardCard with `dashcard-id`, returning the number updated."
   [dashcard-id :- ::lib.schema.id/dashcard
    changes     :- ::dashboards.schema/dashboard-card.update]
-  (t2/update! :model/DashboardCard :id dashcard-id changes))
+  (t2/update! :model/DashboardCard :id [:auto/param dashcard-id] changes))
 
 (mu/defn table-database-id
   "The Database ID of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one-fn :db_id :model/Table :id [:auto/param table-id] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn active-fields-of-table
   "The active Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select :model/Field :table_id table-id :active true {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select :model/Field :table_id [:auto/param table-id] :active true {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn active-field-ids-of-table
   "The IDs of the active Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-pks-set :model/Field :table_id table-id :active true {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-pks-set :model/Field :table_id [:auto/param table-id] :active true {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn active-fk-to-fields-exists?
   "Whether an active Field on an active Table points at one of the Fields with `field-ids`."
@@ -208,7 +208,7 @@
 (mu/defn sandbox-exists-for-table?
   "Whether a Sandbox is defined on the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/exists? :model/Sandbox :table_id table-id))
+  (t2/exists? :model/Sandbox :table_id [:auto/param table-id]))
 
 (mu/defn sandbox-card-ids
   "The IDs of the Cards Sandboxes are built on."
@@ -218,4 +218,4 @@
 (mu/defn persisted-info-for-card
   "The PersistedInfo of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/PersistedInfo :card_id card-id))
+  (t2/select-one :model/PersistedInfo :card_id [:auto/param card-id]))

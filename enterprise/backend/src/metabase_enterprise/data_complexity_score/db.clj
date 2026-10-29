@@ -31,7 +31,7 @@
 (mu/defn collection
   "The Collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one :model/Collection :id collection-id))
+  (t2/select-one :model/Collection :id [:auto/param collection-id]))
 
 (mu/defn verified-card-ids
   "The IDs of the Cards whose most recent moderation review is verified."
@@ -58,30 +58,30 @@
   (t2/select [:model/Card :id :name :type :collection_id]
              :type        [:in ["metric" "model"]]
              :archived    false
-             :database_id [:not= audit-database-id]))
+             :database_id [:not= [:auto/param audit-database-id]]))
 
 (mu/defn universe-tables
   "The scoring columns of the active Tables outside the Database with `audit-database-id`."
   [audit-database-id :- ::lib.schema.id/database]
   (t2/select [:model/Table :id :name :collection_id :is_published :visibility_type :db_id :data_layer :data_authority]
              :active true
-             :db_id  [:not= audit-database-id] {:from [(warehouse-schema-overlay/table-query)]}))
+             :db_id  [:not= [:auto/param audit-database-id]] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn metabot-by-entity-id
   "The Metabot with `entity-id`, or nil."
   [entity-id :- :string]
-  (t2/select-one :model/Metabot :entity_id entity-id))
+  (t2/select-one :model/Metabot :entity_id [:auto/param entity-id]))
 
 (mu/defn latest-score-entry
   "The most recent DataComplexityScore of `source` for `fingerprint`, or nil."
   [fingerprint :- :string
    source      :- :string]
-  (t2/select-one :model/DataComplexityScore :fingerprint fingerprint :source source {:order-by [[:id :desc]]}))
+  (t2/select-one :model/DataComplexityScore :fingerprint [:auto/param fingerprint] :source [:auto/param source] {:order-by [[:id :desc]]}))
 
 (mu/defn score-entry
   "The DataComplexityScore with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/DataComplexityScore :id id))
+  (t2/select-one :model/DataComplexityScore :id [:auto/param id]))
 
 (mu/defn scored-within-hours?
   "Whether a DataComplexityScore of `source` for `fingerprint` was created within the last `hours` hours of
@@ -91,8 +91,8 @@
    hours       :- number?]
   (t2/exists? :model/DataComplexityScore
               {:where [:and
-                       [:= :fingerprint fingerprint]
-                       [:= :source source]
+                       [:= :fingerprint [:auto/param fingerprint]]
+                       [:= :source [:auto/param source]]
                        [:>= :created_at (h2x/add-interval-honeysql-form (mdb/db-type) :%now (- hours) :hour)]]}))
 
 (mu/defn insert-score!

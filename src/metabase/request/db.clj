@@ -25,4 +25,4 @@
                   [:is_data_analyst :is-data-analyst?]
                   [:locale :user-locale]
                   :settings]
-                 :id user-id))
+                 :id [:auto/param user-id]))

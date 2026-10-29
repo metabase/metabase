@@ -28,22 +28,22 @@
 (mu/defn collection
   "The ::collections.schema/collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one :model/Collection :id collection-id))
+  (t2/select-one :model/Collection :id [:auto/param collection-id]))
 
 (mu/defn collection-id-and-namespace
   "The ID and namespace of the ::collections.schema/collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one [:model/Collection :id :namespace] :id collection-id))
+  (t2/select-one [:model/Collection :id :namespace] :id [:auto/param collection-id]))
 
 (mu/defn collection-of-type
   "The ::collections.schema/collection of `type`, or nil."
   [type :- :string]
-  (t2/select-one :model/Collection :type type))
+  (t2/select-one :model/Collection :type [:auto/param type]))
 
 (mu/defn collection-with-entity-id
   "The ::collections.schema/collection with `entity-id`, or nil."
   [entity-id :- :string]
-  (t2/select-one :model/Collection :entity_id entity-id))
+  (t2/select-one :model/Collection :entity_id [:auto/param entity-id]))
 
 (mu/defn root-remote-synced-collection
   "The top-level remote-synced ::collections.schema/collection, or nil."
@@ -53,44 +53,44 @@
 (mu/defn personal-collection-of-user
   "The personal ::collections.schema/collection of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one :model/Collection :personal_owner_id user-id))
+  (t2/select-one :model/Collection :personal_owner_id [:auto/param user-id]))
 
 (mu/defn collection-exists?
   "Whether a ::collections.schema/collection with `collection-id` exists. `collection-id` may be nil for an item in the root
   ::collections.schema/collection, which always answers false."
   [collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/exists? :model/Collection :id collection-id))
+  (t2/exists? :model/Collection :id [:auto/param collection-id]))
 
 (mu/defn unarchived-collection-exists?
   "Whether an unarchived ::collections.schema/collection with `collection-id` exists."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/exists? :model/Collection :id collection-id :archived false))
+  (t2/exists? :model/Collection :id [:auto/param collection-id] :archived false))
 
 (mu/defn remote-synced-collection-exists?
   "Whether a remote-synced ::collections.schema/collection with `collection-id` exists."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/exists? :model/Collection :id collection-id :is_remote_synced true))
+  (t2/exists? :model/Collection :id [:auto/param collection-id] :is_remote_synced true))
 
 (mu/defn personal-collection?
   "Whether the ::collections.schema/collection with `collection-id` is a personal ::collections.schema/collection."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/exists? :model/Collection :id collection-id :personal_owner_id [:not= nil]))
+  (t2/exists? :model/Collection :id [:auto/param collection-id] :personal_owner_id [:not= nil]))
 
 (mu/defn collection-remote-synced?
   "Whether the ::collections.schema/collection with `collection-id` is remote-synced, or nil if `collection-id` is nil (the root
   ::collections.schema/collection) or the ::collections.schema/collection does not exist."
   [collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/select-one-fn :is_remote_synced :model/Collection :id collection-id))
+  (t2/select-one-fn :is_remote_synced :model/Collection :id [:auto/param collection-id]))
 
 (mu/defn collection-namespace
   "The namespace of the ::collections.schema/collection with `collection-id`."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one-fn :namespace :model/Collection :id collection-id))
+  (t2/select-one-fn :namespace :model/Collection :id [:auto/param collection-id]))
 
 (mu/defn collection-location
   "The location of the ::collections.schema/collection with `collection-id`."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one-fn :location :model/Collection :id collection-id))
+  (t2/select-one-fn :location :model/Collection :id [:auto/param collection-id]))
 
 (defn collection-location-columns
   "The location, id, and type of the Collection with `collection-id`, or nil."
@@ -100,7 +100,7 @@
 (mu/defn root-collection-type-by-id
   "The type of the top-level Collection with `collection-id`, or nil if it is not top-level."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one-fn :type :model/Collection :id collection-id :location "/"))
+  (t2/select-one-fn :type :model/Collection :id [:auto/param collection-id] :location "/"))
 
 ;;; ---------------------------------------------- ::collections.schema/collection sets ----------------------------------------------
 
@@ -123,7 +123,7 @@
 (mu/defn collections-in-namespace
   "The Collections in the namespace named `namespace-name`."
   [namespace-name :- :string]
-  (t2/select :model/Collection :namespace namespace-name))
+  (t2/select :model/Collection :namespace [:auto/param namespace-name]))
 
 (mu/defn archived-collections-in-operations
   "The archived Collections belonging to the archive operations with `archive-operation-ids`."
@@ -155,9 +155,9 @@
                       [:like :location (str children-location-prefix "%")]
                       [:or
                        [:= :personal_owner_id nil]
-                       [:= :personal_owner_id current-user-id]]
+                       [:= :personal_owner_id [:auto/param current-user-id]]]
                       (when (some? archived?)
-                        [:= :archived archived?])
+                        [:= :archived [:auto/param archived?]])
                       visibility-clause]}))
 
 (mu/defn descendant-summaries-with-type
@@ -168,7 +168,7 @@
   (t2/select [:model/Collection :name :id :location :description :type]
              {:where [:and
                       (into [:or] (map (fn [prefix] [:like :location prefix])) location-prefixes)
-                      [:or [:= :personal_owner_id nil] [:= :personal_owner_id current-user-id]]]}))
+                      [:or [:= :personal_owner_id nil] [:= :personal_owner_id [:auto/param current-user-id]]]]}))
 
 (mu/defn effective-children
   "The ID, name, description, and type of the Collections matching `effective-children-clause`, a
@@ -214,7 +214,7 @@
   "The number of Collections with `collection-id` whose type is one of `types`."
   [collection-id :- ::lib.schema.id/collection
    types         :- [:sequential :string]]
-  (t2/count :model/Collection :id collection-id :type [:in types]))
+  (t2/count :model/Collection :id [:auto/param collection-id] :type [:in types]))
 
 (mu/defn remote-synced-collection-count
   "The number of remote-synced Collections."
@@ -224,17 +224,17 @@
 (mu/defn collection-ids-with-location-like
   "The IDs of the Collections whose location matches the SQL `pattern`."
   [pattern :- :string]
-  (t2/select-pks-set :model/Collection :location [:like pattern]))
+  (t2/select-pks-set :model/Collection :location [:like [:auto/param pattern]]))
 
 (mu/defn unarchived-collection-ids-with-location-like
   "The IDs of the unarchived Collections whose location matches the SQL `pattern`."
   [pattern :- :string]
-  (t2/select-pks-set :model/Collection :location [:like pattern] :archived false))
+  (t2/select-pks-set :model/Collection :location [:like [:auto/param pattern]] :archived false))
 
 (mu/defn not-yet-archived-collection-ids-with-location-like
   "The IDs of the Collections whose location matches the SQL `pattern` and that are not marked archived."
   [pattern :- :string]
-  (t2/select-pks-set :model/Collection :location [:like pattern] :archived [:not= true]))
+  (t2/select-pks-set :model/Collection :location [:like [:auto/param pattern]] :archived [:not= true]))
 
 (mu/defn archived-collection-ids-in-operation-with-location-like
   "The IDs of the archived Collections of the archive operation with `archive-operation-id` whose location matches
@@ -242,15 +242,15 @@
   [pattern              :- :string
    archive-operation-id :- :string]
   (t2/select-pks-set :model/Collection
-                     :location [:like pattern]
-                     :archive_operation_id [:= archive-operation-id]
+                     :location [:like [:auto/param pattern]]
+                     :archive_operation_id [:= [:auto/param archive-operation-id]]
                      :archived [:= true]))
 
 (mu/defn collection-ids-of-type
   "The IDs of the Collections among `collection-ids` of `type`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]
    type           :- :string]
-  (t2/select-pks-set :model/Collection :id [:in collection-ids] :type type))
+  (t2/select-pks-set :model/Collection :id [:in collection-ids] :type [:auto/param type]))
 
 (mu/defn child-collection-ids
   "The IDs of the non-trash Collections directly at `location`, excluding archived ones when `skip-archived?`."
@@ -259,10 +259,10 @@
    skip-archived? :- [:maybe :boolean]]
   (t2/select-pks-set :model/Collection
                      {:where [:and
-                              [:= :location location]
+                              [:= :location [:auto/param location]]
                               (when skip-archived? [:not :archived])
                               [:or
-                               [:not= :type trash-type]
+                               [:not= :type [:auto/param trash-type]]
                                [:= :type nil]]]}))
 
 (mu/defn remote-synced-root-collection-ids
@@ -306,7 +306,7 @@
   "Apply `changes` to the ::collections.schema/collection with `collection-id`, returning the number updated."
   [collection-id :- ::lib.schema.id/collection
    changes       :- (mut/select-keys ::collections.schema/collection.update [:name :description :archived :location :personal_owner_id :slug :namespace :authority_level :entity_id :created_at :type :is_sample :archive_operation_id :archived_directly :is_remote_synced])]
-  (t2/update! :model/Collection :id collection-id changes))
+  (t2/update! :model/Collection :id [:auto/param collection-id] changes))
 
 (mu/defn clear-remote-synced-flags!
   "Mark every remote-synced ::collections.schema/collection as not remote-synced, returning the number updated."
@@ -323,7 +323,7 @@
                           :archived_directly    false
                           :archived             true}
                  :where  [:and
-                          [:like :location pattern]
+                          [:like :location [:auto/param pattern]]
                           [:not :archived]]}))
 
 (mu/defn unarchive-descendant-collections!
@@ -335,14 +335,14 @@
    remote-synced?         :- :boolean
    archive-operation-id   :- :string]
   (t2/query-one {:update :collection
-                 :set    {:location             [:replace :location orig-children-location new-children-location]
+                 :set    {:location             [:replace :location [:auto/param orig-children-location] [:auto/param new-children-location]]
                           :is_remote_synced     remote-synced?
                           :archive_operation_id nil
                           :archived_directly    nil
                           :archived             false}
                  :where  [:and
                           [:like :location (str orig-children-location "%")]
-                          [:= :archive_operation_id archive-operation-id]
+                          [:= :archive_operation_id [:auto/param archive-operation-id]]
                           [:not= :archived_directly true]]}))
 
 (mu/defn move-descendant-collections!
@@ -352,14 +352,14 @@
    new-children-location  :- :string
    remote-synced?         :- :boolean]
   (t2/query-one {:update :collection
-                 :set    {:location         [:replace :location orig-children-location new-children-location]
+                 :set    {:location         [:replace :location [:auto/param orig-children-location] [:auto/param new-children-location]]
                           :is_remote_synced remote-synced?}
                  :where  [:like :location (str orig-children-location "%")]}))
 
 (mu/defn delete-collections-at-location!
   "Delete the Collections directly at `location`, returning the number deleted."
   [location :- :string]
-  (t2/delete! :model/Collection :location location))
+  (t2/delete! :model/Collection :location [:auto/param location]))
 
 ;;; ---------------------------------------------- ::collections.schema/collection contents ----------------------------------------------
 
@@ -489,7 +489,7 @@
   [collection-id  :- [:maybe ::lib.schema.id/collection]
    skip-archived? :- [:maybe :boolean]]
   (t2/select-pks-set :model/Dashboard
-                     {:where [:and [:= :collection_id collection-id] (when skip-archived? [:not :archived])]}))
+                     {:where [:and [:= :collection_id [:auto/param collection-id]] (when skip-archived? [:not :archived])]}))
 
 (defn cards-in-collection
   "The Cards in the Collection with `collection-id`."
@@ -502,7 +502,7 @@
   [collection-id  :- [:maybe ::lib.schema.id/collection]
    skip-archived? :- [:maybe :boolean]]
   (t2/select-pks-set :model/Card {:where [:and
-                                          [:= :collection_id collection-id]
+                                          [:= :collection_id [:auto/param collection-id]]
                                           (when skip-archived? [:not :archived])
                                           [:or
                                            [:= :document_id nil]
@@ -517,7 +517,7 @@
   [collection-id  :- [:maybe ::lib.schema.id/collection]
    skip-archived? :- [:maybe :boolean]]
   (t2/select-pks-set :model/Document {:where [:and
-                                              [:= :collection_id collection-id]
+                                              [:= :collection_id [:auto/param collection-id]]
                                               [:= :exploration_id nil]
                                               (when skip-archived? [:not :archived])]}))
 
@@ -526,14 +526,14 @@
   [collection-id  :- [:maybe ::lib.schema.id/collection]
    skip-archived? :- [:maybe :boolean]]
   (t2/select-pks-set :model/Action
-                     {:where [:and [:= :collection_id collection-id] (when skip-archived? [:not :archived])]}))
+                     {:where [:and [:= :collection_id [:auto/param collection-id]] (when skip-archived? [:not :archived])]}))
 
 (mu/defn timeline-ids-in-collection
   "The IDs of the Timelines in the ::collections.schema/collection with `collection-id`, excluding archived ones when `skip-archived?`."
   [collection-id  :- [:maybe ::lib.schema.id/collection]
    skip-archived? :- [:maybe :boolean]]
   (t2/select-pks-set :model/Timeline
-                     {:where [:and [:= :collection_id collection-id] (when skip-archived? [:not :archived])]}))
+                     {:where [:and [:= :collection_id [:auto/param collection-id]] (when skip-archived? [:not :archived])]}))
 
 (mu/defn published-table-ids-in-collection
   "The IDs of the published Tables in the ::collections.schema/collection with `collection-id`, excluding archived ones when
@@ -542,14 +542,14 @@
    skip-archived? :- [:maybe :boolean]]
   (t2/select-pks-set :model/Table {:from [(warehouse-schema-overlay/table-query)]
                                    :where [:and
-                                           [:= :collection_id collection-id]
+                                           [:= :collection_id [:auto/param collection-id]]
                                            [:= :is_published true]
                                            (when skip-archived? [:= :archived_at nil])]}))
 
 (mu/defn transform-ids-in-collection
   "The IDs of the Transforms in the ::collections.schema/collection with `collection-id`."
   [collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/select-pks-set :model/Transform {:where [:= :collection_id collection-id]}))
+  (t2/select-pks-set :model/Transform {:where [:= :collection_id [:auto/param collection-id]]}))
 
 (mu/defn published-table-ids-in-collections
   "The IDs of the published Tables in the Collections with `collection-ids`."
@@ -657,13 +657,13 @@
                                   :join   [[:permissions_group :pg] [:= :pg.id :p.group_id]
                                            [:permissions_group_membership :pgm] [:= :pgm.group_id :pg.id]]
                                   :where  [:and
-                                           [:= :pgm.user_id user-id]
+                                           [:= :pgm.user_id [:auto/param user-id]]
                                            [:in :p.object objects]]}))
 
 (mu/defn group-ids-with-permission-object
   "The set of group IDs holding a Permissions row for `object`."
   [object :- :string]
-  (t2/select-fn-set :group_id :model/Permissions :object object))
+  (t2/select-fn-set :group_id :model/Permissions :object [:auto/param object]))
 
 (mu/defn insert-permissions!
   "Insert the Permissions `rows`, returning the number inserted."
@@ -673,7 +673,7 @@
 (mu/defn delete-permissions-for-collection!
   "Delete the Permissions rows attached to the ::collections.schema/collection with `collection-id`, returning the number deleted."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/delete! :model/Permissions :collection_id collection-id))
+  (t2/delete! :model/Permissions :collection_id [:auto/param collection-id]))
 
 (mu/defn delete-permissions-with-objects!
   "Delete the Permissions rows for `objects`, returning the number deleted."
@@ -686,7 +686,7 @@
 (mu/defn user-type
   "The type of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one-fn :type :model/User :id user-id))
+  (t2/select-one-fn :type :model/User :id [:auto/param user-id]))
 
 (mu/defn user-name-parts-by-id
   "A map of ID to the first name, last name, and email of the Users with `user-ids`."

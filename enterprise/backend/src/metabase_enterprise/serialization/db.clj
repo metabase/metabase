@@ -35,7 +35,7 @@
   [user-id :- [:maybe ::lib.schema.id/user]]
   (t2/select :model/Collection {:where [:and [:= :location "/"]
                                         [:or [:= :personal_owner_id nil]
-                                         [:= :personal_owner_id user-id]]
+                                         [:= :personal_owner_id [:auto/param user-id]]]
                                         [:or [:= :namespace nil]
                                          [:!= :namespace "analytics"]]]}))
 

@@ -41,10 +41,10 @@
   (t2/query {:select   [:id :queue_name :payload :publish_attempts]
              :from     [:queue_message_outbox]
              :where    [:and
-                        [:> :id after-id]
+                        [:> :id [:auto/param after-id]]
                         [:or
-                         [:and [:= :next_attempt_at nil] [:< :created_at created-before]]
-                         [:<= :next_attempt_at now]]]
+                         [:and [:= :next_attempt_at nil] [:< :created_at [:auto/param created-before]]]
+                         [:<= :next_attempt_at [:auto/param now]]]]
              :order-by [[:id :asc]]
              :limit    limit
              :for      for-clause}))

@@ -253,7 +253,7 @@
   [model-key :- :keyword
    model-id  :- ms/PositiveInt]
   (let [{:keys [alias select from join]} (tracking-select-parts model-key)]
-    (first (t2/query (m/assoc-some {:select select :from from :where [:= (keyword alias "id") model-id]}
+    (first (t2/query (m/assoc-some {:select select :from from :where [:= (keyword alias "id") [:auto/param model-id]]}
                                    :join join)))))
 
 (mu/defn tracking-details-by-entity-ids
@@ -403,17 +403,17 @@
 (mu/defn collection-name-and-id
   "The `:name` and `:collection_id` (its own ID) of the Collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one [:model/Collection :name [:id :collection_id]] :id collection-id))
+  (t2/select-one [:model/Collection :name [:id :collection_id]] :id [:auto/param collection-id]))
 
 (mu/defn library-collection
   "The Library Collection of `library-type`, or nil."
   [library-type :- :string]
-  (t2/select-one :model/Collection :type library-type))
+  (t2/select-one :model/Collection :type [:auto/param library-type]))
 
 (mu/defn collections-with-names-in-namespace
   "The `:id` and `:name` of the Collections of `namespace-name`."
   [namespace-name :- :string]
-  (t2/select [:model/Collection :id :name] :namespace namespace-name))
+  (t2/select [:model/Collection :id :name] :namespace [:auto/param namespace-name]))
 
 (mu/defn action-model-ids
   "The model Card id, or nil, of each existing Action with `action-ids`, keyed by Action id."
@@ -444,18 +444,18 @@
 (mu/defn collections-in-namespace
   "The `:id` and `:entity_id` of the Collections of `namespace-name`."
   [namespace-name :- :string]
-  (t2/select [:model/Collection :id :entity_id] :namespace namespace-name))
+  (t2/select [:model/Collection :id :entity_id] :namespace [:auto/param namespace-name]))
 
 (mu/defn collection-ids-in-namespace
   "The IDs of the Collections of `namespace-name`."
   [namespace-name :- :string]
-  (t2/select-pks-vec :model/Collection :namespace namespace-name))
+  (t2/select-pks-vec :model/Collection :namespace [:auto/param namespace-name]))
 
 (mu/defn collection-namespace
   "The namespace of the Collection with `collection-id`, nil for the default namespace or no such Collection."
   [collection-id :- [:maybe ms/PositiveInt]]
   (when collection-id
-    (t2/select-one-fn :namespace :model/Collection :id collection-id)))
+    (t2/select-one-fn :namespace :model/Collection :id [:auto/param collection-id])))
 
 (mu/defn remote-synced-collection-ids
   "The IDs of the remote-synced Collections."
@@ -481,7 +481,7 @@
   [namespace-name :- :string]
   (t2/select-fn-set :id :model/Collection
                     {:where [:and
-                             [:= :namespace namespace-name]
+                             [:= :namespace [:auto/param namespace-name]]
                              [:= :location "/"]
                              [:not :archived]]}))
 
@@ -545,36 +545,36 @@
   "The RemoteSyncObject of the entity `model-type` `model-id`, or nil."
   [model-type :- :string
    model-id   :- ModelId]
-  (t2/select-one :model/RemoteSyncObject :model_type model-type :model_id model-id))
+  (t2/select-one :model/RemoteSyncObject :model_type [:auto/param model-type] :model_id model-id))
 
 (mu/defn lock-rso
   "The RemoteSyncObject of the entity `model-type` `model-id`, locked for update, or nil."
   [model-type :- :string
    model-id   :- ModelId]
   (t2/select-one :model/RemoteSyncObject
-                 {:where [:and [:= :model_type model-type] [:= :model_id model-id]]
+                 {:where [:and [:= :model_type [:auto/param model-type]] [:= :model_id model-id]]
                   :for   :update}))
 
 (mu/defn rso-by-file-path
   "The RemoteSyncObject at `file-path`, or nil."
   [file-path :- :string]
-  (t2/select-one :model/RemoteSyncObject :file_path file-path))
+  (t2/select-one :model/RemoteSyncObject :file_path [:auto/param file-path]))
 
 (mu/defn rso-exists?
   "Whether the entity `model-type` `model-id` has a RemoteSyncObject."
   [model-type :- :string
    model-id   :- ModelId]
-  (t2/exists? :model/RemoteSyncObject :model_type model-type :model_id model-id))
+  (t2/exists? :model/RemoteSyncObject :model_type [:auto/param model-type] :model_id model-id))
 
 (mu/defn rso-of-type-exists?
   "Whether any entity of `model-type` has a RemoteSyncObject."
   [model-type :- :string]
-  (t2/exists? :model/RemoteSyncObject :model_type model-type))
+  (t2/exists? :model/RemoteSyncObject :model_type [:auto/param model-type]))
 
 (mu/defn rso-count-of-type
   "The number of RemoteSyncObjects of `model-type`."
   [model-type :- :string]
-  (t2/count :model/RemoteSyncObject :model_type model-type))
+  (t2/count :model/RemoteSyncObject :model_type [:auto/param model-type]))
 
 (mu/defn rso-keys
   "The `:id`, `:model_type`, and `:model_id` of every RemoteSyncObject."
@@ -626,21 +626,21 @@
 (mu/defn tracked-model-ids
   "The model IDs of the RemoteSyncObjects of `model-type`."
   [model-type :- :string]
-  (t2/select-fn-set :model_id :model/RemoteSyncObject :model_type model-type))
+  (t2/select-fn-set :model_id :model/RemoteSyncObject :model_type [:auto/param model-type]))
 
 (mu/defn rsos-of-models
   "The RemoteSyncObjects of the entities of `model-type` with `model-ids`."
   [model-type :- :string
    model-ids  :- [:sequential ms/PositiveInt]]
-  (t2/select :model/RemoteSyncObject :model_type model-type :model_id [:in model-ids]))
+  (t2/select :model/RemoteSyncObject :model_type [:auto/param model-type] :model_id [:in model-ids]))
 
 (mu/defn active-child-rsos
   "The RemoteSyncObjects of `model-type` under the Table with `table-id` that are not pending removal or deletion."
   [model-type :- :string
    table-id   :- ::lib.schema.id/table]
   (t2/select :model/RemoteSyncObject
-             :model_type model-type
-             :model_table_id table-id
+             :model_type [:auto/param model-type]
+             :model_table_id [:auto/param table-id]
              :status [:not-in ["removed" "delete"]]))
 
 (mu/defn content-rso-statuses
@@ -678,7 +678,7 @@
   "Apply `changes` to the RemoteSyncObject with `rso-id`."
   [rso-id  :- ms/PositiveInt
    changes :- ::remote-sync.schema/remote-sync-object.update]
-  (t2/update! :model/RemoteSyncObject :id rso-id changes))
+  (t2/update! :model/RemoteSyncObject :id [:auto/param rso-id] changes))
 
 (mu/defn set-rsos-status!
   "Set the status of the RemoteSyncObjects with `rso-ids` to `status` as of `timestamp`."
@@ -722,7 +722,7 @@
 (mu/defn delete-rso!
   "Delete the RemoteSyncObject with `rso-id`."
   [rso-id :- ms/PositiveInt]
-  (t2/delete! :model/RemoteSyncObject :id rso-id))
+  (t2/delete! :model/RemoteSyncObject :id [:auto/param rso-id]))
 
 (mu/defn delete-rsos!
   "Delete the RemoteSyncObjects with `rso-ids`."
@@ -733,18 +733,18 @@
   "Delete the RemoteSyncObject of the entity `model-type` `model-id`."
   [model-type :- :string
    model-id   :- ModelId]
-  (t2/delete! :model/RemoteSyncObject :model_type model-type :model_id model-id))
+  (t2/delete! :model/RemoteSyncObject :model_type [:auto/param model-type] :model_id model-id))
 
 (mu/defn delete-rsos-of-type!
   "Delete the RemoteSyncObjects of `model-type`."
   [model-type :- :string]
-  (t2/delete! :model/RemoteSyncObject :model_type model-type))
+  (t2/delete! :model/RemoteSyncObject :model_type [:auto/param model-type]))
 
 (mu/defn delete-rsos-of-models!
   "Delete the RemoteSyncObjects of the entities of `model-type` with `model-ids`."
   [model-type :- :string
    model-ids  :- [:set ms/PositiveInt]]
-  (t2/delete! :model/RemoteSyncObject :model_type model-type :model_id [:in model-ids]))
+  (t2/delete! :model/RemoteSyncObject :model_type [:auto/param model-type] :model_id [:in model-ids]))
 
 (mu/defn delete-rsos-of-keys!
   "Delete the RemoteSyncObjects keyed by the `:model_type`/`:model_id` of `rows`."
@@ -764,12 +764,12 @@
 (mu/defn lock-task
   "The RemoteSyncTask with `task-id`, locked for update, or nil."
   [task-id :- ms/PositiveInt]
-  (t2/select-one :model/RemoteSyncTask :id task-id {:for :update}))
+  (t2/select-one :model/RemoteSyncTask :id [:auto/param task-id] {:for :update}))
 
 (mu/defn task-cancelled?
   "The cancelled flag of the RemoteSyncTask with `task-id`."
   [task-id :- ms/PositiveInt]
-  (t2/select-one-fn :cancelled :model/RemoteSyncTask :id task-id))
+  (t2/select-one-fn :cancelled :model/RemoteSyncTask :id [:auto/param task-id]))
 
 (def ^:private last-alive-at
   "The time the task's owning thread last proved it was alive: its heartbeat, or its last progress write for
@@ -821,25 +821,25 @@
   "Apply `changes` to the RemoteSyncTask with `task-id`."
   [task-id :- ms/PositiveInt
    changes :- ::remote-sync.schema/remote-sync-task.update]
-  (t2/update! :model/RemoteSyncTask :id task-id changes))
+  (t2/update! :model/RemoteSyncTask :id [:auto/param task-id] changes))
 
 (mu/defn end-task!
   "Apply `changes` to the RemoteSyncTask with `task-id` and mark it ended now."
   [task-id :- ms/PositiveInt
    changes :- ::remote-sync.schema/remote-sync-task.update]
-  (t2/update! :model/RemoteSyncTask :id task-id (assoc changes :ended_at :%now)))
+  (t2/update! :model/RemoteSyncTask :id [:auto/param task-id] (assoc changes :ended_at :%now)))
 
 (mu/defn report-task-progress!
   "Record `progress` for the RemoteSyncTask with `task-id`, stamping the progress report time."
   [task-id  :- ms/PositiveInt
    progress :- number?]
-  (t2/update! :model/RemoteSyncTask :id task-id {:progress progress, :last_progress_report_at :%now}))
+  (t2/update! :model/RemoteSyncTask :id [:auto/param task-id] {:progress progress, :last_progress_report_at :%now}))
 
 (mu/defn touch-task!
   "Stamp the heartbeat time of the RemoteSyncTask with `task-id` if it has not ended, returning the number of rows
   updated. Never touches an ended row, so a cancel or supersede is not undone by a late beat."
   [task-id :- ms/PositiveInt]
-  (t2/update! :model/RemoteSyncTask {:id task-id, :ended_at nil} {:last_heartbeat_at :%now}))
+  (t2/update! :model/RemoteSyncTask {:id [:auto/param task-id], :ended_at nil} {:last_heartbeat_at :%now}))
 
 (mu/defn supersede-stale-tasks! :- [:sequential ms/PositiveInt]
   "Cancel and end now, with `message` as the error message, the started, unfinished RemoteSyncTasks whose owner
@@ -862,7 +862,7 @@
 (mu/defn delete-tasks-started-before!
   "Delete the RemoteSyncTasks started before `cutoff`, returning the number deleted."
   [cutoff :- ms/TemporalInstant]
-  (t2/delete! :model/RemoteSyncTask {:where [:< :started_at cutoff]}))
+  (t2/delete! :model/RemoteSyncTask {:where [:< :started_at [:auto/param cutoff]]}))
 
 (mu/defn users-by-id
   "A map of User ID to User for `user-ids`."

@@ -48,13 +48,13 @@
   "Apply `changes` to the Database with `database-id`, returning the number updated."
   [database-id :- ::lib.schema.id/database
    changes     :- (mut/select-keys ::warehouses.schema/database.update [:engine :details :settings])]
-  (t2/update! :model/Database :id database-id changes))
+  (t2/update! :model/Database :id [:auto/param database-id] changes))
 
 (mu/defn set-database-tables-schema!
   "Set the `schema` of every Table of the Database with `database-id`, returning the number updated."
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]]
-  (t2/update! :model/Table :db_id database-id {:schema schema}))
+  (t2/update! :model/Table :db_id [:auto/param database-id] {:schema schema}))
 
 (mu/defn set-database-table-permissions-schema-name!
   "Set the `schema_name` of the table-level DataPermissions rows of the Database with `database-id`, via a raw table
@@ -64,5 +64,5 @@
   (t2/query {:update (t2/table-name :model/DataPermissions)
              :set    {:schema_name schema-name}
              :where  [:and
-                      [:= :db_id database-id]
+                      [:= :db_id [:auto/param database-id]]
                       [:not= :table_id nil]]}))

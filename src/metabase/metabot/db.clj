@@ -28,17 +28,17 @@
 (mu/defn metabot
   "The Metabot with `metabot-id`, or nil."
   [metabot-id :- ms/PositiveInt]
-  (t2/select-one :model/Metabot :id metabot-id))
+  (t2/select-one :model/Metabot :id [:auto/param metabot-id]))
 
 (mu/defn metabot-by-entity-id
   "The Metabot with `entity-id`, or nil."
   [entity-id :- [:maybe :string]]
-  (t2/select-one :model/Metabot :entity_id entity-id))
+  (t2/select-one :model/Metabot :entity_id [:auto/param entity-id]))
 
 (mu/defn metabot-id-by-entity-id
   "The ID of the Metabot with `entity-id`, or nil."
   [entity-id :- [:maybe :string]]
-  (t2/select-one-pk :model/Metabot :entity_id entity-id))
+  (t2/select-one-pk :model/Metabot :entity_id [:auto/param entity-id]))
 
 (mu/defn metabots-by-name
   "Every Metabot, ordered by name."
@@ -48,13 +48,13 @@
 (mu/defn metabot-exists?
   "Whether a Metabot with `metabot-id` exists."
   [metabot-id :- ms/PositiveInt]
-  (t2/exists? :model/Metabot :id metabot-id))
+  (t2/exists? :model/Metabot :id [:auto/param metabot-id]))
 
 (mu/defn update-metabot!
   "Apply `changes` to the Metabot with `metabot-id`."
   [metabot-id :- ms/PositiveInt
    changes :- (mut/select-keys ::metabot.schema/metabot.update [:use_verified_content :collection_id])]
-  (t2/update! :model/Metabot :id metabot-id changes))
+  (t2/update! :model/Metabot :id [:auto/param metabot-id] changes))
 
 ;;; --------------------------------------------- Metabot prompts ---------------------------------------------
 
@@ -121,7 +121,7 @@
 (mu/defn prompt-count-for-metabot
   "The number of MetabotPrompts of the Metabot with `metabot-id`."
   [metabot-id :- ms/PositiveInt]
-  (t2/count :model/MetabotPrompt :metabot_id metabot-id))
+  (t2/count :model/MetabotPrompt :metabot_id [:auto/param metabot-id]))
 
 (mu/defn insert-prompts!
   "Insert the MetabotPrompt `rows`."
@@ -133,35 +133,35 @@
   [metabot-id :- ms/PositiveInt
    prompt-id :- ms/PositiveInt]
   (t2/delete! :model/MetabotPrompt {:where [:and
-                                            [:= :id prompt-id]
-                                            [:= :metabot_id metabot-id]]}))
+                                            [:= :id [:auto/param prompt-id]]
+                                            [:= :metabot_id [:auto/param metabot-id]]]}))
 
 (mu/defn delete-prompts-for-metabot!
   "Delete the MetabotPrompts of the Metabot with `metabot-id`."
   [metabot-id :- ms/PositiveInt]
-  (t2/delete! :model/MetabotPrompt {:where [:= :metabot_id metabot-id]}))
+  (t2/delete! :model/MetabotPrompt {:where [:= :metabot_id [:auto/param metabot-id]]}))
 
 ;;; ----------------------------------------------- Conversations -----------------------------------------------
 
 (mu/defn conversation
   "The MetabotConversation with `conversation-id`, or nil."
   [conversation-id :- :string]
-  (t2/select-one :model/MetabotConversation :id conversation-id))
+  (t2/select-one :model/MetabotConversation :id [:auto/param conversation-id]))
 
 (mu/defn conversation-id-and-user-id
   "The ID and originator of the MetabotConversation with `conversation-id`, or nil."
   [conversation-id :- :string]
-  (t2/select-one [:model/MetabotConversation :id :user_id] :id conversation-id))
+  (t2/select-one [:model/MetabotConversation :id :user_id] :id [:auto/param conversation-id]))
 
 (mu/defn conversation-title
   "The title of the MetabotConversation with `conversation-id`."
   [conversation-id :- :string]
-  (t2/select-one-fn :title :model/MetabotConversation :id conversation-id))
+  (t2/select-one-fn :title :model/MetabotConversation :id [:auto/param conversation-id]))
 
 (mu/defn lock-conversation
   "The MetabotConversation with `conversation-id`, locked for update."
   [conversation-id :- :string]
-  (t2/select-one :model/MetabotConversation :id conversation-id {:for :update}))
+  (t2/select-one :model/MetabotConversation :id [:auto/param conversation-id] {:for :update}))
 
 (defn- participation-clause
   "Match conversations visible in history for `user-id`.
@@ -248,7 +248,7 @@
   [after-id :- [:maybe :string]
    limit :- ms/PositiveInt]
   (t2/select-fn-vec :id :model/MetabotConversation
-                    {:where    [:and [:= :title nil] (when after-id [:> :id after-id])]
+                    {:where    [:and [:= :title nil] (when after-id [:> :id [:auto/param after-id]])]
                      :order-by [[:id :asc]]
                      :limit    limit}))
 
@@ -269,12 +269,12 @@
   "Set the title of the MetabotConversation with `conversation-id` if it has none."
   [conversation-id :- :string
    title :- :string]
-  (t2/update! :model/MetabotConversation {:id conversation-id, :title nil} {:title title}))
+  (t2/update! :model/MetabotConversation {:id [:auto/param conversation-id], :title nil} {:title title}))
 
 (mu/defn delete-conversations-created-before!
   "Delete the MetabotConversations created before `cutoff`, returning the number deleted."
   [cutoff :- ms/TemporalInstant]
-  (t2/delete! :model/MetabotConversation {:where [:< :created_at cutoff]}))
+  (t2/delete! :model/MetabotConversation {:where [:< :created_at [:auto/param cutoff]]}))
 
 ;;; -------------------------------------------------- Messages --------------------------------------------------
 
@@ -282,18 +282,18 @@
   "Whether the User with `user-id` has sent a message in the MetabotConversation with `conversation-id`."
   [conversation-id :- :string
    user-id :- ::lib.schema.id/user]
-  (t2/exists? :model/MetabotMessage :conversation_id conversation-id :user_id user-id))
+  (t2/exists? :model/MetabotMessage :conversation_id [:auto/param conversation-id] :user_id [:auto/param user-id]))
 
 (mu/defn- other-participant?
   "Whether a User other than `user-id` has sent a message in the MetabotConversation with `conversation-id`."
   [conversation-id :- :string
    user-id :- ::lib.schema.id/user]
-  (t2/exists? :model/MetabotMessage :conversation_id conversation-id :user_id [:not= user-id]))
+  (t2/exists? :model/MetabotMessage :conversation_id [:auto/param conversation-id] :user_id [:not= [:auto/param user-id]]))
 
 (mu/defn- slack-message?
   "Whether any message in the MetabotConversation with `conversation-id` was sent through Slack."
   [conversation-id :- :string]
-  (t2/exists? :model/MetabotMessage :conversation_id conversation-id :channel_id [:not= nil]))
+  (t2/exists? :model/MetabotMessage :conversation_id [:auto/param conversation-id] :channel_id [:not= nil]))
 
 (mu/defn conversation-open-to-others?
   "Whether someone other than the User with `user-id` can read the MetabotConversation with `conversation-id`,
@@ -314,13 +314,13 @@
 (mu/defn message-by-external-id
   "The ID and conversation of the MetabotMessage with `external-id`, or nil."
   [external-id :- :string]
-  (t2/select-one [:model/MetabotMessage :id :conversation_id] :external_id external-id))
+  (t2/select-one [:model/MetabotMessage :id :conversation_id] :external_id [:auto/param external-id]))
 
 (mu/defn live-messages
   "The non-deleted MetabotMessages of the MetabotConversation with `conversation-id`, in reader order."
   [conversation-id :- [:maybe :string]]
   (t2/select :model/MetabotMessage
-             :conversation_id conversation-id
+             :conversation_id [:auto/param conversation-id]
              :deleted_at nil
              {:order-by [[:created_at :asc] [:id :asc]]}))
 
@@ -329,7 +329,7 @@
   [conversation-id :- :string
    limit :- ms/PositiveInt]
   (t2/select :model/MetabotMessage
-             :conversation_id conversation-id
+             :conversation_id [:auto/param conversation-id]
              :deleted_at nil
              {:order-by [[:created_at :asc] [:id :asc]]
               :limit    limit}))
@@ -339,7 +339,7 @@
   [conversation-id :- :string]
   (t2/select-one :model/MetabotMessage
                  {:where    [:and
-                             [:= :conversation_id conversation-id]
+                             [:= :conversation_id [:auto/param conversation-id]]
                              [:= :deleted_at nil]
                              [:= :role "assistant"]]
                   :order-by [[:created_at :desc] [:id :desc]]}))
@@ -358,7 +358,7 @@
   "Apply `changes` to the MetabotMessage with `message-id`."
   [message-id :- ms/PositiveInt
    changes :- ::metabot.schema/metabot-message.update]
-  (t2/update! :model/MetabotMessage :id message-id changes))
+  (t2/update! :model/MetabotMessage :id [:auto/param message-id] changes))
 
 (mu/defn soft-delete-messages-where!
   "Soft-delete the MetabotMessages matching `conditions` on behalf of `deleted-by-user-id`, returning the number of
@@ -432,12 +432,12 @@
 (mu/defn database-exists?
   "Whether a Database with `database-id` exists."
   [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Database :id database-id))
+  (t2/exists? :model/Database :id [:auto/param database-id]))
 
 (mu/defn database-ids-by-name
   "The IDs of the Databases named `database-name`."
   [database-name :- :string]
-  (t2/select-pks-vec :model/Database :name database-name))
+  (t2/select-pks-vec :model/Database :name [:auto/param database-name]))
 
 (mu/defn database-engines-and-names
   "A map of ID to the engine and name of the Databases with `database-ids`."
@@ -464,7 +464,7 @@
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :id [:auto/param table-id] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn active-table-with-columns
   "The `columns` of the active Table with `table-id`, or nil."
@@ -475,7 +475,7 @@
 (mu/defn table-database-id
   "The Database ID of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one-fn :db_id :model/Table :id [:auto/param table-id] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (defn readable-active-table-database-id
   "The Database ID of the active Table with `table-id`, or nil when there is no such table *or*
@@ -526,7 +526,7 @@
   [database-id :- ::lib.schema.id/database
    table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select [:model/Table :id :name :schema :description]
-             :db_id database-id
+             :db_id [:auto/param database-id]
              :id [:in table-ids]
              :active true
              :visibility_type nil {:from [(warehouse-schema-overlay/table-query)]}))
@@ -551,7 +551,7 @@
   [database-id :- ::lib.schema.id/database
    table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select [:model/Table :id :name :schema :description]
-             :db_id database-id
+             :db_id [:auto/param database-id]
              :id [:in table-ids]
              :active true
              :visibility_type nil
@@ -567,7 +567,7 @@
   [database-id :- ::lib.schema.id/database
    excluded-table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/reducible-select [:model/Table :id :name :schema :description]
-                       :db_id database-id
+                       :db_id [:auto/param database-id]
                        :active true
                        :visibility_type nil
                        (cond-> (assoc (current-user-visible-table-clause)
@@ -586,7 +586,7 @@
   [database-id :- :int
    limit :- ms/PositiveInt]
   (t2/select [:model/Table :id :db_id :name :schema :description]
-             :db_id database-id
+             :db_id [:auto/param database-id]
              :active true
              :visibility_type nil
              (assoc (current-user-visible-table-clause)
@@ -599,7 +599,7 @@
   [database-id :- ::lib.schema.id/database
    limit :- ms/PositiveInt]
   (t2/select [:model/Table :id :name :schema]
-             :db_id database-id
+             :db_id [:auto/param database-id]
              :active true
              :visibility_type nil
              {:from [(warehouse-schema-overlay/table-query)]
@@ -609,7 +609,7 @@
   "The presentable columns of the active Tables in the Database with `database-id`, ordered by schema and name."
   [database-id :- ::lib.schema.id/database]
   (t2/select [:model/Table :id :name :display_name :schema :db_id :description]
-             :db_id database-id
+             :db_id [:auto/param database-id]
              :active true
              {:from [(warehouse-schema-overlay/table-query)]
               :order-by [[:%lower.schema :asc] [:%lower.name :asc]]}))
@@ -619,8 +619,8 @@
   [database-id :- ::lib.schema.id/database
    schema :- [:maybe :string]]
   (t2/select [:model/Table :id :name :display_name :schema :db_id :description]
-             :db_id database-id
-             :schema schema
+             :db_id [:auto/param database-id]
+             :schema [:auto/param schema]
              :active true
              {:from [(warehouse-schema-overlay/table-query)]
               :order-by [[:%lower.name :asc]]}))
@@ -630,7 +630,7 @@
   [database-id :- ::lib.schema.id/database]
   (t2/query {:select-distinct [:schema]
              :from            [(warehouse-schema-overlay/table-query {:user-settings? false})]
-             :where           [:and [:= :db_id database-id] [:= :active true]]
+             :where           [:and [:= :db_id [:auto/param database-id]] [:= :active true]]
              :order-by        [[:schema :asc]]}))
 
 (def ^:private quoted-identifier-chars
@@ -675,7 +675,7 @@
                  {:select [[:t.id :table-id] [:t.name :table] [:t.schema :schema]]
                   :from      [(warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})]
                   :where  [:and
-                           [:= :t.db_id db-id]
+                           [:= :t.db_id [:auto/param db-id]]
                            (table-match-clause {:schema schema :table table})]}))
 
 (mu/defn query-table-references
@@ -690,7 +690,7 @@
              {:select [[:t.id :table-id] [:t.name :table] [:t.schema :schema]]
               :from      [(warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})]
               :where  [:and
-                       [:= :t.db_id db-id]
+                       [:= :t.db_id [:auto/param db-id]]
                        (into [:or] (map table-match-clause) tables)]}))
 
 ;;; ------------------------------------------------- Fields -------------------------------------------------
@@ -698,7 +698,7 @@
 (mu/defn field
   "The Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-one :model/Field :id [:auto/param field-id] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn fields
   "The Fields with `field-ids`."
@@ -708,7 +708,7 @@
 (mu/defn field-fingerprint
   "The fingerprint of the Field with `field-id`."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :fingerprint :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-one-fn :fingerprint :model/Field :id [:auto/param field-id] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn field-table-ids
   "A map of Field ID to Table ID for `field-ids`."
@@ -720,23 +720,23 @@
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))
+  (t2/select-one :model/Card :id [:auto/param card-id]))
 
 (mu/defn card-by-entity-id
   "The Card with `entity-id`, or nil."
   [entity-id :- :string]
-  (t2/select-one :model/Card :entity_id entity-id))
+  (t2/select-one :model/Card :entity_id [:auto/param entity-id]))
 
 (mu/defn card-of-type
   "The Card with `card-id` if it is of `type`, or nil."
   [card-id :- ::lib.schema.id/card
    type :- [:enum :model :metric :question]]
-  (t2/select-one :model/Card :id card-id :type type))
+  (t2/select-one :model/Card :id [:auto/param card-id] :type type))
 
 (mu/defn card-type-row
   "The ID and type of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :id :type] :id card-id))
+  (t2/select-one [:model/Card :id :type] :id [:auto/param card-id]))
 
 (defn- metabot-metrics-and-models-query
   "Honey SQL query selecting the metric and model Cards in scope of the Metabot with `metabot-id` that are visible to
@@ -856,14 +856,14 @@
   A nil `collection-id` selects the root collection."
   [collection-id :- [:maybe ::lib.schema.id/collection]]
   (t2/select [:model/Card :id :name :type :description :collection_id :database_id :table_id]
-             {:where    [:and [:= :collection_id collection-id] [:= :archived false]]
+             {:where    [:and [:= :collection_id [:auto/param collection-id]] [:= :archived false]]
               :order-by [[:%lower.name :asc]]}))
 
 (mu/defn cards-for-table
   "The presentable columns of the unarchived Cards on the Table with `table-id`, ordered by name."
   [table-id :- ::lib.schema.id/table]
   (t2/select [:model/Card :id :name :type :description :collection_id :database_id :table_id]
-             :table_id table-id
+             :table_id [:auto/param table-id]
              :archived false
              {:order-by [[:%lower.name :asc]]}))
 
@@ -872,7 +872,7 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select [:model/Card :id :name :type :description :collection_id :database_id :table_id]
              :type :model
-             :database_id database-id
+             :database_id [:auto/param database-id]
              :archived false
              {:order-by [[:%lower.name :asc]]}))
 
@@ -880,7 +880,7 @@
   "The ID and chart ID of the unarchived Cards saved from the MetabotConversation with `conversation-id`, in ID order."
   [conversation-id :- :string]
   (t2/select [:model/Card :id :metabot_chart_id]
-             :metabot_conversation_id conversation-id
+             :metabot_conversation_id [:auto/param conversation-id]
              :archived false
              {:order-by [[:id :asc]]}))
 
@@ -897,12 +897,12 @@
 (mu/defn collection
   "The Collection with `collection-id`, or nil."
   [collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/select-one :model/Collection :id collection-id))
+  (t2/select-one :model/Collection :id [:auto/param collection-id]))
 
 (mu/defn collection-name
   "The name of the Collection with `collection-id`."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one-fn :name :model/Collection :id collection-id))
+  (t2/select-one-fn :name :model/Collection :id [:auto/param collection-id]))
 
 (mu/defn collection-descriptions
   "A map of Collection ID to description for `collection-ids`."
@@ -935,7 +935,7 @@
   "The presentable columns of the unarchived Collections directly at `location`, ordered by name."
   [location :- :string]
   (t2/select [:model/Collection :id :name :location :authority_level :description :personal_owner_id]
-             :location location
+             :location [:auto/param location]
              :archived false
              {:order-by [[:%lower.name :asc]]}))
 
@@ -959,7 +959,7 @@
 (mu/defn dashboard-name
   "The name of the Dashboard with `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one-fn :name :model/Dashboard :id dashboard-id))
+  (t2/select-one-fn :name :model/Dashboard :id [:auto/param dashboard-id]))
 
 (mu/defn dashboards-in-collection
   "Return unarchived dashboard summaries in a collection, ordered by name.
@@ -967,21 +967,21 @@
   A nil `collection-id` selects the root collection."
   [collection-id :- [:maybe ::lib.schema.id/collection]]
   (t2/select [:model/Dashboard :id :name :description :collection_id]
-             :collection_id collection-id
+             :collection_id [:auto/param collection-id]
              :archived false
              {:order-by [[:%lower.name :asc]]}))
 
 (mu/defn dashboard-tabs
   "The ID and name of the DashboardTabs of the Dashboard with `dashboard-id`, in position order."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select [:model/DashboardTab :id :name] :dashboard_id dashboard-id {:order-by [[:position :asc] [:id :asc]]}))
+  (t2/select [:model/DashboardTab :id :name] :dashboard_id [:auto/param dashboard-id] {:order-by [[:position :asc] [:id :asc]]}))
 
 (mu/defn dashcards
   "The ID, Card, action, tab, and settings of the DashboardCards of the Dashboard with `dashboard-id`, in grid
   order."
   [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select [:model/DashboardCard :id :card_id :action_id :dashboard_tab_id :visualization_settings]
-             :dashboard_id dashboard-id
+             :dashboard_id [:auto/param dashboard-id]
              {:order-by [[:row :asc] [:col :asc]]}))
 
 (mu/defn documents-in-collection
@@ -990,7 +990,7 @@
   Excludes exploration summaries. A nil `collection-id` selects the root collection."
   [collection-id :- [:maybe ::lib.schema.id/collection]]
   (t2/select [:model/Document :id :name :collection_id :exploration_id]
-             :collection_id collection-id
+             :collection_id [:auto/param collection-id]
              :archived false
              :exploration_id nil
              {:order-by [[:%lower.name :asc]]}))
@@ -1014,7 +1014,7 @@
   `database-id`, ordered by name."
   [database-id :- ::lib.schema.id/database]
   (t2/select [:model/Transform :id :name :description :source_database_id :source]
-             :source_database_id database-id
+             :source_database_id [:auto/param database-id]
              {:order-by [[:%lower.name :asc]]}))
 
 (mu/defn verified-item-ids
@@ -1023,7 +1023,7 @@
    item-type :- :string]
   (t2/select-fn-set :moderated_item_id :model/ModerationReview
                     :moderated_item_id   [:in item-ids]
-                    :moderated_item_type item-type
+                    :moderated_item_type [:auto/param item-type]
                     :most_recent         true
                     :status              "verified"))
 
@@ -1032,8 +1032,8 @@
   [item-id :- ms/PositiveInt
    item-type :- :string]
   (t2/select-one [:model/ModerationReview :status]
-                 :moderated_item_id item-id
-                 :moderated_item_type item-type
+                 :moderated_item_id [:auto/param item-id]
+                 :moderated_item_type [:auto/param item-type]
                  :most_recent true
                  {:order-by [[:id :desc]]}))
 
@@ -1074,22 +1074,22 @@
 (mu/defn measure-table-id
   "The Table ID of the Measure with `id`, or nil."
   [id :- ::lib.schema.id/measure]
-  (t2/select-one-fn :table_id :model/Measure :id id))
+  (t2/select-one-fn :table_id :model/Measure :id [:auto/param id]))
 
 (mu/defn segment-table-id
   "The Table ID of the Segment with `id`, or nil."
   [id :- ::lib.schema.id/segment]
-  (t2/select-one-fn :table_id :model/Segment :id id))
+  (t2/select-one-fn :table_id :model/Segment :id [:auto/param id]))
 
 (mu/defn measure-entity-id
   "The entity ID of the Measure with `id`."
   [id :- ::lib.schema.id/measure]
-  (t2/select-one-fn :entity_id :model/Measure :id id))
+  (t2/select-one-fn :entity_id :model/Measure :id [:auto/param id]))
 
 (mu/defn segment-entity-id
   "The entity ID of the Segment with `id`."
   [id :- ::lib.schema.id/segment]
-  (t2/select-one-fn :entity_id :model/Segment :id id))
+  (t2/select-one-fn :entity_id :model/Segment :id [:auto/param id]))
 
 (mu/defn measures
   "The ID, name, description, Table ID, and entity ID of the Measures with `ids`."

@@ -26,22 +26,22 @@
   (t2/select-one :model/Database {:select    [:db.*]
                                   :from      [[(t2/table-name :model/Action) :action]]
                                   :left-join (action-database-joins)
-                                  :where     [:and [:= :action.id action-id] [:not= :db.id nil]]}))
+                                  :where     [:and [:= :action.id [:auto/param action-id]] [:not= :db.id nil]]}))
 
 (mu/defn table-database-id
   "The Database id of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id [:model/Table :db_id] :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one-fn :db_id [:model/Table :db_id] :id [:auto/param table-id] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn card-query
   "The query of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :dataset_query :model/Card :id card-id))
+  (t2/select-one-fn :dataset_query :model/Card :id [:auto/param card-id]))
 
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))
+  (t2/select-one :model/Card :id [:auto/param card-id]))
 
 (mu/defn cards
   "The Cards with `card-ids`."
@@ -56,12 +56,12 @@
 (mu/defn card-type
   "The type of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :type [:model/Card :type] :id card-id))
+  (t2/select-one-fn :type [:model/Card :type] :id [:auto/param card-id]))
 
 (mu/defn card-collection-id
   "The Collection id of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :collection_id [:model/Card :collection_id] :id card-id))
+  (t2/select-one-fn :collection_id [:model/Card :collection_id] :id [:auto/param card-id]))
 
 (mu/defn card-ids-outside-collection
   "Among `card-ids`, the IDs of the Cards that are not in the Collection with `collection-id`."
@@ -69,42 +69,42 @@
    collection-id :- ::lib.schema.id/collection]
   (t2/select-pks-set :model/Card {:where [:and
                                           [:in :id card-ids]
-                                          [:or [:= :collection_id nil] [:not= :collection_id collection-id]]]}))
+                                          [:or [:= :collection_id nil] [:not= :collection_id [:auto/param collection-id]]]]}))
 
 (mu/defn collection-exists?
   "Whether the Collection with `collection-id` exists."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/exists? :model/Collection :id collection-id))
+  (t2/exists? :model/Collection :id [:auto/param collection-id]))
 
 (mu/defn collection-namespace
   "The namespace of the Collection with `collection-id`, or nil."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one-fn :namespace [:model/Collection :namespace] :id collection-id))
+  (t2/select-one-fn :namespace [:model/Collection :namespace] :id [:auto/param collection-id]))
 
 (mu/defn collection-namespace-with-entity-id
   "The namespace of the Collection with `entity-id`, or nil."
   [entity-id :- :string]
-  (t2/select-one-fn :namespace [:model/Collection :namespace] :entity_id entity-id))
+  (t2/select-one-fn :namespace [:model/Collection :namespace] :entity_id [:auto/param entity-id]))
 
 (mu/defn unarchived-collection-exists?
   "Whether the unarchived Collection with `collection-id` exists."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/exists? :model/Collection :id collection-id :archived false))
+  (t2/exists? :model/Collection :id [:auto/param collection-id] :archived false))
 
 (mu/defn action-collection-id
   "The Collection id of the Action with `action-id`, or nil."
   [action-id :- ::lib.schema.id/action]
-  (t2/select-one-fn :collection_id [:model/Action :collection_id] :id action-id))
+  (t2/select-one-fn :collection_id [:model/Action :collection_id] :id [:auto/param action-id]))
 
 (mu/defn action-model-id
   "The model Card id of the Action with `action-id`, or nil."
   [action-id :- ::lib.schema.id/action]
-  (t2/select-one-fn :model_id [:model/Action :model_id] :id action-id))
+  (t2/select-one-fn :model_id [:model/Action :model_id] :id [:auto/param action-id]))
 
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :id [:auto/param table-id] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn tables
   "The Tables with `table-ids`."
@@ -114,13 +114,13 @@
 (mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id database-id))
+  (t2/select-one :model/Database :id [:auto/param database-id]))
 
 (mu/defn dashcard-in-dashboard
   "The DashboardCard with `dashcard-id` on the Dashboard with `dashboard-id`, or nil."
   [dashcard-id  :- ::lib.schema.id/dashcard
    dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/DashboardCard :id dashcard-id :dashboard_id dashboard-id))
+  (t2/select-one :model/DashboardCard :id [:auto/param dashcard-id] :dashboard_id [:auto/param dashboard-id]))
 
 (mu/defn dashcard-dashboard-id
   "The `:dashboard_id` of the DashboardCard with `dashcard-id`, or nil."
@@ -130,12 +130,12 @@
 (mu/defn dashcard-action-id
   "The Action id of the DashboardCard with `dashcard-id`, or nil."
   [dashcard-id :- ::lib.schema.id/dashcard]
-  (t2/select-one-fn :action_id :model/DashboardCard :id dashcard-id))
+  (t2/select-one-fn :action_id :model/DashboardCard :id [:auto/param dashcard-id]))
 
 (mu/defn delete-dashcards-for-action!
   "Delete the DashboardCards of the Action with `action-id`, returning the number deleted."
   [action-id :- ::lib.schema.id/action]
-  (t2/delete! :model/DashboardCard :action_id action-id))
+  (t2/delete! :model/DashboardCard :action_id [:auto/param action-id]))
 
 (mu/defn insert-query-execution!
   "Insert the QueryExecution `row` and return its id."
@@ -151,7 +151,7 @@
   "Apply `changes` to the Action with `action-id`, returning the number updated."
   [action-id :- ::lib.schema.id/action
    changes   :- ::actions.schema/action.for-update]
-  (t2/update! :model/Action :id action-id changes))
+  (t2/update! :model/Action :id [:auto/param action-id] changes))
 
 (mu/defn insert-query-action!
   "Insert the QueryAction `action`, returning the number inserted."
@@ -167,23 +167,23 @@
   "Apply `changes` to the QueryAction with `action-id`, returning the number updated."
   [action-id :- ::lib.schema.id/action
    changes   :- ::actions.schema/query-action.update]
-  (t2/update! :model/QueryAction :action_id action-id changes))
+  (t2/update! :model/QueryAction :action_id [:auto/param action-id] changes))
 
 (mu/defn update-implicit-action!
   "Apply `changes` to the ImplicitAction with `action-id`, returning the number updated."
   [action-id :- ::lib.schema.id/action
    changes   :- ::actions.schema/implicit-action.update]
-  (t2/update! :model/ImplicitAction :action_id action-id changes))
+  (t2/update! :model/ImplicitAction :action_id [:auto/param action-id] changes))
 
 (mu/defn delete-query-action!
   "Delete the QueryAction of the Action with `action-id`, returning the number deleted."
   [action-id :- ::lib.schema.id/action]
-  (t2/delete! :model/QueryAction :action_id action-id))
+  (t2/delete! :model/QueryAction :action_id [:auto/param action-id]))
 
 (mu/defn delete-implicit-action!
   "Delete the ImplicitAction of the Action with `action-id`, returning the number deleted."
   [action-id :- ::lib.schema.id/action]
-  (t2/delete! :model/ImplicitAction :action_id action-id))
+  (t2/delete! :model/ImplicitAction :action_id [:auto/param action-id]))
 
 (mu/defn query-actions
   "The QueryActions of the Actions with `action-ids`."
@@ -193,17 +193,17 @@
 (mu/defn query-action
   "The QueryAction of the Action with `action-id`, or nil."
   [action-id :- ::lib.schema.id/action]
-  (t2/select-one :model/QueryAction :action_id action-id))
+  (t2/select-one :model/QueryAction :action_id [:auto/param action-id]))
 
 (mu/defn implicit-action-table-id
   "The Table id of the ImplicitAction of the Action with `action-id`, or nil."
   [action-id :- ::lib.schema.id/action]
-  (t2/select-one-fn :table_id [:model/ImplicitAction :table_id] :action_id action-id))
+  (t2/select-one-fn :table_id [:model/ImplicitAction :table_id] :action_id [:auto/param action-id]))
 
 (mu/defn table-published? :- :boolean
   "Whether the Table with `table-id` is published to the Library."
   [table-id :- ::lib.schema.id/table]
-  (some? (t2/select-one-fn :id [:model/Table :id] :id table-id :is_published true
+  (some? (t2/select-one-fn :id [:model/Table :id] :id [:auto/param table-id] :is_published true
                            {:from [(warehouse-schema-overlay/table-query)]})))
 
 (mu/defn tables-with-fields
@@ -219,7 +219,7 @@
 (mu/defn actions-with-id
   "The Actions with `action-id` (usually a single Action, since ids are unique)."
   [action-id :- [:maybe ::lib.schema.id/action]]
-  (t2/select :model/Action :id action-id))
+  (t2/select :model/Action :id [:auto/param action-id]))
 
 (mu/defn actions-with-ids
   "The Actions whose `:id` is in `action-ids`."
@@ -229,12 +229,12 @@
 (mu/defn unarchived-action-with-id
   "The unarchived Actions with `action-id` (usually a single Action, since ids are unique)."
   [action-id :- [:maybe ::lib.schema.id/action]]
-  (t2/select :model/Action :id action-id :archived false))
+  (t2/select :model/Action :id [:auto/param action-id] :archived false))
 
 (mu/defn action-with-entity-id
   "The Actions with `entity-id` (usually a single Action, since entity ids are unique)."
   [entity-id :- :string]
-  (t2/select :model/Action :entity_id entity-id))
+  (t2/select :model/Action :entity_id [:auto/param entity-id]))
 
 (mu/defn fields-for-parameters
   "The id, base type, display name, and description of the Fields with `field-ids`."
@@ -265,14 +265,14 @@
 (mu/defn destination-database-exists-for-router?
   "Whether the Database with `database-id` has routing destinations."
   [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Database :router_database_id database-id))
+  (t2/exists? :model/Database :router_database_id [:auto/param database-id]))
 
 (mu/defn writable-table-exists?
   "Whether the Database with `database-id` has a writable Table."
   [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Table :db_id database-id :is_writable true {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/exists? :model/Table :db_id [:auto/param database-id] :is_writable true {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn table-with-unknown-writability-exists?
   "Whether the Database with `database-id` has a Table whose writability is unknown."
   [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Table :db_id database-id :is_writable nil {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/exists? :model/Table :db_id [:auto/param database-id] :is_writable nil {:from [(warehouse-schema-overlay/table-query)]}))

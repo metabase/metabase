@@ -110,17 +110,17 @@
 (mu/defn database-exists?
   "Whether a Database with `database-id` exists."
   [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Database :id database-id))
+  (t2/exists? :model/Database :id [:auto/param database-id]))
 
 (mu/defn non-destination-database-exists?
   "Whether a Database with `database-id` that is not a routing destination exists."
   [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Database :id database-id :router_database_id nil))
+  (t2/exists? :model/Database :id [:auto/param database-id] :router_database_id nil))
 
 (mu/defn destination-database-exists-for-router?
   "Whether the Database with `database-id` has routing destinations."
   [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Database :router_database_id database-id))
+  (t2/exists? :model/Database :router_database_id [:auto/param database-id]))
 
 (mu/defn autocomplete-tables
   "Up to `limit` id, Database id, schema, and name rows of the active, visible Tables of the Database with
@@ -133,7 +133,7 @@
    published-only? :- :boolean]
   (t2/select [:model/Table :id :db_id :schema :name]
              {:from [(warehouse-schema-overlay/table-query)]
-              :where    [:and [:= :db_id database-id]
+              :where    [:and [:= :db_id [:auto/param database-id]]
                          [:= :active true]
                          [:like :%lower.name like-pattern]
                          [:= :visibility_type nil]
@@ -185,7 +185,7 @@
   (t2/select [:model/Card :id :type :database_id :name :collection_id
               [:collection.name :collection_name]]
              {:where    [:and
-                         [:= :report_card.database_id database-id]
+                         [:= :report_card.database_id [:auto/param database-id]]
                          [:= :report_card.archived false]
                          (when-not include-dashboard-questions?
                            [:= :report_card.dashboard_id nil])
@@ -215,7 +215,7 @@
              :metabase_field.active          true
              :%lower.metabase_field/name     [:like like-pattern]
              :metabase_field.visibility_type [:not-in ["sensitive" "retired"]]
-             :table.db_id                    database-id
+             :table.db_id                    [:auto/param database-id]
              {:from       [(warehouse-schema-overlay/field-query)]
               :order-by   [[[:lower :metabase_field.name] :asc]
                            [[:lower :table.name] :asc]]
@@ -229,7 +229,7 @@
 (mu/defn table-ids-for-database
   "The ids of the Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-fn-set :id :model/Table, :db_id database-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-fn-set :id :model/Table, :db_id [:auto/param database-id] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn non-sensitive-fields-for-tables
   "The id, name, display name, Table id, and types of the non-sensitive Fields of the Tables with `table-ids`."
@@ -252,23 +252,23 @@
 (mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id database-id))
+  (t2/select-one :model/Database :id [:auto/param database-id]))
 
 (mu/defn update-database!
   "Apply `changes` to the Database with `database-id`, returning the number updated."
   [database-id :- ::lib.schema.id/database
    changes     :- ::warehouses.schema/database.update]
-  (t2/update! :model/Database :id database-id changes))
+  (t2/update! :model/Database :id [:auto/param database-id] changes))
 
 (mu/defn delete-destination-databases!
   "Delete the routing destination Databases of the Database with `router-database-id`, returning the number deleted."
   [router-database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/Database :router_database_id router-database-id))
+  (t2/delete! :model/Database :router_database_id [:auto/param router-database-id]))
 
 (mu/defn delete-database!
   "Delete the Database with `database-id`, returning the number deleted."
   [database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/Database :id database-id))
+  (t2/delete! :model/Database :id [:auto/param database-id]))
 
 (mu/defn mark-tables-sync-complete!
   "Mark the initial sync of the Tables with `table-ids` complete, returning the number updated."
@@ -283,12 +283,12 @@
                               ^:allow-subquery {:select     [:f.id]
                                                 :from       [[:metabase_field :f]]
                                                 :right-join [[:metabase_table :t] [:= :f.table_id :t.id]]
-                                                :where      [:= :t.db_id database-id]}]}))
+                                                :where      [:= :t.db_id [:auto/param database-id]]}]}))
 
 (mu/defn active-tables-for-database
   "The active Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/select :model/Table :db_id database-id :active true {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select :model/Table :db_id [:auto/param database-id] :active true {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn active-table-schemas
   "The distinct schemas of the active Tables of the Database with `database-id`, in schema order. When
@@ -298,7 +298,7 @@
    include-hidden? :- :boolean]
   (let [clauses (cond-> []
                   (not include-hidden?) (conj [:= :visibility_type nil]))]
-    (t2/select-fn-set :schema :model/Table :db_id database-id :active true
+    (t2/select-fn-set :schema :model/Table :db_id [:auto/param database-id] :active true
                       (merge {:from     [(warehouse-schema-overlay/table-query)]
                               :order-by [[:%lower.schema :asc]]}
                              (when clauses
@@ -309,8 +309,8 @@
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]]
   (t2/select :model/Table
-             :db_id database-id
-             :schema schema
+             :db_id [:auto/param database-id]
+             :schema [:auto/param schema]
              :active true
              {:from [(warehouse-schema-overlay/table-query)]
               :order-by [[:display_name :asc]]}))
@@ -320,8 +320,8 @@
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]]
   (t2/select :model/Table
-             :db_id database-id
-             :schema schema
+             :db_id [:auto/param database-id]
+             :schema [:auto/param schema]
              :active true
              :visibility_type nil
              {:from [(warehouse-schema-overlay/table-query)]
@@ -330,7 +330,7 @@
 (mu/defn collection-ids-named
   "The ids of the Collections named `collection-name`, or nil."
   [collection-name :- :string]
-  (t2/select-pks-set :model/Collection :name collection-name))
+  (t2/select-pks-set :model/Collection :name [:auto/param collection-name]))
 
 (defn- card-usage-count-subquery
   [database-id model type-str]

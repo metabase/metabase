@@ -10,7 +10,7 @@
 (mu/defn latest-secret
   "The highest-version Secret with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/Secret :id id {:order-by [[:version :desc]]}))
+  (t2/select-one :model/Secret :id [:auto/param id] {:order-by [[:version :desc]]}))
 
 (mu/defn insert-secret!
   "Insert the Secret `row` and return the inserted instance."
@@ -28,9 +28,9 @@
   "The Secret with `id` and `version`, or nil."
   [id      :- ms/PositiveInt
    version :- ms/PositiveInt]
-  (t2/select-one :model/Secret :id id :version version))
+  (t2/select-one :model/Secret :id [:auto/param id] :version [:auto/param version]))
 
 (mu/defn delete-secret!
   "Delete every version of the Secret with `id`, returning the number deleted."
   [id :- ms/PositiveInt]
-  (t2/delete! :model/Secret :id id))
+  (t2/delete! :model/Secret :id [:auto/param id]))

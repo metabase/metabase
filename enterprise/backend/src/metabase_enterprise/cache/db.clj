@@ -86,7 +86,7 @@
                                        "question"  [:= :qe.card_id model-id]
                                        "dashboard" [:= :qe.dashboard_id model-id])
                                      [:<= :qc.updated_at rerun-cutoff]
-                                     [:>= :qe.started_at started-after]
+                                     [:>= :qe.started_at [:auto/param started-after]]
                                      [:= :qe.error nil]
                                      [:= :qe.is_sandboxed false]
                                      (if parameterized?
@@ -112,11 +112,11 @@
                   :from     [[(t2/table-name :model/Query) :q]]
                   :join     [[(t2/table-name :model/QueryExecution) :qe] [:= :qe.hash :q.query_hash]]
                   :where    [:and
-                             [:= :qe.card_id card-id]
+                             [:= :qe.card_id [:auto/param card-id]]
                              [:= :qe.parameterized false]
                              [:= :qe.error nil]
                              [:= :qe.is_sandboxed false]
-                             [:>= :qe.started_at started-after]]
+                             [:>= :qe.started_at [:auto/param started-after]]]
                   :order-by [[:qe.started_at :desc]]
                   :limit    1}))
 
@@ -130,8 +130,8 @@
               :from     [[(t2/table-name :model/Query) :q]]
               :join     [[(t2/table-name :model/QueryExecution) :qe] [:= :qe.hash :q.query_hash]]
               :where    [:and
-                         [:= :qe.card_id card-id]
-                         [:>= :qe.started_at rerun-cutoff]
+                         [:= :qe.card_id [:auto/param card-id]]
+                         [:>= :qe.started_at [:auto/param rerun-cutoff]]
                          ;; Don't factor the last cache refresh into whether we should rerun a parameterized query
                          [:not= :qe.context "cache-refresh"]
                          [:= :parameterized true]
@@ -150,7 +150,7 @@
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/Dashboard :id dashboard-id))
+  (t2/select-one :model/Dashboard :id [:auto/param dashboard-id]))
 
 (mu/defn cache-configs-ready-to-run
   "The CacheConfigs of `strategy` whose next run is unset or due at `now`."
@@ -160,10 +160,10 @@
              :strategy strategy
              {:where [:or
                       [:= :next_run_at nil]
-                      [:<= :next_run_at now]]}))
+                      [:<= :next_run_at [:auto/param now]]]}))
 
 (mu/defn update-cache-config!
   "Apply `changes` to the CacheConfig with `cache-config-id`."
   [cache-config-id :- ms/PositiveInt
    changes         :- CacheConfigChanges]
-  (t2/update! :model/CacheConfig {:id cache-config-id} changes))
+  (t2/update! :model/CacheConfig {:id [:auto/param cache-config-id]} changes))

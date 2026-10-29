@@ -32,7 +32,7 @@
 (mu/defn data-app-bundle
   "The bundle bytes of the DataApp with `data-app-id`."
   [data-app-id :- ms/PositiveInt]
-  (t2/select-one-fn :bundle [:model/DataApp :bundle] :id data-app-id))
+  (t2/select-one-fn :bundle [:model/DataApp :bundle] :id [:auto/param data-app-id]))
 
 (mu/defn reducible-data-apps-with-bundles
   "A reducible of the DataApp rows, bundles included, whose `filter-column` is one of `filter-ids` (every row when
@@ -48,23 +48,23 @@
 (mu/defn data-app-exists?
   "Whether a DataApp named `slug` exists."
   [slug :- :string]
-  (t2/exists? :model/DataApp :name slug))
+  (t2/exists? :model/DataApp :name [:auto/param slug]))
 
 (mu/defn resource-collection?
   "Whether the Collection with `collection-id` is the resource collection of a DataApp."
   [collection-id :- pos-int?]
-  (t2/exists? :model/DataApp :resource_collection_id collection-id))
+  (t2/exists? :model/DataApp :resource_collection_id [:auto/param collection-id]))
 
 (mu/defn other-app-has-collection?
   "Whether a DataApp other than the one with `app-id`, or any when it is nil, has the Collection with `collection-id`."
   [collection-id :- pos-int?
    app-id        :- [:maybe pos-int?]]
-  (t2/exists? :model/DataApp :resource_collection_id collection-id :id [:not= (or app-id -1)]))
+  (t2/exists? :model/DataApp :resource_collection_id [:auto/param collection-id] :id [:not= (or app-id -1)]))
 
 (mu/defn data-apps-namespace-collection?
   "Whether the Collection with `collection-id` is in the data-apps namespace."
   [collection-id :- pos-int?]
-  (t2/exists? :model/Collection :id collection-id :namespace "data-apps"))
+  (t2/exists? :model/Collection :id [:auto/param collection-id] :namespace "data-apps"))
 
 (mu/defn insert-data-app-returning-pk! :- ms/PositiveInt
   "Insert the DataApp `row`, returning its ID."
@@ -75,12 +75,12 @@
   "Apply `changes` to the DataApp with `data-app-id`."
   [data-app-id :- ms/PositiveInt
    changes     :- ::data-apps.schema/data-app.update]
-  (t2/update! :model/DataApp :id data-app-id changes))
+  (t2/update! :model/DataApp :id [:auto/param data-app-id] changes))
 
 (mu/defn delete-data-app!
   "Delete the DataApp with `data-app-id`."
   [data-app-id :- ms/PositiveInt]
-  (t2/delete! :model/DataApp :id data-app-id))
+  (t2/delete! :model/DataApp :id [:auto/param data-app-id]))
 
 (defn resource-collection-ids
   "The IDs of the resource collections owned by data apps."
@@ -90,7 +90,7 @@
 (mu/defn resource-collection-id
   "The ID of the resource collection owned by the DataApp with `data-app-id`."
   [data-app-id :- ms/PositiveInt]
-  (t2/select-one-fn :resource_collection_id :model/DataApp :id data-app-id))
+  (t2/select-one-fn :resource_collection_id :model/DataApp :id [:auto/param data-app-id]))
 
 (defn collection-card-ids
   "The IDs of the cards in the collection with `collection-id`."
@@ -160,13 +160,13 @@
 (mu/defn resource-cards
   "The unarchived Cards in the collection with `collection-id`, in name then id order."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select :model/Card {:where    [:and [:= :collection_id collection-id] [:= :archived false]]
+  (t2/select :model/Card {:where    [:and [:= :collection_id [:auto/param collection-id]] [:= :archived false]]
                           :order-by [[:name :asc] [:id :asc]]}))
 
 (mu/defn resource-action-ids
   "The IDs of the unarchived Actions in the collection with `collection-id`, in name then id order."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/select-pks-vec :model/Action {:where    [:and [:= :collection_id collection-id] [:= :archived false]]
+  (t2/select-pks-vec :model/Action {:where    [:and [:= :collection_id [:auto/param collection-id]] [:= :archived false]]
                                     :order-by [[:name :asc] [:id :asc]]}))
 
 (mu/defn external-card-ids :- [:set ::lib.schema.id/card]
@@ -174,7 +174,7 @@
   [collection-id :- [:maybe ::lib.schema.id/collection]
    card-ids      :- [:set {:min 1} ::lib.schema.id/card]]
   (set/difference card-ids (when collection-id
-                             (t2/select-pks-set :model/Card :id [:in card-ids] :collection_id collection-id))))
+                             (t2/select-pks-set :model/Card :id [:in card-ids] :collection_id [:auto/param collection-id]))))
 
 (mu/defn external-metric-ids :- [:set ::lib.schema.id/card]
   "Among `card-ids`, those of no metric in the Library's Metrics collection or one of its subcollections."

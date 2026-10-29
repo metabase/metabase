@@ -15,9 +15,9 @@
 (mu/defn database-engine
   "The engine of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :engine :model/Database :id database-id))
+  (t2/select-one-fn :engine :model/Database :id [:auto/param database-id]))
 
 (mu/defn active-fields-for-table
   "The active Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
-  (t2/select :model/Field :table_id table-id :active true {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select :model/Field :table_id [:auto/param table-id] :active true {:from [(warehouse-schema-overlay/field-query)]}))

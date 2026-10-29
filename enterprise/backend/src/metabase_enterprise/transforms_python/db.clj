@@ -28,7 +28,7 @@
   "Set the message of the TransformRun with `run-id`."
   [run-id  :- ms/PositiveInt
    message :- [:maybe :string]]
-  (t2/update! :model/TransformRun :id run-id {:message message}))
+  (t2/update! :model/TransformRun :id [:auto/param run-id] {:message message}))
 
 (mu/defn python-library
   "The PythonLibrary with `library-id`, or nil."
@@ -38,7 +38,7 @@
 (mu/defn python-library-by-path
   "The PythonLibrary at `path`, or nil."
   [path :- :string]
-  (t2/select-one :model/PythonLibrary :path path))
+  (t2/select-one :model/PythonLibrary :path [:auto/param path]))
 
 (mu/defn upsert-python-library-source!
   "Insert or update the PythonLibrary at `path`, setting its source to `source` and, on insert only, the columns in
@@ -63,7 +63,7 @@
   "The export metadata columns of the active top-level Fields of the Table with `table-id`, in database order."
   [table-id :- ::lib.schema.id/table]
   (t2/select [:model/Field :id :name :base_type :effective_type :semantic_type :database_type :database_position]
-             :table_id table-id
+             :table_id [:auto/param table-id]
              :active true
              ;; we are only interested in top-level objects, so filter out nested fields (parent or path)
              :parent_id nil

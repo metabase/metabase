@@ -244,7 +244,7 @@
              {:with-recursive [[[:parents ^:allow-subquery {:columns [:id :name :parent_id :table_id]}]
                                 ^:allow-subquery {:union-all [^:allow-subquery {:from   [(warehouse-schema-overlay/field-query {:alias :mf, :user-settings? false})]
                                                                                 :select [:mf.id :mf.name :mf.parent_id :mf.table_id]
-                                                                                :where  [:= :id field-id]}
+                                                                                :where  [:= :id [:auto/param field-id]]}
                                                               ^:allow-subquery {:from   [(warehouse-schema-overlay/field-query {:alias :pf, :user-settings? false})]
                                                                                 :select [:pf.id :pf.name :pf.parent_id :pf.table_id]
                                                                                 :join   [[:parents :p] [:= :p.parent_id :pf.id]]}]}]]
@@ -254,24 +254,24 @@
 (mu/defn table-ref-columns
   "The id, Database id, name, and schema of the Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
-  (t2/select-one [:model/Table :id :db_id :name :schema] :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one [:model/Table :id :db_id :name :schema] :id [:auto/param table-id] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn database-name
   "The name of the Database with `database-id`, or nil."
   [database-id :- [:maybe ::lib.schema.id/database]]
-  (t2/select-one-fn :name [:model/Database :id :name] :id database-id))
+  (t2/select-one-fn :name [:model/Database :id :name] :id [:auto/param database-id]))
 
 (mu/defn database-id-by-name
   "The id of the Database named `database-name`, or nil."
   [database-name :- :string]
-  (t2/select-one-fn :id :model/Database :name database-name))
+  (t2/select-one-fn :id :model/Database :name [:auto/param database-name]))
 
 (mu/defn table-id-by-name
   "The id of the Table named `table-name` in `schema` of the Database with `database-id`, or nil."
   [table-name  :- :string
    schema      :- [:maybe :string]
    database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :id :model/Table :name table-name :schema schema :db_id database-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-one-fn :id :model/Table :name [:auto/param table-name] :schema [:auto/param schema] :db_id [:auto/param database-id] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn insert-stub-database!
   "Insert a stub Postgres Database named `database-name` with empty connection details and return its id."
@@ -297,7 +297,7 @@
   [table-id   :- ::lib.schema.id/table
    field-name :- :string
    parent-id  :- [:maybe ms/PositiveInt]]
-  (t2/select-one-pk :model/Field :table_id table-id :name field-name :parent_id parent-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-one-pk :model/Field :table_id [:auto/param table-id] :name [:auto/param field-name] :parent_id [:auto/param parent-id] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (defn- field-in-path-query
   [table-id [field & rest]]
@@ -348,17 +348,17 @@
 (mu/defn card-serdes-columns
   "The id, entity id, Collection id, and Database id of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :id :entity_id :collection_id :database_id] :id card-id))
+  (t2/select-one [:model/Card :id :entity_id :collection_id :database_id] :id [:auto/param card-id]))
 
 (mu/defn measure-serdes-columns
   "The id, entity id, and Table id of the Measure with `measure-id`, or nil."
   [measure-id :- ::lib.schema.id/measure]
-  (t2/select-one [:model/Measure :id :entity_id :table_id] :id measure-id))
+  (t2/select-one [:model/Measure :id :entity_id :table_id] :id [:auto/param measure-id]))
 
 (mu/defn segment-serdes-columns
   "The id, entity id, and Table id of the Segment with `segment-id`, or nil."
   [segment-id :- ::lib.schema.id/segment]
-  (t2/select-one [:model/Segment :id :entity_id :table_id] :id segment-id))
+  (t2/select-one [:model/Segment :id :entity_id :table_id] :id [:auto/param segment-id]))
 
 (mu/defn timeline-ids-of-events
   "The distinct Timeline ids of the TimelineEvents with `event-ids`."

@@ -24,7 +24,7 @@
                   :model/Table table (assoc table :db_id (u/the-id db))]
      (let [update-operations (atom [])]
        (mt/with-dynamic-fn-redefs [t2/update! (fn [model _pk-column id updates]
-                                                (swap! update-operations conj [(name model) id updates])
+                                                (swap! update-operations conj [(name model) (cond-> id (vector? id) second) updates])
                                                 (count updates))]
          (#'sync-metadata/update-field-metadata-if-needed!
           (driver.u/lib-database (:id db))

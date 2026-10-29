@@ -12,13 +12,13 @@
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :id [:auto/param table-id] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn group-manager?
   "Whether the User with `user-id` manages the PermissionsGroup with `group-id`."
   [user-id  :- ::lib.schema.id/user
    group-id :- ms/PositiveInt]
-  (t2/select-one-fn :is_group_manager :model/PermissionsGroupMembership :user_id user-id :group_id group-id))
+  (t2/select-one-fn :is_group_manager :model/PermissionsGroupMembership :user_id [:auto/param user-id] :group_id [:auto/param group-id]))
 
 (mu/defn blocked-database-ids-for-group
   "The subset of `database-ids` the group with `group-id` is blocked from viewing."
@@ -27,7 +27,7 @@
   (t2/select-fn-set :db_id :model/DataPermissions
                     :perm_type :perms/view-data
                     :perm_value :blocked
-                    :group_id group-id
+                    :group_id [:auto/param group-id]
                     :db_id [:in database-ids]
                     {:select-distinct [:db_id]}))
 
@@ -35,7 +35,7 @@
   "The subset of `database-ids` the group with `group-id` accesses through connection impersonation."
   [group-id     :- ms/PositiveInt
    database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select-fn-set :db_id :model/ConnectionImpersonation :group_id group-id :db_id [:in database-ids]))
+  (t2/select-fn-set :db_id :model/ConnectionImpersonation :group_id [:auto/param group-id] :db_id [:in database-ids]))
 
 (mu/defn sandboxed-database-ids-for-group
   "The `:db_id` rows of the Databases among `database-ids` the group with `group-id` has a sandbox on."
@@ -46,7 +46,7 @@
              :join   [(warehouse-schema-overlay/table-query {:alias :t, :user-settings? false})
                       [:= :s.table_id :t.id]]
              :where  [:and
-                      [:= :s.group_id group-id]
+                      [:= :s.group_id [:auto/param group-id]]
                       [:in :t.db_id database-ids]]}))
 
 (mu/defn blocked-group-ids
@@ -73,7 +73,7 @@
   [database-id :- ::lib.schema.id/database
    group-ids   :- [:sequential ms/PositiveInt]]
   (t2/select-fn-set :group_id :model/DataPermissions
-                    :db_id database-id
+                    :db_id [:auto/param database-id]
                     :perm_type :perms/view-data
                     :perm_value :blocked
                     :group_id [:in group-ids]
@@ -89,7 +89,7 @@
                       [:= :t.id :s.table_id]]
              :where  [:and
                       [:in :s.group_id group-ids]
-                      [:= :t.db_id database-id]]}))
+                      [:= :t.db_id [:auto/param database-id]]]}))
 
 (mu/defn application-permissions
   "The Permissions rows for the root object and every application object."
@@ -102,9 +102,9 @@
 (mu/defn user-group-memberships
   "The group ID (as `:id`) and manager flag of the memberships of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
-  (t2/select [:model/PermissionsGroupMembership [:group_id :id] :is_group_manager] :user_id user-id))
+  (t2/select [:model/PermissionsGroupMembership [:group_id :id] :is_group_manager] :user_id [:auto/param user-id]))
 
 (mu/defn managed-group-ids
   "The IDs of the PermissionsGroups the User with `user-id` manages."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id :is_group_manager true))
+  (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id [:auto/param user-id] :is_group_manager true))

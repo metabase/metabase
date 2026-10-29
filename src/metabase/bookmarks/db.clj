@@ -17,31 +17,31 @@
   "Whether the User with `user-id` has a CardBookmark for the Card with `card-id`."
   [card-id :- ::lib.schema.id/card
    user-id :- ::lib.schema.id/user]
-  (t2/exists? :model/CardBookmark :card_id card-id :user_id user-id))
+  (t2/exists? :model/CardBookmark :card_id [:auto/param card-id] :user_id [:auto/param user-id]))
 
 (mu/defn dashboard-bookmark-exists?
   "Whether the User with `user-id` has a DashboardBookmark for the Dashboard with `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard
    user-id      :- ::lib.schema.id/user]
-  (t2/exists? :model/DashboardBookmark :dashboard_id dashboard-id :user_id user-id))
+  (t2/exists? :model/DashboardBookmark :dashboard_id [:auto/param dashboard-id] :user_id [:auto/param user-id]))
 
 (mu/defn collection-bookmark-exists?
   "Whether the User with `user-id` has a CollectionBookmark for the Collection with `collection-id`."
   [collection-id :- ::lib.schema.id/collection
    user-id       :- ::lib.schema.id/user]
-  (t2/exists? :model/CollectionBookmark :collection_id collection-id :user_id user-id))
+  (t2/exists? :model/CollectionBookmark :collection_id [:auto/param collection-id] :user_id [:auto/param user-id]))
 
 (mu/defn document-bookmark-exists?
   "Whether the User with `user-id` has a DocumentBookmark for the Document with `document-id`."
   [document-id :- ms/PositiveInt
    user-id     :- ::lib.schema.id/user]
-  (t2/exists? :model/DocumentBookmark :document_id document-id :user_id user-id))
+  (t2/exists? :model/DocumentBookmark :document_id [:auto/param document-id] :user_id [:auto/param user-id]))
 
 (mu/defn exploration-bookmark-exists?
   "Whether the User with `user-id` has an ExplorationBookmark for the Exploration with `exploration-id`."
   [exploration-id :- ms/PositiveInt
    user-id        :- ::lib.schema.id/user]
-  (t2/exists? :model/ExplorationBookmark :exploration_id exploration-id :user_id user-id))
+  (t2/exists? :model/ExplorationBookmark :exploration_id [:auto/param exploration-id] :user_id [:auto/param user-id]))
 
 (mu/defn insert-card-bookmark!
   "Insert a CardBookmark for the Card with `card-id` and the User with `user-id`, returning the inserted instance."
@@ -81,31 +81,31 @@
   "Delete the CardBookmark of the User with `user-id` for the Card with `card-id`."
   [card-id :- ::lib.schema.id/card
    user-id :- ::lib.schema.id/user]
-  (t2/delete! :model/CardBookmark :card_id card-id :user_id user-id))
+  (t2/delete! :model/CardBookmark :card_id [:auto/param card-id] :user_id [:auto/param user-id]))
 
 (mu/defn delete-dashboard-bookmark!
   "Delete the DashboardBookmark of the User with `user-id` for the Dashboard with `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard
    user-id      :- ::lib.schema.id/user]
-  (t2/delete! :model/DashboardBookmark :dashboard_id dashboard-id :user_id user-id))
+  (t2/delete! :model/DashboardBookmark :dashboard_id [:auto/param dashboard-id] :user_id [:auto/param user-id]))
 
 (mu/defn delete-collection-bookmark!
   "Delete the CollectionBookmark of the User with `user-id` for the Collection with `collection-id`."
   [collection-id :- ::lib.schema.id/collection
    user-id       :- ::lib.schema.id/user]
-  (t2/delete! :model/CollectionBookmark :collection_id collection-id :user_id user-id))
+  (t2/delete! :model/CollectionBookmark :collection_id [:auto/param collection-id] :user_id [:auto/param user-id]))
 
 (mu/defn delete-document-bookmark!
   "Delete the DocumentBookmark of the User with `user-id` for the Document with `document-id`."
   [document-id :- ms/PositiveInt
    user-id     :- ::lib.schema.id/user]
-  (t2/delete! :model/DocumentBookmark :document_id document-id :user_id user-id))
+  (t2/delete! :model/DocumentBookmark :document_id [:auto/param document-id] :user_id [:auto/param user-id]))
 
 (mu/defn delete-exploration-bookmark!
   "Delete the ExplorationBookmark of the User with `user-id` for the Exploration with `exploration-id`."
   [exploration-id :- ms/PositiveInt
    user-id        :- ::lib.schema.id/user]
-  (t2/delete! :model/ExplorationBookmark :exploration_id exploration-id :user_id user-id))
+  (t2/delete! :model/ExplorationBookmark :exploration_id [:auto/param exploration-id] :user_id [:auto/param user-id]))
 
 ;;; Generic (model, id, user-id) tier. The REST API and the MCP `bookmark_content` tool both take the
 ;;; model as a runtime string, so they dispatch here rather than naming a per-model fn at the call site.
@@ -157,7 +157,7 @@
 (mu/defn delete-bookmark-orderings-for-user!
   "Delete the BookmarkOrderings of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
-  (t2/delete! :model/BookmarkOrdering :user_id user-id))
+  (t2/delete! :model/BookmarkOrdering :user_id [:auto/param user-id]))
 
 (mu/defn insert-bookmark-orderings!
   "Insert the BookmarkOrdering `rows`."

@@ -14,7 +14,7 @@
    excluded-group-ids :- [:set ms/PositiveInt]]
   (t2/select-fn-set :group_id :model/PermissionsGroupMembership
                     {:where [:and
-                             [:= :user_id user-id]
+                             [:= :user_id [:auto/param user-id]]
                              [:not-in :group_id excluded-group-ids]]}))
 
 (mu/defn user-group-ids-among
@@ -25,7 +25,7 @@
    excluded-group-ids :- [:set ms/PositiveInt]]
   (t2/select-fn-set :group_id :model/PermissionsGroupMembership
                     {:where [:and
-                             [:= :user_id user-id]
+                             [:= :user_id [:auto/param user-id]]
                              [:in :group_id group-ids]
                              [:not-in :group_id excluded-group-ids]]}))
 
@@ -33,7 +33,7 @@
   "Whether the User with `user-id` has an AuthIdentity for `provider`."
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
-  (t2/exists? :model/AuthIdentity :user_id user-id :provider provider))
+  (t2/exists? :model/AuthIdentity :user_id [:auto/param user-id] :provider [:auto/param provider]))
 
 (mu/defn slack-connect-identity
   "The user's Slack identity with `:provider_id` and `:metadata` selected, or nil."
@@ -58,4 +58,4 @@
   [user-id  :- ::lib.schema.id/user
    provider :- :string
    metadata :- [:maybe ::auth-identity.schema/auth-identity.metadata]]
-  (t2/update! :model/AuthIdentity {:user_id user-id, :provider provider} {:metadata metadata}))
+  (t2/update! :model/AuthIdentity {:user_id [:auto/param user-id], :provider [:auto/param provider]} {:metadata metadata}))

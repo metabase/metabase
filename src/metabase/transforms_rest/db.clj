@@ -19,7 +19,7 @@
 (mu/defn reset-checkpoint!
   "Clear the stored checkpoint value of the Transform with `id`."
   [id :- ::lib.schema.id/transform]
-  (t2/update! :model/Transform :id id {:last_checkpoint_value nil}))
+  (t2/update! :model/Transform :id [:auto/param id] {:last_checkpoint_value nil}))
 
 ;;; ---------------------------------------------------- Tags ------------------------------------------------------
 
@@ -31,7 +31,7 @@
 (mu/defn tag
   "The TransformTag with `tag-id`, or nil."
   [tag-id :- ms/PositiveInt]
-  (t2/select-one :model/TransformTag :id tag-id))
+  (t2/select-one :model/TransformTag :id [:auto/param tag-id]))
 
 (mu/defn insert-tag!
   "Insert a TransformTag named `name` and return the inserted instance."
@@ -42,12 +42,12 @@
   "Set the name of the TransformTag with `tag-id`."
   [tag-id :- ms/PositiveInt
    name   :- :string]
-  (t2/update! :model/TransformTag :id tag-id {:name name}))
+  (t2/update! :model/TransformTag :id [:auto/param tag-id] {:name name}))
 
 (mu/defn delete-tag!
   "Delete the TransformTag with `tag-id`."
   [tag-id :- ms/PositiveInt]
-  (t2/delete! :model/TransformTag :id tag-id))
+  (t2/delete! :model/TransformTag :id [:auto/param tag-id]))
 
 (mu/defn tags
   "Every TransformTag, in name order."
@@ -70,28 +70,28 @@
 (mu/defn jobs-with-active-flag
   "The TransformJobs whose `:active` flag is `active`."
   [active :- :boolean]
-  (t2/select :model/TransformJob :active active))
+  (t2/select :model/TransformJob :active [:auto/param active]))
 
 (mu/defn job
   "The TransformJob with `job-id`, or nil."
   [job-id :- ms/PositiveInt]
-  (t2/select-one :model/TransformJob :id job-id))
+  (t2/select-one :model/TransformJob :id [:auto/param job-id]))
 
 (mu/defn job-pk
   "The primary key of the TransformJob with `job-id`, or nil."
   [job-id :- ms/PositiveInt]
-  (t2/select-one-pk :model/TransformJob :id job-id))
+  (t2/select-one-pk :model/TransformJob :id [:auto/param job-id]))
 
 (mu/defn update-job!
   "Apply `updates` to the TransformJob with `job-id`."
   [job-id  :- ms/PositiveInt
    updates :- (mut/select-keys ::transforms.schema/transform-job.update [:name :description :schedule :ui_display_type])]
-  (t2/update! :model/TransformJob :id job-id updates))
+  (t2/update! :model/TransformJob :id [:auto/param job-id] updates))
 
 (mu/defn delete-job!
   "Delete the TransformJob with `job-id`."
   [job-id :- ms/PositiveInt]
-  (t2/delete! :model/TransformJob :id job-id))
+  (t2/delete! :model/TransformJob :id [:auto/param job-id]))
 
 (mu/defn jobs
   "Every TransformJob, newest first."
@@ -102,11 +102,11 @@
   "The TransformJobRun with `run-id` belonging to the TransformJob with `job-id`, or nil."
   [run-id :- ms/PositiveInt
    job-id :- ms/PositiveInt]
-  (t2/select-one :model/TransformJobRun :id run-id :job_id job-id))
+  (t2/select-one :model/TransformJobRun :id [:auto/param run-id] :job_id [:auto/param job-id]))
 
 ;;; -------------------------------------------------- DAG runs -----------------------------------------------------
 
 (mu/defn dag-run
   "The TransformDagRun with `run-id`, or nil."
   [run-id :- ms/PositiveInt]
-  (t2/select-one :model/TransformDagRun :id run-id))
+  (t2/select-one :model/TransformDagRun :id [:auto/param run-id]))

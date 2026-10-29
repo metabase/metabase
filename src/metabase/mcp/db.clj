@@ -199,8 +199,8 @@
                   :from   [[:mcp_query_handle :mqh]]
                   :join   [[:core_session :cs] [:= :cs.id :mqh.core_session_id]]
                   :where  [:and
-                           [:= :mqh.id handle-id]
-                           [:= :cs.user_id user-id]]}))
+                           [:= :mqh.id [:auto/param handle-id]]
+                           [:= :cs.user_id [:auto/param user-id]]]}))
 
 (defn delete-query-handles-created-before!
   "Delete every McpQueryHandle created before `cutoff`, returning the number deleted."
@@ -213,8 +213,8 @@
    user-id    :- ::lib.schema.id/user]
   (t2/query {:delete-from :core_session
              :where       [:and
-                           [:= :key_hashed key-hashed]
-                           [:= :user_id user-id]]}))
+                           [:= :key_hashed [:auto/param key-hashed]]
+                           [:= :user_id [:auto/param user-id]]]}))
 
 (defn delete-query-handles-for-user-session!
   "Delete the McpQueryHandles of MCP session `mcp-session-id` that belong to the User with `user-id`, plus any

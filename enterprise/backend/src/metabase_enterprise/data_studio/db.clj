@@ -97,7 +97,7 @@
   (t2/select-one [:model/AuditLog :timestamp :topic :user_id]
                  :topic [:in [:table-publish :table-unpublish]]
                  :model "Table"
-                 :model_id table-id
+                 :model_id [:auto/param table-id]
                  {:order-by [[:timestamp :desc] [:id :desc]]}))
 
 (mu/defn user-name-and-email
@@ -126,7 +126,7 @@
   (t2/exists? :model/Table
               {:from  [(warehouse-schema-overlay/table-query)]
                :where [:and
-                       [:= :id table-id]
+                       [:= :id [:auto/param table-id]]
                        [:= :is_published true]
                        (collection/visible-collection-filter-clause
                         :collection_id {} {:current-user-id user-id
@@ -147,6 +147,6 @@
   (t2/exists? :model/Table
               {:from [(warehouse-schema-overlay/table-query)]
                :where [:and
-                       [:= :db_id database-id]
+                       [:= :db_id [:auto/param database-id]]
                        [:= :is_published true]
                        (collection/visible-collection-filter-clause :collection_id)]}))

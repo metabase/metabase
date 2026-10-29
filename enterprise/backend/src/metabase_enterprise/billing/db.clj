@@ -14,4 +14,4 @@
 (mu/defn user-email
   "The email of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one-fn :email :model/User :id user-id))
+  (t2/select-one-fn :email :model/User :id [:auto/param user-id]))

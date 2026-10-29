@@ -26,7 +26,7 @@
 (mu/defn channel-name-exists?
   "Whether a Channel named `channel-name` exists."
   [channel-name :- :string]
-  (t2/exists? :model/Channel :name channel-name))
+  (t2/exists? :model/Channel :name [:auto/param channel-name]))
 
 (mu/defn insert-channel!
   "Insert the Channel `row` and return the inserted instance."
@@ -42,7 +42,7 @@
   "Apply `changes` to the Channel with `id`, returning the number updated."
   [id      :- ms/PositiveInt
    changes :- ChannelRow]
-  (t2/update! :model/Channel :id id changes))
+  (t2/update! :model/Channel :id [:auto/param id] changes))
 
 (mu/defn accepted-admin-emails
   "The emails of the active personal superusers who have logged in at least once, in id order."
@@ -57,7 +57,7 @@
 (mu/defn user-contact-info
   "The name, email, locale, and derived common name of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :last_name :first_name :email :locale] :id user-id))
+  (t2/select-one [:model/User :last_name :first_name :email :locale] :id [:auto/param user-id]))
 
 (mu/defn active-user-emails
   "The emails of the active Users with `user-ids`."
@@ -83,32 +83,32 @@
 (mu/defn delete-pulse-channels-for-channel!
   "Delete the PulseChannels of the Channel with `channel-id`, returning the number deleted."
   [channel-id :- ms/PositiveInt]
-  (t2/delete! :model/PulseChannel :channel_id channel-id))
+  (t2/delete! :model/PulseChannel :channel_id [:auto/param channel-id]))
 
 (mu/defn channel-by-name
   "The Channel named `channel-name`, or nil."
   [channel-name :- :string]
-  (t2/select-one :model/Channel :name channel-name))
+  (t2/select-one :model/Channel :name [:auto/param channel-name]))
 
 (mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id database-id))
+  (t2/select-one :model/Database :id [:auto/param database-id]))
 
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/Dashboard :id dashboard-id))
+  (t2/select-one :model/Dashboard :id [:auto/param dashboard-id]))
 
 (mu/defn dashboard-tabs
   "The DashboardTabs of the Dashboard with `dashboard-id`, in position order."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select :model/DashboardTab :dashboard_id dashboard-id {:order-by [[:position :asc]]}))
+  (t2/select :model/DashboardTab :dashboard_id [:auto/param dashboard-id] {:order-by [[:position :asc]]}))
 
 (mu/defn dashcards
   "The DashboardCards of the Dashboard with `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select :model/DashboardCard :dashboard_id dashboard-id))
+  (t2/select :model/DashboardCard :dashboard_id [:auto/param dashboard-id]))
 
 (mu/defn any-user
   "Some User, or nil."

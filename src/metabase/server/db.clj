@@ -156,4 +156,4 @@
   [key-hashed :- :string]
   (t2/query-one {:update (t2/table-name :model/Session)
                  :set    {:last_active_at :%now}
-                 :where  [:= :key_hashed key-hashed]}))
+                 :where  [:= :key_hashed [:auto/param key-hashed]]}))

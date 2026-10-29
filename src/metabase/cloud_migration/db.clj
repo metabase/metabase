@@ -48,10 +48,10 @@
    states   :- [:set [:or :keyword :string]]
    state    :- [:or :keyword :string]
    progress :- :int]
-  (t2/update! :model/CloudMigration :id id :state [:not-in states] {:state state :progress progress}))
+  (t2/update! :model/CloudMigration :id [:auto/param id] :state [:not-in states] {:state state :progress progress}))
 
 (mu/defn set-cloud-migration-state!
   "Set the state of the CloudMigration with `id`."
   [id    :- ms/PositiveInt
    state :- [:or :keyword :string]]
-  (t2/update! :model/CloudMigration :id id {:state state}))
+  (t2/update! :model/CloudMigration :id [:auto/param id] {:state state}))

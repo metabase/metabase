@@ -52,7 +52,7 @@
                               ;; 1/0 rather than a boolean: MySQL has no boolean type and would hand back a number
                               ;; from a bare comparison anyway, so be explicit and normalise in Clojure
                               [(if current-key-hash
-                                 [:case [:= :session.key_hashed current-key-hash] [:inline 1] :else [:inline 0]]
+                                 [:case [:= :session.key_hashed [:auto/param current-key-hash]] [:inline 1] :else [:inline 0]]
                                  [:inline 0])
                                :current]
                               [:lh.device_id :device_id]

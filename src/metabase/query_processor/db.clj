@@ -19,13 +19,13 @@
 (mu/defn table
   "The Table with `table-id`, or nil."
   [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-one :model/Table :id [:auto/param table-id] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn dashcard-series-exists?
   "Whether the Card with `card-id` is a series of the DashboardCard with `dashcard-id`."
   [card-id     :- [:maybe ::lib.schema.id/card]
    dashcard-id :- [:maybe ::lib.schema.id/dashcard]]
-  (t2/exists? :model/DashboardCardSeries :card_id card-id :dashboardcard_id dashcard-id))
+  (t2/exists? :model/DashboardCardSeries :card_id [:auto/param card-id] :dashboardcard_id [:auto/param dashcard-id]))
 
 (mu/defn cache-entry
   "`row-fn` applied to the results and updated-at of the QueryCache entry for `query-hash`, or nil."
@@ -67,8 +67,8 @@
   "Set the result metadata of the Card with `card-id` without touching `updated_at`."
   [card-id         :- ::lib.schema.id/card
    result-metadata :- [:maybe ::lib.schema.metadata/card.result-metadata]]
-  (t2/update! :model/Card :id card-id {:result_metadata result-metadata
-                                       :updated_at      :updated_at}))
+  (t2/update! :model/Card :id [:auto/param card-id] {:result_metadata result-metadata
+                                                     :updated_at      :updated_at}))
 
 (mu/defn update-cards-last-used-at!
   "Move `last_used_at` of each Card in `card-id->timestamp` forward to its timestamp, without touching `updated_at`."

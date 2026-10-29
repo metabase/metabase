@@ -21,8 +21,8 @@
    target-id   :- ms/PositiveInt]
   (t2/select :model/Comment
              {:where    [:and
-                         [:= :target_type target-type]
-                         [:= :target_id target-id]]
+                         [:= :target_type [:auto/param target-type]]
+                         [:= :target_id [:auto/param target-id]]]
               :order-by [[:created_at :asc]]}))
 
 (defn document-comments
@@ -54,17 +54,17 @@
 (mu/defn document
   "The Document with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/Document :id id))
+  (t2/select-one :model/Document :id [:auto/param id]))
 
 (mu/defn exploration
   "The Exploration with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/Exploration :id id))
+  (t2/select-one :model/Exploration :id [:auto/param id]))
 
 (mu/defn comment-by-id
   "The Comment with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/Comment :id id))
+  (t2/select-one :model/Comment :id [:auto/param id]))
 
 (mu/defn comment-recipient-emails
   "The emails of the Users to notify about a comment: the authors of the Comment with `parent-comment-id` and of its
@@ -78,9 +78,9 @@
                                [:in :id ^:allow-subquery {:from   [:comment]
                                                           :select [:creator_id]
                                                           :where  [:or
-                                                                   [:= :id parent-comment-id]
-                                                                   [:= :parent_comment_id parent-comment-id]]}]
-                               [:= :id creator-id])
+                                                                   [:= :id [:auto/param parent-comment-id]]
+                                                                   [:= :parent_comment_id [:auto/param parent-comment-id]]]}]
+                               [:= :id [:auto/param creator-id]])
                              (when (seq mention-ids)
                                [:in :id mention-ids])]}))
 
@@ -93,12 +93,12 @@
   "Apply `changes` to the Comment with `id`, returning the number updated."
   [id      :- ms/PositiveInt
    changes :- (mut/select-keys ::comments.schema/comment.update [:content :is_resolved])]
-  (t2/update! :model/Comment :id id changes))
+  (t2/update! :model/Comment :id [:auto/param id] changes))
 
 (mu/defn soft-delete-comment!
   "Mark the Comment with `id` deleted now, returning the number updated."
   [id :- ms/PositiveInt]
-  (t2/update! :model/Comment :id id {:deleted_at [:now]}))
+  (t2/update! :model/Comment :id [:auto/param id] {:deleted_at [:now]}))
 
 (defn- restrict-to-visible-users
   "Narrow `clauses` (from `user/filter-clauses`) to the users the current user should see: superusers see
@@ -147,7 +147,7 @@
   [comment-id :- ms/PositiveInt
    user-id    :- ::lib.schema.id/user
    emoji      :- :string]
-  (t2/exists? :model/CommentReaction :comment_id comment-id :user_id user-id :emoji emoji))
+  (t2/exists? :model/CommentReaction :comment_id [:auto/param comment-id] :user_id [:auto/param user-id] :emoji [:auto/param emoji]))
 
 (mu/defn insert-reaction!
   "Insert a CommentReaction by the User with `user-id` on the Comment with `comment-id` with `emoji`."
@@ -162,7 +162,7 @@
   [comment-id :- ms/PositiveInt
    user-id    :- ::lib.schema.id/user
    emoji      :- :string]
-  (t2/delete! :model/CommentReaction :comment_id comment-id :user_id user-id :emoji emoji))
+  (t2/delete! :model/CommentReaction :comment_id [:auto/param comment-id] :user_id [:auto/param user-id] :emoji [:auto/param emoji]))
 
 (mu/defn reactions-for-comments
   "The CommentReactions on the Comments with `comment-ids`, ordered by comment, time, and emoji."

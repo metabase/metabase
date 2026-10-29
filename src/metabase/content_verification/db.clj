@@ -56,7 +56,7 @@
   [item-id   :- ms/PositiveInt
    item-type :- [:or :string :keyword]]
   (t2/update! :model/ModerationReview
-              {:moderated_item_id item-id, :moderated_item_type item-type}
+              {:moderated_item_id [:auto/param item-id], :moderated_item_type item-type}
               {:most_recent false}))
 
 (mu/defn insert-moderation-review!

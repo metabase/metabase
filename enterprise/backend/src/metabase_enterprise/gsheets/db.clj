@@ -20,10 +20,10 @@
 (mu/defn setting
   "The Setting with `setting-key`, or nil."
   [setting-key :- :string]
-  (t2/select-one :model/Setting :key setting-key))
+  (t2/select-one :model/Setting :key [:auto/param setting-key]))
 
 (mu/defn update-database!
   "Apply `changes` to the Database with `database-id`, returning the number updated."
   [database-id :- ::lib.schema.id/database
    changes     :- ::warehouses.schema/database.update]
-  (t2/update! :model/Database :id database-id changes))
+  (t2/update! :model/Database :id [:auto/param database-id] changes))

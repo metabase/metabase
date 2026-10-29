@@ -25,7 +25,7 @@
     (t2/select :model/Table
                {:from [(warehouse-schema-overlay/table-query)]
                 :select columns
-                :where  (cond-> [:and [:= :db_id database-id] [:= :active true]]
+                :where  (cond-> [:and [:= :db_id [:auto/param database-id]] [:= :active true]]
                           (contains? opts :table-ids) (conj [:in :id table-ids])
                           (contains? opts :schema)     (conj (if (= schema "")
                                                                [:or [:= :schema nil] [:= :schema ""]]

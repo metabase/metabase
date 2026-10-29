@@ -52,7 +52,7 @@
 (mu/defn card-type
   "The `:type` of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :type :model/Card :id card-id))
+  (t2/select-one-fn :type :model/Card :id [:auto/param card-id]))
 
 (mu/defn update-dashboards-last-viewed-at!
   "Move `last_viewed_at` of each Dashboard in `dashboard-id->timestamp` forward to its timestamp, without touching

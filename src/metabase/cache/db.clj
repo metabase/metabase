@@ -29,12 +29,12 @@
 (mu/defn dashboard-collection-id
   "The `:collection_id` of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one [:model/Dashboard :collection_id] :id dashboard-id))
+  (t2/select-one [:model/Dashboard :collection_id] :id [:auto/param dashboard-id]))
 
 (mu/defn card-collection-id
   "The `:collection_id` of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :collection_id] :id card-id))
+  (t2/select-one [:model/Card :collection_id] :id [:auto/param card-id]))
 
 (mu/defn cache-config
   "The CacheConfig with primary key `pk`, or nil."
@@ -118,7 +118,7 @@
   "The CacheConfig for `model` and `model-id` locked for update, or nil."
   [model    :- :string
    model-id :- ms/IntGreaterThanOrEqualToZero]
-  (t2/select-one :model/CacheConfig :model model :model_id model-id {:for :update}))
+  (t2/select-one :model/CacheConfig :model [:auto/param model] :model_id [:auto/param model-id] {:for :update}))
 
 (mu/defn upsert-cache-config!
   "Insert or replace the CacheConfig for `model` and `model-id` with `data`, returning its ID."
@@ -132,13 +132,13 @@
   "The CacheConfigs for `model` and `model-ids`."
   [model     :- :string
    model-ids :- [:sequential ms/IntGreaterThanOrEqualToZero]]
-  (t2/select :model/CacheConfig :model model :model_id [:in model-ids]))
+  (t2/select :model/CacheConfig :model [:auto/param model] :model_id [:in model-ids]))
 
 (mu/defn delete-cache-configs!
   "Delete the CacheConfigs for `model` and `model-ids`, returning the number deleted."
   [model     :- :string
    model-ids :- [:sequential ms/IntGreaterThanOrEqualToZero]]
-  (t2/delete! :model/CacheConfig :model model :model_id [:in model-ids]))
+  (t2/delete! :model/CacheConfig :model [:auto/param model] :model_id [:in model-ids]))
 
 (mu/defn card-ids-for-databases
   "The ids of the Cards of the Databases with `database-ids`."

@@ -12,7 +12,7 @@
   "The OsiAiContext of the entity with `entity-type` and `entity-local-id`, or nil."
   [entity-type      :- :string
    entity-local-id  :- ms/PositiveInt]
-  (t2/select-one :model/OsiAiContext :entity_type entity-type :entity_local_id entity-local-id))
+  (t2/select-one :model/OsiAiContext :entity_type [:auto/param entity-type] :entity_local_id [:auto/param entity-local-id]))
 
 (mu/defn ai-contexts-page
   "Up to `limit` OsiAiContexts from `offset`, ordered by entity type and local id."
@@ -32,7 +32,7 @@
   "Delete the OsiAiContext of the entity with `entity-type` and `entity-local-id`, returning the number deleted."
   [entity-type      :- :string
    entity-local-id  :- ms/PositiveInt]
-  (t2/delete! :model/OsiAiContext :entity_type entity-type :entity_local_id entity-local-id))
+  (t2/delete! :model/OsiAiContext :entity_type [:auto/param entity-type] :entity_local_id [:auto/param entity-local-id]))
 
 (mu/defn update-ai-context!
   "Apply `changes` to the OsiAiContext of the entity with `entity-type` and `entity-local-id`, returning the
@@ -40,7 +40,7 @@
   [entity-type      :- :string
    entity-local-id  :- ms/PositiveInt
    changes          :- ::osi.schema/osi-ai-context.update]
-  (t2/update! :model/OsiAiContext :entity_type entity-type :entity_local_id entity-local-id changes))
+  (t2/update! :model/OsiAiContext :entity_type [:auto/param entity-type] :entity_local_id [:auto/param entity-local-id] changes))
 
 (mu/defn upsert-ai-context!
   "Insert or replace the `:ai_context` of the OsiAiContext of the entity with `entity-type` and `entity-local-id`

@@ -12,7 +12,7 @@
 (mu/defn database-engine
   "The engine of the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :engine :model/Database :id database-id))
+  (t2/select-one-fn :engine :model/Database :id [:auto/param database-id]))
 
 (defn- table-match-clause
   "Match a Table by name and, when given, schema, both case-insensitively."
@@ -34,7 +34,7 @@
   (t2/select :model/Table
              {:from [(warehouse-schema-overlay/table-query)]
               :where [:and
-                      [:= :db_id database-id]
+                      [:= :db_id [:auto/param database-id]]
                       [:= :active true]
                       (into [:or] (map table-match-clause) tables)]}))
 
@@ -53,7 +53,7 @@
                                 :perms/create-queries :query-builder-and-native})]
     (t2/select :model/Table
                :id [:in table-ids]
-               :db_id database-id
+               :db_id [:auto/param database-id]
                :active true
                :visibility_type nil
                (cond-> {:from  [(warehouse-schema-overlay/table-query)]

@@ -18,7 +18,7 @@
                       [:in :collection_id collection-ids]
                       [:= :archived false]
                       [:in :type ["metric" "model"]]
-                      (when id [:= :id id])]}))
+                      (when id [:= :id [:auto/param id]])]}))
 
 (mu/defn library-tables-in-collections
   "The ID, names, and description of the active published Tables in the Collections with `collection-ids`, optionally
@@ -31,7 +31,7 @@
                       [:in :collection_id collection-ids]
                       [:= :is_published true]
                       [:= :active true]
-                      (when id [:= :id id])]}))
+                      (when id [:= :id [:auto/param id]])]}))
 
 (mu/defn library-measures-of-tables
   "The ID, name, and description of the unarchived Measures on the Tables with `table-ids`, optionally narrowed to
@@ -42,7 +42,7 @@
              {:where [:and
                       [:in :table_id table-ids]
                       [:= :archived false]
-                      (when id [:= :id id])]}))
+                      (when id [:= :id [:auto/param id]])]}))
 
 (mu/defn library-segments-of-tables
   "The ID, name, and description of the unarchived Segments on the Tables with `table-ids`, optionally narrowed to
@@ -53,17 +53,17 @@
              {:where [:and
                       [:in :table_id table-ids]
                       [:= :archived false]
-                      (when id [:= :id id])]}))
+                      (when id [:= :id [:auto/param id]])]}))
 
 (mu/defn measure-table-id
   "The Table ID of the Measure with `id`."
   [id :- ::lib.schema.id/measure]
-  (t2/select-one-fn :table_id :model/Measure :id id))
+  (t2/select-one-fn :table_id :model/Measure :id [:auto/param id]))
 
 (mu/defn segment-table-id
   "The Table ID of the Segment with `id`."
   [id :- ::lib.schema.id/segment]
-  (t2/select-one-fn :table_id :model/Segment :id id))
+  (t2/select-one-fn :table_id :model/Segment :id [:auto/param id]))
 
 (mu/defn ai-contexts
   "The entity type, entity ID, and AI context of every OsiAiContext."
@@ -75,5 +75,5 @@
   [entity-local-id :- ms/PositiveInt
    entity-type     :- :string]
   (t2/select-one-fn :ai_context :model/OsiAiContext
-                    :entity_local_id entity-local-id
-                    :entity_type entity-type))
+                    :entity_local_id [:auto/param entity-local-id]
+                    :entity_type [:auto/param entity-type]))

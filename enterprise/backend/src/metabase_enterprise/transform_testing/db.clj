@@ -18,7 +18,7 @@
 (mu/defn transform-test :- [:maybe ::transform-testing.schema/transform-test]
   "The TransformTest with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/TransformTest :id id))
+  (t2/select-one :model/TransformTest :id [:auto/param id]))
 
 (mu/defn insert-transform-test! :- ::transform-testing.schema/transform-test
   "Insert the TransformTest `transform-test` and return the inserted instance."
@@ -92,7 +92,7 @@
   [run-id :- ms/PositiveInt
    status :- ::transform-testing.schema/run-status]
   (t2/update! :model/TransformTestRun
-              :id run-id
+              :id [:auto/param run-id]
               :status "started"
               {:status status :end_time :%now}))
 
@@ -100,29 +100,29 @@
   "Apply `updates` to the TransformTest with `id`."
   [id :- ms/PositiveInt
    updates :- ::transform-testing.schema/transform-test.update]
-  (t2/update! :model/TransformTest :id id updates))
+  (t2/update! :model/TransformTest :id [:auto/param id] updates))
 
 (mu/defn delete-transform-test!
   "Delete the TransformTest with `id`."
   [id :- ms/PositiveInt]
-  (t2/delete! :model/TransformTest :id id))
+  (t2/delete! :model/TransformTest :id [:auto/param id]))
 
 (mu/defn delete-transform-tests!
   "Delete the TransformTests of the Transform with `transform-id`."
   [transform-id :- ::lib.schema.id/transform]
-  (t2/delete! :model/TransformTest :transform_id transform-id))
+  (t2/delete! :model/TransformTest :transform_id [:auto/param transform-id]))
 
 (mu/defn transform
   "The Transform with `transform-id`, or nil."
   [transform-id :- ::lib.schema.id/transform]
-  (t2/select-one :model/Transform :id transform-id))
+  (t2/select-one :model/Transform :id [:auto/param transform-id]))
 
 (mu/defn database-exists?
   "Whether a Database with `database-id` exists."
   [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Database :id database-id))
+  (t2/exists? :model/Database :id [:auto/param database-id]))
 
 (mu/defn transform-test-by-entity-id :- [:maybe ::transform-testing.schema/transform-test]
   "The TransformTest with `entity-id`, or nil."
   [entity-id :- :string]
-  (t2/select-one :model/TransformTest :entity_id entity-id))
+  (t2/select-one :model/TransformTest :entity_id [:auto/param entity-id]))

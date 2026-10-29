@@ -14,7 +14,7 @@
   "Set the details of the Database with `database-id`, returning the number updated."
   [database-id :- ::lib.schema.id/database
    details     :- ::warehouses.schema/database.details]
-  (t2/update! :model/Database :id database-id {:details details}))
+  (t2/update! :model/Database :id [:auto/param database-id] {:details details}))
 
 (mu/defn set-table-schemas!
   "Set the schema of the Tables of the Database with `database-id` that do not have `schema` yet, overwriting any
@@ -24,14 +24,14 @@
   (t2/query-one {:update (t2/table-name :model/Table)
                  :set    {:schema schema}
                  :where  [:and
-                          [:= :db_id database-id]
+                          [:= :db_id [:auto/param database-id]]
                           [:or
                            [:= :schema nil]
-                           [:not= :schema schema]]]}))
+                           [:not= :schema [:auto/param schema]]]]}))
 
 (mu/defn active-partitioned-field-exists?
   "Whether the Table with `table-id` has an active database-partitioned Field named `field-name`."
   [table-id   :- ::lib.schema.id/table
    field-name :- :string]
-  (t2/exists? :model/Field :table_id table-id :name field-name :database_partitioned true :active true
+  (t2/exists? :model/Field :table_id [:auto/param table-id] :name [:auto/param field-name] :database_partitioned true :active true
               {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))

@@ -108,28 +108,28 @@
 (mu/defn set-user-last-login-now!
   "Set `last_login` of the User with `user-id` to now."
   [user-id :- ::lib.schema.id/user]
-  (t2/update! :model/User :id user-id {:last_login :%now}))
+  (t2/update! :model/User :id [:auto/param user-id] {:last_login :%now}))
 
 (mu/defn user-settings
   "The `:settings` of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one-fn :settings [:model/User :settings] :id user-id))
+  (t2/select-one-fn :settings [:model/User :settings] :id [:auto/param user-id]))
 
 (mu/defn delete-pulse-channel-recipients-for-user!
   "Delete every PulseChannelRecipient of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
-  (t2/delete! :model/PulseChannelRecipient :user_id user-id))
+  (t2/delete! :model/PulseChannelRecipient :user_id [:auto/param user-id]))
 
 (mu/defn group-membership-exists?
   "Whether the User with `user-id` is a member of the PermissionsGroup with `group-id`."
   [group-id :- ms/PositiveInt
    user-id  :- ::lib.schema.id/user]
-  (t2/exists? :model/PermissionsGroupMembership :group_id group-id :user_id user-id))
+  (t2/exists? :model/PermissionsGroupMembership :group_id [:auto/param group-id] :user_id [:auto/param user-id]))
 
 (mu/defn user-group-ids
   "The ids of the PermissionsGroups the User with `user-id` belongs to."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id))
+  (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id [:auto/param user-id]))
 
 (mu/defn group-memberships-for-users
   "The user id, group id (as `:id`), and group manager flag of the PermissionsGroupMemberships of the Users with
@@ -168,8 +168,8 @@
                      ^:allow-subquery
                      {:select-distinct [:permissions_group_membership.group_id]
                       :from  [:permissions_group_membership]
-                      :where [:and [:= :permissions_group_membership.user_id user-id]
-                              [:not= :permissions_group_membership.group_id all-users-group-id]]}]}))
+                      :where [:and [:= :permissions_group_membership.user_id [:auto/param user-id]]
+                              [:not= :permissions_group_membership.group_id [:auto/param all-users-group-id]]]}]}))
 
 (mu/defn delete-user-parameter-values!
   "Delete the UserParameterValues identified by the `:user_id`, `:dashboard_id`, and `:parameter_id` of `parameters`."
@@ -194,12 +194,12 @@
   "The UserParameterValues of the User with `user-id` for the Dashboards with `dashboard-ids`."
   [user-id       :- ::lib.schema.id/user
    dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
-  (t2/select :model/UserParameterValue :dashboard_id [:in dashboard-ids] :user_id user-id))
+  (t2/select :model/UserParameterValue :dashboard_id [:in dashboard-ids] :user_id [:auto/param user-id]))
 
 (mu/defn database-exists?
   "Whether a Database with `database-id` exists."
   [database-id :- :int]
-  (t2/exists? :model/Database :id database-id))
+  (t2/exists? :model/Database :id [:auto/param database-id]))
 
 (mu/defn admin-or-self-visible-user
   "The User with `id`, with the given `columns`, or nil. When `type` and/or `is-active?` are given (non-nil), also
@@ -217,4 +217,4 @@
 (mu/defn user-email-exists?
   "Whether a User whose lower-cased email is `lower-case-email` exists."
   [lower-case-email :- :string]
-  (t2/exists? :model/User :%lower.email lower-case-email))
+  (t2/exists? :model/User :%lower.email [:auto/param lower-case-email]))

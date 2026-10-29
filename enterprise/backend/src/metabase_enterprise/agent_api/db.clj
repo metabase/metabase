@@ -15,4 +15,4 @@
 (mu/defn delete-call-logs-created-before!
   "Delete the AgentApiCallLogs created before `cutoff`, returning the number deleted."
   [cutoff :- ms/TemporalInstant]
-  (t2/delete! :model/AgentApiCallLog {:where [:< :created_at cutoff]}))
+  (t2/delete! :model/AgentApiCallLog {:where [:< :created_at [:auto/param cutoff]]}))

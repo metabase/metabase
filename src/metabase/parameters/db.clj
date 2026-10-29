@@ -54,7 +54,7 @@
                                                 [(mapping-type-name->code "fk->field") :mapping_type]]
                                        :from   [[:dimension :dimension]]
                                        :where  [:and
-                                                [:= :dimension.field_id field-id]
+                                                [:= :dimension.field_id [:auto/param field-id]]
                                                 [:not= :dimension.human_readable_field_id nil]]
                                        :limit  1})]
                                     (when allow-implicit-uuid-remapping?
@@ -65,7 +65,7 @@
                                          {:select [:fk_target_field_id]
                                           :from   [(warehouse-schema-overlay/field-query)]
                                           :where  [:and
-                                                   [:= :id field-id]
+                                                   [:= :id [:auto/param field-id]]
                                                    (mdb/isa :semantic_type :type/FK)]
                                           :limit  1}
                                          "fk->pk->name"))
@@ -78,7 +78,7 @@
 (mu/defn field
   "The Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-one :model/Field :id [:auto/param field-id] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn fields
   "The Fields with `field-ids`."
@@ -93,23 +93,23 @@
 (mu/defn field-fk-target-field-id
   "The FK target Field id of the Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :fk_target_field_id :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-one-fn :fk_target_field_id :model/Field :id [:auto/param field-id] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn field-base-type
   "The base type of the Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :base_type :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-one-fn :base_type :model/Field :id [:auto/param field-id] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn field-name
   "The name of the Field with `field-id`, or nil."
   [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :name :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-one-fn :name :model/Field :id [:auto/param field-id] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn full-field-values-exist?
   "Whether complete, non-remapped FieldValues of type `full` exist for the Field with `field-id`."
   [field-id :- ::lib.schema.id/field]
   (t2/exists? :model/FieldValues
-              :field_id field-id, :values [:not= nil], :human_readable_values nil, :has_more_values false
+              :field_id [:auto/param field-id], :values [:not= nil], :human_readable_values nil, :has_more_values false
               :type "full"))
 
 (mu/defn advanced-field-values-exist?
@@ -117,24 +117,24 @@
   [field-id :- ::lib.schema.id/field
    hash-key :- :string]
   (t2/exists? :model/FieldValues
-              :field_id field-id, :values [:not= nil], :human_readable_values nil, :has_more_values false
+              :field_id [:auto/param field-id], :values [:not= nil], :human_readable_values nil, :has_more_values false
               :type "advanced", :hash_key hash-key))
 
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))
+  (t2/select-one :model/Card :id [:auto/param card-id]))
 
 (mu/defn delete-field-values!
   "Delete the FieldValues with `id`, returning the number deleted."
   [id :- ms/PositiveInt]
-  (t2/delete! :model/FieldValues :id id))
+  (t2/delete! :model/FieldValues :id [:auto/param id]))
 
 (mu/defn advanced-field-values
   "The advanced FieldValues of the Field with `field-id` and `hash-key`, or nil."
   [field-id :- ::lib.schema.id/field
    hash-key :- :string]
-  (t2/select-one :model/FieldValues :field_id field-id, :type :advanced, :hash_key hash-key))
+  (t2/select-one :model/FieldValues :field_id [:auto/param field-id], :type :advanced, :hash_key hash-key))
 
 (mu/defn find-or-insert-advanced-field-values!
   "The advanced FieldValues of the Field with `field-id` and `hash-key`, inserting one built by calling

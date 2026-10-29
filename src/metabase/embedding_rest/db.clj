@@ -18,17 +18,17 @@
   "The non-archived Card with `card-id`, or nil. A trashed Card keeps its DashboardCard rows, so the dashcard routes
   select it as absent rather than checking `:archived` after the fact."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id :archived false))
+  (t2/select-one :model/Card :id [:auto/param card-id] :archived false))
 
 (mu/defn card-embedding-params
   "The embedding parameters of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :embedding_params :model/Card :id card-id))
+  (t2/select-one-fn :embedding_params :model/Card :id [:auto/param card-id]))
 
 (mu/defn card-embedding-flags
   "The embedding-enabled and archived flags of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :enable_embedding :archived] :id card-id))
+  (t2/select-one [:model/Card :enable_embedding :archived] :id [:auto/param card-id]))
 
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil."
@@ -38,12 +38,12 @@
 (mu/defn dashboard-embedding-params
   "The embedding parameters of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one-fn :embedding_params :model/Dashboard, :id dashboard-id))
+  (t2/select-one-fn :embedding_params :model/Dashboard, :id [:auto/param dashboard-id]))
 
 (mu/defn dashboard-embedding-flags
   "The embedding-enabled and archived flags of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one [:model/Dashboard :enable_embedding :archived] :id dashboard-id))
+  (t2/select-one [:model/Dashboard :enable_embedding :archived] :id [:auto/param dashboard-id]))
 
 (mu/defn dashcard
   "The DashboardCard with `dashcard-id`, or nil."
@@ -59,12 +59,12 @@
 (mu/defn embedding-theme-exists?
   "Whether an EmbeddingTheme with `id` exists."
   [id :- ms/PositiveInt]
-  (t2/exists? :model/EmbeddingTheme :id id))
+  (t2/exists? :model/EmbeddingTheme :id [:auto/param id]))
 
 (mu/defn embedding-theme
   "The EmbeddingTheme with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/EmbeddingTheme :id id))
+  (t2/select-one :model/EmbeddingTheme :id [:auto/param id]))
 
 (mu/defn insert-embedding-theme!
   "Insert the EmbeddingTheme `row` and return the inserted instance."
@@ -81,12 +81,12 @@
   "Apply `changes` to the EmbeddingTheme with `id`."
   [id      :- ms/PositiveInt
    changes :- (mut/select-keys ::embedding.schema/embedding-theme.update [:name :settings])]
-  (t2/update! :model/EmbeddingTheme :id id changes))
+  (t2/update! :model/EmbeddingTheme :id [:auto/param id] changes))
 
 (mu/defn delete-embedding-theme!
   "Delete the EmbeddingTheme with `id`."
   [id :- ms/PositiveInt]
-  (t2/delete! :model/EmbeddingTheme :id id))
+  (t2/delete! :model/EmbeddingTheme :id [:auto/param id]))
 
 (mu/defn sdk-react-18-hosts-last-seen-after :- [:sequential ::embedding.schema/sdk-react-18-host]
   "The EmbeddingSdkReact18Hosts last seen after `cutoff`, newest first, at most `limit`."
