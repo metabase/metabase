@@ -32,6 +32,7 @@ import {
 interface SetupOpts {
   summarized?: boolean;
   autoApply?: boolean;
+  summaryFilter?: boolean;
 }
 
 function Harness({
@@ -93,7 +94,11 @@ async function typeOpenParen() {
   expect(getOpenParens()).toHaveLength(1);
 }
 
-function setup({ summarized = false, autoApply = false }: SetupOpts = {}) {
+function setup({
+  summarized = false,
+  autoApply = false,
+  summaryFilter = false,
+}: SetupOpts = {}) {
   setupDatabaseEndpoints(createSampleDatabase());
   setupPrototypeSamplesEndpoint();
   let query = withOrExample(
@@ -102,6 +107,15 @@ function setup({ summarized = false, autoApply = false }: SetupOpts = {}) {
   );
   if (summarized) {
     query = Lib.aggregate(query, 0, Lib.expressionClause("count", []));
+  }
+  if (summaryFilter) {
+    query = Lib.appendStage(query);
+    const [count] = Lib.filterableColumns(query, 1);
+    query = Lib.filter(
+      query,
+      1,
+      Lib.numberFilterClause({ operator: ">=", column: count, values: [3] }),
+    );
   }
   const onChange = jest.fn((nextQuery: Lib.Query) => nextQuery);
   renderWithProviders(
@@ -144,11 +158,14 @@ describe("integrated OR filters", () => {
         .longDisplayName,
     ).toContain("200");
   });
-  it("keeps summary-output filters in a separate stage", () => {
-    const { onChange } = setup({ summarized: true });
+  it("shows summary-output filters as pills in the same bar, without stages", () => {
+    const { onChange } = setup({ summarized: true, summaryFilter: true });
 
-    expect(screen.getByText("Stage 1")).toBeInTheDocument();
-    expect(screen.getByText("Stage 2")).toBeInTheDocument();
+    expect(screen.queryByText(/^Stage \d/)).not.toBeInTheDocument();
+    expect(
+      screen.getAllByRole("textbox", { name: "Filter expression" }),
+    ).toHaveLength(1);
+    expect(screen.getByText(/Count.*3/)).toBeInTheDocument();
     expect(onChange).not.toHaveBeenCalled();
   });
 
