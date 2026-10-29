@@ -11,12 +11,19 @@ import {
   TabsContainer,
   ToolbarButtonsContainer,
 } from "metabase/admin/permissions/components/PermissionsPageLayout/PermissionsPageLayout.styled";
-import { getIsHelpReferenceOpen } from "metabase/admin/permissions/selectors/help-reference";
-import type { PermissionsGraphDiff } from "metabase/admin/permissions/types";
-import { isEmbeddingHubPermissions } from "metabase/admin/permissions/utils/is-embedding-hub";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
+import {
+  LegacyPermissionsModal,
+  type PermissionsGraphDiff,
+  ToolbarButton,
+  clearSaveError as clearPermissionsSaveError,
+  getIsHelpReferenceOpen,
+  isEmbeddingHubPermissions,
+  showRevisionChangedModal,
+  toggleHelpReference,
+} from "metabase/permissions";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { useUserSetting } from "metabase/settings";
@@ -27,14 +34,6 @@ import {
   Text,
 } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
-
-import {
-  clearSaveError as clearPermissionsSaveError,
-  toggleHelpReference,
-} from "../../permissions";
-import { showRevisionChangedModal } from "../../selectors/data-permissions/revision";
-import { LegacyPermissionsModal } from "../LegacyPermissionsModal/LegacyPermissionsModal";
-import { ToolbarButton } from "../ToolbarButton";
 
 import { PermissionsEditBar } from "./PermissionsEditBar";
 import S from "./PermissionsPageLayout.module.css";

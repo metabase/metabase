@@ -14,16 +14,14 @@ import type { TreeItem } from "metabase/data-studio/common/types";
 import {
   filterTreeByName,
   isCollectionData,
+  openNewCollectionModal,
 } from "metabase/data-studio/common/utils";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
-import { setOpenModalWithProps } from "metabase/redux/ui";
 import { Button, FixedSizeIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 import { useBuildSnippetTree } from "../../hooks/use-build-snippet-tree";
-
-import { RootSnippetsCollectionMenu } from "./RootSnippetsCollectionMenu";
 
 const SNIPPET_COLLECTION_PICKER_OPTIONS = {
   hasLibrary: false,
@@ -39,17 +37,13 @@ export function SnippetListPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [collectionModal, setCollectionModal] =
     useState<CollectionRowModalState>();
-  const { tree, isLoading, error } = useBuildSnippetTree();
+  const { tree, rootCollection, isLoading, error } = useBuildSnippetTree();
   useErrorHandling(error);
 
   const isSearchActive = searchQuery.trim().length > 0;
   const visibleTree = useMemo(
     () => (isSearchActive ? filterTreeByName(tree, searchQuery) : tree),
     [isSearchActive, tree, searchQuery],
-  );
-  const defaultExpandedIds = useMemo(
-    () => tree.slice(0, 1).map((node) => node.id),
-    [tree],
   );
   const renderRowMenu = useCallback(
     (item: TreeItem) => (
@@ -66,8 +60,21 @@ export function SnippetListPage() {
       isSearchActive={isSearchActive}
       searchQuery={searchQuery}
       emptyMessage={t`No snippets yet`}
-      defaultExpandedIds={defaultExpandedIds}
       createMenu={<SnippetsCreateMenu />}
+      pageMenu={{
+        label: t`Snippet options`,
+        actions: [
+          {
+            label: t`View archived snippets`,
+            icon: "view_archive",
+            to: Urls.dataStudioArchivedSnippets(),
+          },
+        ],
+        permissionsCollection: PLUGIN_SNIPPET_FOLDERS.isEnabled
+          ? rootCollection
+          : undefined,
+        onOpenModal: setCollectionModal,
+      }}
       renderRowMenu={renderRowMenu}
       onSearchQueryChange={setSearchQuery}
     >
@@ -88,11 +95,6 @@ function SnippetRowMenu({ item: { data }, onOpenModal }: SnippetRowMenuProps) {
   if (!isCollectionData(data)) {
     return null;
   }
-  if (data.id === "root") {
-    return (
-      <RootSnippetsCollectionMenu collection={data} onOpenModal={onOpenModal} />
-    );
-  }
   return <CollectionRowMenu collection={data} onOpenModal={onOpenModal} />;
 }
 
@@ -104,14 +106,10 @@ function SnippetsCreateMenu() {
 
   const handleNewFolderClick = useCallback(() => {
     dispatch(
-      setOpenModalWithProps({
-        id: "collection",
-        props: {
-          initialCollectionId: null,
-          namespaces: ["snippets"],
-          pickerOptions: SNIPPET_COLLECTION_PICKER_OPTIONS,
-          showAuthorityLevelPicker: false,
-        },
+      openNewCollectionModal({
+        initialCollectionId: null,
+        namespaces: ["snippets"],
+        pickerOptions: SNIPPET_COLLECTION_PICKER_OPTIONS,
       }),
     );
   }, [dispatch]);

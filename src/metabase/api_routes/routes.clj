@@ -56,6 +56,7 @@
    [metabase.pulse.api]
    [metabase.queries-rest.api]
    [metabase.query-processor.api]
+   [metabase.request.core :as request]
    [metabase.revisions.api]
    [metabase.search.api]
    [metabase.segments.rest.api]
@@ -174,6 +175,17 @@
 (def ^:private ^{:arglists '([handler])} +sanitize-streaming-errors
   (routes.common/wrap-middleware-for-open-api-spec-generation sanitize-streaming-errors))
 
+(defn- without-current-user
+  "Middleware that runs `handler` with no current user, keeping only the request's locale: guest embeds and public links
+  are authorized by their signed token or public UUID, never by the visitor's session."
+  [handler]
+  (fn [request respond raise]
+    (request/do-with-current-user (select-keys request [:user-locale])
+                                  #(handler request respond raise))))
+
+(def ^:private ^{:arglists '([handler])} +without-current-user
+  (routes.common/wrap-middleware-for-open-api-spec-generation without-current-user))
+
 (defn- +auth                    [handler] (routes.common/+auth                    (->handler handler)))
 (defn- +message-only-exceptions [handler] (routes.common/+message-only-exceptions (+sanitize-streaming-errors (->handler handler))))
 (defn- +public-exceptions       [handler] (routes.common/+public-exceptions       (+sanitize-streaming-errors (->handler handler))))
@@ -211,8 +223,7 @@
    "/database"             (+auth 'metabase.warehouses-rest.api)
    ;; The MCP Apps iframe credential is accepted for `/dataset`, whose endpoints declare no scope, so the
    ;; endpoint scope middleware cannot hold the `agent:sql:run` line here. The credential carries the minting
-   ;; token's scopes as a signed claim (unrestricted only when minted from an unrestricted session: a cookie or
-   ;; API-key session, or an `mb:full` bearer token), and the guard
+   ;; token's scopes as a signed claim, and the guard
    ;; spends that claim to stop a credential without `agent:sql:run` from POSTing raw SQL, and MCP's group
    ;; policy to stop a user denied `execute_sql`. The spec-generation
    ;; wrapper keeps the guard transparent to [[metabase.api.open-api/open-api-spec]] — a bare middleware fn here
@@ -225,10 +236,11 @@
    "/document"             (+auth metabase.documents.api/routes)
    "/eid-translation"      (+auth 'metabase.eid-translation.api)
    "/email"                (+auth metabase.channel.rest.api/email-routes)
-   "/embed"                (+message-only-exceptions metabase.embedding-rest.api/embedding-routes)
+   "/embed"                (+message-only-exceptions (+without-current-user metabase.embedding-rest.api/embedding-routes))
    "/embed-mcp"            (+auth metabase.mcp.callback-api/routes)
    "/embed-theme"          (+auth metabase.embedding-rest.api/theme-routes)
    "/embedding-hub"        metabase.embedding-hub.api/routes
+   "/embedding-sdk"        (+auth metabase.embedding-rest.api/sdk-routes)
    "/eval-trace"           (metabase.ai-tracing.api/+eval-capture-enabled metabase.ai-tracing.api/routes)
    "/exploration"          (+auth metabase.explorations.api/routes)
    "/field"                (+auth metabase.warehouse-schema-rest.api/field-routes)
@@ -259,7 +271,7 @@
    "/persist"              (+auth 'metabase.model-persistence.api)
    "/premium-features"     (+auth metabase.premium-features.rest.api/routes)
    "/preview_embed"        (+auth metabase.embedding-rest.api/preview-embedding-routes)
-   "/public"               (+public-exceptions metabase.public-sharing-rest.api/routes)
+   "/public"               (+public-exceptions (+without-current-user metabase.public-sharing-rest.api/routes))
    "/pulse"                metabase.pulse.api/pulse-routes
    "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)

@@ -9,10 +9,10 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn impersonation
-  "The ConnectionImpersonation with `impersonation-id`, or nil."
+(mu/defn connection-impersonation :- [:maybe ::impersonation.schema/connection-impersonation]
+  "The ::impersonation.schema/connection-impersonation with `impersonation-id`, or nil."
   [impersonation-id :- ms/PositiveInt]
-  (t2/select-one :model/ConnectionImpersonation :id impersonation-id))
+  (t2/select-one :model/ConnectionImpersonation :id [:auto/param impersonation-id]))
 
 (mu/defn impersonation-for-group-and-database
   "The ConnectionImpersonation of the group with `group-id` on the Database with `database-id`, or nil."
@@ -87,8 +87,3 @@
   current user, such as an internal or unauthenticated context)."
   [user-id :- [:maybe ::lib.schema.id/user]]
   (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id user-id))
-
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id database-id))

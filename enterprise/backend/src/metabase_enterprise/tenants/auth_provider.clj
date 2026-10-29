@@ -27,14 +27,14 @@
            user-has-tenant?)
       (throw (ex-info "Tenant claim required for external user"
                       {:user/tenant-id tenant_id
-                       :user/tenant-slug (tenants.db/tenant-slug tenant_id)
+                       :user/tenant-slug (:slug (tenants.db/tenant tenant_id))
                        :status-code 403}))
 
       (and user-exists?
            (not= tenant_id (u/id existing-tenant)))
       (throw (ex-info "Tenant ID mismatch with existing user"
                       {:user/tenant-id tenant_id
-                       :user/tenant-slug (tenants.db/tenant-slug tenant_id)
+                       :user/tenant-slug (:slug (tenants.db/tenant tenant_id))
                        :tenant-slug/tenant-id (:id existing-tenant)
                        :tenant-slug/slug (:slug existing-tenant)
                        :status-code 403})))))
@@ -46,7 +46,8 @@
 (defn- reactivate-tenant!
   "Reactivate a disabled tenant and any users that were deactivated along with it."
   [{tenant-id :id}]
-  (api.tenants/update-tenant! tenant-id {:is_active true}))
+  (request/as-admin
+   (api.tenants/update-tenant! tenant-id {:is_active true})))
 
 (defn- maybe-reactivate-tenant!
   "If the tenant is disabled and user provisioning is enabled,

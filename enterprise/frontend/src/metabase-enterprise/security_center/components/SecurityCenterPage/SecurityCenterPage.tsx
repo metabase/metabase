@@ -176,7 +176,7 @@ export function SecurityCenterPage() {
             <Text c="text-secondary" data-testid="current-version">
               {t`Current version`}: {currentVersion}
             </Text>
-            {targetVersion && <UpgradeBanner targetVersion={targetVersion} />}
+            <UpgradeBanner targetVersion={targetVersion} />
           </Stack>
           <Stack gap="xxl" className={S.content}>
             <AdvisoryFilterBar

@@ -30,6 +30,7 @@ const MODEL_NAME: Record<EnabledSearchModel, string> = {
   document: "Document",
   exploration: "Research",
   transform: "Transform",
+  "data-app": "Data app",
 };
 
 const TEST_TYPES: Array<EnabledSearchModel> = [

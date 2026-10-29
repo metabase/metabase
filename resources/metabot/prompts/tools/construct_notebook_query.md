@@ -217,11 +217,22 @@ A stage has either `source-table` **or** `source-card`, never both. The card mus
 
 ## Metrics
 
-A metric is a pre-defined aggregation attached to a base table. To use one:
+A metric is a predefined aggregation. Its `<metric>` tag identifies the source to use: a base table, saved question or model. Build the stage on that source. The tag carries at most one of these attributes:
 
-1. Put the metric's **base table** in `source-table`. Read it from the `base_table_fully_qualified_name` attribute on the `<metric>` tag (combine with `database_name` to form the portable FK). Never invent schema/table names.
+- `base_table_fully_qualified_name` names a base table. Combine it with `database_name` to form the portable FK for `source-table`.
+- `source_card_portable_entity_id` names a saved question or model. Copy the ID verbatim into `source-card`.
+- `source_unavailable="true"` means that the metric has no source available to you. Do not use it.
+
+To use a metric:
+
+1. Copy the source attribute into the stage. Never invent schema or table names, or substitute a base table for the source card. If the tag carries `source_unavailable="true"`, or carries neither source attribute, do not use the metric or guess its source. Say that the metric is not available to you and express the aggregation directly instead, or ask which source to use.
 2. Reference the metric as `["metric", {}, "<portable_entity_id>"]` in `aggregation`.
-3. Filters/breakouts on the same stage use portable FKs on the metric's base table.
+3. Use dimensions from the metric's **Dimensions** table for filters and breakouts on the same stage. Read the `Source table` column first. Names such as `id` and `created_at` can appear on several tables, and the table determines how to reference a dimension:
+   - Copy `Reference` verbatim for a dimension on the metric's own source. Its portable FK works on card and table stages.
+   - A dimension on an FK-related table can be used in `breakout:` when one foreign key reaches that table. This works on a `source-table` and a `source-card` stage alike. Otherwise, follow the tool's error: add an explicit `joins` entry (see "Joins (explicit)") on the same stage, keep the metric's source, and break out on the field using the join alias.
+   - Use the output machine name for an expression or aggregation column computed by the card. These columns have no portable FK.
+
+A table metric with `base_table_fully_qualified_name="brex_enriched.fct_cards"`:
 
 ```json
 {"lib/type": "mbql.stage/mbql",
@@ -231,7 +242,19 @@ A metric is a pre-defined aggregation attached to a base table. To use one:
  "aggregation": [["metric", {}, "aB3cD4eF5gH6iJ7kL8mN9"]]}
 ```
 
-Metrics are aggregations, **not sources** — never put a metric in `source-table` or `source-card`. The `metabase://metric/<id>` URIs are for reading metadata via `read_resource`, not for embedding in queries.
+A card metric with `source_card_portable_entity_id="T4wA_GPFwGb6R4FxIDGTo"`:
+
+```json
+{"lib/type": "mbql.stage/mbql",
+ "source-card": "T4wA_GPFwGb6R4FxIDGTo",
+ "filters": [["!=", {}, ["field", {},
+                         ["Analytics", "brex_enriched", "fct_cards", "card_status"]], "inactive"]],
+ "aggregation": [["metric", {}, "aB3cD4eF5gH6iJ7kL8mN9"]]}
+```
+
+A metric with `source_card_portable_entity_id` requires that exact card. Substituting its base table causes an `Incompatible metric` error. Some metrics whose definition starts from a card require a base table instead; their tags carry `base_table_fully_qualified_name`. Use the attribute provided by the tag.
+
+Metrics are aggregations. Put the metric's own `portable_entity_id` in its `aggregation` clause, never in `source-table` or `source-card`. The `source_card_portable_entity_id` identifies its source card and belongs in `source-card`. Use `metabase://metric/<id>` URIs to read metadata via `read_resource`; do not embed them in queries.
 
 ## Using measures and segments
 
@@ -310,7 +333,7 @@ Anti-hallucination:
 - `["share", {}, <bool-pred>]` — fraction of rows where pred is true.
 - `["stddev", {}, <num-expr>]`
 - `["var", {}, <num-expr>]`
-- `["metric", {}, "<portable_entity_id>"]` — reference a defined metric. The metric's base table must be the stage's `source-table`.
+- `["metric", {}, "<portable_entity_id>"]` references a defined metric. Use the source specified by its `<metric>` tag: `base_table_fully_qualified_name` as `source-table`, or `source_card_portable_entity_id` as `source-card`.
 - `["measure", {}, "<portable_entity_id>"]` — reference a defined measure (preferred over inlining its definition). The measure's table must be the stage's `source-table`.
 
 ### Order-by direction

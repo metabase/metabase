@@ -152,7 +152,12 @@ describe("DataStudioLayout", () => {
   });
 
   describe("library tab dirty indicators", () => {
-    const LIBRARY_TABS = ["Semantic layer", "SQL snippets", "Data actions"];
+    const LIBRARY_TABS = [
+      "Semantic layer",
+      "Dashboards",
+      "SQL snippets",
+      "Data actions",
+    ];
     const getTabStatus = (label: string) =>
       within(screen.getByLabelText(label)).queryByTestId("remote-sync-status");
 
@@ -195,6 +200,7 @@ describe("DataStudioLayout", () => {
       await waitFor(() => {
         expect(getTabStatus("Semantic layer")).toBeInTheDocument();
       });
+      expect(getTabStatus("Dashboards")).not.toBeInTheDocument();
       expect(getTabStatus("SQL snippets")).not.toBeInTheDocument();
       expect(getTabStatus("Data actions")).not.toBeInTheDocument();
     });
@@ -236,12 +242,12 @@ describe("DataStudioLayout", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("should not show dirty indicator when remote-sync-transforms setting is disabled", async () => {
+    it("should show dirty indicator for a pending transform removal when remote-sync-transforms setting is disabled", async () => {
       setup({
         ...DEFAULT_EE_SETTINGS,
         remoteSyncBranch: "main",
         isNavbarOpened: true,
-        dirty: [createMockDirtyTransformEntity()],
+        dirty: [createMockDirtyTransformEntity({ sync_status: "removed" })],
         remoteSyncTransforms: false,
       });
 
@@ -251,8 +257,8 @@ describe("DataStudioLayout", () => {
 
       const transformsTab = screen.getByLabelText("Data transformation");
       expect(
-        within(transformsTab).queryByTestId("remote-sync-status"),
-      ).not.toBeInTheDocument();
+        await within(transformsTab).findByTestId("remote-sync-status"),
+      ).toBeInTheDocument();
     });
   });
 

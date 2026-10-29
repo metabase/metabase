@@ -32,6 +32,14 @@
    [:chart_type {:optional true} [:maybe :string]]
    [:stacked {:optional true} [:maybe :boolean]]])
 
+(mr/def ::raw-series-config
+  "A series as [[metabase.interestingness.chart.stats/compute-chart-stats]] receives it, before dropping nil points."
+  [:merge
+   ::series-config
+   [:map {:closed true}
+    [:x_values [:sequential [:maybe ::axis-value]]]
+    [:y_values [:sequential [:maybe number?]]]]])
+
 (mr/def ::timeline-event
   "A timeline event that may be relevant to the chart."
   [:map {:closed true}
@@ -43,7 +51,7 @@
 (mr/def ::chart-config
   "Full chart configuration received from ai-service."
   [:map {:closed true}
-   [:series [:map-of :string ::series-config]]
+   [:series [:map-of :string ::raw-series-config]]
    [:timeline_events {:optional true} [:maybe [:sequential ::timeline-event]]]
    [:query {:optional true} [:maybe ::lib-be.schema/maybe-legacy-query]]
    [:display_type {:optional true} [:maybe :string]]

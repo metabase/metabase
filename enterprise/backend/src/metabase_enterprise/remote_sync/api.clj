@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase-enterprise.remote-sync.core :as remote-sync.core]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
+   [metabase-enterprise.remote-sync.events :as remote-sync.events]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
@@ -38,7 +39,8 @@
                               current)
                       {:status-code     409
                        :branch_mismatch true
-                       :current_branch  current})))
+                       :current_branch  current
+                       :response/keys   #{:branch_mismatch :current_branch}})))
     requested-branch))
 
 (api.macros/defendpoint :post "/import" :- remote-sync.schema/ImportResponse
@@ -310,6 +312,7 @@
                                  :error       (ex-message e)
                                  :status-code 400)
                           e)))))
+    (remote-sync.events/sync-transforms-tracking!)
     (events/publish-event! :event/remote-sync-settings-update
                            {:details {:remote-sync-type remote-sync-type}
                             :user-id api/*current-user-id*})

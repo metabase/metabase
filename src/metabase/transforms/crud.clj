@@ -21,6 +21,8 @@
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouses.db :as warehouses.db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -28,7 +30,7 @@
 (defn check-database-feature
   "Check that the target database supports the required features for this transform."
   [transform]
-  (let [database (api/check-400 (transforms.db/database (transforms-base.i/target-db-id transform))
+  (let [database (api/check-400 (warehouses.db/database (transforms-base.i/target-db-id transform))
                                 (deferred-tru "The target database cannot be found."))
         features (transforms-base.u/required-database-features transform)]
     (api/check-400 (not (:is_sample database))
@@ -37,7 +39,7 @@
                    (deferred-tru "Cannot run transforms on audit databases."))
     (api/check-400 (every? (fn [feature] (driver.u/supports? (:engine database) feature database)) features)
                    (deferred-tru "The database does not support the requested transform features."))
-    (api/check-400 (not (database-routing/db-routing-enabled? database))
+    (api/check-400 (not (database-routing/db-routing-enabled? (driver.u/lib-database (:id database))))
                    (deferred-tru "Transforms are not supported on databases with DB routing enabled."))))
 
 (defn check-feature-enabled!
@@ -61,7 +63,7 @@
   and leaves the Metabase table with zero fields."
   [transform]
   (let [db-id (transforms-base.i/target-db-id transform)
-        db    (transforms.db/database db-id)]
+        db    (warehouses.db/database db-id)]
     (when (and db (driver.u/supports? (:engine db) :schemas db))
       (api/check-400 (not (str/blank? (get-in transform [:target :schema])))
                      (deferred-tru "A target schema is required for this database.")))))
@@ -79,7 +81,7 @@
   [{:keys [source] :as transform}]
   (when (transforms-base.u/checkpoint-source? transform)
     (let [checkpoint-filter-field-id (get-in source [:source-incremental-strategy :checkpoint-filter-field-id])
-          field (transforms.db/field checkpoint-filter-field-id)]
+          field (warehouse-schema.db/field checkpoint-filter-field-id)]
       (api/check-400 field (deferred-tru "Checkpoint field not found."))
       (let [column (field->column field)]
         (api/check-400 (transforms-base.u/supported-checkpoint-column? column)
@@ -93,7 +95,7 @@
   [{:keys [source] :as transform}]
   (let [{:keys [lookback checkpoint-filter-field-id]} (:source-incremental-strategy source)]
     (when-let [{:keys [unit]} (and (transforms-base.u/checkpoint-source? transform) lookback)]
-      (when-let [field (transforms.db/field checkpoint-filter-field-id)]
+      (when-let [field (warehouse-schema.db/field checkpoint-filter-field-id)]
         (let [column (field->column field)]
           (api/check-400 (lib.types.isa/date-or-datetime? column)
                          (deferred-tru "A lookback window is only supported for date or datetime checkpoint columns."))
@@ -132,7 +134,8 @@
   "The index methods the target db's driver can create on `transform`'s target table, or nil when none are available."
   [transform]
   (when-let [db-id (transforms-base.i/target-db-id transform)]
-    (when-let [database (transforms.db/database db-id)]
+    (when-let [database (when (transforms.db/database-exists? db-id)
+                          (driver.u/lib-database db-id))]
       (let [methods (try
                       (driver/supported-index-methods (:engine database) database)
                       (catch Throwable e

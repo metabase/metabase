@@ -18,24 +18,26 @@
 (def search-models
   "Search model string names, ordered by indexing priority.
    Important / cheaper models come first so partial index is usable as soon as possible during a full index."
-  ["collection"
-   "dashboard"
-   "segment"
-   "measure"
-   "database"
-   "action"
-   "document"
-   "exploration"
-   "transform"
-   ;; The following come last as they can be slow to index due to:
-   ;; - cardinality (table, indexed-entity),
-   ;; - cost (e.g. large text payloads and native-query parsing for cards)
-   "table"
-   "metric"
-   "card"
-   "dataset"
-   ;; These can easily dwarf the cardinality of other entities, hence being dead last.
-   "indexed-entity"])
+  (-> ["collection"
+       "dashboard"
+       "segment"
+       "measure"
+       "database"
+       "action"
+       "document"
+       "exploration"
+       "transform"]
+      ;; An OSS build has no model namespace to resolve data apps from.
+      (cond-> config/ee-available? (conj "data-app"))
+      (into [;; The following come last as they can be slow to index due to:
+             ;; - cardinality (table, indexed-entity),
+             ;; - cost (e.g. large text payloads and native-query parsing for cards)
+             "table"
+             "metric"
+             "card"
+             "dataset"
+             ;; These can easily dwarf the cardinality of other entities, hence being dead last.
+             "indexed-entity"])))
 
 (def raw-spec-forms
   "Stores the raw (unevaluated) spec forms captured at macro expansion time.
@@ -423,7 +425,7 @@
      embedding text (they remain in full-text search). Use for fields whose raw value is
      not suitable for semantic search.
    - `:render-terms` - Additional attributes needed for display (required)
-   - `:visibility` - `:all` (default) or `:app-user` (non-sandboxed, non-impersonated users only)
+   - `:visibility` - `:all` (default) or `:app-user` (non-sandboxed, non-impersonated, non-routed users only)
    - `:where` - HoneySQL where clause to filter indexed records
    - `:bookmark` - HoneySQL join expression to detect if entity is bookmarked by current user
    - `:joins` - Map of join aliases to [model join-condition] tuples

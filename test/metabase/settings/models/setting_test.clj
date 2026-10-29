@@ -1320,7 +1320,7 @@
                 :setting     "test-feature-setting"
                 :feature     :test-feature}
                (try (test-feature-setting! "custom")
-                    (catch ExceptionInfo e (ex-data e)))))))
+                    (catch ExceptionInfo e (dissoc (ex-data e) :response/keys)))))))
     (testing ":enabled? returns false"
       (is (= {:status-code 400
               :setting     "test-enabled-setting-default"}

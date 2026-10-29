@@ -14,16 +14,6 @@
   [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
 
-(mu/defn card-table-and-database-id
-  "The `:table_id` and `:database_id` of the Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :table_id :database_id] card-id))
-
-(mu/defn table-database-id
-  "The Database id of the Table with `table-id`, or nil."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
-
 (defn- metric-where
   "The `:where` map for the metric Cards picked out by `metadata-spec` (its `:id`, `:name`,
   `:table-ids`, and `:card-ids` keys), or unarchived ones when neither `:id` nor `:name` is given."

@@ -18,6 +18,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.channel.settings :as channel.settings]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.mcp.db :as mcp.db]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.v2.common :as common]
@@ -365,7 +366,7 @@
                        (assoc :parameters
                               (resolve-parameters
                                parameters
-                               (mcp.db/dashboard-parameters (:dashboard_id subscription))))
+                               (:parameters (dashboards.db/dashboard (:dashboard_id subscription)))))
 
                        (channel-affecting? args)
                        (assoc :channels (patched-channels (:channels subscription) channel
@@ -445,8 +446,7 @@
    so establishing one — or redirecting where one delivers — needs the same scope that seeing those
    results in-session would. The send itself happens later, tokenlessly, under the creator's
    permissions; this check at write time is the only place the token's scopes can bound that
-   deferred execution. No-op for unscoped callers (cookie sessions bind the unrestricted sentinel,
-   which matches everything). Mirrors alert_write's check of the same scope."
+   deferred execution. Mirrors alert_write's check of the same scope."
   [token-scopes action]
   (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-query-run)
     (common/throw-insufficient-scope!
@@ -494,7 +494,9 @@
   {:name           "subscription_write"
    :default-access :allowed
    :scope          metabot.scope/agent-delivery-write
-   :annotations    {:readOnlyHint false :destructiveHint false}
+   ;; `destructiveHint`: `archived: true` trashes the subscription, and an update can replace the recipients.
+   ;; `openWorldHint`: it sends to email addresses and Slack channels outside Metabase.
+   :annotations    {:readOnlyHint false, :destructiveHint true, :openWorldHint true}
    :args           subscription-write-args-schema}
   [args {:keys [token-scopes]}]
   (let [[op a b] (v2.write/dispatch-write subscription-write-entry args)

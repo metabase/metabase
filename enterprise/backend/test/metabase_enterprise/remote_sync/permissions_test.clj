@@ -6,9 +6,13 @@
    [metabase.collections.models.collection :as collections]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
+
+(use-fixtures :each remote-sync.tu/allow-remote-synced-collections)
 
 (defn- text->prose-mirror-ast
   "Convert text to a simple ProseMirror AST for document content."
@@ -433,6 +437,146 @@
                     (t2/update! :model/Table (mt/id :venues)
                                 {:is_published false
                                  :collection_id nil})))))))))))
+
+(deftest table-data-model-read-only-test
+  (doseq [features [#{} #{:advanced-permissions}]]
+    (testing (str "features: " features)
+      (mt/with-premium-features features
+        (mt/with-temporary-setting-values [settings/remote-sync-type :read-only]
+          (mt/with-temp [:model/Collection {coll-id :id} {:is_remote_synced true}]
+            (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:is_published true :collection_id coll-id}
+              (mt/with-temp-vals-in-db :model/Field (mt/id :venues :name) {:visibility_type :sensitive}
+                (testing "published tables in remote-synced collections are not writable when remote-sync-type is read-only"
+                  (is (false? (mi/can-write? (t2/select-one :model/Table (mt/id :venues)))))
+                  (is (false? (:can_write (mt/user-http-request :crowberto :get 200
+                                                                (str "table/" (mt/id :venues) "/query_metadata")
+                                                                :include_editable_data_model true)))))
+                (testing "admins can read the table"
+                  (is (= (mt/id :venues)
+                         (:id (mt/user-http-request :crowberto :get 200 (str "table/" (mt/id :venues))
+                                                    :include_editable_data_model true)))))
+                (testing "admins get sensitive fields in the table metadata"
+                  (is (contains? (into #{} (map :id)
+                                       (:fields (mt/user-http-request :crowberto :get 200
+                                                                      (str "table/" (mt/id :venues) "/query_metadata")
+                                                                      :include_sensitive_fields true
+                                                                      :include_editable_data_model true)))
+                                 (mt/id :venues :name))))
+                (testing "admins can read the table's fields"
+                  (is (= (mt/id :venues :name)
+                         (:id (mt/user-http-request :crowberto :get 200 (str "field/" (mt/id :venues :name))
+                                                    :include_editable_data_model true)))))
+                (testing "FK targets in the table are returned"
+                  (is (= (mt/id :venues :id)
+                         (get-in (mt/user-http-request :crowberto :get 200 (str "field/" (mt/id :checkins :venue_id))
+                                                       :include_editable_data_model true)
+                                 [:target :id]))))
+                (testing "users without data model permissions cannot read the table's data model"
+                  (is (= "You don't have permissions to do that."
+                         (mt/user-http-request :rasta :get 403 (str "table/" (mt/id :venues))
+                                               :include_editable_data_model true))))))))))))
+
+(defn- field-ids
+  [fields]
+  (into #{} (map :id) fields))
+
+(deftest table-data-model-read-only-permissions-test
+  (mt/with-temporary-setting-values [settings/remote-sync-type :read-only]
+    (mt/with-temp [:model/Collection {coll-id :id} {:is_remote_synced true}]
+      (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:is_published true :collection_id coll-id}
+        (mt/with-temp-vals-in-db :model/Field (mt/id :venues :name) {:visibility_type :sensitive}
+          (let [batch-metadata (fn [user]
+                                 (->> (mt/user-http-request user :post 200 "dataset/query_metadata"
+                                                            (assoc (lib/query (mt/metadata-provider)
+                                                                              (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))
+                                                                   :settings {:include-sensitive-fields true}))
+                                      :tables
+                                      (some #(when (= (mt/id :venues) (:id %)) %))
+                                      :fields
+                                      field-ids))]
+            (testing "admins get sensitive fields of read-only tables from batch query metadata"
+              (is (contains? (batch-metadata :crowberto) (mt/id :venues :name))))
+            (mt/with-premium-features #{:advanced-permissions}
+              (testing "metadata editors can read the data model of read-only tables"
+                (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :unrestricted
+                                                               :create-queries :query-builder
+                                                               :data-model     {:schemas :all}}}
+                  (is (= (mt/id :venues)
+                         (:id (mt/user-http-request :rasta :get 200 (str "table/" (mt/id :venues))
+                                                    :include_editable_data_model true))))
+                  (is (contains? (field-ids (:fields (mt/user-http-request :rasta :get 200
+                                                                           (str "table/" (mt/id :venues) "/query_metadata")
+                                                                           :include_sensitive_fields true
+                                                                           :include_editable_data_model true)))
+                                 (mt/id :venues :name)))))
+              (testing "users without data model permissions cannot read the data model or sensitive fields"
+                (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :unrestricted
+                                                               :create-queries :query-builder
+                                                               :data-model     {:schemas :none}}}
+                  (mt/user-http-request :rasta :get 403 (str "table/" (mt/id :venues) "/query_metadata")
+                                        :include_editable_data_model true)
+                  (mt/user-http-request :rasta :get 403 (str "field/" (mt/id :venues :name))
+                                        :include_editable_data_model true)
+                  (is (not (contains? (field-ids (:fields (mt/user-http-request :rasta :get 200
+                                                                                (str "table/" (mt/id :venues) "/query_metadata")
+                                                                                :include_sensitive_fields true)))
+                                      (mt/id :venues :name))))
+                  (is (not (contains? (batch-metadata :rasta) (mt/id :venues :name)))))))))))))
+
+(deftest fk-to-read-only-table-test
+  (mt/with-temporary-setting-values [settings/remote-sync-type :read-only]
+    (mt/with-temp [:model/Collection {coll-id :id} {:is_remote_synced true}
+                   :model/Table {pk-table-id :id} {:db_id (mt/id) :is_published true :collection_id coll-id}
+                   :model/Field {pk-id :id} {:table_id pk-table-id :base_type :type/Integer :semantic_type :type/PK}
+                   :model/Table {fk-table-id :id} {:db_id (mt/id)}
+                   :model/Field {fk-id :id} {:table_id fk-table-id :base_type :type/Integer :semantic_type :type/FK
+                                             :fk_target_field_id pk-id}
+                   :model/Field {other-id :id} {:table_id fk-table-id :base_type :type/Integer}]
+      (testing "updating an FK field returns its target in a read-only table"
+        (is (= pk-id
+               (get-in (mt/user-http-request :crowberto :put 200 (str "field/" fk-id) {:description "FK"})
+                       [:target :id]))))
+      (testing "a writable table can point an FK at a read-only table"
+        (is (= pk-id
+               (:fk_target_field_id (mt/user-http-request :crowberto :put 200 (str "field/" other-id)
+                                                          {:semantic_type :type/FK :fk_target_field_id pk-id}))))))))
+
+(deftest idfields-data-model-read-only-test
+  (mt/with-temporary-setting-values [settings/remote-sync-type :read-only]
+    (mt/with-temp [:model/Collection {coll-id :id} {:is_remote_synced true}]
+      (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:is_published true :collection_id coll-id}
+        (doseq [features [#{} #{:advanced-permissions}]]
+          (mt/with-premium-features features
+            (testing (str "admins see primary keys of read-only tables, features: " features)
+              (is (contains? (field-ids (mt/user-http-request :crowberto :get 200 (str "database/" (mt/id) "/idfields")
+                                                              :include_editable_data_model true))
+                             (mt/id :venues :id))))))
+        (mt/with-premium-features #{:advanced-permissions}
+          (testing "users see primary keys only of tables they can edit the data model of"
+            (mt/with-all-users-data-perms-graph! {(mt/id) {:view-data      :unrestricted
+                                                           :create-queries :query-builder
+                                                           :data-model     {:schemas {"PUBLIC" {(mt/id :venues) :none
+                                                                                                (mt/id :users)  :all}}}}}
+              (is (= #{(mt/id :users :id)}
+                     (field-ids (mt/user-http-request :rasta :get 200 (str "database/" (mt/id) "/idfields")
+                                                      :include_editable_data_model true)))))))))))
+
+(deftest publish-tables-read-only-test
+  (mt/with-premium-features #{:library}
+    (collections.tu/without-library
+     (mt/with-temp [:model/Collection {coll-id :id} {:type             collections/library-data-collection-type
+                                                     :is_remote_synced true}
+                    :model/Table      {table-id :id} {:db_id (mt/id)}]
+       (testing "tables cannot be published into a remote-synced collection when remote-sync-type is read-only"
+         (mt/with-temporary-setting-values [settings/remote-sync-type :read-only]
+           (mt/user-http-request :crowberto :post 403 "ee/data-studio/table/publish-tables"
+                                 {:table_ids [table-id] :collection_id coll-id})
+           (is (false? (:is_published (mt/user-http-request :crowberto :get 200 (str "table/" table-id)))))))
+       (testing "tables can be published into a remote-synced collection when remote-sync-type is read-write"
+         (mt/with-temporary-setting-values [settings/remote-sync-type :read-write]
+           (mt/user-http-request :crowberto :post 200 "ee/data-studio/table/publish-tables"
+                                 {:table_ids [table-id] :collection_id coll-id})
+           (is (true? (:is_published (mt/user-http-request :crowberto :get 200 (str "table/" table-id)))))))))))
 
 ;;; ------------------------------------------------ Field Remote Sync Tests ------------------------------------------------
 

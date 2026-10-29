@@ -1,11 +1,13 @@
-import { t } from "ttag";
-
 import {
   coerceCollectionId,
   isRootCollection,
 } from "metabase/common/collections/utils";
 import type { TreeItem } from "metabase/data-studio/common/types";
-import { createEmptyStateItem } from "metabase/data-studio/common/utils";
+import {
+  buildCollectionTreeChildren,
+  buildCollectionTreeNode,
+  createEmptyStateItem,
+} from "metabase/data-studio/common/utils";
 import type { Collection, NativeQuerySnippet } from "metabase-types/api";
 
 function createSnippetNode(snippet: NativeQuerySnippet): TreeItem {
@@ -19,65 +21,33 @@ function createSnippetNode(snippet: NativeQuerySnippet): TreeItem {
   };
 }
 
-function buildSnippetCollectionNode(
-  collection: Collection,
-  allCollections: Collection[],
-  allSnippets: NativeQuerySnippet[],
-): TreeItem {
-  const isRoot = isRootCollection(collection);
-  const parentIdToMatch = isRoot ? null : collection.id;
-
-  const childCollections = allCollections.filter(
-    (c) => c.parent_id === parentIdToMatch,
-  );
-  const childSnippets = allSnippets.filter(
-    (s) => s.collection_id === parentIdToMatch,
-  );
-
-  const children = [
-    ...childCollections.map((child) =>
-      buildSnippetCollectionNode(child, allCollections, allSnippets),
-    ),
-    ...childSnippets.map(createSnippetNode),
-  ];
-
-  return {
-    id: `collection:${collection.id}`,
-    name: collection.name,
-    model: "collection",
-    icon: isRoot ? "snippet" : "folder",
-    data: { ...collection, model: "collection" },
-    children: children.length > 0 ? children : undefined,
-  };
-}
-
+/**
+ * The folders and snippets at the top of the snippets collection, an empty-state row when it holds none, or nothing
+ * without a readable root.
+ */
 export function buildActiveSnippetTree(
   snippetCollections: Collection[],
   snippets: NativeQuerySnippet[],
   canWriteSnippets: boolean,
 ): TreeItem[] {
-  const collections = snippetCollections.filter((c) => !c.archived);
-  const activeSnippets = snippets.filter((s) => !s.archived);
-
-  const rootCollection = collections.find(isRootCollection);
-  if (!rootCollection) {
+  if (!snippetCollections.some(isRootCollection)) {
     return [];
   }
 
-  const nonRootCollections = collections.filter((c) => !isRootCollection(c));
-  const rootNode = buildSnippetCollectionNode(
-    rootCollection,
-    nonRootCollections,
+  const collections = snippetCollections.filter(
+    (c) => !c.archived && !isRootCollection(c),
+  );
+  const activeSnippets = snippets.filter((s) => !s.archived);
+  const items = buildCollectionTreeChildren(
+    null,
+    collections,
     activeSnippets,
+    createSnippetNode,
   );
 
-  // If the root has no children (no snippets or subfolders), add an empty state
-  const hasContent = activeSnippets.length > 0 || nonRootCollections.length > 0;
-  const children = hasContent
-    ? rootNode.children
+  return items.length > 0
+    ? items
     : [createEmptyStateItem("snippets", undefined, !canWriteSnippets)];
-
-  return [{ ...rootNode, name: t`SQL snippets`, children }];
 }
 
 export function buildArchivedSnippetTree(
@@ -93,10 +63,11 @@ export function buildArchivedSnippetTree(
 
   return [
     ...archivedCollections.map((collection) =>
-      buildSnippetCollectionNode(
+      buildCollectionTreeNode(
         collection,
         archivedCollections,
         archivedSnippets,
+        createSnippetNode,
       ),
     ),
     ...archivedSnippets

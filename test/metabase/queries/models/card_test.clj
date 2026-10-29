@@ -26,6 +26,7 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.stale-test :as stale-test]
    [metabase.staleness.core :as staleness]
@@ -36,6 +37,8 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :each remote-sync.tu/allow-remote-synced-collections)
 
 (deftest dashboard-count-test
   (testing "Check that the :dashboard_count delay returns the correct count of Dashboards a Card is in"
@@ -817,11 +820,12 @@
         (lib/filter (lib/> (lib.metadata/field mp (mt/id :venues :price)) 1)))))
 
 (deftest model-becoming-question-publishes-action-events-test
-  (testing "update-card! announces the actions it archives and deletes when a model becomes a question"
+  (testing "update-card! announces the actions it deletes when a model becomes a question"
     (do-with-model-actions!
-     (fn [{:keys [model-id implicit query]}]
-       (is (= #{[:event/action-update query true]
-                [:event/action-delete implicit false]}
+     (fn [{:keys [model-id implicit query archived]}]
+       (is (= #{[:event/action-delete implicit false]
+                [:event/action-delete query false]
+                [:event/action-delete archived true]}
               (action-events-during! #(update-model! model-id {:type :question}))))))))
 
 (deftest model-query-without-implicit-support-publishes-action-events-test
@@ -848,19 +852,17 @@
       (is (= #{[:event/action-update action-id false]}
              (action-events-during! #(update-model! question-id {:collection_id coll-id})))))))
 
-(deftest model-archive-cascades-to-actions-test
-  (testing "archiving a model archives its actions, and unarchiving it restores only those"
+(deftest model-archive-deletes-actions-test
+  (testing "archiving a model deletes its actions, and unarchiving it brings none back"
     (do-with-model-actions!
      (fn [{:keys [model-id implicit query archived]}]
-       (let [archived-state #(t2/select-pk->fn (juxt :archived :archived_directly) :model/Action :model_id model-id)]
-         (is (= #{[:event/action-update implicit true]
-                  [:event/action-update query true]}
-                (action-events-during! #(update-model! model-id {:archived true}))))
-         (is (= {implicit [true false], query [true false], archived [true true]} (archived-state)))
-         (is (= #{[:event/action-update implicit false]
-                  [:event/action-update query false]}
-                (action-events-during! #(update-model! model-id {:archived false}))))
-         (is (= {implicit [false false], query [false false], archived [true true]} (archived-state))))))))
+       (is (= #{[:event/action-delete implicit false]
+                [:event/action-delete query false]
+                [:event/action-delete archived true]}
+              (action-events-during! #(update-model! model-id {:archived true}))))
+       (is (not (t2/exists? :model/Action :model_id model-id)))
+       (update-model! model-id {:archived false})
+       (is (not (t2/exists? :model/Action :model_id model-id)))))))
 
 (deftest model-actions-follow-model-collection-test
   (testing "the actions of a model are kept in the model's collection"
@@ -877,10 +879,10 @@
           (is (= coll-2 (action-collection)))
           (t2/update! :model/Card model-id {:collection_id nil})
           (is (nil? (action-collection))))
-        (testing "attaching an action to another model moves it to that model's collection"
-          (t2/update! :model/Card model-id {:collection_id coll-1})
-          (t2/update! :model/Action action-id {:model_id other-id})
-          (is (= coll-2 (action-collection))))))))
+        (testing "an action can't be attached to another model"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"An action's model can't be changed"
+                                (t2/update! :model/Action action-id {:model_id other-id})))
+          (is (nil? (action-collection))))))))
 
 (deftest model-changes-outside-update-card-publish-no-action-events-test
   (testing "GHY-4722: a serdes load writes models with t2 directly, and must not publish action events (they would dirty the remote sync ledger during a pull)"
@@ -1176,6 +1178,22 @@
           (mt/with-test-user :crowberto
             (is (false? (mi/can-read? card)))
             (is (false? (mi/can-write? card)))))))))
+
+(deftest card-in-a-data-apps-collection-is-admin-only-test
+  (testing "Only administrators write a card in a collection of the data apps namespace"
+    ;; created as a load creates it, which doesn't check that the table is published
+    (binding [mi/*deserializing?* true]
+      (mt/with-temp [:model/Collection {collection-id :id} {:namespace "data-apps"}
+                     :model/Card       card                {:collection_id collection-id
+                                                            :dataset_query (mt/mbql-query venues)}]
+        (mt/with-test-user :crowberto
+          (is (true? (mi/can-write? card)))
+          (is (true? (mi/can-write? :model/Card (:id card))))
+          (is (true? (:can_write (t2/hydrate card :can_write))))
+          (is (true? (mi/can-create? :model/Card {:collection_id collection-id}))))
+        (mt/with-test-user :rasta
+          (is (false? (mi/can-write? card)))
+          (is (false? (mi/can-create? :model/Card {:collection_id collection-id}))))))))
 
 (deftest ^:parallel breakouts->identifier->action-fn-test
   (are [b1 b2 expected-identifier->action] (=? expected-identifier->action
@@ -1825,7 +1843,7 @@
       (is (= :question
              (t2/select-one-fn :type :model/Card :id (:id card)))))))
 
-(deftest create-card-no-remaps
+(deftest create-card-remaps-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Dimension _ {:field_id                (mt/id :orders :user_id)
                                        :name                    "User ID"
@@ -1845,8 +1863,8 @@
                                      :dataset_query query}
                                     @api/*current-user*)]
         (try
-          (is (= 9
-                 (count (:result_metadata card))))
+          (testing "a created card stores the remapped columns of a run"
+            (is (= 2 (count (filter :remapped_from (:result_metadata card))))))
           (finally
             (t2/delete! :model/Card (:id card))))))))
 
@@ -1900,9 +1918,9 @@
                                           :name                   "Orders Model for remap test"
                                           :dataset_query          query}
                                          @api/*current-user*)]
-            (testing "model result_metadata should not include remap columns"
-              (is (not-any? #(re-find #"(?i)remap" (:name %))
-                            (:result_metadata card))))
+            (testing "model result_metadata includes the remap column of a run, marked as remapped"
+              (is (=? [{:remapped_from "QUANTITY"}]
+                      (filter #(re-find #"(?i)remap" (:name %)) (:result_metadata card)))))
             (let [mp          (mt/metadata-provider)
                   model-query (-> (lib/query mp (lib.metadata/card mp (:id card)))
                                   (lib/aggregate (lib/count))

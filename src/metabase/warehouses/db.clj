@@ -9,20 +9,10 @@
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
-(mu/defn router-database-id
-  "The router Database id of the Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :router_database_id :model/Database :id database-id))
-
-(mu/defn database
-  "The Database with `database-id`, or nil."
+(mu/defn database :- [:maybe ::warehouses.schema/database]
+  "The ::warehouses.schema/database with `database-id`, or nil."
   [database-id :- [:maybe ::lib.schema.id/database]]
-  (t2/select-one :model/Database :id database-id))
-
-(mu/defn non-destination-database
-  "The Database with `database-id` if it is not a routing destination, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id database-id :router_database_id nil))
+  (t2/select-one :model/Database :id [:auto/param database-id]))
 
 (mu/defn databases
   "The Databases with `database-ids`."
@@ -103,12 +93,18 @@
                        :select [:id]
                        :where  [:= :database_id database-id]}))
 
-(mu/defn delete-query-actions-for-database!
-  "Delete the query Actions whose query runs against the Database with `database-id`, returning the number deleted."
+(mu/defn delete-actions-for-database!
+  "Delete the query Actions whose query runs against the Database with `database-id` and the implicit Actions that write
+  to one of its Tables, returning the number deleted."
   [database-id :- ::lib.schema.id/database]
-  (if-let [action-ids (not-empty (t2/select-fn-set :action_id :model/QueryAction :database_id database-id))]
-    (t2/delete! :model/Action :id [:in action-ids])
-    0))
+  (let [[table-subquery _] (warehouse-schema-overlay/table-query)]
+    (if-let [action-ids (not-empty (into (t2/select-fn-set :action_id :model/QueryAction :database_id database-id)
+                                         (t2/select-fn-set :action_id :model/ImplicitAction
+                                                           {:join  [[table-subquery :table]
+                                                                    [:= :table.id :implicit_action.table_id]]
+                                                            :where [:= :table.db_id database-id]})))]
+      (t2/delete! :model/Action :id [:in action-ids])
+      0)))
 
 (mu/defn delete-cards-for-database!
   "Delete the Cards of the Database with `database-id`."

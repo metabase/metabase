@@ -1,6 +1,7 @@
 (ns metabase.metabot.tools.document
   "Document-generation specific tool wrappers."
   (:require
+   [metabase.metabot.query-execution :as query-execution]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.table-utils :as table-utils]
    [metabase.metabot.tools.construct :as construct-tools]
@@ -9,7 +10,9 @@
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.query-processor.core :as qp]
+   [metabase.query-processor.middleware.catch-exceptions :as qp.catch-exceptions]
    [metabase.util.malli :as mu]
+   [metabase.util.quoting :as quoting]
    [metabase.warehouses.core :as warehouses]))
 
 (set! *warn-on-reflection* true)
@@ -66,20 +69,25 @@
   (let [instruction-text (str "The SQL query could not be processed by Metabase.\n"
                               "\n"
                               "Error details:\n"
-                              error-message "\n"
+                              (quoting/quoted error-message) "\n"
                               "\n"
                               "Please fix the query and call `document_construct_sql_chart` again with corrected SQL.\n")]
     {:output       (sql-chart-error-output instruction-text)
      :instructions instruction-text}))
 
 (defn- check-query
-  "If the query is valid, return nil. If not, return the error message."
+  "If one row of the query runs, return nil.
+  If the query or its database is at fault, return the error message.
+  Rethrow a failure inside Metabase, such as an app DB lookup, so the tool executor logs it.
+  The model never reads its text."
   [query]
   (try
-    (qp/process-query query)
+    (qp/process-query (assoc query :constraints {:max-results 1 :max-results-bare-rows 1}))
     nil
     (catch Exception e
-      (ex-message e))))
+      (if (query-execution/caller-facing-failure? (qp.catch-exceptions/exception-response e))
+        (ex-message e)
+        (throw e)))))
 
 (mu/defn ^{:tool-name    "document_schema_collect"
            :scope        scope/agent-document-read

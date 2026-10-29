@@ -224,8 +224,19 @@
 
 ;;; ------------------------------------------------ Save Bundle ------------------------------------------------
 
-(defn- derived-columns
-  "DB columns derived from a validated bundle."
+(defn check-bundle-identifier!
+  "Throw a 400 ex-info unless the `name` in `validated`'s manifest equals `identifier`, the identity an existing
+  plugin's questions are saved under. Returns `validated`."
+  [identifier {:keys [manifest] :as validated}]
+  (let [bundle-name (:name manifest)]
+    (when-not (= bundle-name identifier)
+      (throw (ex-info (format "Bundle manifest \"name\" (%s) does not match the plugin's identifier (%s)."
+                              bundle-name identifier)
+                      {:status-code 400})))
+    validated))
+
+(defn derived-columns
+  "DB columns derived from a validated bundle (see [[validate-bundle!]])."
   [{:keys [bytes hash manifest version-str]}]
   {:status           :active
    :error_message    nil
@@ -242,7 +253,7 @@
   [{:keys [id]} validated]
   (custom-viz-plugin.db/update-plugin! id (derived-columns validated))
   (purge-plugin-cache! {:id id})
-  (custom-viz-plugin.db/non-blob-plugin id))
+  (custom-viz-plugin.db/custom-viz-plugin id))
 
 (defn insert-bundle!
   "Insert a new plugin row from a validated bundle and an `:identifier`. Returns
@@ -426,7 +437,7 @@
    Always returns nil when dev mode is disabled."
   [id]
   (when (custom-viz.settings/custom-viz-plugin-dev-mode-enabled)
-    (not-empty (custom-viz-plugin.db/plugin-dev-bundle-url id))))
+    (not-empty (:dev_bundle_url (custom-viz-plugin.db/custom-viz-plugin id)))))
 
 ;;; ------------------------------------------------ Resolve ------------------------------------------------
 

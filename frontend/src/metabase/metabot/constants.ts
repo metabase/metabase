@@ -160,6 +160,7 @@ export const TOOL_MESSAGES = {
             count,
           ),
   },
+  run_query: { active: () => t`Running a query`, done: () => t`Ran a query` },
   save_entity: { active: () => t`Saving`, done: () => t`Saved` },
   search: { active: () => t`Searching`, done: () => t`Searched` },
   search_data_sources: {

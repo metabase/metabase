@@ -23,7 +23,7 @@
    (list-native-query-snippets false))
   ([archived :- ms/BooleanValue]
    (let [snippets (native-query-snippets.db/snippets-by-archived archived)]
-     (t2/hydrate (filter mi/can-read? snippets) :creator :is_remote_synced))))
+     (t2/hydrate (filter mi/can-read? snippets) :can_write :creator :is_remote_synced))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -40,7 +40,7 @@
 (mu/defn get-native-query-snippet :- [:maybe (ms/InstanceOf :model/NativeQuerySnippet)]
   "Fetch native query snippet with ID and hydrate creator."
   [id :- ms/PositiveInt]
-  (-> (api/read-check (native-query-snippets.db/snippet id))
+  (-> (api/read-check (native-query-snippets.db/native-query-snippet id))
       (t2/hydrate :creator :is_remote_synced)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -87,7 +87,7 @@
   "Check whether current user has write permissions, then update NativeQuerySnippet with values in `body`.  Returns
   updated/hydrated NativeQuerySnippet"
   [id body]
-  (let [snippet     (native-query-snippets.db/snippet id)
+  (let [snippet     (native-query-snippets.db/native-query-snippet id)
         body-fields (u/select-keys-when body
                                         :present #{:description :collection_id}
                                         :non-nil #{:archived :content :name})

@@ -53,6 +53,7 @@ describe("scenarios > embedding > sdk iframe embedding > without token features"
         },
       });
 
+      frame.findByText("Pick your starting data").should("be.visible");
       frame
         .findByText("A valid license is required for embedding.")
         .should("not.exist");

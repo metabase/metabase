@@ -163,6 +163,8 @@
   ;; reset the system clock, in case `/set-time` was called without cleanup
   (alter-var-root #'java-time.clock/*clock* (constantly nil))
   (search.ingestion/clear-queue!)
+  (api/check (search.ingestion/await-pending-updates! 30000)
+             [500 "Timed out waiting for search indexing before restoring a snapshot."])
   (restore-snapshot! snapshot-name)
   (search/sync-from-restored-db!)
   nil)

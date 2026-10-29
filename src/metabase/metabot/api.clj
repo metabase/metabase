@@ -51,7 +51,7 @@
   can originate one. Permissions are participation-based — a conversation can
   have multiple participants (e.g. multiple users in a shared Slack thread)."
   [conversation-id]
-  (when-let [conversation (metabot.db/conversation conversation-id)]
+  (when-let [conversation (metabot.db/metabot-conversation conversation-id)]
     (api/check-403 (mi/can-read? conversation))))
 
 (defn- make-out-of-sync-fn
@@ -202,8 +202,12 @@
   it seeds the agent loop as the immutable baseline for this turn's state."
   [{:keys [metabot-id profile-id message context history conversation-id state debug?
            eval-session-id assistant-msg-id external-id user-external-id title-job]}]
-  (let [enriched-context (metabot.context/create-context context {:metabot-id metabot-id
-                                                                  :profile-id (keyword profile-id)})
+  (let [enriched-context (metabot.context/create-context
+                          ;; Server-authoritative: decided from the request's client header here, on the
+                          ;; handler thread, before the agent moves to the streaming thread.
+                          (assoc context :in_host_app (metabot.context/host-app-request? (request/current-request)))
+                          {:metabot-id metabot-id
+                           :profile-id (keyword profile-id)})
         messages         (concat history [message])]
     ;; a reasoning model can spend longer than MB_JETTY_ASYNC_RESPONSE_TIMEOUT on one turn
     (sr/streaming-response {:content-type     "text/event-stream"
@@ -230,15 +234,17 @@
           (transduce xf
                      (streaming-writer-rf os canceled-chan canceled?)
                      (agent/run-agent-loop
-                      (cond-> {:messages        messages
-                               :state           state
-                               :metabot-id      metabot-id
-                               :conversation-id conversation-id
-                               :profile-id      (keyword profile-id)
-                               :context         enriched-context
-                               :eval-session-id eval-session-id
-                               :memory-atom     memory-atom
-                               :tracking-opts   {:session-id conversation-id}}
+                      (cond-> {:messages              messages
+                               :state                 state
+                               :metabot-id            metabot-id
+                               :conversation-id       conversation-id
+                               :profile-id            (keyword profile-id)
+                               :context               enriched-context
+                               :eval-session-id       eval-session-id
+                               :memory-atom           memory-atom
+                               :tracking-opts         {:session-id conversation-id}
+                               ;; A query a tool is running stops when the client goes away.
+                               :request-canceled-chan canceled-chan}
                         debug? (assoc :debug? true))))
           (catch org.eclipse.jetty.io.EofException _
             (vreset! canceled? true)
@@ -309,8 +315,9 @@
         _          (metabot.config/check-metabot-enabled! metabot-id)
         _          (metabot.usage/check-metabase-managed-free-limit!)
         profile-id (metabot.config/resolve-dynamic-profile-id profile_id metabot-id)
-        ;; reject before `start-turn!` persists anything or the title job calls the LLM
-        _          (when-not (profiles/profile-registered? (keyword profile-id))
+        ;; reject before `start-turn!` persists anything or the title job calls the LLM. An eval-only profile on an
+        ;; instance that doesn't run evals gets the same refusal, so nobody can tell it exists.
+        _          (when-not (profiles/profile-available? (keyword profile-id))
                      (throw (ex-info (tru "Unknown profile") {:status-code 400 :profile-id profile-id})))
         ;; Only allow debug mode in dev — never in production
         debug?     (and config/is-dev? (boolean debug))

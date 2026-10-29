@@ -1,6 +1,7 @@
 (ns metabase.search.config
   (:require
    [metabase.api.common :as api]
+   [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.permissions.core :as perms]
@@ -43,7 +44,8 @@
 
 (def model->db-model
   "Mapping of model name to :db_model and :alias"
-  api/model->db-model)
+  (cond-> api/model->db-model
+    config/ee-available? (assoc "data-app" {:db-model :model/DataApp :alias :data-app})))
 
 ;; We won't need this once fully migrated to specs, but kept for now in case legacy cod falls out of sync
 (def excluded-models
@@ -86,7 +88,10 @@
 (def models-search-order
   "The order of this list influences the order of the results: items earlier in the
   list will be ranked higher."
-  ["dashboard" "metric" "segment" "measure" "indexed-entity" "card" "dataset" "collection" "table" "action" "document" "exploration" "transform" "database"])
+  (cond-> ["dashboard" "metric" "segment" "measure" "indexed-entity" "card" "dataset" "collection" "table" "action"
+           "document" "exploration" "transform"]
+    config/ee-available? (conj "data-app")
+    true                 (conj "database")))
 
 (assert (= all-models (set models-search-order)) "The models search order has to include all models")
 
@@ -400,7 +405,7 @@
 (def vector-search-strategies
   "Valid semantic-search vector-search strategies, as keywords. Mastered here (rather than in the EE module)
   so the OSS search API param and the EE semantic-search setting validation share one definition.
-  Note: the per-strategy dispatch in [[metabase-enterprise.semantic-search.index/semantic-search-query]] is a
+  Note: the per-strategy dispatch in [[metabase-enterprise.search.semantic.index/semantic-search-query]] is a
   separate dispatch (unknown strategies fall back to `:brute-force`) and must be updated by hand when
   adding a strategy.
 
@@ -502,10 +507,13 @@
    [:current-user-id    pos-int?]
    [:is-superuser?      :boolean]
    [:is-data-analyst?   :boolean]
+   ;; whether a lens -- sandboxing, impersonation, routing -- narrows what this user may see; see
+   ;; [[metabase.search.permissions/sandboxed-impersonated-or-routed-user?]]
+   [:is-impersonated-user? :boolean]
+   [:is-sandboxed-user?    :boolean]
+   [:is-routed-user?       :boolean]
    ;; TODO only optional and maybe for tests, clean that up!
    [:context               {:optional true} [:maybe :keyword]]
-   [:is-impersonated-user? {:optional true} [:maybe :boolean]]
-   [:is-sandboxed-user?    {:optional true} [:maybe :boolean]]
    [:current-user-perms [:set perms/PathSchema]]
    [:model-ancestors?   :boolean]
    [:models             [:set SearchableModel]]

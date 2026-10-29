@@ -4,7 +4,7 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.channel.settings :as channel.settings]
-   [metabase.metabot.db :as metabot.db]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.create-alert :as tools.create-alert]
    [metabase.metabot.tools.util :as metabot.tools.u]
@@ -25,7 +25,7 @@
 (defn- create-dashboard-subscription*
   "Private helper for create-dashboard-subscription (call that instead)."
   [{:keys [dashboard-id slack-channel schedule]}]
-  (let [dashboard (some-> (metabot.db/dashboard dashboard-id)
+  (let [dashboard (some-> (dashboards.db/dashboard dashboard-id)
                           api/read-check
                           (t2/hydrate [:dashcards :card]))
         cards (for [{:keys [id card]} (:dashcards dashboard)

@@ -496,6 +496,12 @@ export type TestMetricSpec = {
 
 export type TestFilterSpec = TestExpressionSpec | TestSegmentSpec;
 
+export type TestOperatorArgSpec =
+  | TestExpressionSpec
+  | TestSegmentSpec
+  | TestMeasureSpec
+  | TestMetricSpec;
+
 export type TestNamedAggregationSpec = {
   name: string;
   value: TestExpressionSpec | TestMeasureSpec | TestMetricSpec;
@@ -520,7 +526,7 @@ export type TestLiteralSpec = {
 export type TestOperatorSpec = {
   type: "operator";
   operator: string;
-  args?: readonly TestExpressionSpec[];
+  args?: readonly TestOperatorArgSpec[];
 
   // For an aggregation: the name of its result column, which a later stage
   // refers to.

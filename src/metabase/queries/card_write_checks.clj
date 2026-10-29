@@ -5,6 +5,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
@@ -47,7 +48,7 @@
     (cond
       ;; you specified both - they must match
       (and specified-collection-id? dashboard-id)
-      (let [dashboard-collection-id (queries.db/dashboard-collection-id dashboard-id)]
+      (let [dashboard-collection-id (:collection_id (dashboards.db/dashboard dashboard-id))]
         (api/check-400 (= collection-id dashboard-collection-id)
                        (tru "Mismatch detected between Dashboard''s `collection_id` ({0}) and `collection_id` ({1})"
                             dashboard-collection-id
@@ -56,7 +57,7 @@
 
       specified-collection-id? collection-id
 
-      dashboard-id (queries.db/dashboard-collection-id dashboard-id)
+      dashboard-id (:collection_id (dashboards.db/dashboard dashboard-id))
 
       :else nil)))
 
@@ -88,7 +89,7 @@
   (when (api/column-will-change? (:dashboard_id card-before-update) (get card-updates :dashboard_id ::api/not-provided))
     (check-allowed-to-remove-from-existing-dashboards card-before-update)
     (when-let [dashboard-id (:dashboard_id card-updates)]
-      (card/check-shared-dashboard-timeline-permissions! (queries.db/dashboard dashboard-id)
+      (card/check-shared-dashboard-timeline-permissions! (dashboards.db/dashboard dashboard-id)
                                                          [(merge card-before-update card-updates)])))
   (collection/check-allowed-to-change-collection card-before-update card-updates))
 
@@ -119,14 +120,6 @@
     ;; if a `dashboard-id` is specified, check permissions on the *dashboard's* collection ID.
     (api/create-check :model/Card {:collection_id (actual-collection-id card)})
     (check-no-save-cycle! ::no-id query)))
-
-(defn check-allowed-to-delete-card!
-  "Throw a 400 when `card` is in a data app's collection and another card there reads it. For `DELETE /api/card/:id`
-   rather than the delete hook: deleting the collection deletes its cards together, readers and read."
-  [{:keys [id collection_id]}]
-  (when-let [reader (card/data-app-card-reader collection_id id)]
-    (throw (ex-info (tru "Card {0} in the data app''s collection reads this card, so it can''t be deleted." reader)
-                    {:status-code 400}))))
 
 (mu/defn check-allowed-to-update-card!
   "The post-write permission/validation stack for updating a card, mirroring `PUT /api/card/:id`.

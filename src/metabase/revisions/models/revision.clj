@@ -257,7 +257,10 @@
             [:entity      [:fn toucan-model?]]]]
   (let [{:keys [id user-id revision-id entity]} info
         model-name (name entity)
-        serialized-instance (revisions.db/revision-object model-name id revision-id)]
+        serialized-instance (let [revision (revisions.db/revision revision-id)]
+                              (when (and (= model-name (:model revision))
+                                         (= id (:model_id revision)))
+                                (:object revision)))]
     (t2/with-transaction [_conn]
       (let [already-in-target-state? (= serialized-instance
                                         (revisions.db/latest-revision-object model-name id))]

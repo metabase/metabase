@@ -20,9 +20,9 @@ describe("data-studio routes", () => {
   it("resolves every page", async () => {
     const loaders = lazyLoaders(getDataStudioRoutes(Guard));
 
-    // Includes the transform, data model, glossary, settings, snippet and action
-    // routes, which this tree nests.
-    expect(loaders).toHaveLength(52);
+    // Includes the transform, data model, glossary, settings, snippet, action
+    // and dashboard routes, which this tree nests.
+    expect(loaders).toHaveLength(53);
 
     for (const load of loaders) {
       expect((await load()).Component).toBeDefined();

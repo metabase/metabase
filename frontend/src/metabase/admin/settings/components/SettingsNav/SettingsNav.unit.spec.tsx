@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { setupSettingEndpoint } from "__support__/server-mocks";
 import { createMockSettingsState } from "__support__/state";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import { Route } from "metabase/router";
 import type { TokenFeatures } from "metabase-types/api";
 import {
@@ -143,6 +143,27 @@ describe("SettingsNav", () => {
     await setup({ initialRoute: "/admin/settings/general", isHosted: true });
     expect(screen.queryByText("Updates")).not.toBeInTheDocument();
   });
+
+  it.each([
+    { whitelabel: true, hasGem: false },
+    { whitelabel: false, hasGem: true },
+  ])(
+    "should show the upsell gem on the Appearance link only without the whitelabel feature (whitelabel: $whitelabel)",
+    async ({ whitelabel, hasGem }) => {
+      await setup({
+        initialRoute: "/admin/settings/general",
+        tokenFeatures: { whitelabel },
+      });
+
+      const appearanceLink = await screen.findByRole("link", {
+        name: /Appearance/,
+      });
+      expect(appearanceLink).toHaveTextContent(/^Appearance$/);
+      expect(within(appearanceLink).queryByTestId("upsell-gem") !== null).toBe(
+        hasGem,
+      );
+    },
+  );
 
   it("should show Development nav item when custom viz dev mode is enabled", async () => {
     await setup({

@@ -530,24 +530,23 @@
   (let [params  (or params {})
         decoded ((decoder schema) params)]
     (when-not (mr/validate schema decoded)
-      (throw (ex-info (format "Invalid %s" (case params-type
-                                             :route   "route parameters"
-                                             :query   "query parameters"
-                                             :body    "body"
-                                             :request "request"
-                                             ;; fall back to the keyword name for any other validated
-                                             ;; params-type so we never throw "No matching clause" here
-                                             (name params-type)))
-                      (let [explanation     (mr/explain schema decoded)
-                            specific-errors (invalid-params-specific-errors explanation)
-                            errors          (invalid-params-errors explanation)]
+      (let [explanation (mr/explain schema decoded)]
+        (throw (ex-info (format "Invalid %s" (case params-type
+                                               :route   "route parameters"
+                                               :query   "query parameters"
+                                               :body    "body"
+                                               :request "request"
+                                               ;; fall back to the keyword name for any other validated
+                                               ;; params-type so we never throw "No matching clause" here
+                                               (name params-type)))
                         {:status-code     400
                          #_:api/debug     #_{:params-type params-type
-                                             :schema      (mc/form schema)
-                                             :params      params
-                                             :decoded     decoded}
-                         :specific-errors specific-errors
-                         :errors          errors}))))
+                                             :schema  (mc/form schema)
+                                             :params  params
+                                             :decoded decoded}
+                         :specific-errors (invalid-params-specific-errors explanation)
+                         :errors          (invalid-params-errors explanation)
+                         :response/keys   #{:specific-errors}}))))
     decoded))
 
 (mu/defn- decode-and-validate-params-form

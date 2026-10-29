@@ -6,7 +6,7 @@ redirect_from:
 
 # Collections
 
-Collections are the main way to organize [questions](../questions/introduction.md), [dashboards](../dashboards/introduction.md), and [models][models]. You can think of collections like folders or directories. You can nest collections in other collections, and move collections around. One thing to note is that a single item, like a question or dashboard, can only be in one collection at a time (excluding parent collections).
+Collections are the main way to organize [questions](../questions/introduction.md), [dashboards](../dashboards/introduction.md), [models][models], [documents](../documents/introduction.md), and [Research](../ai/research.md). You can think of collections like folders or directories. You can nest collections in other collections, and move collections around. One thing to note is that a single item, like a question or dashboard, can only be in one collection at a time (excluding parent collections).
 
 ## Create a collection
 

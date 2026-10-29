@@ -326,3 +326,17 @@
       (mt/with-dynamic-fn-redefs [curation/curated-ids (constantly #{["card" 1] ["table" 2]})]
         (is (= [{:model :card :id 1} {:model :table :id 2}]
                (#'context/filter-recents-to-curated recents)))))))
+
+(deftest ^:parallel host-app-request?-test
+  (testing "the client header decides whether Metabase's own pages surround Metabot"
+    (doseq [[client expected] {"embedding-sdk-react"       true
+                               "embedding-simple"          true
+                               "data-app"                  true
+                               "embedding-iframe-full-app" false
+                               "embedding-iframe-static"   false
+                               nil                         false}]
+      (testing (pr-str client)
+        (is (= expected
+               (context/host-app-request? {:headers (cond-> {} client (assoc "x-metabase-client" client))}))))))
+  (testing "no request bound, e.g. a caller outside an HTTP handler"
+    (is (false? (context/host-app-request? nil)))))

@@ -138,6 +138,7 @@ export const BranchSwitcher = ({
           position="bottom-start"
           width={320}
           withinPortal
+          middlewares={{ flip: false, shift: true }}
         >
           <Combobox.Target>
             <Button

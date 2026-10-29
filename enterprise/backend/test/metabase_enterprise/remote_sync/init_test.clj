@@ -6,9 +6,12 @@
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.init :as init]
    [metabase-enterprise.remote-sync.models.remote-sync-object :as remote-sync.object]
+   [metabase-enterprise.remote-sync.settings :as settings]
    [metabase-enterprise.remote-sync.test-helpers :as th]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :as collections.tu]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
+   [metabase.settings.core :as setting]
    [metabase.startup.core :as startup]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -17,7 +20,8 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
-(use-fixtures :each th/clean-remote-sync-state)
+(use-fixtures :each
+  remote-sync.tu/allow-remote-synced-collections th/clean-remote-sync-state)
 
 (defn- capture-async-import! []
   (let [calls (atom [])]
@@ -40,6 +44,22 @@
         (mt/with-dynamic-fn-redefs [impl/async-import! capture]
           (#'init/remote-sync-init)
           (is (empty? @calls)))))))
+
+(deftest pin-remote-sync-custom-collections-enabled-test
+  (testing "First startup stores whether custom collections are already synced"
+    (doseq [synced? [true false]]
+      (testing (pr-str synced?)
+        (mt/with-temporary-setting-values [:remote-sync-url                        "https://github.com/foo/bar.git"
+                                           :remote-sync-custom-collections-enabled nil]
+          (mt/with-temp [:model/Collection _ {:location "/" :is_remote_synced synced?}]
+            (settings/pin-remote-sync-custom-collections-enabled!)
+            (is (= :database (setting/get-raw-value-source :remote-sync-custom-collections-enabled)))
+            (is (= synced? (settings/remote-sync-custom-collections-enabled))))))))
+  (testing "Later startups keep stored value"
+    (mt/with-temporary-setting-values [:remote-sync-url                 nil
+                                       :remote-sync-custom-collections-enabled true]
+      (settings/pin-remote-sync-custom-collections-enabled!)
+      (is (true? (settings/remote-sync-custom-collections-enabled))))))
 
 (deftest remote-sync-init-read-only-without-branch-throws-test
   (testing "Read-only with enabled sync but no branch throws"
@@ -287,26 +307,21 @@
 ;;; ------------------------------------------- Data app ledger backfill -------------------------------------------
 
 (defn- do-with-untracked-data-apps!
-  "Runs `f` with `{:published :tracked}` data app ids under `remote-sync-type` `sync-type`, where only
-  `:tracked` has a DataApp ledger row."
+  "Runs `f` with the ids of a `:published` and a `:tracked` data app, and the `:published-name` of the first, under
+  `remote-sync-type` `sync-type`, where only `:tracked` has a DataApp ledger row."
   [sync-type f]
   (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
                                      :remote-sync-type sync-type
                                      :remote-sync-branch "main"]
-    (mt/with-model-cleanup [:model/RemoteSyncObject :model/DataApp :model/Collection :model/PermissionsGroup]
-      (let [insert-app! (fn [slug]
-                          (t2/insert-returning-pk! :model/DataApp {:name         slug
-                                                                   :display_name slug
-                                                                   :bundle_path  "index.js"
-                                                                   :bundle       (.getBytes "BUNDLE" "UTF-8")}))
-            published   (insert-app! "published")
-            tracked     (insert-app! "tracked")]
+    (mt/with-model-cleanup [:model/RemoteSyncObject]
+      (mt/with-temp [:model/DataApp {published :id published-name :name} {}
+                     :model/DataApp {tracked :id tracked-name :name}     {}]
         (t2/delete! :model/RemoteSyncObject :model_type "DataApp")
-        (t2/insert! :model/RemoteSyncObject {:model_type "DataApp" :model_id tracked :model_name "tracked"
+        (t2/insert! :model/RemoteSyncObject {:model_type "DataApp" :model_id tracked :model_name tracked-name
                                              :status "synced" :status_changed_at (t/offset-date-time)})
         (mt/with-dynamic-fn-redefs [impl/async-import! (constantly nil)
                                     remote-sync.object/dirty? (constantly false)]
-          (f {:published published :tracked tracked}))))))
+          (f {:published published :published-name published-name :tracked tracked}))))))
 
 (defn- data-app-rso-statuses []
   (t2/select-fn->fn :model_id :status :model/RemoteSyncObject :model_type "DataApp"))
@@ -315,10 +330,10 @@
   (testing "read-write init tracks every untracked published data app as 'create', once, so the next push writes it"
     (do-with-untracked-data-apps!
      :read-write
-     (fn [{:keys [published tracked]}]
+     (fn [{:keys [published published-name tracked]}]
        (#'init/remote-sync-init)
        (is (= {published "create" tracked "synced"} (data-app-rso-statuses)))
-       (is (=? {:model_name "published"}
+       (is (=? {:model_name published-name}
                (t2/select-one :model/RemoteSyncObject :model_type "DataApp" :model_id published)))
        (testing "a second run inserts nothing"
          (is (= 0 (rs-events/backfill-data-app-tracking!))))))))

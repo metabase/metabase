@@ -25,6 +25,7 @@ import {
 import type { MetabaseAuthConfig } from "embedding-sdk-bundle/types";
 import type { LoginStatus } from "embedding-sdk-bundle/types/user";
 import * as IsHostAppInDevModeModule from "embedding-sdk-shared/lib/is-host-app-in-dev-mode";
+import * as EmbeddingSdkConfigModule from "metabase/embedding-sdk/config";
 import {
   createMockSettings,
   createMockTokenFeatures,
@@ -426,6 +427,44 @@ describe("SdkUsageProblemDisplay", () => {
     expect(
       screen.queryByTestId(PROBLEM_INDICATOR_TEST_ID),
     ).not.toBeInTheDocument();
+  });
+
+  it("does not show the React 18 warning in a served data app, since it runs the React shipped by Metabase", () => {
+    expect(window.location.origin).toBe("http://localhost");
+
+    const mock = jest
+      .spyOn(EmbeddingSdkConfigModule, "isDataApp")
+      .mockImplementation(() => true);
+
+    setup({ authConfig: createMockSdkConfig(), hostReactMajorVersion: 18 });
+
+    expect(
+      screen.queryByTestId(PROBLEM_INDICATOR_TEST_ID),
+    ).not.toBeInTheDocument();
+
+    mock.mockRestore();
+  });
+
+  it("shows the React 18 warning in the data app dev preview, since it runs the developer's own React", async () => {
+    const isDataAppMock = jest
+      .spyOn(EmbeddingSdkConfigModule, "isDataApp")
+      .mockImplementation(() => true);
+    const isDataAppDevMock = jest
+      .spyOn(EmbeddingSdkConfigModule, "isDataAppDev")
+      .mockImplementation(() => true);
+
+    setup({ authConfig: createMockSdkConfig(), hostReactMajorVersion: 18 });
+
+    await userEvent.click(screen.getByTestId(PROBLEM_INDICATOR_TEST_ID));
+
+    expect(
+      within(screen.getByTestId(PROBLEM_CARD_TEST_ID)).getByText(
+        "This application uses React 18. The Metabase modular embedding SDK will require React 19 in a future release, and this embed will stop working once your Metabase instance is upgraded to it. Please upgrade your application to React 19.",
+      ),
+    ).toBeInTheDocument();
+
+    isDataAppMock.mockRestore();
+    isDataAppDevMock.mockRestore();
   });
 
   it("shows the React 18 warning over the API key warning on localhost", async () => {

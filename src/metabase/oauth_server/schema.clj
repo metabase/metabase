@@ -107,3 +107,10 @@
    [:expiry     {:optional true} [:maybe :int]]
    [:revoked_at {:optional true} [:maybe ms/TemporalInstant]]
    [:created_at {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mr/def :event/mcp-jwt-token-issued
+  "The JWT bearer grant issued an MCP access token to the user with `:user-id`, granting `:scope`."
+  [:map {:closed true}
+   [:user-id ::lib.schema.id/user]
+   [:details [:map {:closed true}
+              [:scope ms/NonBlankString]]]])

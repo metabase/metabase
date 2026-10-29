@@ -807,8 +807,30 @@
                 "Q1 → Count"]
                (map :display-name (lib/returned-columns query))))))))
 
+(deftest ^:parallel aggregating-stage-returned-columns-ignore-fields-test
+  (testing "a stage with :aggregation/:breakout should not advertise :fields columns as returned columns. (#62539)"
+    (are [stage expected]
+         (= expected
+            (mapv :display-name
+                  (lib/returned-columns
+                   (lib/query meta/metadata-provider
+                              (lib.tu.macros/mbql-query orders stage)))))
+
+      {:aggregation [[:count]]
+       :fields      [$orders.id $orders.total]}
+      ["Count"]
+
+      {:breakout [$orders.user-id]
+       :fields   [$orders.id $orders.total]}
+      ["User ID"]
+
+      {:aggregation [[:count]]
+       :breakout    [$orders.user-id]
+       :fields      [$orders.id $orders.total]}
+      ["User ID" "Count"])))
+
 (deftest ^:parallel expressions-with-aggregations-and-breakouts-returned-columns-test
-  (testing "expressions in :fields should be returned AFTER breakouts and aggregations"
+  (testing "expression refs in :fields on an aggregating stage are stripped from returned columns (#62539)"
     (let [query (lib/query
                  meta/metadata-provider
                  (lib.tu.macros/mbql-query orders
@@ -818,12 +840,11 @@
                                   $orders.product-id->products.category]
                     :expressions {:test-expr [:ltrim "wheeee"]}
                     :fields      [[:expression "test-expr"]]}))]
-      (is (= ["User → State"              ; from breakouts
-              "User → Source"             ; from breakouts
-              "Product → Category"        ; from breakouts
-              "Count"                     ; from aggregations
-              "Sum of Quantity"           ; from aggregations
-              "test-expr"]                ; from expressions/fields ???
+      (is (= ["User → State"
+              "User → Source"
+              "Product → Category"
+              "Count"
+              "Sum of Quantity"]
              (binding [lib.metadata.calculation/*display-name-style* :long]
                (mapv :display-name (lib/returned-columns query))))))))
 

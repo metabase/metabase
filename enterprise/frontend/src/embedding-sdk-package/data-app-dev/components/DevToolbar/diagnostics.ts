@@ -1,4 +1,4 @@
-import type { SandboxBlockedEvent } from "metabase-enterprise/data_apps/sandbox/types";
+import type { SandboxBlockedEvent } from "metabase-enterprise/data-apps/sandbox/types";
 
 import {
   trimDiagnosticEntries,

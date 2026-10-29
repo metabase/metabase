@@ -181,12 +181,11 @@
              (lint-migrations-file/-main))}
 
   new-migration
-  {:doc "Create a new directory-based migration file (v60+)"
+  {:doc "Create a new version-less migration file in the current year's directory"
    :requires [[mage.new-migration :as new-migration]]
-   :examples [["./bin/mage new-migration 60 mq_indexes" "Create resources/migrations/060/20260905_mq_indexes.yaml"]]
+   :examples [["./bin/mage new-migration mq_indexes" "Create resources/migrations/2026/20261012_mq_indexes.yaml with a random changeset id"]]
    :arg-schema [:tuple
-                [:int {:name "version" :description "Major version number (e.g., 60)"}]
-                [:string {:name "description" :description "Lowercase alphanumeric/underscore name (e.g., mq_indexes)"}]]
+                [:string {:name "description" :description "Lowercase alphanumeric/underscore name for the file (e.g., mq_indexes)"}]]
    :task (task! (new-migration/new-migration parsed))}
 
   jar-download
@@ -381,6 +380,24 @@
                "Generate resolve-as XML configuration and install it in your global editor configuration"]]
    :requires [[mage.cursive-resolve-as :as cursive-resolve-as]]
    :task (task! (cursive-resolve-as/do-it))}
+
+  generate-docs
+  {:doc "Regenerate the docs that are built from source. The backend suite runs every Clojure generator in one JVM."
+   :examples [["./bin/mage generate-docs" "Regenerate every generated doc"]
+              ["./bin/mage generate-docs backend" "Environment variables, config template, API, AI providers, MCP tools, and CLI commands"]
+              ["./bin/mage generate-docs usage-analytics" "Usage analytics reference"]
+              ["./bin/mage generate-docs embedding-sdk" "Embedding SDK reference (builds the SDK package first)"]
+              ["./bin/mage generate-docs embedding-eajs" "Modular embedding (EAJS) reference"]]
+   :options [["-d" "--dir DIR" "Absolute path of the Metabase checkout to generate the docs in. Defaults to this checkout."]]
+   :arg-schema [:or
+                [:tuple]
+                [:tuple [:enum {:name "suite"}
+                         "backend"
+                         "usage-analytics"
+                         "embedding-sdk"
+                         "embedding-eajs"]]]
+   :requires [[mage.generate-docs :as generate-docs]]
+   :task (task! (generate-docs/run! (first (:arguments parsed)) (:options parsed)))}
 
   analytics:setup
   {:doc "Set up usage analytics development mode"

@@ -80,7 +80,7 @@
              (mt/user-http-request :crowberto :get 200 "channel" {:include_inactive true}))))))
 
 (deftest list-channels-permissions-test
-  (mt/with-temp [:model/Channel {chn-1 :id} (assoc default-test-channel :type :channel/http)]
+  (mt/with-temp [:model/Channel {chn-1 :id} (assoc default-test-channel :type :channel/http :details {:url "https://metabase.com" :auth-method "none"})]
     (let [get-channel  (fn [user status]
                          (mt/user-http-request user :get status (format "channel/%s" chn-1)))
           get-channels (fn [user]
@@ -148,7 +148,7 @@
            (mt/user-http-request :crowberto :post 400 "channel/test"
                                  (assoc default-test-channel :details {:return-type  "return-value"
                                                                        :return-value false})))))
-  (testing "return the exception message and data if the channel throws an exception"
+  (testing "return the exception message and client-facing data if the channel throws an exception"
     (is (= {:message "Test error"
             :data    {:errors {:email "Invalid email"}}}
            (mt/user-http-request :crowberto :post 400 "channel/test"

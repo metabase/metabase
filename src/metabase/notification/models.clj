@@ -7,6 +7,7 @@
    [malli.core :as mc]
    [malli.util :as mut]
    [medley.core :as m]
+   [metabase.channel.db :as channel.db]
    [metabase.channel.models.channel :as models.channel]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.interface :as mi]
@@ -316,10 +317,10 @@
   [notification-handler]
   (when-let [template-id (:template_id notification-handler)]
     (let [channel-type  (keyword (:channel_type notification-handler))
-          template-type (notification.db/channel-template-channel-type template-id)]
+          template-type (:channel_type (channel.db/channel-template template-id))]
       (when (not= channel-type template-type)
         (throw (ex-info "Channel type and template type mismatch"
-                        {:status        400
+                        {:status-code   400
                          :channel-type  channel-type
                          :template-type template-type}))))))
 
@@ -474,12 +475,14 @@
    [:card            {:optional true} [:maybe [:merge
                                                ::queries.schema/card.update
                                                [:map {:closed true}
-                                                [:id                ms/PositiveInt]
+                                                [:id                     ms/PositiveInt]
                                                 ;; a metric's Card row describes its query on the way out of the database
-                                                [:query_description {:optional true} [:maybe :string]]
-                                                [:created_at        {:optional true} RowTimestamp]
-                                                [:updated_at        {:optional true} RowTimestamp]
-                                                [:last_used_at      {:optional true} RowTimestamp]]]]]
+                                                [:query_description      {:optional true} [:maybe :string]]
+                                                [:created_at             {:optional true} RowTimestamp]
+                                                [:updated_at             {:optional true} RowTimestamp]
+                                                [:last_used_at           {:optional true} RowTimestamp]
+                                                [:cache_invalidated_at   {:optional true} RowTimestamp]
+                                                [:initially_published_at {:optional true} RowTimestamp]]]]]
    [:send_condition  {:optional true} (ms/enum-decode-keyword card-subscription-send-conditions)]
    [:send_once       {:optional true} :boolean]
    [:disable_links   {:optional true} [:maybe :boolean]]

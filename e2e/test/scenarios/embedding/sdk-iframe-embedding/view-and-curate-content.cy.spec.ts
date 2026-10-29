@@ -15,34 +15,6 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
   });
 
   describe("<metabase-browser> (read-only mode)", () => {
-    it("should show a collection browser with collection items", () => {
-      setupEmbed('<metabase-browser initial-collection="root" />');
-
-      H.getSimpleEmbedIframeContent()
-        .should("contain", "Name")
-        .findAllByText("Orders")
-        .first()
-        .should("be.visible");
-    });
-
-    it("should navigate to question when clicking on a question item", () => {
-      setupEmbed('<metabase-browser initial-collection="root" />');
-
-      H.getSimpleEmbedIframeContent()
-        .findByText("Orders")
-        .should("be.visible")
-        .click();
-
-      cy.log("should show question view");
-      cy.get("iframe[data-metabase-embed]").should(($iframe) => {
-        const body = $iframe.contents().find("body");
-        expect(body).to.exist;
-      });
-      H.getSimpleEmbedIframeContent()
-        .findByTestId("query-visualization-root", { timeout: 20_000 })
-        .should("be.visible");
-    });
-
     it("should show New Question button and open data picker when clicked", () => {
       setupEmbed('<metabase-browser initial-collection="root" />');
 
@@ -54,6 +26,12 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
       H.getSimpleEmbedIframeContent()
         .findByText("Pick your starting data")
         .should("be.visible");
+
+      cy.log("the default data picker lists tables and models");
+      H.getSimpleEmbedIframeContent().within(() => {
+        H.popover().findByText("Orders").should("be.visible");
+        H.popover().findByText("Orders Model").should("be.visible");
+      });
     });
 
     it("should pass through collection-visible-columns parameter", () => {
@@ -93,28 +71,16 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
       `);
 
       H.getSimpleEmbedIframeContent()
+        .findAllByText("Orders")
+        .first()
+        .should("be.visible");
+      H.getSimpleEmbedIframeContent()
         .findByText("New question")
         .should("not.exist");
     });
   });
 
   describe("<metabase-browser> (read-write mode)", () => {
-    it("should show New Dashboard button and open modal when clicked", () => {
-      setupEmbed(
-        '<metabase-browser initial-collection="root" read-only="false" />',
-      );
-
-      H.getSimpleEmbedIframeContent()
-        .findByText("New dashboard")
-        .should("be.visible")
-        .click();
-
-      cy.log("should show create dashboard modal");
-      H.getSimpleEmbedIframeContent()
-        .findByText("New dashboard")
-        .should("be.visible");
-    });
-
     it("should update breadcrumbs when creating dashboard in different collection", () => {
       setupEmbed(
         '<metabase-browser initial-collection="root" read-only="false" />',
@@ -158,22 +124,6 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
         .should("be.visible");
     });
 
-    it("should show New Question button and open data picker when clicked", () => {
-      setupEmbed(
-        '<metabase-browser initial-collection="root" read-only="false" />',
-      );
-
-      H.getSimpleEmbedIframeContent()
-        .findByText("New question")
-        .should("be.visible")
-        .click();
-
-      cy.log("should show data picker");
-      H.getSimpleEmbedIframeContent()
-        .findByText("Pick your starting data")
-        .should("be.visible");
-    });
-
     it("should show Save button and save modal with entity picker preselecting the current collection when creating a new question (EMB-1609)", () => {
       setupEmbed(
         '<metabase-browser initial-collection="root" read-only="false" />',
@@ -211,6 +161,9 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
         />
       `);
 
+      H.getSimpleEmbedIframeContent()
+        .findByText("New question")
+        .should("be.visible");
       H.getSimpleEmbedIframeContent()
         .findByText("New dashboard")
         .should("not.exist");
@@ -293,6 +246,9 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
       `);
 
       H.getSimpleEmbedIframeContent()
+        .findByText("New dashboard")
+        .should("be.visible");
+      H.getSimpleEmbedIframeContent()
         .findByText("New question")
         .should("not.exist");
     });
@@ -313,9 +269,11 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
         .findByText("Pick your starting data")
         .should("be.visible");
 
-      cy.log("should show Orders table but not Orders model");
-      H.getSimpleEmbedIframeContent().should("contain", "Orders");
-      H.getSimpleEmbedIframeContent().should("not.contain", "Orders model");
+      cy.log("should show Orders table but not Orders Model");
+      H.getSimpleEmbedIframeContent().within(() => {
+        H.popover().findByText("Orders").should("be.visible");
+        H.popover().findByText("Orders Model").should("not.exist");
+      });
     });
   });
 
@@ -328,7 +286,19 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
         .findByText("Our analytics", { timeout: 10_000 })
         .should("be.visible");
 
-      H.getSimpleEmbedIframeContent().findAllByText("Orders").first().click();
+      cy.log("should show a collection browser with collection items");
+      H.getSimpleEmbedIframeContent()
+        .should("contain", "Name")
+        .and("contain", "Last edited by")
+        .findAllByText("Orders")
+        .first()
+        .should("be.visible")
+        .click();
+
+      cy.log("should show question view");
+      H.getSimpleEmbedIframeContent()
+        .findByTestId("query-visualization-root", { timeout: 20_000 })
+        .should("be.visible");
 
       cy.log("should show breadcrumb for the question");
       H.getSimpleEmbedIframeContent().should("contain", "Orders");
@@ -337,6 +307,9 @@ describe("scenarios > embedding > sdk iframe embedding > view and curate content
 
       cy.log("should be back at collection browser");
       H.getSimpleEmbedIframeContent().should("contain", "Name");
+      H.getSimpleEmbedIframeContent()
+        .findByTestId("query-visualization-root")
+        .should("not.exist");
     });
   });
 });

@@ -1,7 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { skipToken, useGetCardQuery } from "metabase/api";
 import {
   executeRowAction,
   reloadDashboardCards,
@@ -11,7 +10,6 @@ import {
   getParameterValues,
 } from "metabase/dashboard/selectors";
 import { getActionIsEnabledInDatabase } from "metabase/dashboard/utils";
-import { useQuestionFromCard } from "metabase/metadata-store";
 import { connect } from "metabase/redux";
 import type { Dispatch, State } from "metabase/redux/store";
 import { Tooltip } from "metabase/ui";
@@ -59,11 +57,6 @@ const ActionComponent = ({
   parameterValues,
   isEditingDashcard,
 }: ActionProps) => {
-  const { data: card } = useGetCardQuery(
-    dashcard.action?.model_id ? { id: dashcard.action.model_id } : skipToken,
-  );
-  const model = useQuestionFromCard(card);
-
   const actionSettings = dashcard.action?.visualization_settings;
   const actionDisplayType =
     settings?.actionDisplayType ?? actionSettings?.type ?? "button";
@@ -101,8 +94,6 @@ const ActionComponent = ({
     shouldConfirm
   );
 
-  const canWrite = Boolean(model?.canWriteActions());
-
   const onSubmit = useCallback(
     async (parameters: ParametersForActionExecution) => {
       const result = await executeRowAction({
@@ -135,7 +126,7 @@ const ActionComponent = ({
       isSettings={isSettings}
       shouldDisplayButton={shouldDisplayButton}
       isEditingDashcard={isEditingDashcard}
-      canEditAction={canWrite}
+      canEditAction={dashcard.action?.can_write === true}
       onSubmit={onSubmit}
     />
   );
@@ -155,11 +146,13 @@ function ActionFn(props: ActionProps) {
   const { action } = dashcard;
 
   const hasActionsEnabled = getActionIsEnabledInDatabase(dashcard);
+  const isArchived = action?.archived === true;
 
-  if (!action || !hasActionsEnabled) {
+  if (!action || !hasActionsEnabled || isArchived) {
     const tooltip = getErrorTooltip({
       hasActionAssigned: !!action,
       hasActionsEnabled,
+      isArchived,
     });
 
     return (
@@ -183,12 +176,18 @@ function ActionFn(props: ActionProps) {
 function getErrorTooltip({
   hasActionAssigned,
   hasActionsEnabled,
+  isArchived,
 }: {
   hasActionAssigned: boolean;
   hasActionsEnabled: boolean;
+  isArchived: boolean;
 }) {
   if (!hasActionAssigned) {
     return t`No action assigned`;
+  }
+
+  if (isArchived) {
+    return t`This action is archived`;
   }
 
   if (!hasActionsEnabled) {

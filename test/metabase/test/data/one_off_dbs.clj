@@ -8,8 +8,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
-   [metabase.test.data :as data]
-   [toucan2.core :as t2]))
+   [metabase.test.data :as data]))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *conn*
@@ -81,4 +80,4 @@
   [values]
   (jdbc/execute! *conn* [(insert-sql values)])
   ;; `(data/db)` is the map from before the first sync; its stale `initial_sync_status` would skip the FieldValues scan
-  (sync/sync-database! (t2/select-one :model/Database (data/id))))
+  (sync/sync-database! (data/id)))

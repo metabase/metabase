@@ -17,10 +17,12 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.queries.db :as queries.db]
    [metabase.query-permissions.db :as query-permissions.db]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.sensitive-fields :as qp.sensitive-fields]
    ;; legacy usage -- don't do things like this going forward
    ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.request.core :as request]
@@ -45,7 +47,8 @@
             (merge {:type                 qp.error-type/missing-required-permissions
                     :required-permissions required-perms
                     :actual-permissions   (perms/permissions-for-user api/*current-user-id*)
-                    :permissions-error?   true}
+                    :permissions-error?   true
+                    :response/keys        #{:required-permissions}}
                    additional-ex-data))))
 
 ;;; ---------------------------------------------- Permissions Checking ----------------------------------------------
@@ -180,7 +183,7 @@
       (if (qp.store/initialized?)
         (when-let [{:keys [collection-id]} (lib.metadata/card (qp.store/metadata-provider) card-id)]
           (t2/instance :model/Card {:collection_id collection-id}))
-        (query-permissions.db/card-collection-id card-id))
+        (queries.db/card card-id))
       (throw (Exception. (tru "Card {0} does not exist." card-id)))))
 
 (mu/defn- source-card-read-perms :- [:set perms/PathSchema]
@@ -348,6 +351,13 @@
              table-id))
           table-id->required-perm))
 
+(defn- card-not-in-database
+  "The Card with `card-id` if it does not belong to the Database with `database-id`, or nil."
+  [card-id database-id]
+  (let [card (queries.db/card card-id)]
+    (when (and card (not= database-id (:database_id card)))
+      card)))
+
 (defn- card
   [database-id card-id]
   (or (some-> (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)
@@ -357,7 +367,7 @@
       ;; used by the model upon which the action is defined. In this case, the underlying model whose
       ;; permissions we need to check will not be exposed by the metadata provider, so we need a fallback.
       ;; -- Noah
-      (query-permissions.db/card-not-in-database card-id database-id)
+      (card-not-in-database card-id database-id)
       (throw (ex-info (tru "Card {0} does not exist." card-id)
                       {:type    qp.error-type/invalid-query
                        :card-id card-id}))))
@@ -444,6 +454,11 @@
     (when (or (not (has-perm-for-query? query :perms/view-data required-perms))
               (not (has-perm-for-query? query :perms/create-queries required-perms)))
       (throw (perms-exception required-perms)))
+    ;; Native queries bypass sandboxing, so a user with an enforced sandbox on the database can't run them there, even
+    ;; if one of their groups grants native access.
+    (when (and (= :query-builder-and-native (:perms/create-queries required-perms))
+               (perms/sandboxed-user-for-db? (:database query)))
+      (throw (perms-exception required-perms)))
     true
     (catch clojure.lang.ExceptionInfo e
       (if throw-exceptions?
@@ -506,27 +521,36 @@
 
 (mu/defn check-run-permissions-for-query
   "Make sure the Current User has the appropriate permissions to run `query`. We don't want Users saving Cards with
-  queries they wouldn't be allowed to run!"
-  [query :- ::query]
-  {:pre [(map? query)]}
-  (let [query    (dissoc query :query-permissions/perms)
-        expanded (try
-                   (preprocess-query query)
-                   (catch Throwable _
-                     nil))
-        query    (or expanded query)
-        expanded? (some? expanded)]
-    (when-not (can-run-query? query expanded?)
-      (let [required-perms (try
-                             (required-perms-for-query query :already-preprocessed? expanded? :throw-exceptions? true)
-                             (catch Throwable e
-                               e))]
-        (throw (ex-info (tru "You cannot save this Question because you do not have permissions to run its query.")
-                        {:status-code    403
-                         :query          query
-                         :required-perms (if (instance? Throwable required-perms)
-                                           :error
-                                           required-perms)
-                         :actual-perms   @api/*current-user-permissions-set*}
-                        (when (instance? Throwable required-perms)
-                          required-perms)))))))
+  queries they wouldn't be allowed to run!
+
+  Also rejects queries that reference `:sensitive` columns, unless `allow-sensitive-fields?` is set because `query`
+  is saved content being restored rather than a new query."
+  ([query :- ::query]
+   (check-run-permissions-for-query query nil))
+  ([query                             :- ::query
+    {:keys [allow-sensitive-fields?]} :- [:maybe [:map {:closed true}
+                                                  [:allow-sensitive-fields? {:optional true} :boolean]]]]
+   {:pre [(map? query)]}
+   (when-not allow-sensitive-fields?
+     (qp.sensitive-fields/check-query-can-be-saved! query))
+   (let [query    (dissoc query :query-permissions/perms)
+         expanded (try
+                    (preprocess-query query)
+                    (catch Throwable _
+                      nil))
+         query    (or expanded query)
+         expanded? (some? expanded)]
+     (when-not (can-run-query? query expanded?)
+       (let [required-perms (try
+                              (required-perms-for-query query :already-preprocessed? expanded? :throw-exceptions? true)
+                              (catch Throwable e
+                                e))]
+         (throw (ex-info (tru "You cannot save this Question because you do not have permissions to run its query.")
+                         {:status-code    403
+                          :query          query
+                          :required-perms (if (instance? Throwable required-perms)
+                                            :error
+                                            required-perms)
+                          :actual-perms   @api/*current-user-permissions-set*}
+                         (when (instance? Throwable required-perms)
+                           required-perms))))))))

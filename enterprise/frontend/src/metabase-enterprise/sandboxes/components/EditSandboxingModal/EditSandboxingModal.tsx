@@ -11,6 +11,7 @@ import {
   useGetTableQuery,
   useValidateGroupTableAccessPolicyMutation,
 } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils/errors";
 import { ActionButton } from "metabase/common/components/ActionButton";
 import {
   QuestionPickerModal,
@@ -54,8 +55,6 @@ import {
 } from "../AttributeMappingEditor";
 
 import S from "./EditSandboxingModal.module.css";
-
-const getErrorMessage = () => t`An error occurred.`;
 
 const getNormalizedPolicy = (
   policy: GroupTableAccessPolicy | GroupTableAccessPolicyDraft,
@@ -339,10 +338,7 @@ const EditSandboxingModal = ({
         </div>
         {error && (
           <div className={cx(CS.flex, CS.alignCenter, CS.my2, CS.textError)}>
-            {typeof error === "string"
-              ? error
-              : // @ts-expect-error provide correct type for error
-                (error.data.message ?? getErrorMessage())}
+            {getErrorMessage(error, t`An error occurred.`)}
           </div>
         )}
       </div>

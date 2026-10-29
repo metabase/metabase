@@ -36,6 +36,7 @@ import { getVisualizationComponent } from "metabase/visualizations";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
 import { ConnectedClickActionsPopover } from "metabase/visualizations/components/ClickActions";
+import { getScalarSizeTier } from "metabase/visualizations/components/ScalarValue/sizing";
 import { performDefaultAction } from "metabase/visualizations/lib/action";
 import { hasNoResults } from "metabase/visualizations/lib/no-results";
 import {
@@ -120,6 +121,7 @@ type VisualizationRawSeries = (
 
 type VisualizationOwnProps = {
   actionButtons?: ReactNode | null;
+  cardLevelFilters?: ReactNode | null;
   className?: string;
   dashboard?: Dashboard;
   dashcard?: DashboardCard;
@@ -633,6 +635,7 @@ class Visualization extends PureComponent<
     const {
       actionButtons,
       autoAdjustSettings,
+      cardLevelFilters,
       canToggleSeriesVisibility,
       className,
       dashboard,
@@ -795,6 +798,7 @@ class Visualization extends PureComponent<
         {actionButtons}
       </Flex>
     );
+    const cardLevelFiltersOffset = getScalarSizeTier(width, height).menuOffset;
 
     let { gridSize, gridUnit } = this.props;
     if (
@@ -852,6 +856,19 @@ class Visualization extends PureComponent<
           data-viz-ui-name={visualization?.getUiName?.()}
           ref={this.props.forwardedRef}
         >
+          {cardLevelFilters && !replacementContent && (
+            <Box pos="relative" h={0} flex="0 0 auto">
+              <Box
+                pos="absolute"
+                top={cardLevelFiltersOffset.top}
+                left={cardLevelFiltersOffset.right}
+                style={{ zIndex: 1 }}
+                data-testid="card-level-filters"
+              >
+                {cardLevelFilters}
+              </Box>
+            </Box>
+          )}
           {!!hasHeader && (
             <Box pt="0.625rem" px="sm" pb="xs" flex="0 0 auto">
               <ChartCaption

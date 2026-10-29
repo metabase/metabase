@@ -120,12 +120,17 @@
                                                      [:revision_id ms/PositiveInt]]]
   (let [[model instance] (model-and-instance entity id)
         _                (api/write-check instance)
-        revision         (api/check-404 (revisions.db/revision (name model) id revision-id))]
+        revision         (api/check-404 (let [revision (revisions.db/revision revision-id)]
+                                          (when (and (= (name model) (:model revision))
+                                                     (= id (:model_id revision)))
+                                            revision)))]
     ;; if reverting a Card, make sure we have *data* permissions to run the query we're reverting to
     (when (= model :model/Card)
       ;; TODO -- we should be using something like `api/read-check` for this, but unfortunately the impl for Cards
       ;; doesn't actually check important stuff like this.
-      (query-perms/check-run-permissions-for-query (dissoc (get-in revision [:object :dataset_query]) :query-permissions/perms)))
+      ;; restoring saved content, so a reverted query may keep referencing columns marked "Do not include"
+      (query-perms/check-run-permissions-for-query (dissoc (get-in revision [:object :dataset_query]) :query-permissions/perms)
+                                                   {:allow-sensitive-fields? true}))
     (when (contains? #{:model/Transform :model/TransformTest} model)
       (api/check-403 (mi/can-write? (merge instance (:object revision)))))
     ;; for Segments and Measures `table_id` is re-derived from `definition` on update, so when the restored definition

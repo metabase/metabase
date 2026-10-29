@@ -67,8 +67,7 @@
                 :dataset-query
                 (lib-be/normalize-query mp)
                 (deps.native-validation/native-query-deps driver))))
-    (is (= #{{:table (mt/id :products)}
-             {:card 1}}
+    (is (= #{{:card 1}}
            (->> (lib.metadata/card mp 5)
                 :dataset-query
                 (lib-be/normalize-query mp)
@@ -88,9 +87,7 @@
                 :dataset-query
                 (lib-be/normalize-query mp)
                 (deps.native-validation/native-query-deps driver))))
-    (is (= #{{:table (mt/id :products)}
-             {:table (mt/id :orders)}
-             {:card 1}
+    (is (= #{{:card 1}
              {:card 2}}
            (->> (lib.metadata/card mp 9)
                 :dataset-query
@@ -621,8 +618,6 @@
         (mt/with-temp [:model/DatabaseRouter _ {:database_id    (mt/id)
                                                 :user_attribute "db_name"}]
           (testing "validate-native-query doesn't throw"
-            ;; Without the fix, this would throw:
-            ;; "Anonymous users cannot access a database with routing enabled."
             (is (set? (deps.native-validation/validate-native-query
                        driver
                        (lib/native-query mp "SELECT * FROM ORDERS")))))

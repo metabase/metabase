@@ -9,13 +9,12 @@
    [metabase.mcp.transport :as mcp.transport]
    [metabase.mcp.v2.common :as v2.common]
    [metabase.mcp.v2.message :as message]
-   [metabase.mcp.v2.test-util]
+   [metabase.mcp.v2.test-util :as v2.tu]
    [metabase.oauth-server.test-util :as oauth-server.tu]
+   [metabase.server.middleware.security :as mw.security]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.server.streaming-response.thread-pool :as thread-pool]
-   [metabase.system.core :as system]
    [metabase.test :as mt]
-   [metabase.test.data.users :as test.users]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
    [metabase.util.json :as json]
@@ -310,17 +309,19 @@
 
 (def ^:private endpoint "metabase-mcp")
 
+(defn- request
+  "Send an MCP request with `method`, authenticated by the bearer `auth-headers`, returning the full response."
+  [auth-headers method extra-headers & body]
+  (apply client/client-full-response method endpoint
+         {:request-options {:headers (merge auth-headers extra-headers)}}
+         body))
+
 (defn- mcp-request
-  "POST `body` to the MCP endpoint as `username` (default `:crowberto`), returning the full response."
-  ([body]
-   (mcp-request :crowberto body {}))
-  ([body extra-headers]
-   (mcp-request :crowberto body extra-headers))
-  ([username body extra-headers]
-   (client/client-full-response (test.users/username->token username)
-                                :post endpoint
-                                {:request-options {:headers extra-headers}}
-                                body)))
+  "POST `body` to the MCP endpoint authenticated by the bearer `auth-headers`, returning the full response."
+  ([auth-headers body]
+   (mcp-request auth-headers body {}))
+  ([auth-headers body extra-headers]
+   (request auth-headers :post extra-headers body)))
 
 (defn- jsonrpc-request
   ([method]           (jsonrpc-request method {} 1))
@@ -330,33 +331,36 @@
 (defn- jsonrpc-notification [method]
   {:jsonrpc "2.0" :method method :params {}})
 
-(defn- ping-call []
-  (jsonrpc-request "tools/call" {:name "test_echo" :arguments {}}))
+(defn- ping-call
+  "A JSON-RPC `ping`: it dispatches inside the session but needs no scope."
+  []
+  (jsonrpc-request "ping"))
 
-(defn- initialize!
-  "Run the `initialize` handshake as `username` and return the issued `Mcp-Session-Id`."
-  ([]
-   (initialize! :crowberto))
-  ([username]
-   (get-in (mcp-request username (jsonrpc-request "initialize") {}) [:headers "Mcp-Session-Id"])))
+(defn- initialize
+  "Run the `initialize` handshake authenticated by the bearer `auth-headers` and return the issued `Mcp-Session-Id`."
+  [auth-headers]
+  (get-in (mcp-request auth-headers (jsonrpc-request "initialize")) [:headers "Mcp-Session-Id"]))
 
 ;;; ------------------------------------------------ Session guards ------------------------------------------------
 
 (deftest forged-session-id-is-refused-test
-  (testing "GHY-4337: a session id the server never issued must not reach method dispatch"
-    (testing "a missing header is a 400 — the client never handshook"
-      (let [response (mcp-request (jsonrpc-request "tools/list"))]
-        (is (= 400 (:status response)))
-        (is (= "Missing Mcp-Session-Id header" (get-in response [:body :error :message])))
-        (is (nil? (get-in response [:body :result])))))
-    (doseq [[label forged] {"not a uuid"                                    "bogus-session-id"
-                            "a uuid with an undecodable capability payload" (str (random-uuid) ".!!!!")
-                            "more segments than the format allows"          (str (random-uuid) ".e30.e30")}]
-      (testing label
-        (let [response (mcp-request (jsonrpc-request "tools/list") {"mcp-session-id" forged})]
-          (is (= 404 (:status response)))
-          (is (= "Invalid or expired session" (get-in response [:body :error :message])))
-          (is (nil? (get-in response [:body :result]))))))))
+  (v2.tu/do-with-bearer-token!
+   v2.tu/all-scopes
+   (fn [auth]
+     (testing "GHY-4337: a session id the server never issued must not reach method dispatch"
+       (testing "a missing header is a 400 — the client never handshook"
+         (let [response (mcp-request auth (jsonrpc-request "tools/list"))]
+           (is (= 400 (:status response)))
+           (is (= "Missing Mcp-Session-Id header" (get-in response [:body :error :message])))
+           (is (nil? (get-in response [:body :result])))))
+       (doseq [[label forged] {"not a uuid"                                    "bogus-session-id"
+                               "a uuid with an undecodable capability payload" (str (random-uuid) ".!!!!")
+                               "more segments than the format allows"          (str (random-uuid) ".e30.e30")}]
+         (testing label
+           (let [response (mcp-request auth (jsonrpc-request "tools/list") {"mcp-session-id" forged})]
+             (is (= 404 (:status response)))
+             (is (= "Invalid or expired session" (get-in response [:body :error :message])))
+             (is (nil? (get-in response [:body :result]))))))))))
 
 (defn- fabricated-session-id
   "A structurally well-formed Mcp-Session-Id the server never issued: a random UUID plus a valid `{v,ui}` capability
@@ -368,126 +372,135 @@
                         (.getBytes ^String (json/encode {:v 1 :ui true}) "UTF-8"))))
 
 (deftest well-formed-but-never-issued-session-id-is-accepted-for-its-presenter-test
-  (testing (str "GHY-4337: MCP session ids are unsigned, stateless correlators — no server-side record of what was "
-                "issued exists (see the `metabase.mcp.session` ns docstring), so the server cannot tell an id it "
-                "minted from a well-formed one a client fabricated, and does not try to. Such an id is therefore "
-                "ACCEPTED for the already-authenticated user presenting it. This is not a hole: authentication is "
-                "the session cookie / bearer token, which is checked independently and upstream; the fabricated id "
-                "only names a fresh correlator scoped to that same caller. The real boundary — a well-formed id that "
-                "ANOTHER user has already materialized a `core_session` under — is enforced by the ownership check "
-                "and covered by `session-belonging-to-another-user-is-refused-test`.")
-    (let [fabricated (fabricated-session-id)]
-      (is (true? (mcp.session/valid-id? fabricated))
-          "the fabricated id is structurally valid — the ownership model, not format, is the boundary")
-      (let [response (mcp-request (ping-call) {"mcp-session-id" fabricated})]
-        (is (= 200 (:status response)))
-        (is (= {:ok true :message "pong"} (get-in response [:body :result :structuredContent]))
-            "an authenticated caller dispatches inside a correlator it fabricated, because no other user owns it")))))
+  (v2.tu/do-with-bearer-token!
+   v2.tu/all-scopes
+   (fn [auth]
+     (testing (str "GHY-4337: MCP session ids are unsigned, stateless correlators — no server-side record of what was "
+                   "issued exists (see the `metabase.mcp.session` ns docstring), so the server cannot tell an id it "
+                   "minted from a well-formed one a client fabricated, and does not try to. Such an id is therefore "
+                   "ACCEPTED for the already-authenticated user presenting it. This is not a hole: authentication is "
+                   "the bearer token, which is checked independently and upstream; the fabricated id "
+                   "only names a fresh correlator scoped to that same caller. The real boundary — a well-formed id that "
+                   "ANOTHER user has already materialized a `core_session` under — is enforced by the ownership check "
+                   "and covered by `session-belonging-to-another-user-is-refused-test`.")
+       (let [fabricated (fabricated-session-id)]
+         (is (true? (mcp.session/valid-id? fabricated))
+             "the fabricated id is structurally valid — the ownership model, not format, is the boundary")
+         (let [response (mcp-request auth (ping-call) {"mcp-session-id" fabricated})]
+           (is (= 200 (:status response)))
+           (is (= {} (get-in response [:body :result]))
+               "an authenticated caller dispatches inside a correlator it fabricated, because no other user owns it")))))))
 
 (deftest session-belonging-to-another-user-is-refused-test
-  (testing (str "GHY-4337: `Mcp-Session-Id` is client-supplied and unsigned, so once a session has materialized a "
-                "`core_session` the ownership check is the only thing stopping another authenticated user from "
-                "presenting it and dispatching inside it")
-    (let [session-id (initialize! :rasta)
-          rasta-id   (mt/user->id :rasta)]
-      (try
-        ;; there is no owner to violate until a `core_session` row exists, so materialize one the way a resource
-        ;; read would
-        (mcp.session/get-or-create-embedding-session! session-id rasta-id)
-        (testing "its owner still dispatches"
-          (let [response (mcp-request :rasta (ping-call) {"mcp-session-id" session-id})]
-            (is (= 200 (:status response)))
-            (is (= {:ok true :message "pong"} (get-in response [:body :result :structuredContent])))))
-        (testing "another authenticated user gets the answer a nonexistent session gets, and no tool result"
-          (let [response (mcp-request :crowberto (ping-call) {"mcp-session-id" session-id})]
-            (is (= 404 (:status response)))
-            (is (= "Invalid or expired session" (get-in response [:body :error :message])))
-            (is (nil? (get-in response [:body :result])))))
-        (testing "DELETE refuses invalid sessions and reports that valid-session termination is unsupported"
-          (testing "another user cannot tear the session down"
-            (let [response (client/client-full-response (test.users/username->token :crowberto)
-                                                        :delete endpoint
-                                                        {:request-options {:headers {"mcp-session-id" session-id}}})]
-              (is (= 404 (:status response)))))
-          (testing "the session is still owned afterwards, so the foreigner is still refused"
-            (is (= 404 (:status (mcp-request :crowberto (ping-call) {"mcp-session-id" session-id})))))
-          (testing "the owner gets 405 rather than a false acknowledgement of termination"
-            (let [response (client/client-full-response (test.users/username->token :rasta)
-                                                        :delete endpoint
-                                                        {:request-options {:headers {"mcp-session-id" session-id}}})]
-              (is (= 405 (:status response)))
-              (is (= "GET, POST" (get-in response [:headers "Allow"])))))
-          (testing "the owner still holds the session after the refused DELETE"
-            (is (= 200 (:status (mcp-request :rasta (ping-call) {"mcp-session-id" session-id}))))))
-        (finally
-          (mcp.session/delete! session-id rasta-id))))))
+  (v2.tu/do-with-bearer-token!
+   :crowberto v2.tu/all-scopes
+   (fn [crowberto]
+     (v2.tu/do-with-bearer-token!
+      :rasta v2.tu/all-scopes
+      (fn [rasta]
+        (testing (str "GHY-4337: `Mcp-Session-Id` is client-supplied and unsigned, so once a session has materialized a "
+                      "`core_session` the ownership check is the only thing stopping another authenticated user from "
+                      "presenting it and dispatching inside it")
+          (let [session-id (initialize rasta)
+                rasta-id   (mt/user->id :rasta)]
+            (try
+              ;; there is no owner to violate until a `core_session` row exists, so materialize one the way a resource
+              ;; read would
+              (mcp.session/get-or-create-embedding-session! session-id rasta-id)
+              (testing "its owner still dispatches"
+                (let [response (mcp-request rasta (ping-call) {"mcp-session-id" session-id})]
+                  (is (= 200 (:status response)))
+                  (is (= {} (get-in response [:body :result])))))
+              (testing "another authenticated user gets the answer a nonexistent session gets, and no tool result"
+                (let [response (mcp-request crowberto (ping-call) {"mcp-session-id" session-id})]
+                  (is (= 404 (:status response)))
+                  (is (= "Invalid or expired session" (get-in response [:body :error :message])))
+                  (is (nil? (get-in response [:body :result])))))
+              (testing "DELETE refuses invalid sessions and reports that valid-session termination is unsupported"
+                (testing "another user cannot tear the session down"
+                  (let [response (request crowberto :delete {"mcp-session-id" session-id})]
+                    (is (= 404 (:status response)))))
+                (testing "the session is still owned afterwards, so the foreigner is still refused"
+                  (is (= 404 (:status (mcp-request crowberto (ping-call) {"mcp-session-id" session-id})))))
+                (testing "the owner gets 405 rather than a false acknowledgement of termination"
+                  (let [response (request rasta :delete {"mcp-session-id" session-id})]
+                    (is (= 405 (:status response)))
+                    (is (= "GET, POST" (get-in response [:headers "Allow"])))))
+                (testing "the owner still holds the session after the refused DELETE"
+                  (is (= 200 (:status (mcp-request rasta (ping-call) {"mcp-session-id" session-id}))))))
+              (finally
+                (mcp.session/delete! session-id rasta-id))))))))))
 
 ;;; ----------------------------------------------- Origin validation ----------------------------------------------
 
 (deftest origin-validation-test
-  ;; The test instance's own origin. Bound explicitly rather than assumed so these cases state what they
-  ;; are comparing against, and do not silently change meaning if the harness's site-url does.
-  (mt/with-temporary-setting-values [site-url "http://127.0.0.1:6274"]
-    (testing (str "GHY-4337: DNS rebinding is the attack this guard names, and comparing two client-supplied "
-                  "headers cannot catch it. A rebound `evil.example` resolves to 127.0.0.1 and the browser sends "
-                  "BOTH `Origin: http://evil.example` and `Host: evil.example` — they match each other, so an "
-                  "Origin/Host check admits the request. `site-url` is the one origin on a request the client "
-                  "cannot influence, so that is what an Origin is checked against.")
-      (let [response (mcp-request (jsonrpc-request "initialize")
-                                  {"host" "evil.example" "origin" "http://evil.example"})]
-        (is (= 403 (:status response)))
-        (is (= "Origin not allowed" (get-in response [:body :error :message])))
-        (is (nil? (get-in response [:headers "Mcp-Session-Id"]))
-            "a refused origin must not be handed a session")))
-    (testing "the instance's own origin is served, whatever Host the request carries"
-      (is (= 200 (:status (mcp-request (jsonrpc-request "initialize")
-                                       {"host" "anything.example" "origin" "http://127.0.0.1:6274"})))))
-    (testing "a page on another port of the same host is a different origin — the local-MCP threat model, where
-              some other tool on 127.0.0.1 drives this server with the user's cookies"
-      (let [response (mcp-request (jsonrpc-request "initialize")
-                                  {"host" "127.0.0.1:6274" "origin" "http://127.0.0.1:9999"})]
-        (is (= 403 (:status response)))
-        (is (nil? (get-in response [:headers "Mcp-Session-Id"])))))
-    (testing "and so is the same host on another scheme, which an Origin/Host check could never see: `Host`
+  (v2.tu/do-with-bearer-token!
+   v2.tu/all-scopes
+   (fn [auth]
+     ;; The test instance's own origin. Bound explicitly rather than assumed so these cases state what they
+     ;; are comparing against, and do not silently change meaning if the harness's site-url does.
+     (mt/with-temporary-setting-values [site-url "http://127.0.0.1:6274"]
+       (testing (str "GHY-4337: DNS rebinding is the attack this guard names, and comparing two client-supplied "
+                     "headers cannot catch it. A rebound `evil.example` resolves to 127.0.0.1 and the browser sends "
+                     "BOTH `Origin: http://evil.example` and `Host: evil.example` — they match each other, so an "
+                     "Origin/Host check admits the request. `site-url` is the one origin on a request the client "
+                     "cannot influence, so that is what an Origin is checked against.")
+         (let [response (mcp-request auth (jsonrpc-request "initialize")
+                                     {"host" "evil.example" "origin" "http://evil.example"})]
+           (is (= 403 (:status response)))
+           (is (= "Origin not allowed" (get-in response [:body :error :message])))
+           (is (nil? (get-in response [:headers "Mcp-Session-Id"]))
+               "a refused origin must not be handed a session")))
+       (testing "the instance's own origin is served, whatever Host the request carries"
+         (is (= 200 (:status (mcp-request auth (jsonrpc-request "initialize")
+                                          {"host" "anything.example" "origin" "http://127.0.0.1:6274"})))))
+       (testing "a page on another port of the same host is a different origin — the local-MCP threat model, where
+              some other tool on 127.0.0.1 drives this server"
+         (let [response (mcp-request auth (jsonrpc-request "initialize")
+                                     {"host" "127.0.0.1:6274" "origin" "http://127.0.0.1:9999"})]
+           (is (= 403 (:status response)))
+           (is (nil? (get-in response [:headers "Mcp-Session-Id"])))))
+       (testing "and so is the same host on another scheme, which an Origin/Host check could never see: `Host`
               carries no scheme at all"
-      (is (= 403 (:status (mcp-request (jsonrpc-request "initialize")
-                                       {"host" "127.0.0.1:6274" "origin" "https://127.0.0.1:6274"})))))
-    (testing "the check runs ahead of authentication, so a cross-origin request is refused rather than challenged"
-      (let [response (client/client-full-response :post 403 endpoint
-                                                  {:request-options {:headers {"host"   "127.0.0.1:6274"
-                                                                               "origin" "http://evil.example.com"}}}
-                                                  (jsonrpc-request "initialize"))]
-        (is (= 403 (:status response)))
-        (is (nil? (get-in response [:headers "WWW-Authenticate"])))))
-    (testing "a non-browser client sends no Origin at all and is allowed through — browsers are what the guard is for"
-      (is (= 200 (:status (mcp-request (jsonrpc-request "initialize") {"host" "mbtest.poom.dev"})))))
-    (testing "matching is case-insensitive, and a default port compares equal to the same port written out"
-      (mt/with-temporary-setting-values [site-url "https://Example.com"]
-        (is (= 200 (:status (mcp-request (jsonrpc-request "initialize")
-                                         {"host" "example.com" "origin" "https://example.COM"}))))
-        (is (= 200 (:status (mcp-request (jsonrpc-request "initialize")
-                                         {"host" "example.com" "origin" "https://example.com:443"})))))))
-  (testing (str "with no instance origin to check against — site-url unset or unparsable — the guard falls back "
-                "to the Origin/Host comparison. Weaker, but a misconfigured instance degrading to the previous "
-                "behaviour beats 403ing its own browser clients.")
-    (mt/with-dynamic-fn-redefs [system/site-url (constantly nil)]
-      (testing "same host and port is served"
-        (is (= 200 (:status (mcp-request (jsonrpc-request "initialize")
-                                         {"host" "localhost:3000" "origin" "http://localhost:3000"})))))
-      (testing "a different port on that host is still refused"
-        (is (= 403 (:status (mcp-request (jsonrpc-request "initialize")
-                                         {"host" "localhost:3000" "origin" "http://localhost:9999"})))))
-      (testing "bracketed IPv6 still parses on both sides"
-        (is (= 200 (:status (mcp-request (jsonrpc-request "initialize")
-                                         {"host" "[::1]:3000" "origin" "http://[::1]:3000"})))))))
-  (testing "an explicitly configured MCP app origin is allowed cross-host, case-insensitively — the allowlist is
+         (is (= 403 (:status (mcp-request auth (jsonrpc-request "initialize")
+                                          {"host" "127.0.0.1:6274" "origin" "https://127.0.0.1:6274"})))))
+       (testing "the check runs ahead of authentication, so a cross-origin request is refused rather than challenged"
+         (let [response (client/client-full-response :post 403 endpoint
+                                                     {:request-options {:headers {"host"   "127.0.0.1:6274"
+                                                                                  "origin" "http://evil.example.com"}}}
+                                                     (jsonrpc-request "initialize"))]
+           (is (= 403 (:status response)))
+           (is (nil? (get-in response [:headers "WWW-Authenticate"])))))
+       (testing "a non-browser client sends no Origin at all and is allowed through — browsers are what the guard is for"
+         (is (= 200 (:status (mcp-request auth (jsonrpc-request "initialize") {"host" "mbtest.poom.dev"})))))
+       (testing "matching is case-insensitive, and a default port compares equal to the same port written out"
+         (mt/with-temporary-setting-values [site-url "https://Example.com"]
+           (is (= 200 (:status (mcp-request auth (jsonrpc-request "initialize")
+                                            {"host" "example.com" "origin" "https://example.COM"}))))
+           (is (= 200 (:status (mcp-request auth (jsonrpc-request "initialize")
+                                            {"host" "example.com" "origin" "https://example.com:443"})))))))
+     (testing (str "with no instance origin to check against — site-url unset or unparsable — the guard falls back "
+                   "to the Origin/Host comparison. Weaker, but a misconfigured instance degrading to the previous "
+                   "behaviour beats 403ing its own browser clients.")
+       ;; Only the origin guard loses its instance origin: the bearer token still needs `site-url` to resolve.
+       (mt/with-dynamic-fn-redefs [mw.security/site-origin (constantly nil)]
+         (testing "same host and port is served"
+           (is (= 200 (:status (mcp-request auth (jsonrpc-request "initialize")
+                                            {"host" "localhost:3000" "origin" "http://localhost:3000"})))))
+         (testing "a different port on that host is still refused"
+           (is (= 403 (:status (mcp-request auth (jsonrpc-request "initialize")
+                                            {"host" "localhost:3000" "origin" "http://localhost:9999"})))))
+         (testing "bracketed IPv6 still parses on both sides"
+           (is (= 200 (:status (mcp-request auth (jsonrpc-request "initialize")
+                                            {"host" "[::1]:3000" "origin" "http://[::1]:3000"})))))))
+     (testing "an explicitly configured MCP app origin is allowed cross-host, case-insensitively — the allowlist is
             the other way in, and is unaffected by which origin the instance itself has"
-    (mt/with-temporary-setting-values [site-url                                 "http://127.0.0.1:6274"
-                                       mcp.settings/mcp-apps-cors-custom-origins "https://Example.COM"]
-      (let [response (mcp-request (jsonrpc-request "initialize")
-                                  {"host" "mbtest.poom.dev" "origin" "HTTPS://example.com"})]
-        (is (= 200 (:status response)))
-        (is (some? (get-in response [:headers "Mcp-Session-Id"])))))))
+       (mt/with-temporary-setting-values [site-url                                 "http://127.0.0.1:6274"
+                                          mcp.settings/mcp-apps-cors-custom-origins "https://Example.COM"]
+         (let [response (mcp-request auth (jsonrpc-request "initialize")
+                                     {"host" "mbtest.poom.dev" "origin" "HTTPS://example.com"})]
+           (is (= 200 (:status response)))
+           (is (some? (get-in response [:headers "Mcp-Session-Id"])))))))))
 
 ;;; ------------------------------------------------ Bearer tokens -------------------------------------------------
 
@@ -589,7 +602,8 @@
                                              :capabilities       {:tools {}}
                                              :tools-hash-fn      (constantly "hash")
                                              :endpoint-paths     #{"/api/metabase-mcp"}
-                                             :default-path       "/api/metabase-mcp"})
+                                             :default-path       "/api/metabase-mcp"
+                                             :accepted-scopes    #{"agent:test"}})
         result  (promise)]
     (mt/with-current-user user-id
       (handler (merge {:request-method :post
@@ -603,9 +617,7 @@
 
 (deftest oauth-request-without-token-scopes-is-refused-by-the-transport-test
   (testing "GHY-4542: defense in depth behind the session middleware. A request authenticated via OAuth but carrying
-            no `:token-scopes` is refused with the invalid_token 401 rather than dispatched as unrestricted. The
-            marker the session middleware records decides it, so a cookie session (nil token-scopes, no marker)
-            keeps unrestricted access."
+            no `:token-scopes` is refused with the invalid_token 401 rather than dispatched as unrestricted."
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (let [initialize {"jsonrpc" "2.0" "id" 1 "method" "initialize" "params" {"capabilities" {}}}]
         (doseq [token-scopes [nil #{}]]
@@ -615,226 +627,280 @@
                                              initialize)]
               (is (= 401 (:status response)))
               (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "") "invalid_token")))))
-        (testing "a session request with nil token-scopes is served"
-          (is (= 200 (:status (invoke-transport (mt/user->id :rasta) {} initialize)))))))))
+        (testing "an OAuth-authenticated request with token scopes is served"
+          (is (= 200 (:status (invoke-transport (mt/user->id :rasta)
+                                                {:authenticated-via-oauth? true :token-scopes #{"agent:test"}}
+                                                initialize)))))))))
+
+(deftest only-oauth-authenticated-requests-are-dispatched-test
+  (testing "GHY-4941: behind the session middleware, which reads only a bearer token on the MCP paths, the transport
+            still refuses a request with a current user but no OAuth marker. It gets the 401 discovery challenge a
+            request with no credential gets, whatever scopes it carries"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (let [initialize {"jsonrpc" "2.0" "id" 1 "method" "initialize" "params" {"capabilities" {}}}]
+        (doseq [request-keys [{} {:token-scopes #{"agent:content:read"}}]]
+          (testing (pr-str request-keys)
+            (let [response  (invoke-transport (mt/user->id :rasta) request-keys initialize)
+                  challenge (get-in response [:headers "WWW-Authenticate"] "")]
+              (is (= 401 (:status response)))
+              (is (nil? (get-in response [:headers "Mcp-Session-Id"])))
+              (is (str/includes? challenge "resource_metadata="))
+              (is (not (str/includes? challenge "invalid_token"))))))))))
+
+(deftest oauth-request-without-an-accepted-scope-is-refused-test
+  (testing "GHY-4969: an OAuth token that holds none of the surface's accepted scopes was not issued for this server,
+            so the MCP authorization spec requires a 401 `invalid_token`. A token holding one accepted scope is
+            served."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (let [initialize {"jsonrpc" "2.0" "id" 1 "method" "initialize" "params" {"capabilities" {}}}]
+        (doseq [token-scopes [#{:metabase.api.macros.scope/unrestricted}
+                              #{"agent:content:read"}
+                              #{:metabase.api.macros.scope/unrestricted "agent:content:read"}]]
+          (testing (str "OAuth-authenticated with token-scopes " (pr-str token-scopes))
+            (let [response (invoke-transport (mt/user->id :rasta)
+                                             {:authenticated-via-oauth? true :token-scopes token-scopes}
+                                             initialize)]
+              (is (= 401 (:status response)))
+              (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "") "error=\"invalid_token\"")))))
+        (testing "an OAuth token holding an accepted scope is served"
+          (is (= 200 (:status (invoke-transport (mt/user->id :rasta)
+                                                {:authenticated-via-oauth? true
+                                                 :token-scopes             #{"agent:test" "other"}}
+                                                initialize)))))))))
 
 ;;; -------------------------------------------------- Throttling --------------------------------------------------
 
 (deftest per-user-throttle-returns-429-test
-  (testing (str "GHY-4337: MCP is auth-gated, so the residual risk is a compromised credential — which is still one "
-                "user. The per-user throttler is what bounds its total throughput across every MCP surface")
-    (let [session-id (initialize!)]
-      ;; Redefine the throttler rather than sending 1000 requests: what is under test is that `check-throttle`
-      ;; refuses on the throttler's terms and shapes the refusal as JSON-RPC, not what the production cap happens
-      ;; to be. `initialize!` runs first so the handshake does not spend the single attempt.
-      (with-redefs-fn {#'mcp.transport/mcp-throttler (throttle/make-throttler :user-id :attempts-threshold 1)}
-        (fn []
-          (is (= 200 (:status (mcp-request (jsonrpc-request "ping") {"mcp-session-id" session-id})))
-              "the one allowed attempt is served")
-          (let [response (mcp-request (jsonrpc-request "ping") {"mcp-session-id" session-id})]
-            (is (= 429 (:status response)))
-            (is (string? (get-in response [:headers "Retry-After"])))
-            (is (= -32000 (get-in response [:body :error :code])))
-            (is (re-matches #"ERROR: \"Too many attempts! You must wait \d+ seconds before trying again\.\""
-                            (get-in response [:body :error :message]))
-                "GHY-4544: the refusal quotes the throttle library's sentence after an ERROR label")
-            (is (nil? (get-in response [:body :result])))))))))
+  (v2.tu/do-with-bearer-token!
+   v2.tu/all-scopes
+   (fn [auth]
+     (testing (str "GHY-4337: MCP is auth-gated, so the residual risk is a compromised credential — which is still one "
+                   "user. The per-user throttler is what bounds its total throughput across every MCP surface")
+       (let [session-id (initialize auth)]
+         ;; Redefine the throttler rather than sending 1000 requests: what is under test is that `check-throttle`
+         ;; refuses on the throttler's terms and shapes the refusal as JSON-RPC, not what the production cap happens
+         ;; to be. `initialize` runs first so the handshake does not spend the single attempt.
+         (with-redefs-fn {#'mcp.transport/mcp-throttler (throttle/make-throttler :user-id :attempts-threshold 1)}
+           (fn []
+             (is (= 200 (:status (mcp-request auth (jsonrpc-request "ping") {"mcp-session-id" session-id})))
+                 "the one allowed attempt is served")
+             (let [response (mcp-request auth (jsonrpc-request "ping") {"mcp-session-id" session-id})]
+               (is (= 429 (:status response)))
+               (is (string? (get-in response [:headers "Retry-After"])))
+               (is (= -32000 (get-in response [:body :error :code])))
+               (is (re-matches #"ERROR: \"Too many attempts! You must wait \d+ seconds before trying again\.\""
+                               (get-in response [:body :error :message]))
+                   "GHY-4544: the refusal quotes the throttle library's sentence after an ERROR label")
+               (is (nil? (get-in response [:body :result])))))))))))
 
 (deftest throttle-charges-per-jsonrpc-message-not-per-request-test
-  (testing (str "GHY-4337: the per-minute cap counts JSON-RPC messages, not HTTP requests. A POST can carry a batch, "
-                "so charging one attempt per request would let a single batch smuggle arbitrarily many messages past "
-                "the cap. A batch of N must cost N attempts.")
-    (let [session-id (initialize!)]
-      ;; Threshold 3, so a single 4-message batch already exceeds it — proving the batch is charged per element, not
-      ;; once. `initialize!` ran on the real throttler before the redef, so it doesn't spend an attempt here.
-      (with-redefs-fn {#'mcp.transport/mcp-throttler (throttle/make-throttler :user-id :attempts-threshold 3)}
-        (fn []
-          (let [response (mcp-request [(jsonrpc-request "ping" {} 1)
-                                       (jsonrpc-request "ping" {} 2)
-                                       (jsonrpc-request "ping" {} 3)
-                                       (jsonrpc-request "ping" {} 4)]
-                                      {"mcp-session-id" session-id})]
-            (is (= 429 (:status response))
-                "a 4-message batch against a cap of 3 is refused — it was charged 4, not 1")
-            (is (= -32000 (get-in response [:body :error :code])))
-            (is (re-matches #"ERROR: \"Too many attempts! You must wait \d+ seconds before trying again\.\""
-                            (get-in response [:body :error :message]))
-                "GHY-4544: the refusal quotes the throttle library's sentence after an ERROR label")))))
-    (testing "a single message costs exactly one attempt, so a cap of 1 serves it and refuses the next"
-      (let [session-id (initialize!)]
-        (with-redefs-fn {#'mcp.transport/mcp-throttler (throttle/make-throttler :user-id :attempts-threshold 1)}
-          (fn []
-            (is (= 200 (:status (mcp-request (jsonrpc-request "ping") {"mcp-session-id" session-id})))
-                "the one allowed message is served")
-            (is (= 429 (:status (mcp-request (jsonrpc-request "ping") {"mcp-session-id" session-id})))
-                "the second single-message request is refused")))))))
+  (v2.tu/do-with-bearer-token!
+   v2.tu/all-scopes
+   (fn [auth]
+     (testing (str "GHY-4337: the per-minute cap counts JSON-RPC messages, not HTTP requests. A POST can carry a batch, "
+                   "so charging one attempt per request would let a single batch smuggle arbitrarily many messages past "
+                   "the cap. A batch of N must cost N attempts.")
+       (let [session-id (initialize auth)]
+         ;; Threshold 3, so a single 4-message batch already exceeds it — proving the batch is charged per element, not
+         ;; once. `initialize` ran on the real throttler before the redef, so it doesn't spend an attempt here.
+         (with-redefs-fn {#'mcp.transport/mcp-throttler (throttle/make-throttler :user-id :attempts-threshold 3)}
+           (fn []
+             (let [response (mcp-request auth [(jsonrpc-request "ping" {} 1)
+                                               (jsonrpc-request "ping" {} 2)
+                                               (jsonrpc-request "ping" {} 3)
+                                               (jsonrpc-request "ping" {} 4)]
+                                         {"mcp-session-id" session-id})]
+               (is (= 429 (:status response))
+                   "a 4-message batch against a cap of 3 is refused — it was charged 4, not 1")
+               (is (= -32000 (get-in response [:body :error :code])))
+               (is (re-matches #"ERROR: \"Too many attempts! You must wait \d+ seconds before trying again\.\""
+                               (get-in response [:body :error :message]))
+                   "GHY-4544: the refusal quotes the throttle library's sentence after an ERROR label")))))
+       (testing "a single message costs exactly one attempt, so a cap of 1 serves it and refuses the next"
+         (let [session-id (initialize auth)]
+           (with-redefs-fn {#'mcp.transport/mcp-throttler (throttle/make-throttler :user-id :attempts-threshold 1)}
+             (fn []
+               (is (= 200 (:status (mcp-request auth (jsonrpc-request "ping") {"mcp-session-id" session-id})))
+                   "the one allowed message is served")
+               (is (= 429 (:status (mcp-request auth (jsonrpc-request "ping") {"mcp-session-id" session-id})))
+                   "the second single-message request is refused")))))))))
 
 ;;; ------------------------------------------ JSON-RPC framing / batches ------------------------------------------
 
 (deftest jsonrpc-batch-test
-  (let [session-id (initialize!)]
-    (testing "GHY-4337: a batch dispatches every message in it and answers with an array"
-      (let [response (mcp-request [(jsonrpc-request "ping" {} 1)
-                                   (jsonrpc-request "tools/list" {} 2)]
-                                  {"mcp-session-id" session-id})]
-        (is (= 200 (:status response)))
-        (is (sequential? (:body response)))
-        (is (= #{1 2} (set (map :id (:body response)))))))
-    (testing "a notification has no id and so gets no response — a batch answers only for the requests in it"
-      (let [response (mcp-request [(jsonrpc-notification "notifications/initialized")
-                                   (jsonrpc-request "ping" {} 7)]
-                                  {"mcp-session-id" session-id})]
-        (is (= 200 (:status response)))
-        (is (= [7] (map :id (:body response))))))
-    (testing "a message set that produces no responses at all is a 202 with an empty body, not an empty array"
-      (doseq [[label body] {"a batch of notifications" [(jsonrpc-notification "notifications/initialized")]
-                            "a lone notification"      (jsonrpc-notification "notifications/initialized")}]
-        (testing label
-          (let [response (mcp-request body {"mcp-session-id" session-id})]
-            (is (= 202 (:status response)))
-            (is (str/blank? (str (:body response))))))))
-    (testing "initialize requires a JSON-RPC 2.0 request and cannot be batched"
-      (doseq [[label message] {"a request without a version" {:method "initialize" :id 1}
-                               "a JSON-RPC 1.0 request"       {:jsonrpc "1.0" :method "initialize" :id 1}
-                               "a notification"              {:jsonrpc "2.0" :method "initialize"}}]
-        (testing label
-          (let [response (mcp-request message)]
-            (is (= 400 (:status response)))
-            (is (= -32600 (get-in response [:body :error :code])))
-            (is (= "Invalid request" (get-in response [:body :error :message])))
-            (is (nil? (get-in response [:headers "Mcp-Session-Id"]))))))
-      (testing "a valid initialize request is still forbidden in a batch"
-        (let [response (mcp-request [(jsonrpc-request "initialize")]
-                                    {"mcp-session-id" session-id})]
-          (is (= 400 (:status response)))
-          (is (= "initialize must not be batched" (get-in response [:body :error :message])))
-          (is (nil? (get-in response [:headers "Mcp-Session-Id"]))))))
-    (testing "an empty batch is invalid per JSON-RPC 2.0"
-      (let [response (mcp-request [] {"mcp-session-id" session-id})]
-        (is (= 400 (:status response)))
-        (is (= "Invalid request: empty batch" (get-in response [:body :error :message])))))
-    (testing "GHY-4337: each batch element is validated on its own (JSON-RPC 2.0 §6) — a malformed element gets its
+  (v2.tu/do-with-bearer-token!
+   v2.tu/all-scopes
+   (fn [auth]
+     (let [session-id (initialize auth)]
+       (testing "GHY-4337: a batch dispatches every message in it and answers with an array"
+         (let [response (mcp-request auth [(jsonrpc-request "ping" {} 1)
+                                           (jsonrpc-request "tools/list" {} 2)]
+                                     {"mcp-session-id" session-id})]
+           (is (= 200 (:status response)))
+           (is (sequential? (:body response)))
+           (is (= #{1 2} (set (map :id (:body response)))))))
+       (testing "a notification has no id and so gets no response — a batch answers only for the requests in it"
+         (let [response (mcp-request auth [(jsonrpc-notification "notifications/initialized")
+                                           (jsonrpc-request "ping" {} 7)]
+                                     {"mcp-session-id" session-id})]
+           (is (= 200 (:status response)))
+           (is (= [7] (map :id (:body response))))))
+       (testing "a message set that produces no responses at all is a 202 with an empty body, not an empty array"
+         (doseq [[label body] {"a batch of notifications" [(jsonrpc-notification "notifications/initialized")]
+                               "a lone notification"      (jsonrpc-notification "notifications/initialized")}]
+           (testing label
+             (let [response (mcp-request auth body {"mcp-session-id" session-id})]
+               (is (= 202 (:status response)))
+               (is (str/blank? (str (:body response))))))))
+       (testing "initialize requires a JSON-RPC 2.0 request and cannot be batched"
+         (doseq [[label message] {"a request without a version" {:method "initialize" :id 1}
+                                  "a JSON-RPC 1.0 request"       {:jsonrpc "1.0" :method "initialize" :id 1}
+                                  "a notification"              {:jsonrpc "2.0" :method "initialize"}}]
+           (testing label
+             (let [response (mcp-request auth message)]
+               (is (= 400 (:status response)))
+               (is (= -32600 (get-in response [:body :error :code])))
+               (is (= "Invalid request" (get-in response [:body :error :message])))
+               (is (nil? (get-in response [:headers "Mcp-Session-Id"]))))))
+         (testing "a valid initialize request is still forbidden in a batch"
+           (let [response (mcp-request auth [(jsonrpc-request "initialize")]
+                                       {"mcp-session-id" session-id})]
+             (is (= 400 (:status response)))
+             (is (= "initialize must not be batched" (get-in response [:body :error :message])))
+             (is (nil? (get-in response [:headers "Mcp-Session-Id"]))))))
+       (testing "an empty batch is invalid per JSON-RPC 2.0"
+         (let [response (mcp-request auth [] {"mcp-session-id" session-id})]
+           (is (= 400 (:status response)))
+           (is (= "Invalid request: empty batch" (get-in response [:body :error :message])))))
+       (testing "GHY-4337: each batch element is validated on its own (JSON-RPC 2.0 §6) — a malformed element gets its
               own -32600 rather than being silently dropped by `keep`"
-      (testing "a mix of one valid request and non-object elements answers for every element, not just the valid one"
-        (let [response (mcp-request [(jsonrpc-request "ping" {} 1) 42 "garbage"]
-                                    {"mcp-session-id" session-id})
-              body     (:body response)]
-          (is (= 200 (:status response)))
-          (is (= 3 (count body))
-              "sent three elements, so the array must carry three answers — the two malformed ones are not dropped")
-          (let [valid (first (filter #(= 1 (:id %)) body))]
-            (is (= {} (:result valid)) "the valid request still succeeds")
-            (is (nil? (:error valid))))
-          (let [invalids (remove #(= 1 (:id %)) body)]
-            (is (= 2 (count invalids)))
-            (is (every? #(= -32600 (get-in % [:error :code])) invalids)
-                "each non-object element is Invalid Request")
-            (is (every? #(nil? (:id %)) invalids)
-                "a malformed element's id is null per JSON-RPC 2.0 §5"))))
-      (testing "an all-invalid batch answers with an error per element — NOT a 202 that would falsely signal
+         (testing "a mix of one valid request and non-object elements answers for every element, not just the valid one"
+           (let [response (mcp-request auth [(jsonrpc-request "ping" {} 1) 42 "garbage"]
+                                       {"mcp-session-id" session-id})
+                 body     (:body response)]
+             (is (= 200 (:status response)))
+             (is (= 3 (count body))
+                 "sent three elements, so the array must carry three answers — the two malformed ones are not dropped")
+             (let [valid (first (filter #(= 1 (:id %)) body))]
+               (is (= {} (:result valid)) "the valid request still succeeds")
+               (is (nil? (:error valid))))
+             (let [invalids (remove #(= 1 (:id %)) body)]
+               (is (= 2 (count invalids)))
+               (is (every? #(= -32600 (get-in % [:error :code])) invalids)
+                   "each non-object element is Invalid Request")
+               (is (every? #(nil? (:id %)) invalids)
+                   "a malformed element's id is null per JSON-RPC 2.0 §5"))))
+         (testing "an all-invalid batch answers with an error per element — NOT a 202 that would falsely signal
                 'all notifications accepted' for malformed input"
-        (let [response (mcp-request [1 2 3] {"mcp-session-id" session-id})]
-          (is (= 200 (:status response))
-              "an all-invalid batch is answered, not 202-swallowed")
-          (is (= 3 (count (:body response))))
-          (is (every? #(= -32600 (get-in % [:error :code])) (:body response)))))
-      (testing "an object without a JSON-RPC 2.0 envelope and string method is Invalid Request (-32600)"
-        (doseq [[label malformed] {"missing method" {:jsonrpc "2.0" :id 5}
-                                   "non-string method" {:jsonrpc "2.0" :method 42 :id 5}
-                                   "missing version" {:method "ping" :id 5}
-                                   "missing version and id" {:method "ping"}
-                                   "JSON-RPC 1.0" {:jsonrpc "1.0" :method "ping" :id 5}}]
-          (testing label
-            (testing "as a single message"
-              (let [response (mcp-request malformed {"mcp-session-id" session-id})]
-                (is (= 400 (:status response)))
-                (is (= -32600 (get-in response [:body :error :code])))
-                (is (= "Invalid request" (get-in response [:body :error :message])))))
-            (testing "inside a batch, alongside a valid request"
-              (let [response (mcp-request [(jsonrpc-request "ping" {} 1) malformed]
-                                          {"mcp-session-id" session-id})
-                    body     (:body response)]
-                (is (= 200 (:status response)))
-                (is (= 2 (count body)))
-                (is (= -32600
-                       (get-in (first (remove #(= 1 (:id %)) body)) [:error :code])))))))))))
+           (let [response (mcp-request auth [1 2 3] {"mcp-session-id" session-id})]
+             (is (= 200 (:status response))
+                 "an all-invalid batch is answered, not 202-swallowed")
+             (is (= 3 (count (:body response))))
+             (is (every? #(= -32600 (get-in % [:error :code])) (:body response)))))
+         (testing "an object without a JSON-RPC 2.0 envelope and string method is Invalid Request (-32600)"
+           (doseq [[label malformed] {"missing method" {:jsonrpc "2.0" :id 5}
+                                      "non-string method" {:jsonrpc "2.0" :method 42 :id 5}
+                                      "missing version" {:method "ping" :id 5}
+                                      "missing version and id" {:method "ping"}
+                                      "JSON-RPC 1.0" {:jsonrpc "1.0" :method "ping" :id 5}}]
+             (testing label
+               (testing "as a single message"
+                 (let [response (mcp-request auth malformed {"mcp-session-id" session-id})]
+                   (is (= 400 (:status response)))
+                   (is (= -32600 (get-in response [:body :error :code])))
+                   (is (= "Invalid request" (get-in response [:body :error :message])))))
+               (testing "inside a batch, alongside a valid request"
+                 (let [response (mcp-request auth [(jsonrpc-request "ping" {} 1) malformed]
+                                             {"mcp-session-id" session-id})
+                       body     (:body response)]
+                   (is (= 200 (:status response)))
+                   (is (= 2 (count body)))
+                   (is (= -32600
+                          (get-in (first (remove #(= 1 (:id %)) body)) [:error :code])))))))))))))
 
 ;;; ------------------------------------------------------ SSE -----------------------------------------------------
 
 (deftest notifications-get-no-response-test
-  (testing "JSON-RPC 2.0 §4.1: a message with no `id` is a notification and MUST NOT be answered. A known
+  (v2.tu/do-with-bearer-token!
+   v2.tu/all-scopes
+   (fn [auth]
+     (testing "JSON-RPC 2.0 §4.1: a message with no `id` is a notification and MUST NOT be answered. A known
             method sent without an id used to execute AND reply with `\"id\": null` — the server inventing a
             response to something the client is not listening for, and a shape §5 reserves for a request that
             could not be parsed at all."
-    (let [session-id (initialize!)]
-      (testing "a known method as a notification executes silently and yields 202 with an empty body"
-        (let [response (mcp-request {:jsonrpc "2.0" :method "ping"} {"mcp-session-id" session-id})]
-          (is (= 202 (:status response)))
-          (is (str/blank? (str (:body response))))))
-      (testing "the same method WITH an id is answered as before — this must not silence real requests"
-        (let [response (mcp-request (jsonrpc-request "ping") {"mcp-session-id" session-id})]
-          (is (= 200 (:status response)))
-          (is (= 1 (get-in response [:body :id])))))
-      (testing "a notification for an unknown method is also silent, rather than a method-not-found reply"
-        (is (= 202 (:status (mcp-request {:jsonrpc "2.0" :method "no/such/method"}
-                                         {"mcp-session-id" session-id})))))
-      (testing "in a batch, notifications drop out and only the real requests are answered"
-        (let [response (mcp-request [{:jsonrpc "2.0" :method "ping"}
-                                     (jsonrpc-request "ping" {} 7)
-                                     {:jsonrpc "2.0" :method "notifications/initialized"}]
-                                    {"mcp-session-id" session-id})]
-          (is (= 200 (:status response)))
-          (is (= [7] (mapv :id (:body response))))))
-      (testing "a batch of nothing but notifications is a 202, not an empty array"
-        (let [response (mcp-request [{:jsonrpc "2.0" :method "ping"}
-                                     {:jsonrpc "2.0" :method "notifications/initialized"}]
-                                    {"mcp-session-id" session-id})]
-          (is (= 202 (:status response)))
-          (is (str/blank? (str (:body response))))))
-      (testing "a malformed element still answers with a null id — §5 requires that for something that could
+       (let [session-id (initialize auth)]
+         (testing "a known method as a notification executes silently and yields 202 with an empty body"
+           (let [response (mcp-request auth {:jsonrpc "2.0" :method "ping"} {"mcp-session-id" session-id})]
+             (is (= 202 (:status response)))
+             (is (str/blank? (str (:body response))))))
+         (testing "the same method WITH an id is answered as before — this must not silence real requests"
+           (let [response (mcp-request auth (jsonrpc-request "ping") {"mcp-session-id" session-id})]
+             (is (= 200 (:status response)))
+             (is (= 1 (get-in response [:body :id])))))
+         (testing "a notification for an unknown method is also silent, rather than a method-not-found reply"
+           (is (= 202 (:status (mcp-request auth {:jsonrpc "2.0" :method "no/such/method"}
+                                            {"mcp-session-id" session-id})))))
+         (testing "in a batch, notifications drop out and only the real requests are answered"
+           (let [response (mcp-request auth [{:jsonrpc "2.0" :method "ping"}
+                                             (jsonrpc-request "ping" {} 7)
+                                             {:jsonrpc "2.0" :method "notifications/initialized"}]
+                                       {"mcp-session-id" session-id})]
+             (is (= 200 (:status response)))
+             (is (= [7] (mapv :id (:body response))))))
+         (testing "a batch of nothing but notifications is a 202, not an empty array"
+           (let [response (mcp-request auth [{:jsonrpc "2.0" :method "ping"}
+                                             {:jsonrpc "2.0" :method "notifications/initialized"}]
+                                       {"mcp-session-id" session-id})]
+             (is (= 202 (:status response)))
+             (is (str/blank? (str (:body response))))))
+         (testing "a malformed element still answers with a null id — §5 requires that for something that could
                 not be parsed, which is a different case from a well-formed notification"
-        (let [response (mcp-request [{:jsonrpc "2.0" :no-method-here true}]
-                                    {"mcp-session-id" session-id})]
-          (is (= 200 (:status response)))
-          (is (= [-32600] (mapv #(get-in % [:error :code]) (:body response)))))))))
+           (let [response (mcp-request auth [{:jsonrpc "2.0" :no-method-here true}]
+                                       {"mcp-session-id" session-id})]
+             (is (= 200 (:status response)))
+             (is (= [-32600] (mapv #(get-in % [:error :code]) (:body response)))))))))))
 
 (deftest sse-post-response-test
-  (testing "GHY-4337: a client that accepts text/event-stream gets its responses framed as SSE events"
-    (let [session-id (initialize!)
-          response   (mcp-request (jsonrpc-request "ping") {"mcp-session-id" session-id
-                                                            "accept"         "text/event-stream"})]
-      (is (= 200 (:status response)))
-      (is (= "text/event-stream" (get-in response [:headers "Content-Type"])))
-      (is (str/includes? (:body response) "event: message"))
-      (is (str/includes? (:body response) "data: "))))
-  (testing "initialize over SSE still issues the session in a header, which is where the client looks for it"
-    (let [response (mcp-request (jsonrpc-request "initialize") {"accept" "text/event-stream"})
-          data     (->> (str/split-lines (:body response))
-                        (keep #(when (str/starts-with? % "data: ") (json/decode+kw (subs % 6))))
-                        first)]
-      (is (= 200 (:status response)))
-      (is (= "text/event-stream" (get-in response [:headers "Content-Type"])))
-      (is (some? (get-in response [:headers "Mcp-Session-Id"])))
-      (is (= "2025-03-26" (get-in data [:result :protocolVersion])))))
-  (testing "a client that does not ask for SSE keeps getting JSON"
-    (let [session-id (initialize!)
-          response   (mcp-request (jsonrpc-request "ping") {"mcp-session-id" session-id})]
-      (is (= "application/json" (get-in response [:headers "Content-Type"])))
-      (is (map? (:body response))))))
+  (v2.tu/do-with-bearer-token!
+   v2.tu/all-scopes
+   (fn [auth]
+     (testing "GHY-4337: a client that accepts text/event-stream gets its responses framed as SSE events"
+       (let [session-id (initialize auth)
+             response   (mcp-request auth (jsonrpc-request "ping") {"mcp-session-id" session-id
+                                                                    "accept"         "text/event-stream"})]
+         (is (= 200 (:status response)))
+         (is (= "text/event-stream" (get-in response [:headers "Content-Type"])))
+         (is (str/includes? (:body response) "event: message"))
+         (is (str/includes? (:body response) "data: "))))
+     (testing "initialize over SSE still issues the session in a header, which is where the client looks for it"
+       (let [response (mcp-request auth (jsonrpc-request "initialize") {"accept" "text/event-stream"})
+             data     (->> (str/split-lines (:body response))
+                           (keep #(when (str/starts-with? % "data: ") (json/decode+kw (subs % 6))))
+                           first)]
+         (is (= 200 (:status response)))
+         (is (= "text/event-stream" (get-in response [:headers "Content-Type"])))
+         (is (some? (get-in response [:headers "Mcp-Session-Id"])))
+         (is (= "2025-03-26" (get-in data [:result :protocolVersion])))))
+     (testing "a client that does not ask for SSE keeps getting JSON"
+       (let [session-id (initialize auth)
+             response   (mcp-request auth (jsonrpc-request "ping") {"mcp-session-id" session-id})]
+         (is (= "application/json" (get-in response [:headers "Content-Type"])))
+         (is (map? (:body response))))))))
 
 (deftest sse-get-stream-is-session-guarded-test
-  (testing (str "GHY-4337: the GET keepalive stream holds a connection for as long as the client keeps it, so the "
-                "session guard has to refuse before the stream opens rather than after")
-    (testing "no session header"
-      (let [response (client/client-full-response (test.users/username->token :crowberto) :get endpoint)]
-        (is (= 400 (:status response)))
-        (is (= "Missing Mcp-Session-Id header" (get-in response [:body :error :message])))))
-    (testing "a session id the server never issued"
-      (let [response (client/client-full-response (test.users/username->token :crowberto)
-                                                  :get endpoint
-                                                  {:request-options {:headers {"mcp-session-id" "bogus-session-id"}}})]
-        (is (= 404 (:status response)))
-        (is (= "Invalid or expired session" (get-in response [:body :error :message])))))))
+  (v2.tu/do-with-bearer-token!
+   v2.tu/all-scopes
+   (fn [auth]
+     (testing (str "GHY-4337: the GET keepalive stream holds a connection for as long as the client keeps it, so the "
+                   "session guard has to refuse before the stream opens rather than after")
+       (testing "no session header"
+         (let [response (request auth :get {})]
+           (is (= 400 (:status response)))
+           (is (= "Missing Mcp-Session-Id header" (get-in response [:body :error :message])))))
+       (testing "a session id the server never issued"
+         (let [response (request auth :get {"mcp-session-id" "bogus-session-id"})]
+           (is (= 404 (:status response)))
+           (is (= "Invalid or expired session" (get-in response [:body :error :message])))))))))
 
 ;;; ---------------------------------------------- Eval session override -------------------------------------------
 
@@ -916,42 +982,20 @@
       (is (= (str "Bearer error=\"insufficient_scope\", scope=\"a b\", resource_metadata=\"" url "\"")
              (challenge url ["a" "b"] nil))))))
 
-(deftest legacy-scoped-bearer-token-is-stepped-up-test
-  (testing (str "GHY-4343: `/api/metabase-mcp` now serves the v2 tool surface, but every MCP client connected to a "
-                "shipped v0.60-v0.63 release holds a token carrying the pre-v2 per-entity agent scopes. No legacy "
-                "scope satisfies any v2 tool scope, and the pre-fix failure mode was a successful handshake followed "
-                "by HTTP 200 with an empty tools list. GHY-4491: the upgrade leaves such tokens alive, so the client "
-                "must recover on its own: it is listed every tool, and a call gets a 403 `insufficient_scope` "
-                "challenge naming the v2 scope to re-authorize for.")
+(deftest legacy-scoped-bearer-token-must-reauthorize-test
+  (testing (str "GHY-4343, GHY-4491, GHY-4969: MCP clients connected to a v0.60-v0.63 release hold tokens with the "
+                "pre-v2 agent scopes, and the upgrade leaves those tokens alive. They hold no v2 MCP scope, so the "
+                "endpoint refuses them as not issued for this server: a 401 `invalid_token` on `initialize`, which "
+                "makes the client re-authorize.")
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (oauth-server.tu/with-oauth-client [client-id]
         (mt/with-model-cleanup [:model/OAuthAccessToken]
-          (let [;; Two agent-API scopes the v2 surface never gates on.
-                token     (issue-bearer! (mt/user->id :rasta) client-id
-                                         ["agent:question:create" "agent:resource:read"])
-                headers   (fn [& {:as extra}]
-                            {:request-options {:headers (merge {"authorization" (str "Bearer " token)} extra)}})
-                sid       (get-in (client/client-full-response
-                                   :post 200 "metabase-mcp" (headers)
-                                   (jsonrpc-request "initialize" {:capabilities {}}))
-                                  [:headers "Mcp-Session-Id"])
-                listed    (client/client-full-response :post 200 "metabase-mcp"
-                                                       (headers "mcp-session-id" sid)
-                                                       (jsonrpc-request "tools/list" {} 2))
-                tools     (get-in listed [:body :result :tools])
-                call      (client/client-full-response :post 403 "metabase-mcp"
-                                                       (headers "mcp-session-id" sid)
-                                                       (jsonrpc-request "tools/call" {:name "search" :arguments {}} 3))
-                challenge (get-in call [:headers "WWW-Authenticate"] "")]
-            (testing "the handshake succeeds and every tool is listed, since tools/list does not filter by scope"
-              (is (string? sid))
-              (is (some #{"search"} (map :name tools))))
-            (testing "a call is refused with a step-up challenge rather than a 200 or a 401"
-              (is (= 403 (:status call)))
-              (is (str/includes? challenge "error=\"insufficient_scope\""))
-              (is (str/includes? challenge "agent:content:read")
-                  "the challenge names the v2 scope to ask for, which the widened client snapshot validates")
-              (is (str/includes? challenge "resource_metadata=")
-                  "and carries RFC 9728 discovery, so the client knows where to re-authorize")
-              (is (str/starts-with? (get-in call [:body :error :message] "")
-                                    "Insufficient scope to call tool: ")))))))))
+          (let [token    (issue-bearer! (mt/user->id :rasta) client-id
+                                        ["agent:question:create" "agent:resource:read"])
+                response (client/client-full-response :post 401 endpoint
+                                                      {:request-options
+                                                       {:headers {"authorization" (str "Bearer " token)}}}
+                                                      (jsonrpc-request "initialize" {:capabilities {}}))]
+            (is (= 401 (:status response)))
+            (is (nil? (get-in response [:headers "Mcp-Session-Id"])))
+            (is (str/includes? (get-in response [:headers "WWW-Authenticate"] "") "error=\"invalid_token\""))))))))

@@ -15,7 +15,6 @@
    [metabase.api.common :as api]
    [metabase.channel.email.messages :as messages]
    [metabase.channel.settings :as channel.settings]
-   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.message :as message]
@@ -28,6 +27,7 @@
    [metabase.metabot.scope :as metabot.scope]
    [metabase.models.interface :as mi]
    [metabase.notification.api :as notification.api]
+   [metabase.notification.db :as notification.db]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
    [toucan2.core :as t2]))
@@ -323,8 +323,10 @@
   [id]
   (when-not (int? id)
     (common/throw-teaching-error (message/msg ["Alerts take a numeric id — they have no entity_id."])))
-  (let [notification (mcp.db/notification-by-payload-type id :notification/card)]
-    (when-not (and notification (mi/can-read? notification) (mi/can-write? notification))
+  (let [notification (when (pos-int? id) (notification.db/notification id))]
+    (when-not (and (= :notification/card (:payload_type notification))
+                   (mi/can-read? notification)
+                   (mi/can-write? notification))
       (common/throw-not-found :alert id))
     (notification.api/get-notification id)))
 
@@ -379,8 +381,7 @@
   "An alert is a scheduled run of its question with the results delivered, so establishing one — or
    redirecting where one delivers — needs the same scope that seeing those results in-session
    would. The send itself happens later, tokenlessly, under the creator's permissions; this check
-   at write time is the only place the token's scopes can bound that deferred execution. No-op for
-   unscoped callers (cookie sessions bind the unrestricted sentinel, which matches everything)."
+   at write time is the only place the token's scopes can bound that deferred execution."
   [token-scopes action]
   (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-query-run)
     (common/throw-insufficient-scope!
@@ -481,7 +482,9 @@
   {:name           "alert_write"
    :default-access :allowed
    :scope          metabot.scope/agent-delivery-write
-   :annotations    {:readOnlyHint false :destructiveHint false}
+   ;; `destructiveHint`: an update can replace the recipients.
+   ;; `openWorldHint`: it sends to email addresses and Slack channels outside Metabase.
+   :annotations    {:readOnlyHint false, :destructiveHint true, :openWorldHint true}
    :args           alert-write-args-schema}
   [args {:keys [token-scopes]}]
   (let [[op a b] (v2.write/dispatch-write {:create-required [:card_id :schedule]} args)]

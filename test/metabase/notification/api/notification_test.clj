@@ -233,7 +233,15 @@
                (-> (mt/user-http-request :crowberto :post 200 "notification" {:creator_id   (mt/user->id :rasta)
                                                                               :payload      {:card_id card-id}
                                                                               :payload_type "notification/card"})
-                   :creator_id)))))))
+                   :creator_id))))
+      (testing "a handler whose template has another channel type is a 400"
+        (mt/with-temp [:model/ChannelTemplate {slack-tmpl-id :id} {:channel_type :channel/slack}]
+          (is (= "Channel type and template type mismatch"
+                 (mt/user-http-request :crowberto :post 400 "notification"
+                                       {:payload      {:card_id card-id}
+                                        :payload_type "notification/card"
+                                        :handlers     [{:channel_type "channel/email"
+                                                        :template_id  slack-tmpl-id}]}))))))))
 
 (deftest notification-with-custom-template-test
   (mt/with-model-cleanup [:model/Notification]
@@ -1432,6 +1440,26 @@
       (notification.tu/with-channel-fixtures [:channel/email]
         (let [echoed (mt/user-http-request :crowberto :get 200 (format "notification/%d" notification-id))]
           (is (some? (get-in echoed [:creator :date_joined])))
+          (is (=? {:channel/email [{:recipients ["crowberto@metabase.com"]}]}
+                  (notification.tu/with-captured-channel-send!
+                    (mt/user-http-request :crowberto :post 204 "notification/send" echoed)))))))))
+
+(deftest send-unsaved-notification-echoed-card-timestamps-test
+  (testing "POST /api/notification/send accepts a saved notification sent back as fetched, card timestamps included"
+    (notification.tu/with-card-notification
+      [{notification-id :id}
+       {:card          {:cache_invalidated_at   (t/offset-date-time)
+                        :initially_published_at (t/offset-date-time)}
+        :handlers      [{:channel_type :channel/email
+                         :recipients   [{:type    :notification-recipient/user
+                                         :user_id (mt/user->id :crowberto)}]}]
+        :subscriptions [{:type          :notification-subscription/cron
+                         :cron_schedule "0 0 0 * * ?"}]}]
+      (notification.tu/with-channel-fixtures [:channel/email]
+        (let [echoed (mt/user-http-request :crowberto :get 200 (format "notification/%d" notification-id))]
+          (is (=? {:cache_invalidated_at   some?
+                   :initially_published_at some?}
+                  (get-in echoed [:payload :card])))
           (is (=? {:channel/email [{:recipients ["crowberto@metabase.com"]}]}
                   (notification.tu/with-captured-channel-send!
                     (mt/user-http-request :crowberto :post 204 "notification/send" echoed)))))))))

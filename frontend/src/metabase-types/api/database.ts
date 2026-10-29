@@ -104,7 +104,6 @@ export interface DatabaseData {
   // [[metabase.models.interface/to-json]] for `:model/Database`:
   details?: Record<string, unknown>;
   write_data_details?: Record<string, unknown> | null;
-  admin_details?: Record<string, unknown> | null;
   schedules: DatabaseSchedules;
   auto_run_queries: boolean | null;
   refingerprint: boolean | null;
@@ -169,7 +168,6 @@ export type ListDatabasesRequest = {
   include_stubs?: boolean;
   router_database_id?: DatabaseId;
   "can-query"?: boolean;
-  "can-write-metadata"?: boolean;
 };
 
 export interface ListDatabasesResponse {
@@ -187,7 +185,6 @@ export interface ListDatabaseSchemasRequest {
   include_hidden?: boolean;
   include_editable_data_model?: boolean;
   "can-query"?: boolean;
-  "can-write-metadata"?: boolean;
 }
 
 export interface ListDatabaseSchemaTablesRequest {
@@ -196,7 +193,6 @@ export interface ListDatabaseSchemaTablesRequest {
   include_hidden?: boolean;
   include_editable_data_model?: boolean;
   "can-query"?: boolean;
-  "can-write-metadata"?: boolean;
   include_measures?: boolean;
 }
 
@@ -208,6 +204,7 @@ export interface ListVirtualDatabaseTablesRequest {
 export interface GetDatabaseMetadataRequest {
   id: DatabaseId;
   include_hidden?: boolean;
+  include_sensitive_fields?: boolean;
   include_editable_data_model?: boolean;
   remove_inactive?: boolean;
   skip_fields: true; // make sure we don't get every field of every table
@@ -232,7 +229,6 @@ export interface UpdateDatabaseRequest {
   refingerprint?: boolean | null;
   details?: Record<string, unknown>;
   write_data_details?: Record<string, unknown> | null;
-  admin_details?: Record<string, unknown> | null;
   schedules?: DatabaseSchedules;
   description?: string;
   caveats?: string;

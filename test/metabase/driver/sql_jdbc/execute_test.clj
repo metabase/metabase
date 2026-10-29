@@ -6,6 +6,7 @@
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.h2 :as h2]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -14,7 +15,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.util.malli.registry :as mr])
   (:import
-   (java.sql Connection DatabaseMetaData)
+   (java.sql Connection DatabaseMetaData SQLException SQLNonTransientConnectionException SQLTransientConnectionException)
    (javax.sql DataSource)))
 
 (deftest ^:parallel ConnectionOptions-test
@@ -275,6 +276,35 @@
         (is (true? (full? (reify com.mchange.v2.c3p0.PooledDataSource
                             (getNumThreadsAwaitingCheckoutDefaultUser [_] 3)))))))))
 
+(deftest failed-checkout-destroys-empty-pool-test
+  (testing "When a checkout fails, do-with-resolved-connection destroys the pool only if the pool has no Connections"
+    (doseq [[num-connections destroyed?] [[0 true] [1 false]]]
+      (let [db-id       Integer/MAX_VALUE
+            cache-key   [db-id :default]
+            data-source (reify com.mchange.v2.c3p0.PooledDataSource
+                          (getConnection [_]
+                            (throw (java.sql.SQLException. "password authentication failed")))
+                          (getNumConnectionsDefaultUser [_] num-connections))
+            pool-spec   {:datasource data-source}
+            destroyed   (atom [])
+            pool-cache  @#'sql-jdbc.conn/pool-cache-key->connection-pool]
+        (swap! pool-cache assoc cache-key pool-spec)
+        (try
+          (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection-data-source
+                                      (fn [_driver _db-or-id-or-spec _options] data-source)
+                                      sql-jdbc.conn/destroy-pool!
+                                      (fn [id spec] (swap! destroyed conj [id spec]))]
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"Unable to connect to the database"
+                 (sql-jdbc.execute/do-with-resolved-connection :h2 db-id {} (fn [_conn] nil))))
+            (is (= (if destroyed? [[db-id pool-spec]] [])
+                   @destroyed))
+            (is (= (not destroyed?)
+                   (contains? @pool-cache cache-key))))
+          (finally
+            (swap! pool-cache dissoc cache-key)))))))
+
 (deftest connection-pool-full-checkout-queue-returns-503-test
   (testing "When the checkout queue is full, additional queries fail fast with a retriable HTTP 503"
     (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
@@ -324,3 +354,29 @@
             (reset! cancels 0)
             (is (= 4 (count (venues-rows 4))))
             (is (pos? @cancels))))))))
+
+(deftest error-while-reading-rows-test
+  (mt/test-driver :h2
+    (let [mp         (mt/metadata-provider)
+          query      (qp/userland-query (lib/query mp (lib.metadata/table mp (mt/id :venues))))
+          error-type (fn [e]
+                       (mt/with-dynamic-fn-redefs [sql-jdbc.execute/row-thunk (fn [& _] #(throw e))]
+                         (:error_type (qp/process-query query))))]
+      (testing "A database error raised while rows are read is an invalid query, whatever its exception class"
+        (doseq [e [(SQLException. "More than one row" "21000")
+                   (SQLException. "Unique constraint violation" "23505")
+                   (SQLNonTransientConnectionException. "Unknown column 'a' in 'field list'" "42S22")]]
+          (testing (ex-message e)
+            (is (= :invalid-query (error-type e))))))
+      (testing "A failed connection, a transient failure or a server-side failure is not an invalid query"
+        (doseq [e [(SQLException. "Unknown row-read failure")
+                   (SQLTransientConnectionException. "Unknown connection failure")
+                   (SQLException. "Out of memory" "53200")
+                   (SQLException. "An I/O error occurred while sending to the backend" "08006")
+                   (SQLException. "Internal error" "XX000")]]
+          (testing (ex-message e)
+            (is (not= :invalid-query (error-type e))))))
+      (testing "A statement canceled by the driver is not an invalid query"
+        ;; `driver/query-canceled?` is a multimethod, which `mt/with-dynamic-fn-redefs` refuses
+        (with-redefs [driver/query-canceled? (constantly true)]
+          (is (not= :invalid-query (error-type (SQLException. "Query execution was interrupted" "22012")))))))))

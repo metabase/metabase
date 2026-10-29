@@ -90,10 +90,10 @@ export const useAdminSetting = <SettingName extends EnterpriseSettingKey>(
       }
 
       if (response.error) {
-        const message =
-          // Unjustified type cast. FIXME
-          (response.error as { data?: { message: string } })?.data?.message ||
-          t`Error saving settings`;
+        const message = getErrorMessage(
+          response.error,
+          t`Error saving settings`,
+        );
 
         sendToast({
           message,
@@ -155,10 +155,10 @@ export const useAdminSettings = <
 
       if (toast) {
         if (response.error) {
-          const message =
-            // Unjustified type cast. FIXME
-            (response.error as { data?: { message: string } })?.data?.message ||
-            t`Error saving settings`;
+          const message = getErrorMessage(
+            response.error,
+            t`Error saving settings`,
+          );
 
           sendToast({
             message,

@@ -3,11 +3,11 @@ import { PLUGIN_DATA_REFERENCE } from "metabase/querying/components/DataReferenc
 import { useGetLibraryCollectionQuery } from "metabase-enterprise/api";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import { CollectionPermissionsModal } from "./components/CollectionPermissionsModal";
 import { CreateLibraryModal } from "./components/CreateLibraryModal";
 import { DataReferenceLibraryPane } from "./components/DataReferenceLibraryPane";
 import { PublishTablesModal } from "./components/PublishTablesModal";
 import { UnpublishTablesModal } from "./components/UnpublishTablesModal";
+import { getDataStudioDashboardRoutes } from "./dashboards/routes";
 import { useGetLibraryChildCollectionByType } from "./hooks/use-get-library-child-collection-by-type";
 import { useGetLibraryCollection } from "./hooks/use-get-library-collection";
 import { useGetResolvedLibraryCollection } from "./hooks/use-get-resolved-library-collection";
@@ -25,6 +25,7 @@ export function initializePlugin() {
   if (hasPremiumFeature("library")) {
     PLUGIN_LIBRARY.isEnabled = true;
     PLUGIN_LIBRARY.getDataStudioLibraryRoutes = getDataStudioLibraryRoutes;
+    PLUGIN_LIBRARY.getDataStudioDashboardRoutes = getDataStudioDashboardRoutes;
     PLUGIN_LIBRARY.useGetLibraryCollection = useGetLibraryCollection;
     PLUGIN_LIBRARY.useGetLibraryChildCollectionByType =
       useGetLibraryChildCollectionByType;
@@ -35,7 +36,6 @@ export function initializePlugin() {
       getEntityPickerSyntheticLibraryItem;
     PLUGIN_DATA_REFERENCE.LibraryPane = DataReferenceLibraryPane;
     PLUGIN_LIBRARY.CreateLibraryModal = CreateLibraryModal;
-    PLUGIN_LIBRARY.CollectionPermissionsModal = CollectionPermissionsModal;
     PLUGIN_LIBRARY.PublishTablesModal = PublishTablesModal;
     PLUGIN_LIBRARY.UnpublishTablesModal = UnpublishTablesModal;
     PLUGIN_LIBRARY.useGetLibraryCollectionQuery = useGetLibraryCollectionQuery;

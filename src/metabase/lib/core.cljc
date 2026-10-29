@@ -124,6 +124,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.unique-name-generator]
    [metabase.lib.validate :as lib.validate]
+   [metabase.lib.walk]
    [metabase.lib.walk.util]
    [metabase.util.malli :as mu]
    [metabase.util.namespaces :as shared.ns]))
@@ -1582,6 +1583,7 @@
   metadata-provider?
   metadata-providerable?]
  [metabase.lib.metadata.result-metadata
+  match-returned-columns
   normalize-result-metadata-column]
  [lib.native
   add-parameters-for-template-tags
@@ -1736,6 +1738,8 @@
   missing-table-error
   syntax-error
   validation-exception-error]
+ [metabase.lib.walk
+  walk-stages]
  [metabase.lib.walk.util
   all-field-ids
   all-referenced-entity-ids
@@ -1743,6 +1747,7 @@
   all-implicitly-joined-field-ids
   all-implicitly-joined-table-ids
   all-measure-ids
+  all-metric-ids
   all-segment-ids
   all-source-card-ids
   all-source-card-ids-recursive

@@ -20,12 +20,19 @@
 
 ;; Kept local rather than required from metabase.metabot.tools to avoid a prompts->tools cycle;
 ;; mirrors the SQL entries in metabase.metabot.tools/query-generation-tool-names.
-(def ^:private sql-generation-tool-names
+(def sql-generation-tool-names
   "SQL-writing tools.
   Their presence in the capability-filtered tool set — not the `:permission/metabot-sql-generation`
   permission alone — is what lets the model write SQL, since they're gated by the
   `permission:write_sql_queries` capability."
   #{"create_sql_query" "edit_sql_query" "replace_sql_query"})
+
+(defn sql-generation-tools?
+  "True when the active tool registry `tools` (name -> tool) contains a SQL-writing tool. The prompt's
+  SQL guidance and the message stream's SQL dialect preload both gate on this, so a profile that cannot
+  write SQL is never told how to."
+  [tools]
+  (boolean (some sql-generation-tool-names (keys tools))))
 
 ;;; Template Loading
 
@@ -160,11 +167,21 @@
             ;; on those tools actually being active — the permission can be `:yes` while the request
             ;; lacks the `permission:write_sql_queries` capability that registers them.
             has-sql?             (and (= :yes (:permission/metabot-sql-generation perms))
-                                      (boolean (some sql-generation-tool-names (keys tools))))
+                                      (sql-generation-tools? tools))
             has-nlq?             (= :yes (:permission/metabot-nlq perms))
+            ;; The NLQ permission does not by itself give the model the notebook builder (:internal-sql omits
+            ;; it), so guidance that names the builder needs the tool too, as the SQL guidance does.
+            has-notebook?        (and has-nlq? (contains? tools "construct_notebook_query"))
+            has-sql-execution?   (and (contains? tools "run_query")
+                                      has-sql?
+                                      (scope/sql-execution-allowed?))
             template-context     {:metabot_name              (metabot.settings/metabot-name)
                                   :sql_dialect              sql-dialect
-                                  :sql_dialect_loaded       (some? (skills/dialect-skill sql-dialect))
+                                  ;; Must agree with the preload gate in `messages/build-message-history`: the
+                                  ;; template says the dialect skill "has already been loaded", which is only
+                                  ;; true when a SQL-writing tool is active.
+                                  :sql_dialect_loaded       (and (sql-generation-tools? tools)
+                                                                 (some? (skills/dialect-skill sql-dialect)))
                                   ;; `not-empty` so an empty catalog is nil (falsy) — Selmer treats
                                   ;; an empty vector as truthy, which would render the "# Available
                                   ;; skills … load the skill(s) you need" header with nothing to
@@ -173,8 +190,16 @@
                                   :skill_always_on          (mapv :body always-on)
                                   :has_sql_generation       has-sql?
                                   :has_nlq                  has-nlq?
-                                  :has_query_tools          (or has-sql? has-nlq?)
+                                  :has_notebook_query       has-notebook?
+                                  :has_query_tools          (or has-sql? has-notebook?)
                                   :has_other_tools          (= :yes (:permission/metabot-other-tools perms))
+                                  ;; run_query reads values only from a query the model can build and run: a
+                                  ;; notebook query, or SQL where run_query may run it.
+                                  :has_query_execution      (and (contains? tools "run_query")
+                                                                 (or has-notebook? has-sql-execution?))
+                                  ;; The SQL guidance tells the model to write SQL and run it, so it needs the
+                                  ;; SQL tools as well as everything run_query checks before it runs SQL.
+                                  :has_sql_execution        has-sql-execution?
                                   :custom_instructions      (not-empty
                                                              (case template-name
                                                                ;; both nlq templates (curated + general-search

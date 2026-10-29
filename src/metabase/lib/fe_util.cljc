@@ -46,6 +46,7 @@
    :float
    ::lib.schema.metadata/column
    ::lib.schema.metadata/segment
+   ::lib.schema.metadata/measure
    ::lib.schema.metadata/metric])
 
 (def ^:private ExpressionOptions

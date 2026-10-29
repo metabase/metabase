@@ -32,7 +32,7 @@
     (lib/query mp (lib.metadata/table mp (mt/id :venues)))))
 
 (defn- call-tool!
-  ([user args] (call-tool! user nil args))
+  ([user args] (call-tool! user v2.tu/all-scopes args))
   ([user scopes args]
    (mt/with-current-user (mt/user->id user)
      (registry/call-tool scopes nil "duplicate_content" args))))
@@ -106,7 +106,7 @@
           (mt/with-current-user (mt/user->id :crowberto)
             ;; Inside, because binding the current user rebinds the locale to the user's own.
             (mt/with-user-locale "de"
-              (let [result (tool-result (registry/call-tool nil nil "duplicate_content"
+              (let [result (tool-result (registry/call-tool v2.tu/all-scopes nil "duplicate_content"
                                                             {:type "question" :id card-id}))]
                 (is (= "Kopie von Umsatz" (:name result)))
                 (is (= "Kopie von Umsatz" (t2/select-one-fn :name :model/Card :id (:id result))))))))))))

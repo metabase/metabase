@@ -1,8 +1,12 @@
+import userEvent from "@testing-library/user-event";
+
 import {
+  findRequests,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
+  setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { fireEvent, renderWithProviders, screen } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import {
   createMockSettingDefinition,
@@ -21,6 +25,7 @@ const setup = async () => {
       description: "Login page illustration",
     }),
   ]);
+  setupUpdateSettingEndpoint();
 
   renderWithProviders(
     <>
@@ -49,5 +54,20 @@ describe("WhiteLabelConcealSettingsPage", () => {
     await setup();
 
     expect((await screen.findAllByText(setting)).length).toBeGreaterThan(0);
+  });
+
+  it("saves the application name", async () => {
+    await setup();
+
+    const input = await screen.findByLabelText("Application name");
+    await userEvent.clear(input);
+    await userEvent.type(input, "New Test Co");
+    fireEvent.blur(input);
+
+    expect(await screen.findByText("Changes saved")).toBeInTheDocument();
+    const puts = await findRequests("PUT");
+    expect(puts).toHaveLength(1);
+    expect(puts[0].url).toContain("/api/setting/application-name");
+    expect(puts[0].body).toEqual({ value: "New Test Co" });
   });
 });

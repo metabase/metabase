@@ -102,7 +102,9 @@
 (defn select-applicable-by-id
   "Fetch a single applicable index request by id."
   [id]
-  (indexes.db/applicable-table-index id))
+  (let [table-index (indexes.db/table-index id)]
+    (when-not (= :delete-pending (:status table-index))
+      table-index)))
 
 (defn pending-changes-for-transform?
   "True when `transform-id` has index changes that require a full rebuild to apply."
@@ -148,5 +150,4 @@
   [_model-name _opts]
   {:copy      [:index_name :structured]
    :skip      [:status :error_message :last_executed_at :created_by]
-   :transform {:transform_id (serdes/parent-ref)
-               :created_at   (serdes/date)}})
+   :transform {:transform_id (serdes/parent-ref)}})

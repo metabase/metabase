@@ -2,6 +2,7 @@
   "Application database queries for the transforms-python module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
+   [metabase-enterprise.transforms-python.schema :as transforms-python.schema]
    [metabase.app-db.core :as mdb]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
@@ -14,31 +15,16 @@
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select-fn-set :db_id [:model/Table :db_id] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
-(mu/defn table-database-id
-  "The Database ID of the raw table row with `table-id`."
-  [table-id :- ::lib.schema.id/table]
-  (t2/select-one-fn :db_id (t2/table-name :model/Table) :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
-
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database database-id))
-
-(mu/defn database-engine
-  "The engine of the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :engine :model/Database database-id))
-
 (mu/defn update-run-message!
   "Set the message of the TransformRun with `run-id`."
   [run-id  :- ms/PositiveInt
    message :- [:maybe :string]]
   (t2/update! :model/TransformRun :id run-id {:message message}))
 
-(mu/defn python-library
-  "The PythonLibrary with `library-id`, or nil."
+(mu/defn python-library :- [:maybe ::transforms-python.schema/python-library]
+  "The ::transforms-python.schema/python-library with `library-id`, or nil."
   [library-id :- ms/PositiveInt]
-  (t2/select-one :model/PythonLibrary library-id))
+  (t2/select-one :model/PythonLibrary :id [:auto/param library-id]))
 
 (mu/defn python-library-by-path
   "The PythonLibrary at `path`, or nil."
@@ -46,12 +32,18 @@
   (t2/select-one :model/PythonLibrary :path path))
 
 (mu/defn upsert-python-library-source!
-  "Insert or update the PythonLibrary at `path`, setting its source to `source`. Returns the ID of the row."
-  [path   :- :string
-   source :- :string]
+  "Insert or update the PythonLibrary at `path`, setting its source to `source` and, on insert only, the columns in
+  `insert-values`. Returns the ID of the row."
+  [path          :- :string
+   source        :- :string
+   insert-values :- [:map {:closed true}
+                     [:entity_id  {:optional true} :string]
+                     [:is_default {:optional true} :boolean]]]
   (mdb/update-or-insert! :model/PythonLibrary
                          {:path path}
-                         (constantly {:path path :source source})))
+                         (fn [existing]
+                           (cond-> {:path path :source source}
+                             (nil? existing) (merge insert-values)))))
 
 (mu/defn library-sources-by-path
   "A map of path to source for every PythonLibrary."

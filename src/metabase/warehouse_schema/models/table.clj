@@ -19,6 +19,7 @@
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as humanization]
    [metabase.warehouse-schema.schema]
+   [metabase.warehouses.db :as warehouses.db]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -94,6 +95,7 @@
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set)
   (derive :hook/timestamped?)
+  (derive :hook/dependencies)
   ;; Deliberately **not** deriving from `:hook/entity-id` because we should not be randomizing the `entity_id`s on
   ;; databases, tables or fields. Since the sync process can create them in multiple instances, randomizing them would
   ;; cause duplication rather than good matching if the two instances are later linked by serdes.
@@ -114,9 +116,10 @@
             (let [kw (keyword value)]
               (when-not (contains? writable-data-authority-types kw)
                 (throw (ex-info (str "Illegal value for data_authority: " kw)
-                                {:field       :data_authority
-                                 :value       value
-                                 :status-code 400})))
+                                {:field         :data_authority
+                                 :value         value
+                                 :status-code   400
+                                 :response/keys #{:field}})))
               (name kw))))})
 
 (def legacy-data-layer->current
@@ -230,7 +233,7 @@
   ;; reasserts matching DB-level defaults for non-model insert paths.
   (let [defaults {:display_name   (humanization/name->human-readable-name (:name table))
                   :field_order    (or (:field_order table)
-                                      (driver/default-field-order (warehouse-schema.db/database-engine (:db_id table))))
+                                      (driver/default-field-order (:engine (warehouses.db/database (:db_id table)))))
                   :data_layer     :internal
                   :data_authority :unconfigured}]
     (collection/check-allowed-content :table (:collection_id table))
@@ -240,7 +243,8 @@
   [table]
   ;; We need to use toucan to delete the fields instead of cascading deletes because MySQL doesn't support columns with cascade delete
   ;; foreign key constraints in generated columns. #44866
-  (warehouse-schema.db/delete-fields-for-table! (:id table)))
+  (warehouse-schema.db/delete-fields-for-table! (:id table))
+  (warehouse-schema.db/delete-implicit-actions-for-table! (:id table)))
 
 (t2/define-before-update :model/Table
   [table]
@@ -254,13 +258,12 @@
       (cond
         ;; active: true -> false (table being deactivated)
         (and (true? current-active) (false? new-active))
-        (assoc changes :deactivated_at (mi/now))
+        (merge table changes {:deactivated_at (mi/now)})
 
         ;; active: false -> true (table being reactivated)
         (and (false? current-active) (true? new-active))
-        (assoc changes
-               :deactivated_at nil
-               :archived_at nil)
+        (merge table changes {:deactivated_at nil
+                              :archived_at    nil})
 
         :else (merge table changes)))))
 
@@ -565,7 +568,7 @@
 (defn database
   "Return the `Database` associated with this `Table`."
   [table]
-  (warehouse-schema.db/database (:db_id table)))
+  (warehouses.db/database (:db_id table)))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 (defmethod serdes/deserialization-dependencies "Table" [{:keys [collection_id transform_id]}]
@@ -589,7 +592,7 @@
     (merge fields settings field-settings dimensions segments measures)))
 
 (defmethod serdes/generate-path "Table" [_ table]
-  (let [db-name (warehouse-schema.db/database-name (:db_id table))]
+  (let [db-name (:name (warehouses.db/database (:db_id table)))]
     (filterv some? [{:model "Database" :id db-name}
                     (when (:schema table)
                       {:model "Schema" :id (:schema table)})
@@ -613,16 +616,19 @@
 
 (defmethod serdes/make-spec "Table" [_model-name _opts]
   {:copy      [:name :description :entity_type :active :display_name :visibility_type :schema
-               :points_of_interest :caveats :show_in_getting_started :field_order :initial_sync_status :is_upload
+               :points_of_interest :caveats :show_in_getting_started :field_order :is_upload
                :database_require_filter :is_defective_duplicate :unique_table_helper :is_writable :data_authority
-               :data_source :owner_email :owner_user_id :is_published]
-   :skip      [:estimated_row_count :view_count :transform_target]
-   :transform {:created_at     (serdes/date)
-               :archived_at    (serdes/date)
+               :data_source :owner_email :is_published]
+   :skip      [:estimated_row_count :initial_sync_status :view_count :transform_target]
+   :transform {:archived_at    (serdes/date)
                :deactivated_at (serdes/date)
                :data_layer     (serdes/optional-kw)
                :db_id          (serdes/fk :model/Database)
                :collection_id  (serdes/fk :model/Collection)
+               ;; older exports copied the local user id; re-importing those files on the same instance, e.g. a
+               ;; remote sync pull before the first new export, keeps the right owner, where nil would drop it
+               :owner_user_id  (update (serdes/fk :model/User) :import
+                                       (fn [import-user] #(if (int? %) % (import-user %))))
                :transform_id   (serdes/fk :model/Transform)}
    :defaults {:is_defective_duplicate  false
               :is_published            false

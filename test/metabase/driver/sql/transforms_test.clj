@@ -188,8 +188,8 @@
   ;; H2-only: the inline `VALUES` source keeps the transform self-contained (no source table needed).
   (testing "run-transform! returns a single {:rows-affected <int>} map, never a nested/double-wrapped one"
     (mt/test-drivers #{:h2}
-      (let [base {:conn-spec     (driver/connection-spec :h2 (mt/db))
-                  :database      (mt/db)
+      (let [base {:conn-spec     (driver/connection-spec :h2 (lib.metadata/database (mt/metadata-provider)))
+                  :database      (lib.metadata/database (mt/metadata-provider))
                   :output-schema "PUBLIC"
                   :query         {:query "SELECT * FROM (VALUES (1),(2),(3)) AS t(a)"}}]
         (transforms.tu/with-transform-cleanup! [full-target {:type :table :schema "PUBLIC" :name "rows_affected_full"}
@@ -263,9 +263,9 @@
                                                         :database (mt/id)}]
           (let [expected (venues-row-count)
                 details  {:db-id          (mt/id)
-                          :database       (mt/db)
+                          :database       (lib.metadata/database (mt/metadata-provider))
                           :transform-type :table
-                          :conn-spec      (driver/connection-spec driver/*driver* (mt/db))
+                          :conn-spec      (driver/connection-spec driver/*driver* (lib.metadata/database (mt/metadata-provider)))
                           :query          (transforms-base.u/compile-source
                                            {:source {:type "query" :query (venues-source-query)} :target target} nil)
                           :output-schema  (:schema target)
@@ -290,9 +290,9 @@
           (let [transform {:source {:type "query" :query (venues-source-query)}
                            :target target}
                 details   {:db-id          (mt/id)
-                           :database       (mt/db)
+                           :database       (lib.metadata/database (mt/metadata-provider))
                            :transform-type :table
-                           :conn-spec      (driver/connection-spec driver/*driver* (mt/db))
+                           :conn-spec      (driver/connection-spec driver/*driver* (lib.metadata/database (mt/metadata-provider)))
                            :query          (transforms-base.u/compile-source transform nil)
                            :output-schema  (:schema target)
                            :output-table   (transforms-base.u/qualified-table-name driver/*driver* target)}
@@ -312,9 +312,9 @@
           (let [transform {:source {:type "query" :query (venues-source-query)}
                            :target target}
                 details   {:db-id          (mt/id)
-                           :database       (mt/db)
+                           :database       (lib.metadata/database (mt/metadata-provider))
                            :transform-type :table-incremental
-                           :conn-spec      (driver/connection-spec driver/*driver* (mt/db))
+                           :conn-spec      (driver/connection-spec driver/*driver* (lib.metadata/database (mt/metadata-provider)))
                            :query          (transforms-base.u/compile-source transform nil)
                            :output-schema  (:schema target)
                            :output-table   (transforms-base.u/qualified-table-name driver/*driver* target)}]
@@ -329,7 +329,7 @@
   (mt/test-driver :h2
     (mt/with-premium-features #{:transforms-basic}
       (let [dashed-schema "dashed-schema-probe"
-            conn-spec     (driver/connection-spec driver/*driver* (mt/db))
+            conn-spec     (driver/connection-spec driver/*driver* (lib.metadata/database (mt/metadata-provider)))
             quoted-schema (sql.u/quote-name driver/*driver* :schema dashed-schema)
             execute!      #(driver/execute-raw-queries! driver/*driver* conn-spec [[%]])]
         (execute! (str "CREATE SCHEMA IF NOT EXISTS " quoted-schema))
@@ -339,7 +339,7 @@
                                                           :name     "dashed_table_probe"
                                                           :database (mt/id)}]
             (let [target-table (:name target)
-                  exists?      #(driver/table-exists? driver/*driver* (mt/db)
+                  exists?      #(driver/table-exists? driver/*driver* (lib.metadata/database (mt/metadata-provider))
                                                       {:schema dashed-schema, :name target-table})]
               (driver/create-table! driver/*driver* (mt/id) (keyword dashed-schema target-table)
                                     {"id" (driver/type->database-type driver/*driver* :type/Integer)} {})

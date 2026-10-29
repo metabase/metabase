@@ -9,7 +9,11 @@ import type {
   GetEntityPickerSyntheticLibraryItemFunction,
   LibrarySubCollectionType,
 } from "metabase/plugins/oss/library";
-import type { CollectionItem } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionItem,
+  CollectionType,
+} from "metabase-types/api";
 
 type LibrarySectionCollectionItem = CollectionItem &
   OmniPickerCollectionItem & {
@@ -135,3 +139,13 @@ export const isLibraryCollectionType = (
 ): type is LibrarySubCollectionType => {
   return isLibrarySubCollectionType(type) || type === "library";
 };
+
+/** The Library section collection of `type` that the collection tree holds */
+export function getAccessibleCollection(
+  rootCollection: Collection,
+  type: CollectionType,
+) {
+  return rootCollection.children?.find(
+    (collection) => collection.type === type,
+  );
+}

@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.scope :as scope]
+   [metabase.metabot.self.core :as self.core]
    [metabase.metabot.tools.entity-details :as entity-details-tools]
    [metabase.metabot.tools.field-stats :as field-stats-tools]
    [metabase.metabot.tools.resources :as resources-tools]
@@ -14,7 +15,8 @@
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.quoting :as quoting]))
 
 (set! *warn-on-reflection* true)
 
@@ -41,8 +43,13 @@
     (catch Exception e
       (if (= 404 (:status-code (ex-data e)))
         (log/debugf "Omitting unresolvable metadata entry: %s %s" id (ex-message e))
-        (log/error "Failed to fetch metadata" {:id id, :error (ex-message e)}))
-      {:error (or (ex-message e) (str "Failed to fetch metadata for ID " id))})))
+        (log/error e "Failed to fetch metadata" {:id id}))
+      ;; Only an agent error or an API refusal says anything about the ID. Any other message comes from inside
+      ;; Metabase and can carry app DB SQL, so the model reads a fixed sentence instead.
+      {:error (let [message (ex-message e)]
+                (if (and message (or (:agent-error? (ex-data e)) (self.core/api-refusal? e)))
+                  (quoting/quoted message)
+                  (str "Failed to fetch metadata for ID " id ".")))})))
 
 (defn get-metadata
   "Fetch metadata for tables, models, and metrics.

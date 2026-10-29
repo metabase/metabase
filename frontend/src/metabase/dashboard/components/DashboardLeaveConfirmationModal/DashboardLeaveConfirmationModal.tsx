@@ -3,9 +3,8 @@ import { t } from "ttag";
 import { useConfirmRouteLeaveModal } from "metabase/common/hooks/use-confirm-route-leave-modal";
 import { updateDashboardAndCards } from "metabase/dashboard/actions/save";
 import { getIsDirty, getIsEditing } from "metabase/dashboard/selectors";
-import { useDispatch, useSelector } from "metabase/redux";
+import { useDispatch, useSelector, useStore } from "metabase/redux";
 import { dismissAllUndo } from "metabase/redux/undo";
-import { useLocation } from "metabase/router";
 import { Box, Button, Flex, Modal, Text } from "metabase/ui";
 
 import { isNavigatingToCreateADashboardQuestion } from "./utils";
@@ -13,12 +12,15 @@ import { isNavigatingToCreateADashboardQuestion } from "./utils";
 export const DashboardLeaveConfirmationModal = () => {
   const isEditing = useSelector(getIsEditing);
   const isDirty = useSelector(getIsDirty);
-  const location = useLocation();
 
   const dispatch = useDispatch();
+  const store = useStore();
 
   const { opened, close, confirm, nextLocation } = useConfirmRouteLeaveModal({
     isEnabled: isEditing && isDirty,
+    // Save and Cancel navigate right after leaving edit mode, before this
+    // re-renders, so the store is the only up-to-date source
+    isLocationAllowed: () => !getIsEditing(store.getState()),
   });
 
   const content = isNavigatingToCreateADashboardQuestion(nextLocation)
@@ -28,7 +30,8 @@ export const DashboardLeaveConfirmationModal = () => {
         actionBtn: {
           message: t`Save changes`,
         },
-        onConfirm: () => dispatch(updateDashboardAndCards(location)),
+        // No location: leaving edit mode must not navigate over the pending one
+        onConfirm: () => dispatch(updateDashboardAndCards()),
       }
     : {
         title: t`Discard your changes?`,

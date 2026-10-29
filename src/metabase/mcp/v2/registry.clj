@@ -224,8 +224,9 @@
 
 (def ^:private default-annotations
   "`readOnlyHint`, `destructiveHint`, and `openWorldHint` are always present — some MCP clients
-   (e.g. the ChatGPT Apps SDK) reject tools that omit them. `openWorldHint` is false because
-   Metabase tools stay within the user's own instance."
+   (e.g. the ChatGPT Apps SDK) reject tools that omit them.
+   `openWorldHint` defaults to false because most tools stay inside the user's own Metabase.
+   A tool that sends outside it sets it to true."
   {:readOnlyHint    false
    :destructiveHint false
    :openWorldHint   false})
@@ -328,19 +329,14 @@
    and a message that names only the tool leaves the caller with nothing to act on, against the server's own
    `initialize` instructions promising that a failed call always names its fix.
 
-   `required` is a scope string or a set of alternatives ([[metabase.mcp.scope/matches?]] accepts either);
-   `token-scopes` may carry the `::api.scope/unrestricted` keyword alongside its strings, which is not a
-   scope a caller can request, so only strings are listed back."
+   `required` is a scope string."
   [action required token-scopes]
-  (let [held  (sort (filter string? token-scopes))
-        needs (if (set? required)
-                (message/msg ["one of %s"] (common/list-message (sort required)))
-                required)]
+  (let [held (sort (filter string? token-scopes))]
     (if (seq held)
       (message/msg ["Insufficient scope to %s. Requires %s; your token holds %s."]
-                   action needs (common/list-message held))
+                   action required (common/list-message held))
       (message/msg ["Insufficient scope to %s. Requires %s; your token holds no scopes."]
-                   action needs))))
+                   action required))))
 
 (defn insufficient-scope-detail
   "The `:insufficient-scope` detail of an error refusing `subject`, a tool name or resource URI, for want of

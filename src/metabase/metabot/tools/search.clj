@@ -13,6 +13,7 @@
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.search.core :as search]
@@ -169,53 +170,52 @@
                                     (assoc r :portable_entity_id eid)
                                     r))))))
 
-(defn- enrich-with-metric-base-tables
-  "Attach base-table info (`:base_table_id`, `:base_table_name`, `:base_table_schema`,
-  `:base_table_portable_fk`) to metric search results.
+(defn- enrich-with-metric-sources
+  "Add the source required to use each metric in the search results.
 
-  A metric is a Card whose `:dataset_query` aggregates a specific table; the LLM needs that
-  table's portable FK as the `source-table:` when it wants to use the metric. Without this
-  enrichment the LLM sees the metric's `portable_entity_id` in search but has to either
-  hallucinate the base table (observed failure mode: `[<db>, public, customers]`) or do an
-  extra `read_resource` round-trip. We read the two columns directly from
-  `report_card.table_id` + `metabase_table.{schema,name}` to keep the lookup O(1) extra
-  query per search call, regardless of number of metrics in the result set. Base-table
-  metadata is attached only when the current user can read that Table; collection access
-  to the metric Card does not imply access to its physical source.
+  Return base-table fields, source-card fields, or `:source_unavailable`, as selected by
+  [[metabase.metabot.tools.util/metric-required-source]]. Check table query access or card read access separately
+  from access to the metric itself.
 
-  Requires `:database_name` to already be set on each metric result (done earlier by
-  [[enrich-with-database-engines]]) so we can assemble the full portable FK
-  `[database_name, schema, table]`."
+  Requires `:database_name` on each result (see [[enrich-with-database-engines]]) to build portable FKs.
+  Query count is fixed per search call, except that a multi-stage metric defined on a card also reads the cards it is
+  built on."
   [results]
   (let [metric-ids (->> results (filter #(= "metric" (:type %))) (keep :id) distinct)
-        card-id->table-id (when (seq metric-ids)
-                            (metabot.db/card-table-ids metric-ids))
-        table-ids (->> card-id->table-id vals (remove nil?) distinct)
-        table-id->info (when (seq table-ids)
-                         (into {}
-                               (comp (filter mi/can-read?)
-                                     (map (juxt :id (juxt :schema :name))))
-                               (metabot.db/table-schema-rows table-ids)))
-        metric-id->table-info
+        card-id->source (when (seq metric-ids)
+                          (metabot.db/card-source-info metric-ids))
+        metric-id->required (into {}
+                                  (keep (fn [[metric-id row]]
+                                          (when-let [r (metabot.tools.u/metric-required-source row)]
+                                            [metric-id r])))
+                                  card-id->source)
+        metric-id->source-card-id
         (into {}
-              (keep (fn [[metric-id table-id]]
-                      (when-let [[schema table-name] (get table-id->info table-id)]
-                        [metric-id {:table-id   table-id
-                                    :schema     schema
-                                    :table-name table-name}])))
-              card-id->table-id)]
+              (keep (fn [[metric-id r]]
+                      (when (= :card (:kind r)) [metric-id (:card-id r)])))
+              metric-id->required)
+        source-card-id->row
+        (metabot.tools.u/readable-source-cards (distinct (vals metric-id->source-card-id)))
+        metric-id->table-id (into {}
+                                  (keep (fn [[metric-id r]]
+                                          (when (and (= :table (:kind r)) (:table-id r))
+                                            [metric-id (:table-id r)])))
+                                  metric-id->required)
+        table-ids (->> metric-id->table-id vals distinct)
+        ;; Use the same query permission check as `metric-details` so both tools offer the same sources.
+        table-id->row (when (seq table-ids)
+                        (into {}
+                              (comp (filter mi/can-query?)
+                                    (map (juxt :id #(select-keys % [:id :schema :name]))))
+                              (metabot.db/table-schema-rows table-ids)))]
     (cond->> results
-      (seq card-id->table-id)
+      (seq metric-ids)
       (mapv (fn [{:keys [id type database_name] :as result}]
-              (if-let [{:keys [table-id schema table-name]}
-                       (when (= "metric" type)
-                         (get metric-id->table-info id))]
-                (cond-> (assoc result
-                               :base_table_id table-id
-                               :base_table_name table-name
-                               :base_table_schema schema)
-                  database_name
-                  (assoc :base_table_portable_fk [database_name schema table-name]))
+              (if (= "metric" type)
+                (merge result (metabot.tools.u/metric-source-fields
+                               {:source-card   (get source-card-id->row (get metric-id->source-card-id id))
+                                :source-table  (get table-id->row (get metric-id->table-id id))
+                                :database-name database_name}))
                 result))))))
 
 (defn- enrich-with-measure-segment-base-tables
@@ -361,7 +361,7 @@
         use-verified?   (if metabot-id
                           (:use_verified_content metabot)
                           false)
-        embedded-metabot?  (= metabot-id metabot.config/embedded-metabot-id)
+        embedded-metabot?  (metabot.config/embedded-metabot-id? metabot-id)
         ;; A confined metabot (embedded, or the nlq profile) may only search inside its own
         ;; collection. That is a containment boundary, not a default, so a caller-supplied
         ;; collection-id — which the v2 search tool fills from a request filter — can never
@@ -372,21 +372,25 @@
         ;; never returns them, even though the search tools list them as entity types.
         collection-id   (or confined-id collection-id)
         limit           (or limit 50)
+        ;; the user's data lens, computed once for every context built below
+        lens            {:is-impersonated-user? (perms/impersonated-user?)
+                         :is-sandboxed-user?    (perms/sandboxed-user?)
+                         :is-routed-user?       (perms/routed-user?)}
         ranked-fn       (fn [search-string search-engine]
                           (let [search-context (search/search-context
-                                                (cond-> {:search-string                       search-string
-                                                         :models                              search-models
-                                                         :table-db-id                         database-id
-                                                         :created-at                          created-at
-                                                         :last-edited-at                      last-edited-at
-                                                         :current-user-id                     api/*current-user-id*
-                                                         :is-impersonated-user?               (perms/impersonated-user?)
-                                                         :is-sandboxed-user?                  (perms/sandboxed-user?)
-                                                         :is-superuser?                       api/*is-superuser?*
-                                                         :current-user-perms                  @api/*current-user-permissions-set*
-                                                         :filter-items-in-personal-collection "exclude-others"
-                                                         :context                             :metabot
-                                                         :archived                            (boolean archived)}
+                                                (cond-> (merge
+                                                         lens
+                                                         {:search-string                       search-string
+                                                          :models                              search-models
+                                                          :table-db-id                         database-id
+                                                          :created-at                          created-at
+                                                          :last-edited-at                      last-edited-at
+                                                          :current-user-id                     api/*current-user-id*
+                                                          :is-superuser?                       api/*is-superuser?*
+                                                          :current-user-perms                  @api/*current-user-permissions-set*
+                                                          :filter-items-in-personal-collection "exclude-others"
+                                                          :context                             :metabot
+                                                          :archived                            (boolean archived)})
                                                   ;; Don't include search-native-query key if nil so that we don't
                                                   ;; inadvertently filter out search models that don't support it
                                                   search-native-query
@@ -440,13 +444,14 @@
         ;; [offset, offset+limit) and reports `:total` as the size of the full fused set — so the
         ;; total is knowable even under multi-query fusion, and only the returned page is hydrated.
         {:keys [data total]} (search/search-results
-                              (search/search-context {:search-string      nil
-                                                      :models             search-models
-                                                      :current-user-id    api/*current-user-id*
-                                                      :current-user-perms @api/*current-user-permissions-set*
-                                                      :is-superuser?      api/*is-superuser?*
-                                                      :offset             (or offset 0)
-                                                      :limit              limit})
+                              (search/search-context (merge lens
+                                                            {:search-string      nil
+                                                             :models             search-models
+                                                             :current-user-id    api/*current-user-id*
+                                                             :current-user-perms @api/*current-user-permissions-set*
+                                                             :is-superuser?      api/*is-superuser?*
+                                                             :offset             (or offset 0)
+                                                             :limit              limit}))
                               search/model-set
                               (vec fused-ranked))]
     ;; validate-and-enrich-documents drops stale/unreadable document hits and attaches live write
@@ -457,7 +462,7 @@
              enrich-with-collection-descriptions
              enrich-with-database-engines
              enrich-with-portable-entity-ids
-             enrich-with-metric-base-tables
+             enrich-with-metric-sources
              enrich-with-measure-segment-base-tables
              (validate-and-enrich-documents (boolean archived)))
         (vary-meta assoc :total total))))
@@ -563,7 +568,7 @@
          enrich-with-collection-descriptions
          enrich-with-database-engines
          enrich-with-portable-entity-ids
-         enrich-with-metric-base-tables
+         enrich-with-metric-sources
          enrich-with-measure-segment-base-tables
          remove-unreadable-transforms)))
 

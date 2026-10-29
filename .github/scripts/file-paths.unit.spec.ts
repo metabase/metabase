@@ -227,7 +227,7 @@ describe("file-paths.yaml", () => {
     ".github/workflows/e2e-test.yml",
     ".github/workflows/run-tests.yml",
     ".github/actions/prepare-cypress/action.yml",
-    ".github/scripts/build-e2e-matrix.js",
+    ".github/scripts/build-e2e-matrix.ts",
     ".github/file-paths.yaml",
     "frontend/build/shared/esbuild/side-effect-free-modules-plugin.js",
     "rspack.main.config.js",

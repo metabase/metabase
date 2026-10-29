@@ -1,6 +1,8 @@
 import type {
   CardId,
   CollectionId,
+  DashboardId,
+  DashboardSubscription,
   DatabaseId,
   ErdParams,
   FieldId,
@@ -115,6 +117,38 @@ export function dataStudioSnippets(params: ExpandedIdsParams = {}) {
 
 export function dataStudioActions(params: ExpandedIdsParams = {}) {
   return `${ROOT_URL}/actions${getExpandedIdsQueryString(params)}`;
+}
+
+export function dataStudioDashboards(params: ExpandedIdsParams = {}) {
+  return `${ROOT_URL}/dashboards${getExpandedIdsQueryString(params)}`;
+}
+
+export function dataStudioDashboard(dashboardId: DashboardId) {
+  return `${dataStudioDashboards()}/${dashboardId}`;
+}
+
+export function dataStudioDashboardContents(dashboardId: DashboardId) {
+  return `${dataStudioDashboard(dashboardId)}/contents`;
+}
+
+export function dataStudioDashboardDependencies(dashboardId: DashboardId) {
+  return `${dataStudioDashboard(dashboardId)}/dependencies`;
+}
+
+export function dataStudioDashboardUsage(dashboardId: DashboardId) {
+  return `${dataStudioDashboard(dashboardId)}/usage`;
+}
+
+export function dataStudioDashboardHistory(dashboardId: DashboardId) {
+  return `${dataStudioDashboard(dashboardId)}/history`;
+}
+
+export function dataStudioDashboardSubscriptions(
+  dashboardId: DashboardId,
+  subscriptionId?: DashboardSubscription["id"],
+) {
+  const baseUrl = `${dataStudioDashboard(dashboardId)}/subscriptions`;
+  return subscriptionId != null ? `${baseUrl}/${subscriptionId}` : baseUrl;
 }
 
 export function dataStudioTable(tableId: TableId) {
@@ -375,6 +409,10 @@ export function dataStudioActionFields(
     : fieldsUrl;
 }
 
+export function dataStudioActionDependencies(actionId: WritebackActionId) {
+  return `${dataStudioAction(actionId)}/dependencies`;
+}
+
 export function dataStudioActionRun(actionId: WritebackActionId) {
   return `${dataStudioAction(actionId)}/run`;
 }
@@ -385,6 +423,10 @@ export function dataStudioActionSettings(actionId: WritebackActionId) {
 
 export function newDataStudioAction() {
   return `${dataStudioActions()}/new`;
+}
+
+export function newDataStudioImplicitAction(tableId: TableId) {
+  return `${newDataStudioAction()}?table=${tableId}`;
 }
 
 export function dataStudioArchivedActions() {

@@ -126,7 +126,7 @@ describe("scenarios > data studio > snippets", () => {
 
       cy.log("Unarchive the snippet");
       H.DataStudio.Library.libraryPage()
-        .findByRole("button", { name: "Snippet collection options" })
+        .findByRole("button", { name: "Snippet options" })
         .click();
 
       H.popover()

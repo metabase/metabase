@@ -19,6 +19,7 @@
   (:require
    [clojure.data :as data]
    [metabase.analyze.core :as analyze]
+   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.models.interface :as mi]
@@ -30,7 +31,8 @@
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         CLASSIFYING INDIVIDUAL FIELDS                                          |
@@ -83,7 +85,7 @@
               (or (:fingerprint field)
                   (when (qp.store/initialized?)
                     (:fingerprint (lib.metadata/field (qp.store/metadata-provider) (u/the-id field))))
-                  (sync.db/field-fingerprint (u/the-id field)))))
+                  (:fingerprint (warehouse-schema.db/field (u/the-id field))))))
 
   ([field       :- i/FieldInstance
     {:keys [exists-name]} :- ClassifyOpts
@@ -118,16 +120,17 @@
       (when-let [fields (fields-to-classify table)]
         (let [existing-name-field (sync.db/name-field-count-for-table table-id)
               {:keys [fields-failed]}
-              (reduce (fn [state field]
-                        (let [result (classify! field state)]
-                          (cond-> state
-                            (instance? Exception result)
-                            (update :fields-failed inc)
+              (dependencies.hooks/with-batched-marks
+                (reduce (fn [state field]
+                          (let [result (classify! field state)]
+                            (cond-> state
+                              (instance? Exception result)
+                              (update :fields-failed inc)
 
-                            (= :type/Name (:semantic_type result))
-                            (assoc :exists-name true))))
-                      {:fields-failed 0 :exists-name (pos? existing-name-field)}
-                      fields)]
+                              (= :type/Name (:semantic_type result))
+                              (assoc :exists-name true))))
+                        {:fields-failed 0 :exists-name (pos? existing-name-field)}
+                        fields))]
           {:fields-classified (count fields)
            :fields-failed fields-failed})))))
 

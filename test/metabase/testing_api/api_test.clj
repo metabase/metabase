@@ -9,11 +9,13 @@
    [metabase.llm.settings :as llm.settings]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
+   [metabase.search.ingestion :as search.ingestion]
    [metabase.session.api :as session.api]
    [metabase.test :as mt]
    [metabase.testing-api.api :as testing]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]))
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.queue :as queue]))
 
 (set! *warn-on-reflection* true)
 
@@ -32,9 +34,42 @@
 
 (deftest restore-test
   (when (= (mdb/db-type) :h2)
-    (testing "Should throw Exception if file does not exist"
-      (is (= "Not found."
-             (mt/user-http-request :rasta :post 404 (format "testing/restore/%s" (mt/random-name))))))))
+    (let [path (format "testing/restore/%s" (mt/random-name))]
+      (testing "Should throw Exception if file does not exist"
+        (is (= "Not found."
+               (mt/user-http-request :rasta :post 404 path))))
+      (testing "An indexing timeout prevents reaching the missing snapshot"
+        (mt/with-dynamic-fn-redefs [search.ingestion/await-pending-updates! (constantly false)]
+          (is (=? {:message "Timed out waiting for search indexing before restoring a snapshot."}
+                  (mt/user-http-request :rasta :post 500 path))))))))
+
+(deftest restore-waits-for-in-flight-indexing-test
+  (mt/initialize-if-needed! :db :test-users :web-server)
+  (let [test-queue    (queue/delay-queue)
+        pending       (atom 2)
+        queue-cleared (promise)
+        restored      (promise)]
+    (queue/put-with-delay! test-queue 60000 ["card" [:= :this.id 1]])
+    (add-watch pending ::queue-cleared
+               (fn [_key _ref _old new]
+                 (when (= new 1)
+                   (deliver queue-cleared true))))
+    (with-redefs [search.ingestion/queue           test-queue
+                  search.ingestion/pending-updates pending]
+      (mt/with-dynamic-fn-redefs [testing/restore-snapshot!     (fn [_name] (deliver restored @pending))
+                                  search/sync-from-restored-db! (constantly nil)]
+        (let [request (future (mt/user-http-request :rasta :post 204 "testing/restore/in-flight-indexing"))]
+          (try
+            (is (true? (deref queue-cleared 2000 ::timeout)))
+            (is (empty? test-queue))
+            (is (= ::waiting (deref restored 100 ::waiting))
+                "Restoration cannot start while the remaining batch is still being indexed")
+            (reset! pending 0)
+            (is (nil? (deref request 2000 ::timeout)))
+            (is (= 0 (deref restored 2000 ::timeout)))
+            (finally
+              (reset! pending 0)
+              (future-cancel request))))))))
 
 (deftest e2e-test
   (when (= (mdb/db-type) :h2)

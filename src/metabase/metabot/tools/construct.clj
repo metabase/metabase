@@ -1,16 +1,20 @@
 (ns metabase.metabot.tools.construct
   "Notebook query construction tool wrappers."
   (:require
+   [clojure.string :as str]
    [malli.error :as me]
+   [malli.util :as mut]
    [metabase.agent-lib.representations :as repr]
    [metabase.agent-lib.representations.repair :as repr.repair]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.util :as lib.util]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.db :as metabot.db]
@@ -18,17 +22,23 @@
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.recovery-hints :as recovery-hints]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.util :as tools.u]
+   [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
+   [metabase.queries.db :as queries.db]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match])
+  (:import
+   (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -121,8 +131,19 @@
    [:reasoning {:optional true} :string]
    [:query LLMQueryArgument]
    [:visualization {:optional true} construct-visualization-schema]
+   [:show_chart {:optional true
+                 :description (str "Pass false for a query you build only to read its values with run_query: "
+                                   "the user is then shown no chart. Defaults to true.")}
+    [:maybe :boolean]]
    [:title :string]
    [:description :string]])
+
+(defn without-show-chart
+  "Returns the construct_notebook_query tool definition `tool` with `show_chart` left out of its `:schema`, so the
+   model is not told about the argument."
+  [tool]
+  (update tool :schema (fn [[arrow [cat args-schema] output]]
+                         [arrow [cat (mut/dissoc args-schema :show_chart)] output])))
 
 ;;; ---------------------------------------- Source resolution ----------------------------------------
 
@@ -595,7 +616,7 @@
 
       numeric-card
       (let [card-id  numeric-card
-            card     (metabot.db/card card-id)
+            card     (queries.db/card card-id)
             ;; Read-check here rather than let the 403 escape: an unreadable card and an absent
             ;; one must be reported identically, or the status code tells a caller whether a
             ;; hidden card exists. Same collapse the read-checked content store applies to every
@@ -636,6 +657,25 @@
 
 ;;; ---------------------------------------- Query execution ----------------------------------------
 
+(defn- input-error-data?
+  "Whether ex-data `data` marks an error in the LLM's input: a 4xx status, or an agent error with no status."
+  [{:keys [status-code agent-error?]}]
+  (or (and status-code (<= 400 status-code 499))
+      (and (nil? status-code) agent-error?)))
+
+(defn- database-error?
+  "Whether `e` is a failure of a database or the app DB rather than of the LLM's input.
+  A JDBC exception or a toucan2 failure anywhere in its cause chain marks one.
+  Its message can carry app DB SQL and stored values, so it is never relayed to the LLM."
+  [e]
+  (let [{:keys [status-code] :as data} (ex-data e)
+        causes                         (u/full-exception-chain e)]
+    (boolean
+     (and (not (and status-code (<= 400 status-code 499)))
+          (or (some #(instance? SQLException %) causes)
+              (and (not (input-error-data? data))
+                   (some #(contains? (ex-data %) :toucan2/context-trace) causes)))))))
+
 (defn- as-agent-input-error
   "Wrap `e` as an agent-input error.
 
@@ -643,20 +683,151 @@
   HTTP callers additionally need a status code; default representation/repair failures to
   400 so individual repair passes don't all have to repeat `:status-code 400` in ex-data.
   Existing statuses are preserved (notably permission 403s, which callers should normally
-  avoid wrapping in the first place)."
+  avoid wrapping in the first place).
+
+  A [[database-error?]] gets `:internal-error? true`: Metabot logs it and the LLM reads a fixed sentence.
+  The Agent API and MCP still get it as a 400, as before.
+  Any other exception the pipeline did not raise as an agent error, such as one from lib about the query, gets
+  `:foreign-message? true`: Metabot did not write its message, so Metabot quotes it before the LLM reads it."
   [^clojure.lang.ExceptionInfo e]
-  (let [base   (assoc (or (ex-data e) {}) :agent-error? true)
-        data   (cond-> base
-                 (nil? (:status-code base)) (assoc :status-code 400))]
+  (let [foreign? (not (:agent-error? (ex-data e)))
+        base     (cond-> (assoc (or (ex-data e) {}) :agent-error? true)
+                   (database-error? e) (assoc :internal-error? true)
+                   foreign?            (assoc :foreign-message? true))
+        data     (cond-> base
+                   (nil? (:status-code base)) (assoc :status-code 400))]
     (ex-info (ex-message e) data e)))
 
+(defn- not-runnable-problem
+  "What is wrong at a Malli schema `error`, phrased for the LLM, or nil when there is nothing to add
+  to Malli's own message. Missing keys the LLM never writes itself are translated into their usual
+  cause instead of being named."
+  [error]
+  (let [missing (when (= :malli.core/missing-key (:type error)) (peek (:in error)))]
+    (cond
+      ;; normalization stamps `:lib/uuid` on every clause; one missing means normalizing a clause
+      ;; inside it failed, often because it references something that doesn't exist
+      (= :lib/uuid missing)
+      (tru "a reference inside it could not be resolved - often a field reference to a column, join alias, or expression that does not exist. Refer to a join''s or an earlier stage''s columns by their exact machine name (an aggregation is `min`, `count`, `sum`)")
+
+      (= :base-type missing)
+      (tru "a field reference by name is missing `base-type`, usually because the name matches no real column")
+
+      missing
+      (tru "missing `{0}`" (name missing))
+
+      ;; the message of `::lib.schema.expression/expression.definition`'s aggregation check
+      (= "non-aggregation expression" (me/error-message error))
+      (tru "{0}: aggregation and window functions such as `offset` cannot be custom columns - move them to `aggregation:` or `order-by:`" (me/error-message error)))))
+
 (defn- query-not-runnable-explanation
-  "When `pmbql-query` would make the FE's `canRun` gate return false, return a humanized Malli
-  explanation of why; nil when the query is runnable."
+  "When `pmbql-query` would make the FE's `canRun` gate return false, return an LLM-facing
+  description of where and why; nil when the query is runnable. Problems [[not-runnable-problem]]
+  explains are listed first, and the usual causes are added when it explains none."
   [pmbql-query]
   (binding [lib.schema.expression/*suppress-expression-type-check?* true]
     (when-let [explanation (mr/explain :metabase.lib.schema/query pmbql-query)]
-      (me/humanize explanation))))
+      (let [errors (sort-by (comp nil? not-runnable-problem) (:errors explanation))]
+        (cond-> (or (some->> errors
+                             (map #(str (pr-str (:in %)) ": " (or (not-runnable-problem %) (me/error-message %))))
+                             distinct
+                             (take 3)
+                             seq
+                             (str/join "; "))
+                    (tru "the query does not match the query builder''s schema"))
+          (not-any? not-runnable-problem errors)
+          (str ". " (tru "This usually means a field reference is missing its type or names a column that does not exist, or an aggregation or window function such as `offset` is in `expressions:` instead of `aggregation:` or `order-by:`")))))))
+
+(defn- incompatible-metrics
+  "Return the required sources of incompatible metrics in the first stage, sorted by metric ID.
+
+  Return nil when all referenced metrics are compatible. A metric with an unreadable definition has a nil
+  requirement and is reported on every source. Classification follows
+  [[metabase.metabot.tools.util/metric-required-source]].
+
+  Only source mismatches in the first stage's aggregations are checked. Metrics in later stages, joins, or other
+  clauses still reach the query processor, as do other errors such as archived metrics."
+  [mp query]
+  (let [referenced (into #{}
+                         (match/match-many (lib/aggregations query 0)
+                           [:metric _ (id :guard pos-int?)]
+                           id))]
+    (when (seq referenced)
+      (let [stage-card-id (lib.util/source-card-id query)
+            _             (lib.metadata/bulk-metadata mp :metadata/card (cond-> referenced
+                                                                          stage-card-id (conj stage-card-id)))
+            ;; Use `::unresolved` so a missing source card cannot match a metric whose table ID is nil.
+            stage-table-id (if stage-card-id
+                             (or (tools.u/card-source-table-id mp stage-card-id) ::unresolved)
+                             (lib.util/source-table-id query))]
+        (not-empty
+         (into (sorted-map)
+               (keep (fn [metric-id]
+                       (let [required    (tools.u/metric-required-source mp (lib.metadata/card mp metric-id))
+                             compatible? (and required
+                                              (tools.u/metric-compatible-with-stage?
+                                               required
+                                               {:stage-card-id  stage-card-id
+                                                :stage-table-id stage-table-id}))]
+                         (when-not compatible?
+                           [metric-id required]))))
+               referenced))))))
+
+(defn- incompatible-metric-explanation
+  "Describe each incompatible metric and the source it requires.
+
+  Return `{:message ... :usable-sources {metric-id {:source-table id} | {:source-card id}}}`.
+  `required-by-metric-id` comes from [[incompatible-metrics]]; `mp` supplies the database name for portable FKs.
+  Include names and sources only when the current user may access them. `:usable-sources` identifies those same
+  sources by numeric ID."
+  [mp required-by-metric-id]
+  (let [metric-ids   (keys required-by-metric-id)
+        required     (vals required-by-metric-id)
+        source-cards (into #{} (keep #(when (= :card (:kind %)) (:card-id %))) required)
+        source-table-ids (into #{} (keep #(when (= :table (:kind %)) (:table-id %))) required)
+        ;; The metadata provider is not permission-aware; names and entity IDs need separate read checks.
+        readable     (tools.u/readable-source-cards (into (set metric-ids) source-cards))
+        db-name      (:name (lib.metadata/database mp))
+        table-id->fk (when (seq source-table-ids)
+                       (into {}
+                             (comp (filter mi/can-query?)
+                                   (map (fn [{:keys [id schema name]}] [id [db-name schema name]])))
+                             (metabot.db/table-schema-rows (vec source-table-ids))))
+        describe     (fn [metric-id]
+                       (let [r        (get required-by-metric-id metric-id)
+                             eid      (when (= :card (:kind r))
+                                        (:entity_id (get readable (:card-id r))))
+                             table-fk (when (= :table (:kind r))
+                                        (get table-id->fk (:table-id r)))]
+                         (str (pr-str (or (:name (get readable metric-id)) metric-id))
+                              (cond
+                                ;; An unreadable definition, or a multi-stage metric over a native source card.
+                                (or (nil? r)
+                                    (and (= :table (:kind r)) (nil? (:table-id r))))
+                                " (has no usable source)"
+
+                                table-fk
+                                (str " (needs source-table: " (json/encode table-fk) ")")
+
+                                eid
+                                (str " (needs source-card: " (pr-str eid) ")")
+
+                                :else
+                                " (defined on a source you do not have access to)"))))]
+    {:message        (str "These metrics cannot be used on this stage's source: "
+                          (str/join ", " (map describe metric-ids))
+                          ". "
+                          "Either change the stage's source-table:/source-card: to the one shown for each metric, "
+                          "or drop the metric and express the aggregation directly.")
+     :usable-sources (into {}
+                           (keep (fn [[metric-id r]]
+                                   (cond
+                                     (and (= :table (:kind r)) (contains? table-id->fk (:table-id r)))
+                                     [metric-id {:source-table (:table-id r)}]
+
+                                     (and (= :card (:kind r)) (contains? readable (:card-id r)))
+                                     [metric-id {:source-card (:card-id r)}])))
+                           required-by-metric-id)}))
 
 (defn- execute-representations-query*
   "Execute a notebook query in the canonical portable MBQL 5 representations format.
@@ -687,7 +858,8 @@
        diagnostics over every custom column / aggregation / filter
        ([[repr.repair/assert-editor-accepts-expressions!]]), then reject a temporal bucket
        sitting on a column that is not temporal
-       ([[repr.repair/assert-temporal-buckets-on-temporal-columns!]]). Any of the three
+       ([[repr.repair/assert-temporal-buckets-on-temporal-columns!]]), and reject a metric whose
+       definition can't run on the stage's source ([[incompatible-metrics]]). Any of these
        failing is a retryable `:agent-error?` - success on a query the editor rejects is
        BOT-1442.
     7. Export that final numeric MBQL 5 back to the portable form for the LLM-facing
@@ -738,8 +910,8 @@
             _validated    (repr/validate-query repaired)
             pmbql-query   (repr.resolve/resolve-query mp repaired permission-aware-content-store)
             _runnable     (when-let [why (query-not-runnable-explanation pmbql-query)]
-                            (throw (ex-info (tru "The constructed query is not runnable - it would fail the query builder''s validation, so it cannot be visualized or saved. This usually means a field reference is missing its type or names a column that does not exist, or an aggregation/window function (e.g. `offset`) was placed in `expressions:` (custom columns) where it is not allowed - move it to `aggregation:` or `order-by:`. Schema validation details: {0}"
-                                                 (pr-str why))
+                            (throw (ex-info (tru "The constructed query is not runnable - it would fail the query builder''s validation, so it cannot be visualized or saved. Problem in {0}."
+                                                 why)
                                             {:agent-error? true
                                              :error        :query-not-runnable
                                              :status-code  400})))
@@ -750,6 +922,15 @@
             ;; argument against the same schema.
             _editor-ok    (repr.repair/assert-editor-accepts-expressions! pmbql-query)
             _buckets-ok   (repr.repair/assert-temporal-buckets-on-temporal-columns! pmbql-query)
+            ;; Check sources after schema validation so an incompatible metric produces a retryable error before execution.
+            _metrics-ok   (when-let [bad (incompatible-metrics mp pmbql-query)]
+                            (let [{:keys [message usable-sources]} (incompatible-metric-explanation mp bad)]
+                              (throw (ex-info message
+                                              {:agent-error?   true
+                                               :error          :incompatible-metric
+                                               :metric-ids     (vec (keys bad))
+                                               :usable-sources usable-sources
+                                               :status-code    400}))))
             exported-repr (repr.resolve/export-query mp pmbql-query permission-aware-content-store)
             _validated'   (repr/validate-query exported-repr)
             query-id      (u/generate-nano-id)]
@@ -757,7 +938,7 @@
                              :query          pmbql-query
                              :query-json     exported-repr
                              :result-columns (result-columns-for-query pmbql-query mp)}
-         :instructions      (instructions/query-created-instructions-for query-id)})
+         :instructions      (instructions/query-created-instructions-for query-id false)})
       (catch clojure.lang.ExceptionInfo e
         ;; Permission failures are not LLM-input repair errors. Preserve the original 403 so
         ;; HTTP callers get the standard forbidden response instead of an agent-error payload.
@@ -839,6 +1020,12 @@
     :queries                [(structured->query-data structured)]
     :visualization_settings {:chart_type (if chart-type (name chart-type) "table")}}))
 
+(defn- tool-output
+  "The text the model sees: `result-xml` followed by `instruction-text`."
+  [result-xml instruction-text]
+  (str "<result>\n" result-xml "\n</result>\n"
+       "<instructions>\n" instruction-text "\n</instructions>"))
+
 ;;; ---------------------------------------- Main tool ----------------------------------------
 
 (mu/defn ^{:tool-name "construct_notebook_query"
@@ -851,7 +1038,7 @@
   one- or two-sentence `description` of what the chart shows (the metric, the grouping, and
   any notable filter); it is used as the saved question's description. See
   `resources/metabot/prompts/tools/construct_notebook_query.md` for the prompt contract."
-  [{:keys [_reasoning query visualization title description]} :- construct-notebook-query-args-schema]
+  [{:keys [_reasoning query visualization show_chart title description]} :- construct-notebook-query-args-schema]
   (try
     (let [normalized-visualization (some-> visualization (update-keys (comp keyword u/->kebab-case-en name)))
           chart-type              (or (chart-type->keyword (:chart-type normalized-visualization))
@@ -859,8 +1046,30 @@
           query-result            (execute-representations-query
                                    query
                                    {:recovery-hint recovery-hints/recovery-hint})
-          structured              (or (:structured-output query-result) (:structured_output query-result))]
-      (if (and structured (:query-id structured) (:query structured))
+          structured              (or (:structured-output query-result) (:structured_output query-result))
+          ;; A query built only to be read needs run_query, so without it the chart is the one way the user sees
+          ;; anything and is always shown.
+          show-chart?             (not (and (false? show_chart) (shared/tool-offered? "run_query")))]
+      (cond
+        (not (and structured (:query-id structured) (:query structured)))
+        ;; query-result may already have :output (error) or only :structured-output
+        (if structured
+          (let [query-xml        (llm-shape/query->xml (structured->query-data structured))
+                instruction-text (instructions/query-created-instructions-for (:query-id structured) false)]
+            (assoc query-result :output (tool-output query-xml instruction-text)))
+          query-result)
+
+        (not show-chart?)
+        (let [instruction-text (te/lines
+                                "Your query has been created. The user has not been shown it."
+                                ""
+                                (str "To read its values, call `run_query` with `query_id` `"
+                                     (:query-id structured) "`."))]
+          {:output            (tool-output (llm-shape/query->xml (structured->query-data structured)) instruction-text)
+           :structured-output (assoc structured :result-type :query)
+           :instructions      instruction-text})
+
+        :else
         (let [chart-result (create-chart-tools/create-chart
                             {:query-id      (:query-id structured)
                              :chart-type    chart-type
@@ -878,26 +1087,20 @@
                  ""
                  "Next steps to present the chart to the user:"
                  (str "- Always provide a direct link using: `" link "` where Chart is a meaningful link text")
-                 "- If creating multiple charts, present all chart links"))
+                 "- If creating multiple charts, present all chart links"
+                 (when (shared/tool-offered? "run_query")
+                   (str "- To state any of its values, call `run_query` with `query_id` `" (:query-id structured)
+                        "` first. Call it without telling the user you are doing so."))))
               chart-xml (structured->chart-xml structured (:chart-id chart-result) chart-type)]
-          {:output (str "<result>\n" chart-xml "\n</result>\n"
-                        "<instructions>\n" instruction-text "\n</instructions>")
+          {:output            (tool-output chart-xml instruction-text)
            :data-parts        [(streaming/viz-part
                                 {:entity-id   (:chart-id chart-result)
                                  :query-id    (:query-id structured)
-                                 :query       (links/->legacy-mbql (:query structured))
+                                 :query       (links/->frontend-query (:query structured))
                                  :display     chart-type
                                  :title       title
                                  :description description})]
            :structured-output full-structured
-           :instructions      instruction-text})
-        ;; query-result may already have :output (error) or only :structured-output
-        (if-let [s (or (:structured-output query-result) (:structured_output query-result))]
-          (let [query-xml        (llm-shape/query->xml (structured->query-data s))
-                instruction-text (instructions/query-created-instructions-for (:query-id s))]
-            (assoc query-result
-                   :output (str "<result>\n" query-xml "\n</result>\n"
-                                "<instructions>\n" instruction-text "\n</instructions>")))
-          query-result)))
+           :instructions      instruction-text})))
     (catch Exception e
       (tools.u/handle-agent-or-api-error e))))

@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.test :as met]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]))
 
 (deftest dataset-parameter-test
@@ -104,3 +105,30 @@
             (is (nil? (get-in response [:data :native_form])))
             (doseq [secret secrets]
               (is (not (str/includes? (pr-str response) secret))))))))))
+
+(deftest sandboxed-user-native-query-test
+  (testing "A user with an enforced sandbox on a database can't use native queries there, even when their group grants
+           native query access, because native queries bypass the sandbox"
+    (met/with-gtaps! {:gtaps {:venues {:query (mt/mbql-query venues {:filter [:= $category_id 50]})}}}
+      (perms/set-database-permission! &group (mt/id) :perms/create-queries :query-builder-and-native)
+      (testing "POST /api/dataset refuses ad-hoc native SQL"
+        (is (=? {:status "failed"
+                 :error  "You do not have permissions to run this query."}
+                (mt/user-http-request :rasta :post "dataset"
+                                      (mt/native-query {:query "SELECT COUNT(*) FROM VENUES"})))))
+      (testing "POST /api/dataset/native refuses to compile a query to SQL"
+        (is (=? {:required-permissions {(mt/id) {:perms/create-queries "query-builder-and-native"}}
+                 :message              "You do not have permissions to run this query."}
+                (mt/user-http-request :rasta :post "dataset/native" (mt/mbql-query venues)))))
+      (testing "MBQL queries are still sandboxed"
+        (is (= [[10]]
+               (mt/rows (mt/user-http-request :rasta :post 202 "dataset"
+                                              (mt/mbql-query venues {:aggregation [[:count]]}))))))
+      (testing "native queries are allowed when another group grants unrestricted access to the sandboxed table"
+        (mt/with-temp [:model/PermissionsGroup           {other-group-id :id} {}
+                       :model/PermissionsGroupMembership _ {:group_id other-group-id
+                                                            :user_id  (mt/user->id :rasta)}]
+          (perms/set-database-permission! other-group-id (mt/id) :perms/view-data :unrestricted)
+          (is (= [[100]]
+                 (mt/rows (mt/user-http-request :rasta :post 202 "dataset"
+                                                (mt/native-query {:query "SELECT COUNT(*) FROM VENUES"}))))))))))

@@ -23,7 +23,7 @@ Your agent will use `execute_query` for anything Metabase's query language can e
 
 - Tool name: `alert_write`
 - Permission scope: `agent:delivery:write` — Set up scheduled delivery of your data to email addresses and Slack channels it chooses
-- Creates or changes content.
+- Can overwrite or delete existing data or content.
 
 Arguments:
 
@@ -43,7 +43,7 @@ Arguments:
 
 - Tool name: `bookmark_content`
 - Permission scope: `agent:content:write` — Create, edit and trash Metabase content
-- Creates or changes content.
+- Can overwrite or delete existing data or content.
 - Running it again with the same arguments has the same effect as running it once.
 
 Arguments:
@@ -147,7 +147,7 @@ Arguments:
 
 - Tool name: `document_write`
 - Permission scope: `agent:content:write` — Create, edit and trash Metabase content
-- Creates or changes content.
+- Can overwrite or delete existing data or content.
 
 Arguments:
 
@@ -415,7 +415,7 @@ Arguments:
 
 - Tool name: `subscription_write`
 - Permission scope: `agent:delivery:write` — Set up scheduled delivery of your data to email addresses and Slack channels it chooses
-- Creates or changes content.
+- Can overwrite or delete existing data or content.
 
 Arguments:
 

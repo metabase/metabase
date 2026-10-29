@@ -14,7 +14,11 @@ import {
   useHasTokenFeature,
 } from "metabase/common/hooks";
 import { getUser, getUserIsAdmin } from "metabase/current-user";
-import { PLUGIN_LIBRARY, PLUGIN_TENANTS } from "metabase/plugins";
+import {
+  PLUGIN_DATA_APPS,
+  PLUGIN_LIBRARY,
+  PLUGIN_TENANTS,
+} from "metabase/plugins";
 import { type DispatchFn, useDispatch, useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
 import { mergeLazily } from "metabase/utils/merge-lazily";
@@ -31,8 +35,9 @@ import type {
   OmniPickerCollectionItem,
   OmniPickerItem,
 } from "../types";
+import { shouldShowDataApps } from "../utils";
 
-import { getRootCollectionItem } from "./utils";
+import { getDataAppsRootItem, getRootCollectionItem } from "./utils";
 
 const personalCollectionsRoot: OmniPickerCollectionItem = mergeLazily(
   PERSONAL_COLLECTIONS,
@@ -58,6 +63,10 @@ export const useRootItems = () => {
   const { data: databaseData, isLoading: isLoadingDatabases } =
     useListDatabasesQuery(undefined, { skip: !options.hasDatabases });
   const tenantsEnabled = useSetting("use-tenants");
+  const showsDataApps = shouldShowDataApps({ options, models });
+  const { data: dataApps, isLoading: isLoadingDataApps } =
+    PLUGIN_DATA_APPS.useDataApps({ skip: !showsDataApps });
+  const hasDataAppsFolder = showsDataApps && (dataApps?.length ?? 0) > 0;
 
   const currentUser = useSelector(getUser);
   const [isLoadingCollections, setIsLoadingCollections] = useState(false);
@@ -92,6 +101,7 @@ export const useRootItems = () => {
       isAdmin,
       options,
       databases,
+      hasDataAppsFolder,
       totalPersonalCollectionItems,
       libraryCollection,
       namespaces,
@@ -114,6 +124,7 @@ export const useRootItems = () => {
     isAdmin,
     options,
     databaseData?.data,
+    hasDataAppsFolder,
     totalPersonalCollectionItems,
     libraryCollection,
     namespaces,
@@ -128,6 +139,7 @@ export const useRootItems = () => {
 
   const isLoading =
     isLoadingDatabases ||
+    isLoadingDataApps ||
     isLoadingCollections ||
     isLoadingPersonalCollection ||
     isLoadingPersonalCollectionItems;
@@ -141,6 +153,7 @@ async function getRootItems({
   isAdmin,
   options,
   databases,
+  hasDataAppsFolder,
   totalPersonalCollectionItems,
   libraryCollection,
   namespaces,
@@ -156,6 +169,7 @@ async function getRootItems({
   isAdmin: boolean;
   options: EntityPickerOptions;
   databases: Database[];
+  hasDataAppsFolder: boolean;
   totalPersonalCollectionItems: number;
   libraryCollection?: OmniPickerItem;
   namespaces: CollectionNamespace[];
@@ -213,6 +227,17 @@ async function getRootItems({
     });
   }
 
+  if (namespaces.includes("transforms") && transformsEnabled) {
+    collectionItems.push({
+      ...(await getRootCollectionItem({
+        namespace: "transforms",
+        dispatch,
+      })),
+      here: ["collection"],
+      below: validCollectionModels,
+    });
+  }
+
   if (namespaces.includes("snippets")) {
     collectionItems.push({
       ...(await getRootCollectionItem({
@@ -228,17 +253,6 @@ async function getRootItems({
     collectionItems.push({
       ...(await getRootCollectionItem({
         namespace: "data-actions",
-        dispatch,
-      })),
-      here: ["collection"],
-      below: validCollectionModels,
-    });
-  }
-
-  if (namespaces.includes("transforms") && transformsEnabled) {
-    collectionItems.push({
-      ...(await getRootCollectionItem({
-        namespace: "transforms",
         dispatch,
       })),
       here: ["collection"],
@@ -326,5 +340,10 @@ async function getRootItems({
       });
     }
   }
+
+  if (hasDataAppsFolder) {
+    collectionItems.push(getDataAppsRootItem());
+  }
+
   return collectionItems;
 }

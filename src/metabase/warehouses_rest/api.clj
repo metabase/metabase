@@ -8,6 +8,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.config.core :as config]
+   [metabase.data-apps.core :as data-apps]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
@@ -44,6 +45,7 @@
    [metabase.warehouse-schema.table :as schema.table]
    [metabase.warehouses-rest.db :as warehouses-rest.db]
    [metabase.warehouses.core :as warehouses]
+   [metabase.warehouses.db :as warehouses.db]
    [metabase.warehouses.models.database :as database]
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
@@ -63,14 +65,13 @@
 ;;; ----------------------------------------------- GET /api/database ------------------------------------------------
 
 (defn- add-tables
-  "Hydrate tables for each database. Optional `can-query?` and `can-write-metadata?` filters
-   can be applied to filter tables by permission level."
-  [dbs & {:keys [can-query? can-write-metadata?]}]
+  "Hydrate tables for each database. An optional `can-query?` filter keeps only the tables the user can query."
+  [dbs & {:keys [can-query? exclude-unpublished-tables?]}]
   (let [all-tables (warehouses-rest.db/active-visible-tables-for-databases (map :id dbs))
         _ (perms/prime-table-perms-cache {:db-ids (into #{} (map :id) dbs)})
         filtered-tables (cond->> (filter mi/can-read? all-tables)
-                          can-query?          (filter mi/can-query?)
-                          can-write-metadata? (filter mi/can-write?))
+                          can-query?                  (filter mi/can-query?)
+                          exclude-unpublished-tables? (filter :is_published))
         db-id->tables (group-by :db_id filtered-tables)]
     (for [db dbs]
       (assoc db :tables (get db-id->tables (:id db) [])))))
@@ -81,11 +82,12 @@
    rules the single-DB `/api/database/:id/schemas` endpoint applies. One SQL
    query covers the whole list so this is cheaper than the N round-trips a
    client would otherwise make to populate a database-picker dropdown."
-  [dbs]
+  [dbs & {:keys [exclude-unpublished-tables?]}]
   (if (empty? dbs)
     dbs
     (let [db-ids        (map :id dbs)
-          rows          (warehouses-rest.db/active-visible-schemas-for-databases db-ids)
+          rows          (cond->> (warehouses-rest.db/active-visible-schemas-for-databases db-ids)
+                          exclude-unpublished-tables? (filter :is_published))
           schemas-by-db (reduce
                          (fn [m {:keys [db_id schema]}]
                            (update m db_id (fnil conj []) schema))
@@ -101,6 +103,14 @@
                                sort
                                vec)]
           (assoc db :schemas readable))))))
+
+(defn- keep-databases-with-published-tables
+  "`dbs` narrowed to those with an active, visible table published to the Library."
+  [dbs]
+  (let [db-ids (into #{}
+                     (comp (filter :is_published) (map :db_id))
+                     (warehouses-rest.db/active-visible-tables-for-databases (map :id dbs)))]
+    (filter (comp db-ids :id) dbs)))
 
 (mu/defn- add-native-perms-info :- [:maybe
                                     [:sequential
@@ -294,7 +304,7 @@
              include-only-uploadable?
              router-database-id
              can-query?
-             can-write-metadata?]}]
+             exclude-unpublished-tables?]}]
   (let [filter-on-router-database-id (when (some->> router-database-id
                                                     (perms/user-has-permission-for-database? api/*current-user-id* :perms/manage-database :yes))
                                        router-database-id)
@@ -307,14 +317,16 @@
         ;; everything below walks the list one database at a time
         _   (perms/prime-database-perms-cache {:db-ids (into #{} (map :id) dbs)})]
     (cond-> (-> dbs add-native-perms-info add-transforms-perms-info)
-      include-tables?              (add-tables :can-query? can-query? :can-write-metadata? can-write-metadata?)
-      include-schemas?             add-schemas
+      exclude-unpublished-tables?  keep-databases-with-published-tables
+      include-tables?              (add-tables :can-query? can-query? :exclude-unpublished-tables? exclude-unpublished-tables?)
+      include-schemas?             (add-schemas :exclude-unpublished-tables? exclude-unpublished-tables?)
       can-query?                   (#(filter mi/can-query? %))
       true                         add-can-upload-to-dbs
       true                         (t2/hydrate :router_user_attribute)
       include-editable-data-model? filter-databases-by-data-model-perms
       exclude-uneditable-details?  (#(filter (some-fn :is_attached_dwh mi/can-write?) %))
-      include-saved-questions-db?  (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?)
+      (and include-saved-questions-db?
+           (not exclude-unpublished-tables?)) (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?)
       ;; Perms checks for uploadable DBs are handled by exclude-uneditable-details? (see below)
       include-only-uploadable?     (#(filter uploadable-db? %)))))
 
@@ -351,9 +363,6 @@
 
   * `can-query` will only include DBs for which the current user has query permissions. Default: `false`.
 
-  * `can-write-metadata` will only include DBs for which the current user has data model editing permissions
-    for at least one table in the database. Default: `false`.
-
   Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in
   [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for
   `:model/Database` in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user
@@ -361,7 +370,7 @@
   {:scope api-scope/data-app}
   [_route-params
    {:keys [include saved include_editable_data_model exclude_uneditable_details include_only_uploadable include_analytics
-           include_stubs router_database_id can-query can-write-metadata]}
+           include_stubs router_database_id can-query]}
    :- [:map {:closed true}
        [:include                     {:optional true} (mu/with-api-error-message
                                                        [:maybe [:enum "tables" "schemas"]]
@@ -373,31 +382,26 @@
        [:exclude_uneditable_details  {:default false} [:maybe :boolean]]
        [:include_only_uploadable     {:default false} [:maybe :boolean]]
        [:router_database_id          {:optional true} [:maybe ms/PositiveInt]]
-       [:can-query                   {:optional true} [:maybe :boolean]]
-       [:can-write-metadata          {:optional true} [:maybe :boolean]]]]
+       [:can-query                   {:optional true} [:maybe :boolean]]]
+   _body
+   request]
   (let [include-tables?                 (= include "tables")
         include-schemas?                (= include "schemas")
         include-saved-questions-tables? (and saved include-tables?)
         only-editable?                  (or include_only_uploadable exclude_uneditable_details)
-        has-table-metadata-perms?       (fn [{db-id :id}]
-                                          (= :yes (perms/most-permissive-database-permission-for-user
-                                                   api/*current-user-id*
-                                                   :perms/manage-table-metadata
-                                                   db-id)))
-        db-list-res                     (cond->> (or (dbs-list :include-tables?                 include-tables?
-                                                               :include-schemas?                include-schemas?
-                                                               :include-saved-questions-db?     saved
-                                                               :include-saved-questions-tables? include-saved-questions-tables?
-                                                               :include-editable-data-model?    include_editable_data_model
-                                                               :exclude-uneditable-details?     only-editable?
-                                                               :include-analytics?              include_analytics
-                                                               :include-stubs?                  include_stubs
-                                                               :include-only-uploadable?        include_only_uploadable
-                                                               :router-database-id              router_database_id
-                                                               :can-query?                      can-query
-                                                               :can-write-metadata?             can-write-metadata)
-                                                     [])
-                                          can-write-metadata (filter has-table-metadata-perms?))]
+        db-list-res                     (or (dbs-list :include-tables?                 include-tables?
+                                                      :include-schemas?                include-schemas?
+                                                      :include-saved-questions-db?     saved
+                                                      :include-saved-questions-tables? include-saved-questions-tables?
+                                                      :include-editable-data-model?    include_editable_data_model
+                                                      :exclude-uneditable-details?     only-editable?
+                                                      :include-analytics?              include_analytics
+                                                      :include-stubs?                  include_stubs
+                                                      :include-only-uploadable?        include_only_uploadable
+                                                      :router-database-id              router_database_id
+                                                      :can-query?                      can-query
+                                                      :exclude-unpublished-tables? (some? (data-apps/request-data-app request)))
+                                            [])]
     {:data  db-list-res
      :total (count db-list-res)}))
 
@@ -427,7 +431,7 @@
 
 (defn- get-database-hydrate-include
   "If URL param `?include=` was passed to `GET /api/database/:id`, hydrate the Database appropriately."
-  [db include]
+  [db include exclude-unpublished-tables?]
   (if-not include
     db
     (-> (case include
@@ -437,6 +441,7 @@
                           (cond->> tables
                             ; filter hidden tables
                             true                        (filter (every-pred (complement :visibility_type) mi/can-read?))
+                            exclude-unpublished-tables? (filter :is_published)
                             true                        (map (fn [table] (update table :schema str)))
                             ; filter hidden fields
                             (= include "tables.fields") (map #(update % :fields filter-sensitive-fields))
@@ -455,11 +460,11 @@
 
 (defn- present-database
   "Get a single Database with `id`."
-  [db {:keys [include include-editable-data-model?]}]
+  [db {:keys [include include-editable-data-model? exclude-unpublished-tables?]}]
   (cond-> db
     true                         (t2/hydrate :router_user_attribute)
     true                         add-expanded-schedules
-    true                         (get-database-hydrate-include include)
+    true                         (get-database-hydrate-include include exclude-unpublished-tables?)
     true                         add-can-upload
     include-editable-data-model? check-db-data-model-perms
     (mi/can-write? db)           (assoc :can-manage true)))
@@ -495,14 +500,18 @@
    :- [:map {:closed true}
        [:include {:optional true} [:maybe [:enum "tables" "tables.fields"]]]
        [:include_editable_data_model {:optional true} ms/MaybeBooleanValue]
-       [:exclude_uneditable_details {:optional true} ms/MaybeBooleanValue]]]
+       [:exclude_uneditable_details {:optional true} ms/MaybeBooleanValue]]
+   _body
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-database id))
   (present-database
    (warehouses/get-database id {:include-editable-data-model? include_editable_data_model
                                 :exclude-uneditable-details? exclude_uneditable_details
                                 :include-destination-databases? true})
    {:include include
     :include-editable-data-model? include_editable_data_model
-    :exclude-uneditable-details? exclude_uneditable_details}))
+    :exclude-uneditable-details? exclude_uneditable_details
+    :exclude-unpublished-tables? (some? (data-apps/request-data-app request))}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -537,7 +546,7 @@
   []
   (saved-cards-virtual-db-metadata :question :include-tables? true, :include-fields? true))
 
-(defn- db-metadata [id include-hidden? include-editable-data-model? remove_inactive? skip-fields?]
+(defn- db-metadata [id include-hidden? include-sensitive-fields? include-editable-data-model? remove_inactive? skip-fields?]
   (let [db (-> (warehouses/get-database id {:include-editable-data-model? include-editable-data-model?})
                ((if skip-fields?
                   #(t2/hydrate % [:tables :segments :metrics])
@@ -554,12 +563,12 @@
              db
              (update db :tables apply-sandbox-column-filter))]
     (-> db
-        (update :tables (if include-hidden?
-                          identity
-                          (fn [tables]
-                            (->> tables
-                                 (remove :visibility_type)
-                                 (map #(m/update-existing % :fields filter-sensitive-fields))))))
+        (update :tables (if include-hidden? identity (partial remove :visibility_type)))
+        (update :tables (fn [tables]
+                          (let [sensitive-table-ids (schema.table/sensitive-fields-table-ids include-sensitive-fields? tables)]
+                            (for [table tables]
+                              (cond-> table
+                                (not (sensitive-table-ids (:id table))) (m/update-existing :fields filter-sensitive-fields))))))
         (update :tables (fn [tables]
                           (if-not include-editable-data-model?
                             ;; If we're filtering by data model perms, table perm checks were already done by
@@ -587,7 +596,10 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/metadata"
   "Get metadata about a `Database`, including all of its `Tables` and `Fields`. Returns DB, fields, and field values.
-  By default only non-hidden tables and fields are returned. Passing include_hidden=true includes them.
+  By default only non-hidden tables are returned. Passing include_hidden=true includes them.
+
+  Passing include_sensitive_fields=true includes fields with visibility_type sensitive, for tables whose data model the
+  current user can edit.
 
   Passing include_editable_data_model will only return tables for which the current user has data model editing
   permissions. Granting data model permissions to non-admins requires Enterprise Edition code and a token with the
@@ -595,22 +607,24 @@
   DB (aka block permissions), it will return only the DB name, ID and tables, with no additional metadata."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   {:keys [include_hidden include_editable_data_model remove_inactive skip_fields]}
+   {:keys [include_hidden include_sensitive_fields include_editable_data_model remove_inactive skip_fields]}
    :- [:map {:closed true}
        [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
+       [:include_sensitive_fields    {:default false} [:maybe ms/BooleanValue]]
        [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
        [:remove_inactive             {:default false} [:maybe ms/BooleanValue]]
        [:skip_fields                 {:default false} [:maybe ms/BooleanValue]]]]
   (db-metadata id
                include_hidden
+               include_sensitive_fields
                include_editable_data_model
                remove_inactive
                skip_fields))
 
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
 
-(defn- autocomplete-tables [db-id like-pattern limit]
-  (warehouses-rest.db/autocomplete-tables db-id like-pattern limit))
+(defn- autocomplete-tables [db-id like-pattern limit published-only?]
+  (warehouses-rest.db/autocomplete-tables db-id like-pattern limit published-only?))
 
 (defn- autocomplete-cards
   "Returns cards that match the search string in the given database, ordered by id.
@@ -623,8 +637,8 @@
   [database-id search-card-slug include-dashboard-questions?]
   (warehouses-rest.db/autocomplete-cards database-id search-card-slug include-dashboard-questions?))
 
-(defn- autocomplete-fields [db-id like-pattern limit]
-  (warehouses-rest.db/autocomplete-fields db-id like-pattern limit))
+(defn- autocomplete-fields [db-id like-pattern limit published-only?]
+  (warehouses-rest.db/autocomplete-fields db-id like-pattern limit published-only?))
 
 (defn- autocomplete-results [tables fields limit]
   (let [tbl-count   (count tables)
@@ -642,11 +656,11 @@
 
 (defn- autocomplete-suggestions
   "`like-pattern` is a `LIKE` right-hand side (see [[h2x/like-substring]] and [[h2x/like-prefix]]) matched against
-  lowercased table and field names."
-  [db-id like-pattern]
+  lowercased table and field names; only published tables and their fields when `published-only?`."
+  [db-id like-pattern published-only?]
   (let [limit  50
-        tables (filter mi/can-read? (autocomplete-tables db-id like-pattern limit))
-        fields (readable-fields-only (autocomplete-fields db-id like-pattern limit))]
+        tables (filter mi/can-read? (autocomplete-tables db-id like-pattern limit published-only?))
+        fields (readable-fields-only (autocomplete-fields db-id like-pattern limit published-only?))]
     (autocomplete-results tables fields limit)))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -671,23 +685,26 @@
                     [:id ms/PositiveInt]]
    {:keys [prefix substring]} :- [:map {:closed true}
                                   [:prefix    {:optional true} [:maybe ms/NonBlankString]]
-                                  [:substring {:optional true} [:maybe ms/NonBlankString]]]]
+                                  [:substring {:optional true} [:maybe ms/NonBlankString]]]
+   _body
+   request]
   (api/read-check (warehouses/get-database id))
   (when (and (str/blank? prefix) (str/blank? substring))
     (throw (ex-info (tru "Must include prefix or search") {:status-code 400})))
-  (try
-    {:status  200
-     ;; Presumably user will repeat same prefixes many times writing the query,
-     ;; so let them cache response to make autocomplete feel fast. 60 seconds
-     ;; is not enough to be a nuisance when schema or permissions change. Cache
-     ;; is user-specific since we're checking for permissions.
-     :headers {"Cache-Control" "public, max-age=60"
-               "Vary"          "Cookie"}
-     :body    (cond
-                substring (autocomplete-suggestions id (h2x/like-substring substring))
-                prefix    (autocomplete-suggestions id (h2x/like-prefix prefix)))}
-    (catch Throwable e
-      (log/warnf "Error with autocomplete: %s" (ex-message e)))))
+  (let [published-only? (some? (data-apps/request-data-app request))]
+    (try
+      {:status  200
+       ;; Presumably user will repeat same prefixes many times writing the query,
+       ;; so let them cache response to make autocomplete feel fast. 60 seconds
+       ;; is not enough to be a nuisance when schema or permissions change. Cache
+       ;; is user-specific since we're checking for permissions.
+       :headers {"Cache-Control" "public, max-age=60"
+                 "Vary"          "Cookie, X-Metabase-Client"}
+       :body    (cond
+                  substring (autocomplete-suggestions id (h2x/like-substring substring) published-only?)
+                  prefix    (autocomplete-suggestions id (h2x/like-prefix prefix) published-only?))}
+      (catch Throwable e
+        (log/warnf "Error with autocomplete: %s" (ex-message e))))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -708,14 +725,18 @@
                     [:id ms/PositiveInt]]
    {:keys [query include_dashboard_questions]} :- [:map {:closed true}
                                                    [:query                       ms/NonBlankString]
-                                                   [:include_dashboard_questions {:optional true} ms/BooleanValue]]]
+                                                   [:include_dashboard_questions {:optional true} ms/BooleanValue]]
+   _body
+   request]
   (api/read-check (warehouses/get-database id))
-  (try
-    (->> (autocomplete-cards id query include_dashboard_questions)
-         (filter mi/can-read?)
-         (map #(select-keys % [:id :name :type :collection_name])))
-    (catch Throwable e
-      (log/warnf "Error with autocomplete: %s" (ex-message e)))))
+  (if (some? (data-apps/request-data-app request))
+    []
+    (try
+      (->> (autocomplete-cards id query include_dashboard_questions)
+           (filter mi/can-read?)
+           (map #(select-keys % [:id :name :type :collection_name])))
+      (catch Throwable e
+        (log/warnf "Error with autocomplete: %s" (ex-message e))))))
 
 ;;; ------------------------------------------ GET /api/database/:id/fields ------------------------------------------
 
@@ -754,13 +775,16 @@
                     [:id ms/PositiveInt]]
    {:keys [include_editable_data_model]} :- [:map {:closed true}
                                              [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]]
-  (let [[db-perm-check field-perm-check] (if include_editable_data_model
-                                           [check-db-data-model-perms mi/can-write?]
-                                           [api/read-check mi/can-read?])]
-    (db-perm-check (warehouses/get-database id {:include-editable-data-model? true}))
-    (sort-by (comp u/lower-case-en :name :table)
-             (filter field-perm-check (-> (database/pk-fields {:id id})
-                                          (t2/hydrate :table))))))
+  (let [db-perm-check (if include_editable_data_model check-db-data-model-perms api/read-check)
+        _             (db-perm-check (warehouses/get-database id {:include-editable-data-model? true}))
+        fields        (-> (database/pk-fields {:id id})
+                          (t2/hydrate :table))
+        fields        (if include_editable_data_model
+                        (let [table-ids (into #{} (map :id) (schema.table/filter-tables-by-data-model-perms
+                                                             (distinct (map :table fields))))]
+                          (filter (comp table-ids :table_id) fields))
+                        (filter mi/can-read? fields))]
+    (sort-by (comp u/lower-case-en :name :table) fields)))
 
 ;;; ----------------------------------------------- POST /api/database -----------------------------------------------
 
@@ -819,7 +843,7 @@
                                  :database     engine
                                  :database-id  (u/the-id <>)
                                  :source       connection_source
-                                 :dbms-version (:version (driver/dbms-version (keyword engine) <>))}))
+                                 :dbms-version (:version (driver/dbms-version (keyword engine) (driver.u/lib-database (u/the-id <>))))}))
       ;; failed to connect, return error
       (do
         (analytics/track-event! :snowplow/database
@@ -891,7 +915,7 @@
                                                          [:details ms/DatabaseDetails]
                                                          [:id {:optional true} [:maybe ms/PositiveInt]]]]]]
   (api/check-superuser)
-  (let [database         (when id (api/write-check (warehouses-rest.db/database id)))
+  (let [database         (when id (api/write-check (warehouses.db/database id)))
         details-or-error (if database
                            (test-existing-database-details database engine details)
                            (warehouses/test-connection-details engine details))]
@@ -994,7 +1018,7 @@
   (when (:write-data-connection details)
     (throw (ex-info (tru "write-data-connection must not be set in details")
                     {:status-code 400})))
-  (let [existing-database               (api/write-check (warehouses-rest.db/database id))
+  (let [existing-database               (api/write-check (warehouses.db/database id))
         ;; e2e tests run against the H2 sample database and need to toggle its settings (actions,
         ;; table editing), so the guard is lifted when test endpoints are enabled
         _                               (when (and (:is_sample existing-database)
@@ -1020,9 +1044,9 @@
                                           (let [would-be-database (cond-> existing-database
                                                                     details-with-secrets            (assoc :details details-with-secrets)
                                                                     write-data-details-with-secrets (assoc :write_data_details write-data-details-with-secrets))]
-                                            (driver.conn/with-write-connection
-                                              (warehouses/test-database-connection (or engine (:engine would-be-database))
-                                                                                   (driver.conn/effective-details would-be-database)))))
+                                            (warehouses/test-database-connection (or engine (:engine would-be-database))
+                                                                                 (merge (driver.conn/details-for-exact-type would-be-database :default)
+                                                                                        (driver.conn/details-for-exact-type would-be-database :write-data)))))
         full-sync?                      (some-> is_full_sync boolean)
         on-demand?                      (boolean is_on_demand)]
     (if-let [conn-error (or main-conn-error write-conn-error)]
@@ -1088,7 +1112,7 @@
         ;; with the advanced-config feature enabled.
         (when (premium-features/enable-cache-granular-controls?)
           (warehouses-rest.db/update-database! id {:cache_ttl cache_ttl}))
-        (let [db (warehouses-rest.db/database id)]
+        (let [db (warehouses.db/database id)]
           ;; the details in db and existing-database have been normalized so they are the same here
           ;; we need to pass through details-changed? which is calculated before detail normalization
           ;; to ensure the pool is invalidated and [[driver-api/secret-value-as-file!]] memoization is cleared
@@ -1115,7 +1139,7 @@
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
   (t2/with-transaction [_conn]
-    (api/let-404 [db (warehouses-rest.db/database id)]
+    (api/let-404 [db (warehouses.db/database id)]
       (api/check-403 (mi/can-write? db))
       (warehouses-rest.db/delete-destination-databases! id)
       (database-routing/delete-associated-database-router! id)
@@ -1155,10 +1179,10 @@
         (analytics/track-event! :snowplow/simple_event {:event "database_manual_sync" :target_id id})
         (quick-task/submit-task!
          (fn []
-           (database-routing/with-database-routing-off
+           (database-routing/with-anonymous-router-access
              ;; explicit, user-requested sync — runs even when `disable-auto-sync` is enabled
-             (sync/sync-db-metadata-explicit! db)
-             (sync/analyze-db-explicit! db))))
+             (sync/sync-db-metadata-explicit! (u/the-id db))
+             (sync/analyze-db-explicit! (u/the-id db)))))
         {:status :ok}))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -1213,12 +1237,12 @@
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
     (request/as-admin
-      (database-routing/with-database-routing-off
+      (database-routing/with-anonymous-router-access
         (if *rescan-values-async*
           (quick-task/submit-task!
            (fn []
-             (sync/update-field-values! db)))
-          (sync/update-field-values! db)))))
+             (sync/update-field-values! (u/the-id db))))
+          (sync/update-field-values! (u/the-id db))))))
   {:status :ok})
 
 (defn- delete-all-field-values-for-database! [database-or-id]
@@ -1261,7 +1285,7 @@
                        (perms/has-db-transforms-permission? api/*current-user-id* (:id db))
                        (and (mi/can-write? db)
                             (mi/can-read? db))))
-    (->> db
+    (->> (driver.u/lib-database (:id db))
          (driver/syncable-schemas (:engine db))
          (vec)
          (sort))))
@@ -1274,23 +1298,23 @@
   "Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables.
 
   Optional filters:
-  - `can-query=true` - filter to only schemas containing tables the user can query
-  - `can-write-metadata=true` - filter to only schemas containing tables the user can edit metadata for"
+  - `can-query=true` - filter to only schemas containing tables the user can query"
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {:keys [include_editable_data_model
            include_hidden
-           can-query
-           can-write-metadata]} :- [:map {:closed true}
-                                    [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
-                                    [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
-                                    [:can-query                   {:optional true} [:maybe :boolean]]
-                                    [:can-write-metadata          {:optional true} [:maybe :boolean]]]]
+           can-query]} :- [:map {:closed true}
+                           [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
+                           [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
+                           [:can-query                   {:optional true} [:maybe :boolean]]]
+   _body
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-database id))
   (schema.table/database-schemas id {:include-editable-data-model? include_editable_data_model
                                      :include-hidden?              include_hidden
                                      :can-query?                   can-query
-                                     :can-write-metadata?          can-write-metadata}))
+                                     :exclude-unpublished-tables? (some? (data-apps/request-data-app request))}))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -1338,26 +1362,27 @@
   instead (#77353).
 
   Optional filters:
-  - `can-query=true` - filter to only tables the user can query
-  - `can-write-metadata=true` - filter to only tables the user can edit metadata for"
+  - `can-query=true` - filter to only tables the user can query"
   {:scope api-scope/data-app}
   [{:keys [id schema]} :- [:map {:closed true}
                            [:id ms/PositiveInt]
                            [:schema ms/NonBlankString]]
-   {:keys [include_hidden include_editable_data_model can-query can-write-metadata include_measures]} :- [:map {:closed true}
-                                                                                                          [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
-                                                                                                          [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
-                                                                                                          [:can-query                   {:optional true} [:maybe :boolean]]
-                                                                                                          [:can-write-metadata          {:optional true} [:maybe :boolean]]
-                                                                                                          [:include_measures            {:optional true} [:maybe :boolean]]]]
+   {:keys [include_hidden include_editable_data_model can-query include_measures]} :- [:map {:closed true}
+                                                                                       [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
+                                                                                       [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
+                                                                                       [:can-query                   {:optional true} [:maybe :boolean]]
+                                                                                       [:include_measures            {:optional true} [:maybe :boolean]]]
+   _body
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-database id))
   (api/check-404 (seq (schema.table/schema-tables-list
                        id
                        schema
                        {:include-hidden?              include_hidden
                         :include-editable-data-model? include_editable_data_model
                         :can-query?                   can-query
-                        :can-write-metadata?          can-write-metadata
-                        :include-measures?            include_measures}))))
+                        :include-measures?            include_measures
+                        :exclude-unpublished-tables? (some? (data-apps/request-data-app request))}))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -1374,26 +1399,27 @@
   the URL path (#77353).
 
   Optional filters:
-  - `can-query=true` - filter to only tables the user can query
-  - `can-write-metadata=true` - filter to only tables the user can edit metadata for"
+  - `can-query=true` - filter to only tables the user can query"
   ;; Tagged for the same reason as the `/:id/schema/:schema` sibling, and it is this route the SDK
   ;; usually reaches: `GET /:id/schemas` reports a nil schema as "", and the sibling's `NonBlankString`
   ;; route regex cannot match an empty segment, so every schemaless warehouse lands here.
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   {:keys [schema include_hidden include_editable_data_model can-query can-write-metadata include_measures]} :- [:map {:closed true}
-                                                                                                                 [:schema                      {:optional true} [:maybe :string]]
-                                                                                                                 [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
-                                                                                                                 [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
-                                                                                                                 [:can-query                   {:optional true} [:maybe :boolean]]
-                                                                                                                 [:can-write-metadata          {:optional true} [:maybe :boolean]]
-                                                                                                                 [:include_measures            {:optional true} [:maybe :boolean]]]]
+   {:keys [schema include_hidden include_editable_data_model can-query include_measures]} :- [:map {:closed true}
+                                                                                              [:schema                      {:optional true} [:maybe :string]]
+                                                                                              [:include_hidden              {:default false} [:maybe ms/BooleanValue]]
+                                                                                              [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
+                                                                                              [:can-query                   {:optional true} [:maybe :boolean]]
+                                                                                              [:include_measures            {:optional true} [:maybe :boolean]]]
+   _body
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-database id))
   (let [opts {:include-hidden?              include_hidden
               :include-editable-data-model? include_editable_data_model
               :can-query?                   can-query
-              :can-write-metadata?          can-write-metadata
-              :include-measures?            include_measures}]
+              :include-measures?            include_measures
+              :exclude-unpublished-tables? (some? (data-apps/request-data-app request))}]
     (api/check-404 (seq (if (str/blank? schema)
                           (concat (schema.table/schema-tables-list id nil opts)
                                   (schema.table/schema-tables-list id "" opts))
@@ -1425,7 +1451,7 @@
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    {:keys [connection-type]} :- [:map {:closed true} [:connection-type {:optional true} ::driver.conn/connection-type]]]
   (api/check-superuser)
-  (let [{:as database :keys [engine]} (api/check-404 (warehouses-rest.db/database id))
+  (let [{:as database :keys [engine]} (api/check-404 (warehouses.db/database id))
         connection-type               (or connection-type :default)
         connection-details            (driver.conn/details-for-exact-type database connection-type)]
     (api/check-400 connection-details (tru "No {0} connection configured for this database" (name connection-type)))

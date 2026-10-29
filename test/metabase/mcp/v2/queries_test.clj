@@ -215,4 +215,20 @@
            (message/render
             (v2.recovery-hints/recovery-hint {:error :uri-in-source-table :entity-type "question" :entity-id "76"})))))
   (testing "GHY-4544: a hint for a key with no sentence is nil"
-    (is (nil? (v2.recovery-hints/recovery-hint {:error :no-such-error})))))
+    (is (nil? (v2.recovery-hints/recovery-hint {:error :no-such-error}))))
+  (testing "an ambiguous foreign key on a card source points at the columns the card returns"
+    (is (= (str "Call \"get_content\" with items [{\"type\": \"model\", \"id\": 12}] and include [\"fields\"] to list "
+                "the columns it returns. Put the foreign-key column's `id` in `source-field` and its "
+                "`lib/desired-column-alias` (its `name` when it has none) in `source-field-name`.")
+           (message/render (v2.recovery-hints/recovery-hint
+                            {:error :ambiguous-fk :source-card 12 :source-card-type "model"}))))
+    (testing "and on a table source at the table's fields"
+      (is (str/includes? (message/render (v2.recovery-hints/recovery-hint {:error :ambiguous-fk}))
+                         "\"browse_data\" with action \"get_fields\""))))
+  (testing "a column the card does not return points at the columns it does"
+    (doseq [error [:column-not-returned :unexportable-fk]]
+      (is (= (str "Call \"get_content\" with items [{\"type\": \"question\", \"id\": 12}] and include [\"fields\"] to "
+                  "list the columns it returns.")
+             (message/render (v2.recovery-hints/recovery-hint
+                              {:error error :source-card 12 :source-card-type "question"})))
+          (str error)))))

@@ -22,6 +22,7 @@
    :cache-refresh
    :collection
    :map-tiles
+   :metabot
    :metric
    :pulse
    :dashboard-subscription

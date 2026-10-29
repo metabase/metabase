@@ -22,11 +22,16 @@
    [:expires_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:confirmed_at {:optional true} [:maybe ms/TemporalInstant]]])
 
-(mu/defn auth-identity
+(mu/defn auth-identity :- [:maybe ::auth-identity.schema/auth-identity]
+  "The ::auth-identity.schema/auth-identity with `auth-identity-id`, or nil."
+  [auth-identity-id :- ms/PositiveInt]
+  (t2/select-one :model/AuthIdentity :id [:auto/param auth-identity-id]))
+
+(mu/defn auth-identity-for-user-and-provider
   "The AuthIdentity of the User with `user-id` at `provider`, or nil."
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
-  (t2/select-one :model/AuthIdentity :user_id (long user-id) :provider [:auto/param provider]))
+  (t2/select-one :model/AuthIdentity :user_id [:auto/param (long user-id)] :provider [:auto/param provider]))
 
 (mu/defn auth-identity-id
   "The id of the AuthIdentity of the User with `user-id` at `provider`, or nil."
@@ -82,26 +87,24 @@
                :ended_by_user_id ended-by
                :key_hashed       nil}))
 
-(mu/defn user
-  "The User with `user-id`, or nil."
-  [user-id :- ::lib.schema.id/user]
-  (t2/select-one :model/User user-id))
-
 (mu/defn user-by-email
   "The User whose email matches `email` case-insensitively, or nil."
   [email :- :string]
   (t2/select-one :model/User :%lower.email (u/lower-case-en email)))
 
 (mu/defn user-login-columns
-  "The id, active flag, last login, and tenant id of the User with `user-id`, or nil."
+  "Return login details for the user with `user-id`, or nil.
+
+  The details include the user's ID, active flag, last login, tenant ID, and type."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id (long user-id)))
+  (t2/select-one [:model/User :id :is_active :last_login :tenant_id :type] :id (long user-id)))
 
 (mu/defn user-login-columns-by-email
-  "The id, active flag, last login, and tenant id of the User whose email matches `email` case-insensitively, or
-  nil."
+  "Return login details for the user whose email matches `email`, or nil.
+
+  The match is case-insensitive. The details include the user's ID, active flag, last login, tenant ID, and type."
   [email :- :string]
-  (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :%lower.email (u/lower-case-en email)))
+  (t2/select-one [:model/User :id :is_active :last_login :tenant_id :type] :%lower.email (u/lower-case-en email)))
 
 (mu/defn user-login-status
   "The id, active flag, and last login of the User with `user-id`, or nil."

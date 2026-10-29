@@ -89,7 +89,8 @@
       (interface/returned-columns-impl parser driver native-query))))
 
 (mu/defn referenced-tables :- [:set :map]
-  "Return tables referenced by the `native-query`"
+  "Return the tables and transforms the `native-query` references, keeping each name that matches neither as
+  `{:unresolved-table spec}`."
   [driver :- :keyword
    native-query :- :metabase.lib.schema/native-only-query]
   (let [parser (sql-tools.settings/current-parser-backend)]
@@ -232,7 +233,55 @@
   (interface/transpile-sql-impl (sql-tools.settings/sql-tools-parser-backend)
                                 sql from-dialect to-dialect))
 
-(defn is-single-stmt-of-type?
-  "Wrapper around `sql-parsing/is-single-stmt-of-type?`."
+(defn validate-executable-stmt
+  "Whether `sql` is a single statement of `stmt-type` for `driver`'s dialect, for a caller that will
+  **execute** the `:sql` the verdict carries: `\"read\"` = SELECT, `\"write\"` = INSERT, UPDATE, or
+  DELETE, `\"read-only\"` = a read statement that also holds nothing that writes or locks anywhere in its
+  tree (see [[read-only-select?]]).
+
+  The `:sql` is reconstructed from the parsed AST, and only ever from `sql` itself — SQL that cannot be
+  parsed as it stands (`driver` has no known dialect, or a literal list is large enough to risk a GraalPy
+  OOM) comes back `:verdict :unknown` rather than parsed in a collapsed form and vouched for in its
+  original one. Only `:verdict :allowed` is permission to proceed.
+
+  See [[metabase.sql-parsing.core/validate-executable-stmt]] for the verdict shape, and [[classify-stmt]]
+  for the same question asked by a caller that only needs a verdict."
   [driver sql stmt-type]
-  (sql-parsing/is-single-stmt-of-type? (sqlglot/driver->dialect driver) sql stmt-type))
+  (sql-parsing/validate-executable-stmt (sqlglot/driver->dialect driver) sql stmt-type))
+
+(defn classify-stmt
+  "Whether `sql` is a single statement of `stmt-type` for `driver`'s dialect, for a caller that only reads
+  the verdict and never executes its `:sql`. Cheaper and more permissive about the dialect than
+  [[validate-executable-stmt]]; do not execute the `:sql` it returns."
+  [driver sql stmt-type]
+  (sql-parsing/classify-stmt (sqlglot/driver->dialect driver) sql stmt-type))
+
+(mu/defn read-only-select? :- :boolean
+  "Whether `sql` is exactly one plain query, a SELECT or a set operation of SELECTs, holding nothing known to write,
+  lock or reach past the query: no `SELECT ... INTO`, no `FOR UPDATE` or `FOR SHARE`, no locking table hint, no
+  data-modifying CTE body, no sequence advanced, no script transform, and no call to a built-in function that locks,
+  waits or changes the session.
+  Comments and a trailing semicolon are allowed.
+  SQL that does not parse in `driver`'s dialect is not read-only, and neither is SQL too long to check or holding a
+  literal list too large to parse whole.
+  A function this does not name, a user-defined one included, passes when called by its name.
+  Only the database's own permissions stop it.
+  A call through Snowflake's `IDENTIFIER(...)` is refused whatever it names."
+  [driver :- :keyword
+   sql    :- :string]
+  (= :allowed (:verdict (classify-stmt driver sql "read-only"))))
+
+(mu/defn read-only-select-problem :- [:maybe [:map [:reason :keyword] [:detail [:maybe :string]]]]
+  "Why `sql` is not a read-only select ([[read-only-select?]]), or nil when it is one.
+  The `:reason` is one of `:multiple-statements`, `:not-a-select`, `:writes-or-locks`, `:statement-word`,
+  `:session-function`, `:sql-executing-function`, `:dynamic-function-call`, `:executable-comment`,
+  `:bare-dash-comment`, `:backslash-quote`, `:unicode-identifier`, `:large-literal-list`, `:too-long` and
+  `:unparseable`.
+  For `:statement-word`, `:detail` is the word, and for `:session-function` and `:sql-executing-function` it is the
+  function's name."
+  [driver :- :keyword
+   sql    :- :string]
+  (let [{:keys [verdict reason detail]} (classify-stmt driver sql "read-only")]
+    (when-not (= :allowed verdict)
+      {:reason (keyword (or reason "unparseable"))
+       :detail detail})))

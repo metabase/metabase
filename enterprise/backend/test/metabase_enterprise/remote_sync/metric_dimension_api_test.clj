@@ -10,6 +10,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metrics.core :as metrics]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -17,9 +18,10 @@
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
-(use-fixtures :each (fn [thunk]
-                      (mt/with-temporary-setting-values [remote-sync-type :read-write]
-                        (thunk))))
+(use-fixtures :each
+  remote-sync.tu/allow-remote-synced-collections (fn [thunk]
+                                                   (mt/with-temporary-setting-values [remote-sync-type :read-write]
+                                                     (thunk))))
 
 (defn- metric-query []
   (let [mp (mt/metadata-provider)]

@@ -54,6 +54,12 @@
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Metabot is not enabled"
                             (metabot.config/check-metabot-enabled! metabot.config/internal-metabot-id)))
       (is (metabot.config/check-metabot-enabled! metabot.config/embedded-metabot-id))))
+  (testing "1-arity checks the embedded Metabot's setting, whether named by UUID or by entity ID"
+    (mt/with-temporary-setting-values [metabot-enabled? true embedded-metabot-enabled? false]
+      (doseq [embedded-id [metabot.config/embedded-metabot-id "embeddedmetabotmetabo"]]
+        (testing embedded-id
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Embedded Metabot is not enabled"
+                                (metabot.config/check-metabot-enabled! embedded-id)))))))
   (testing "global AI disable blocks all Metabot instances"
     (mt/with-temporary-raw-setting-values [:ai-features-enabled?      "false"
                                            :metabot-enabled?          "true"

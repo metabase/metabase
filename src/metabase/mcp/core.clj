@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [metabase.api.macros :as api.macros]
    [metabase.mcp.paths :as mcp.paths]
+   [metabase.mcp.scope :as mcp.scope]
    [metabase.mcp.session :as mcp.session]
    [metabase.mcp.settings :as mcp.settings]
    [metabase.mcp.ui-surface :as mcp.ui-surface]
@@ -88,22 +89,21 @@
                   (filter string?))
             (vals (api.macros/ns-routes 'metabase.agent-api.api)))
       ;; The v2 surface's scopes, read from the require-free leaf rather than the registry (see [[v2-scopes]]).
-      (into mcp.paths/v2-surface-scopes)))
+      (into mcp.scope/v2-surface-scopes)))
 
 (defn v2-scopes
   "The scopes the v2 MCP surface itself gates on. Excludes the agent-API endpoint scopes
    [[all-scopes]] also gathers — those belong to a different resource, and advertising them for v2 is
    what puts per-entity scopes the v2 tools don't use on a v2 client's consent screen.
 
-   Read from the require-free literal in [[metabase.mcp.paths/v2-surface-scopes]], not the registries.
+   Read from the require-free literal in [[metabase.mcp.scope/v2-surface-scopes]], not the registries.
    The registries report only the tools whose namespaces happen to be loaded.
-   Reaching them from here would also pull `metabot.scope` in wherever this namespace loads (see [[metabase.mcp.paths]]).
+   Reaching them from here would also pull `metabot.scope` in wherever this namespace loads (see [[metabase.mcp.scope]]).
    `v2-surface-scopes-match-metabot-scope-test` keeps the literal in step with what the tools gate on."
   []
-  mcp.paths/v2-surface-scopes)
+  mcp.scope/v2-surface-scopes)
 
-(defn v2-baseline-scopes
-  "The subset of [[v2-scopes]] that the consent page locks: when a client requests one of these, the user cannot
-   untick it."
-  []
-  mcp.paths/v2-baseline-scopes)
+(defn v2-baseline-scope?
+  "Is `scope` locked on the consent page?"
+  [scope]
+  (mcp.scope/v2-baseline-scope? scope))

@@ -3,7 +3,7 @@
   (:require
    [metabase-enterprise.embedder.catalog :as catalog]
    [metabase.classloader.core :as classloader]
-   [metabase.embeddings.provider :as embeddings.provider]
+   [metabase.search.embeddings.provider :as embeddings.provider]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)

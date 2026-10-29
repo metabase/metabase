@@ -16,9 +16,25 @@ There are two ways to embed Metabase.
 
 Most people go with modular embedding, so you can integrate Metabase components into your app.
 
-Whichever way you embed, you'll also pick how Metabase authenticates the people looking at it. Authentication is a setting on what you embed, not a different kind of embedding.
+Whichever way you embed, you'll also pick how Metabase authenticates the people viewing your embed. Authentication is a setting on what you embed, not a different kind of embedding.
 
 If you just want to share a chart or dashboard with anyone who has the link, and you don't need any authentication, take a look at [public links and embeds](#public-links-and-embeds).
+
+## Embedding hub
+
+![Embedding hub](./images/embedding-hub-getting-started.png)
+
+Admins set up embedding in the Embedding hub. To get there, click the **grid** icon in the upper right and select **Embedding hub**.
+
+The hub opens to **Get started**, a checklist for your first embed. The sidebar has the rest of the embedding settings:
+
+- **Security**: turn on [modular embedding](./modular-embedding.md#enable-modular-embedding), [guest embeds](./guest-embedding.md#turning-on-guest-embedding-in-metabase), or [full app embedding](./full-app-embedding.md#enabling-full-app-embedding-in-metabase), and set CORS and cookie settings.
+- **Authentication**: set up [JWT SSO](./authentication.md). SAML settings stay in Admin.
+- **Permissions**: control what data people can see in your embeds. If you use tenants, see [data permissions for tenants](./tenants.md#data-permissions-for-tenants).
+- **Tenancy**: [turn on multi-tenant strategy](./tenants.md#enable-multi-tenant-strategy) and manage tenants, tenant groups, and tenant users.
+- **Appearance**: create and manage [embedding themes](./appearance.md#embedding-themes).
+- **Localization**: [add a translation dictionary](./translations.md#add-a-translation-dictionary).
+- **New embed**: open the [embed wizard](./modular-embedding.md#create-a-new-embed).
 
 ## Modular embedding
 

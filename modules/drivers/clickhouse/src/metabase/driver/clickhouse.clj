@@ -21,7 +21,7 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.util :as u]
+   [metabase.driver.util :as driver.u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.performance :as perf])
@@ -108,16 +108,6 @@
    db-or-id-or-spec
    options
    (fn [^java.sql.Connection conn]
-     (when-let [db (cond
-                     ;; id?
-                     (integer? db-or-id-or-spec)
-                     (driver-api/with-metadata-provider db-or-id-or-spec
-                       (driver-api/database (driver-api/metadata-provider)))
-                     ;; db?
-                     (u/id db-or-id-or-spec)     db-or-id-or-spec
-                     ;; otherwise it's a spec and we can't get the db
-                     :else nil)]
-       (sql-jdbc.execute/set-role-if-supported! driver conn db))
      (when-not (sql-jdbc.execute/recursive-connection?)
        (let [^com.clickhouse.jdbc.ConnectionImpl clickhouse-conn (.unwrap conn com.clickhouse.jdbc.ConnectionImpl)
              query-settings (new QuerySettings)]
@@ -168,6 +158,7 @@
                  (str/starts-with? host "http://")  (subs host 7)
                  (str/starts-with? host "https://") (subs host 8)
                  :else host)]
+    ;; https://clickhouse.com/docs/integrations/language-clients/java/jdbc
     (-> {:classname                      "com.clickhouse.jdbc.ClickHouseDriver"
          :subprotocol                    "clickhouse"
          :subname                        (str "//" host ":" port "/" dbname)
@@ -182,10 +173,10 @@
          :jdbc_schema_term               "schema"
          :ignore_unknown_config_key      true
          :max_open_connections           (or max-open-connections 100)
-         ;; see also: https://clickhouse.com/docs/en/integrations/java#configuration
          :custom_http_params             (cond-> "select_sequential_consistency=1"
                                            (not (str/blank? clickhouse-settings))
-                                           (str "," clickhouse-settings))}
+                                           (str "," clickhouse-settings))
+         :jdbc_metadata_use_show_statements false}
         (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
 (defmethod driver/database-supports? [:clickhouse :uploads] [_driver _feature db]
@@ -508,7 +499,7 @@
 
 (defmethod driver/rename-table! :clickhouse
   [_driver db-id old-table-name new-table-name]
-  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))]
     (with-open [stmt (.createStatement ^java.sql.Connection (:connection conn))]
       (let [sql (format "RENAME TABLE %s TO %s" (quote-name old-table-name) (quote-name new-table-name))]
         (.execute stmt sql)))))
@@ -586,6 +577,12 @@
 (defmethod driver.sql/default-database-role :clickhouse
   [_ _]
   "NONE")
+
+(defmethod sql-jdbc.execute/impl-error-in-query? :clickhouse
+  [driver ^SQLException e]
+  ;; ClickHouse also uses class 22 for operational failures such as memory and result limits.
+  (and (not (str/starts-with? (str (.getSQLState e)) "22"))
+       ((get-method sql-jdbc.execute/impl-error-in-query? :sql-jdbc) driver e)))
 
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :clickhouse
   [_ ^SQLException e]

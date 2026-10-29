@@ -14,7 +14,9 @@
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.profiles :as profiles]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.persistence :as metabot.persistence]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
    [metabase.metabot.self.claude :as claude]
    [metabase.metabot.self.core :as self.core]
@@ -149,6 +151,76 @@
           (is (contains? tools "create_sql_query"))
           (is (contains? tools "edit_sql_query"))
           (is (contains? tools "replace_sql_query")))))))
+
+(defn- run-query-offered-at-turn-start
+  "Whether the turn starts with `run_query` among its tools, whether its system message says results can be read, and
+   whether it declares `show_chart` on construct_notebook_query. Reads them where the decision is made rather than
+   running a turn. The bindings stand in for the ones the agent loop makes."
+  [conversation-id capabilities metabot-id profile-id]
+  (let [{:keys [tools system-msg]}
+        (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions
+                  scope/*current-user-scope*               (scope/user-metabot-perms->scopes scope/all-yes-permissions)]
+          (#'agent/init-agent {:messages        [{:role :user :content "How many orders?"}]
+                               :metabot-id      metabot-id
+                               :profile-id      profile-id
+                               :conversation-id conversation-id
+                               :context         {:capabilities capabilities}}))]
+    {:tool?       (contains? tools "run_query")
+     :prompt?     (str/includes? (pr-str system-msg) "You can see results only")
+     :show-chart? (-> (get tools "construct_notebook_query")
+                      :declaration
+                      deref
+                      (get-in [:parameters :properties])
+                      (contains? :show_chart))}))
+
+(deftest client-claimed-feature-capability-cannot-override-settings-test
+  ;; In a conversation the user owns, so the setting decides and not the rule for shared conversations.
+  (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :crowberto)}]
+    (let [offered? #(:tool? (run-query-offered-at-turn-start conversation-id ["feature:query_execution"]
+                                                             metabot.config/internal-metabot-id :internal))]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (testing "a request claiming feature:query_execution gets no run_query while an admin has it turned off"
+          (mt/with-temporary-setting-values [metabot-query-execution-enabled? false]
+            (is (not (offered?)))))
+        (testing "the same request gets run_query once the admin turns it on"
+          (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+            (is (offered?))))))))
+
+(deftest run-query-not-offered-where-others-can-read-the-conversation-test
+  (let [rasta   (mt/user->id :rasta)
+        offered #(run-query-offered-at-turn-start % [] metabot.config/internal-metabot-id :internal)]
+    (mt/with-temp [:model/MetabotConversation {own :id}     {:user_id rasta}
+                   :model/MetabotConversation {thread :id}  {:user_id rasta, :slack_thread_ts "1.2"}
+                   :model/MetabotConversation {someone :id} {:user_id (mt/user->id :crowberto)}]
+      (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+        (mt/with-current-user rasta
+          (testing "the user's own conversation offers run_query, says results can be read, and declares show_chart"
+            (is (= {:tool? true, :prompt? true, :show-chart? true} (offered own))))
+          (testing "a conversation other people can read does none of them"
+            (testing "a Slack thread"
+              (is (= {:tool? false, :prompt? false, :show-chart? false} (offered thread))))
+            (testing "a conversation someone else started"
+              (is (= {:tool? false, :prompt? false, :show-chart? false} (offered someone)))))
+          (testing "no conversation does none of them"
+            (is (= {:tool? false, :prompt? false, :show-chart? false} (offered nil)))))))))
+
+(deftest run-query-not-offered-to-embedded-metabot-test
+  ;; The request names the profile, so an embedded Metabot can ask for one that offers run_query.
+  (let [rasta (mt/user->id :rasta)]
+    (mt/with-temp [:model/MetabotConversation {own :id} {:user_id rasta}]
+      (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+        (mt/with-current-user rasta
+          (doseq [profile-id [:nlq :internal]]
+            (testing profile-id
+              (testing "the internal Metabot offers run_query"
+                (is (:tool? (run-query-offered-at-turn-start
+                             own [] metabot.config/internal-metabot-id profile-id))))
+              ;; A request can name the embedded Metabot by its UUID or by its entity ID.
+              (testing "the embedded Metabot does not, and its prompt does not promise results"
+                (doseq [embedded-id [metabot.config/embedded-metabot-id "embeddedmetabotmetabo"]]
+                  (testing embedded-id
+                    (is (=? {:tool? false, :prompt? false}
+                            (run-query-offered-at-turn-start own [] embedded-id profile-id)))))))))))))
 
 (deftest document-sql-chart-tool-requires-native-permission-test
   (mt/with-no-data-perms-for-all-users!
@@ -1275,3 +1347,17 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
                               (check! :explorations {:permission/metabot :yes :permission/metabot-nlq :no})))
         (is (nil? (check! :explorations {:permission/metabot :yes :permission/metabot-nlq :yes})))))))
+
+(deftest eval-only-profile-needs-an-eval-instance-test
+  (let [check!  #'agent/check-metabot-access!
+        sql-yes {:permission/metabot :yes :permission/metabot-sql-generation :yes}]
+    (testing "without the eval setting, internal-sql is refused as an unknown profile, even with every permission"
+      (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo #"^Unknown profile$" (check! :internal-sql sql-yes)))]
+        (is (= {:status-code 400} (ex-data e)))))
+    (testing "on an eval instance it needs the SQL generation permission, as before"
+      (mt/with-temp-env-var-value! [mb-metabot-eval-profiles-enabled true]
+        (is (nil? (check! :internal-sql sql-yes)))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permission"
+                              (check! :internal-sql {:permission/metabot :yes :permission/metabot-sql-generation :no})))))
+    (testing "the setting changes nothing for a profile the product offers"
+      (is (nil? (check! :internal {:permission/metabot :yes}))))))

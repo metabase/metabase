@@ -1,13 +1,13 @@
 (ns metabase-enterprise.remote-sync.settings
   (:require
    [clojure.string :as str]
-   [java-time.api :as t]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase-enterprise.remote-sync.guards :as guards]
    [metabase-enterprise.remote-sync.source.git :as git]
    [metabase.collections.models.collection :as collection]
    [metabase.settings.core :as setting :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.startup.core :as startup]
+   [metabase.util.i18n :refer [deferred-tru tru]]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -98,56 +98,60 @@
   :encryption :no
   :default 60)
 
-(def ^:const transforms-root-id
-  "Sentinel value for the virtual Transforms root collection.
-   Used to represent the entire transforms feature being enabled/disabled."
-  -1)
-
-(defn- replace-transforms-root-rso!
-  "Replaces the Transforms root RSO with one in `status`."
-  [status]
-  (remote-sync.db/delete-rso-of! "Collection" transforms-root-id)
-  (remote-sync.db/insert-rso! {:model_type        "Collection"
-                               :model_id          transforms-root-id
-                               :model_name        "Transforms"
-                               :status            status
-                               :status_changed_at (t/offset-date-time)}))
-
-(defn sync-transform-tracking!
-  "Records transforms sync state as the Transforms root RSO (model_id -1): 'create' when newly enabled, 'delete'
-  when disabled after being tracked, left alone when already in that state (the settings cache also calls this on
-  every load), and absent on a read-only instance, which has nothing to publish."
-  [enabled?]
-  (let [status (:status (remote-sync.db/rso "Collection" transforms-root-id))]
-    (cond
-      (= :read-only (remote-sync-type))
-      (when status
-        (remote-sync.db/delete-rso-of! "Collection" transforms-root-id))
-
-      enabled?
-      (when-not (#{"create" "synced"} status)
-        (replace-transforms-root-rso! "create"))
-
-      (and status (not= "delete" status))
-      (replace-transforms-root-rso! "delete"))))
-
-(defn- sync-transform-tracking-on-change
-  "Called when remote-sync-transforms setting changes."
-  [_old-value new-value]
-  ;; new-value may be a string "true"/"false" or a boolean, so we need to parse it
-  (let [enabled? (if (string? new-value)
-                   (parse-boolean new-value)
-                   (boolean new-value))]
-    (sync-transform-tracking! enabled?)))
-
 (defsetting remote-sync-transforms
-  (deferred-tru "Whether to sync transforms via remote-sync. When enabled, all transforms, transform tags, and transform jobs are synced as a single unit (all-or-nothing).")
+  (deferred-tru "Whether to sync transforms via remote-sync. When enabled, transforms, transform tags, transform tests, Python libraries, and transforms folders are synced.")
+  :type :boolean
+  :visibility :admin
+  :export? false
+  :encryption :no
+  :default false)
+
+(def ^:private syncable-namespaces
+  "The Collection namespaces remote sync syncs without custom collections."
+  #{(name collection/transforms-ns) (name collection/snippets-ns) (name collection/data-actions-ns) (name collection/data-apps-ns)})
+
+(defn custom-collection?
+  "Whether `collection` is one remote sync syncs only with custom collections on: outside the namespaces it syncs and not of a Library type."
+  [collection]
+  (not (or (contains? syncable-namespaces (some-> (:namespace collection) name))
+           (contains? collection/library-collection-types (:type collection)))))
+
+(defn- custom-collections-synced?
+  "Whether a top-level custom collection is remote-synced."
+  []
+  (boolean (some custom-collection? (remote-sync.db/remote-synced-root-collections))))
+
+(defn check-custom-collections-unsynced!
+  "Throws when a top-level custom collection is remote-synced."
+  []
+  (when (custom-collections-synced?)
+    (throw (ex-info (tru "Stop syncing the collections besides the Library, transforms, snippets and data apps before turning off remote-sync-custom-collections-enabled.")
+                    {:status-code 400}))))
+
+(defsetting remote-sync-custom-collections-enabled
+  (deferred-tru "Whether remote sync can sync collections besides the Library, transforms, snippets and data apps. When off, no other collection can be marked as synced, and a pull or a serialization import refuses content with other synced collections, so set `MB_REMOTE_SYNC_CUSTOM_COLLECTIONS_ENABLED=true` on an instance that pulls or imports such content. It can only be turned off once no other collection is synced.")
   :type :boolean
   :visibility :admin
   :export? false
   :encryption :no
   :default false
-  :on-change sync-transform-tracking-on-change)
+  :setter (fn [new-value]
+            (when-not (if (string? new-value) (setting/string->boolean new-value) new-value)
+              (check-custom-collections-unsynced!))
+            (setting/set-value-of-type! :boolean :remote-sync-custom-collections-enabled new-value)))
+
+(defmethod startup/def-startup-validation! ::remote-sync-custom-collections-enabled
+  [_]
+  (when (and (remote-sync-enabled)
+             (not= :default (setting/get-raw-value-source :remote-sync-custom-collections-enabled))
+             (not (remote-sync-custom-collections-enabled)))
+    (check-custom-collections-unsynced!)))
+
+(defn pin-remote-sync-custom-collections-enabled!
+  "Stores [[remote-sync-custom-collections-enabled]] when nothing has set it yet, enabled only where custom collections are already synced."
+  []
+  (when (= :default (setting/get-raw-value-source :remote-sync-custom-collections-enabled))
+    (remote-sync-custom-collections-enabled! (custom-collections-synced?))))
 
 (defsetting remote-sync-check-changes-cache-ttl-seconds
   (deferred-tru "Time-to-live in seconds for the remote changes check cache. Default is 60 seconds.")

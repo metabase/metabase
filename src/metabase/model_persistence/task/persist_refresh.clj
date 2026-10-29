@@ -8,11 +8,13 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.model-persistence.db :as model-persistence.db]
    [metabase.model-persistence.models.persisted-info :as persisted-info]
    [metabase.model-persistence.settings :as model-persistence.settings]
+   [metabase.queries.db :as queries.db]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.task-history.core :as task-history]
@@ -22,6 +24,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.db :as warehouses.db]
    [potemkin.types :as p]
    [toucan2.core :as t2])
   (:import
@@ -55,12 +58,12 @@
 
 (defn- refresh-with-stats! [refresher database stats persisted-info]
   ;; Since this could be long running, double check state just before refreshing
-  (when (contains? (persisted-info/refreshable-states) (model-persistence.db/persisted-info-state (:id persisted-info)))
+  (when (contains? (persisted-info/refreshable-states) (:state (model-persistence.db/persisted-info (:id persisted-info))))
     (tracing/with-span :tasks "task.persist.refresh-model" {:db/id           (u/the-id database)
                                                             :persist/card-id (:card_id persisted-info)
                                                             :persist/table   (:table_name persisted-info)}
       (log/infof "Attempting to refresh persisted model %s." (:card_id persisted-info))
-      (let [card                  (model-persistence.db/card (:card_id persisted-info))
+      (let [card                  (queries.db/card (:card_id persisted-info))
             definition            (persisted-info/metadata->definition (:result_metadata card)
                                                                        (:table_name persisted-info))
             _                     (model-persistence.db/begin-persisted-info-refresh! (u/the-id persisted-info)
@@ -131,12 +134,14 @@
   "Seam for tests to pass in specific deletables to drop."
   [refresher deletables]
   (when (seq deletables)
-    (let [db-id->db    (m/index-by :id (model-persistence.db/databases (map :database_id deletables)))
+    (let [db-id->db    (into {}
+                             (map (fn [{:keys [id]}] [id (driver.u/lib-database id)]))
+                             (model-persistence.db/databases (distinct (map :database_id deletables))))
           unpersist-fn (fn []
                          (reduce (fn [stats persisted-info]
                                    ;; Since this could be long running, double check state just before deleting
-                                   (let [current-state (model-persistence.db/persisted-info-state (:id persisted-info))
-                                         card-info     (model-persistence.db/card-archived-and-type (:card_id persisted-info))]
+                                   (let [current-state (:state (model-persistence.db/persisted-info (:id persisted-info)))
+                                         card-info     (queries.db/card (:card_id persisted-info))]
                                      (if (or (contains? (persisted-info/prunable-states) current-state)
                                              (:archived card-info)
                                              (not= (:type card-info) :model))
@@ -183,7 +188,7 @@
   [database-id refresher trigger]
   (log/infof "Starting persisted model refresh task for Database %s." database-id)
   (persisted-info/ready-unpersisted-models! database-id)
-  (let [database  (model-persistence.db/database database-id)
+  (let [database  (driver.u/lib-database database-id)
         persisted (refreshable-models database-id)
         thunk     (fn []
                     (reduce (partial refresh-with-stats! refresher database)
@@ -197,8 +202,8 @@
   "Refresh an individual model based on [[PersistedInfo]]."
   [persisted-info-id refresher trigger]
   (let [persisted-info (model-persistence.db/persisted-info persisted-info-id)
-        database       (when persisted-info
-                         (model-persistence.db/database (:database_id persisted-info)))]
+        database       (when (and persisted-info (warehouses.db/database (:database_id persisted-info)))
+                         (driver.u/lib-database (:database_id persisted-info)))]
     (if (and persisted-info database)
       (do
         (save-task-history! "persist-refresh" (u/the-id database)

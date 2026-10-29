@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { EmptyState } from "metabase/common/components/EmptyState";
 import type { PillTab } from "metabase/common/components/PillTabNavigation";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { Outlet, useLocation } from "metabase/router";
@@ -13,13 +14,13 @@ import {
 import { useCliHasData } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/hooks/useCliHasData";
 import { cliUrlStateConfig } from "metabase-enterprise/monitor/ai-auditing/cli-analytics/url-state";
 import { AiAnalyticsSectionLayout } from "metabase-enterprise/monitor/ai-auditing/components/AiAnalyticsSectionLayout";
+import { NewQuestionButton } from "metabase-enterprise/monitor/ai-auditing/components/NewQuestionButton";
 import {
   ConversationFilters as CliCallsFilter,
   useFilterOptions,
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationFilters";
 import { useAuditTable } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/hooks/useAuditTable";
 
-import { CliAnalyticsEmptyState } from "./CliAnalyticsEmptyState";
 import {
   CliAnalyticsContextProvider,
   type CliAnalyticsContextValue,
@@ -125,25 +126,41 @@ export function CliAnalyticsSectionLayout() {
   return (
     <AiAnalyticsSectionLayout
       title={t`CLI analytics`}
+      filtersAction={<NewQuestionButton viewName={VIEW_AGENT_API_CALLS} />}
       tabs={tabs}
       filters={
         <CliCallsFilter
           date={date}
           onDateChange={(val) => patchUrlState({ date: val, page: 0 })}
-          user={user}
-          onUserChange={(val) => patchUrlState({ user: val, page: 0 })}
-          userOptions={userOptions}
-          group={group}
-          onGroupChange={(val) => patchUrlState({ group: val, page: 0 })}
-          groupOptions={groupOptions}
-          groupNoFilterValue={groupNoFilterValue}
-          tenant={tenant}
-          onTenantChange={(val) => patchUrlState({ tenant: val, page: 0 })}
-          tenantOptions={tenantOptions}
-          hasTenants={hasTenants}
+          userFilter={{
+            value: user,
+            options: userOptions,
+            onChange: (val) => patchUrlState({ user: val, page: 0 }),
+          }}
+          groupFilter={{
+            value: group,
+            options: groupOptions,
+            noFilterValue: groupNoFilterValue,
+            onChange: (val) => patchUrlState({ group: val, page: 0 }),
+          }}
+          tenantFilter={
+            hasTenants
+              ? {
+                  value: tenant,
+                  options: tenantOptions,
+                  onChange: (val) => patchUrlState({ tenant: val, page: 0 }),
+                }
+              : undefined
+          }
         />
       }
-      emptyState={<CliAnalyticsEmptyState />}
+      emptyState={
+        <EmptyState
+          icon="audit"
+          title={t`No CLI activity`}
+          message={t`Calls from the CLI and other Agent API clients will show up here. Try widening the date range or check back once clients start making requests.`}
+        />
+      }
       error={error}
       isInitialLoading={isInitialLoading}
       isTableRoute={isCallsRoute}

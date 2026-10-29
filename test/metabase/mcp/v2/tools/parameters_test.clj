@@ -24,9 +24,8 @@
 
 (defn- call-params
   "Invoke get_parameter_values through the registry — the same seam the JSON-RPC route uses, so
-   scope gating and argument validation are exercised. `token-scopes` of nil means an internal
-   caller, which satisfies every scope check."
-  ([args] (call-params nil args))
+   scope gating and argument validation are exercised. The 1-arity holds every MCP scope."
+  ([args] (call-params v2.tu/all-scopes args))
   ([token-scopes args]
    (registry/call-tool token-scopes "test-session" "get_parameter_values" args)))
 
@@ -44,13 +43,13 @@
   (-> result :content first :text v2.tu/strip-data-boundary))
 
 (defn- params-text
-  ([args] (params-text nil args))
+  ([args] (params-text v2.tu/all-scopes args))
   ([token-scopes args] (success-text (call-params token-scopes args))))
 
 (defn- params-result
   "The decoded JSON payload of a successful call — the first line of the text block, since a
    steering line may follow it."
-  ([args] (params-result nil args))
+  ([args] (params-result v2.tu/all-scopes args))
   ([token-scopes args]
    (-> (params-text token-scopes args) str/split-lines first json/decode+kw)))
 
@@ -58,7 +57,7 @@
   "The error text of a rejected call, registry-level (scope, argument validation) and tool-level
    (teaching error) alike. Throws when the call succeeded, so a passing call can never satisfy an
    error assertion."
-  ([args] (params-error nil args))
+  ([args] (params-error v2.tu/all-scopes args))
   ([token-scopes args]
    (let [{:keys [result error]} (call-params token-scopes args)]
      (cond

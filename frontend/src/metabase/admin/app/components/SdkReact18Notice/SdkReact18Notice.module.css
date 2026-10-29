@@ -1,0 +1,4 @@
+/* Same edge as popovers and toasts: the shadow does not show on a dark page */
+[data-mantine-color-scheme="dark"] .notice {
+  border: 0.5px solid var(--mb-color-border-neutral-strong);
+}

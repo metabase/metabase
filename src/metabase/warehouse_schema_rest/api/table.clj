@@ -6,6 +6,8 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.core :as collections]
+   [metabase.collections.db :as collections.db]
+   [metabase.data-apps.core :as data-apps]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
@@ -32,9 +34,11 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema-rest.db :as warehouse-schema-rest.db]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]
    [metabase.warehouse-schema.table :as schema.table]
+   [metabase.warehouses.db :as warehouses.db]
    [metabase.xrays.core :as xrays]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
@@ -78,10 +82,11 @@
 
   Optional filters:
   - `can-query=true` - filter to only tables the user can execute queries against
-  - `can-write=true` - filter to only tables the user can edit metadata for"
+  - `include-editable-data-model=true` - filter to only tables the user can edit the data model of, instead of the
+    tables the user can read"
   [_
    {:keys [term visibility-type data-layer data-source owner-user-id owner-email orphan-only unused-only
-           published-only can-query can-write include-transform-targets]}
+           published-only can-query include-editable-data-model include-transform-targets]}
    :- [:map {:closed true}
        [:term {:optional true} :string]
        [:visibility-type {:optional true} :string]
@@ -93,7 +98,7 @@
        [:unused-only {:optional true} [:maybe ms/BooleanValue]]
        [:published-only {:optional true} [:maybe ms/BooleanValue]]
        [:can-query {:optional true} [:maybe ms/BooleanValue]]
-       [:can-write {:optional true} [:maybe ms/BooleanValue]]
+       [:include-editable-data-model {:optional true} [:maybe ms/BooleanValue]]
        [:include-transform-targets {:optional true} [:maybe ms/BooleanValue]]]]
   (let [hydrations (cond-> [:db]
                      (premium-features/any-transforms-enabled?) (conj :transform))]
@@ -113,9 +118,10 @@
       (do (perms/prime-table-perms-cache {:db-ids    (into #{} (keep :db_id) tables)
                                           :table-ids (into #{} (map :id) tables)})
           tables)
-      (into [] (comp (filter mi/can-read?)
-                     (if can-query (filter mi/can-query?) identity)
-                     (if can-write (filter mi/can-write?) identity)
+      (if include-editable-data-model
+        (schema.table/filter-tables-by-data-model-perms tables)
+        (filter mi/can-read? tables))
+      (into [] (comp (if can-query (filter mi/can-query?) identity)
                      (map schema.table/present-table))
             tables))))
 
@@ -134,14 +140,17 @@
                     [:id ms/PositiveInt]]
    {:keys [include_editable_data_model]}
    :- [:map {:closed true}
-       [:include_editable_data_model {:optional true} [:maybe :boolean]]]]
+       [:include_editable_data_model {:optional true} [:maybe :boolean]]]
+   _body
+   request]
   ;; partial schema only
   :- [:map {:closed false}
       [:data_authority ::data-authority-read]]
+  (some-> (data-apps/request-data-app request) (data-apps/check-table id))
   (let [api-perm-check-fn (if include_editable_data_model
-                            api/write-check
+                            schema.table/check-data-model-perms
                             api/read-check)]
-    (-> (api/check-404 (warehouse-schema-rest.db/table id))
+    (-> (api/check-404 (warehouse-schema.db/table id))
         api-perm-check-fn
         (t2/hydrate :db :pk_field :collection)
         schema.table/present-table)))
@@ -153,7 +162,7 @@
 (api.macros/defendpoint :get "/:table-id/data"
   "Get the data for the given table"
   [{:keys [table-id]} :- [:map {:closed true} [:table-id ms/PositiveInt]]]
-  (let [table (warehouse-schema-rest.db/table table-id)
+  (let [table (warehouse-schema.db/table table-id)
         db-id (:db_id table)]
     (api/query-check table)
     (qp.store/with-metadata-provider db-id
@@ -178,10 +187,9 @@
                                (fn [response]
                                  (dissoc response :json_query :context :cached :average_execution_time))))))))))
 
-(def ^:private TableUpdateBodySingle
-  "Body of `PUT /api/table/:id`."
-  [:map {:closed true}
-   [:display_name            {:optional true} [:maybe ms/NonBlankString]]
+(def ^:private table-update-entries
+  "User-settable Table columns, as optional `:map` entries."
+  [[:display_name            {:optional true} [:maybe ms/NonBlankString]]
    [:entity_type             {:optional true} [:maybe EntityType]]
    [:visibility_type         {:optional true} [:maybe TableVisibilityType]]
    [:description             {:optional true} [:maybe :string]]
@@ -196,22 +204,15 @@
    [:owner_user_id           {:optional true} [:maybe :int]]
    [:collection_id           {:optional true} [:maybe ms/PositiveInt]]])
 
+(def ^:private TableUpdateBodySingle
+  "Body of `PUT /api/table/:id`."
+  (into [:map {:closed true}] table-update-entries))
+
 (def ^:private TableUpdateBodyBulk
   "Body of the deprecated `PUT /api/table/`."
-  [:map {:closed true}
-   [:ids                                      [:sequential ms/PositiveInt]]
-   [:display_name            {:optional true} [:maybe ms/NonBlankString]]
-   [:entity_type             {:optional true} [:maybe EntityType]]
-   [:visibility_type         {:optional true} [:maybe TableVisibilityType]]
-   [:description             {:optional true} [:maybe :string]]
-   [:caveats                 {:optional true} [:maybe :string]]
-   [:points_of_interest      {:optional true} [:maybe :string]]
-   [:show_in_getting_started {:optional true} [:maybe :boolean]]
-   [:data_authority          {:optional true} [:maybe ::data-authority-write]]
-   [:data_source             {:optional true} [:maybe :string]]
-   [:data_layer              {:optional true} [:maybe :string]]
-   [:owner_email             {:optional true} [:maybe :string]]
-   [:owner_user_id           {:optional true} [:maybe :int]]])
+  (into [:map {:closed true}
+         [:ids [:sequential ms/PositiveInt]]]
+        table-update-entries))
 
 (mu/defn ^:private update-table!*
   "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`
@@ -227,7 +228,7 @@
                          (u/update-some :data_source keyword)
                          not-empty)]
     (schema.table-user-settings/upsert-user-settings existing-table changes))
-  (let [updated-table        (warehouse-schema-rest.db/table id)
+  (let [updated-table        (warehouse-schema.db/table id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
     (if changed-field-order?
       (do
@@ -244,7 +245,7 @@
     (quick-task/submit-task!
      (fn []
        (doseq [[db-id tables] (group-by :db_id newly-unhidden)]
-         (let [database (warehouse-schema-rest.db/database db-id)]
+         (let [database (warehouses.db/database db-id)]
            ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
            ;; purposes of creating a new H2 database.
            (if (binding [driver.settings/*allow-testing-h2-connections* true
@@ -259,7 +260,7 @@
 (defn- check-can-publish-tables-to-collection!
   [tables collection-id]
   (api/check-data-studio-access)
-  (let [collection (api/check-404 (warehouse-schema-rest.db/collection collection-id))]
+  (let [collection (api/check-404 (collections.db/collection collection-id))]
     (api/check-400 (= (:type collection) collections/library-data-collection-type)
                    (tru "Tables can only be published to Semantic layer/Data collections."))
     (api/check-403 (every? mi/can-query? tables))))
@@ -299,7 +300,7 @@
 (api.macros/defendpoint :put "/"
   "Update all `Table` in `ids`.
 
-  Deprecated, should use PUT /table/edit from now on."
+  Deprecated: use `POST /api/data-studio/table/edit`."
   [_route-params
    _query-params
    {:keys [ids], :as body} :- TableUpdateBodyBulk]
@@ -317,13 +318,17 @@
   "Get metadata about a `Table` useful for running queries.
    Returns DB, fields, field FKs, and field values.
 
-   Passing `include_hidden_fields=true` will include any hidden `Fields` in the response. Defaults to `false`
-   Passing `include_sensitive_fields=true` will include any sensitive `Fields` in the response. Defaults to `false`.
+   Passing `include_hidden_fields=true` will include any hidden `Fields` in the response. Defaults to `false`.
+   Passing `include_sensitive_fields=true` will include any sensitive `Fields` in the response if the current user has
+   data model editing permissions for the table. Defaults to `false`.
 
-   Passing `include_editable_data_model=true` will check that the current user has write permissions for the table's
-   data model, while `false` checks that they have data access perms for the table. Defaults to `false`.
+   Passing `include_editable_data_model=true` will check that the current user has data model editing permissions for
+   the table, even when Remote Sync makes the table read-only, while `false` checks that they can read the table.
+   Defaults to `false`.
 
-   These options are provided for use in the Admin Edit Metadata page."
+   The response includes `can_write`, which is false when the user cannot edit the table's metadata right now.
+
+   These options are provided for use in the data model pages."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
@@ -331,7 +336,10 @@
    :- [:map {:closed true}
        [:include_sensitive_fields    {:default false} [:maybe ms/BooleanValue]]
        [:include_hidden_fields       {:default false} [:maybe ms/BooleanValue]]
-       [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]]
+       [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]
+   _body
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-table id))
   (schema.table/fetch-table-query-metadata id {:include-sensitive-fields?    include_sensitive_fields
                                                :include-hidden-fields?       include_hidden_fields
                                                :include-editable-data-model? include_editable_data_model}))
@@ -347,7 +355,11 @@
   "Return metadata for the 'virtual' table for a Card."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
+                    [:id ms/PositiveInt]]
+   _query-params
+   _body
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-card id))
   (first (schema.table/batch-fetch-card-query-metadatas [id] {:include-database? true})))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -372,7 +384,11 @@
   "Get all foreign keys whose destination is a `Field` that belongs to this `Table`."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
+                    [:id ms/PositiveInt]]
+   _query-params
+   _body
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-table id))
   (api/read-check :model/Table id)
   (when-let [field-ids (seq (warehouse-schema-rest.db/active-unretired-field-ids-for-table id))]
     (for [origin-field (warehouse-schema-rest.db/active-fields-targeting field-ids)
@@ -385,7 +401,7 @@
        :origin_id      (:id origin-field)
        :origin         origin-field
        :destination_id (:fk_target_field_id origin-field)
-       :destination    (t2/hydrate (warehouse-schema-rest.db/field (:fk_target_field_id origin-field)) :table)})))
+       :destination    (t2/hydrate (warehouse-schema.db/field (:fk_target_field_id origin-field)) :table)})))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -399,7 +415,7 @@
    are eligible for FieldValues."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (let [table (api/write-check (warehouse-schema-rest.db/table id))]
+  (let [table (api/write-check (warehouse-schema.db/table id))]
     (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*})
     ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
@@ -423,7 +439,7 @@
    this Table's Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (api/write-check (warehouse-schema-rest.db/table id))
+  (api/write-check (warehouse-schema.db/table id))
   (when-let [field-ids (warehouse-schema-rest.db/field-ids-for-table id)]
     (warehouse-schema-rest.db/delete-field-values-for-fields! field-ids))
   {:status :success})
@@ -436,7 +452,7 @@
   "Return related entities."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (-> (warehouse-schema-rest.db/table id) api/read-check xrays/related))
+  (-> (warehouse-schema.db/table id) api/read-check xrays/related))
 
 (api.macros/defendpoint :put "/:id/fields/order" :- [:map
                                                      [:success [:= true]]]
@@ -449,8 +465,8 @@
             [:sequential ms/PositiveInt]
             [:map {:closed true} [:field_order [:sequential ms/PositiveInt]]]]]
   (let [field-order (if (map? body) (:field_order body) body)]
-    (-> (warehouse-schema-rest.db/table id) api/write-check (schema.table-user-settings/custom-order-fields! field-order))
-    (events/publish-event! :event/table-update {:object  (warehouse-schema-rest.db/table id)
+    (-> (warehouse-schema.db/table id) api/write-check (schema.table-user-settings/custom-order-fields! field-order))
+    (events/publish-event! :event/table-update {:object  (warehouse-schema.db/table id)
                                                 :user-id api/*current-user-id*}))
   {:success true})
 
@@ -528,7 +544,7 @@
 (defn- sync-schema-async!
   [table user-id]
   (events/publish-event! :event/table-manual-sync {:object table :user-id user-id})
-  (quick-task/submit-task! #(database-routing/with-database-routing-off (sync/sync-table! table))))
+  (quick-task/submit-task! #(database-routing/with-anonymous-router-access (sync/sync-table! table))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -541,8 +557,10 @@
   "Trigger a manual update of the schema metadata for this `Table`."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (let [table    (api/check-404 (warehouse-schema-rest.db/table id))
-        database (api/check-404 (warehouse-schema-rest.db/non-destination-database (:db_id table)))]
+  (let [table    (api/check-404 (warehouse-schema.db/table id))
+        database (api/check-404 (let [database (warehouses.db/database (:db_id table))]
+                                  (when (nil? (:router_database_id database))
+                                    database)))]
     (api/check-403
      (perms/user-has-permission-for-table?
       api/*current-user-id*

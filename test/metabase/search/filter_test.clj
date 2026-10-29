@@ -3,6 +3,7 @@
    [clojure.math.combinatorics :as math.combo]
    [clojure.test :refer :all]
    [metabase.collections.test-utils :as collections.tu]
+   [metabase.config.core :as config]
    [metabase.models.resolution]
    [metabase.search.config :as search.config]
    [metabase.search.filter :as search.filter]
@@ -31,10 +32,13 @@
          :enabled-transform-source-types #{"mbql"}))
 
 (defn- with-all-models-and-regular-user [search-ctx]
-  (with-all-models (assoc search-ctx :is-impersonated-user? false :is-sandboxed-user? false)))
+  (with-all-models (assoc search-ctx :is-impersonated-user? false :is-sandboxed-user? false :is-routed-user? false)))
 
 (defn- with-all-models-and-sandboxed-user [search-ctx]
-  (with-all-models (assoc search-ctx :is-impersonated-user? false :is-sandboxed-user? true)))
+  (with-all-models (assoc search-ctx :is-impersonated-user? false :is-sandboxed-user? true :is-routed-user? false)))
+
+(defn- with-all-models-and-routed-user [search-ctx]
+  (with-all-models (assoc search-ctx :is-impersonated-user? false :is-sandboxed-user? false :is-routed-user? true)))
 
 (defn- with-all-models-and-superuser [search-ctx]
   (-> search-ctx
@@ -73,6 +77,9 @@
   (testing "Indexed entities and transforms (which are admin-only) are not visible for sandboxed users"
     (is (= (disj search.config/all-models "indexed-entity" "transform")
            (search.filter/search-context->applicable-models (with-all-models-and-sandboxed-user {:archived? false})))))
+  (testing "Indexed entities and transforms (which are admin-only) are not visible for users routed to a destination database"
+    (is (= (disj search.config/all-models "indexed-entity" "transform")
+           (search.filter/search-context->applicable-models (with-all-models-and-routed-user {:archived? false})))))
   (testing "All models including transforms are visible for superusers"
     (is (= search.config/all-models
            (search.filter/search-context->applicable-models (with-all-models-and-superuser {:archived? false})))))
@@ -130,26 +137,27 @@
                 [:not= :search_index.model "table"]
                 [:= :search_index.archived true]
                 [:= :search_index.curated true]
-                [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]
+                [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action" "data-app"]]
                 [:or
                  [:= nil :search_index.dashboard_id]
                  [:not= [:inline 0] [:coalesce :search_index.dashboardcard_count [:inline 0]]]]
                 [:= nil :search_index.exploration_id]
                 [:in
                  :search_index.model
-                 #{"dashboard"
-                   "table"
-                   "segment"
-                   "collection"
-                   "measure"
-                   "transform"
-                   "document"
-                   "exploration"
-                   "database"
-                   "action"
-                   "indexed-entity"
-                   "metric"
-                   "card"}]
+                 (cond-> #{"dashboard"
+                           "table"
+                           "segment"
+                           "collection"
+                           "measure"
+                           "transform"
+                           "document"
+                           "exploration"
+                           "database"
+                           "action"
+                           "indexed-entity"
+                           "metric"
+                           "card"}
+                   config/ee-available? (conj "data-app"))]
                 [:< [:cast :search_index.model_created_at :date] #t "2024-10-02"]
                 [:in :search_index.model_id ["1" "2" "3" "4"]]
                 [:< [:cast :search_index.last_edited_at :date] #t "2024-10-03"]

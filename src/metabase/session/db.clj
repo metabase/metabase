@@ -127,11 +127,11 @@
       (t2/query-one hsql))))
 
 (mu/defn auth-identity-for-provider
-  "The AuthIdentity of the User with `user-id` at `provider`, or nil. See `metabase.auth-identity.db/auth-identity`,
+  "The AuthIdentity of the User with `user-id` at `provider`, or nil. See `metabase.auth-identity.db/auth-identity-for-user-and-provider`,
   which owns the AuthIdentity table."
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
-  (auth-identity.db/auth-identity user-id provider))
+  (auth-identity.db/auth-identity-for-user-and-provider user-id provider))
 
 (mu/defn auth-identity-exists?
   "Whether the User with `user-id` has an AuthIdentity at `provider`."
@@ -145,20 +145,10 @@
    credentials      :- [:maybe ::auth-identity.schema/auth-identity.credentials]]
   (t2/update! :model/AuthIdentity auth-identity-id {:credentials credentials}))
 
-(mu/defn auth-identity-provider
-  "The `:provider` of the AuthIdentity with `auth-identity-id`, or nil."
-  [auth-identity-id :- ms/PositiveInt]
-  (t2/select-one [:model/AuthIdentity :provider] :id auth-identity-id))
-
 (mu/defn user-by-email
   "The id, SSO source, and active flag of the User whose email matches `email` case-insensitively, or nil."
   [email :- :string]
   (t2/select-one [:model/User :id :sso_source :is_active] :%lower.email (u/lower-case-en email)))
-
-(mu/defn user
-  "The User with `user-id`, or nil."
-  [user-id :- ::lib.schema.id/user]
-  (t2/select-one :model/User :id user-id))
 
 (mu/defn user-login-status
   "The id, active flag, last login, and tenant id of the User with `user-id`, or nil."

@@ -537,7 +537,7 @@
   "Run one field's `:validate` hook against the value `config` supplies for it, if it has both."
   [{:keys [key validate]} config]
   (when-let [problem (and validate (some-> (u/trimmed-string (get config key)) validate))]
-    (throw (ex-info (str problem) {:status-code 400 :field key}))))
+    (throw (ex-info (str problem) {:status-code 400 :field key :response/keys #{:field}}))))
 
 (defn- field-descriptor
   "`type-name`'s registry entry for `field-key`."
@@ -566,13 +566,13 @@
   (let [value (u/trimmed-string (get config key))]
     (when (and required? (not value) (not default))
       (throw (ex-info (tru "{0} is required for {1}." (str label) type-name)
-                      {:status-code 400 :field key})))
+                      {:status-code 400 :field key :response/keys #{:field}})))
     (when (and value prefix (not (str/starts-with? value prefix)))
       (throw (ex-info (tru "Invalid {0} for {1}. It must start with ''{2}''." (str label) type-name prefix)
-                      {:status-code 400 :field key})))
+                      {:status-code 400 :field key :response/keys #{:field}})))
     (when (and value (seq options) (not-any? #(= value (:value %)) options))
       (throw (ex-info (tru "Invalid {0} for {1}." (str label) type-name)
-                      {:status-code 400 :field key})))
+                      {:status-code 400 :field key :response/keys #{:field}})))
     (validate-field-value! field config)))
 
 (defn- validate-config-field!
@@ -946,10 +946,11 @@
     (throw (ex-info (tru "{0} points this connection at another server, so its credentials have to come from the environment as well. Set {1} to keep using it."
                          (get (connection-env-vars type-name) :base-url "The environment")
                          (get (connection-env-vars type-name) field "the matching environment variable"))
-                    {:status-code 400
-                     :api-error   true
-                     :error-code  :llm-credentials-must-come-from-env
-                     :field       field}))))
+                    {:status-code   400
+                     :api-error     true
+                     :error-code    :llm-credentials-must-come-from-env
+                     :field         field
+                     :response/keys #{:field}}))))
 
 (defn env-overlay-config
   "What the environment supplies for a connection of `type-name` stored under `conn-key`, or nil where it
@@ -1230,11 +1231,12 @@
 
                            :else
                            (tru "Enter this connection''s credentials again to point it at a different base URL."))
-                         {:status-code 400
-                          :api-error   true
-                          :error-code  :llm-base-url-change-requires-credentials
-                          :field       :base-url
-                          :secrets     (mapv name missing-secrets)})))))))
+                         {:status-code   400
+                          :api-error     true
+                          :error-code    :llm-base-url-change-requires-credentials
+                          :field         :base-url
+                          :secrets       (mapv name missing-secrets)
+                          :response/keys #{:field}})))))))
 
 (defn- assert-credential-write-authorized!
   "Reject adding a secret to a connection sitting on a base URL this API cannot show the caller.
@@ -1254,10 +1256,11 @@
                  (not= base-url (:base-url (with-field-defaults type-name {})))
                  (not (contains? (set env-fields) :base-url)))
         (throw (ex-info (tru "This connection has its own base URL. Use the provider connection settings to enter its credentials.")
-                        {:status-code 400
-                         :api-error   true
-                         :error-code  :llm-credential-change-requires-connection-settings
-                         :field       field}))))))
+                        {:status-code   400
+                         :api-error     true
+                         :error-code    :llm-credential-change-requires-connection-settings
+                         :field         field
+                         :response/keys #{:field}}))))))
 
 (defn set-single-provider-setting!
   "Write `new-value` for the per-provider credential setting `setting-kw` into the connection its settings group
@@ -1289,10 +1292,11 @@
                 ;; later removed that variable, carrying any stored credentials to a URL the API caller planted
                 ;; earlier.
                 (throw (ex-info (tru "This connection''s base URL comes from an environment variable. Change it there.")
-                                {:status-code 400
-                                 :api-error   true
-                                 :error-code  :llm-base-url-is-env-managed
-                                 :field       :base-url})))
+                                {:status-code   400
+                                 :api-error     true
+                                 :error-code    :llm-base-url-is-env-managed
+                                 :field         :base-url
+                                 :response/keys #{:field}})))
               (let [current-config (or (:config live) {})
                     new-config     (if value
                                      (assoc current-config field value)
