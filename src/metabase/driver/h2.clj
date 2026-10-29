@@ -64,7 +64,8 @@
     (driver/hosts-from-details {:db db} [:db])
     []))
 
-;; `:db` holds a whole H2 connection string, not a value spliced into one
+;; H2's only connection detail, `:db`, is the whole connection string (`file:/path/to/db;OPTION=...`), passed through
+;; as-is, so it is not a value spliced into a URL Metabase builds
 (defmethod driver/url-building-detail-keys :h2
   [_driver]
   [])

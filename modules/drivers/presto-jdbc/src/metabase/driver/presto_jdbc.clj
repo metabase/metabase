@@ -545,7 +545,7 @@
 ;; `jdbc-spec` splices the schema into the URL path after the catalog
 (defmethod driver/url-building-detail-keys :presto-jdbc
   [driver]
-  (conj ((get-method driver/url-building-detail-keys :sql-jdbc) driver) :schema))
+  (conj ((get-method driver/url-building-detail-keys :default) driver) :schema))
 
 (defn- jdbc-spec
   "Creates a spec for `clojure.java.jdbc` to use for connecting to Presto via JDBC, from the given `opts`."

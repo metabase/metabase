@@ -240,34 +240,28 @@
 (defn- fold-case
   "`s` with each code point folded the way `String/equalsIgnoreCase` compares it: upper case, then lower case."
   ^String [^String s]
-  (let [sb (StringBuilder.)]
-    (loop [i 0]
-      (when (< i (.length s))
-        (let [cp (.codePointAt s i)]
-          (.appendCodePoint sb (Character/toLowerCase (Character/toUpperCase cp)))
-          (recur (+ i (Character/charCount cp))))))
-    (str sb)))
+  (-> (String/.codePoints s)
+      (.map ^[int] Character/toUpperCase)
+      (.map ^[int] Character/toLowerCase)
+      (.collect ^[] StringBuilder/new
+                ^[int] StringBuilder/.appendCodePoint
+                ^[StringBuffer] StringBuilder/.append)
+      (str)))
 
 (defn- normalize-connection-parameter
   "Normalize `s` for matching against [[driver/disallowed-connection-parameters]]: percent escapes decoded once, case
   folded the way `equalsIgnoreCase` does, and `_ . - +` and whitespace removed."
   [s]
+  ;; (?U) makes \s match Unicode whitespace too
   (-> (codec/percent-decode (str s)) fold-case (str/replace #"(?U)[_.\-+\s]" "")))
-
-(defn- normalized-disallowed-connection-parameters
-  "`[name normalized-name]` for each of the driver's [[driver/disallowed-connection-parameters]]."
-  [driver]
-  (mapv (juxt identity normalize-connection-parameter) (driver/disallowed-connection-parameters driver)))
-
-(defn- first-disallowed-name [normalized-names x]
-  (let [s (normalize-connection-parameter x)]
-    (some (fn [[param normalized]] (when (str/includes? s normalized) param)) normalized-names)))
 
 (defn disallowed-connection-parameter
   "The first name in [[driver/disallowed-connection-parameters]] that the string `s` contains, after both are
   normalized by [[normalize-connection-parameter]], or nil when it contains none."
   [driver s]
-  (first-disallowed-name (normalized-disallowed-connection-parameters driver) s))
+  (let [s (normalize-connection-parameter s)]
+    (some #(when (str/includes? s (normalize-connection-parameter %)) %)
+          (driver/disallowed-connection-parameters driver))))
 
 (def ^:private url-separators
   "Characters that end a URL-building detail's part of a connection URL and start a client parameter."
@@ -277,7 +271,8 @@
   [driver details]
   (doseq [k     (driver/url-building-detail-keys driver)
           :let  [v (get details k)]
-          ;; some clients percent-decode the URL once before splitting off its parameters, so an encoded separator counts
+          ;; some clients percent-decode the URL once before splitting off its parameters, so an encoded separator is
+          ;; refused too
           :when (and (some? v) (some (set url-separators) (codec/percent-decode (str v))))]
     (throw (ex-info (str "Connection detail " (name k) " may not contain " (str/join " " url-separators))
                     {:status-code 400, :detail k}))))
