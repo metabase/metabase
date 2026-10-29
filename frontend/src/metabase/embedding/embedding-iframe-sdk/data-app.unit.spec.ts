@@ -58,7 +58,7 @@ describe("metabase-data-app", () => {
         type: "metabase.embed.setSettings",
         data: expect.objectContaining({
           componentName: "metabase-data-app",
-          path: "sales/orders?active=true#details",
+          path: "/sales/orders?active=true#details",
         }),
       },
       "https://metabase.example.com",

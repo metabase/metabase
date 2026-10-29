@@ -197,10 +197,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
         const attrValue = this.getAttribute(attr);
         if (attrValue !== null) {
           const key = attributeToSettingKey(attr);
-          acc[key] =
-            attr === "path"
-              ? normalizeDataAppPath(attrValue)
-              : parseAttributeValue(attrValue);
+          acc[key] = parseAttributeValue(attrValue, attr);
         }
         return acc;
       },
@@ -357,10 +354,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     }
 
     this._updateSettings({
-      [key]:
-        attrName === "path"
-          ? normalizeDataAppPath(newVal ?? "")
-          : parseAttributeValue(newVal),
+      [key]: parseAttributeValue(newVal, attrName),
     });
   }
 
@@ -378,7 +372,6 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     const iframe = document.createElement("iframe");
     this._iframe = iframe;
 
-    // Pending authentication belongs to the frame that requested it.
     const element = this;
 
     const context: EmbedAuthManagerContext = {
@@ -386,6 +379,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
         return element.properties;
       },
       sendMessage: (type, data) => {
+        // Discard auth messages if the requesting iframe is no longer current.
         if (this._iframe === iframe) {
           this.sendMessage(type, data);
         }
@@ -760,7 +754,8 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     const hasDataAppPathChanged =
       nextValues.componentName === "metabase-data-app" &&
       "path" in settings &&
-      normalizeDataAppPath(nextValues.path) !== this._dataAppPath;
+      normalizeDataAppPath(nextValues.path) !==
+        normalizeDataAppPath(this._dataAppPath ?? "");
 
     if (!hasDataAppPathChanged) {
       return false;
