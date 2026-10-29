@@ -15,7 +15,6 @@ import type { SchemaId } from "metabase-types/api";
 import { CONTAINER_WIDTH } from "../constants";
 
 type DataSelectorSchemaPickerProps = {
-  hasFiltering: boolean;
   hasInitialFocus: boolean;
   hasNextStep: boolean;
   schemas: DataSelectorSchema[];

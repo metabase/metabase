@@ -58,7 +58,6 @@ describe("DataSelectorSchemaPicker", () => {
     render(
       <DataSelectorSchemaPicker
         schemas={schemas}
-        hasFiltering={false}
         hasInitialFocus={false}
         hasNextStep={false}
         onChangeSchema={jest.fn()}
