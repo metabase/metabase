@@ -16,6 +16,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.collections.core :as collections]
    [metabase.events.core :as events]
    [metabase.settings.core :as setting]
    [metabase.util.log :as log]
@@ -251,11 +252,22 @@
         (throw (ex-info (impl/source-error-message e)
                         {:status-code 400} e))))))
 
+(defn- with-library-synced
+  "Adds the Library to `settings` collections as synced when they leave read-write sync on and custom collections are off."
+  [settings]
+  (let [library (collections/library-collection)]
+    (cond-> settings
+      (and library
+           (not (settings/remote-sync-custom-collections-enabled))
+           (= :read-write (get settings :remote-sync-type (settings/remote-sync-type)))
+           (not (str/blank? (get settings :remote-sync-url (settings/remote-sync-url)))))
+      (assoc-in [:collections (:id library)] true))))
+
 (api.macros/defendpoint :put "/settings" :- remote-sync.schema/SettingsUpdateResponse
   "Update Remote Sync related settings. You must be a superuser to do this."
   [_route-params
    _query-params
-   {:keys [remote-sync-type collections] :as settings}
+   {:keys [remote-sync-type] :as settings}
    :- [:map {:closed true}
        [:remote-sync-url {:optional true} [:maybe :string]]
        [:remote-sync-token {:optional true} [:maybe :string]]
@@ -283,7 +295,8 @@
   (api/check-400 (not (and (remote-sync.object/dirty?) (= :read-only remote-sync-type)))
                  "There are unsaved changes in the Remote Sync collection which will be overwritten switching to read-only mode.")
   ;; Filter out no-op collection changes before checking read-only mode or running bulk-set
-  (let [collections (when (seq collections)
+  (let [{:keys [collections] :as settings} (with-library-synced settings)
+        collections (when (seq collections)
                       (let [current-states (into {}
                                                  (map (juxt :id :is_remote_synced))
                                                  (remote-sync.db/collection-sync-states (keys collections)))]

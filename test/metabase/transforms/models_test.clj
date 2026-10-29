@@ -183,8 +183,8 @@
                                                          :schema nil
                                                          :name "test_table_null_schema"
                                                          :db_id db-id}}]
-      (t2/update! :model/Transform (:id transform1) {:target_table_id table-with-schema-id})
-      (t2/update! :model/Transform (:id transform2) {:target_table_id table-null-schema-id})
+      (t2/update! :model/Transform :id (:id transform1) {:target_table_id table-with-schema-id})
+      (t2/update! :model/Transform :id (:id transform2) {:target_table_id table-null-schema-id})
       (let [transform1 (t2/select-one :model/Transform :id (:id transform1))
             transform2 (t2/select-one :model/Transform :id (:id transform2))]
         (testing "Hydrates table with non-NULL schema"
@@ -329,10 +329,10 @@
                                :db_id db-id}
                       :last_checkpoint_value "42"}]
         (testing "checkpoint is present before update"
-          (let [t (t2/select-one :model/Transform transform-id)]
+          (let [t (t2/select-one :model/Transform :id transform-id)]
             (is (= "42" (:last_checkpoint_value t)))))
         (testing "changing checkpoint-filter-field-id resets checkpoint"
-          (t2/update! :model/Transform transform-id
+          (t2/update! :model/Transform :id transform-id
                       {:source {:type "query"
                                 :query {:database db-id
                                         :type "native"
@@ -340,13 +340,13 @@
                                                  :template-tags {}}}
                                 :source-incremental-strategy {:type "checkpoint"
                                                               :checkpoint-filter-field-id 200}}})
-          (let [t (t2/select-one :model/Transform transform-id)]
+          (let [t (t2/select-one :model/Transform :id transform-id)]
             (is (nil? (:last_checkpoint_value t)))))
         (testing "updating without changing checkpoint-filter-field-id preserves checkpoint"
           ;; Set checkpoint again
-          (t2/update! :model/Transform transform-id
+          (t2/update! :model/Transform :id transform-id
                       {:last_checkpoint_value "99"})
-          (t2/update! :model/Transform transform-id
+          (t2/update! :model/Transform :id transform-id
                       {:source {:type "query"
                                 :query {:database db-id
                                         :type "native"
@@ -354,7 +354,7 @@
                                                  :template-tags {}}}
                                 :source-incremental-strategy {:type "checkpoint"
                                                               :checkpoint-filter-field-id 200}}})
-          (let [t (t2/select-one :model/Transform transform-id)]
+          (let [t (t2/select-one :model/Transform :id transform-id)]
             (is (= "99" (:last_checkpoint_value t)))))))))
 
 (deftest lookback-round-trips-with-keyword-keys-test
@@ -375,7 +375,7 @@
                                :name "test_lookback"
                                :db_id db-id}}]
         (is (= {:value 4 :unit "day"}
-               (get-in (t2/select-one :model/Transform transform-id)
+               (get-in (t2/select-one :model/Transform :id transform-id)
                        [:source :source-incremental-strategy :lookback])))))))
 
 (deftest start-run-stores-job-run-id-test

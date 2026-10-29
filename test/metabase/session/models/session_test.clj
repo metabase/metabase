@@ -207,12 +207,12 @@
                            {:last_active_at (t/instant)}
                            {:ended_at (t/instant), :expires_at (t/instant)}]]
             (is (thrown-with-msg? RuntimeException #"You cannot update a Session"
-                                  (t2/update! :model/Session session-id changes)))))
+                                  (t2/update! :model/Session :id session-id changes)))))
         (testing "recording an ending is allowed"
-          (is (= 1 (t2/update! :model/Session session-id {:ended_at         (t/instant)
-                                                          :end_reason       "admin"
-                                                          :ended_by_user_id (mt/user->id :crowberto)
-                                                          :key_hashed       nil}))))
+          (is (= 1 (t2/update! :model/Session :id session-id {:ended_at         (t/instant)
+                                                              :end_reason       "admin"
+                                                              :ended_by_user_id (mt/user->id :crowberto)
+                                                              :key_hashed       nil}))))
         (testing "an ending is final: nothing an ending writes can be changed once it is recorded"
           (doseq [changes [{:ended_at nil}
                            {:ended_at (t/instant)}
@@ -220,4 +220,4 @@
                            {:ended_by_user_id (mt/user->id :rasta)}
                            {:key_hashed (session/hash-session-key (session/generate-session-key))}]]
             (is (thrown-with-msg? RuntimeException #"You cannot change a Session that has ended"
-                                  (t2/update! :model/Session session-id changes)))))))))
+                                  (t2/update! :model/Session :id session-id changes)))))))))

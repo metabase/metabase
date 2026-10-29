@@ -12,5 +12,5 @@
                                                  :creator_id            (mt/user->id :crowberto)
                                                  :updated_by_id         (mt/user->id :crowberto)}]
     (is (= 1
-           (t2/delete! :model/ApiKey api-key-id)))
+           (t2/delete! :model/ApiKey :id api-key-id)))
     (is (true? (t2/select-one-fn :is_active :model/User :id (mt/user->id :crowberto))))))

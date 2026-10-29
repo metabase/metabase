@@ -131,7 +131,7 @@
           (testing "only send to enabled channels that has recipients"
             (is (= #{pc} @sent-channel-ids)))
           (testing "channels that has no recipients are deleted"
-            (is (false? (t2/exists? :model/PulseChannel pc-no-recipient)))))))))
+            (is (false? (t2/exists? :model/PulseChannel :id pc-no-recipient)))))))))
 
 (deftest send-pulse!*-skips-archived-dashboard-test
   (testing "a trigger firing for a trashed Dashboard sends nothing and records no task run"
@@ -148,12 +148,12 @@
           ;; the Notification send paths
           (let [task-runs #(t2/select-pks-set :model/TaskRun :entity_type :dashboard :entity_id dash-id)]
             (try
-              (t2/update! :model/Dashboard dash-id {:archived true})
+              (t2/update! :model/Dashboard :id dash-id {:archived true})
               (#'task.send-pulses/send-pulse!* pulse-id #{pc-id})
               (is (= #{} @sent-channel-ids))
               (is (empty? (task-runs)))
               (testing "once the Dashboard is restored, the same fire sends and records a task run"
-                (t2/update! :model/Dashboard dash-id {:archived false})
+                (t2/update! :model/Dashboard :id dash-id {:archived false})
                 (#'task.send-pulses/send-pulse!* pulse-id #{pc-id})
                 (is (= #{pc-id} @sent-channel-ids))
                 (is (= 1 (count (task-runs)))))

@@ -17,6 +17,7 @@ import type { CardType, IconName } from "metabase-types/api";
 import { createMockSearchResult } from "metabase-types/api/mocks";
 import {
   ORDERS_ID,
+  PRODUCTS_ID,
   SAMPLE_DB_ID,
   createSampleDatabase,
   createSavedStructuredCard,
@@ -179,6 +180,38 @@ describe("DataStep", () => {
     await userEvent.click(await screen.findByText("Products"));
 
     expect(getNextTableName()).toBe("Products");
+  });
+
+  it("should remove joins when changing a table", async () => {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          joins: [
+            {
+              source: { type: "table", id: PRODUCTS_ID },
+              strategy: "left-join",
+              conditions: [
+                {
+                  operator: "=",
+                  left: { type: "column", name: "PRODUCT_ID" },
+                  right: { type: "column", name: "ID" },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    const { getNextQuery, getNextTableName } = await setup({
+      step: createMockNotebookStep({ query }),
+    });
+
+    await userEvent.click(screen.getByText("Orders"));
+    await userEvent.click(await screen.findByText("People"));
+
+    expect(getNextTableName()).toBe("People");
+    expect(Lib.joins(getNextQuery(), 0)).toHaveLength(0);
   });
 
   describe("fields selection", () => {

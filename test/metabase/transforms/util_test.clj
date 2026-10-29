@@ -447,7 +447,7 @@
                       driver/table-exists? (constantly false)]
           (transforms-base.u/activate-table-and-mark-computed! (driver.u/lib-database (:id db)) target)
           (is (some? @synced-table))
-          (let [table (t2/select-one :model/Table (:id @synced-table))]
+          (let [table (t2/select-one :model/Table :id (:id @synced-table))]
             (is (= :computed (:data_authority table)))
             (is (false? (:is_writable table))
                 "Computed transform tables should have is_writable=false")))))))
@@ -485,7 +485,7 @@
             (with-redefs [transforms-base.i/execute-base! (constantly {:status :succeeded})]
               (mt/with-dynamic-fn-redefs
                 [transforms-base.u/sync-target!         (fn [_target _database]
-                                                          (t2/select-one :model/Table table-id))
+                                                          (t2/select-one :model/Table :id table-id))
                  transforms.u/run-cancelable-transform! (fn [_run-id _transform _driver _details run-fn & _opts]
                                                           (run-fn (a/promise-chan) nil))]
                 (transforms.execute/execute! transform {:run-method :manual})
@@ -799,7 +799,7 @@
                                              (= "PUBLIC" (:schema table)))]
           (transforms-base.u/activate-table-and-mark-computed! (driver.u/lib-database (:id db)) target)
           (is (some? @synced-table))
-          (let [table (t2/select-one :model/Table (:id @synced-table))]
+          (let [table (t2/select-one :model/Table :id (:id @synced-table))]
             (is (= "PUBLIC" (:schema table))
                 "Table schema should be updated to the driver's default schema"))))))
   (testing "activate-table-and-mark-computed! leaves nil schema when physical table has no default schema"
@@ -823,6 +823,6 @@
                       driver/table-exists? (constantly false)]
           (transforms-base.u/activate-table-and-mark-computed! (driver.u/lib-database (:id db)) target)
           (is (some? @synced-table))
-          (let [table (t2/select-one :model/Table (:id @synced-table))]
+          (let [table (t2/select-one :model/Table :id (:id @synced-table))]
             (is (nil? (:schema table))
                 "Table schema should remain nil when physical table isn't in default schema")))))))
