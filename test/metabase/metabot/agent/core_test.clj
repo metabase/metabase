@@ -1528,6 +1528,72 @@
                                                     "error_code"  "invalid-arguments"}}}]
                           tool-events)))))))))))
 
+(deftest agent-turn-finished-snowplow-test
+  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                     llm-metabot-provider test-provider]
+    (testing "fires one 'agent_turn_finished' per turn, joinable to its tool calls by request id"
+      (let [call-count (atom 0)
+            rasta-id   (mt/user->id :rasta)]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                    (fn [_]
+                                      (let [n (swap! call-count inc)]
+                                        (if (= 1 n)
+                                          (mut/mock-llm-response
+                                           [{:type :start :id "msg-1"}
+                                            {:type      :tool-input
+                                             :id        "t1"
+                                             :function  "search"
+                                             :arguments {:semantic_queries ["test"]
+                                                         :keyword_queries  ["test"]
+                                                         :entity_types     ["table"]}}])
+                                          (mut/mock-llm-response
+                                           [{:type :start :id "msg-2"}
+                                            {:type :text :text "Done"}]))))
+                                    metabot-search/search
+                                    (fn [_args] [{:id 1 :type "table" :name "test" :display_name "Test" :database_id 1}])]
+          (mt/with-log-level [metabase.metabot.agent.core :warn]
+            (mt/with-current-user rasta-id
+              (snowplow-test/with-fake-snowplow-collector
+                (run-agent-loop! {:messages      [{:role :user :content "test"}]
+                                  :state         {}
+                                  :context       {}
+                                  :profile-id    :internal
+                                  :tracking-opts {:session-id "00000000-0000-0000-0000-000000000003"}})
+                (let [events      (snowplow-test/pop-event-data-and-user-id!)
+                      event-named (fn [event-name] (filter #(= event-name (get-in % [:data "event"])) events))
+                      turn-events (event-named "agent_turn_finished")
+                      tool-events (event-named "agent_used_tool")]
+                  (is (=? [{:user-id (str rasta-id)
+                            :data    {"event"         "agent_turn_finished"
+                                      "source"        "metabot_agent"
+                                      "profile"       "internal"
+                                      "session_id"    "00000000-0000-0000-0000-000000000003"
+                                      "request_id"    string?
+                                      "duration_ms"   nat-int?
+                                      "event_details" {"finish_reason" "stop"
+                                                       "steps"         2}}}]
+                          turn-events))
+                  (is (= [(get-in (first turn-events) [:data "request_id"])]
+                         (distinct (map #(get-in % [:data "request_id"]) tool-events)))
+                      "the turn's tool events carry the same request id"))))))))
+    (testing "a turn that dies on an exception finishes with reason error, before its first step"
+      (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_] (throw (ex-info "boom" {})))]
+        (mt/with-log-level [metabase.metabot.agent.core :fatal]
+          (snowplow-test/with-fake-snowplow-collector
+            (run-agent-loop! {:messages      [{:role :user :content "test"}]
+                              :state         {}
+                              :context       {}
+                              :profile-id    :internal
+                              :tracking-opts {:session-id "00000000-0000-0000-0000-000000000004"}})
+            (let [turn-events (filter #(= "agent_turn_finished" (get-in % [:data "event"]))
+                                      (snowplow-test/pop-event-data-and-user-id!))]
+              (is (= 1 (count turn-events)))
+              (is (=? {"session_id"  "00000000-0000-0000-0000-000000000004"
+                       "duration_ms" nat-int?}
+                      (:data (first turn-events))))
+              (is (= {"finish_reason" "error"}
+                     (get-in (first turn-events) [:data "event_details"]))))))))))
+
 (deftest token-usage-snowplow-test
   (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                      llm-metabot-provider test-provider]
