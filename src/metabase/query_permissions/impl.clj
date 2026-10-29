@@ -17,7 +17,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.queries.db :as queries.db]
    [metabase.query-permissions.db :as query-permissions.db]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.interface :as qp.i]
@@ -183,7 +182,7 @@
       (if (qp.store/initialized?)
         (when-let [{:keys [collection-id]} (lib.metadata/card (qp.store/metadata-provider) card-id)]
           (t2/instance :model/Card {:collection_id collection-id}))
-        (queries.db/card card-id))
+        (query-permissions.db/card-collection-id card-id))
       (throw (Exception. (tru "Card {0} does not exist." card-id)))))
 
 (mu/defn- source-card-read-perms :- [:set perms/PathSchema]
@@ -351,13 +350,6 @@
              table-id))
           table-id->required-perm))
 
-(defn- card-not-in-database
-  "The Card with `card-id` if it does not belong to the Database with `database-id`, or nil."
-  [card-id database-id]
-  (let [card (queries.db/card card-id)]
-    (when (and card (not= database-id (:database_id card)))
-      card)))
-
 (defn- card
   [database-id card-id]
   (or (some-> (lib.metadata.protocols/card (qp.store/metadata-provider) card-id)
@@ -367,7 +359,7 @@
       ;; used by the model upon which the action is defined. In this case, the underlying model whose
       ;; permissions we need to check will not be exposed by the metadata provider, so we need a fallback.
       ;; -- Noah
-      (card-not-in-database card-id database-id)
+      (query-permissions.db/card-not-in-database card-id database-id)
       (throw (ex-info (tru "Card {0} does not exist." card-id)
                       {:type    qp.error-type/invalid-query
                        :card-id card-id}))))

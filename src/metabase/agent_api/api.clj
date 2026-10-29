@@ -16,10 +16,8 @@
    [metabase.auth-identity.core :as auth-identity]
    [metabase.channel.urls :as channel.urls]
    [metabase.collections.core :as collections]
-   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.autoplace :as autoplace]
-   [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard :as dashboard]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.events.core :as events]
@@ -34,7 +32,6 @@
    [metabase.metabot.tools.search :as metabot-search]
    [metabase.metabot.util :as metabot.u]
    [metabase.queries.core :as queries]
-   [metabase.queries.db :as queries.db]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.core :as qp]
@@ -77,7 +74,7 @@
   [collection-id]
   (if-not collection-id
     (:name (collection/root-collection-with-ui-details nil))
-    (let [coll      (collections.db/collection collection-id)
+    (let [coll      (agent-api.db/collection-breadcrumb-columns collection-id)
           ;; `:effective_ancestors` is the app breadcrumb: it leads with the "Our analytics" root and
           ;; drops ancestors the caller can't read. A personal subtree leads with the personal
           ;; collection instead, so drop that root crumb for them.
@@ -881,7 +878,7 @@
                            :card-updates          card-updates
                            :actor                 @api/*current-user*
                            :delete-old-dashcards? false})
-    (update-card-response (queries.db/card id))))
+    (update-card-response (agent-api.db/card id))))
 
 (mr/def ::create-question-request
   [:map {:closed true}
@@ -1339,13 +1336,6 @@
                       (update :placed conj new-dashcard)
                       (update :added conj new-dashcard)))))
 
-(defn- dashcard-in-dashboard
-  "The DashboardCard with `dashcard-id` if it is on the Dashboard with `dashboard-id`, or nil."
-  [dashcard-id dashboard-id]
-  (let [dashcard (dashboards.db/dashboard-card dashcard-id)]
-    (when (= dashboard-id (:dashboard_id dashcard))
-      dashcard)))
-
 (defn- apply-dashcard-mutations!
   "Apply a sequence of LLM-friendly dashcard mutations. Returns {:added [...] :removed [...] :moved [...]}.
 
@@ -1359,7 +1349,7 @@
   [dashboard-id mutations]
   (let [current        (agent-api.db/dashcards dashboard-id)
         ;; the dashboard row is the same for every mutation in the batch
-        dashboard      (dashboards.db/dashboard dashboard-id)
+        dashboard      (agent-api.db/dashboard dashboard-id)
         ;; one fetch serves the default tab, per-mutation tab_id validation, and collision grouping
         tab-ids        (agent-api.db/dashboard-tab-ids dashboard-id)
         ;; new dashcards land on the first tab, alongside any nil-tab dashcards, which the
@@ -1422,7 +1412,7 @@
 
           "update_text"
           (let [existing (api/check-404
-                          (dashcard-in-dashboard dashcard_id dashboard-id))
+                          (agent-api.db/dashcard-in-dashboard dashcard_id dashboard-id))
                 vs       (:visualization_settings existing)
                 display  (some-> (get-in vs [:virtual_card :display]) name)]
             (api/check (or (contains? #{"heading" "text"} display)
@@ -1437,7 +1427,7 @@
 
           "remove"
           (let [existing (api/check-404
-                          (dashcard-in-dashboard dashcard_id dashboard-id))]
+                          (agent-api.db/dashcard-in-dashboard dashcard_id dashboard-id))]
             ;; Model-level delete also cleans up orphaned inline parameters and pulse cards.
             (dashboard-card/delete-dashboard-cards! [dashcard_id])
             (swap! state #(-> %
@@ -1446,7 +1436,7 @@
 
           "move"
           (let [existing  (api/check-404
-                           (dashcard-in-dashboard dashcard_id dashboard-id))
+                           (agent-api.db/dashcard-in-dashboard dashcard_id dashboard-id))
                 ;; A move only makes sense relative to the moved card's own tab: collision checks
                 ;; and the move-to-top reflow must not touch cards on other tabs. Compared via
                 ;; `effective-tab` so nil-tab dashcards group with the first tab they render on.
@@ -1584,7 +1574,7 @@
                              {:object current-dash
                               :user-id api/*current-user-id*
                               :dashcards (:removed result)}))
-    (let [updated (dashboards.db/dashboard id)]
+    (let [updated (agent-api.db/dashboard id)]
       (events/publish-event! :event/dashboard-update
                              {:object updated :user-id api/*current-user-id*})
       {:id              (:id updated)

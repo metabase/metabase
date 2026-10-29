@@ -16,7 +16,6 @@
    [metabase.config.core :as config]
    [metabase.content-verification.core :as moderation]
    [metabase.dashboards.autoplace :as autoplace]
-   [metabase.dashboards.db :as dashboards.db]
    [metabase.embedding.settings :as embed.settings]
    [metabase.events.core :as events]
    [metabase.graph.core :as graph]
@@ -54,7 +53,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.fn :as mu.fn]
-   [metabase.warehouses.db :as warehouses.db]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]
@@ -156,7 +154,7 @@
   [card]
   (cond
     (contains? card :document_id) (:document_id card)
-    (:id card)                    (:document_id (queries.db/card (:id card)))
+    (:id card)                    (queries.db/card-document-id (:id card))
     :else                         ::not-adjudicable))
 
 (defn- parent-document-permits?
@@ -358,7 +356,7 @@
       (doseq [{:keys [field-id field-name table-name field-db-id]} (queries.db/field-database-info-for-ids (set field-ids))]
         (when-not (= field-db-id query-db-id)
           (throw (ex-info (letfn [(describe-database [db-id]
-                                    (format "%d %s" db-id (pr-str (:name (warehouses.db/database db-id)))))]
+                                    (format "%d %s" db-id (pr-str (queries.db/database-name db-id))))]
                             (tru "Invalid Field Filter: Field {0} belongs to Database {1}, but the query is against Database {2}"
                                  (format "%d %s.%s" field-id (pr-str table-name) (pr-str field-name))
                                  (describe-database field-db-id)
@@ -442,7 +440,7 @@
   changes)
 
 (defn- check-dashboard-internal-card-insert [card]
-  (let [correct-collection-id (:collection_id (dashboards.db/dashboard (:dashboard_id card)))
+  (let [correct-collection-id (queries.db/dashboard-collection-id (:dashboard_id card))
         invalid? (or (and (contains? card :collection_id)
                           (not= correct-collection-id (:collection_id card)))
                      (not (contains? #{:question "question" nil} (:type card)))
@@ -509,8 +507,8 @@
       (doseq [[[po-type po-id] param-cards]
               (group-by (juxt :parameterized_object_type :parameterized_object_id) parameter-cards)]
         (let [parameters             (case po-type
-                                       :card      (:parameters (queries.db/card po-id))
-                                       :dashboard (:parameters (dashboards.db/dashboard po-id)))
+                                       :card      (queries.db/card-parameters po-id)
+                                       :dashboard (queries.db/dashboard-parameters po-id))
               affected-param-ids-set (cond
                                        ;; update all parameters that use this card as source
                                        (:archived changes)
@@ -1123,7 +1121,7 @@
 
 (defn- apply-dashboard-question-updates [card changes]
   (if-let [dashboard-id (:dashboard_id changes)]
-    (assoc card :collection_id (:collection_id (dashboards.db/dashboard dashboard-id)))
+    (assoc card :collection_id (queries.db/dashboard-collection-id dashboard-id))
     card))
 
 (defn- check-allowed-content
@@ -1220,7 +1218,7 @@
 ;;; ----------------------------------------------- Creating Cards ----------------------------------------------------
 
 (defn- autoplace-dashcard-for-card! [dashboard-id maybe-dashboard-tab-id card size]
-  (let [dashboard (t2/hydrate (dashboards.db/dashboard dashboard-id) :dashcards [:tabs :tab-cards])
+  (let [dashboard (t2/hydrate (queries.db/dashboard dashboard-id) :dashcards [:tabs :tab-cards])
         {:keys [dashcards tabs]} dashboard
         tabs (remove #(when maybe-dashboard-tab-id (not= maybe-dashboard-tab-id (:id %))) tabs)
         already-on-dashboard? (seq (filter #(= (:id card) (:card_id %)) dashcards))]
@@ -1249,7 +1247,7 @@
   (queries.db/delete-dashcards-for-card-on-dashboard! card-id dashboard-id)
   (when-let [dashcard-ids (seq (map :id (queries.db/dashcard-series-for-card-on-dashboard card-id dashboard-id)))]
     (queries.db/delete-dashcard-series! (set dashcard-ids)))
-  (events/publish-event! :event/dashboard-update {:object (dashboards.db/dashboard dashboard-id)
+  (events/publish-event! :event/dashboard-update {:object (queries.db/dashboard dashboard-id)
                                                   :user-id api/*current-user-id*}))
 
 (defn- autoplace-or-remove-dashcards-for-card!
@@ -1323,7 +1321,7 @@
                             (not (:dashboard_id input-card-data)))))
    ;; Gated here, not in `check-allowed-to-create-card!`: the copy endpoints skip that stack but still autoplace.
    (when-let [dashboard-id (and autoplace-dashboard-questions? (:dashboard_id input-card-data))]
-     (check-shared-dashboard-timeline-permissions! (dashboards.db/dashboard dashboard-id) [input-card-data]))
+     (check-shared-dashboard-timeline-permissions! (queries.db/dashboard dashboard-id) [input-card-data]))
    (let [data-keys                          [:dataset_query :description :display :name :visualization_settings
                                              :parameters :parameter_mappings :collection_id :collection_position
                                              :cache_ttl :type :dashboard_id :document_id]

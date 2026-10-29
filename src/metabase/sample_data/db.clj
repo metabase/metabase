@@ -23,6 +23,11 @@
   []
   (t2/select-one-pk :model/Database :is_sample true))
 
+(mu/defn database
+  "The Database with `database-id`, or nil."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select-one :model/Database database-id))
+
 (mu/defn set-sample-database-details!
   "Set the `details` of the sample Database, returning the ids of the updated rows."
   [details :- ::warehouses.schema/database.details]

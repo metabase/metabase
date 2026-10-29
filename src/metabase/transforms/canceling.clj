@@ -195,7 +195,7 @@
                                      (try
                                        ;; Skip silently if the run was deleted between cancelation insert and now
                                        ;; — `chan-signal-cancel!` would be a no-op anyway in that case.
-                                       (when-let [run (transforms.db/transform-run id)]
+                                       (when-let [run (transforms.db/run id)]
                                          (cancel-run! run request-time))
                                        (catch Throwable t
                                          (log/error (str "Error canceling " id ": " (ex-message t)))))))

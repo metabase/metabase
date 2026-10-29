@@ -9,11 +9,6 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn channel-template :- [:maybe ::channel.schema/channel-template]
-  "The ::channel.schema/channel-template with `channel-template-id`, or nil."
-  [channel-template-id :- ms/PositiveInt]
-  (t2/select-one :model/ChannelTemplate :id [:auto/param channel-template-id]))
-
 (def ^:private ChannelRow
   "A whole Channel row for insert or update."
   ::channel.schema/channel.update)
@@ -38,10 +33,10 @@
   [row :- ChannelRow]
   (t2/insert-returning-instance! :model/Channel row))
 
-(mu/defn channel :- [:maybe ::channel.schema/channel]
-  "The ::channel.schema/channel with `id`, or nil."
+(mu/defn channel
+  "The Channel with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/Channel :id [:auto/param id]))
+  (t2/select-one :model/Channel id))
 
 (mu/defn update-channel!
   "Apply `changes` to the Channel with `id`, returning the number updated."
@@ -94,6 +89,16 @@
   "The Channel named `channel-name`, or nil."
   [channel-name :- :string]
   (t2/select-one :model/Channel :name channel-name))
+
+(mu/defn database
+  "The Database with `database-id`, or nil."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select-one :model/Database :id database-id))
+
+(mu/defn dashboard
+  "The Dashboard with `dashboard-id`, or nil."
+  [dashboard-id :- ::lib.schema.id/dashboard]
+  (t2/select-one :model/Dashboard :id dashboard-id))
 
 (mu/defn dashboard-tabs
   "The DashboardTabs of the Dashboard with `dashboard-id`, in position order."
