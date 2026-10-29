@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useState } from "react";
-import { t } from "ttag";
+import { c } from "ttag";
 
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { Group, Menu } from "metabase/ui";
@@ -9,6 +9,12 @@ const SharingMenuCloseContext = createContext<() => void>(() => {});
 // Buttons in the actions row aren't Menu.Items, so they close the popover through this.
 export function useCloseSharingMenu() {
   return useContext(SharingMenuCloseContext);
+}
+
+function getShareLabel() {
+  return c(
+    "A verb, not a noun. The label of the button that opens the options to share a question or a dashboard.",
+  ).t`Share`;
 }
 
 export function SharingMenu({
@@ -35,8 +41,8 @@ export function SharingMenu({
         <ToolbarButton
           icon="share"
           data-testid="sharing-menu-button"
-          tooltipLabel={t`Share`}
-          aria-label={t`Share`}
+          tooltipLabel={getShareLabel()}
+          aria-label={getShareLabel()}
           disabled={!hasActions && !hasMenuItems}
         />
       </Menu.Target>
@@ -72,11 +78,11 @@ export function SharingButton({
     <ToolbarButton
       icon="share"
       data-testid="sharing-menu-button"
-      tooltipLabel={tooltip ?? t`Share`}
+      tooltipLabel={tooltip ?? getShareLabel()}
       // aria-label must be a string; keep the accessible name stable when the
       // tooltip is a non-string node (e.g. the copied-confirmation flash)
       aria-label={
-        ariaLabel ?? (typeof tooltip === "string" ? tooltip : t`Share`)
+        ariaLabel ?? (typeof tooltip === "string" ? tooltip : getShareLabel())
       }
       onClick={onClick}
     />

@@ -4,7 +4,6 @@
    [metabase-enterprise.advanced-permissions.common :as advanced-permissions.common]
    [metabase-enterprise.impersonation.util-test :as advanced-perms.api.tu]
    [metabase.driver :as driver]
-   [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -184,43 +183,6 @@
             (is (nil? (perm-value nil)))
             (is (= :unrestricted (perm-value table-id-1)))
             (is (= :blocked (perm-value table-id-3)))))))))
-
-(deftest new-view-data-permission-levels-block-data-app-groups-test
-  (testing "data-app groups block newly-synced tables/databases even with no `:blocked` row (full manifest)"
-    (mt/with-additional-premium-features #{:sandboxes :advanced-permissions}
-      (mt/with-temp [:model/PermissionsGroup {app-group-id :id} {:is_data_app_group true}
-                     :model/PermissionsGroup {ctl-group-id :id} {}                        ; a normal, non-data-app group
-                     :model/DataApp          _                  {:name "perm-test-app" :display_name "Perm Test"
-                                                                 :bundle_path "app/dist/index.js"
-                                                                 :permission_group_id app-group-id}
-                     :model/Database         {db-id :id}      {}
-                     :model/Table            {table-id-1 :id} {:db_id db-id :schema "PUBLIC"}
-                     :model/Table            {table-id-2 :id} {:db_id db-id :schema "PUBLIC"}]
-        ;; effective (coalesced) view-data — the control group inherits the DB-level value with no
-        ;; table row of its own, so a raw-row check would see nil.
-        (let [effective (fn [group-id table-id]
-                          (data-perms/table-permission-for-groups #{group-id} :perms/view-data db-id table-id))]
-          (testing "a late table is blocked for the data-app group but not for a normal group"
-            ;; a "full manifest" for both groups: all existing tables :unrestricted, so no `:blocked` row exists
-            (doseq [group-id [app-group-id ctl-group-id]]
-              (data-perms/set-table-permission! group-id table-id-1 :perms/view-data :unrestricted)
-              (data-perms/set-table-permission! group-id table-id-2 :perms/view-data :unrestricted))
-            (mt/with-temp [:model/Table {table-id-3 :id} {:db_id db-id :schema "PUBLIC"}]
-              (is (= :blocked (effective app-group-id table-id-3))
-                  "the late table is blocked for the data-app group")
-              (is (= :unrestricted (effective ctl-group-id table-id-3))
-                  "the same late table is NOT blocked for a normal group — the rule is scoped to app groups")
-              (is (= :unrestricted (effective app-group-id table-id-1))
-                  "the app's declared tables stay unrestricted")
-              ;; the going-granular apply keeps a clean per-table shape, so the permissions graph the
-              ;; admin panel loads still builds (M1's db-level+table-override mix used to 500 it).
-              (is (map? (data-perms.graph/api-graph))
-                  "the whole permissions graph still builds")))
-          (testing "a newly-added database is blocked only for the data-app group"
-            (let [levels (advanced-permissions.common/new-database-view-data-permission-levels
-                          [app-group-id ctl-group-id])]
-              (is (= :blocked (levels app-group-id)) "blocked for the data-app group")
-              (is (not= :blocked (levels ctl-group-id)) "not blocked for a normal group"))))))))
 
 (deftest new-table-view-data-permission-levels-without-premium-features-test
   (testing "A newly-synced table fails CLOSED to :blocked for a sandboxed group even when premium features are unavailable (UXW-4927)"
@@ -569,69 +531,6 @@
           (is (= ["schema1"]
                  (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id)
                                        :include_editable_data_model true))))))))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                can-query and can-write-metadata filter tests                                    |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(deftest list-databases-can-write-metadata-filter-test
-  (testing "GET /api/database with can-write-metadata=true filters to only databases with editable tables"
-    (mt/with-temp [:model/Database {db-1-id :id} {:name "Editable DB"}
-                   :model/Database {db-2-id :id} {:name "Not Editable DB"}
-                   :model/Table    t1            {:db_id db-1-id :name "table1" :active true}
-                   :model/Table    _             {:db_id db-2-id :name "table2" :active true}]
-      (mt/with-all-users-data-perms-graph! {db-1-id {:view-data      :unrestricted
-                                                     :create-queries :query-builder
-                                                     :data-model     {:schemas {"" {(u/the-id t1) :all}}}}
-                                            db-2-id {:view-data      :unrestricted
-                                                     :create-queries :query-builder
-                                                     :data-model     {:schemas :none}}}
-        (let [response (->> (mt/user-http-request :rasta :get 200 "database" :can-write-metadata true)
-                            :data
-                            (filter #(#{db-1-id db-2-id} (:id %))))]
-          (is (= 1 (count response)))
-          (is (= "Editable DB" (-> response first :name))))))))
-
-(deftest list-databases-with-tables-can-write-metadata-filter-test
-  (testing "GET /api/database?include=tables&can-write-metadata=true filters tables within databases"
-    (mt/with-temp [:model/Database {db-id :id} {:name "Test DB"}
-                   :model/Table    t1          {:db_id db-id :name "editable_table" :active true}
-                   :model/Table    t2          {:db_id db-id :name "not_editable_table" :active true}]
-      (mt/with-all-users-data-perms-graph! {db-id {:view-data      :unrestricted
-                                                   :create-queries :query-builder
-                                                   :data-model     {:schemas {"" {(u/the-id t1) :all
-                                                                                  (u/the-id t2) :none}}}}}
-        (let [response (->> (mt/user-http-request :rasta :get 200 "database" :include "tables" :can-write-metadata true)
-                            :data
-                            (filter #(= (:id %) db-id))
-                            first)]
-          (is (= 1 (count (:tables response))))
-          (is (= "editable_table" (-> response :tables first :name))))))))
-
-(deftest list-schemas-can-write-metadata-filter-test
-  (testing "GET /api/database/:id/schemas with can-write-metadata=true filters to only schemas with editable tables"
-    (mt/with-temp [:model/Database {db-id :id} {}
-                   :model/Table    t1 {:db_id db-id :schema "editable_schema" :name "t1" :active true}
-                   :model/Table    _ {:db_id db-id :schema "not_editable_schema" :name "t2" :active true}]
-      (mt/with-all-users-data-perms-graph! {db-id {:view-data      :unrestricted
-                                                   :create-queries :query-builder
-                                                   :data-model     {:schemas {"editable_schema" {(u/the-id t1) :all}
-                                                                              "not_editable_schema" :none}}}}
-        (is (= ["editable_schema"]
-               (mt/user-http-request :rasta :get 200 (format "database/%d/schemas" db-id) :can-write-metadata true)))))))
-
-(deftest list-schema-tables-can-write-metadata-filter-test
-  (testing "GET /api/database/:id/schema/:schema with can-write-metadata=true filters to only editable tables"
-    (mt/with-temp [:model/Database {db-id :id} {}
-                   :model/Table    t1 {:db_id db-id :schema "test_schema" :name "editable_table" :active true}
-                   :model/Table    t2 {:db_id db-id :schema "test_schema" :name "not_editable_table" :active true}]
-      (mt/with-all-users-data-perms-graph! {db-id {:view-data      :unrestricted
-                                                   :create-queries :query-builder
-                                                   :data-model     {:schemas {"test_schema" {(u/the-id t1) :all
-                                                                                             (u/the-id t2) :none}}}}}
-        (let [response (mt/user-http-request :rasta :get 200 (format "database/%d/schema/%s" db-id "test_schema") :can-write-metadata true)]
-          (is (= 1 (count response)))
-          (is (= "editable_table" (-> response first :name))))))))
 
 (deftest get-field-hydrated-target-with-advanced-perms-test
   (testing "GET /api/field/:id"

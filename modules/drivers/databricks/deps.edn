@@ -2,13 +2,14 @@
  ["src" "resources"]
 
  :deps
- {at.yawk.lz4/lz4-java                {:mvn/version "1.11.1"} ; pin newer version than the one bundled with the JDBC driver
+ {at.yawk.lz4/lz4-java                {:mvn/version "1.11.4"} ; pin newer version than the one bundled with the JDBC driver
   com.databricks/databricks-jdbc-thin {:mvn/version "3.4.1"
                                        :exclusions  [org.apache.commons/commons-lang3  ;; dep in top-level deps.edn; exclusion fixes security warnings
                                                      org.slf4j/slf4j-jdk14              ;; conflicts with our log4j2 SLF4J provider
                                                      ;; pinned in and resolved from /deps.edn
                                                      com.fasterxml.jackson.core/jackson-core
                                                      com.fasterxml.jackson.core/jackson-databind
+                                                     com.google.guava/guava
                                                      org.apache.httpcomponents.client5/httpclient5
                                                      org.apache.httpcomponents.core5/httpcore5
                                                      org.apache.httpcomponents.core5/httpcore5-h2

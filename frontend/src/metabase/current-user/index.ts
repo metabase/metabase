@@ -22,5 +22,10 @@ export {
   getUserIsEntitledAnalyst,
   getUserPersonalCollectionId,
 } from "./selectors";
+export {
+  SETTINGS_MANAGER_PATHS,
+  getSettingsSlug,
+  isSettingsManagerPath,
+} from "./settings-manager-access";
 export { useUserAcknowledgement } from "./use-user-acknowledgement";
 export { useUserKeyValue } from "./use-user-key-value";

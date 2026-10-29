@@ -20,7 +20,8 @@
 (doto :model/Dimension
   (derive :metabase/model)
   (derive :hook/entity-id)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/dependencies))
 
 (t2/deftransforms :model/Dimension
   {:type mi/transform-keyword})
@@ -40,8 +41,7 @@
 (defmethod serdes/make-spec "Dimension" [_model-name _opts]
   {:copy      [:name :type :entity_id]
    :skip      []
-   :transform {:created_at              (serdes/date)
-               :human_readable_field_id (serdes/fk :model/Field)
+   :transform {:human_readable_field_id (serdes/fk :model/Field)
                :field_id                {::serdes/fk true
                                          :export     #(serdes/*export-field-fk* %)
                                          :import-with-context

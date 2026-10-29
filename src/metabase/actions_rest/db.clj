@@ -22,10 +22,18 @@
                                             (if model-id
                                               [:= :model_id model-id]
                                               [:or
-                                               (collection/visible-collection-filter-clause
-                                                :collection_id
-                                                {:include-archived-items (if archived :all :exclude)})
-                                               [:and [:= :model_id nil] [:= :collection_id nil]]])]}))
+                                               [:and
+                                                [:not= :model_id nil]
+                                                (collection/visible-collection-filter-clause
+                                                 :collection_id
+                                                 {:include-archived-items (if archived :all :exclude)
+                                                  :root-namespace         nil})]
+                                               [:and
+                                                [:= :model_id nil]
+                                                (collection/visible-collection-filter-clause
+                                                 :collection_id
+                                                 {:include-archived-items (if archived :all :exclude)
+                                                  :root-namespace         collection/data-actions-ns})]])]}))
 
 (mu/defn public-actions
   "The name, id, public uuid, and model id of the unarchived Actions that are publicly shared."
@@ -47,4 +55,4 @@
   [action-id         :- ::lib.schema.id/action
    public-uuid       :- [:maybe :string]
    made-public-by-id :- [:maybe ::lib.schema.id/user]]
-  (t2/update! :model/Action action-id {:public_uuid public-uuid, :made_public_by_id made-public-by-id}))
+  (t2/update! :model/Action :id action-id {:public_uuid public-uuid, :made_public_by_id made-public-by-id}))

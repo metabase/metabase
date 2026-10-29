@@ -347,6 +347,15 @@
   [group-ids :- [:set ms/PositiveInt]]
   (t2/select-pk->fn :is_tenant_group [:model/PermissionsGroup :id :is_tenant_group] :id [:in group-ids]))
 
+(mu/defn groups-by-ids
+  "The ID, name, and magic type of the requested groups, ordered by name."
+  [group-ids :- [:set ms/PositiveInt]]
+  (if (seq group-ids)
+    (t2/select [:model/PermissionsGroup :id :name :magic_group_type]
+               :id [:in group-ids]
+               {:order-by [:%lower.name]})
+    []))
+
 (mu/defn group-members
   "The active Users in the PermissionsGroups with `group-ids`. When `include-group-manager?` is true each row also
   carries the membership's `:is_group_manager` flag."
@@ -531,7 +540,7 @@
   "Apply `changes` to the CollectionPermissionGraphRevision with `revision-id`."
   [revision-id :- ms/PositiveInt
    changes     :- (mut/select-keys ::permissions.schema/collection-permission-graph-revision.update [:before :after])]
-  (t2/update! :model/CollectionPermissionGraphRevision revision-id changes))
+  (t2/update! :model/CollectionPermissionGraphRevision :id revision-id changes))
 
 ;;; ----------------------------------------------- Collections -----------------------------------------------
 
@@ -697,7 +706,7 @@
   "Apply `changes` to the User with `user-id`."
   [user-id :- ::lib.schema.id/user
    changes :- (mut/select-keys ::users.schema/user.update [:is_superuser :is_data_analyst])]
-  (t2/update! :model/User user-id changes))
+  (t2/update! :model/User :id user-id changes))
 
 (mu/defn update-users!
   "Apply `changes` to the Users with `user-ids`."

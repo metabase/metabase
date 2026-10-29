@@ -23,7 +23,7 @@ Replace `{your-metabase.example.com}` with your Metabase's URL. Admins can also 
 
 Your client will direct you to an authentication page for your Metabase.
 
-Once authenticated, you can approve or block the tools in your client (not in your Metabase).
+Once authenticated, you can approve or block the tools in your client. On [Pro and Enterprise plans](https://www.metabase.com/pricing), admins can also [limit which tools each group can use](./usage-controls.md#mcp-tools-access).
 
 Connected a client before Metabase 0.64? It'll ask you to sign in again after you upgrade.
 
@@ -33,11 +33,27 @@ To connect Claude Code:
 
 1. Run a command to add the MCP server.
 
+To use Metabase in all your projects, add `--scope user`:
+
+```
+claude mcp add --scope user --transport http metabase https://{your-metabase-url}/api/metabase-mcp
+```
+
+To use Metabase only in the current project, leave out `--scope`:
+
 ```
 claude mcp add --transport http metabase https://{your-metabase-url}/api/metabase-mcp
 ```
 
 Replace `{your-metabase-url}` with your Metabase address.
+
+Without `--scope`, Claude Code adds the server only to the directory you ran the command in, so Metabase won't show up if you start Claude Code from a different directory. To check where you added it, run:
+
+```
+claude mcp get metabase
+```
+
+See [MCP installation scopes](https://code.claude.com/docs/en/mcp#mcp-installation-scopes).
 
 2. Start Claude Code with `claude`.
 
@@ -62,6 +78,8 @@ One of your Metabase admins will still need to have [turned on your Metabase's M
 ## MCP tools
 
 The MCP server gives your agent tools for searching, browsing, querying, and creating content in your Metabase. For the full list and the permission each one needs, see [MCP server tools](./mcp-tools.md).
+
+On [Pro and Enterprise plans](https://www.metabase.com/pricing), admins can choose which of these tools each group can use. See [MCP tools access](./usage-controls.md#mcp-tools-access).
 
 ## Using the MCP server
 
@@ -142,9 +160,40 @@ The consent page lists the permission scopes the client is asking for. Each [too
 - `agent:sql:run`: write and run raw SQL on your connected databases.
 - `agent:delivery:write`: create alerts and subscriptions that email or Slack your data. Creating one also needs `agent:query:run`, since it runs a query when it fires.
 
-The consent page may also list `agent:resource:read` (shown as **Read MCP resources**). No tool needs it; it covers the server's own reference material: the list of fields your agent can ask `get_content` to return for each content type.
-
 Most clients ask for all of them. A scope never grants more than your Metabase permissions allow: `agent:sql:run` won't let a client run SQL against a database you can't write native queries on.
+
+### Using the MCP server when embedding Metabase
+
+{% include plans-blockquote.html feature="Headless access with JWT" %}
+
+An agent in your app can use your embedded Metabase's MCP server on behalf of the person signed in to your app.
+
+Your backend [signs a JWT](../people-and-groups/authenticating-with-jwt.md) for the person (as it would for SSO) and posts the JWT to the token endpoint. There's no browser sign-in or consent page.
+
+```
+curl https://{your-metabase.example.com}/oauth/token \
+  -d grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer \
+  -d assertion={signed-jwt}
+```
+
+Metabase checks the JWT the same way it does at SSO login, creates or updates the person's account, and returns an `access_token` for the MCP server. The JWT also needs `exp` (expiration time) and `iat` (issued at) claims, and Metabase accepts it for at most three minutes after its `iat`.
+
+The token gets all the [permission scopes](#permission-scopes), unless you ask for fewer with a space-separated `scope` parameter. The token lasts an hour. To get a new one after the token expires, you'll need to sign a fresh JWT.
+
+To request only the scopes for reading content and running queries:
+
+```
+curl https://{your-metabase.example.com}/oauth/token \
+  -d grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer \
+  -d assertion={signed-jwt} \
+  --data-urlencode "scope=agent:content:read agent:query:run"
+```
+
+Your agent sends the token to the MCP server at `https://{your-metabase.example.com}/api/metabase-mcp` as `Authorization: Bearer {access_token}`.
+
+Each token issued for headless access to the MCP server appears in the [Activity log](../usage-and-performance-tools/usage-analytics-reference.md#activity-log) with the topic `mcp-jwt-token-issued`. Calls made with these tokens appear in [MCP analytics](#mcp-analytics).
+
+People who only use headless access show **Never** under **Last Login** in **Admin > People**.
 
 ## Authorization logs
 

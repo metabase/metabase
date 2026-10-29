@@ -3,6 +3,7 @@ import type { ComponentProps } from "react";
 
 import {
   fireEvent,
+  mockTextOverflow,
   render,
   renderWithProviders,
   screen,
@@ -68,29 +69,29 @@ describe("Scalar", () => {
     expect(screen.getByText("12.3k")).toBeInTheDocument();
   });
 
-  it("should show one tooltip at a time on the smallest cards", async () => {
-    render(
-      <Scalar
-        {...mockedProps}
-        showTitle
-        series={series(12345.6)}
-        rawSeries={series(12345.6)}
-        settings={settings}
-        visualizationIsClickable={() => false}
-        width={80}
-      />,
-    );
+  it.each([82, 126, 170, 214])(
+    "should keep the title visible on a short card of width %s (#84334)",
+    async (width) => {
+      render(
+        <Scalar
+          {...mockedProps}
+          showTitle
+          series={series(12345.6)}
+          rawSeries={series(12345.6)}
+          settings={settings}
+          visualizationIsClickable={() => false}
+          width={width}
+          height={82}
+        />,
+      );
 
-    // hovering the compacted value shows the full value, not the title
-    await userEvent.hover(screen.getByTestId("scalar-container"));
-    expect(await screen.findByText("12,345.6")).toBeInTheDocument();
-    expect(screen.queryByText("Scalar Title")).not.toBeInTheDocument();
-    await userEvent.unhover(screen.getByTestId("scalar-container"));
-
-    // hovering the rest of the card shows the title
-    await userEvent.hover(screen.getByTestId("scalar-content"));
-    expect(await screen.findByText("Scalar Title")).toBeInTheDocument();
-  });
+      expect(screen.getByTestId("scalar-title")).toHaveTextContent(
+        "Scalar Title",
+      );
+      await userEvent.hover(screen.getByTestId("scalar-content"));
+      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    },
+  );
 
   it("should navigate to the question when the title is clicked", async () => {
     const onChangeCardAndRun = jest.fn();
@@ -193,44 +194,50 @@ describe("Scalar", () => {
     expect(onChangeCardAndRun).not.toHaveBeenCalled();
   });
 
-  it("should show the description in a tooltip on the title info icon", async () => {
-    render(
-      <Scalar
-        {...mockedProps}
-        showTitle
-        series={series(12345)}
-        rawSeries={series(12345)}
-        settings={{ ...settings, "card.description": "Scalar description" }}
-        visualizationIsClickable={() => false}
-        width={230}
-        height={150}
-      />,
-    );
+  it.each([82, 126, 230])(
+    "should show the description on info icon hover at %i pixels wide",
+    async (width) => {
+      render(
+        <Scalar
+          {...mockedProps}
+          showTitle
+          series={series(12345)}
+          rawSeries={series(12345)}
+          settings={{ ...settings, "card.description": "Scalar description" }}
+          visualizationIsClickable={() => false}
+          width={width}
+          height={150}
+        />,
+      );
 
-    await userEvent.hover(screen.getByLabelText("info icon"));
+      await userEvent.hover(screen.getByLabelText("info icon"));
 
-    expect(await screen.findByText("Scalar description")).toBeInTheDocument();
-  });
+      expect(await screen.findByText("Scalar description")).toBeInTheDocument();
+    },
+  );
 
-  it("should open the description tooltip with keyboard navigation", async () => {
-    render(
-      <Scalar
-        {...mockedProps}
-        showTitle
-        series={series(12345)}
-        rawSeries={series(12345)}
-        settings={{ ...settings, "card.description": "Scalar description" }}
-        visualizationIsClickable={() => false}
-        width={230}
-        height={150}
-      />,
-    );
+  it.each([82, 126, 230])(
+    "should open the description tooltip with keyboard navigation at %i pixels wide",
+    async (width) => {
+      render(
+        <Scalar
+          {...mockedProps}
+          showTitle
+          series={series(12345)}
+          rawSeries={series(12345)}
+          settings={{ ...settings, "card.description": "Scalar description" }}
+          visualizationIsClickable={() => false}
+          width={width}
+          height={150}
+        />,
+      );
 
-    // without a title link, the info icon is the first tabbable element
-    await userEvent.tab();
+      // without a title link, the info icon is the first tabbable element
+      await userEvent.tab();
 
-    expect(await screen.findByText("Scalar description")).toBeInTheDocument();
-  });
+      expect(await screen.findByText("Scalar description")).toBeInTheDocument();
+    },
+  );
 
   it("should not show the info icon while editing a dashboard", () => {
     render(
@@ -266,22 +273,60 @@ describe("Scalar", () => {
     expect(screen.getByText("null")).toBeInTheDocument();
   });
 
-  it("should not apply text-overflow ellipsis to the container", () => {
-    render(
-      <Scalar
-        {...mockedProps}
-        series={series(1234567)}
-        rawSeries={series(1234567)}
-        settings={settings}
-        visualizationIsClickable={() => false}
-        width={230}
-      />,
-    );
-    const container = screen.getByTestId("scalar-container");
-    const styles = window.getComputedStyle(container);
-    // The container should not have text-overflow: ellipsis
-    // as the ScalarValue component handles sizing to fit
-    expect(styles.textOverflow).not.toBe("ellipsis");
+  describe("values wider than the card", () => {
+    const TOKEN = "0d79f0c276571a3c7fd2b5b6db30c1a9";
+    const textSeries = () =>
+      // Unjustified type cast. FIXME
+      [
+        {
+          card: createMockCard({ display: "scalar" }),
+          data: {
+            rows: [[TOKEN]],
+            cols: [createMockColumn({ name: "count", base_type: "type/Text" })],
+          },
+        },
+      ] as Series;
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("should show the full value in a tooltip when the value is truncated", async () => {
+      mockTextOverflow();
+      renderWithProviders(
+        <Scalar
+          {...mockedProps}
+          series={textSeries()}
+          rawSeries={textSeries()}
+          settings={settings}
+          visualizationIsClickable={() => false}
+          width={230}
+        />,
+      );
+
+      await userEvent.hover(screen.getByTestId("scalar-value"));
+
+      expect(
+        within(await screen.findByRole("tooltip")).getByText(TOKEN),
+      ).toBeInTheDocument();
+    });
+
+    it("should not show a tooltip for a value that fits", async () => {
+      renderWithProviders(
+        <Scalar
+          {...mockedProps}
+          series={textSeries()}
+          rawSeries={textSeries()}
+          settings={settings}
+          visualizationIsClickable={() => false}
+          width={230}
+        />,
+      );
+
+      await userEvent.hover(screen.getByTestId("scalar-value"));
+
+      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    });
   });
 
   it("lets Unicode subscript descenders render past the line box (metabase#72443)", () => {

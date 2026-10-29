@@ -44,7 +44,7 @@ export function useSessionRevocation({
         if (remaining > 0) {
           dispatch(
             addUndo({
-              icon: "warning",
+              variant: "warning",
               message: ngettext(
                 msgid`${remaining} new session started while revoking`,
                 `${remaining} new sessions started while revoking`,
@@ -57,7 +57,7 @@ export function useSessionRevocation({
       } catch (error) {
         dispatch(
           addUndo({
-            icon: "warning",
+            variant: "negative",
             message: getErrorMessage(error, t`Could not revoke sessions.`),
           }),
         );

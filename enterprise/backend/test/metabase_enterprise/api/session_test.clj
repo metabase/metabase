@@ -71,6 +71,7 @@
                               :database-routing
                               :tenants
                               :cloud-custom-smtp
+                              :content-diagnostics
                               :writable-connection}
     (is (= {:admin_security_center          false ;; requires self-hosted (non-cloud)
             :advanced_permissions           true
@@ -128,6 +129,7 @@
             :database_routing               true
             :tenants                        true
             :cloud_custom_smtp              true
+            :content_diagnostics            true
             :etl_connections                false
             :etl_connections_pg             false
             :dependencies                   false
@@ -267,19 +269,19 @@
                                         [:end_reason :ended_by_user_id :key_hashed]))
                 external-session (session! external)
                 internal-session (session! internal)]
-            (t2/update! (t2/table-name :model/Tenant) tenant-id {:is_active false})
+            (t2/update! (t2/table-name :model/Tenant) :id tenant-id {:is_active false})
             (#'session-cleanup/cleanup-sessions!)
             (is (= {:end_reason "tenant-deactivated", :ended_by_user_id nil, :key_hashed nil}
                    (ended external-session)))
             (is (nil? (:end_reason (ended internal-session)))
                 "a user without a tenant is unaffected")
             (testing "with tenants switched off, a user with any tenant at all is not live"
-              (t2/update! (t2/table-name :model/Tenant) tenant-id {:is_active true})
+              (t2/update! (t2/table-name :model/Tenant) :id tenant-id {:is_active true})
               (mt/with-temporary-setting-values [use-tenants false]
                 ;; switching tenants off deactivates their users, and that deactivation ends their sessions on the
                 ;; spot; reactivate through the raw table and start a fresh session, so that the tenant predicate
                 ;; is the only thing rejecting it
-                (t2/update! (t2/table-name :model/User) external {:is_active true})
+                (t2/update! (t2/table-name :model/User) :id external {:is_active true})
                 (let [another (session! external)]
                   (#'session-cleanup/cleanup-sessions!)
                   (is (= "tenant-deactivated" (:end_reason (ended another)))))))))))))

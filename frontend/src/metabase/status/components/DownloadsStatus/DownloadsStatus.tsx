@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { type JSX, useCallback, useEffect, useState } from "react";
 
 import { useDispatch, useSelector } from "metabase/redux";
 import { clearAll, getDownloads } from "metabase/redux/downloads";

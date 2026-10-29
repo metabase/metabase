@@ -29005,11 +29005,13 @@
             "type" : "integer"
           }
         }, {
+          "description" : "value must be an integer greater than zero.",
           "in" : "query",
           "name" : "model_id",
           "required" : true,
           "schema" : {
-            "type" : "string"
+            "minimum" : 1,
+            "type" : "integer"
           }
         }, {
           "in" : "query",
@@ -29020,6 +29022,17 @@
             "type" : "string"
           }
         } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "additionalProperties" : false,
+                "properties" : { },
+                "type" : "object"
+              }
+            }
+          }
+        },
         "responses" : {
           "2XX" : {
             "content" : {
@@ -31150,12 +31163,14 @@
         "description" : "Serialize and retrieve Metabase instance.\n\n  Outputs `.tar.gz` file with serialization results and an `export.log` file.\n  On error outputs serialization logs directly.",
         "operationId" : "post-api-ee-serialization-export",
         "parameters" : [ {
-          "description" : "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`)",
+          "description" : "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`): 1-255 characters from A-Z a-z 0-9 _ - . %, not starting with . or -",
           "in" : "query",
           "name" : "dirname",
           "required" : false,
           "schema" : {
             "oneOf" : [ {
+              "description" : "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`): 1-255 characters from A-Z a-z 0-9 _ - . %, not starting with . or -",
+              "pattern" : "^[A-Za-z0-9_%][A-Za-z0-9._%-]{0,254}$",
               "type" : "string"
             }, {
               "type" : "null"
@@ -31189,7 +31204,7 @@
         }, {
           "in" : "query",
           "name" : "all_collections",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : true,
             "type" : "boolean"
@@ -31197,7 +31212,7 @@
         }, {
           "in" : "query",
           "name" : "settings",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : true,
             "type" : "boolean"
@@ -31205,7 +31220,7 @@
         }, {
           "in" : "query",
           "name" : "data_model",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : true,
             "type" : "boolean"
@@ -31213,15 +31228,7 @@
         }, {
           "in" : "query",
           "name" : "field_values",
-          "required" : true,
-          "schema" : {
-            "default" : false,
-            "type" : "boolean"
-          }
-        }, {
-          "in" : "query",
-          "name" : "database_secrets",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -31229,7 +31236,7 @@
         }, {
           "in" : "query",
           "name" : "continue_on_error",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -31237,7 +31244,7 @@
         }, {
           "in" : "query",
           "name" : "full_stacktrace",
-          "required" : true,
+          "required" : false,
           "schema" : {
             "default" : false,
             "type" : "boolean"
@@ -35711,6 +35718,7 @@
           "content" : {
             "application/json" : {
               "schema" : {
+                "additionalProperties" : false,
                 "properties" : {
                   "freeform_feedback" : {
                     "oneOf" : [ {
@@ -35731,15 +35739,19 @@
                     "type" : "string"
                   },
                   "metabot_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "minimum" : 1,
-                    "type" : "integer"
+                    "anyOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "minimum" : 1,
+                      "type" : "integer"
+                    }, {
+                      "type" : "string"
+                    } ]
                   },
                   "positive" : {
                     "type" : "boolean"
                   }
                 },
-                "required" : [ "metabot_id", "message_id", "positive" ],
+                "required" : [ "message_id", "positive" ],
                 "type" : "object"
               }
             }
@@ -35901,15 +35913,19 @@
         "tags" : [ "/api/metabot/metabot" ]
       },
       "get" : {
-        "description" : "Return the prompt suggestions for the metabot instance with `id`.",
+        "description" : "Return the prompt suggestions for a Metabot primary key or entity ID.",
         "operationId" : "get-api-metabot-metabot-id-prompt-suggestions",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
           "required" : true,
           "schema" : {
-            "minimum" : 1,
-            "type" : "integer"
+            "anyOf" : [ {
+              "minimum" : 1,
+              "type" : "integer"
+            }, {
+              "type" : "string"
+            } ]
           }
         }, {
           "in" : "query",
@@ -36463,15 +36479,20 @@
           "content" : {
             "application/json" : {
               "schema" : {
+                "additionalProperties" : false,
                 "properties" : {
                   "message_id" : {
                     "minLength" : 1,
                     "type" : "string"
                   },
                   "metabot_id" : {
-                    "description" : "value must be an integer greater than zero.",
-                    "minimum" : 1,
-                    "type" : "integer"
+                    "anyOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "minimum" : 1,
+                      "type" : "integer"
+                    }, {
+                      "type" : "string"
+                    } ]
                   },
                   "positive" : {
                     "type" : "boolean"
@@ -36486,7 +36507,7 @@
                     "type" : "string"
                   }
                 },
-                "required" : [ "metabot_id", "message_id", "source_id", "source_type", "positive" ],
+                "required" : [ "message_id", "source_id", "source_type", "positive" ],
                 "type" : "object"
               }
             }
@@ -37969,7 +37990,7 @@
     },
     "/api/notify/db/{id}" : {
       "post" : {
-        "description" : "Notification about a potential schema change to one of our `Databases`.\n  Caller can optionally specify a `:table_id` or `:table_name` in the body to limit updates to a single\n  `Table`. Optional Parameter `:scan` can be `\"full\"` or `\"schema\"` for a full sync or a schema sync, available\n  regardless if a `:table_id` or `:table_name` is passed.\n  This endpoint is secured by an API key that needs to be passed as a `X-METABASE-APIKEY` header which needs to be defined in\n  the `MB_API_KEY` [environment variable](https://www.metabase.com/docs/latest/configuring-metabase/environment-variables.html#mb_api_key)",
+        "description" : "Notification about a potential schema change to one of our `Databases`.\n  Caller can optionally specify a `:table_id` or `:table_name` in the body to limit updates to a single\n  `Table`. Optional Parameter `:scan` can be `\"full\"` or `\"schema\"` for a full sync or a schema sync, available\n  regardless if a `:table_id` or `:table_name` is passed.\n  This endpoint is secured by an API key that needs to be passed as a `X-METABASE-APIKEY` header which needs to be defined in\n  the `MB_API_KEY` [environment variable](https://www.metabase.com/docs/latest/configuring-metabase/environment-variables#mb_api_key)",
         "operationId" : "post-api-notify-db-id",
         "parameters" : [ {
           "description" : "value must be an integer greater than zero.",
@@ -39465,58 +39486,6 @@
         },
         "summary" : "GET /api/preview_embed/tiles/dashboard/{token}/dashcard/{dashcard-id}/card/{card-id}/{zoom}/{x}/{y}",
         "tags" : [ "/api/preview_embed" ]
-      }
-    },
-    "/api/product-feedback" : {
-      "post" : {
-        "description" : "Endpoint to provide feedback from the product",
-        "operationId" : "post-api-product-feedback",
-        "parameters" : [ ],
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "properties" : {
-                  "comments" : {
-                    "oneOf" : [ {
-                      "minLength" : 1,
-                      "type" : "string"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "email" : {
-                    "oneOf" : [ {
-                      "minLength" : 1,
-                      "type" : "string"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "source" : {
-                    "minLength" : 1,
-                    "type" : "string"
-                  }
-                },
-                "required" : [ "source" ],
-                "type" : "object"
-              }
-            }
-          }
-        },
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response"
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "summary" : "POST /api/product-feedback",
-        "tags" : [ "/api/product-feedback" ]
       }
     },
     "/api/public/action/{uuid}" : {
@@ -43038,17 +43007,27 @@
         "tags" : [ "/api/table" ]
       },
       "put" : {
-        "description" : "Update all `Table` in `ids`.\n\n  Deprecated, should use PUT /table/edit from now on.",
+        "description" : "Update all `Table` in `ids`.\n\n  Deprecated: use `POST /api/data-studio/table/edit`.",
         "operationId" : "put-api-table",
         "parameters" : [ ],
         "requestBody" : {
           "content" : {
             "application/json" : {
               "schema" : {
+                "additionalProperties" : false,
                 "properties" : {
                   "caveats" : {
                     "oneOf" : [ {
                       "type" : "string"
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "collection_id" : {
+                    "oneOf" : [ {
+                      "description" : "value must be an integer greater than zero.",
+                      "minimum" : 1,
+                      "type" : "integer"
                     }, {
                       "type" : "null"
                     } ]
@@ -43092,6 +43071,14 @@
                   "entity_type" : {
                     "oneOf" : [ {
                       "description" : "value must be a valid entity type (keyword or string)."
+                    }, {
+                      "type" : "null"
+                    } ]
+                  },
+                  "field_order" : {
+                    "oneOf" : [ {
+                      "enum" : [ "alphabetical", "custom", "database", "smart" ],
+                      "type" : "string"
                     }, {
                       "type" : "null"
                     } ]
@@ -45370,9 +45357,9 @@
         }, {
           "in" : "query",
           "name" : "archived",
-          "required" : true,
+          "required" : false,
           "schema" : {
-            "default" : "false",
+            "default" : false,
             "type" : "boolean"
           }
         }, {

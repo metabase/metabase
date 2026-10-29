@@ -10,7 +10,7 @@ type Props = {
 
 function setup(initialProps: Props) {
   const element = document.createElement("div");
-  const ref: RefObject<HTMLElement> = { current: element };
+  const ref: RefObject<HTMLElement | null> = { current: element };
   element.scrollTop = 100;
 
   const view = renderHook(

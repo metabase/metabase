@@ -6,12 +6,7 @@ import type {
   Table,
 } from "metabase-types/api";
 
-export type LibrarySectionType =
-  | "data"
-  | "metrics"
-  | "dashboards"
-  | "snippets"
-  | "actions";
+export type LibrarySectionType = "data" | "metrics" | "snippets" | "actions";
 
 export type EmptyStateData = {
   model: "empty-state";
@@ -33,6 +28,8 @@ export type CollectionItemData = Pick<CollectionItem, "model" | "name"> &
       | "last-edit-info"
       | "namespace"
       | "can_write"
+      | "here"
+      | "below"
     >
   >;
 

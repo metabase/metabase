@@ -12,6 +12,7 @@ import {
   getDefaultMapDimension,
   getDefaultMapMetric,
   getDefaultSize,
+  getLegendPositionSetting,
   getMinSize,
   metricSetting,
 } from "metabase/viz-core";
@@ -237,6 +238,10 @@ export const MAP_VIZ_DEFINITION: VisualizationDefinition = {
       getHidden: (_series, vizSettings) => vizSettings["map.type"] !== "region",
       readDependencies: ["map.metric"],
     },
+    "legend.position": getLegendPositionSetting({
+      getHidden: (_series, settings) => settings["map.type"] !== "region",
+      readDependencies: ["map.type"],
+    }),
     "map.zoom": {},
     "map.center_latitude": {},
     "map.center_longitude": {},

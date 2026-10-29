@@ -145,11 +145,11 @@ const TableBrowserItemButtons = ({
       <Group gap="sm">
         {xraysEnabled && (
           <ActionIcon
+            variant="subtle"
             component={Link}
             to={`/auto/dashboard/table/${tableId}`}
             size="sm"
             tooltip={t`X-ray this table`}
-            color="feedback-warning"
             aria-label={t`X-ray this table`}
             onClick={trackBrowseXRayClicked}
           >
@@ -158,12 +158,12 @@ const TableBrowserItemButtons = ({
         )}
         {canEditTables && (
           <ActionIcon
+            variant="subtle"
             component={Link}
             to={PLUGIN_TABLE_EDITING.getTableEditUrl(tableId, dbId)}
             onClick={handleEditTableClicked}
             size="sm"
             tooltip={t`Edit this table`}
-            color="text-secondary"
             aria-label={t`Edit this table`}
             data-testid="edit-table-icon"
           >
@@ -171,11 +171,11 @@ const TableBrowserItemButtons = ({
           </ActionIcon>
         )}
         <ActionIcon
+          variant="subtle"
           component={Link}
           to={`/reference/databases/${dbId}/tables/${tableId}`}
           size="sm"
           tooltip={t`Learn about this table`}
-          color="text-secondary"
           aria-label={t`Learn about this table`}
         >
           <Icon name="reference" />

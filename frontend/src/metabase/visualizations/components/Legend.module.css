@@ -35,6 +35,17 @@ fullscreen dashboard mode
   margin-top: 1em;
 }
 
+.Legend.horizontal.singleRow {
+  flex-wrap: nowrap;
+
+  /* overflow only past the end, so it folds from the end */
+  justify-content: safe center;
+}
+
+.singleRowItem {
+  min-width: 0;
+}
+
 .DashCard.LegendItem {
   font-weight: normal;
   color: var(--mb-color-text-primary);

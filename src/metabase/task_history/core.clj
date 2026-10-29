@@ -11,8 +11,8 @@
  [metabase.task-history.models.task-history
   with-task-history]
  [metabase.task-history.models.task-run
-  complete-task-run!
   current-run-id
+  end-run-work!
+  track-run-work!
   with-restored-run-id
-  with-run-id-meta
   with-task-run])

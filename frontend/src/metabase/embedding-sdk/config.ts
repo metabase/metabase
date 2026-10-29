@@ -13,7 +13,9 @@ type InternalSdkConfig = {
     | "mcp-apps"
     | "data-app";
   metabaseClientRequestIdentifier: string | undefined;
-  enableEmbeddingSettingKey: "enable-embedding-sdk" | "enable-embedding-simple";
+  enableEmbeddingSettingKey:
+    | "enable-embedding-sdk"
+    | "enable-embedding-modular";
   tokenFeatureKey: "embedding_sdk" | "embedding_simple";
 };
 

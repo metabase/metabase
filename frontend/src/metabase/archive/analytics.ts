@@ -20,6 +20,7 @@ type MoveToTrashTriggeredFrom =
   | "collection"
   | "detail_page"
   | "cleanup_modal"
+  | "content_diagnostics"
   | "drag_and_drop";
 
 export const archiveAndTrack = async ({

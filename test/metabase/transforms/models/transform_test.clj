@@ -9,10 +9,14 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.stale-test :as stale-test]
+   [metabase.staleness.core :as staleness]
    [metabase.test :as mt]
    [metabase.transforms-base.query :as transforms-base.query]
    [metabase.transforms.query-test-util :as query-test-util]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (deftest source-database-id-set-test
   (testing "inserting a transform correctly sets the source-database-id column"
@@ -35,11 +39,11 @@
                     :source {:type "python"
                              :body "print(\"hello\")"}}]
       (is (nil? (:source_database_id transform)))
-      (t2/update! :model/Transform (:id transform) {:source {:type  "query"
-                                                             :query {:database (mt/id)
-                                                                     :type     "native"
-                                                                     :native   {:query "SELECT 1"}}}})
-      (is (= (mt/id) (t2/select-one-fn :source_database_id :model/Transform (:id transform)))))))
+      (t2/update! :model/Transform :id (:id transform) {:source {:type  "query"
+                                                                 :query {:database (mt/id)
+                                                                         :type     "native"
+                                                                         :native   {:query "SELECT 1"}}}})
+      (is (= (mt/id) (t2/select-one-fn :source_database_id :model/Transform :id (:id transform)))))))
 
 (deftest source-database-deletion-sets-null-test
   (testing "deleting a database referenced by a transform nulls the transform's source_database_id (ON DELETE SET NULL)"
@@ -51,10 +55,10 @@
                                      :type     "native"
                                      :native   {:query "SELECT 1"}}}}]
       (is (= db-id (:source_database_id transform)))
-      (t2/delete! :model/Database db-id)
-      (is (nil? (t2/select-one-fn :source_database_id :model/Transform (:id transform))))
+      (t2/delete! :model/Database :id db-id)
+      (is (nil? (t2/select-one-fn :source_database_id :model/Transform :id (:id transform))))
       ;; transform itself still exists
-      (is (some? (t2/select-one :model/Transform (:id transform)))))))
+      (is (some? (t2/select-one :model/Transform :id (:id transform)))))))
 
 (defn- temp-transform-with-index! [thunk]
   (mt/with-temp [:model/Transform {transform-id :id}
@@ -72,20 +76,20 @@
   (testing "editing the source query (output schema may change) marks the transform's managed indexes for revalidation"
     (temp-transform-with-index!
      (fn [transform-id index-id]
-       (t2/update! :model/Transform transform-id
+       (t2/update! :model/Transform :id transform-id
                    {:source {:type "query" :query (query-test-util/make-query :source-table "checkins")}})
-       (is (= :update-pending (t2/select-one-fn :status :model/TableIndex index-id))))))
+       (is (= :update-pending (t2/select-one-fn :status :model/TableIndex :id index-id))))))
   (testing "retargeting to a different table marks the transform's managed indexes for revalidation"
     (temp-transform-with-index!
      (fn [transform-id index-id]
-       (t2/update! :model/Transform transform-id
+       (t2/update! :model/Transform :id transform-id
                    {:target {:database (mt/id) :type "table" :schema "public" :name (mt/random-name)}})
-       (is (= :update-pending (t2/select-one-fn :status :model/TableIndex index-id))))))
+       (is (= :update-pending (t2/select-one-fn :status :model/TableIndex :id index-id))))))
   (testing "an unrelated edit (renaming the transform) leaves the indexes alone"
     (temp-transform-with-index!
      (fn [transform-id index-id]
-       (t2/update! :model/Transform transform-id {:name "renamed"})
-       (is (= :succeeded (t2/select-one-fn :status :model/TableIndex index-id)))))))
+       (t2/update! :model/Transform :id transform-id {:name "renamed"})
+       (is (= :succeeded (t2/select-one-fn :status :model/TableIndex :id index-id)))))))
 
 (deftest can-read-write-on-orphaned-transform-test
   (testing "superusers can read/write a transform whose source database has been deleted, data analysts cannot"
@@ -97,8 +101,8 @@
                                :query {:database db-id
                                        :type     "native"
                                        :native   {:query "SELECT 1"}}}}]
-        (t2/delete! :model/Database db-id)
-        (let [reloaded (t2/select-one :model/Transform (:id transform))]
+        (t2/delete! :model/Database :id db-id)
+        (let [reloaded (t2/select-one :model/Transform :id (:id transform))]
           (is (nil? (:source_database_id reloaded)))
           (mt/with-current-user (mt/user->id :crowberto)
             (is (mi/can-read? reloaded))
@@ -125,8 +129,8 @@
                        :source {:type  "query"
                                 :query (lib/query (mt/metadata-provider)
                                                   (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}}]
-         (let [native (t2/select-one :model/Transform (:id native-transform))
-               mbql   (t2/select-one :model/Transform (:id mbql-transform))]
+         (let [native (t2/select-one :model/Transform :id (:id native-transform))
+               mbql   (t2/select-one :model/Transform :id (:id mbql-transform))]
            (mt/with-data-analyst-role! (mt/user->id :rasta)
              (mt/with-restored-data-perms!
                ;; Remove native access granted to All Users by default so the user's only path to native would be
@@ -158,8 +162,8 @@
                                :query {:database db-id
                                        :type     :native
                                        :native   {:query "SELECT 1"}}}}]
-        (t2/delete! :model/Database db-id)
-        (let [reloaded (t2/select-one :model/Transform (:id transform))
+        (t2/delete! :model/Database :id db-id)
+        (let [reloaded (t2/select-one :model/Transform :id (:id transform))
               {:keys [status error]} (transforms-base.query/run-query-transform! reloaded nil)]
           (is (= :failed status))
           (is (re-find #"Source database for this transform has been deleted"
@@ -178,21 +182,21 @@
           (mt/with-temp [:model/Transform {transform-id :id} {:name "Test Transform" :source source}]
             (is (some #(= :event/create-transform (first %)) @events-published))
             (reset! events-published [])
-            (t2/update! :model/Transform transform-id {:name "Updated Name"})
+            (t2/update! :model/Transform :id transform-id {:name "Updated Name"})
             (is (some #(= :event/update-transform (first %)) @events-published))
             (reset! events-published [])
-            (t2/delete! :model/Transform transform-id)
+            (t2/delete! :model/Transform :id transform-id)
             (is (some #(= :event/delete-transform (first %)) @events-published))))
         (reset! events-published [])
         (testing "events are suppressed during deserialization"
           (binding [mi/*deserializing?* true]
             (mt/with-temp [:model/Transform {transform-id :id} {:name "Deserialized Transform" :source source}]
-              (t2/update! :model/Transform transform-id {:name "Deserialized Update"})
-              (t2/delete! :model/Transform transform-id)))
+              (t2/update! :model/Transform :id transform-id {:name "Deserialized Update"})
+              (t2/delete! :model/Transform :id transform-id)))
           (is (empty? @events-published)))))))
 
 (defn- stored-deps [transform-id]
-  (t2/select-one-fn :table_dependencies :model/Transform transform-id))
+  (t2/select-one-fn :table_dependencies :model/Transform :id transform-id))
 
 (deftest table-dependencies-cache-test
   (testing "table_dependencies is not computed on insert — it is filled lazily on the first read"
@@ -211,14 +215,118 @@
                                      :type     "query"
                                      :query    {:source-table (mt/id :orders)}}}}]
       ;; seed a cached value (as the lazy read path would)
-      (t2/update! :model/Transform id {:table_dependencies [{:table (mt/id :orders)}]})
+      (t2/update! :model/Transform :id id {:table_dependencies [{:table (mt/id :orders)}]})
       (is (= [{:table (mt/id :orders)}] (stored-deps id)))
-      (t2/update! :model/Transform id
+      (t2/update! :model/Transform :id id
                   {:source {:type  "query"
                             :query {:database (mt/id)
                                     :type     "query"
                                     :query    {:source-table (mt/id :people)}}}})
       (is (nil? (stored-deps id))))))
+
+(defn- insert-run! [transform-id status months-ago]
+  (t2/insert! :model/TransformRun
+              {:transform_id transform-id
+               :status       status
+               :run_method   :cron
+               :start_time   (stale-test/datetime-months-ago months-ago)
+               :end_time     (stale-test/datetime-months-ago months-ago)}))
+
+(deftest find-stale-query-test
+  (testing "a transform is stale when never run past a created_at grace period, or its most recent run predates the cutoff"
+    (let [cutoff-months   6
+          old-months      (+ cutoff-months 2) ; predates the cutoff
+          recent-months   1                   ; within the cutoff
+          ;; fires once a year, ~2 months from now — so its previous fire was ~10 months ago,
+          ;; before the old runs: nothing has fired since them
+          schedule-anchor (-> (java.time.LocalDate/now) (.plusMonths 2) (.withDayOfMonth 15))
+          yearly-cron     (format "0 0 0 15 %d ?" (.getMonthValue schedule-anchor))
+          daily-cron      "0 0 0 * * ?"]
+      (mt/with-temp [:model/Transform {never-new-id :id}       {:name "never-new"}
+                     :model/Transform {never-old-id :id}       {:name "never-old"
+                                                                :created_at (stale-test/datetime-months-ago old-months)}
+                     :model/Transform {old-id :id}             {:name "old-run"}
+                     :model/Transform {fresh-id :id}           {:name "fresh-run"}
+                     :model/Transform {recent-failed-id :id}   {:name "recent-failed"}
+                     :model/Transform {old-failed-id :id}      {:name "old-failed"}
+                     :model/Transform {old-then-recent-id :id} {:name "old-then-recent"}
+                     :model/Transform {on-schedule-id :id}     {:name "on-schedule"}
+                     :model/Transform {missed-schedule-id :id} {:name "missed-schedule"}
+                     :model/Transform {never-scheduled-id :id} {:name "never-run-scheduled"
+                                                                :created_at (stale-test/datetime-months-ago old-months)}
+                     :model/TransformTag {slow-tag-id :id}     {}
+                     :model/TransformTag {fast-tag-id :id}     {}
+                     :model/TransformJob {slow-job-id :id}     {:name "yearly job" :schedule yearly-cron}
+                     :model/TransformJob {fast-job-id :id}     {:name "daily job" :schedule daily-cron}
+                     :model/TransformJobTransformTag _ {:job_id slow-job-id :tag_id slow-tag-id :position 0}
+                     :model/TransformJobTransformTag _ {:job_id fast-job-id :tag_id fast-tag-id :position 0}
+                     :model/TransformTransformTag _ {:transform_id on-schedule-id :tag_id slow-tag-id :position 0}
+                     :model/TransformTransformTag _ {:transform_id missed-schedule-id :tag_id fast-tag-id :position 0}
+                     :model/TransformTransformTag _ {:transform_id never-scheduled-id :tag_id slow-tag-id :position 0}]
+        (insert-run! old-id :succeeded old-months)
+        (insert-run! fresh-id :succeeded recent-months)
+        ;; status is irrelevant — only the most recent run's start_time matters
+        (insert-run! recent-failed-id :failed recent-months)
+        (insert-run! old-failed-id :failed old-months)
+        ;; two runs: the most recent (recent-months) governs, not the earlier one (old-months)
+        (insert-run! old-then-recent-id :succeeded old-months)
+        (insert-run! old-then-recent-id :succeeded recent-months)
+        ;; both scheduled transforms last ran old-months ago; the yearly schedule hasn't fired since
+        ;; (previous fire ~10 months ago), the daily schedule has fired thousands of times since
+        (insert-run! on-schedule-id :succeeded old-months)
+        (insert-run! missed-schedule-id :succeeded old-months)
+        (let [stale-ids (set (map :id (t2/query (staleness/find-stale-query
+                                                 :model/Transform
+                                                 {:collection-ids :all
+                                                  :cutoff-date    (stale-test/date-months-ago cutoff-months)}))))]
+          (testing "a never-run transform is stale only once its created_at passes the cutoff"
+            (is (contains? stale-ids never-old-id))
+            (is (not (contains? stale-ids never-new-id))))
+          (testing "a transform whose most recent run started before the cutoff is stale, regardless of status"
+            (is (contains? stale-ids old-id))
+            (is (contains? stale-ids old-failed-id)))
+          (testing "a transform with a recent run is not stale, regardless of status"
+            (is (not (contains? stale-ids fresh-id)))
+            (is (not (contains? stale-ids recent-failed-id))))
+          (testing "the most recent run governs: an old run followed by a recent one is not stale"
+            (is (not (contains? stale-ids old-then-recent-id))))
+          (testing "an old run is not stale while a slower-than-threshold schedule has not fired since it"
+            (is (not (contains? stale-ids on-schedule-id))))
+          (testing "an old run is stale when its schedule has fired since it (missed fires)"
+            (is (contains? stale-ids missed-schedule-id)))
+          (testing "the schedule exception does not shield never-run transforms"
+            (is (contains? stale-ids never-scheduled-id))))))))
+
+(deftest find-stale-query-collection-scoping-test
+  (testing "find-stale-query scopes transforms to :collection-ids, like the card and dashboard arms"
+    (let [cutoff-months 6
+          ;; never run and created before the cutoff, so each one is stale on the created_at arm alone
+          long-ago      (stale-test/datetime-months-ago (+ cutoff-months 2))]
+      (mt/with-temp [:model/Collection {coll-a :id}  {:namespace "transforms"}
+                     :model/Collection {coll-b :id}  {:namespace "transforms"}
+                     :model/Transform  {in-a :id}    {:name "in-a"    :collection_id coll-a :created_at long-ago}
+                     :model/Transform  {in-b :id}    {:name "in-b"    :collection_id coll-b :created_at long-ago}
+                     :model/Transform  {at-root :id} {:name "at-root" :created_at long-ago}]
+        (let [mine      #{in-a in-b at-root}
+              ;; the table carries transforms from elsewhere in the suite, so narrow to this test's rows
+              stale-ids (fn [collection-ids]
+                          (into #{}
+                                (comp (map :id) (filter mine))
+                                (t2/query (staleness/find-stale-query
+                                           :model/Transform
+                                           {:collection-ids collection-ids
+                                            :cutoff-date    (stale-test/date-months-ago cutoff-months)}))))]
+          (testing "a named collection returns its own stale transforms and no others"
+            (is (= #{in-a} (stale-ids #{coll-a})))
+            (is (= #{in-b} (stale-ids #{coll-b}))))
+          (testing "several collections return the union"
+            (is (= #{in-a in-b} (stale-ids #{coll-a coll-b}))))
+          (testing "a nil member selects root-level transforms alongside the named collection"
+            (is (= #{in-a at-root} (stale-ids #{coll-a nil}))))
+          (testing "an empty set means no collections, not every collection"
+            (is (= #{} (stale-ids #{}))))
+          (testing ":all searches instance-wide"
+            (is (= mine (stale-ids :all)))))))))
 
 (deftest last-run-hydration-omits-heartbeat-test
   (testing "the `:last_run` hydrated onto a transform leaves out the run's internal `last_heartbeat`"
@@ -230,7 +338,7 @@
                                                            :is_active           true
                                                            :run_method          "manual"
                                                            :last_heartbeat      (t/offset-date-time)}]
-      (let [last-run (:last_run (t2/hydrate (t2/select-one :model/Transform transform-id) :last_run))]
+      (let [last-run (:last_run (t2/hydrate (t2/select-one :model/Transform :id transform-id) :last_run))]
         (is (=? {:id run-id, :transform_id transform-id} last-run))
         (is (not (contains? last-run :last_heartbeat)))))))
 
@@ -259,7 +367,7 @@
                                                                     :type         :card
                                                                     :card-id      card-id}}}}}}]
          (mt/with-non-admin-groups-no-collection-perms collection
-           (let [stored (t2/select-one :model/Transform (:id transform))
+           (let [stored (t2/select-one :model/Transform :id (:id transform))
                  body   (into {} stored)]
              (mt/with-data-analyst-role! (mt/user->id :rasta)
                (mt/with-restored-data-perms!
@@ -287,7 +395,7 @@
                     :source {:type  "query"
                              :query (lib/query (mt/metadata-provider)
                                                (lib.metadata/table (mt/metadata-provider) (mt/id :orders)))}}]
-      (let [stored (t2/select-one :model/Transform (:id transform))]
+      (let [stored (t2/select-one :model/Transform :id (:id transform))]
         (mt/with-data-analyst-role! (mt/user->id :rasta)
           (mt/with-restored-data-perms!
             (data-perms/set-database-permission! group-id (mt/id) :perms/view-data :unrestricted)

@@ -15,9 +15,9 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { SidebarResizableBox } from "metabase/common/components/SidebarResizableBox";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
-import { SidebarResizableBox } from "metabase/transforms/components/SidebarResizableBox";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import { isActiveRunStatus } from "metabase/transforms/utils";
 import {
@@ -283,7 +283,7 @@ function TransformGraphRunSidebarHeader({
       </Title>
       <Group gap="xxs" wrap="nowrap">
         <HeaderEntityActions run={run} />
-        <ActionIcon aria-label={t`Close`} onClick={onClose}>
+        <ActionIcon variant="subtle" aria-label={t`Close`} onClick={onClose}>
           <FixedSizeIcon name="close" />
         </ActionIcon>
       </Group>
@@ -301,6 +301,7 @@ function HeaderEntityActions({ run }: { run: TransformGraphRun }) {
     return (
       <Tooltip label={t`View this job`}>
         <ActionIcon
+          variant="subtle"
           component={ForwardRefLink}
           to={Urls.transformJob(entity_id)}
           target="_blank"
@@ -316,6 +317,7 @@ function HeaderEntityActions({ run }: { run: TransformGraphRun }) {
     <>
       <Tooltip label={t`View this transform`}>
         <ActionIcon
+          variant="subtle"
           component={ForwardRefLink}
           to={Urls.transform(entity_id)}
           target="_blank"
@@ -327,6 +329,7 @@ function HeaderEntityActions({ run }: { run: TransformGraphRun }) {
       {PLUGIN_DEPENDENCIES.isEnabled && (
         <Tooltip label={t`View in dependency graph`}>
           <ActionIcon
+            variant="subtle"
             component={ForwardRefLink}
             to={Urls.dependencyGraph({
               entry: { id: entity_id, type: "transform" },

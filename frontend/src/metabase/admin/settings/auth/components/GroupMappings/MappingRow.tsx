@@ -56,6 +56,7 @@ export function MappingRow({
       {!readOnly && (
         <Flex className={S.rowActions} gap="sm">
           <ActionIcon
+            variant="subtle"
             aria-label={t`Edit mapping`}
             aria-describedby={nameId}
             disabled={disabled}
@@ -64,6 +65,7 @@ export function MappingRow({
             <Icon name="pencil" />
           </ActionIcon>
           <ActionIcon
+            variant="subtle"
             aria-label={t`Delete mapping`}
             aria-describedby={nameId}
             disabled={disabled}

@@ -2,6 +2,7 @@ import { act } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
 import {
+  setupCardCreateEndpoint,
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
@@ -12,6 +13,7 @@ import { renderWithProviders, waitFor } from "__support__/ui";
 import { serializeChartClipboard } from "metabase/common/utils/chart-clipboard";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { getDashcards } from "metabase/dashboard/selectors";
+import * as Urls from "metabase/urls";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
@@ -36,6 +38,23 @@ const CREATED_CARD = createMockCard({
 const chartText = serializeChartClipboard(
   {
     name: "Orders by month",
+    display: "bar",
+    dataset_query: datasetQuery,
+    visualization_settings: {},
+  },
+  "https://metabase.example",
+);
+
+const unsavedQuestionUrl = `https://metabase.example${Urls.card({
+  display: "bar",
+  dataset_query: datasetQuery,
+  visualization_settings: {},
+})}`;
+
+const blankChartText = serializeChartClipboard(
+  {
+    name: "",
+    description: "",
     display: "bar",
     dataset_query: datasetQuery,
     visualization_settings: {},
@@ -123,6 +142,38 @@ describe("useDashboardChartPaste", () => {
       );
     });
   });
+
+  it.each([
+    { source: "an unsaved question's URL", text: unsavedQuestionUrl },
+    {
+      source: "a Metabot chart with a blank title and description",
+      text: blankChartText,
+    },
+  ])(
+    "adds a chart pasted from $source as an untitled question",
+    async ({ text }) => {
+      setupCardCreateEndpoint();
+      setupCardMocks(createMockCard());
+
+      const { store } = setup({ isEditing: true });
+      act(() => {
+        paste(text);
+      });
+
+      await waitFor(() => {
+        expect(store.getState().undo).toContainEqual(
+          expect.objectContaining({ message: "Chart added to dashboard" }),
+        );
+      });
+      const body: unknown = JSON.parse(
+        String(fetchMock.callHistory.lastCall("card-create")?.options.body),
+      );
+      expect(body).toMatchObject({
+        name: "Untitled question",
+        description: null,
+      });
+    },
+  );
 
   it("shows an in-progress toast and ignores repeated pastes while saving", async () => {
     setupCardMocks(CREATED_CARD);

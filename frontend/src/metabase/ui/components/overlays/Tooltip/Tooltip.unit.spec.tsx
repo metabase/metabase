@@ -1,0 +1,377 @@
+import userEvent from "@testing-library/user-event";
+import { useState } from "react";
+
+import { act, fireEvent, render, screen, waitFor } from "__support__/ui";
+
+import { Tooltip, TooltipPortalTargetProvider } from "./Tooltip";
+
+// Well past the close delay and the fade-out, so a tooltip that's going to
+// close has gone.
+const LONGER_THAN_CLOSE_MS = 1000;
+
+const setupUser = () =>
+  userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
+const FADE_DURATION_MS = 200;
+
+const setup = () => {
+  const user = setupUser();
+  render(
+    <Tooltip
+      label="Tooltip content"
+      transitionProps={{ duration: FADE_DURATION_MS }}
+    >
+      <button>Target</button>
+    </Tooltip>,
+  );
+  return { user };
+};
+
+type NeighbouringTargetsProps = {
+  isPinnedOpened: boolean;
+  hasFirstTarget: boolean;
+};
+
+const NeighbouringTargets = ({
+  isPinnedOpened,
+  hasFirstTarget,
+}: NeighbouringTargetsProps) => (
+  <div>
+    {(hasFirstTarget ? ["First", "Second"] : ["Second"]).map((name) => (
+      <Tooltip
+        key={name}
+        label={`${name} tooltip`}
+        transitionProps={{ duration: FADE_DURATION_MS }}
+      >
+        <button>{name}</button>
+      </Tooltip>
+    ))}
+    <Tooltip label="Pinned tooltip" opened={isPinnedOpened}>
+      <button>Pinned</button>
+    </Tooltip>
+    <span>Elsewhere</span>
+  </div>
+);
+
+const setupNeighbouringTargets = () => {
+  const user = setupUser();
+  let props: NeighbouringTargetsProps = {
+    isPinnedOpened: false,
+    hasFirstTarget: true,
+  };
+  const { rerender } = render(<NeighbouringTargets {...props} />);
+  const updateProps = (changes: Partial<NeighbouringTargetsProps>) => {
+    props = { ...props, ...changes };
+    rerender(<NeighbouringTargets {...props} />);
+  };
+  const openPinnedTooltip = () => updateProps({ isPinnedOpened: true });
+  const removeFirstTarget = () => updateProps({ hasFirstTarget: false });
+  return { user, openPinnedTooltip, removeFirstTarget };
+};
+
+const ISOLATED_EVENTS = [
+  { type: "click", fire: fireEvent.click },
+  { type: "dblclick", fire: fireEvent.dblClick },
+  { type: "contextmenu", fire: fireEvent.contextMenu },
+  { type: "mousedown", fire: fireEvent.mouseDown },
+  { type: "mouseup", fire: fireEvent.mouseUp },
+  { type: "pointerdown", fire: fireEvent.pointerDown },
+  { type: "pointerup", fire: fireEvent.pointerUp },
+  { type: "touchstart", fire: fireEvent.touchStart },
+];
+
+const setupEventIsolation = () => {
+  const onParentEvent = jest.fn<void, [string]>();
+  const recordType = (event: { type: string }) => onParentEvent(event.type);
+
+  render(
+    <div
+      onClick={recordType}
+      onDoubleClick={recordType}
+      onContextMenu={recordType}
+      onMouseDown={recordType}
+      onMouseUp={recordType}
+      onPointerDown={recordType}
+      onPointerUp={recordType}
+      onTouchStart={recordType}
+    >
+      <Tooltip label="Tooltip content" opened>
+        <button>Target</button>
+      </Tooltip>
+    </div>,
+  );
+
+  return { onParentEvent };
+};
+
+describe("Tooltip", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it("stays open while the pointer is over the tooltip and closes when it leaves", async () => {
+    const { user } = setup();
+    const target = screen.getByRole("button", { name: "Target" });
+
+    await user.hover(target);
+    const tooltip = await screen.findByRole("tooltip");
+    await waitFor(() => expect(tooltip).toHaveAttribute("data-hoverable"));
+
+    await user.unhover(target);
+    await user.hover(tooltip);
+    act(() => jest.advanceTimersByTime(LONGER_THAN_CLOSE_MS));
+    expect(screen.getByRole("tooltip")).toBeInTheDocument();
+
+    await user.unhover(tooltip);
+    // While it fades out, it lets the pointer through to what's underneath.
+    await waitFor(() => {
+      expect(tooltip).not.toHaveAttribute("data-hoverable");
+    });
+    expect(tooltip).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    });
+  });
+
+  it("closes when the pointer leaves the target without moving onto the tooltip", async () => {
+    const { user } = setup();
+    const target = screen.getByRole("button", { name: "Target" });
+
+    await user.hover(target);
+    expect(await screen.findByRole("tooltip")).toBeInTheDocument();
+
+    await user.unhover(target);
+    await waitFor(() => {
+      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    });
+  });
+
+  it("hides the previous tooltip straight away when the pointer moves to another target", async () => {
+    const { user } = setupNeighbouringTargets();
+
+    await user.hover(screen.getByRole("button", { name: "First" }));
+    const firstTooltip = await screen.findByRole("tooltip", {
+      name: "First tooltip",
+    });
+    // With nothing to replace, it fades in as usual.
+    expect(firstTooltip).not.toHaveAttribute("data-entering-instantly");
+
+    await user.hover(screen.getByRole("button", { name: "Second" }));
+    const secondTooltip = await screen.findByRole("tooltip", {
+      name: "Second tooltip",
+    });
+    expect(firstTooltip).toHaveAttribute("data-replaced");
+    expect(secondTooltip).toHaveAttribute("data-entering-instantly");
+
+    await waitFor(() => {
+      expect(secondTooltip).not.toHaveAttribute("data-entering-instantly");
+    });
+  });
+
+  it("brings back a hidden tooltip that's still open as soon as the one that hid it closes", async () => {
+    const { user } = setupNeighbouringTargets();
+
+    await user.tab();
+    const firstTooltip = await screen.findByRole("tooltip", {
+      name: "First tooltip",
+    });
+
+    const secondTarget = screen.getByRole("button", { name: "Second" });
+    await user.hover(secondTarget);
+    const secondTooltip = await screen.findByRole("tooltip", {
+      name: "Second tooltip",
+    });
+    expect(firstTooltip).toHaveAttribute("data-replaced");
+
+    await user.unhover(secondTarget);
+    // Hidden rather than fading out, so the first tooltip shows at once.
+    await waitFor(() => {
+      expect(secondTooltip).toHaveAttribute("data-replaced");
+    });
+    expect(secondTooltip).toBeInTheDocument();
+    expect(firstTooltip).not.toHaveAttribute("data-replaced");
+  });
+
+  it("keeps showing a brought-back tooltip while it fades out", async () => {
+    const { user } = setupNeighbouringTargets();
+
+    await user.tab();
+    const firstTooltip = await screen.findByRole("tooltip", {
+      name: "First tooltip",
+    });
+
+    const secondTarget = screen.getByRole("button", { name: "Second" });
+    await user.hover(secondTarget);
+    const secondTooltip = await screen.findByRole("tooltip", {
+      name: "Second tooltip",
+    });
+    await user.unhover(secondTarget);
+    await waitFor(() => {
+      expect(firstTooltip).not.toHaveAttribute("data-replaced");
+    });
+
+    // Close the first tooltip while the second is still fading out.
+    await user.click(screen.getByText("Elsewhere"));
+    await waitFor(() => {
+      expect(firstTooltip).not.toHaveAttribute("data-hoverable");
+    });
+    expect(secondTooltip).toBeInTheDocument();
+    expect(secondTooltip).toHaveAttribute("data-replaced");
+    expect(firstTooltip).not.toHaveAttribute("data-replaced");
+  });
+
+  it("fades in the next tooltip as usual after a shown one is removed", async () => {
+    const { user, removeFirstTarget } = setupNeighbouringTargets();
+
+    await user.hover(screen.getByRole("button", { name: "First" }));
+    await screen.findByRole("tooltip", { name: "First tooltip" });
+
+    removeFirstTarget();
+    expect(
+      screen.queryByRole("tooltip", { name: "First tooltip" }),
+    ).not.toBeInTheDocument();
+
+    await user.hover(screen.getByRole("button", { name: "Second" }));
+    const secondTooltip = await screen.findByRole("tooltip", {
+      name: "Second tooltip",
+    });
+    expect(secondTooltip).not.toHaveAttribute("data-entering-instantly");
+  });
+
+  it("neither hides nor is hidden by a tooltip whose owner controls whether it's open", async () => {
+    const { user, openPinnedTooltip } = setupNeighbouringTargets();
+
+    await user.hover(screen.getByRole("button", { name: "First" }));
+    const firstTooltip = await screen.findByRole("tooltip", {
+      name: "First tooltip",
+    });
+
+    openPinnedTooltip();
+    const pinnedTooltip = await screen.findByRole("tooltip", {
+      name: "Pinned tooltip",
+    });
+    expect(firstTooltip).not.toHaveAttribute("data-replaced");
+    expect(pinnedTooltip).not.toHaveAttribute("data-entering-instantly");
+
+    await user.hover(screen.getByRole("button", { name: "Second" }));
+    await screen.findByRole("tooltip", { name: "Second tooltip" });
+    expect(pinnedTooltip).not.toHaveAttribute("data-replaced");
+  });
+
+  it("fades out a replacing tooltip that closes before it has finished appearing", async () => {
+    const { user } = setupNeighbouringTargets();
+
+    await user.hover(screen.getByRole("button", { name: "First" }));
+    await screen.findByRole("tooltip", { name: "First tooltip" });
+    await user.hover(screen.getByRole("button", { name: "Second" }));
+    const secondTooltip = await screen.findByRole("tooltip", {
+      name: "Second tooltip",
+    });
+    expect(secondTooltip).toHaveAttribute("data-entering-instantly");
+
+    await user.hover(screen.getByText("Elsewhere"));
+    await waitFor(() => {
+      expect(secondTooltip).not.toHaveAttribute("data-entering-instantly");
+    });
+    // With nothing replacing it, it stays visible while it fades.
+    expect(secondTooltip).not.toHaveAttribute("data-replaced");
+    expect(secondTooltip).toBeInTheDocument();
+  });
+
+  it.each(ISOLATED_EVENTS)(
+    "lets $type on the target reach its parents",
+    async ({ type, fire }) => {
+      const { onParentEvent } = setupEventIsolation();
+      await screen.findByRole("tooltip");
+
+      fire(screen.getByRole("button", { name: "Target" }));
+      expect(onParentEvent).toHaveBeenCalledWith(type);
+    },
+  );
+
+  it.each(ISOLATED_EVENTS)(
+    "keeps $type on the tooltip from reaching the target's parents",
+    async ({ type, fire }) => {
+      const { onParentEvent } = setupEventIsolation();
+      const tooltip = await screen.findByRole("tooltip");
+
+      fire(screen.getByText("Tooltip content"));
+      fire(tooltip);
+      expect(onParentEvent).not.toHaveBeenCalledWith(type);
+    },
+  );
+
+  it("still stops events on the tooltip reaching the target's parents when the caller handles them", async () => {
+    const user = setupUser();
+    const onParentDoubleClick = jest.fn<void, []>();
+    const onTooltipDoubleClick = jest.fn<void, []>();
+    render(
+      <div onDoubleClick={onParentDoubleClick}>
+        <Tooltip label="Tooltip content" onDoubleClick={onTooltipDoubleClick}>
+          <button>Target</button>
+        </Tooltip>
+      </div>,
+    );
+
+    await user.hover(screen.getByRole("button", { name: "Target" }));
+    await user.dblClick(await screen.findByRole("tooltip"));
+    expect(onTooltipDoubleClick).toHaveBeenCalledTimes(1);
+    expect(onParentDoubleClick).not.toHaveBeenCalled();
+  });
+
+  it("closes straight away when disabled and the pointer leaves the target", async () => {
+    const user = setupUser();
+    render(
+      <div>
+        <Tooltip label="Tooltip content" disabled>
+          <button>Target</button>
+        </Tooltip>
+        <span>Elsewhere</span>
+      </div>,
+    );
+    const target = screen.getByRole("button", { name: "Target" });
+
+    await user.hover(target);
+    expect(target).toHaveAttribute("aria-describedby");
+
+    await user.hover(screen.getByText("Elsewhere"));
+    expect(target).not.toHaveAttribute("aria-describedby");
+  });
+
+  it("doesn't catch the pointer when its owner controls whether it's open", async () => {
+    const TooltipWithTarget = ({ opened }: { opened: boolean }) => (
+      <Tooltip label="Tooltip content" opened={opened}>
+        <button>Target</button>
+      </Tooltip>
+    );
+    const { rerender } = render(<TooltipWithTarget opened={false} />);
+    rerender(<TooltipWithTarget opened />);
+
+    const tooltip = await screen.findByRole("tooltip");
+    act(() => jest.advanceTimersByTime(LONGER_THAN_CLOSE_MS));
+    expect(tooltip).not.toHaveAttribute("data-hoverable");
+  });
+
+  it("renders inside the portal target from context", async () => {
+    const TooltipInsideTarget = () => {
+      const [target, setTarget] = useState<HTMLElement | null>(null);
+      return (
+        <div ref={setTarget} data-testid="portal-target">
+          <TooltipPortalTargetProvider target={target}>
+            <Tooltip label="Tooltip content" opened>
+              <button>Target</button>
+            </Tooltip>
+          </TooltipPortalTargetProvider>
+        </div>
+      );
+    };
+    render(<TooltipInsideTarget />);
+
+    const tooltip = await screen.findByRole("tooltip");
+    expect(screen.getByTestId("portal-target")).toContainElement(tooltip);
+  });
+});

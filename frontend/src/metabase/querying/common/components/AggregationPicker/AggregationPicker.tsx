@@ -386,9 +386,7 @@ export function AggregationPicker({
             position="right"
             content={
               <Box p="lg">
-                <Markdown disallowHeading unstyleLinks>
-                  {tc(item.description)}
-                </Markdown>
+                <Markdown unstyleLinks>{tc(item.description)}</Markdown>
               </Box>
             }
           >

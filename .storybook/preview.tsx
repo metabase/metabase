@@ -22,18 +22,16 @@ require("metabase/visualizations/components/EChartsRenderer/EChartsRenderer");
 
 import "@mantine/core/styles.css";
 import "@mantine/dates/styles.css";
+import { Global, css, useTheme } from "@emotion/react";
+import { initialize, mswLoader } from "msw-storybook-addon";
 
+import { loadCodeEditor } from "metabase/common/components/CodeEditor";
 import { OverlayStackProvider } from "metabase/ui/components/overlays/overlay-stack";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
-
-import { Global, css, useTheme } from "@emotion/react";
-
 import {
   getSaveDomImageStyles,
   loadVisualizationComponents,
 } from "metabase/viz-core";
-
-import { initialize, mswLoader } from "msw-storybook-addon";
 
 // Inject @font-face declarations synchronously at preview load so that bundled
 // fonts are registered with `document.fonts` before any story's loaders run.
@@ -178,13 +176,6 @@ function CssVariables() {
 
       :root {
         --mb-default-font-family: "Lato";
-
-        /*
-      Theming-specific CSS variables.
-      These CSS variables are not part of the core design system colors.
-    **/
-        --mb-color-bg-dashboard: var(--mb-color-background-primary);
-        --mb-color-bg-dashboard-card: var(--mb-color-background-primary);
       }
 
       /* For Embed frame questions to render properly */
@@ -214,7 +205,12 @@ const preview = {
   // registry would otherwise be captured mid-Suspense, showing the skeleton.
   // Wrapped because a loader is called with the story context, which would
   // otherwise be taken for the list of displays to load.
-  loaders: [mswLoader, fontsReady, () => loadVisualizationComponents()],
+  loaders: [
+    mswLoader,
+    fontsReady,
+    () => loadVisualizationComponents(),
+    () => loadCodeEditor(),
+  ],
   argTypes,
 };
 

@@ -2,14 +2,13 @@ import { c, t } from "ttag";
 import * as Yup from "yup";
 
 import FormCollectionPicker from "metabase/common/collections/containers/FormCollectionPicker";
-import { FormFooter } from "metabase/common/components/FormFooter";
 import {
   Form,
   FormProvider,
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { Button, Stack } from "metabase/ui";
+import { Button, Modal, Stack } from "metabase/ui";
 import type { CollectionId } from "metabase-types/api";
 import type { Document } from "metabase-types/api/document";
 
@@ -53,7 +52,7 @@ export const DocumentCopyForm = ({
     >
       {() => (
         <Form>
-          <Stack gap="lg" mb="lg">
+          <Stack gap="xl">
             <FormTextInput
               name="name"
               label={t`Name`}
@@ -68,7 +67,7 @@ export const DocumentCopyForm = ({
               />
             </div>
           </Stack>
-          <FormFooter>
+          <Modal.Footer>
             {!!onCancel && (
               <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
             )}
@@ -76,7 +75,7 @@ export const DocumentCopyForm = ({
               label={c(`A verb, not a noun`).t`Duplicate`}
               variant="filled"
             />
-          </FormFooter>
+          </Modal.Footer>
         </Form>
       )}
     </FormProvider>

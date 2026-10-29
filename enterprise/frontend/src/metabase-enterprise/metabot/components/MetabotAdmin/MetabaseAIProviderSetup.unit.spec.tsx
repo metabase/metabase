@@ -36,6 +36,13 @@ import {
   getMetabaseUsageCost,
 } from "./MetabaseAIProviderSetup";
 
+// These tests assert that the setup modal waits for the token refresh to report
+// the feature, not how long it waits between polls.
+jest.mock("metabase/settings/use-token-refresh", () => ({
+  ...jest.requireActual("metabase/settings/use-token-refresh"),
+  WAITING_REFRESH_INTERVAL: 50,
+}));
+
 type MetabotUsageQuota = {
   tokens?: number | null;
   free_tokens?: number | null;

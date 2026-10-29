@@ -29,18 +29,18 @@
 
 (defn- card-last-used-at
   [card-id]
-  (t2/select-one-fn :last_used_at :model/Card card-id))
+  (t2/select-one-fn :last_used_at :model/Card :id card-id))
 
 (defn- card-updated-at
   [card-id]
-  (t2/select-one-fn :updated_at :model/Card card-id))
+  (t2/select-one-fn :updated_at :model/Card :id card-id))
 
 (defn do-test!
   "Check if `last_used_at` of `card-id` is nil, then execute `f`, then check that `last_used_at` is non nil."
   [card-id thunk]
   (assert (fn? thunk))
-  (t2/update! (t2/table-name :model/Card) card-id {:last_used_at #t "2025-05-16T12:40:00-07:00"
-                                                   :updated_at   #t "2025-05-16T12:40:00-07:00"})
+  (t2/update! (t2/table-name :model/Card) :id card-id {:last_used_at #t "2025-05-16T12:40:00-07:00"
+                                                       :updated_at   #t "2025-05-16T12:40:00-07:00"})
   (let [original-last-used-at (card-last-used-at card-id)
         original-updated-at   (card-updated-at card-id)]
     (mt/with-temporary-setting-values [synchronous-batch-updates true]
@@ -102,7 +102,7 @@
         (#'qp.update-used-cards/update-used-cards!* [{:id card-id-1 :timestamp two-hours-ago}
                                                      {:id card-id-1 :timestamp one-hour-ago}])
         (is (= one-hour-ago
-               (-> (t2/select-one-fn :last_used_at :model/Card card-id-1)
+               (-> (t2/select-one-fn :last_used_at :model/Card :id card-id-1)
                    t/offset-date-time
                    (.withNano 0))))))
     (testing "if the existing last_used_at is greater than the updating values, do not override it"
@@ -110,7 +110,7 @@
         [:model/Card {card-id-2 :id} {:last_used_at now}]
         (#'qp.update-used-cards/update-used-cards!* [{:id card-id-2 :timestamp one-hour-ago}])
         (is (= now
-               (-> (t2/select-one-fn :last_used_at :model/Card card-id-2)
+               (-> (t2/select-one-fn :last_used_at :model/Card :id card-id-2)
                    t/offset-date-time
                    (.withNano 0))))))
     (testing "if metabase is in read only mode still sets the last_used_at timestamp"
@@ -119,6 +119,6 @@
         (mt/with-temporary-setting-values [read-only-mode true]
           (#'qp.update-used-cards/update-used-cards!* [{:id card-id-1 :timestamp now}])
           (is (= now
-                 (-> (t2/select-one-fn :last_used_at :model/Card card-id-1)
+                 (-> (t2/select-one-fn :last_used_at :model/Card :id card-id-1)
                      t/offset-date-time
                      (.withNano 0)))))))))

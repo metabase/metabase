@@ -88,6 +88,7 @@ export function getMetabaseSdkCssVariables({
         whitelabelColors,
         forceDynamicBrandRamp,
       })}
+      --mb-color-chart-axis: ${theme.fn.themeColor("chart-axis")};
       ${getSdkDesignSystemCssVariables(theme)}
       ${getDynamicCssVariables(theme)}
       ${getThemeSpecificCssVariables(theme)}

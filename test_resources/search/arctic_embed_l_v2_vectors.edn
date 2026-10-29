@@ -3,7 +3,7 @@
 ;; Document inputs use ingestion's `[card]\nname: ...` embeddable-text format.
 ;; Values are 1024 IEEE-754 float32 components in big-endian Base64.
 ;; Decoding is local; no model or network access is needed by the test.
-;; Regenerate with metabase-enterprise.semantic-search.query-semantics-vectors/freeze!.
+;; Regenerate with metabase-enterprise.search.semantic.query-semantics-vectors/freeze!.
 {:model           "Snowflake/snowflake-arctic-embed-l-v2.0"
  :ollama-model-id "5de93a84837d"
  :dimensions      1024

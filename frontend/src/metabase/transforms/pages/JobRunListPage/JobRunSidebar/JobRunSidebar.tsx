@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { useListJobRunTransformRunsQuery } from "metabase/api";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { SidebarResizableBox } from "metabase/transforms/components/SidebarResizableBox";
+import { SidebarResizableBox } from "metabase/common/components/SidebarResizableBox";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import {
   ActionIcon,
@@ -147,7 +147,7 @@ function JobRunSidebarHeader({ onClose }: JobRunSidebarHeaderProps) {
       data-testid="job-run-list-sidebar-header"
     >
       <Title order={3}>{t`Job run`}</Title>
-      <ActionIcon aria-label={t`Close`} onClick={onClose}>
+      <ActionIcon variant="subtle" aria-label={t`Close`} onClick={onClose}>
         <FixedSizeIcon name="close" />
       </ActionIcon>
     </Group>

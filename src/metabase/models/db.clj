@@ -60,7 +60,7 @@
    :model/DashboardCard            :metabase.dashboards.schema/dashboard-card.update
    :model/DashboardCardSeries      :metabase.dashboards.schema/dashboard-card-series.update
    :model/DashboardTab             :metabase.dashboards.schema/dashboard-tab.update
-   :model/DataApp                  :metabase-enterprise.data-apps.schema/data-app.update
+   :model/DataApp                  :metabase.data-apps.schema/data-app.update
    :model/Database                 :metabase.warehouses.schema/database.update
    :model/Dimension                :metabase.warehouse-schema.schema/dimension.update
    :model/Document                 :metabase.documents.schema/document.update
@@ -174,7 +174,8 @@
   "Apply `entity`'s `:row` (a column diff) to `entity`'s `:model` row with `id`, returning the number updated."
   [id     :- [:or :int :string]
    entity :- ::model-row]
-  (t2/update! (:model entity) id (:row entity)))
+  ;; `entity`'s model is any model, so match on its own primary key, which may not be `:id`.
+  (t2/update! (:model entity) :toucan/pk id (:row entity)))
 
 (mu/defn insert-entity!
   "Insert `entity`'s `:row` into `entity`'s `:model` and return the inserted instance."
@@ -195,7 +196,8 @@
   "Delete the `model` row with `id`, returning the number deleted."
   [model :- [:or :keyword symbol?]
    id    :- [:maybe [:or :int :string]]]
-  (t2/delete! model id))
+  ;; `model` is any model, so match on its own primary key, which may not be `:id`.
+  (t2/delete! model :toucan/pk id))
 
 (mu/defn delete-entities-with-ids!
   "Delete the `model` rows whose `id-column` is one of `ids`, returning the number deleted."
@@ -221,9 +223,9 @@
   (t2/delete! model parent-column parent-id :entity_id [:not-in entity-ids]))
 
 (mu/defn collection-paths-columns
-  "The id, entity id, location, and name of every Collection."
+  "The id, entity id, location, name, and namespace of every Collection."
   []
-  (t2/select [:model/Collection :id :entity_id :location :name]))
+  (t2/select [:model/Collection :id :entity_id :location :name :namespace]))
 
 (mu/defn dashboard-entity-ids-and-names
   "The entity id and name of every Dashboard."

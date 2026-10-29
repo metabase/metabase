@@ -11,10 +11,13 @@ import {
   setupDashboardEndpoints,
   setupDashboardQueryMetadataEndpoint,
   setupDatabasesEndpoints,
+  setupListSubscriptionsEndpoint,
+  setupNotificationChannelsEndpoints,
   setupSearchEndpoints,
   setupTableEndpoints,
+  setupUserRecipientsEndpoint,
 } from "__support__/server-mocks";
-import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
+import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
 import { mockSettings } from "__support__/settings";
 import { createMockDashboardState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
@@ -22,21 +25,27 @@ import {
   act,
   renderWithProviders,
   screen,
+  waitFor,
   waitForDashboardToLoad,
 } from "__support__/ui";
 import { getBeforeUnloadUnsavedMessage } from "metabase/common/hooks/use-before-unload";
 import { DashboardApp } from "metabase/dashboard/containers/DashboardApp/DashboardApp";
+import { getIsSharing } from "metabase/dashboard/selectors";
 import { Route } from "metabase/router";
 import { defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
 import type { Dashboard } from "metabase-types/api";
 import {
   createMockCard,
+  createMockChannel,
   createMockCollection,
   createMockCollectionItem,
   createMockDashboard,
+  createMockDashboardCard,
   createMockDashboardQueryMetadata,
+  createMockDashboardSubscription,
   createMockDatabase,
+  createMockDataset,
   createMockHeadingDashboardCard,
   createMockTable,
   createMockTextDashboardCard,
@@ -64,12 +73,14 @@ interface Options {
   slug?: string;
   /** Holds the query metadata response until `resolveQueryMetadata` is called. */
   deferQueryMetadata?: boolean;
+  channels?: Parameters<typeof setupNotificationChannelsEndpoints>[0];
 }
 
 function renderDashboardApp({
   dashboard,
   slug,
   deferQueryMetadata = false,
+  channels = {},
 }: Options = {}) {
   const mockDashboard = createMockDashboard(dashboard);
   const dashboardId = mockDashboard.id;
@@ -78,7 +89,7 @@ function renderDashboardApp({
   });
   const queryMetadataRequest = defer();
 
-  setupNotificationChannelsEndpoints({});
+  setupNotificationChannelsEndpoints(channels);
 
   setupDatabasesEndpoints([TEST_DATABASE_WITH_ACTIONS]);
   setupDashboardEndpoints(mockDashboard);
@@ -297,6 +308,99 @@ describe("DashboardApp", () => {
     expect(queryMetadataSearchParams.get("dashboard_load_id")).toEqual(
       dashboardSearchParams.get("dashboard_load_id"),
     );
+  });
+
+  describe("subscriptions hash", () => {
+    const subscription = createMockDashboardSubscription({
+      id: 12,
+      channels: [createMockChannel({ schedule_type: "hourly" })],
+    });
+    const channels: Options["channels"] = {
+      email: {
+        type: "email",
+        name: "Email",
+        configured: true,
+        allows_recipients: true,
+        recipients: ["user", "email"],
+        schedules: ["hourly", "daily", "weekly", "monthly"],
+      },
+    };
+    const dashcard = createMockDashboardCard({ card: TEST_CARD });
+    const dashboard: Options["dashboard"] = { dashcards: [dashcard] };
+
+    beforeEach(() => {
+      setupDashcardQueryEndpoints(
+        createMockDashboard().id,
+        dashcard,
+        createMockDataset(),
+      );
+      setupListSubscriptionsEndpoint([subscription]);
+      setupUserRecipientsEndpoint({ users: [] });
+    });
+
+    afterEach(() => {
+      window.location.hash = "";
+    });
+
+    it("opens the subscriptions sidebar when the URL asks for it", async () => {
+      // DashboardApp reads hash options from window.location, which the memory router does not set
+      window.location.hash = "#subscriptions";
+      const { router } = await setup({ dashboard, channels });
+
+      expect(await screen.findByText("Emailed hourly")).toBeInTheDocument();
+      expect(router.location.hash).toBe("");
+    });
+
+    it("opens the edit form of the subscription named in the URL", async () => {
+      window.location.hash = "#subscriptions=12";
+      await setup({ dashboard, channels });
+
+      expect(
+        await screen.findByText("Email this dashboard"),
+      ).toBeInTheDocument();
+    });
+
+    it("opens the subscriptions list when the subscription id in the URL is not a number", async () => {
+      window.location.hash = "#subscriptions=abc";
+      await setup({ dashboard, channels });
+
+      expect(await screen.findByText("Emailed hourly")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Email this dashboard"),
+      ).not.toBeInTheDocument();
+    });
+
+    it.each<{ name: string; options: Options }>([
+      {
+        name: "no email or Slack is set up for a non-admin",
+        options: { dashboard, channels: {} },
+      },
+      {
+        name: "the dashboard has no card with data to send",
+        options: {
+          dashboard: { dashcards: [createMockTextDashboardCard()] },
+          channels,
+        },
+      },
+    ])(
+      "keeps the sidebar closed and drops the hash when $name",
+      async ({ options }) => {
+        window.location.hash = "#subscriptions=12";
+        const { router, store } = await setup(options);
+
+        await waitFor(() => expect(router.location.hash).toBe(""));
+        expect(getIsSharing(store.getState())).toBe(false);
+        expect(
+          screen.queryByText("Email this dashboard"),
+        ).not.toBeInTheDocument();
+      },
+    );
+
+    it("keeps the subscriptions sidebar closed otherwise", async () => {
+      const { store } = await setup({ dashboard, channels });
+
+      expect(getIsSharing(store.getState())).toBe(false);
+    });
   });
 
   it("should show the error page instead of an endless loader for a non-numeric slug (metabase#78725)", async () => {

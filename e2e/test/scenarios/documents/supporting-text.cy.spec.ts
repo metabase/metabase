@@ -251,6 +251,7 @@ describe("documents supporting text", () => {
       path: "/api/document/*",
     }).as("documentGet");
     cy.reload();
+    H.closeNavigationSidebar();
 
     cy.wait("@documentGet");
 

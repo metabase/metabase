@@ -167,7 +167,7 @@
                          (tar-file-types f)))))
               (testing "On exception API returns tar.gz with error in export.log"
                 (mt/with-dynamic-fn-redefs [serdes/extract-one (extract-one-error (:entity_id card)
-                                                                                  (mt/dynamic-value serdes/extract-one))]
+                                                                                  (mt/original-fn #'serdes/extract-one))]
                   (let [res (binding [api.serialization/*additive-logging* false]
                               (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
                                                     :collection (:id coll) :data_model false :settings false))
@@ -184,21 +184,69 @@
                   res      (mt/user-http-request :crowberto :post 400 "ee/serialization/export" {}
                                                  :collection fake-eid :data_model false :settings false)]
               (is (re-find #"Could not find Collection with entity ID"
-                           (str (:message res))))
+                           (str res)))
               (is (re-find #"abcdefghijklmnopqrstu"
-                           (str (:message res))))))
+                           (str res)))))
           (testing "Nonexistent collection ID names the collection the user asked for"
             (let [missing-id Integer/MAX_VALUE
                   res        (mt/user-http-request :crowberto :post 400 "ee/serialization/export" {}
                                                    :collection missing-id :data_model false :settings false)]
               (is (re-find #"Could not find Collection with ID"
-                           (str (:message res))))
+                           (str res)))
               (is (re-find (re-pattern (str missing-id))
-                           (str (:message res))))))))
+                           (str res)))))))
       (testing "We've left no new files, every request is cleaned up"
         ;; if this breaks, check if you consumed every response with io/input-stream
         (is (= known-files
                (set (.list (io/file api.serialization/parent-dir)))))))))
+
+(deftest export-dirname-validation-test
+  (mt/with-premium-features #{:serialization}
+    (testing "dirname outside the whitelist is a 400"
+      (doseq [dirname [""
+                       "../backups"
+                       "a/b"
+                       "a\\b"
+                       "a\"b"
+                       "a\r\nb"
+                       ".."
+                       "."
+                       "-rf"
+                       ".hidden"
+                       (apply str (repeat 256 "a"))]]
+        (testing (pr-str dirname)
+          (is (=? {:errors {:dirname string?}}
+                  (mt/user-http-request :crowberto :post 400 "ee/serialization/export" {}
+                                        :dirname dirname :all_collections false :data_model false :settings false))))))
+    (testing "the 400 for a bad dirname states the rule"
+      (is (=? {:errors {:dirname #".*: 1-255 characters from A-Z a-z 0-9 _ - \. %, not starting with \. or -"}}
+              (mt/user-http-request :crowberto :post 400 "ee/serialization/export" {}
+                                    :dirname ".hidden" :all_collections false :data_model false :settings false))))
+    (testing "a plain dirname names both the archive root directory and the download file"
+      (let [{:keys [body headers]} (mt/user-http-request-full-response
+                                    :crowberto :post 200 "ee/serialization/export" {}
+                                    :dirname "my-export_2" :all_collections false :data_model false :settings false)]
+        (is (= "attachment; filename=\"my-export_2.tar.gz\""
+               (get headers "Content-Disposition")))
+        (is (every? #(str/starts-with? % "my-export_2/") (entry-names body)))))
+    (testing "a percent-encoded dirname, as the default name has for a non-ASCII site name, is accepted"
+      (is (= "attachment; filename=\"%E4%B8%AD-2026-10-27_12-00.tar.gz\""
+             (-> (mt/user-http-request-full-response
+                  :crowberto :post 200 "ee/serialization/export" {}
+                  :dirname "%E4%B8%AD-2026-10-27_12-00" :all_collections false :data_model false :settings false)
+                 (get-in [:headers "Content-Disposition"])))))
+    (testing "the default dirname for a long non-ASCII site name passes the dirname rule when sent back"
+      (mt/with-temporary-setting-values [site-name (apply str (repeat 40 "中"))]
+        (let [default-dirname (->> (mt/user-http-request-full-response
+                                    :crowberto :post 200 "ee/serialization/export" {}
+                                    :all_collections false :data_model false :settings false)
+                                   :headers
+                                   (#(get % "Content-Disposition"))
+                                   (re-find #"filename=\"(.*)\.tar\.gz\"")
+                                   second)]
+          (is (<= (count default-dirname) 255))
+          (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
+                                :dirname default-dirname :all_collections false :data_model false :settings false))))))
 
 (defn- search-result-count [model search-string]
   (:total
@@ -208,6 +256,7 @@
       :is-superuser?         true
       :is-impersonated-user? false
       :is-sandboxed-user?    false
+      :is-routed-user?       false
       :models                #{model}
       :current-user-perms    #{"/"}
       :search-string         search-string}))))
@@ -294,7 +343,7 @@
         (snowplow-test/pop-event-data-and-user-id!)
         ;; Modify entities in the database
         (t2/update! :model/Dashboard {:id (:id dash)} {:name "urquan"})
-        (t2/delete! :model/Card (:id card))
+        (t2/delete! :model/Card :id (:id card))
         (let [re-indexed? (atom false)
               _res        (mt/with-dynamic-fn-redefs [search/reindex! (fn [& _] (reset! re-indexed? true) (future nil))]
                             (mt/user-http-request :crowberto :post 200 "ee/serialization/import?reindex=false"
@@ -392,7 +441,7 @@
   (testing "Export with error still returns tar.gz with export.log containing error details"
     (with-serialization-test-data! [coll _dash card]
       (mt/with-dynamic-fn-redefs [serdes/extract-one (extract-one-error (:entity_id card)
-                                                                        (mt/dynamic-value serdes/extract-one))]
+                                                                        (mt/original-fn #'serdes/extract-one))]
         (testing "Error details are in export.log inside the archive"
           (binding [api.serialization/*additive-logging* false]
             (let [res (mt/user-http-request :crowberto :post 200 "ee/serialization/export"
@@ -434,7 +483,7 @@
   (testing "Export with continue_on_error=true succeeds partially despite errors"
     (with-serialization-test-data! [coll _dash card]
       (mt/with-dynamic-fn-redefs [serdes/extract-one (extract-one-error (:entity_id card)
-                                                                        (mt/dynamic-value serdes/extract-one))]
+                                                                        (mt/original-fn #'serdes/extract-one))]
         (let [res (mt/user-http-request :crowberto :post 200 "ee/serialization/export"
                                         :collection (:id coll) :data_model false :settings false
                                         :continue_on_error true)]
@@ -600,7 +649,8 @@
           (let [db (t2/select-one :model/Database :name db-name)]
             (is (some? db))
             (is (=? {:host "localhost" :port 5432 :dbname "mydb"} (:details db)))
-            (doseq [k [:details :write_data_details :admin_details]]
+            (is (not (contains? db :admin_details)) "an older archive's admin_details is ignored")
+            (doseq [k [:details :write_data_details]]
               (is (= #{} (set (keys (select-keys (get db k) [:subname :classname :connection-uri :INIT]))))
                   (str k " should keep none of the low-level keys"))))
           (finally

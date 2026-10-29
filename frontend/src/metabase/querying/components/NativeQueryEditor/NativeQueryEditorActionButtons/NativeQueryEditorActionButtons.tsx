@@ -7,13 +7,9 @@ import { PreviewQueryButton } from "metabase/querying/components/NativeQueryEdit
 import { SnippetSidebarButton } from "metabase/querying/components/NativeQueryEditor/SnippetSidebarButton";
 import type { SidebarFeatures } from "metabase/querying/editor/types";
 import type { QueryModalType } from "metabase/redux/store";
-import { Button, Flex, Icon, Tooltip } from "metabase/ui";
+import { ActionIcon, Flex, Icon, Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { Collection, NativeQuerySnippet } from "metabase-types/api";
-
-import S from "./NativeQueryEditorActionButtons.module.css";
-
-export const NATIVE_EDITOR_ICON_SIZE = 18;
 
 interface NativeQueryEditorActionButtonsProps {
   question: Question;
@@ -65,7 +61,7 @@ export const NativeQueryEditorActionButtons = (
     <Flex
       component="aside"
       data-testid="native-query-editor-action-buttons"
-      gap="xl"
+      gap="sm"
       align="center"
     >
       {promptButton}
@@ -74,35 +70,23 @@ export const NativeQueryEditorActionButtons = (
           <PreviewQueryButton {...props} />
         )}
       {features.dataReference && (
-        <DataReferenceButton
-          {...props}
-          size={NATIVE_EDITOR_ICON_SIZE}
-          onClick={toggleDataReference}
-        />
+        <DataReferenceButton {...props} onClick={toggleDataReference} />
       )}
       {features.snippets && showSnippetSidebarButton && (
-        <SnippetSidebarButton {...props} size={NATIVE_EDITOR_ICON_SIZE} />
+        <SnippetSidebarButton {...props} />
       )}
       {features.variables && (
-        <NativeVariablesButton
-          {...props}
-          size={NATIVE_EDITOR_ICON_SIZE}
-          onClick={toggleTemplateTagsEditor}
-        />
+        <NativeVariablesButton {...props} onClick={toggleTemplateTagsEditor} />
       )}
       {showFormatButton && onFormatQuery && (
         <Tooltip label={t`Auto-format`}>
-          {/* TODO: replace with ActionIcon (GDGT-2457) */}
-          <Button
-            variant="transparent"
-            size="compact-md"
-            className={S.button}
+          <ActionIcon
+            variant="subtle"
             aria-label={t`Auto-format`}
-            leftSection={
-              <Icon name="format_code" size={NATIVE_EDITOR_ICON_SIZE} />
-            }
             onClick={onFormatQuery}
-          />
+          >
+            <Icon name="format_code" />
+          </ActionIcon>
         </Tooltip>
       )}
     </Flex>

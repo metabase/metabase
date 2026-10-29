@@ -13,7 +13,7 @@
    [metabase.startup.core :as startup]
    [metabase.util :as u]
    [metabase.util.http :as u.http]
-   [metabase.util.i18n :refer [deferred-tru tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log])
   (:import
    (java.net MalformedURLException URL)
@@ -69,14 +69,14 @@
   (zipmap u.http/configurable-network-policies (range)))
 
 (defsetting llm-allowed-networks
-  (deferred-tru (str "Controls which networks Metabase may connect to for LLM provider base URLs. "
-                     "Set through the environment only; on Metabase Cloud the default applies.\n"
-                     "Options:\n"
-                     "- external-only (default; only globally reachable public addresses)\n"
-                     "- allow-private (external + private networks but NOT loopback or link-local)\n"
-                     "- allow-all (no restrictions).\n"
-                     "The Metabase AI service and LLM proxy are deployment configuration and may always use "
-                     "private addresses."))
+  (str "Controls which networks Metabase may connect to for LLM provider base URLs. "
+       "Set through the environment only; on Metabase Cloud the default applies.\n"
+       "Options:\n"
+       "- external-only (default; only globally reachable public addresses)\n"
+       "- allow-private (external + private networks but NOT loopback or link-local)\n"
+       "- allow-all (no restrictions).\n"
+       "The Metabase AI service and LLM proxy are deployment configuration and may always use "
+       "private addresses.")
   :type       :keyword
   ;; Environment only. A settings manager is who this policy defends against, and on Cloud a customer admin
   ;; loosening it would be reaching for our own infrastructure, so nobody sets it through the API, and a value
@@ -231,7 +231,7 @@
   false)
 
 (defsetting llm-providers
-  (deferred-tru "JSON array of configured LLM provider connections. Each entry has a `key` (a URL-safe slug identifying the connection), a `type` (the provider type, e.g. `anthropic`), a display `name`, and a `config` map of that provider type''s credential fields.")
+  "JSON array of configured LLM provider connections. Each entry has a `key` (a URL-safe slug identifying the connection), a `type` (the provider type, e.g. `anthropic`), a display `name`, and a `config` map of that provider type's credential fields."
   :type       :json
   :default    []
   :encryption :when-encryption-key-set
@@ -265,7 +265,7 @@ Configuring a provider through the single-provider variables (`MB_LLM_ANTHROPIC_
 ;;; --------------------------------------------------- Proxy ---------------------------------------------------
 
 (defsetting llm-proxy-base-url
-  (deferred-tru "Base URL for the LLM proxy. When set, requests to the managed Metabase AI service are routed through this proxy and authenticated with the instance token instead of a provider API key. Harbormaster adds /llm component into the url.")
+  "Base URL for the LLM proxy. When set, requests to the managed Metabase AI service are routed through this proxy and authenticated with the instance token instead of a provider API key. Harbormaster adds /llm component into the url."
   ;; For details on llm component see the https://github.com/metabase/metabase/pull/74526#discussion_r3282553435.
   :enabled?         #(or (premium-features/has-feature? :metabase-ai-managed)
                          (premium-features/has-feature? :offer-metabase-ai-managed)

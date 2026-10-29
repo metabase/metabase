@@ -172,18 +172,42 @@
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *transaction-depth* 0)
 
-(defn in-transaction?
-  "Whether we are currently in a transaction."
-  []
-  (pos? *transaction-depth*))
-
-;; Accumulate 0-arity thunks to run just before / just after the outermost transaction commits. Each is
-;; bound to a fresh atom when the outermost transaction starts (see [[do-with-transaction]]) and shared by
-;; the whole nested-transaction tree; nil outside any transaction.
+;; Thunks to run just before and just after the outermost transaction commits.
+;; Each var is bound to a fresh atom when the outermost transaction starts, see [[do-with-transaction]].
+;; The whole nested-transaction tree shares that atom, and both vars are nil outside any transaction.
+;; When the transaction ends, the after-commit atom holds `::committed` or `::rolled-back` in place of its thunks.
+;; Read its value through [[pending-callbacks]].
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *before-commit-callbacks* nil)
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *after-commit-callbacks* nil)
+
+(defn- pending-callbacks
+  "Return `cbs`, the value of the after-commit callbacks atom, if they are still waiting to run, else nil.
+  Once the transaction has ended the atom holds `::committed` or `::rolled-back`, so read its value through this."
+  [cbs]
+  (when (vector? cbs)
+    cbs))
+
+(defn- inherited-transaction-ended?
+  "Whether this thread still has the bindings of a transaction that has since ended."
+  []
+  (when-let [callbacks *after-commit-callbacks*]
+    (nil? (pending-callbacks @callbacks))))
+
+(defn- live-transaction-depth
+  "Return the depth of the transaction this thread is in.
+  A thread that inherited a transaction which has since ended is not in one, so its depth is 0."
+  []
+  (if (inherited-transaction-ended?)
+    0
+    *transaction-depth*))
+
+(defn in-transaction?
+  "Whether we are currently in a transaction.
+  A thread that outlived the transaction it started in is not."
+  []
+  (pos? (live-transaction-depth)))
 
 ;; Holds an atom set to true when a rollback fails and leaves behind writes that should have been discarded. The atom
 ;; is shared across the transaction tree so that the outermost scope cannot commit those writes, even if an
@@ -258,7 +282,26 @@
 (defn transaction-state
   "Returns the current per-transaction [[*transaction-state*]] atom, or nil if not in a transaction."
   []
-  *transaction-state*)
+  (when-not (inherited-transaction-ended?)
+    *transaction-state*))
+
+(defn- call-outside-transaction
+  "Call `thunk` with every transaction-scoped binding cleared, and return its result."
+  [thunk]
+  ;; Bind the transaction connection and callback accumulator to nil so they are not conveyed into async work
+  ;; (e.g. a reconcile `future`) a callback may start: that work must acquire its own connection rather than
+  ;; reuse this transaction's connection after it returns to the pool, and a do-after-commit it makes must run
+  ;; immediately rather than enqueue into this now-drained accumulator.
+  ;; A thunk registered late runs on a thread that still has every binding of the finished transaction, so clear
+  ;; the rest too: its before-commit callbacks have also run, and its state must not be mistaken for a live one.
+  (binding [t2.conn/*current-connectable* nil
+            *transaction-depth*           0
+            *after-commit-callbacks*      nil
+            *before-commit-callbacks*     nil
+            *transaction-state*           nil
+            *rollback-required*           nil
+            *open-savepoints*             nil]
+    (thunk)))
 
 (defn do-before-commit
   "Run `thunk` just before the current outermost transaction commits — while the transaction is still
@@ -266,9 +309,19 @@
   transaction back. Outside a transaction, runs `thunk` immediately. Mirror of [[do-after-commit]] for
   work that must land *inside* the committing transaction."
   [thunk]
-  (if-let [callbacks *before-commit-callbacks*]
-    (do (swap! callbacks conj thunk) nil)
-    (thunk)))
+  (cond
+    ;; A thread that outlived its transaction still has the callbacks bound, but they have already run.
+    ;; Its connection has gone too, so the thunk must find its own.
+    (inherited-transaction-ended?) (call-outside-transaction thunk)
+    *before-commit-callbacks*      (do (swap! *before-commit-callbacks* conj thunk) nil)
+    :else                          (thunk)))
+
+(defn- run-after-commit-callback! [thunk]
+  ;; the transaction already committed; a failing callback must not unwind it
+  (try
+    (call-outside-transaction thunk)
+    (catch Throwable t
+      (log/errorf "after-commit callback failed: %s" (ex-message t)))))
 
 (defn do-after-commit
   "Run `thunk` after the current outermost transaction commits successfully — never on rollback.
@@ -277,24 +330,21 @@
   observe committed state (e.g. a reconcile that reads the row).
   Do not do synchronous DB I/O in `thunk`: it runs while the transaction's connection is still checked out,
   so a query here would hold a second connection and can deadlock a saturated pool. Hand DB work to the
-  async job you schedule, which acquires its own connection."
+  async job you schedule, which acquires its own connection.
+  A thread started inside the transaction can call this after the commit, and `thunk` then runs immediately too.
+  An exception from `thunk` is logged, not thrown, whenever a transaction was involved."
   [thunk]
   (if-let [callbacks *after-commit-callbacks*]
-    (do (swap! callbacks conj thunk) nil)
+    ;; A thread started inside the transaction keeps this binding after the transaction ends.
+    ;; Once the callbacks have run, a thunk added to them would never run.
+    (let [[before] (swap-vals! callbacks #(cond-> % (pending-callbacks %) (conj thunk)))]
+      (when (= ::committed before)
+        (run-after-commit-callback! thunk))
+      nil)
     (thunk)))
 
 (defn- run-after-commit-callbacks! [callbacks]
-  ;; Bind the transaction connection and callback accumulator to nil so they are not conveyed into async work
-  ;; (e.g. a reconcile `future`) a callback may start: that work must acquire its own connection rather than
-  ;; reuse this transaction's connection after it returns to the pool, and a do-after-commit it makes must run
-  ;; immediately rather than enqueue into this now-drained accumulator.
-  (binding [t2.conn/*current-connectable* nil
-            *transaction-depth*           0
-            *after-commit-callbacks*      nil]
-    (doseq [thunk @callbacks]
-      ;; the transaction already committed; a failing callback must not unwind it
-      (try (thunk) (catch Throwable t (log/errorf "after-commit callback failed: %s" (ex-message t)))))
-    (reset! callbacks [])))
+  (run! run-after-commit-callback! (first (reset-vals! callbacks ::committed))))
 
 (defn- discard-callbacks-after!
   "Truncate the `callbacks` atom back to its first `n` entries, dropping any that a now-rolling-back
@@ -305,7 +355,9 @@
            (fn [cbs]
              ;; copy rather than return the subvec view, which would retain the discarded callbacks (and their
              ;; captured closures) through the backing array until the outer transaction finishes
-             (into [] (subvec cbs 0 (min n (count cbs))))))))
+             (if (pending-callbacks cbs)
+               (into [] (subvec cbs 0 (min n (count cbs))))
+               cbs)))))
 
 (defn- do-transaction [^java.sql.Connection connection rollback-only? f]
   ;; Set when a connection rollback fails and leaves pending writes. Restoring autocommit would commit those writes,
@@ -328,7 +380,7 @@
     (letfn [(thunk []
               (let [savepoint      (set-savepoint! connection)
                     before-count   (some-> *before-commit-callbacks* deref count)
-                    after-count    (some-> *after-commit-callbacks* deref count)
+                    after-count    (some-> *after-commit-callbacks* deref pending-callbacks count)
                     state-snapshot (when (and *transaction-state* (> *transaction-depth* 1))
                                      @*transaction-state*)]
                 (letfn [(rollback! []
@@ -500,31 +552,41 @@
     (throw (ex-info (str "Cannot combine :rollback-only with :nested-transaction-rule :ignore -- an ignored "
                          "nested transaction has no savepoint to roll back to")
                     {:options options})))
-  (cond
-    (and (pos? *transaction-depth*)
-         (= nested-transaction-rule :ignore))
-    (f connection)
+  ;; Read the depth once: the outer transaction can commit on another thread between two reads.
+  (let [depth (live-transaction-depth)]
+    (cond
+      (and (pos? depth)
+           (= nested-transaction-rule :ignore))
+      (f connection)
 
-    (and (pos? *transaction-depth*)
-         (= nested-transaction-rule :prohibit))
-    (throw (ex-info "Attempted to create nested transaction with :nested-transaction-rule set to :prohibit"
-                    {:options options}))
+      (and (pos? depth)
+           (= nested-transaction-rule :prohibit))
+      (throw (ex-info "Attempted to create nested transaction with :nested-transaction-rule set to :prohibit"
+                      {:options options}))
 
-    :else
-    (let [outermost? (zero? *transaction-depth*)
-          callbacks  (if outermost? (atom []) *after-commit-callbacks*)
-          [result committed?]
-          (binding [*transaction-depth*       (inc *transaction-depth*)
-                    ;; Create one set of callback accumulators and transaction state for the entire tree.
-                    *before-commit-callbacks* (if outermost? (atom []) *before-commit-callbacks*)
-                    *transaction-state*       (if outermost? (atom {}) *transaction-state*)
-                    *rollback-required*       (if outermost? (atom false) *rollback-required*)
-                    *open-savepoints*         (if outermost? (atom []) *open-savepoints*)
-                    *after-commit-callbacks*  callbacks]
-            (do-transaction connection rollback-only f))]
-      (when (and outermost? committed?)
-        (run-after-commit-callbacks! callbacks))
-      result)))
+      :else
+      (let [outermost? (zero? depth)
+            callbacks  (if outermost? (atom []) *after-commit-callbacks*)
+            [result committed?]
+            (try
+              (binding [*transaction-depth*       (inc depth)
+                        ;; Create one set of callback accumulators and transaction state for the entire tree.
+                        *before-commit-callbacks* (if outermost? (atom []) *before-commit-callbacks*)
+                        *transaction-state*       (if outermost? (atom {}) *transaction-state*)
+                        *rollback-required*       (if outermost? (atom false) *rollback-required*)
+                        *open-savepoints*         (if outermost? (atom []) *open-savepoints*)
+                        *after-commit-callbacks*  callbacks]
+                (do-transaction connection rollback-only f))
+              (catch Throwable e
+                (when outermost?
+                  (reset! callbacks ::rolled-back))
+                (throw e)))]
+        ;; Mark the end either way, so a thread that inherited this transaction can tell it is over.
+        (when outermost?
+          (if committed?
+            (run-after-commit-callbacks! callbacks)
+            (reset! callbacks ::rolled-back)))
+        result))))
 
 ;;;; Unshared connections
 ;;;;

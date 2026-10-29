@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
+import { type ComponentProps, useState } from "react";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
@@ -24,7 +25,21 @@ import {
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
 
+import { TableModal, type TableModalState } from "../../TableModal";
+
 import { TableMoreMenu, type TableMoreMenuProps } from "./TableMoreMenu";
+
+function TableMoreMenuWithModal(
+  props: Omit<ComponentProps<typeof TableMoreMenu>, "onOpenModal">,
+) {
+  const [modal, setModal] = useState<TableModalState>();
+  return (
+    <>
+      <TableMoreMenu {...props} onOpenModal={setModal} />
+      <TableModal modal={modal} onClose={() => setModal(undefined)} />
+    </>
+  );
+}
 
 // Mocking picker modal to limit overhead (picker functionality is tested in e2e tests)
 jest.mock("metabase/common/components/Pickers", () => ({
@@ -47,7 +62,6 @@ jest.mock("metabase/common/components/Pickers", () => ({
 type SetupOpts = {
   table?: TableMoreMenuProps["table"];
   remoteSyncType?: EnterpriseSettings["remote-sync-type"];
-  onMoved?: TableMoreMenuProps["onMoved"];
 };
 
 const dataCollection = createMockCollection({
@@ -66,7 +80,7 @@ const destinationCollection = createMockCollection({
   location: "/6464/10/",
 });
 
-const setup = ({ table, remoteSyncType, onMoved }: SetupOpts = {}) => {
+const setup = ({ table, remoteSyncType }: SetupOpts = {}) => {
   const tableData =
     table ??
     createMockTable({
@@ -153,10 +167,7 @@ const setup = ({ table, remoteSyncType, onMoved }: SetupOpts = {}) => {
   setupTableEndpoints(createMockTable({ id: tableData.id }));
 
   renderWithProviders(
-    <Route
-      path="/"
-      element={<TableMoreMenu table={tableData} onMoved={onMoved} />}
-    />,
+    <Route path="/" element={<TableMoreMenuWithModal table={tableData} />} />,
     {
       withRouter: true,
       storeInitialState: state,
@@ -238,7 +249,6 @@ describe("TableMoreMenu", () => {
   });
 
   it("moves a table to another Library Data collection", async () => {
-    const onMoved = jest.fn();
     const table = createMockCollectionItem({
       id: 42,
       model: "table",
@@ -248,7 +258,7 @@ describe("TableMoreMenu", () => {
       collection_id: dataCollection.id as number,
     });
 
-    setup({ table, onMoved });
+    setup({ table });
     await userEvent.click(
       screen.getByRole("button", { name: "Show table options" }),
     );
@@ -258,9 +268,15 @@ describe("TableMoreMenu", () => {
       await screen.findByRole("button", { name: "Destination" }),
     );
 
-    await waitFor(() => expect(onMoved).toHaveBeenCalledWith([11, 10]));
+    await waitFor(() =>
+      expect(fetchMock.callHistory.called("table-42-put")).toBe(true),
+    );
     const request = fetchMock.callHistory.lastCall("table-42-put")?.request;
     expect(await request?.json()).toEqual({ collection_id: 11 });
-    expect(screen.queryByTestId("entity-picker-modal")).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: "Destination" }),
+      ).not.toBeInTheDocument(),
+    );
   });
 });

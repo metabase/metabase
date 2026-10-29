@@ -13,7 +13,7 @@ import {
   useGetSuggestedMetabotPromptsQuery,
   useRegenerateSuggestedMetabotPromptsMutation,
 } from "metabase/metabot";
-import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
+import { FIXED_METABOT_ENTITY_IDS } from "metabase/metabot/constants";
 import { SettingHeader } from "metabase/settings-components";
 import {
   ActionIcon,
@@ -35,7 +35,7 @@ export const MetabotPromptSuggestionPane = ({
   metabot,
   pageSize = PAGE_SIZE,
 }: {
-  metabot: Pick<MetabotInfo, "id" | "collection_id">;
+  metabot: Pick<MetabotInfo, "id" | "entity_id" | "collection_id">;
   pageSize?: number;
 }) => {
   const [sendToast] = useToast();
@@ -60,7 +60,7 @@ export const MetabotPromptSuggestionPane = ({
 
     sendToast(
       error
-        ? { message: t`Error removing prompt`, icon: "warning" }
+        ? { message: t`Error removing prompt`, variant: "negative" }
         : { message: t`Successfully removed prompt`, icon: "check" },
     );
 
@@ -76,7 +76,10 @@ export const MetabotPromptSuggestionPane = ({
   const handleRegeneratePrompts = async () => {
     const { data, error } = await regeneratePrompts(metabot.id);
     if (error || !data) {
-      sendToast({ message: t`Error regenerating prompts`, icon: "warning" });
+      sendToast({
+        message: t`Error regenerating prompts`,
+        variant: "negative",
+      });
       return;
     }
     setPage(0);
@@ -158,7 +161,7 @@ export const MetabotPromptSuggestionPane = ({
                 // Unjustified type cast. FIXME
                 row={row as SuggestedMetabotPrompt}
                 onDelete={() => handleDeletePrompt(row.id)}
-                metabotId={metabot.id}
+                metabotEntityId={metabot.entity_id}
               />
             )
           }
@@ -210,11 +213,11 @@ const SkeletonSuggestedPromptRow = () => (
 const SuggestedPromptRow = ({
   row,
   onDelete,
-  metabotId,
+  metabotEntityId,
 }: {
   row: SuggestedMetabotPrompt;
   onDelete: () => Promise<void>;
-  metabotId: number;
+  metabotEntityId: MetabotInfo["entity_id"];
 }) => {
   const clipboard = useClipboard();
 
@@ -230,14 +233,15 @@ const SuggestedPromptRow = ({
       </td>
       <Box component="td" h="3.5rem">
         <Flex align="center" gap="sm">
-          {metabotId === FIXED_METABOT_IDS.DEFAULT ? (
+          {metabotEntityId === FIXED_METABOT_ENTITY_IDS.DEFAULT ? (
             <Tooltip label={t`Run prompt`}>
               <ActionIcon
+                variant="subtle"
                 component={ForwardRefLink}
                 to={Urls.newMetabotConversation({ prompt: row.prompt })}
                 data-testid="prompt-run"
                 target="_blank"
-                h="sm"
+                size="sm"
               >
                 <Icon name="play" size="1rem" />
               </ActionIcon>
@@ -245,16 +249,22 @@ const SuggestedPromptRow = ({
           ) : (
             <Tooltip label={clipboard.copied ? t`Copied!` : t`Copy prompt`}>
               <ActionIcon
+                variant="subtle"
                 onClick={() => clipboard.copy(row.prompt)}
                 data-testid="prompt-copy"
-                h="sm"
+                size="sm"
               >
                 <Icon name="copy" size="1rem" />
               </ActionIcon>
             </Tooltip>
           )}
           <Tooltip label={t`Remove prompt`}>
-            <ActionIcon onClick={onDelete} data-testid="prompt-remove" h="sm">
+            <ActionIcon
+              variant="subtle"
+              onClick={onDelete}
+              data-testid="prompt-remove"
+              size="sm"
+            >
               <Icon name="trash" size="1rem" />
             </ActionIcon>
           </Tooltip>

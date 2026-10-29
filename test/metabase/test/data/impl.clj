@@ -6,6 +6,7 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.secrets.core :as secret]
    [metabase.test.data.impl.get-or-create :as test.data.impl.get-or-create]
    [metabase.test.data.impl.verify :as verify]
@@ -25,7 +26,6 @@
 (p/import-vars
  [verify verify-data-loaded-correctly])
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *skip-dataset-prewarm?*
   "Whether `with-temp` should skip materializing the test-data Database before opening its transaction.
 
@@ -52,7 +52,6 @@
   ([]       (get-or-create-default-dataset! (tx/driver)))
   ([driver] (get-or-create-database! driver (tx/default-dataset driver))))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^{:arglists '([])} ^:private *db-fn*
   "Implementation of `db` function that should return the current working test database when called, always with no
   arguments. By default, this is [[get-or-create-default-dataset!]] for the current [[metabase.driver/*driver*]], which
@@ -103,7 +102,6 @@
 (defn- test-data-database-id []
   (@memoized-test-data-database-id-fn (tx/driver)))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic ^{:arglists '([])} *db-id-fn*
   #'test-data-database-id)
 
@@ -189,7 +187,6 @@
 (defn- cached-field-id [table-id parent-id field-name]
   (get (field-lookup-map table-id) [parent-id field-name]))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^{:added "0.51.0"} *dbdef-used-to-create-db*
   "The database definition used to create the currently bound test database. For those rare occasions when you need to
   refer back to it."
@@ -221,7 +218,7 @@
 
 (mu/defn database-source-dataset-name :- :string
   "Get the name of the test dataset this Database was created from, e.g. `test-data`."
-  [database :- [:or ::warehouses.schema/database ::warehouses.schema/database.update]]
+  [database :- [:or ::lib.schema.metadata/database ::warehouses.schema/database ::warehouses.schema/database.update]]
   (get-in database [:settings :database-source-dataset-name]))
 
 (mu/defn the-table-id :- ::lib.schema.id/table
@@ -313,7 +310,7 @@
               :let                                   [new-parent-id (get old-id->new-id old-parent-id)]
               :when                                  (and new-parent-id
                                                           (not= new-parent-id old-parent-id))]
-        (t2/update! :model/Field new-id {:parent_id new-parent-id})))
+        (t2/update! :model/Field :id new-id {:parent_id new-parent-id})))
     ;; now copy the FieldValues as well. Only the full ones: an advanced FieldValues is looked up by a hash that
     ;; includes the id of the field it was cached for, so a copy of one can never be found again, and only turns
     ;; up in whatever a test counts.
@@ -361,7 +358,7 @@
                                   :source-table.active
                                   :target-table.active
                                   [:not= :source-field.fk_target_field_id nil]]})]
-    (t2/update! :model/Field (the-field-id (the-table-id new-db-id source-table) source-field)
+    (t2/update! :model/Field :id (the-field-id (the-table-id new-db-id source-table) source-field)
                 {:fk_target_field_id (the-field-id (the-table-id new-db-id target-table) target-field)})))
 
 (defn- copy-db-tables-and-fields! [old-db-id new-db-id]
@@ -392,7 +389,6 @@
                        prop->old-id)))
       database)))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *db-is-temp-copy?*
   "Whether the current test database is a temp copy created with the [[metabase.test/with-temp-copy-of-db]] macro."
   false)
@@ -403,7 +399,7 @@
   from the standard test database, and syncs it."
   [f]
   (let [{old-db-id :id, :as old-db} (*db-fn*)
-        original-db (-> old-db copy-secrets (select-keys [:details :engine :name :settings]))
+        original-db (-> old-db copy-secrets (select-keys [:details :engine :name :settings :dbms_version]))
         {new-db-id :id, :as new-db} (first (t2/insert-returning-instances! :model/Database original-db))]
     (try
       (copy-db-tables-and-fields! old-db-id new-db-id)

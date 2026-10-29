@@ -24,7 +24,7 @@ describe("scenarios > visualizations > treemap", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should render and configure a treemap in the query builder", () => {
+  it("should render, configure and drill into a treemap in the query builder", () => {
     H.visitQuestionAdhoc({
       display: "table",
       dataset_query: {
@@ -61,24 +61,9 @@ describe("scenarios > visualizations > treemap", () => {
     cy.get("@settings-sidebar").findByText("Show leaf labels").click();
     H.echartsContainer().should("contain", "Chickpeas");
 
-    cy.log("Saving the question works");
-    cy.findByTestId("qb-save-button").click();
-    cy.findByPlaceholderText("What is the name of your question?").type(
-      "My Treemap",
-    );
-    cy.findByTestId("save-question-modal").findByText("Save").click();
-    H.checkSavedToCollectionQuestionToast();
-  });
-
-  it("should drill into a group and navigate back via the breadcrumb", () => {
-    H.visitQuestionAdhoc({
-      display: "treemap",
-      dataset_query: {
-        type: "native",
-        native: { query: TREEMAP_QUERY },
-        database: SAMPLE_DB_ID,
-      },
-    });
+    cy.log("Close the settings sidebar");
+    H.leftSidebar().button("Done").click();
+    cy.findByTestId("chartsettings-sidebar").should("not.exist");
 
     cy.log("Overview breadcrumb shows the grand total");
     treemapBreadcrumb().should("contain", "Total");
@@ -104,6 +89,14 @@ describe("scenarios > visualizations > treemap", () => {
 
     treemapBreadcrumb().should("contain", "Total");
     H.echartsContainer().should("contain", "Grains").and("contain", "Nuts");
+
+    cy.log("Saving the question works");
+    cy.findByTestId("qb-save-button").click();
+    cy.findByPlaceholderText("What is the name of your question?").type(
+      "My Treemap",
+    );
+    cy.findByTestId("save-question-modal").findByText("Save").click();
+    H.checkSavedToCollectionQuestionToast();
   });
 
   it("should drill through from a tile", () => {

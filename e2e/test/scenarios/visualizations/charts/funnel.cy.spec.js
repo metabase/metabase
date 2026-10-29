@@ -25,7 +25,7 @@ describe("scenarios > visualizations > funnel chart", () => {
     H.sidebar().findByText("Data").click();
   });
 
-  it("should allow you to reorder and show/hide rows", () => {
+  it("should allow you to reorder and show/hide rows, and handle row items being filtered out and returned", () => {
     cy.log("ensure that rows are shown");
     H.getDraggableElements().should("have.length", 5);
 
@@ -65,15 +65,8 @@ describe("scenarios > visualizations > funnel chart", () => {
         cy.icon("eye_crossed_out").click({ force: true });
       });
     cy.findAllByTestId("funnel-chart-header").should("have.length", 5);
-  });
 
-  it("should handle row items being filterd out and returned gracefully", () => {
-    H.getDraggableElements().first().as("dragElement");
-    H.moveDnDKitElementByAlias("@dragElement", {
-      vertical: 100,
-      useMouseEvents: true,
-    });
-
+    cy.log("filter rows out and return them");
     H.getDraggableElements()
       .eq(1)
       .within(() => {
@@ -89,6 +82,7 @@ describe("scenarios > visualizations > funnel chart", () => {
     });
 
     H.getDraggableElements().should("have.length", 4);
+    cy.findAllByTestId("funnel-chart-header").should("have.length", 3);
 
     //Ensures that "Google" is still hidden, so it's state hasn't changed.
     H.getDraggableElements()

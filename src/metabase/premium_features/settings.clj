@@ -41,7 +41,7 @@
                 ((requiring-resolve 'metabase.premium-features.token-check/-token-status))))
 
 (defsetting locked-meters
-  (deferred-tru "Locally-mirrored is-locked state per meter, refreshed on each successful token-check.")
+  "Locally-mirrored is-locked state per meter, refreshed on each successful token-check."
   :encryption :no
   :type       :json
   :visibility :internal
@@ -248,6 +248,10 @@
   "Should we enable Collection Cleanup?"
   :collection-cleanup)
 
+(define-premium-feature ^{:added "0.65.0"} enable-content-diagnostics?
+  "Should we enable Content Diagnostics?"
+  :content-diagnostics)
+
 (define-premium-feature ^{:added "0.51.0"} enable-database-auth-providers?
   "Should we enable database auth-providers?"
   :database-auth-providers)
@@ -327,7 +331,7 @@
   :library)
 
 (defsetting security-center-disabled
-  (deferred-tru "Globally disable Security Center as a customer-controlled escape hatch.")
+  "Globally disable Security Center as a customer-controlled escape hatch."
   :type             :boolean
   :feature          :admin-security-center
   :default          false
@@ -399,6 +403,7 @@
    :cloud_custom_smtp              (cloud-custom-smtp?)
    :collection_cleanup             (enable-collection-cleanup?)
    :config_text_file               (enable-config-text-file?)
+   :content_diagnostics            (enable-content-diagnostics?)
    :content_translation            (enable-content-translation?)
    :content_verification           (enable-content-verification?)
    :custom-viz                     (enable-custom-viz?)

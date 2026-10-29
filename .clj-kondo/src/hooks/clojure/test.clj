@@ -137,7 +137,9 @@
 (defn- ignore? [node error-type]
   (contains? (hooks.common/ignored-linters node) error-type))
 
-(defn deftest-check-no-driver-keywords [node {:keys [drivers], :as _config}]
+(defn deftest-check-no-driver-keywords
+  "Warn about hardcoded driver names in driver tests."
+  [node {:keys [drivers], :as _config}]
   ;; fail fast after we see the first error, where we see one hardcoded driver name there are likely several more and we
   ;; don't need multiple warnings for a single test.
   (letfn [(f [node]
@@ -201,7 +203,9 @@
                                      :message (format "All tests must live in a known module; %s is not a known module" (pr-str current-module))
                                      :type    :metabase/tests-must-live-in-known-modules)))))))
 
-(defn deftest [{:keys [node cljc lang config], ns-sym :ns, :as input}]
+(defn deftest
+  "Validate a test and pass its driver-test tag to hooks in its body."
+  [{:keys [node cljc lang config], ns-sym :ns, :as input}]
   ;; run [[deftest-check-parallel]] only once... if this is a `.cljc` file only run it for the `:clj` analysis, no point
   ;; in running it twice.
   (when (or (not cljc)
@@ -211,7 +215,12 @@
   (deftest-check-should-not-be-multiple-separate-tests node (get-in config [:linters :metabase/validate-deftest-logically-separate-tests]))
   (deftest-check-no-driver-keywords node (get-in config [:linters :metabase/disallow-hardcoded-driver-names-in-tests]))
   (deftest-check-in-valid-module input)
-  input)
+  (assoc-in input [:context :mb/driver-tests]
+            (boolean (some (fn [metadata]
+                             (let [metadata (hooks/sexpr metadata)]
+                               (or (= metadata :mb/driver-tests)
+                                   (true? (:mb/driver-tests metadata)))))
+                           (:meta (second (:children node)))))))
 
 ;;; this is a hacky way to determine whether these namespaces are required in the `ns` form or not... basically `:ns`
 ;;; will come back as `nil` if they are not.
@@ -247,7 +256,9 @@
 
               nil)))))))
 
-(defn is [{:keys [node lang], :as input}]
+(defn is
+  "Validate the assertion's required namespaces."
+  [{:keys [node lang], :as input}]
   (when (= lang :cljs)
     (warn-about-missing-test-expr-requires-in-cljs node))
   input)

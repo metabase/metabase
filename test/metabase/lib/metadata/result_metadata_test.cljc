@@ -457,7 +457,7 @@
   (testing "`:aggregation-options`"
     (testing "`:name` and `:display-name`"
       (is (=? {:base-type     :type/Integer
-               :settings      {:is_priceless true}
+               :settings      {:decimals 2}
                :name          "sum_2"
                :display-name  "My custom name"}
               (lib.tu.macros/$ids venues
@@ -468,7 +468,7 @@
   (testing "`:aggregation-options`"
     (testing "`:name` only"
       (is (=? {:base-type     :type/Integer
-               :settings      {:is_priceless true}
+               :settings      {:decimals 2}
                :name          "sum_2"
                :display-name  "Sum of Price"}
               (lib.tu.macros/$ids venues
@@ -478,7 +478,7 @@
   (testing "`:aggregation-options`"
     (testing "`:display-name` only"
       (is (=? {:base-type     :type/Integer
-               :settings      {:is_priceless true}
+               :settings      {:decimals 2}
                :name          "sum"
                :display-name  "My Custom Name"}
               (lib.tu.macros/$ids venues
@@ -918,7 +918,7 @@
       (binding [lib.metadata.calculation/*display-name-style* :long]
         (is (=? [{:base-type                                  :type/DateTimeWithLocalTZ
                   :display-name                               "Created At: Year"
-                  :effective-type                             :type/Integer
+                  :effective-type                             :type/DateTimeWithLocalTZ
                   ;; additional keys in field ref are WRONG
                   ::result-metadata/field-ref                 [:field "CREATED_AT" (partial = {:base-type     :type/DateTimeWithLocalTZ
                                                                                                :temporal-unit :year})]

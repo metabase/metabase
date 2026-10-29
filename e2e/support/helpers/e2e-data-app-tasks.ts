@@ -5,7 +5,6 @@ import path from "node:path";
 import {
   DATA_APP_BUILD_SCRIPT,
   DATA_APP_FIXTURES_DIR,
-  DATA_APP_SYNC_SCRIPT,
   REPO_ROOT,
 } from "./data-app-fixture-paths.mjs";
 
@@ -38,29 +37,6 @@ function run(script: string, args: string[], env: NodeJS.ProcessEnv = {}) {
           ),
     );
   });
-}
-
-export async function syncDataApp({
-  appRoot,
-  metabaseUrl,
-  apiKey,
-}: {
-  appRoot: string;
-  metabaseUrl: string;
-  apiKey: string;
-}): Promise<{ ok: boolean; error: string | null }> {
-  try {
-    await run(DATA_APP_SYNC_SCRIPT, [appRoot], {
-      DATA_APP_MB_URL: metabaseUrl,
-      DATA_APP_MB_API_KEY: apiKey,
-    });
-    return { ok: true, error: null };
-  } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
 }
 
 export async function buildDataApp({
@@ -97,35 +73,6 @@ function inRepo(target: string) {
  * so a spec changes an app in one round trip, and so nothing is composed into a
  * shell string.
  */
-export async function scaffoldDataApp({
-  appName,
-  sdkFrom,
-}: {
-  appName: string;
-  sdkFrom: string;
-}): Promise<string> {
-  // The task owns the location so a caller cannot aim the `rmSync` below elsewhere.
-  if (path.basename(appName) !== appName) {
-    throw new Error(`A scaffolded app is named, not located: ${appName}`);
-  }
-
-  const root = path.join(REPO_ROOT, "e2e", "tmp", appName);
-
-  fs.rmSync(root, { recursive: true, force: true });
-  fs.mkdirSync(root, { recursive: true });
-  // The SDK the app synchronizes against, without a second npm install.
-  fs.symlinkSync(
-    path.join(inRepo(sdkFrom), "node_modules"),
-    path.join(root, "node_modules"),
-  );
-  fs.writeFileSync(
-    path.join(root, "data_app.yaml"),
-    `name: ${appName}\nslug: ${appName}\npath: ./dist/index.js\n`,
-  );
-
-  return root;
-}
-
 export async function writeDataAppFiles({
   files,
 }: {
@@ -137,30 +84,6 @@ export async function writeDataAppFiles({
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, contents);
   }
-
-  return null;
-}
-
-export async function removeDataAppDeclaration({
-  filePath,
-  exportName,
-}: {
-  filePath: string;
-  exportName: string;
-}): Promise<null> {
-  const target = inRepo(filePath);
-  const [imports, ...declarations] = fs
-    .readFileSync(target, "utf8")
-    .split("export const ");
-
-  fs.writeFileSync(
-    target,
-    imports +
-      declarations
-        .filter((declaration) => !declaration.startsWith(`${exportName} `))
-        .map((declaration) => `export const ${declaration}`)
-        .join(""),
-  );
 
   return null;
 }

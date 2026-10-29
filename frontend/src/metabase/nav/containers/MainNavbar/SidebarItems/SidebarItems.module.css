@@ -1,0 +1,49 @@
+.nodeRoot {
+  padding-left: calc(var(--tree-depth) * 1rem);
+  color: var(--mb-color-text-primary);
+
+  &:focus-within {
+    outline: 2px solid var(--mb-color-input-focus);
+    outline-offset: -2px;
+  }
+
+  &:hover {
+    color: var(--mb-color-core-brand);
+    background-color: var(--mb-color-background_surface-brand-subtle-hover);
+  }
+}
+
+.selected {
+  color: var(--mb-color-core-brand);
+  background-color: var(--mb-color-background_surface-brand-subtle);
+}
+
+.dropTarget {
+  color: var(--mb-color-text-primary-inverse);
+  background-color: var(--mb-color-core-brand);
+}
+
+.button,
+.link {
+  &:focus {
+    outline: none;
+  }
+}
+
+.draggable {
+  position: relative;
+
+  &:hover .dragIcon {
+    opacity: 0.3;
+  }
+}
+
+/* Rows cannot be hovered while the bookmarks are being sorted */
+.dragging {
+  pointer-events: none;
+}
+
+.dragIcon {
+  opacity: 0;
+  transform: translateY(-50%);
+}

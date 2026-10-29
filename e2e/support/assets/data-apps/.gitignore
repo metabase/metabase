@@ -4,3 +4,5 @@
 /*/*
 !/*/src
 !/*/data_app.yaml
+# The app's typed schema, fetched from Metabase before each build.
+/*/src/metabase.ts

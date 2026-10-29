@@ -37,14 +37,20 @@
      :field-name (when third-part second-part)
      :k          (keyword (or third-part second-part first-part))}))
 
+(def ^:private settable-properties
+  "The properties `_metabase_metadata` may set, by the kind of object the keypath names."
+  {:database #{:description :caveats :points_of_interest}
+   :table    #{:description :caveats :points_of_interest :display_name}
+   :field    #{:description :caveats :points_of_interest :display_name :semantic_type}})
+
 (mu/defn- set-property! :- :boolean
   "Set a property for a Field or Table in `database`. Returns `true` if a property was successfully set."
   [database                          :- i/DatabaseInstance
    {:keys [table-name field-name k]} :- KeypathComponents
    value                             :- [:maybe :string]]
   (boolean
-   ;; ignore legacy entries that try to set field_type since it's no longer part of Field
-   (when-not (= k :field_type)
+   ;; properties outside the allowlist (including the legacy `field_type`) are ignored
+   (when (contains? (settable-properties (cond field-name :field, table-name :table, :else :database)) k)
      ;; fetch the corresponding Table, then set the Table or Field property
      (if table-name
        ;; TODO: this needs to support schemas
@@ -67,18 +73,23 @@
     keypath | varchar | \"products.created_at.description\"
     value   | varchar | \"The date the product was added to our catalog.\"
 
-  `keypath` is of the form `table-name.key` or `table-name.field-name.key`, where `key` is the name of some property
-  of `Table` or `Field`.
+  `keypath` is of the form `key`, `table-name.key`, or `table-name.field-name.key`, where `key` is one of the
+  descriptive properties in [[settable-properties]] for the Database, Table, or Field. Other keys are ignored.
 
   This functionality is currently only used by the Sample Database. In order to use this functionality, drivers *must*
   implement optional fn `:table-rows-seq`."
   [driver                  :- :keyword
    database                :- i/DatabaseInstance
    metabase-metadata-table :- i/DatabaseMetadataTable]
-  (doseq [{:keys [keypath value]} (driver/table-rows-seq driver database metabase-metadata-table)]
-    (sync-util/with-error-handling (format "Error handling metabase metadata entry: set %s -> %s" keypath value)
-      (or (set-property! database (parse-keypath keypath) value)
-          (log/error (u/format-color 'red "Error syncing _metabase_metadata: no matching keypath: %s" keypath))))))
+  (let [unmatched (volatile! [])]
+    (doseq [{:keys [keypath value]} (driver/table-rows-seq driver database metabase-metadata-table)]
+      (sync-util/with-error-handling (format "Error handling metabase metadata entry: set %s -> %s" keypath value)
+        (when-not (set-property! database (parse-keypath keypath) value)
+          (vswap! unmatched conj keypath))))
+    ;; usually stale rows for tables that no longer exist, so one line per sync rather than one per row
+    (when-let [keypaths (seq @unmatched)]
+      (log/warnf "Ignoring %d _metabase_metadata row(s) whose keypath matches nothing or isn't settable: %s"
+                 (count keypaths) (str/join ", " (take 20 keypaths))))))
 
 (mu/defn is-metabase-metadata-table?
   "Is this TABLE the special `_metabase_metadata` table?"

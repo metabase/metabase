@@ -8,6 +8,7 @@ export interface OidcCheckRequest {
   "client-id": string;
   "client-secret"?: string | null;
   key?: string | null;
+  scopes?: string[];
 }
 
 export interface OidcCheckStepResult {

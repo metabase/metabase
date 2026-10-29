@@ -35,6 +35,10 @@
   "Default alias for all source tables. (Not for source queries; those still use the default SQL QP alias of `source`.)"
   "t1")
 
+(defmethod sql.qp/use-ctes-for-stages? :sparksql
+  [_driver]
+  true)
+
 (defmethod sql.qp/->honeysql [:sparksql :field]
   [driver [_ {::sql.params.substitution/keys [compiling-field-filter?]} _ :as field-clause]]
   ;; use [[source-table-alias]] instead of the usual `schema.table` to qualify fields e.g. `t1.field` instead of the

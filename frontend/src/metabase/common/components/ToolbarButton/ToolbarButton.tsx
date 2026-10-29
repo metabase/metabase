@@ -52,15 +52,15 @@ export const ToolbarButton = forwardRef(function ToolbarButton(
 
   const actionButton = (
     <ActionIcon
+      variant="subtle"
       data-testid="toolbar-button"
-      data-is-active={isActive}
+      aria-pressed={isActive || undefined}
+      selected={isActive}
       ref={ref}
       display={{
         base: visibleOnSmallScreen ? "flex" : "none",
         sm: "flex",
       }}
-      size="2rem"
-      variant="viewHeader"
       aria-label={
         ariaLabel ??
         (typeof tooltipLabel === "string" ? tooltipLabel : undefined)
@@ -70,13 +70,7 @@ export const ToolbarButton = forwardRef(function ToolbarButton(
       disabled={disabled}
       {...actionIconProps}
     >
-      {children ?? (
-        <Icon
-          name={icon}
-          c={isActive ? "core-brand" : undefined}
-          {...iconProps}
-        />
-      )}
+      {children ?? <Icon name={icon} {...iconProps} />}
     </ActionIcon>
   );
 

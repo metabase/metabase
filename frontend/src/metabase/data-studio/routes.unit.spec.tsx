@@ -2,23 +2,28 @@ import fetchMock from "fetch-mock";
 
 import { lazyLoaders } from "__support__/lazy-routes";
 import { setupUserKeyValueEndpoints } from "__support__/server-mocks";
-import { createMockState } from "__support__/state";
+import { createMockSettingsState, createMockState } from "__support__/state";
 import { act, renderWithProviders, screen } from "__support__/ui";
 import { delay } from "__support__/utils";
-import { Route } from "metabase/router";
+import { Outlet, Route } from "metabase/router";
+import * as Urls from "metabase/urls";
 import { defer } from "metabase/utils/promise";
 import { createMockUser } from "metabase-types/api/mocks";
 
-import { DataStudioIndexRedirect, getDataStudioRoutes } from "./routes";
+import {
+  DataStudioIndexRedirect,
+  getDataStudioLibraryRedirects,
+  getDataStudioRoutes,
+} from "./routes";
 
 const Guard = () => null;
 describe("data-studio routes", () => {
   it("resolves every page", async () => {
     const loaders = lazyLoaders(getDataStudioRoutes(Guard));
 
-    // Includes the transform, data model, glossary and settings routes, which
-    // this tree nests.
-    expect(loaders).toHaveLength(39);
+    // Includes the transform, data model, glossary, settings, snippet, action
+    // and dashboard routes, which this tree nests.
+    expect(loaders).toHaveLength(54);
 
     for (const load of loaders) {
       expect((await load()).Component).toBeDefined();
@@ -128,5 +133,46 @@ describe("Data Studio index redirect", () => {
 
     expect(await screen.findByTestId("transforms-index")).toBeInTheDocument();
     expect(screen.queryByTestId("guide-page")).not.toBeInTheDocument();
+  });
+});
+
+describe("Data Studio data apps route", () => {
+  it("shows the data apps upsell to admins without the data apps plugin", async () => {
+    setupUserKeyValueEndpoints({
+      namespace: "data_studio",
+      key: "isNavbarOpened",
+      value: true,
+    });
+
+    renderWithProviders(<Route path="/">{getDataStudioRoutes(Outlet)}</Route>, {
+      withRouter: true,
+      initialRoute: Urls.dataStudioDataApps(),
+      storeInitialState: createMockState({
+        currentUser: createMockUser({ is_superuser: true }),
+        settings: createMockSettingsState({ "has-user-setup": true }),
+      }),
+    });
+
+    expect(
+      await screen.findByRole("heading", { name: "Build data apps" }),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("Data Studio library redirects", () => {
+  it.each([
+    ["/data-studio/library/snippets/5", "/data-studio/snippets/5"],
+    ["/data-studio/library/actions/7/run", "/data-studio/actions/7/run"],
+  ])("redirects %s to %s", async (initialRoute, expectedPathname) => {
+    const { router } = renderWithProviders(
+      <Route path="/">
+        {getDataStudioLibraryRedirects()}
+        <Route path="*" element={<div data-testid="target" />} />
+      </Route>,
+      { withRouter: true, initialRoute },
+    );
+
+    expect(await screen.findByTestId("target")).toBeInTheDocument();
+    expect(router?.location.pathname).toBe(expectedPathname);
   });
 });

@@ -16,6 +16,7 @@
    [metabase.metabot.self.google.stream-generate-content :as stream-generate-content]
    [metabase.metabot.self.mistral :as mistral]
    [metabase.metabot.self.moonshot :as moonshot]
+   [metabase.metabot.self.ollama :as ollama]
    [metabase.metabot.self.openai :as openai]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.self.vllm :as vllm]
@@ -67,9 +68,11 @@
 
        :openrouter (get (openrouter/openrouter-request-body opts) :max_tokens omitted)
        :zai        (get (zai/zai-request-body opts) :max_tokens omitted)
-       :moonshot   (get (moonshot/moonshot-request-body opts) :max_tokens omitted)
+       ;; Moonshot sends the cap as max_completion_tokens
+       :moonshot   (get (moonshot/moonshot-request-body opts) :max_completion_tokens omitted)
        :mistral    (get (mistral/mistral-request-body opts) :max_tokens omitted)
        :vllm       (get (vllm/vllm-request-body opts) :max_tokens omitted)
+       :ollama     (get (ollama/ollama-request-body opts) :max_tokens omitted)
        ;; xAI sends the cap as max_completion_tokens
        :xai        (get (xai/xai-request-body opts) :max_completion_tokens omitted)
        :gemini     (get-in (stream-generate-content/request-body opts)
@@ -91,6 +94,7 @@
                        "claude-sonnet-5-5"            32000
                        "claude-sonnet-5"              32000
                        "claude-sonnet-4-6"            32000
+                       "claude-haiku-5-5"             32000
                        "claude-opus-4-5-20251101"     32000
                        "claude-sonnet-4-5-20250929"   32000
                        "claude-haiku-4-5-20251001"    32000
@@ -121,6 +125,7 @@
                        "anthropic.claude-opus-4-7"    32000
                        "anthropic.claude-sonnet-5-5"  32000
                        "anthropic.claude-sonnet-5"    32000
+                       "anthropic.claude-haiku-5-5"   32000
                        "anthropic.claude-haiku-4-5"   32000}
    :bedrock-openai    {"openai.gpt-6-astra"           32000
                        "openai.gpt-5.4"               32000
@@ -140,6 +145,7 @@
                        "claude-sonnet-4-6"            32000
                        "claude-opus-4-5"              32000
                        "claude-sonnet-4-5"            32000
+                       "claude-haiku-5-5"             32000
                        "claude-haiku-4-5"             32000
                        "claude-opus-4-1"              32000
                        "Claude-Opus-4-8"              32000
@@ -156,7 +162,7 @@
                        "gpt-5.4-nano"                omitted
                        "gpt-5.4"                     omitted
                        "GPT-5.5"                     omitted}
-   ;; Vertex: partner ids, dated with `@`
+   ;; Vertex: partner ids; Haiku 4.5 also in the retired `@`-dated spelling a saved selection may still hold
    :vertex-claude     {"claude-fable-5-1"             32000
                        "claude-fable-5"               32000
                        "claude-opus-5-5"              32000
@@ -165,10 +171,13 @@
                        "claude-sonnet-5-5"            32000
                        "claude-sonnet-5"              32000
                        "claude-sonnet-4-6"            32000
+                       "claude-haiku-5-5"             32000
+                       "claude-haiku-4-5"             32000
                        "claude-haiku-4-5@20251001"    32000}
    :gemini            {"google/gemini-3.5-flash"      32000
                        "google/gemini-3.6-flash"      32000
                        "google/gemini-3.7-flash"      32000
+                       "google/gemini-3.8-flash"      32000
                        "google/gemini-2.0-flash"      32000}
    :deepseek          {"deepseek-v4-pro"              32000
                        "deepseek-flash"               32000}
@@ -188,7 +197,9 @@
                        "deepseek/deepseek-v4-pro"         32000
                        "deepseek/deepseek-v4-pro-0813"    32000
                        "deepseek/deepseek-v4-flash-0731"  32000
+                       "google/gemini-3.8-flash"          32000
                        "z-ai/glm-5.3"                     32000
+                       "z-ai/glm-5.3-flash"               32000
                        "z-ai/glm-5.2"                     32000
                        "qwen/qwen3.8-max"                 32000
                        ;; the id qwen/qwen3.8-max resolves to on OpenRouter today
@@ -208,6 +219,7 @@
                        "anthropic/claude-fable-6"         32000
                        "openai/gpt-4o"                    32000}
    :zai               {"glm-5.3"                      32000
+                       "glm-5.3-flash"                32000
                        "glm-5.2"                      32000
                        "glm-4.7"                      32000}
    :moonshot          {"kimi-k3"                      32000
@@ -219,7 +231,11 @@
                        "grok-4.3"                     32000}
    ;; no default cap without a known context window, which the pure builder is not given
    ;; (see vllm/vllm-request-body)
-   :vllm              {"Qwen/Qwen3-32B"              omitted}})
+   :vllm              {"Qwen/Qwen3-32B"              omitted}
+   ;; the default with no known window, unlike vLLM: Ollama shortens a prompt that does not fit rather than
+   ;; refusing it. Self-hosted, and a Cloud model forwarded under its `-cloud` name
+   :ollama            {"qwen3:4b"                     32000
+                       "gpt-oss:120b-cloud"           32000}})
 
 (deftest ^:parallel chat-cap-is-the-flat-default-test
   (testing "each surface sends the same default cap for every model, or deliberately none"
@@ -243,6 +259,7 @@
       :openrouter "z-ai/glm-5.3"             32000
       :zai        "glm-5.3"                  32000
       :moonshot   "kimi-k3"                  32000
+      :ollama     "qwen3:4b"                 32000
       :gemini     "google/gemini-3.7-flash"  32000))
   (testing "vLLM with no known window still sends no cap: a floor raises a caller's cap, it never adds one"
     (is (= omitted (cap-for :vllm "Qwen/Qwen3-32B" {:schema {:type "object"}})))))

@@ -13,7 +13,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.signInAsAdmin();
   });
 
-  it("should allow brush date filter", () => {
+  it("should show chart drills and allow brush date filter on a line chart", () => {
     H.createQuestion(
       {
         name: "Brush Date Temporal Filter",
@@ -37,16 +37,41 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     H.queryBuilderMain().within(() => {
       cy.findByLabelText("Legend").findByText("Gadget").should("exist");
       H.echartsContainer()
-        .should("contain.text", "July 2025")
-        .and("contain.text", "January 2026");
+        .should("contain.text", "April 2025")
+        .and("contain.text", "April 2026");
     });
 
+    cy.log("Chart drills");
+    H.cartesianChartCircle().eq(2).click();
+    H.popover().within(() => {
+      cy.findByText("See these Orders").should("be.visible");
+
+      cy.findByText("See this month by week").should("be.visible");
+
+      cy.findByText("Break out by…").should("be.visible");
+      cy.findByText("Automatic insights…").should("be.visible");
+
+      cy.findByText(">").should("be.visible");
+      cy.findByText("<").should("be.visible");
+      cy.findByText("=").should("be.visible");
+      cy.findByText("≠").should("be.visible");
+    });
+
+    cy.findByTestId("timeseries-chrome").within(() => {
+      cy.findByText("View").should("be.visible");
+      cy.findByText("All time").should("be.visible");
+      cy.findByText("by").should("be.visible");
+      cy.findByText("Month").should("be.visible");
+    });
+
+    // The popover closes on Escape only when the focus is in it
+    H.popover().find(":focus").should("exist");
+    cy.realPress("Escape");
+    H.popover({ skipVisibilityCheck: true }).should("not.exist");
+    H.echartsTriggerBlur();
+
     cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
-    cy.log("Zoom-in on the left side, which corresponds to July 2025");
-    cy.findByTestId("query-visualization-root") // drag across to filter
-      .trigger("mousedown", 120, 200)
-      .trigger("mousemove", 230, 200)
-      .trigger("mouseup", 230, 200);
+    H.applyBrushToPoints(1, 3);
 
     // Note: Test was flaking because apparently mouseup doesn't always happen at the same position.
     //       It is enough that we assert that the filter exists.
@@ -92,38 +117,43 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         cy.findByLabelText("Legend").findByText("Gadget").should("exist");
         H.echartsContainer().findByText(/Count/).should("exist");
       });
-      cy.wait(100); // wait to avoid grabbing the svg before the chart redraws
+      H.applyBrushToPoints(5, 10);
 
-      cy.findByTestId("query-visualization-root")
-        .trigger("mousedown", 240, 200)
-        .trigger("mousemove", 420, 200)
-        .trigger("mouseup", 420, 200);
+      cy.wait("@dataset").its("response.body.error").should("not.exist");
 
-      cy.wait("@dataset");
-
-      // Once the issue gets fixed, figure out the positive assertion for the "month-of-year" granularity
       if (granularity === "month") {
         cy.findByTestId("qb-filters-panel")
           .findByText(
             "Created At: Month is Sep 1, 2025, 12:00 AM – Feb 1, 2026, 12:00 AM",
           )
           .should("exist");
+      } else {
+        cy.findByTestId("qb-filters-panel")
+          .findByText(/^Created At: Month of year is between .+ and .+$/)
+          .should("exist");
+        cy.findByTestId("qb-filters-panel").should("not.contain", "Unknown");
       }
 
       H.cartesianChartCircle();
     });
   });
 
-  it("should correctly drill through on a card with multiple series (metabase#11442)", () => {
-    H.createQuestion({
-      name: "11442_Q1",
+  it("should drill through combined cards with one or more added series (metabase#11442, metabase#13457)", () => {
+    // Series colors come from a hash of the question names.
+    const ordersByYear = (name, filter) => ({
+      name,
       query: {
         "source-table": ORDERS_ID,
         aggregation: [["count"]],
         breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
+        filter,
       },
       display: "line",
-    }).then(({ body: { id: Q1_ID } }) => {
+    });
+
+    H.createQuestion(
+      ordersByYear("11442_Q1", [">", ["field", ORDERS.TOTAL, null], 50]),
+    ).then(({ body: { id: Q1_11442_ID } }) => {
       H.createQuestion({
         name: "11442_Q2",
         query: {
@@ -132,111 +162,89 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
           breakout: [
             ["field", PRODUCTS.CREATED_AT, { "temporal-unit": "year" }],
           ],
+          filter: [">", ["field", PRODUCTS.PRICE, null], 20],
         },
         display: "line",
-      }).then(({ body: { id: Q2_ID } }) => {
-        H.createDashboard({ name: "11442D" }).then(
-          ({ body: { id: DASHBOARD_ID } }) => {
-            cy.log("Add the first question to the dashboard");
-
-            H.addOrUpdateDashboardCard({
-              card_id: Q1_ID,
-              dashboard_id: DASHBOARD_ID,
-              card: {
-                size_x: 21,
-                size_y: 12,
-                // Add additional series combining it with the second question
-                series: [
-                  {
-                    id: Q2_ID,
-                    model: "card",
-                  },
+      }).then(({ body: { id: Q2_11442_ID } }) => {
+        H.createQuestion(ordersByYear("13457_Q1")).then(
+          ({ body: { id: Q1_13457_ID } }) => {
+            H.createQuestion({
+              name: "13457_Q2",
+              query: {
+                "source-table": ORDERS_ID,
+                aggregation: [
+                  ["avg", ["field", ORDERS.DISCOUNT, null]],
+                  ["avg", ["field", ORDERS.QUANTITY, null]],
+                ],
+                breakout: [
+                  ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
                 ],
               },
+              display: "line",
+            }).then(({ body: { id: Q2_13457_ID } }) => {
+              H.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
+                H.updateDashboardCards({
+                  dashboard_id: DASHBOARD_ID,
+                  cards: [
+                    {
+                      card_id: Q1_11442_ID,
+                      col: 0,
+                      size_x: 12,
+                      size_y: 10,
+                      series: [{ id: Q2_11442_ID, model: "card" }],
+                    },
+                    {
+                      card_id: Q1_13457_ID,
+                      col: 12,
+                      size_x: 12,
+                      size_y: 10,
+                      series: [{ id: Q2_13457_ID, model: "card" }],
+                    },
+                  ],
+                });
+
+                H.visitDashboard(DASHBOARD_ID);
+              });
             });
-
-            H.visitDashboard(DASHBOARD_ID);
-
-            cy.log("The first series line");
-            H.cartesianChartCircleWithColor("#509EE3").eq(0).click();
-            cy.findByText("See this year by quarter");
-            cy.findByText("See these Orders");
-
-            // Click anywhere else to close the first action panel
-            cy.findByText("11442D").click();
-
-            // Second line from the second question
-            cy.log("The second series line");
-            H.cartesianChartCircleWithColor("#98D9D9").eq(0).click();
-            cy.findByText("See this year by quarter");
-            cy.findByText("See these Products");
           },
         );
       });
     });
-  });
 
-  it("should allow drill-through on combined cards with different amount of series (metabase#13457)", () => {
-    H.createQuestion({
-      name: "13457_Q1",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
-      },
-      display: "line",
-    }).then(({ body: { id: Q1_ID } }) => {
-      H.createQuestion({
-        name: "13457_Q2",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [
-            ["avg", ["field", ORDERS.DISCOUNT, null]],
-            ["avg", ["field", ORDERS.QUANTITY, null]],
-          ],
-          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }]],
-        },
-        display: "line",
-      }).then(({ body: { id: Q2_ID } }) => {
-        H.createDashboard({ name: "13457D" }).then(
-          ({ body: { id: DASHBOARD_ID } }) => {
-            cy.log("Add the first question to the dashboard");
-
-            H.addOrUpdateDashboardCard({
-              card_id: Q1_ID,
-              dashboard_id: DASHBOARD_ID,
-              card: {
-                size_x: 21,
-                size_y: 12,
-                // Add additional series combining it with the second question
-                series: [
-                  {
-                    id: Q2_ID,
-                    model: "card",
-                  },
-                ],
-              },
-            });
-
-            H.visitDashboard(DASHBOARD_ID);
-
-            cy.log("The first series line");
-            H.cartesianChartCircleWithColor("#509EE3").eq(0).click();
-            cy.findByText("See this year by quarter");
-            cy.findByText("See these Orders");
-
-            // Click anywhere else to close the first action panel
-            cy.findByText("13457D").click();
-
-            // Second line from the second question
-            cy.log("The third series line");
-            H.cartesianChartCircleWithColor("#EF8C8C").eq(0).click();
-            cy.findByText("See this year by quarter");
-            cy.findByText("See these Orders");
-          },
-        );
-      });
+    cy.log("metabase#11442: one added series");
+    assertSeriesDrills({
+      cardIndex: 0,
+      color: "#509EE3",
+      underlyingRecords: "See these Orders",
     });
+    assertSeriesDrills({
+      cardIndex: 0,
+      color: "#98D9D9",
+      underlyingRecords: "See these Products",
+    });
+
+    cy.log("metabase#13457: the added card has more series than the first");
+    assertSeriesDrills({
+      cardIndex: 1,
+      color: "#509EE3",
+      underlyingRecords: "See these Orders",
+    });
+    assertSeriesDrills({
+      cardIndex: 1,
+      color: "#EF8C8C",
+      underlyingRecords: "See these Orders",
+    });
+
+    cy.log(
+      "metabase#11442: underlying records of an added series keep only its own filters",
+    );
+    H.getDashboardCard(0).within(() => {
+      H.cartesianChartCircleWithColor("#98D9D9").eq(0).click();
+    });
+    H.popover().findByText("See these Products").click();
+    cy.findByTestId("qb-filters-panel")
+      .should("contain", "Price is greater than 20")
+      .and("not.contain", "Total");
   });
 
   it("should drill through a nested query", () => {
@@ -278,23 +286,21 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     cy.contains("Dominique Leffler");
   });
 
-  it("should drill through a with date filter (metabase#12496)", () => {
-    H.createQuestion({
-      name: "Orders by Created At: Week",
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["count"]],
-        breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
+  it("should drill through to a date range filter (metabase#12496)", () => {
+    H.createQuestion(
+      {
+        name: "Orders by Created At: Week",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["count"]],
+          breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "week" }]],
+        },
+        display: "line",
       },
-      display: "line",
-    });
+      { visitQuestion: true },
+    );
 
-    cy.visit("/collection/root");
-    cy.findAllByTestId("collection-entry-name")
-      .contains("Orders by Created At: Week")
-      .click();
-
-    H.echartsContainer().contains("January 2028");
+    H.echartsContainer().contains("May 2028");
     // drill into a recent week
     H.cartesianChartCircle().should("have.length.gte", 4).eq(-4).click();
 
@@ -304,10 +310,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     H.assertQueryBuilderRowCount(127);
 
     cy.log("Filter should show the range between two dates");
-    // Now click on the filter widget to see if the proper parameters got passed in
-    cy.findByTestId("filter-pill")
-      .contains(/^Created At: Week is .*–/)
-      .click(); // en-dash to detect date range
+    cy.findByTestId("filter-pill").contains(/^Created At: Week is .*–/); // en-dash to detect date range
   });
 
   it("should drill-through on filtered aggregated results (metabase#13504)", () => {
@@ -448,9 +451,10 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         cy.findByTestId("more-charts-toggle").click();
         cy.icon("line").click();
       });
-      cy.findByText(
-        "Cannot read properties of undefined (reading 'name')",
-      ).should("not.exist");
+      cy.findByTestId("visualization-root")
+        .should("have.attr", "data-viz-ui-name", "Line")
+        .and("not.contain", "Something’s gone wrong")
+        .and("not.contain", "Cannot read properties of undefined");
     });
   });
 
@@ -564,72 +568,6 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
   });
 
-  it("should parse value on click through on the first row of pie chart (metabase#15250)", () => {
-    H.createQuestion({
-      name: "15250",
-      query: {
-        "source-table": PRODUCTS_ID,
-        aggregation: [["count"]],
-        breakout: [["field-id", PRODUCTS.CATEGORY]],
-      },
-      display: "pie",
-    }).then(({ body: { id: QUESTION_ID } }) => {
-      H.createDashboard().then(({ body: { id: DASHBOARD_ID } }) => {
-        H.addOrUpdateDashboardCard({
-          card_id: QUESTION_ID,
-          dashboard_id: DASHBOARD_ID,
-          card: {
-            size_x: 21,
-            size_y: 10,
-            visualization_settings: {
-              click_behavior: {
-                type: "link",
-                linkType: "url",
-                linkTemplate: "question/{{count}}",
-              },
-            },
-          },
-        });
-
-        H.visitDashboard(DASHBOARD_ID);
-      });
-    });
-
-    H.pieSliceWithColor("#88BF4D")
-      .first()
-      .as("doohickeyChart")
-      .trigger("mousemove");
-
-    H.assertEChartsTooltip({
-      header: "Category",
-      rows: [
-        {
-          color: "#88BF4D",
-          name: "Doohickey",
-          value: "42",
-        },
-        {
-          color: "#F9D45C",
-          name: "Gadget",
-          value: "53",
-        },
-        {
-          color: "#A989C5",
-          name: "Gizmo",
-          value: "51",
-        },
-        {
-          color: "#F2A86F",
-          name: "Widget",
-          value: "54",
-        },
-      ],
-    });
-
-    cy.get("@doohickeyChart").click();
-    cy.location("pathname").should("eq", "/question/42");
-  });
-
   it("should only show the 'See these records' option for the 'Other' pie slice (metabase#5334)", () => {
     H.visitQuestionAdhoc({
       name: "5334",
@@ -713,9 +651,6 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
 
     it("should result in a correct query result", () => {
-      cy.log("Assert that the URL is correct");
-      cy.url().should("include", "/question#");
-
       cy.log("Assert on the correct product category: Widget");
       cy.findByTestId("qb-filters-panel").findByText("Category is Widget");
 
@@ -724,54 +659,14 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
         "Showing 54 rows",
       );
 
+      cy.log("Assert that the drill result is an unsaved question");
+      cy.location("pathname").should("eq", "/question");
+      cy.location("hash").should("not.be.empty");
+
       cy.findByTestId("visualization-root")
         .should("contain", "Widget")
         .and("not.contain", "Gizmo")
         .and("not.contain", "Doohickey");
-    });
-  });
-
-  it("should display proper drills on chart click for line chart", () => {
-    H.createQuestion(
-      {
-        name: "Line chart drills",
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [
-            [
-              "field",
-              PRODUCTS.CREATED_AT,
-              { "source-field": ORDERS.PRODUCT_ID, "temporal-unit": "month" },
-            ],
-            ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
-          ],
-        },
-        display: "line",
-      },
-      { visitQuestion: true },
-    );
-
-    H.cartesianChartCircle().eq(2).click();
-    H.popover().within(() => {
-      cy.findByText("See these Orders").should("be.visible");
-
-      cy.findByText("See this month by week").should("be.visible");
-
-      cy.findByText("Break out by…").should("be.visible");
-      cy.findByText("Automatic insights…").should("be.visible");
-
-      cy.findByText(">").should("be.visible");
-      cy.findByText("<").should("be.visible");
-      cy.findByText("=").should("be.visible");
-      cy.findByText("≠").should("be.visible");
-    });
-
-    cy.findByTestId("timeseries-chrome").within(() => {
-      cy.findByText("View").should("be.visible");
-      cy.findByText("All time").should("be.visible");
-      cy.findByText("by").should("be.visible");
-      cy.findByText("Month").should("be.visible");
     });
   });
 
@@ -859,8 +754,6 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
   describe("chart click actions analytics", () => {
     beforeEach(() => {
       H.resetSnowplow();
-      H.restore();
-      cy.signInAsAdmin();
       H.enableTracking();
     });
 
@@ -946,3 +839,17 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     });
   });
 });
+
+function assertSeriesDrills({ cardIndex, color, underlyingRecords }) {
+  H.getDashboardCard(cardIndex).within(() => {
+    H.cartesianChartCircleWithColor(color).eq(0).click();
+  });
+  H.popover().within(() => {
+    cy.findByText("See this year by quarter").should("be.visible");
+    cy.findByText(underlyingRecords).should("be.visible");
+  });
+  // The popover closes on Escape only when the focus is in it
+  H.popover().find(":focus").should("exist");
+  cy.realPress("Escape");
+  H.popover({ skipVisibilityCheck: true }).should("not.exist");
+}

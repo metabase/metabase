@@ -249,7 +249,7 @@ export function BasicAdminSettingInput({
       return (
         <TextInput
           id={name}
-          value={localValue}
+          value={localValue ?? ""}
           placeholder={placeholder}
           onChange={(e) => setLocalValue(e.target.value)}
           onBlur={() => onChange(localValue)}

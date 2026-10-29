@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { ChartSkeletonImage } from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeletonImage";
 
 const WaterfallSkeleton = (): JSX.Element => {

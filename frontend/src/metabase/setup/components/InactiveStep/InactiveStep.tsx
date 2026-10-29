@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type { JSX } from "react";
 
 import { Box, Center, Icon } from "metabase/ui";
 

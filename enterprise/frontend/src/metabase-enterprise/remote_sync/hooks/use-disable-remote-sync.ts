@@ -33,7 +33,7 @@ export const useDisableRemoteSync = () => {
           console.error(error);
           sendToast({
             message: t`Failed to disable Remote Sync`,
-            icon: "warning",
+            variant: "negative",
           });
         }
       },

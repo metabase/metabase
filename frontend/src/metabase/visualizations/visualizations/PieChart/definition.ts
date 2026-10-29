@@ -9,14 +9,15 @@ import {
   type VisualizationDefinition,
   columnSettings,
   dimensionSetting,
+  getDefaultLegendPosition,
   getDefaultPercentVisibility,
   getDefaultPieColumns,
   getDefaultShowLabels,
-  getDefaultShowLegend,
   getDefaultShowTotal,
   getDefaultSize,
   getDefaultSliceThreshold,
   getDefaultSortRows,
+  getLegendPositionSetting,
   getMinSize,
   getPieRows,
   getPieSortRowsDimensionSetting,
@@ -200,18 +201,9 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       }),
       readDependencies: ["pie.dimension", "pie.rows"],
     },
-    "pie.show_legend": {
-      getSection: () => t`Display`,
-      get title() {
-        return t`Show legend`;
-      },
-      widget: "toggle",
-      getDefault: getDefaultShowLegend,
-      inline: true,
-      getWrapperStyle: () => ({
-        marginBottom: "1rem",
-      }),
-    },
+    "legend.position": getLegendPositionSetting({
+      getDefault: getDefaultLegendPosition,
+    }),
     "pie.show_total": {
       getSection: () => t`Display`,
       get title() {

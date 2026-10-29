@@ -1,7 +1,7 @@
 import type { Row, Table } from "@tanstack/react-table";
 import { flexRender } from "@tanstack/react-table";
 import cx from "classnames";
-import type { MouseEvent } from "react";
+import type { JSX, MouseEvent } from "react";
 import { memo, useMemo } from "react";
 import { t } from "ttag";
 

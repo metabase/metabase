@@ -38,6 +38,7 @@ export const validCollectionModels = new Set<CollectionItemModel>([
   "snippet",
   "transform",
   "measure",
+  "action",
 ]);
 
 export const allCollectionModels = Array.from(validCollectionModels);

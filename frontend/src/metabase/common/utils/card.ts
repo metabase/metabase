@@ -1,5 +1,6 @@
 import querystring from "querystring";
 
+import { t } from "ttag";
 import _ from "underscore";
 
 import { clone } from "metabase/utils/clone";
@@ -31,6 +32,16 @@ import type {
 import { isDashCardDataSeries } from "metabase-types/guards/dashboard";
 
 export const QUESTION_NAME_MAX_LENGTH = 254;
+
+export function getNonBlankNameAndDescription({
+  name,
+  description,
+}: Partial<Pick<Card, "name" | "description">>) {
+  return {
+    name: name?.trim() ? name : t`Untitled question`,
+    description: description?.trim() ? description : null,
+  };
+}
 
 export type SerializeCardOptions = {
   includeDatasetQuery?: boolean;
@@ -115,7 +126,7 @@ export function getMetricSeriesWithDefaultDisplay(
 
   const query = Lib.fromJsQuery(metadataProvider, metricSeries.json_query);
   const { display, settings = {} } = Lib.defaultDisplay(
-    query,
+    Lib.dropEmptyStages(query),
     metricSeries.data.cols,
   );
 

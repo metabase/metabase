@@ -2,7 +2,6 @@ import type { ChangeEvent, FocusEvent } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
-import CS from "metabase/css/core/index.css";
 import * as Lib from "metabase-lib";
 
 import { LimitInput } from "../../../components/LimitInput";
@@ -45,7 +44,6 @@ export function LimitStep({
   return (
     <NotebookCell color={color}>
       <LimitInput
-        className={CS.mb1}
         type="number"
         min={1}
         value={value}

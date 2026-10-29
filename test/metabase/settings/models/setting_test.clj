@@ -675,28 +675,28 @@
         (is (= "toucan-name" (:setting-key (ex-data e))))))))
 
 (deftest setting-value-aad-test
-  (let [read #'setting/read-setting-value]
+  (let [read-value #'setting/read-setting-value]
     (encryption-test/with-secret-key "ABCDEFGH12345678"
       (testing "a value round trips through the AAD naming its setting"
         (is (= "Sad Can"
-               (:value (read {:key "test-setting-1"
-                              :value_with_aad (encryption/encrypt "Sad Can" (aad-opts :test-setting-1))})))))
+               (:value (read-value {:key "test-setting-1"
+                                    :value_with_aad (encryption/encrypt "Sad Can" (aad-opts :test-setting-1))})))))
       (testing "a value moved to another setting's row is rejected, and the message never carries the value"
         (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                       #"Error reading setting \"test-setting-2\""
-                                      (read {:key "test-setting-2"
-                                             :value_with_aad (encryption/encrypt "Sad Can" (aad-opts :test-setting-1))})))]
+                                      (read-value {:key "test-setting-2"
+                                                   :value_with_aad (encryption/encrypt "Sad Can" (aad-opts :test-setting-1))})))]
           (is (not (re-find #"Sad Can" (ex-message e))))))
       (testing "a plaintext value is rejected while a key is set"
         (is (thrown-with-msg? clojure.lang.ExceptionInfo
                               #"Expected an encrypted value"
-                              (read {:key "test-setting-1" :value_with_aad "Sad Can"}))))
+                              (read-value {:key "test-setting-1" :value_with_aad "Sad Can"}))))
       (testing "a row written only by a version predating `value_with_aad` reads as no value at all"
         (is (= {:key "test-setting-1" :value nil :value_with_aad nil}
-               (read {:key "test-setting-1" :value "Sad Can" :value_with_aad nil}))))
+               (read-value {:key "test-setting-1" :value "Sad Can" :value_with_aad nil}))))
       (testing "a key with no `defsetting` reads as no value at all, without so much as a decrypt"
         (is (= {:key "no-such-setting" :value nil :value_with_aad "not even ciphertext"}
-               (read {:key "no-such-setting" :value_with_aad "not even ciphertext"})))))
+               (read-value {:key "no-such-setting" :value_with_aad "not even ciphertext"})))))
     (testing "a key with no `defsetting` cannot be written: how it is stored is the setting's to decide"
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown setting: no-such-setting"
                             (#'setting/write-setting-value {:key "no-such-setting" :value "Sad Can"}))))))
@@ -1320,7 +1320,7 @@
                 :setting     "test-feature-setting"
                 :feature     :test-feature}
                (try (test-feature-setting! "custom")
-                    (catch ExceptionInfo e (ex-data e)))))))
+                    (catch ExceptionInfo e (dissoc (ex-data e) :response/keys)))))))
     (testing ":enabled? returns false"
       (is (= {:status-code 400
               :setting     "test-enabled-setting-default"}
@@ -1813,14 +1813,14 @@
 (deftest validation-completeness-test
   (let [formats-to-check (disj (set (keys (methods setting/get-value-of-type))) :string)]
     (testing "Every settings format has its redaction predicate defined"
-      (doseq [format formats-to-check]
-        (testing (format "We have defined a redaction multimethod for the %s format" format)
-          (is (some? (format (methods setting/may-contain-raw-token?)))))))
+      (doseq [fmt formats-to-check]
+        (testing (format "We have defined a redaction multimethod for the %s format" fmt)
+          (is (some? (fmt (methods setting/may-contain-raw-token?)))))))
     (testing "Every settings format has tests for its validation"
-      (doseq [format formats-to-check]
+      (doseq [fmt formats-to-check]
         ;; We operate on trust that tests are added along with this var
-        (testing (format "We have defined a setting for the %s validation tests" format)
-          (is (var? (resolve (ns-validation-setting-symbol format)))))))))
+        (testing (format "We have defined a setting for the %s validation tests" fmt)
+          (is (var? (resolve (ns-validation-setting-symbol fmt)))))))))
 
 (deftest migrate-settings!-test
   (testing "rows a version predating `value_with_aad` wrote get it filled in from `value` on startup"

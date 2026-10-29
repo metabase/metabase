@@ -5,7 +5,7 @@
  * discriminated `ActionResultForKind` shape it drives describe just the
  * kind / response surface. The `…FromDataAppSchema` helpers below layer on
  * top, deriving the hook's `TParameters` / `TKind` generics from a
- * generated `metabase.data.ts` schema entry; the hook never sees the
+ * data app typed schema entry; the hook never sees the
  * schema directly.
  */
 
@@ -135,28 +135,14 @@ export type ActionResultForKind<TKind extends ActionKind | undefined> =
 // ============================================================================
 // Data App schema-derived helpers
 // ----------------------------------------------------------------------------
-// These read a single action entry in a generated `metabase.data.ts` schema
+// These read a single action entry in a data app typed schema
 // and derive the hook's `TParameters` / `TKind`. `useAction` applies them to a
 // `defineAction(...)` export, so a Data App writes neither generic.
 // ============================================================================
 
 /**
- * Backend-namespaced `implicitKind` values for basic actions. Mapped onto
- * the flat `ActionKind` union by `ActionKindFromDataAppSchema`.
- *
- * @category useAction
- */
-export type ActionImplicitKind =
-  | "row/create"
-  | "row/update"
-  | "row/delete"
-  | "bulk/create"
-  | "bulk/update"
-  | "bulk/delete";
-
-/**
  * Shape of a single action parameter as it appears in a generated
- * `metabase.data.ts` schema entry. An action parameter is not a column, so it
+ * typed schema entry. An action parameter is not a column, so it
  * carries no `name`.
  *
  * @category useAction
@@ -169,19 +155,18 @@ export type ActionParameterSchema = {
 };
 
 /**
- * Shape of a single action entry in a generated `metabase.data.ts` schema.
+ * Shape of a single action entry in a data app typed schema.
  * The entry is what `defineAction` wraps; `parameters` drives
- * `ActionParametersFromDataAppSchema`, and `implicitKind` / `type` drive
+ * `ActionParametersFromDataAppSchema`, and `type` drives
  * `ActionKindFromDataAppSchema`.
  *
  * @category useAction
  */
 export type ActionSchema = {
   kind?: "action";
-  id: number;
+  id: number | string;
   name?: string;
-  type?: "query" | "implicit";
-  implicitKind?: ActionImplicitKind;
+  type?: "query";
   parameters: readonly ActionParameterSchema[];
   description?: string;
   entityId?: string;
@@ -225,35 +210,19 @@ export type ActionParametersFromDataAppSchema<TAction> = TAction extends {
   : Record<string, unknown>;
 
 /**
- * Maps a schema entry's `implicitKind` (or `type === "query"`) to the flat
- * `ActionKind` union. Feeds the hook's `TKind` generic so `result` is
- * typed via `ActionResultForKind<TKind>` with no cast — schema-derived,
- * but the value the hook sees is just a string literal.
- *
- *   row/create  → "create"
- *   row/update  → "update"
- *   row/delete  → "delete"
- *   bulk/*      → "bulk"
- *   type=query  → "sql"
- *
+ * Maps a schema entry to the flat `ActionKind` union: a data app's actions
+ * are query actions, so `type: "query"` gives `"sql"`. Feeds the hook's
+ * `TKind` generic so `result` is typed via `ActionResultForKind<TKind>`.
  * Falls back to the full `ActionKind` union if `TAction` is not a schema
  * entry (e.g. a bare numeric id).
  *
  * @category useAction
  */
 export type ActionKindFromDataAppSchema<TAction> = TAction extends {
-  implicitKind: "row/create";
+  type: "query";
 }
-  ? "create"
-  : TAction extends { implicitKind: "row/update" }
-    ? "update"
-    : TAction extends { implicitKind: "row/delete" }
-      ? "delete"
-      : TAction extends { implicitKind: `bulk/${string}` }
-        ? "bulk"
-        : TAction extends { type: "query" }
-          ? "sql"
-          : ActionKind;
+  ? "sql"
+  : ActionKind;
 
 /**
  * @interface
@@ -318,7 +287,7 @@ export interface UseAction {
 }
 
 /**
- * A data app's `useAction`: only a `defineAction(...)` export from `actions/`.
+ * A data app's `useAction`: only a `defineAction(...)` definition from its typed schema.
  */
 export interface UseDataAppAction {
   <TDefinition extends DefinedAction & { action: ActionSchema }>(

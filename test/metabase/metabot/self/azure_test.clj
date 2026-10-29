@@ -217,6 +217,7 @@
   (are [model expected] (= expected (azure/reasoning-model? model))
     "anthropic/claude-opus-5-5"   true
     "anthropic/claude-sonnet-5-5" true
+    "anthropic/claude-haiku-5-5"  true
     "anthropic/claude-opus-5"     true
     "anthropic/claude-opus-4-8"   true
     ;; dotted display-name spelling parses the same — deployment names are admin free text
@@ -263,6 +264,30 @@
        #"Unsupported Azure model \"evilai/some-deployment\". Only anthropic/\* and openai/\* models are supported."
        (captured-raw-request! {:model "evilai/some-deployment"
                                :input [{:role :user :content "hi"}]}))))
+
+;;; ──────────────────────────────────────────────────────────────────
+;;; Context windows
+;;; ──────────────────────────────────────────────────────────────────
+
+(deftest ^:parallel gpt-context-window-tokens-test
+  (testing "a deployment named gpt-5.6 gets no window"
+    (is (nil? (azure/context-window-tokens "openai/gpt-5.6"))))
+  (testing "gpt-5.6 is not a family prefix for custom names"
+    (is (nil? (azure/context-window-tokens "openai/gpt-5.6-mine"))))
+  ;; Foundry sells gpt-5.6-sol, -terra and -luna, and no model with the id gpt-5.6 or gpt-5.5-pro:
+  ;; https://learn.microsoft.com/en-us/azure/foundry/foundry-models/concepts/models-sold-directly-by-azure
+  (testing "Foundry sells neither id"
+    (doseq [id ["gpt-5.6" "gpt-5.5-pro"]]
+      (is (not (contains? @#'azure/model-context-windows id)) id)))
+  (testing "real ids keep their window"
+    (are [model window] (= window (azure/context-window-tokens model))
+      "openai/gpt-5.6-sol"            922000
+      "openai/gpt-5.6-terra"          922000
+      "openai/gpt-5.6-luna"           922000
+      "openai/gpt-5.6-sol-2026-07-09" 922000
+      "openai/gpt-5.5"                922000))
+  (testing "a gpt-5.5-pro deployment gets the window of the gpt-5.5 prefix"
+    (is (= 922000 (azure/context-window-tokens "openai/gpt-5.5-pro")))))
 
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; AI proxy (unsupported)

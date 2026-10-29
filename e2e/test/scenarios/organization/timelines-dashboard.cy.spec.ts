@@ -117,6 +117,15 @@ describe("scenarios > organization > timelines > dashboard", () => {
     cy.get("@questionUpdates").should("not.have.been.called");
     cy.get("@dashboardUpdates").should("not.have.been.called");
 
+    cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
+    cy.findByTestId("dashboard-name-heading").type(" renamed").blur();
+    cy.wait("@getDashboard");
+    eventChip(1, "RC1").should("be.visible");
+    eventsSidebar().within(() => {
+      H.timelineEventVisibility("RC1").should("not.be.checked");
+    });
+    eventChip(0, "RC1").should("not.exist");
+
     cy.reload();
     H.waitForDashcardsToLoad({ count: 2 });
     eventChip(0, "RC1").should("be.visible");

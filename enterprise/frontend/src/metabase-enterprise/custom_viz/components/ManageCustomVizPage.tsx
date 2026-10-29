@@ -85,11 +85,7 @@ export function ManageCustomVizPage() {
             </Button>
             <Menu position="bottom-end">
               <Menu.Target>
-                <ActionIcon
-                  variant="subtle"
-                  size="lg"
-                  aria-label={t`More options`}
-                >
+                <ActionIcon variant="subtle" aria-label={t`More options`}>
                   <Icon name="ellipsis" />
                 </ActionIcon>
               </Menu.Target>

@@ -213,9 +213,10 @@
   (let [result
         ;; Rebind *result* in case the outer query is being streamed back to the client. The streaming code binds this
         ;; to a custom handler, and we don't want to accidentally terminate the stream here!
+        ;; This query gets its own cancellation channel too: finishing closes it, and the outer query has yet to run.
         (binding [qp.pipeline/*result* qp.pipeline/default-result-handler]
           (request/as-admin
-            (qp/process-query query)))]
+            (qp.pipeline/do-with-own-canceled-chan #(qp/process-query query))))]
     (when-not (= (:status result) :completed)
       (throw (ex-info "Error running query to determine metadata"
                       {:query query, :result result})))
@@ -235,7 +236,11 @@
                 (log/infof "Saving results metadata for Sandbox Card %d" card-id)
                 ;; TODO (Cam 9/9/25) -- we should switch to saving Lib-style metadata in the app DB instead of legacy
                 ;; style in the near future
-                (sandbox.db/set-card-result-metadata! card-id cols))
+                ;;
+                ;; `cols` come from running the Card's own query, not from the caller, so this is a server-side write
+                ;; and must not trip the guard that refuses non-admin edits to a sandbox's result metadata.
+                (request/as-admin
+                  (sandbox.db/set-card-result-metadata! card-id cols)))
               (lib/update-query-stage query 0 assoc :lib/stage-metadata (lib/->normalized-stage-metadata cols))))))
       query))
 

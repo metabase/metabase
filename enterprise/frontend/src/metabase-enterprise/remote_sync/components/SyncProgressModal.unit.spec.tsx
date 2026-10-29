@@ -279,6 +279,21 @@ describe("SyncProgressModal", () => {
       expect(screen.getByText("Connection timeout")).toBeInTheDocument();
     });
 
+    it("should keep the line breaks of a multi-line message", () => {
+      const errorMessage = [
+        "Failed to reload from git repository. Invalid data app files:",
+        "- data_apps/first/data_app.yaml must name the app's resource collection as `collection`.",
+        "- data_apps/second/data_app.yaml must name the app's resource collection as `collection`.",
+      ].join("\n");
+      setup({ isError: true, errorMessage });
+
+      const message = screen.getByText(/Invalid data app files:/);
+      expect(message).toHaveTextContent(errorMessage, {
+        normalizeWhitespace: false,
+      });
+      expect(message).toHaveStyle({ whiteSpace: "pre-line" });
+    });
+
     it("should show close button in error state", () => {
       setup({ isError: true });
 

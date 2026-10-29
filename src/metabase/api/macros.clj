@@ -383,6 +383,11 @@
       (throw (ex-info (format "Unable to parse defendpoint args: %s" (s/explain-str ::defendpoint args))
                       {:args  args
                        :error (s/explain-data ::defendpoint args)})))
+    ;; Otherwise the schema becomes two discarded body forms and the response is never validated.
+    (when (= :- (first (:body conformed)))
+      (throw (ex-info (str "defendpoint response schema must come right after the route, as in "
+                           "(defendpoint :get \"/route\" :- schema docstring params & body)")
+                      {:args args})))
     (as-> conformed conformed
       (update conformed :params parse-params)
       (update conformed :route parse-route conformed)
@@ -530,24 +535,23 @@
   (let [params  (or params {})
         decoded ((decoder schema) params)]
     (when-not (mr/validate schema decoded)
-      (throw (ex-info (format "Invalid %s" (case params-type
-                                             :route   "route parameters"
-                                             :query   "query parameters"
-                                             :body    "body"
-                                             :request "request"
-                                             ;; fall back to the keyword name for any other validated
-                                             ;; params-type so we never throw "No matching clause" here
-                                             (name params-type)))
-                      (let [explanation     (mr/explain schema decoded)
-                            specific-errors (invalid-params-specific-errors explanation)
-                            errors          (invalid-params-errors explanation)]
+      (let [explanation (mr/explain schema decoded)]
+        (throw (ex-info (format "Invalid %s" (case params-type
+                                               :route   "route parameters"
+                                               :query   "query parameters"
+                                               :body    "body"
+                                               :request "request"
+                                               ;; fall back to the keyword name for any other validated
+                                               ;; params-type so we never throw "No matching clause" here
+                                               (name params-type)))
                         {:status-code     400
                          #_:api/debug     #_{:params-type params-type
-                                             :schema      (mc/form schema)
-                                             :params      params
-                                             :decoded     decoded}
-                         :specific-errors specific-errors
-                         :errors          errors}))))
+                                             :schema  (mc/form schema)
+                                             :params  params
+                                             :decoded decoded}
+                         :specific-errors (invalid-params-specific-errors explanation)
+                         :errors          (invalid-params-errors explanation)
+                         :response/keys   #{:specific-errors}}))))
     decoded))
 
 (mu/defn- decode-and-validate-params-form
@@ -1120,7 +1124,7 @@
   ([]
    (ns-routes *ns*))
   ([nmspace :- ::nmspace]
-   (-> nmspace the-ns meta :api/endpoints))
+   (-> nmspace the-ns meta :api/endpoints (or {})))
   ([nmspace :- ::nmspace
     method :- ::method]
    (let [routes (ns-routes nmspace)]

@@ -1,0 +1,1 @@
+To read a saved question or model, including one the user is viewing, write SQL that reads it, with the reference syntax the `create-sql-query` skill gives, and run that.

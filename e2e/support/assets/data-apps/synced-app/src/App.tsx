@@ -1,14 +1,12 @@
 import { useMetabaseQuery } from "@metabase/embedding-sdk-react/data-app";
 
-import { OrdersCount } from "../queries/orders.query";
+import { queries } from "./metabase";
 
 /**
- * Consumes a source-controlled query rather than an inline one, so a production
- * build runs whatever `sync-resources` wrote into the declaration. The spec that
- * drives this app writes `queries/orders.query.ts` before synchronizing.
+ * Runs the saved question that the app's typed schema defines as `ordersCount`.
  */
 export default function App() {
-  const orders = useMetabaseQuery(OrdersCount);
+  const orders = useMetabaseQuery(queries.ordersCount);
   const rows = orders.data?.rawRows;
 
   const total = rows?.[0]?.[1];

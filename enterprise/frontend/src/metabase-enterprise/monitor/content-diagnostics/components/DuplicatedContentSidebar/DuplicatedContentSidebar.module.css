@@ -1,0 +1,13 @@
+.row:not(:last-child) {
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.wrap {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+}

@@ -5,6 +5,7 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
+   [metabase.metabot.query-repair :as query-repair]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
@@ -34,8 +35,11 @@
   [:string {:decode/normalize lib.schema.common/normalize-string-key}])
 
 (mr/def ::query
-  "An MBQL 5 or legacy query in any state of normalization, as it round-trips through tool-call JSON or persisted turn state."
-  ::lib.util/query-like)
+  "An MBQL 5 or legacy query in any state of normalization, as it round-trips through tool-call JSON or persisted turn
+  state. Normalizing repairs a structured query that lost its `:lib/*` keys, so every tool reads a valid MBQL 5 query;
+  see [[query-repair/repair-stripped-query]]."
+  [:schema {:decode/normalize query-repair/repair-stripped-query}
+   ::lib.util/query-like])
 
 (mr/def ::todo
   "One todo item of persisted turn state; only `:id` is guaranteed, since state can hold a partial item
@@ -209,7 +213,7 @@
    ["errored"
     [:map
      [:type  [:= "errored"]]
-     ;; the decoded `error` column, or its raw text when it isn't JSON
+     ;; the decoded `error` column, or its raw text when it isn't JSON; a stored error-code is also its type
      [:error [:or
               :string
               [:map

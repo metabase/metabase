@@ -9,6 +9,8 @@ export const ENTERPRISE_PLUGIN_NAME_MAPPING = {
   sandboxes: "metabase-enterprise/sandboxes",
   clean_up: "metabase-enterprise/clean_up",
   tools: "metabase-enterprise/monitor/tools",
+  monitor_content_diagnostics:
+    "metabase-enterprise/monitor/content-diagnostics",
   monitor_dependency_diagnostics:
     "metabase-enterprise/monitor/dependency-diagnostics",
   advanced_permissions: "metabase-enterprise/advanced_permissions",
@@ -28,6 +30,7 @@ export const ENTERPRISE_PLUGIN_NAME_MAPPING = {
   shared: "metabase-enterprise/shared",
   transforms: "metabase-enterprise/transforms",
   "transforms-python": "metabase-enterprise/transforms-python",
+  "transforms-testing": "metabase-enterprise/transforms-testing",
   remote_sync: "metabase-enterprise/remote_sync",
   public: "metabase-enterprise/public",
   support: "metabase-enterprise/support",
@@ -42,6 +45,7 @@ export const ENTERPRISE_PLUGIN_NAME_MAPPING = {
   semantic_search: "metabase-enterprise/semantic_search",
   database_replication: "metabase-enterprise/database_replication",
   library: "metabase-enterprise/data-studio/library",
+  "data-apps": "metabase-enterprise/data-apps",
   caching: "metabase-enterprise/caching",
   group_managers: "metabase-enterprise/group_managers",
   collections: "metabase-enterprise/collections",

@@ -56,7 +56,7 @@ describe("LlmModelPicker save feedback", () => {
       expect(store.getState().undo).toContainEqual(
         expect.objectContaining({
           message: 'Invalid Azure model "nope".',
-          toastColor: "feedback-negative",
+          variant: "negative",
         }),
       );
     });

@@ -34,13 +34,13 @@ OSS search (`src/metabase/search/`):
 
 Enterprise:
 - `metabase-enterprise.search.scoring` - adds `:official-collection` and `:verified` scorers when those features are on.
-- `metabase-enterprise.semantic-search.*`:
+- `metabase-enterprise.search.semantic.*`:
   - `core` - engine impl and fallback; `pgvector-api` - query and upsert; `index`, `index-metadata` - vector tables.
   - `gate` - decouples ingestion from embedding; `indexer` polls it; `dlq` isolates and retries failing docs; `repair` finds lost deletes.
   - `embedding` - embedding provider calls; `embedders` - name -> vector lookup over the index; `scoring`, `appdb-scoring` - blended ranking.
   - `db.datasource`, `db.migration` - the pgvector store; `models.token-tracking` - usage metering.
   - `task.*` - indexer, index-repair, index-cleanup, usage-trimmer, metric-collector. `db` - app-DB queries.
-- `metabase.entity-retrieval.*` / `metabase-enterprise.entity-retrieval.*` - a separate pgvector index of library entities that Metabot uses. It reuses the semantic-search datasource and embedding health checks. It is a neighbour, not part of search.
+- `metabase.search.entity-retrieval.*` / `metabase-enterprise.search.entity-retrieval.*` - a separate pgvector index of library entities that Metabot uses. It reuses the semantic-search datasource and embedding health checks. It is a neighbour, not part of search.
 
 X-rays (`src/metabase/xrays/`): `metabase.xrays.automagic-dashboards.{core,interesting,dashboard-templates,populate,comparison,combination,filters,names}`, `metabase.xrays.related`, `metabase.xrays.domain-entities.*`, `metabase.xrays.transforms.*`, `metabase.xrays.api.automagic-dashboards`, `metabase.xrays.db`. Templates are YAML in `resources/automagic_dashboards/{table,field,metric,question,comparison}`.
 
@@ -66,8 +66,8 @@ Activity and views: `metabase.activity-feed.{api,models.recent-views,events.rece
 1. Name the engine and the app DB type first. Use `/api/search/debug` or `metabase.search.debug` to see which stage drops an entity (`:not-searchable`, `:missing-from-index`, `:filtered`, `:not-permitted`, `:ranked-out`).
 2. For ranking, read the per-scorer `:scores` in results and compare them with `metabase.search.config/weights`. Recheck exact-name matches after any weight change.
 3. For missing or stale results, check the spec `:where` (`search.ingestion/indexable-row?`), then the queue, then the active index table.
-4. Test helpers: `metabase.search.test-util` (`with-temp-index-table`, `with-sync-search-indexing`, `with-appdb-search-and-legacy-search`, `with-legacy-search`). Semantic: `metabase-enterprise.semantic-search.test-util` (`with-test-db!`, `with-mock-embeddings`). Semantic tests need a pgvector Postgres (see `semantic_search/docker-compose.yml`).
-5. Test locations: `test/metabase/search/` (`api_test`, `spec_test`, `ingestion_test`, `appdb/`, `in_place/`), `enterprise/backend/test/metabase_enterprise/semantic_search/`, `test/metabase/xrays/`, `test/metabase/indexed_entities/`, `test/metabase/activity_feed/`.
+4. Test helpers: `metabase.search.test-util` (`with-temp-index-table`, `with-sync-search-indexing`, `with-appdb-search-and-legacy-search`, `with-legacy-search`). Semantic: `metabase-enterprise.search.semantic.test-util` (`with-test-db!`, `with-mock-embeddings`). Semantic tests need a pgvector Postgres (see `search/semantic/docker-compose.yml`).
+5. Test locations: `test/metabase/search/` (`api_test`, `spec_test`, `ingestion_test`, `appdb/`, `in_place/`), `enterprise/backend/test/metabase_enterprise/search/semantic/`, `test/metabase/xrays/`, `test/metabase/indexed_entities/`, `test/metabase/activity_feed/`.
 6. Run appdb tests on both H2 and Postgres when you change SQL in `appdb.specialization` or `appdb.query`.
 
 ## Return

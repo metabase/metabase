@@ -1,9 +1,1 @@
-export {
-  RelatedSettingsSection,
-  RelatedSettingCard,
-} from "./RelatedSettingsSection";
-
-export {
-  getModularEmbeddingRelatedSettingItems,
-  getGuestEmbedsRelatedSettingItems,
-} from "./constants";
+export { RelatedSettingCard } from "./RelatedSettingsSection";

@@ -94,6 +94,8 @@ If you're self-hosting, you can configure a provider with [environment variables
 
 An environment variable can also override a single field of a connection you manage in the UI. For example, if you set only `MB_LLM_ANTHROPIC_API_BASE_URL`, the base URL comes from the environment, and the rest of the connection stays editable.
 
+A connection's credentials and its address have to come from the same place. For Ollama, if `MB_LLM_OLLAMA_API_BASE_URL` points a connection at a different server (such as Ollama Cloud at `https://ollama.com/v1`), Metabase won't send an API key entered in the UI there: set `MB_LLM_OLLAMA_API_KEY` too.
+
 To put the whole list under environment control, set [`MB_LLM_PROVIDERS`](../configuring-metabase/environment-variables.md#mb_llm_providers) to a JSON array of connections. The provider list is then read-only, so manage your connections by editing `MB_LLM_PROVIDERS` and restarting.
 
 On Metabase Cloud, [contact support](https://www.metabase.com/help-premium) if you want environment variables set for your instance.
@@ -133,6 +135,22 @@ Toggle [Metabot](./metabot.md) on or off for your Metabase. Metabot is enabled b
 When enabled, Metabot is available to help people create questions, analyze data, and answer questions about your data. When disabled, the Metabot icon and keyboard shortcuts are hidden. To scope Metabot to specific user or tenant groups, or to cap token usage, see [AI controls](./usage-controls.md).
 
 Toggling off Metabot only turns off in-app Metabot features. People can still use the [MCP server](./mcp.md) and [Agent API](./agent-api.md) if those are enabled.
+
+### Allow Metabot to read query results
+
+_Internal tab._
+
+This setting determines whether Metabot can run queries and read their _results_, so Metabot can answer questions about values in the results.
+
+Metabot runs queries with the permissions of the person asking, and may send the result rows to your AI provider in order to respond to a prompt.
+
+When this setting is off, Metabot can still build queries and charts for you, but it can't read their results.
+
+Metabot in Slack and in embedded apps doesn't read query results, regardless of this setting.
+
+See [AI privacy](./privacy.md#by-default-metabot-sends-query-results-to-the-ai-provider).
+
+If [`MB_METABOT_QUERY_EXECUTION_ENABLED`](../configuring-metabase/environment-variables.md#mb_metabot_query_execution_enabled) is set, the toggle shows its value and is locked.
 
 ### Enable Embedded Metabot
 
@@ -231,7 +249,7 @@ In other words, to restrict what data Metabot can see for each person, simply ap
 
 If you're using the Metabase AI service, you can see how many Metabot requests people have made this month by going to **Admin > AI**.
 
-If you aren't logged into the [Metabase Store](../cloud/accounts-and-billing.md), you'll need to log in to the store before you can view the usage. Once logged in to the store, go back to your Metabase and view the license page.
+If you aren't logged into the [Metabase Store](https://www.metabase.com/docs/latest/cloud/accounts-and-billing), you'll need to log in to the store before you can view the usage. Once logged in to the store, go back to your Metabase and view the license page.
 
 If you're using your own provider credentials, you can track usage and costs through that provider's dashboard.
 

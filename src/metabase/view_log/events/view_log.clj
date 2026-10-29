@@ -5,6 +5,7 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.app-db.cluster-lock :as cluster-lock]
+   [metabase.app-db.sql-errors :as sql-errors]
    [metabase.audit-app.core :as audit]
    [metabase.batch-processing.core :as grouper]
    [metabase.events.core :as events]
@@ -84,12 +85,25 @@
 
 (def ^:private record-view-queue-capacity 500)
 
-(defn- record-views!* [views]
+(defn- record-views!*
+  "Insert a batch of views in one statement. The batch is one transaction, so a single row the app DB rejects (e.g.
+  an overlong value in a narrow column) would discard every row in it: on failure, retry the rows one at a time so
+  only the bad row is lost. Any other failure (e.g. the app DB is down) would fail every retry too, each possibly
+  waiting for a connection, so then the batch is dropped."
+  [views]
   (log/debugf "Recording %d views" (count views))
   (try
     (view-log.db/insert-view-logs! views)
     (catch Exception e
-      (log/errorf "Failed to record views: %s" (ex-message e)))))
+      (if (sql-errors/row-rejected? e)
+        (do
+          (log/warnf "Failed to record %d views as a batch, retrying individually: %s" (count views) (ex-message e))
+          (doseq [view views]
+            (try
+              (view-log.db/insert-view-logs! [view])
+              (catch Exception e
+                (log/errorf "Failed to record view: %s" (ex-message e))))))
+        (log/errorf "Failed to record %d views: %s" (count views) (ex-message e))))))
 
 (defonce ^:private record-view-queue
   (delay (grouper/start!
@@ -140,20 +154,22 @@
       (catch Throwable e
         (log/warnf "Failed to process view event. %s: %s" topic (ex-message e))))))
 
-(events/derive! ::card-query-model-view :metabase/event)
-(events/derive! :event/card-query ::card-query-model-view)
+(events/derive! ::card-query-view :metabase/event)
+(events/derive! :event/card-query ::card-query-view)
 
-(m/defmethod events/publish-event! ::card-query-model-view
-  "Log a view for models, which are opened as ad-hoc `card__id` queries that fire :event/card-query but never
-  :event/card-read. The :ad-hoc + model guards keep regular cards (logged via card-read) and downloads out."
+(m/defmethod events/publish-event! ::card-query-view
+  "Log a view for the cards read through ad-hoc `card__id` queries, which never fire `:event/card-read`: models, and
+  the saved questions a published data app queries. Only ad-hoc queries count, which keeps downloads out. Other
+  ad-hoc queries on a regular question are left out too: opening the question is logged as its card-read."
   [topic {:keys [card-id user-id context]}]
   (span/with-span!
-    {:name    "view-log-model-query"
+    {:name    "view-log-card-query"
      :topic   topic
      :user-id user-id}
     (try
       (when (and (= context :ad-hoc)
-                 (= :model (view-log.db/card-type card-id)))
+                 (or (analytics/data-app-client?)
+                     (= :model (view-log.db/card-type card-id))))
         (increment-view-counts! :model/Card card-id)
         (record-views! (generate-view :model :model/Card
                                       :object-id card-id

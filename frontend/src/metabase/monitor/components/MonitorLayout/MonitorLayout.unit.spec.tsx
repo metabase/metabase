@@ -9,6 +9,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { PLUGIN_DATA_APPS, reinitialize } from "metabase/plugins";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { TokenFeatures } from "metabase-types/api";
@@ -35,6 +36,8 @@ interface SetupOpts {
   aiFeaturesEnabled?: boolean;
   isConfigured?: boolean;
   mcpEnabled?: boolean;
+  /** What the data apps plugin sets on an instance with the data-apps feature. */
+  hasDataApps?: boolean;
   initialRoute?: string;
   user?: ReturnType<typeof createMockUser>;
   children?: ReactNode;
@@ -83,10 +86,12 @@ const setup = ({
   aiFeaturesEnabled = true,
   isConfigured = true,
   mcpEnabled = true,
+  hasDataApps = false,
   initialRoute = "/monitor",
   user = createMockUser({ is_superuser: true }),
   children = <div data-testid="content">{"Content"}</div>,
 }: SetupOpts = {}) => {
+  PLUGIN_DATA_APPS.isEnabled = hasDataApps;
   const settings = mockSettings({
     "token-features": createMockTokenFeatures(tokenFeatures),
     "ai-features-enabled?": aiFeaturesEnabled,
@@ -130,6 +135,10 @@ const CONTENT_MANAGEMENT_GROUP = "Content management";
 const LOGS_AND_ACTIVITY_GROUP = "Logs and activity";
 
 describe("MonitorLayout", () => {
+  afterEach(() => {
+    reinitialize();
+  });
+
   it("groups the sections under static headings with a link for each Monitor section", async () => {
     setup();
 
@@ -146,6 +155,7 @@ describe("MonitorLayout", () => {
 
     const expectedTabs: [string, string][] = [
       ["Dependency diagnostics", Urls.dependencyDiagnostics()],
+      ["Content diagnostics", Urls.contentDiagnostics()],
       ["Erroring questions", Urls.monitorErroringQuestions()],
       ["Alerts management", Urls.monitorNotifications()],
       ["Background tasks", Urls.monitorTasks()],
@@ -166,6 +176,11 @@ describe("MonitorLayout", () => {
       label: "Dependency diagnostics",
       route: Urls.dependencyDiagnostics(),
       section: "diagnostics",
+    },
+    {
+      label: "Content diagnostics",
+      route: Urls.contentDiagnostics(),
+      section: "content-diagnostics",
     },
     {
       label: "Erroring questions",
@@ -317,9 +332,9 @@ describe("MonitorLayout", () => {
       screen.queryByRole("heading", { name: LOGS_AND_ACTIVITY_GROUP }),
     ).not.toBeInTheDocument();
 
-    expect(
-      screen.getByRole("link", { name: "Dependency diagnostics" }),
-    ).toBeInTheDocument();
+    ["Dependency diagnostics", "Content diagnostics"].forEach((name) => {
+      expect(screen.getByRole("link", { name })).toBeInTheDocument();
+    });
     [
       "Background tasks",
       "Scheduled jobs",
@@ -345,10 +360,8 @@ describe("MonitorLayout", () => {
       expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
     });
 
-    expect(
-      screen.queryByRole("link", { name: "Dependency diagnostics" }),
-    ).not.toBeInTheDocument();
     [
+      "Content diagnostics",
       "Background tasks",
       "Scheduled jobs",
       "Application logs",
@@ -356,9 +369,9 @@ describe("MonitorLayout", () => {
     ].forEach((name) => {
       expect(screen.getByRole("link", { name })).toBeInTheDocument();
     });
-    expect(
-      screen.queryByRole("link", { name: "Alerts management" }),
-    ).not.toBeInTheDocument();
+    ["Alerts management", "Dependency diagnostics"].forEach((name) => {
+      expect(screen.queryByRole("link", { name })).not.toBeInTheDocument();
+    });
     // the page loads GET /api/api-key, which is superuser-only
     expect(
       screen.queryByRole("link", { name: "API key usage" }),
@@ -473,7 +486,13 @@ describe("MonitorLayout", () => {
     within(screen.getByRole("link", { name })).queryByTestId("upsell-gem");
 
   it("gates only Erroring questions when audit_app is unavailable", async () => {
-    setup({ tokenFeatures: { dependencies: true, audit_app: false } });
+    setup({
+      tokenFeatures: {
+        dependencies: true,
+        content_diagnostics: true,
+        audit_app: false,
+      },
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
@@ -481,27 +500,60 @@ describe("MonitorLayout", () => {
 
     expect(getTabGem("Erroring questions")).toBeInTheDocument();
     expect(getTabGem("Dependency diagnostics")).not.toBeInTheDocument();
+    expect(getTabGem("Content diagnostics")).not.toBeInTheDocument();
   });
 
   it("gates only Dependency diagnostics when dependencies is unavailable", async () => {
-    setup({ tokenFeatures: { dependencies: false, audit_app: true } });
+    setup({
+      tokenFeatures: {
+        dependencies: false,
+        content_diagnostics: true,
+        audit_app: true,
+      },
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
     });
 
     expect(getTabGem("Dependency diagnostics")).toBeInTheDocument();
+    expect(getTabGem("Content diagnostics")).not.toBeInTheDocument();
     expect(getTabGem("Erroring questions")).not.toBeInTheDocument();
   });
 
-  it("gates neither when both features are available", async () => {
-    setup({ tokenFeatures: { dependencies: true, audit_app: true } });
+  it("gates only Content diagnostics when content_diagnostics is unavailable", async () => {
+    setup({
+      tokenFeatures: {
+        dependencies: true,
+        content_diagnostics: false,
+        audit_app: true,
+      },
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
     });
 
     expect(getTabGem("Dependency diagnostics")).not.toBeInTheDocument();
+    expect(getTabGem("Content diagnostics")).toBeInTheDocument();
+    expect(getTabGem("Erroring questions")).not.toBeInTheDocument();
+  });
+
+  it("gates none of the token-feature tabs when all features are available", async () => {
+    setup({
+      tokenFeatures: {
+        dependencies: true,
+        content_diagnostics: true,
+        audit_app: true,
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+    });
+
+    expect(getTabGem("Dependency diagnostics")).not.toBeInTheDocument();
+    expect(getTabGem("Content diagnostics")).not.toBeInTheDocument();
     expect(getTabGem("Erroring questions")).not.toBeInTheDocument();
   });
 
@@ -616,6 +668,68 @@ describe("MonitorLayout", () => {
       (name) => {
         expect(screen.queryByRole("link", { name })).not.toBeInTheDocument();
       },
+    );
+  });
+
+  it("shows Data app analytics in AI Auditing when the data apps plugin is on", async () => {
+    setup({ tokenFeatures: { audit_app: true }, hasDataApps: true });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+    });
+
+    const link = screen.getByRole("link", { name: "Data app analytics" });
+    expect(link).toHaveAttribute("href", Urls.monitorAiAuditingDataApps());
+    expect(
+      within(link).getByRole("img", { name: "app icon" }),
+    ).toBeInTheDocument();
+  });
+
+  it("hides Data app analytics while the data apps plugin is off, whatever the token says", async () => {
+    setup({
+      tokenFeatures: { audit_app: true, "data-apps": true },
+      hasDataApps: false,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+    });
+
+    expect(
+      screen.getByRole("link", { name: "CLI analytics" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Data app analytics" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("marks Data app analytics as the current page on its page", async () => {
+    setup({
+      initialRoute: Urls.monitorAiAuditingDataApps(),
+      tokenFeatures: { audit_app: true },
+      hasDataApps: true,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("monitor-nav")).toBeInTheDocument();
+    });
+
+    const activeLink = screen.getByRole("link", { name: "Data app analytics" });
+    expect(screen.getAllByRole("link", { current: "page" })).toEqual([
+      activeLink,
+    ]);
+  });
+
+  it("tracks opening the Data app analytics section", async () => {
+    trackMonitorSectionClicked.mockClear();
+    setup({ tokenFeatures: { audit_app: true }, hasDataApps: true });
+
+    await userEvent.click(
+      await screen.findByRole("link", { name: "Data app analytics" }),
+    );
+
+    expect(trackMonitorSectionClicked).toHaveBeenCalledWith(
+      "ai-auditing-data-apps",
     );
   });
 

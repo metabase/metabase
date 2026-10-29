@@ -6,14 +6,15 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.clickhouse :as clickhouse]
    [metabase.driver.clickhouse-qp :as clickhouse-qp]
-   [metabase.driver.clickhouse-version :as clickhouse-version]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
@@ -30,7 +31,7 @@
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (com.clickhouse.jdbc ConnectionImpl)
-   (java.sql Connection)))
+   (java.sql Connection SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -40,17 +41,17 @@
           db-name      (or (:dbname base-details) (:db base-details))]
       (testing "database named by the older `db` spelling, which never reaches the JDBC URL"
         (is (= db-name
-               (driver.sql/default-schema :clickhouse (mt/db)))))
+               (driver.sql/default-schema :clickhouse (lib.metadata/database (mt/metadata-provider))))))
       (testing "database configured in the connection details"
         (let [details (assoc base-details :dbname db-name)]
           (mt/with-temp [:model/Database database {:engine :clickhouse, :details details}]
             (is (= db-name
-                   (driver.sql/default-schema :clickhouse database))))))
+                   (driver.sql/default-schema :clickhouse (driver.u/ensure-lib-database database)))))))
       (testing "details naming no database: the server reports the one the connection opened"
         (mt/with-temp [:model/Database database {:engine  :clickhouse
                                                  :details (dissoc base-details :db :dbname)}]
           (is (= "default"
-                 (driver.sql/default-schema :clickhouse database))))))))
+                 (driver.sql/default-schema :clickhouse (driver.u/ensure-lib-database database)))))))))
 
 ;; the mt/with-dynamic-redefs macro was renamed to mt/with-dynamic-fn-redefs for 0.53+
 ;; as 0.52 is still tested by CI we will check which macro is defined and use that
@@ -338,7 +339,7 @@
       [:model/Database db
        {:engine  :clickhouse
         :details (mt/dbdef->connection-details :clickhouse :db {:database-name "default"})}]
-      (let [version (driver/dbms-version :clickhouse db)]
+      (let [version (driver/dbms-version :clickhouse (driver.u/ensure-lib-database db))]
         (is (number? (get-in version [:semantic-version :major])))
         (is (number? (get-in version [:semantic-version :minor])))
         (is (string? (get    version :version)))))))
@@ -362,7 +363,7 @@
 
 (deftest ^:synchronized clickhouse-session-timezone-does-not-leak-across-borrows-test
   (mt/test-driver :clickhouse
-    (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
+    (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))
     (let [underlying-conn-ids (atom [])
           observe (fn [opts]
                     (sql-jdbc.execute/do-with-connection-with-options
@@ -397,7 +398,7 @@
              :user "bob"
              :password "qaz"
              :ssl true
-             :custom_http_params "select_sequential_consistency=1,max_threads=42,allow_experimental_analyzer=0"})
+             :custom_http_params "select_sequential_consistency=1,join_use_nulls=1,max_threads=42,allow_experimental_analyzer=0"})
            (sql-jdbc.conn/connection-details->spec
             :clickhouse
             {:host "myclickhouse"
@@ -441,34 +442,29 @@
             :clickhouse
             {})))))
 
-(deftest ^:parallel clickhouse-tls
+(deftest clickhouse-tls
   (mt/test-driver :clickhouse
-    (let [working-dir (System/getProperty "user.dir")
-          cert-path (str working-dir "/modules/drivers/clickhouse/.docker/clickhouse/single_node_tls/certificates/ca.crt")
-          additional-options (str "sslrootcert=" cert-path)]
+    (let [working-dir        (System/getProperty "user.dir")
+          cert-path          (str working-dir "/modules/drivers/clickhouse/.docker/clickhouse/single_node_tls/certificates/ca.crt")
+          additional-options (str "sslrootcert=" cert-path)
+          timezone           (fn [details]
+                               (mt/with-temp [:model/Database {db-id :id} {:engine :clickhouse :details details}]
+                                 (driver/db-default-timezone :clickhouse (driver.u/lib-database db-id))))]
       (testing "simple connection with a single database"
         (is (= "UTC"
-               (driver/db-default-timezone
-                :clickhouse
-                (sql-jdbc.conn/connection-details->spec
-                 :clickhouse
-                 {:ssl true
-                  :host "server.clickhouseconnect.test"
-                  :port 8443
-                  :additional-options additional-options})))))
+               (timezone {:ssl                true
+                          :host               "server.clickhouseconnect.test"
+                          :port               8443
+                          :additional-options additional-options}))))
       (testing "connection with multiple databases"
         (is (= "UTC"
-               (driver/db-default-timezone
-                :clickhouse
-                (sql-jdbc.conn/connection-details->spec
-                 :clickhouse
-                 {:ssl true
-                  :host "server.clickhouseconnect.test"
-                  :port 8443
-                  :enable-multiple-db true
-                  :db-filters-patterns "default, system"
-                  :db-filters-type "inclusion"
-                  :additional-options additional-options}))))))))
+               (timezone {:ssl                 true
+                          :host                "server.clickhouseconnect.test"
+                          :port                8443
+                          :enable-multiple-db  true
+                          :db-filters-patterns "default, system"
+                          :db-filters-type     "inclusion"
+                          :additional-options  additional-options})))))))
 
 (deftest ^:parallel clickhouse-nippy
   (mt/test-driver :clickhouse
@@ -495,6 +491,10 @@
       (testing "pretty"
         (is (= "SELECT\n  `test_data`.`venues`.`id` AS `id`\nFROM\n  `test_data`.`venues`\nORDER BY\n  `test_data`.`venues`.`id` ASC\nLIMIT\n  5" pretty))))))
 
+(deftest pool-does-not-test-connections-on-checkout-test
+  (with-redefs [driver-api/is-test? false]
+    (is (false? (get (sql-jdbc.conn/data-warehouse-connection-pool-properties :clickhouse (lib.metadata/database (mt/metadata-provider))) "testConnectionOnCheckout")))))
+
 (deftest ^:parallel clickhouse-can-connect
   (mt/test-driver :clickhouse
     (doall
@@ -515,7 +515,7 @@
         (is (true? (driver/can-connect? :clickhouse details)))
         (is (= "//localhost:8123/default?clickhouse_setting_max_threads=5&max_block_size=50"
                (:subname spec)))
-        (is (= "select_sequential_consistency=1,max_result_rows=10,max_columns_to_read=20"
+        (is (= "select_sequential_consistency=1,join_use_nulls=1,max_result_rows=10,max_columns_to_read=20"
                (:custom_http_params spec)))
         (is (= {:max_threads 5
                 :max_block_size 65409 ;; unknown key is ignored
@@ -550,7 +550,7 @@
           (driver/insert-into! :clickhouse (:id db) table [:id :name] [[42 "Bob"] [43 "Alice"]])
           (is (= #{{:id 42, :name "Bob"}
                    {:id 43, :name "Alice"}}
-                 (set (sql-jdbc/query :clickhouse db {:select [:*] :from [table]}))))
+                 (set (sql-jdbc/query :clickhouse (driver.u/ensure-lib-database db) {:select [:*] :from [table]}))))
           (finally
             (driver/drop-table! :clickhouse (:id db) table)))))))
 
@@ -728,54 +728,53 @@
 
 (deftest ^:parallel uploads-supported-test
   (mt/test-driver :clickhouse
-    (is (false? (driver/database-supports? driver/*driver* :uploads (mt/db))))
+    (is (true? (driver/database-supports? driver/*driver* :uploads (mt/db))))
     (is (true? (driver/database-supports? driver/*driver* :uploads (assoc-in (mt/db) [:dbms-version :cloud] true))))
     (is (true? (driver/database-supports? driver/*driver* :uploads (assoc-in (mt/db) [:dbms_version :cloud] true))))))
 
 (deftest ^:synchronized csv-upload-and-sync-test
-  (testing "ClickHouse CSV uploads work correctly when cloud mode is enabled"
+  (testing "ClickHouse CSV uploads work correctly"
     (mt/test-driver :clickhouse
-      (mt/with-dynamic-fn-redefs [clickhouse-version/dbms-version (constantly {:cloud true
-                                                                               :version "24.8.1"
-                                                                               :semantic-version {:major 24 :minor 8}})]
-        (let [details   (-> (mt/dbdef->connection-details :clickhouse :db {:database-name "uploads_schema"})
-                            (assoc :enable-multiple-db false))
-              conn-spec (sql-jdbc.conn/connection-details->spec :clickhouse details)]
-          (driver/create-schema-if-needed! :clickhouse conn-spec "uploads_schema")
-          (try
-            (mt/with-temp [:model/Database db {:engine  :clickhouse
-                                               :details details}]
-              (is (true? (driver/database-supports? :clickhouse :uploads db)))
-              (testing "an upload schema is required"
-                (is (thrown-with-msg?
-                     clojure.lang.ExceptionInfo
-                     #"A schema has not been set."
-                     (upload-test/do-with-uploaded-example-csv!
-                      {:db-id (:id db)
-                       :auxiliary-sync-steps :synchronous
-                       :schema-name ""}
-                      identity))))
-              (testing "upload models work after sync"
-                (upload-test/do-with-uploaded-example-csv!
-                 {:db-id (:id db)
-                  :auxiliary-sync-steps :synchronous
-                  :schema-name "uploads_schema"}
-                 (fn [model]
-                   (let [query-model (fn []
-                                       (let [mp   (lib-be/application-database-metadata-provider (:id db))
-                                             card (lib.metadata/card mp (:id model))]
-                                         (->> (lib/query mp card)
-                                              (qp/process-query)
-                                              (mt/formatted-rows [int str]))))]
-                     (is (= [[1 " Luke Skywalker"]
-                             [2 " Darth Vader"]]
-                            (query-model)))
-                     (sync/sync-database! db {:scan :schema})
-                     (is (= [[1 " Luke Skywalker"]
-                             [2 " Darth Vader"]]
-                            (query-model))))))))
-            (finally
-              (jdbc/execute! conn-spec ["DROP DATABASE IF EXISTS `uploads_schema`"]))))))))
+      (let [details   (-> (mt/dbdef->connection-details :clickhouse :db {:database-name "uploads_schema"})
+                          (assoc :enable-multiple-db false))
+            dbms-version (driver/dbms-version :clickhouse (lib.metadata/database (mt/metadata-provider)))
+            conn-spec (sql-jdbc.conn/connection-details->spec :clickhouse details)]
+        (driver/create-schema-if-needed! :clickhouse conn-spec "uploads_schema")
+        (try
+          (mt/with-temp [:model/Database db {:engine  :clickhouse
+                                             :details details
+                                             :dbms_version dbms-version}]
+            (is (true? (driver/database-supports? :clickhouse :uploads db)))
+            (testing "an upload schema is required"
+              (is (thrown-with-msg?
+                   clojure.lang.ExceptionInfo
+                   #"A schema has not been set."
+                   (upload-test/do-with-uploaded-example-csv!
+                    {:db-id (:id db)
+                     :auxiliary-sync-steps :synchronous
+                     :schema-name ""}
+                    identity))))
+            (testing "upload models work after sync"
+              (upload-test/do-with-uploaded-example-csv!
+               {:db-id (:id db)
+                :auxiliary-sync-steps :synchronous
+                :schema-name "uploads_schema"}
+               (fn [model]
+                 (let [query-model (fn []
+                                     (let [mp   (lib-be/application-database-metadata-provider (:id db))
+                                           card (lib.metadata/card mp (:id model))]
+                                       (->> (lib/query mp card)
+                                            (qp/process-query)
+                                            (mt/formatted-rows [int str]))))]
+                   (is (= [[1 " Luke Skywalker"]
+                           [2 " Darth Vader"]]
+                          (query-model)))
+                   (sync/sync-database! (:id db) {:scan :schema})
+                   (is (= [[1 " Luke Skywalker"]
+                           [2 " Darth Vader"]]
+                          (query-model))))))))
+          (finally
+            (jdbc/execute! conn-spec ["DROP DATABASE IF EXISTS `uploads_schema`"])))))))
 
 (deftest ^:parallel type->database-type-test
   (testing "type->database-type multimethod returns correct ClickHouse types"
@@ -905,3 +904,10 @@
     ;; a lone double-quote is a one-character role name, not an already-quoted empty one -- it must still come
     ;; out as a terminated identifier
     "\""                            "SET ROLE \"\"\"\""))
+
+(deftest ^:parallel clickhouse-server-errors-need-more-than-class-22-test
+  (mt/test-driver :clickhouse
+    (doseq [[message code] [["Memory limit exceeded" 241] ["Too many rows or bytes" 396]]]
+      (let [e (SQLException. ^String message "22000" (int code))]
+        (is (false? (#'sql-jdbc.execute/error-in-query? :clickhouse e)))
+        (is (true? (#'sql-jdbc.execute/error-in-query? :h2 e)))))))

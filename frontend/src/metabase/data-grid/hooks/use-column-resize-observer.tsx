@@ -5,7 +5,7 @@ export const useColumnResizeObserver = (
   state: TableState,
   onChange: (columnId: string, columnSize: number) => void,
 ) => {
-  const columnResizeRef = useRef<string | false>();
+  const columnResizeRef = useRef<string | false>(undefined);
   useEffect(() => {
     if (
       state.columnSizingInfo &&

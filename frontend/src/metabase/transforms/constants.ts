@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { isCypressActive } from "metabase/env";
+import type { TransformRunStatus } from "metabase-types/api";
 
 export const NAME_MAX_LENGTH = 254;
 
@@ -28,4 +29,11 @@ export const TARGET_STRATEGY_OPTIONS = [
       return t`Append`;
     },
   },
+];
+
+export const RUN_STATUS_FILTER_VALUES: TransformRunStatus[] = [
+  "started",
+  "succeeded",
+  "failed",
+  "timeout",
 ];

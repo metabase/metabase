@@ -64,6 +64,25 @@
                                  (personal-ids first-parent-collection-id)))]
     (remove personal-descendant? collections)))
 
+(def CollectionType
+  "Collection types that the root/items endpoint can filter on"
+  [:enum "remote-synced"])
+
+(def ^:private FilterableCollectionType
+  "Collection types that [[collection-children]] and [[select-collections]] can filter on: remote-synced collections,
+  or those of a Library type."
+  (into [:enum "remote-synced"] (sort collection/library-collection-types)))
+
+(defn- collection-types-clause
+  "A HoneySQL clause that keeps the collections of one of `collection-types`, \"remote-synced\" meaning the
+  remote-synced ones, or nil when there are none."
+  [collection-types]
+  (when (seq collection-types)
+    (into [:or] (for [collection-type (sort collection-types)]
+                  (if (= collection-type "remote-synced")
+                    [:= :is_remote_synced true]
+                    [:= :type collection-type])))))
+
 (defn select-collections
   "Select collections based off certain parameters. If `shallow` is true, we select only the requested collection (or
   the root, if `collection-id` is `nil`) and its immediate children, to avoid reading the entire collection tree when it
@@ -77,8 +96,11 @@
   This will select only collections where `personal_owner_id` is not `nil`.
 
   To include library collections and their descendants, pass in `include-library?` as `true`.
-  By default, library-type collections are excluded. "
-  [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?]}]
+  By default, library-type collections are excluded.
+
+  To select only collections of some types, pass them as the set `collection-types`. "
+  [{:keys [archived exclude-other-user-collections namespaces shallow collection-id personal-only include-library?
+           collection-types]}]
   (cond->>
    (collections.db/collections-matching
     {:where [:and
@@ -94,6 +116,7 @@
                (location-from-collection-id-clause collection-id))
              (when personal-only
                [:!= :personal_owner_id nil])
+             (collection-types-clause collection-types)
              (when exclude-other-user-collections
                [:or [:= :personal_owner_id nil] [:= :personal_owner_id api/*current-user-id*]])
              (when-not include-library?
@@ -155,7 +178,8 @@
 (def ^:private valid-model-param-values
   "Valid values for the `?model=` param accepted by the collection-items endpoints.
   `no_models` is for nilling out the set because a nil model set is actually the total model set"
-  #{"card"                              ; SavedQuestion
+  #{"action"
+    "card"                              ; SavedQuestion
     "dataset"                           ; Model. TODO : update this
     "document"
     "exploration"
@@ -192,16 +216,12 @@
   [w]
   (when w (keyword (str/replace w #"_" "-"))))
 
-(def CollectionType
-  "Collection types that the root/items endpoint can filter on"
-  [:enum "remote-synced"])
-
 (def CollectionChildrenOptions
   "The `options` map accepted by [[collection-children]] and [[collection-filter-metadata]]."
   [:map {:closed true}
    [:show-dashboard-questions?     :boolean]
    [:show-exploration-documents?   {:optional true} [:maybe :boolean]]
-   [:collection-type {:optional true} [:maybe CollectionType]]
+   [:collection-types {:optional true} [:maybe [:set FilterableCollectionType]]]
    [:archived?                     :boolean]
    [:include-library?               {:optional true} [:maybe :boolean]]
    [:pinned-state {:optional true} [:maybe (into [:enum] (map keyword) valid-pinned-state-values)]]
@@ -484,6 +504,27 @@
                  [:inline 0]
                  [:inline 1]])]}))
 
+(defmethod collection-children-query :action
+  [_model collection {:keys [archived? pinned-state]}]
+  {:select [:action.id :action.collection_id :action.name :action.description :action.entity_id
+            :action.archived :action.archived_directly [(h2x/literal "action") :model]]
+   :from   [[:action :action]]
+   :where  [:and
+            (poison-when-pinned-clause pinned-state)
+            [:= :action.collection_id (:id collection)]
+            [:= :action.model_id nil]
+            [:= :action.archived (boolean archived?)]]})
+
+(defmethod post-process-collection-children :action
+  [_ _options collection rows]
+  (for [row rows]
+    (-> (dissoc row
+                :collection_position :display :authority_level :moderated_status :icon :personal_owner_id
+                :collection_preview :dataset_query :table_id :query_type :is_upload :namespace)
+        (update :archived api/bit->boolean)
+        (update :archived_directly api/bit->boolean)
+        (assoc :collection_namespace (some-> (:namespace collection) name)))))
+
 (defmethod post-process-collection-children :timeline
   [_ _options _collection rows]
   (for [row rows]
@@ -692,16 +733,13 @@
    [:not= :namespace (u/qualified-name "snippets")]])
 
 (defn- collection-query
-  [collection {:keys [archived? collection-namespace pinned-state collection-type include-library?]}]
+  [collection {:keys [archived? collection-namespace pinned-state collection-types include-library?]}]
   (-> (assoc
        (collection/effective-children-query
         collection
         {:cte-name :visible_collection_ids}
         [:and
-         (when collection-type
-           (if (= collection-type "remote-synced")
-             [:= :is_remote_synced true]
-             [:= :type collection-type]))
+         (collection-types-clause collection-types)
          (when-not include-library?
            [:or [:= nil :type]
             [:not [:in :type (vec collection/library-collection-types)]]])
@@ -872,8 +910,11 @@
 
 (defmethod post-process-collection-children :table
   [_ {:keys [models]} _collection rows]
-  (let [tables (map #(-> (t2/instance :model/Table %)
-                         (update :archived api/bit->boolean)) rows)]
+  (let [tables (->> (t2/hydrate (map #(-> (t2/instance :model/Table (assoc % :db_id (:database_id %) :is_published true))
+                                          (update :archived api/bit->boolean))
+                                     rows)
+                                :can_write)
+                    (map #(dissoc % :db_id :is_published)))]
     (if (contains? models :measure)
       (t2/hydrate tables :measures)
       tables)))
@@ -918,6 +959,7 @@
     :exploration :model/Exploration
     :pulse       :model/Pulse
     :snippet     :model/NativeQuerySnippet
+    :action      :model/Action
     :table       :model/Table
     :timeline    :model/Timeline
     :transform   :model/Transform))
@@ -1000,10 +1042,10 @@
 
 (defn- official-collections-first-sort-clause [{:keys [official-collections-first?]}]
   (when official-collections-first?
-    [:authority_level :asc :nulls-last]))
+    [:authority_level :asc-nulls-last]))
 
 (def ^:private normal-collections-first-sort-clause
-  [:type :asc :nulls-first])
+  [:type :asc-nulls-first])
 
 (defn children-sort-clause
   "Given the client side sort-info, return sort clause to effect this. `db-type` is necessary due to complications from
@@ -1051,8 +1093,8 @@
                                     [:%lower.name :asc]]
            [:model :asc]           [[:model_ranking :asc]  [:%lower.name :asc]]
            [:model :desc]          [[:model_ranking :desc] [:%lower.name :asc]]
-           [:description :asc]     [[:%lower.description :asc :nulls-last] [:%lower.name :asc]]
-           [:description :desc]    [[:%lower.description :desc :nulls-last] [:%lower.name :asc]])
+           [:description :asc]     [[:%lower.description :asc-nulls-last] [:%lower.name :asc]]
+           [:description :desc]    [[:%lower.description :desc-nulls-last] [:%lower.name :asc]])
          ;; add a fallback sort order so paging is still deterministic even if collection have the same name or
          ;; whatever
          [[:id :asc]]]))
@@ -1073,7 +1115,8 @@
   (let [sql-order     (children-sort-clause sort-info (mdb/db-type))
         models        (sort (map keyword models))
         queries       (for [model models
-                            :let  [query              (collection-children-query model collection options)
+                            :let  [query              (-> (collection-children-query model collection options)
+                                                          (vary-meta assoc :allow-subquery true))
                                    select-clause-type (some
                                                        (fn [k]
                                                          (when (get query k)
@@ -1088,7 +1131,7 @@
                        :include-trash-collection? archived?}
         search-clause (search-text-clause search-text)
         rows-query    (cond-> {:with     [[:visible_collection_ids (collection/visible-collection-query viz-config)]]
-                               :select   [:* [[:over [[:count :*] ^:allow-subquery {} :total_count]]]]
+                               :select   [:* [[:over [[:count :*] ^:allow-subquery {}]] :total_count]]
                                :from     [[^:allow-subquery {:union-all queries} :dummy_alias]]
                                :order-by sql-order}
                         search-clause
@@ -1130,7 +1173,8 @@
   [collection-namespace]
   (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document :exploration :transform]
                    ;; Tables in collections are an EE feature (library)
-                   (premium-features/has-feature? :library) (conj :table))
+                   (premium-features/has-feature? :library) (conj :table)
+                   (contains? #{"data-actions" "data-apps"} (some-> collection-namespace name)) (conj :action))
         :let     [toucan-model       (model-name->toucan-model model-kw)
                   allowed-namespaces (collection/allowed-namespaces toucan-model)]
         :when    (or (= model-kw :collection)
@@ -1141,17 +1185,11 @@
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models created-by-id], :as options}       :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document :exploration :transform]
-                                      ;; Tables in collections are an EE feature (library)
-                                      (premium-features/has-feature? :library) (conj :table))
+  (let [valid-models (for [model-kw (valid-collection-models collection-namespace)
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
                            :when    (or (empty? models) (contains? models model-kw))
                            ;; a creator filter drops models that don't index a creator
-                           :when    (or (nil? created-by-id) (contains? creator-filterable-models model-kw))
-                           :let     [toucan-model       (model-name->toucan-model model-kw)
-                                     allowed-namespaces (collection/allowed-namespaces toucan-model)]
-                           :when    (or (= model-kw :collection)
-                                        (contains? allowed-namespaces (keyword collection-namespace)))]
+                           :when    (or (nil? created-by-id) (contains? creator-filterable-models model-kw))]
                        model-kw)]
     (if (seq valid-models)
       (collection-children* collection valid-models (assoc options :collection-namespace collection-namespace))
@@ -1193,7 +1231,9 @@
                          {:with   [[:visible_collection_ids (collection/visible-collection-query viz-config)]]
                           :select (vec
                                    (for [model candidates]
-                                     [[:exists (collection-children-query model collection options)] model]))}))]
+                                     [[:exists (-> (collection-children-query model collection options)
+                                                   (vary-meta assoc :allow-subquery true))]
+                                      model]))}))]
         {:available_models
          (->> candidates
               (keep (fn [model]
@@ -1221,4 +1261,4 @@
   If you're looking in the root collection of one of these namespaces, we'll allow you to list any type of model.
 
   Otherwise, we'll just show you collections."
-  #{nil "snippets" "transforms"})
+  #{nil "snippets" "transforms" "data-actions"})

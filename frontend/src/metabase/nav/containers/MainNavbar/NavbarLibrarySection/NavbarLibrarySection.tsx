@@ -13,7 +13,7 @@ import { Tree } from "metabase/common/components/tree";
 import {
   SidebarHeading,
   SidebarSection,
-} from "metabase/nav/containers/MainNavbar/MainNavbar.styled";
+} from "metabase/nav/containers/MainNavbar/Sidebar";
 import { SidebarCollectionLink } from "metabase/nav/containers/MainNavbar/SidebarItems";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useUserSetting } from "metabase/settings";

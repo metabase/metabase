@@ -38,7 +38,7 @@ Connect your favorite third-party AI tool - like Claude or Codex - to the Metaba
 
 Compared to the built-in Metabot, the MCP server has a narrower set of tools. See [MCP server tools](mcp-tools.md) for what it can do.
 
-**Controls**: People log in to Metabase to use the MCP server, and everything it returns is scoped to their permissions. Admins can [turn the MCP server off](mcp.md#turn-on-the-mcp-server) for everyone.
+**Controls**: People log in to Metabase to use the MCP server, so the MCP server can only do what their permissions allow. Admins can [turn the MCP server off](mcp.md#turn-on-the-mcp-server) for everyone. On [Pro and Enterprise plans](https://www.metabase.com/pricing), admins can also [choose which MCP tools each group can use](usage-controls.md#mcp-tools-access).
 
 **Provider**: Requests to Metabase's MCP server are handled by the provider you choose to connect to the MCP server (e.g. Claude, Cursor, etc).
 

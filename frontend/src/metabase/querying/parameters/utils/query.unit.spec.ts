@@ -410,7 +410,6 @@ describe("applyParameter", () => {
             {
               type: "column",
               name: "CREATED_AT",
-              sourceName: "ORDERS",
               unit: "month",
             },
           ],

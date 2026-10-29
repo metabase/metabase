@@ -6,6 +6,7 @@ import type { ColorName } from "metabase/ui/colors/types";
 import type { CollectionNamespace, CollectionType } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
+import { DATA_APPS_ROOT_ID } from "./constants";
 import {
   type EntityPickerProps,
   type OmniPickerCollectionItem,
@@ -76,6 +77,15 @@ export const isSelectedItem = (
   );
 };
 
+const isDataAppsRootItem = (item: OmniPickerItem): boolean =>
+  item.model === "collection" && item.id === DATA_APPS_ROOT_ID;
+
+export const shouldShowDataApps = ({
+  options,
+  models,
+}: Pick<EntityPickerProps, "options" | "models">): boolean =>
+  options.hasDataApps === true && models.includes("data-app");
+
 const isValidItem = (item: unknown): item is OmniPickerItem => {
   return (
     isObject(item) &&
@@ -124,6 +134,10 @@ export function getItemFunctions({
       return true;
     }
 
+    if (isDataAppsRootItem(item)) {
+      return modelSet.has("data-app");
+    }
+
     if (item.model === OmniPickerFolderModel.Collection) {
       if (!("here" in item) && !("below" in item)) {
         return false;
@@ -163,7 +177,7 @@ export function getItemFunctions({
   // selectable should be narrower than hidden or disabled because
   // intermediate items should not be disabled, but can't ultimately be selected
   const isSelectableBase = (item: OmniPickerItem) => {
-    if (!isValidItem(item)) {
+    if (!isValidItem(item) || isDataAppsRootItem(item)) {
       return false;
     }
 
@@ -238,6 +252,7 @@ const namespaceMap: Record<string, CollectionNamespace[]> = {
   normal: [null, "analytics", "shared-tenant-collection", "tenant-specific"],
   snippet: ["snippets"],
   transform: ["transforms"],
+  action: ["data-actions"],
 };
 
 export const getNamespacesFromModels = (
@@ -250,6 +265,10 @@ export const getNamespacesFromModels = (
 
   if (models.includes("transform")) {
     modelNamespaces.push(...namespaceMap.transform);
+  }
+
+  if (models.includes("action")) {
+    modelNamespaces.push(...namespaceMap.action);
   }
 
   if (models.some((model) => model !== "snippet" && model !== "transform")) {

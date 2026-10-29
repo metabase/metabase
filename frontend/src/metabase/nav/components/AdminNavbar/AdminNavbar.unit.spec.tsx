@@ -4,6 +4,7 @@ import { setupBugReportingDetailsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { PLUGIN_SECURITY_CENTER, reinitialize } from "metabase/plugins";
 import type { AdminPath } from "metabase/redux/store";
 import { Route } from "metabase/router";
 import {
@@ -83,6 +84,32 @@ describe("AdminNavbar", () => {
     it("does not show store link when user is admin and on paid plan", () => {
       setup({ isAdmin: true, isPaidPlan: true });
       expect(screen.queryByTestId("store-link")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Security Center tab", () => {
+    function SecurityNavItemStub() {
+      return <li>Security</li>;
+    }
+
+    beforeEach(() => {
+      PLUGIN_SECURITY_CENTER.isEnabled = true;
+      PLUGIN_SECURITY_CENTER.SecurityCenterNavItem = SecurityNavItemStub;
+      PLUGIN_SECURITY_CENTER.SecurityCenterMobileNavItem = SecurityNavItemStub;
+    });
+
+    afterEach(() => {
+      reinitialize();
+    });
+
+    it("hides the Security tab for non-admins when the plugin is enabled", () => {
+      setup({ isAdmin: false });
+      expect(screen.queryByText("Security")).not.toBeInTheDocument();
+    });
+
+    it("shows the Security tab for admins when the plugin is enabled", () => {
+      setup({ isAdmin: true });
+      expect(screen.getByText("Security")).toBeInTheDocument();
     });
   });
 

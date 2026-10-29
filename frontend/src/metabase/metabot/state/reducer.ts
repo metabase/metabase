@@ -52,7 +52,11 @@ import type {
   MetabotToolCall,
   MetabotUserTextChatMessage,
 } from "./types";
-import { createMessageId, hasInProgressMessage } from "./utils";
+import {
+  createMessageId,
+  hasInProgressMessage,
+  withServerErrorDisplay,
+} from "./utils";
 
 const isLocationChange = (
   action: UnknownAction,
@@ -405,7 +409,9 @@ export const metabot = createSlice({
         castDraft(createConversation({ conversationId }));
 
       convo.messages = castDraft(
-        messages.map((t) => ({ ...t, parts: [...t.parts] })),
+        messages.map((message) =>
+          withServerErrorDisplay({ ...message, parts: [...message.parts] }),
+        ),
       );
       convo.state = snapshotState ?? {};
       convo.activeToolCalls = activeToolCalls ?? [];

@@ -49,7 +49,7 @@ export const usePushChangesAction = () => {
           const { errorMessage } = parseSyncError(error as SyncError);
           sendToast({
             message: errorMessage || t`Failed to push changes`,
-            icon: "warning",
+            variant: "negative",
             timeout: 8000,
           });
         }
@@ -89,7 +89,7 @@ export const useMergeChangesAction = () => {
           const { errorMessage } = parseSyncError(error as SyncError);
           sendToast({
             message: errorMessage || t`Failed to merge changes`,
-            icon: "warning",
+            variant: "negative",
             timeout: 8000,
           });
         }
@@ -126,7 +126,7 @@ export const useMergeImportAction = () => {
           const { errorMessage } = parseSyncError(error as SyncError);
           sendToast({
             message: errorMessage || t`Failed to merge changes`,
-            icon: "warning",
+            variant: "negative",
             timeout: 8000,
           });
         }
@@ -153,7 +153,7 @@ export const useStashToNewBranchAction = (existingBranches: string[]) => {
         if (!newBranchName) {
           sendToast({
             message: t`Please enter a valid branch name`,
-            icon: "warning",
+            variant: "warning",
           });
           return;
         }
@@ -161,7 +161,7 @@ export const useStashToNewBranchAction = (existingBranches: string[]) => {
         if (existingBranches.includes(newBranchName)) {
           sendToast({
             message: t`This branch name already exists`,
-            icon: "warning",
+            variant: "warning",
           });
           return;
         }
@@ -187,7 +187,7 @@ export const useStashToNewBranchAction = (existingBranches: string[]) => {
         } catch (error) {
           sendToast({
             message: t`Failed to push changes to new branch`,
-            icon: "warning",
+            variant: "negative",
           });
         } finally {
           setIsStashing(false);
@@ -228,7 +228,7 @@ export const useDiscardChangesAndImportAction = () => {
               errorMessage ||
               c("{0} is the GitHub branch name")
                 .t`Failed to import from branch ${targetBranch}`,
-            icon: "warning",
+            variant: "negative",
           });
         }
       },

@@ -5,6 +5,7 @@ import {
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import {
+  getActionDisplayType,
   getActionItems,
   getDefaultFieldSettings,
   getDefaultFormSettings,
@@ -193,5 +194,28 @@ describe("isValidImplicitUpdateAction", () => {
         dataset_query: createMockNativeDatasetQuery(),
       }),
     ).toBe(false);
+  });
+});
+
+describe("getActionDisplayType", () => {
+  it("uses the given display type first", () => {
+    expect(
+      getActionDisplayType("button", {
+        visualization_settings: { type: "form" },
+      }),
+    ).toBe("button");
+  });
+
+  it("falls back to the action's display type", () => {
+    expect(
+      getActionDisplayType(undefined, {
+        visualization_settings: { type: "form" },
+      }),
+    ).toBe("form");
+  });
+
+  it("defaults to a button when neither sets it", () => {
+    expect(getActionDisplayType(undefined, undefined)).toBe("button");
+    expect(getActionDisplayType(undefined, {})).toBe("button");
   });
 });

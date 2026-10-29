@@ -274,9 +274,10 @@
     (if throttling-disabled?
       (do-login)
       (http-401-on-error
-        (throttle/with-throttling [(login-throttlers :ip-address) ip-address
-                                   (login-throttlers :username)   (u/lower-case-en username)]
-          (do-login))))))
+        ;; the last pair is checked first: by IP address, then by username
+        (call-with-failure-throttling [[(login-throttlers :username)   (u/lower-case-en username)]
+                                       [(login-throttlers :ip-address) ip-address]]
+                                      do-login)))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -536,10 +537,8 @@
                                 {:status-code 401
                                  :errors {:_error (or (:error login-result) "Authentication failed")}})))))]
     (http-401-on-error
-      (if throttling-disabled?
-        (do-login)
-        (throttle/with-throttling [(login-throttlers :ip-address) (request/ip-address request)]
-          (do-login))))))
+      (call-with-failure-throttling [[(login-throttlers :ip-address) (request/ip-address request)]]
+                                    do-login))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

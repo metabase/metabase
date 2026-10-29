@@ -263,7 +263,6 @@
 (defmacro ^:private with-search-items-in-collection [created-items-sym search-string & body]
   `(do-with-search-items ~search-string false (fn [~created-items-sym] ~@body)))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *search-request-results-database-id*
   "Filter out all results from `search-request` that don't have this Database ID. Default: the default H2 `test-data`
   Database. Other results are filtered out so these tests can be ran from the REPL without the presence of other
@@ -963,10 +962,12 @@
               (is (= #{}
                      (into #{} (comp relevant-2 (map (juxt :name normalize)))
                            (search! "rom" :rasta))))))
-          (testing "Sandboxed users do not see indexed entities in search"
+          (testing "Sandboxed, impersonated and routed users do not see indexed entities in search"
             (mt/with-dynamic-fn-redefs [perms-util/impersonated-user? (constantly true)]
               (is (empty? (into #{} (comp relevant-1 (map :name)) (search! "fort")))))
             (mt/with-dynamic-fn-redefs [perms-util/sandboxed-user? (constantly true)]
+              (is (empty? (into #{} (comp relevant-1 (map :name)) (search! "fort")))))
+            (mt/with-dynamic-fn-redefs [perms-util/routed-user? (constantly true)]
               (is (empty? (into #{} (comp relevant-1 (map :name)) (search! "fort")))))))))))
 
 (defn- archived-collection [m]
@@ -1075,7 +1076,7 @@
   (testing "You should see Tables in the search results!\n"
     (mt/with-temp [:model/Table _ {:name "RoundTable"}]
       (do-test-users [user [:crowberto :rasta]]
-        (is (= [(default-table-search-row "RoundTable")]
+        (is (= [(assoc (default-table-search-row "RoundTable") :can_write (= user :crowberto))]
                (search-request-data user :q "RoundTable" :models "table")))))))
 
 (deftest table-test-2
@@ -1083,7 +1084,7 @@
     (mt/with-temp [:model/Table _normal {:name "Foo Visible"}
                    :model/Table _hidden {:name "Foo Hidden", :visibility_type "hidden"}]
       (do-test-users [user [:crowberto :rasta]]
-        (is (= [(default-table-search-row "Foo Visible")]
+        (is (= [(assoc (default-table-search-row "Foo Visible") :can_write (= user :crowberto))]
                (search-request-data user :q "Foo")))))))
 
 (deftest table-test-3
@@ -1091,7 +1092,7 @@
     (let [lancelot "Lancelot's Favorite Furniture"]
       (mt/with-temp [:model/Table _ {:name "RoundTable" :display_name lancelot}]
         (do-test-users [user [:crowberto :rasta]]
-          (is (= [(assoc (default-table-search-row "RoundTable") :name lancelot)]
+          (is (= [(assoc (default-table-search-row "RoundTable") :name lancelot :can_write (= user :crowberto))]
                  (search-request-data user :q "Lancelot"))))))))
 
 (deftest table-test-4
@@ -1099,7 +1100,8 @@
     (let [lancelot "Lancelot's Favorite Furniture"]
       (mt/with-temp [:model/Table _ {:name "RoundTable" :description lancelot}]
         (do-test-users [user [:crowberto :rasta]]
-          (is (= [(assoc (default-table-search-row "RoundTable") :description lancelot :table_description lancelot)]
+          (is (= [(assoc (default-table-search-row "RoundTable")
+                         :description lancelot :table_description lancelot :can_write (= user :crowberto))]
                  (search-request-data user :q "Lancelot"))))))))
 
 (deftest table-test-5
@@ -1147,7 +1149,7 @@
         (perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
         (perms/set-table-permission! group-id table :perms/create-queries :query-builder)
         (do-test-users [user [:crowberto :rasta]]
-          (is (= [(default-table-search-row "RoundTable")]
+          (is (= [(assoc (default-table-search-row "RoundTable") :can_write (= user :crowberto))]
                  (binding [*search-request-results-database-id* db-id]
                    (search-request-data user :q "RoundTable")))))))))
 
@@ -1220,7 +1222,7 @@
             (is (= nil (search-for-pulses pulse))))
           (testing "Even as a dashboard subscription, the pulse is not found."
             (mt/with-temp [:model/Dashboard dashboard {}]
-              (t2/update! :model/Pulse (:id pulse) {:dashboard_id (:id dashboard)})
+              (t2/update! :model/Pulse :id (:id pulse) {:dashboard_id (:id dashboard)})
               (is (= nil (search-for-pulses pulse))))))))))
 
 (deftest filter-by-creator-test
@@ -1449,6 +1451,19 @@
       (testing "error if invalids created_at string"
         (is (= "Failed to parse datetime value: today~"
                (mt/user-http-request :crowberto :get 400 "search" :q search-term :created_at "today~" :creator_id (mt/user->id :rasta))))))))
+
+(deftest action-without-model-not-searchable-test
+  (testing "search returns an Action with a model but not one without a model"
+    (let [search-term "action-without-model-search"]
+      (mt/with-temp [:model/Card   {model-id :id}  {:name (str search-term " model") :type :model}
+                     :model/Action {action-id :id} {:name (str search-term " with model") :model_id model-id :type :query}
+                     :model/Action _               {:name (str search-term " without model") :model_id nil :type :query}]
+        (search.tu/with-appdb-search-and-legacy-search
+          (is (= #{action-id}
+                 (->> (mt/user-http-request :crowberto :get 200 "search" :q search-term :models "action")
+                      :data
+                      (map :id)
+                      set))))))))
 
 (deftest filter-by-last-edited-at-test
   (let [search-term "last-edited-at-filtering"]
@@ -2238,7 +2253,7 @@
                    :model/PermissionsGroupMembership _ {:group_id group-id :user_id (mt/user->id :rasta)}]
       (mt/with-no-data-perms-for-all-users!
         (perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
-        (perms/set-table-permission! group-id (t2/select-one :model/Table table-id) :perms/create-queries :query-builder)
+        (perms/set-table-permission! group-id (t2/select-one :model/Table :id table-id) :perms/create-queries :query-builder)
         (is (=? [{:name "test measure" :model "measure"}]
                 (binding [*search-request-results-database-id* db-id]
                   (search-request-data :rasta :q "test measure"))))))))
@@ -2252,13 +2267,13 @@
           (is (=? [{:name measure-name :model "measure"}]
                   (search-request-data :crowberto :q measure-name))))
         (testing "after archiving, measure disappears from default results"
-          (t2/update! :model/Measure measure-id {:archived true})
+          (t2/update! :model/Measure :id measure-id {:archived true})
           (is (= [] (search-request-data :crowberto :q measure-name))))
         (testing "archived measure appears in archived=true results"
           (is (=? [{:name measure-name :model "measure" :archived true}]
                   (search-request-data :crowberto :q measure-name :archived "true"))))
         (testing "after unarchiving, measure returns to default results"
-          (t2/update! :model/Measure measure-id {:archived false})
+          (t2/update! :model/Measure :id measure-id {:archived false})
           (is (=? [{:name measure-name :model "measure"}]
                   (search-request-data :crowberto :q measure-name))))))))
 

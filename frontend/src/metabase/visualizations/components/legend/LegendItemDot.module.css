@@ -1,0 +1,40 @@
+.root {
+  position: relative;
+}
+
+.rootButton {
+  position: relative;
+  cursor: pointer;
+}
+
+.circle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 32%;
+  transition: all 0.2s;
+}
+
+.outerCircle {
+  background-color: var(--mb-color-border-neutral);
+}
+
+.innerCircle {
+  print-color-adjust: exact;
+  background-color: var(--mb-color-background_page-primary);
+  border: 0.125rem solid var(--mb-color-text-disabled);
+}
+
+.innerCircle.visible {
+  background-color: var(--legend-dot-color);
+  border: 0;
+  box-shadow: inset 0 0 0 0.5px var(--mb-color-shadow-default);
+}
+
+.rootButton:hover .innerCircle {
+  transform: scale(0.8);
+}
+
+.rootButton:hover .outerCircle {
+  transform: scale(1.3);
+}

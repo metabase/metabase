@@ -24,8 +24,7 @@ import {
 } from "metabase/current-user";
 import { usePageTitleWithLoadingTime } from "metabase/hooks/use-page-title";
 import { VISUALIZATION_SLOW_TIMEOUT } from "metabase/querying/constants";
-import { connect, useSelector } from "metabase/redux";
-import { closeNavbar } from "metabase/redux/app";
+import { connect, useSelector, useStore } from "metabase/redux";
 import {
   editSummary,
   setIsNativeEditorOpen,
@@ -125,12 +124,10 @@ import {
   getFirstQueryResult,
   getIsActionListVisible,
   getIsAdditionalInfoVisible,
-  getIsAnySidebarOpen,
   getIsDirty,
   getIsHeaderVisible,
   getIsLiveResizable,
   getIsLoadingComplete,
-  getIsNativeEditorOpen,
   getIsResultDirty,
   getIsRunnable,
   getIsTimeseries,
@@ -190,11 +187,9 @@ const mapStateToProps = (state: State) => {
     uiControls: getUiControls(state),
     ...state.qb.uiControls,
     dataReferenceStack: getDataReferenceStack(state),
-    isAnySidebarOpen: getIsAnySidebarOpen(state),
 
     isDirty: getIsDirty(state),
     isObjectDetail: getIsObjectDetail(state),
-    isNativeEditorOpen: getIsNativeEditorOpen(state),
     isNavBarOpen: getIsNavbarOpen(state),
     isLiveResizable: getIsLiveResizable(state),
     isTimeseries: getIsTimeseries(state),
@@ -303,9 +298,6 @@ const mapDispatchToProps = {
   viewNextObjectDetail,
   viewPreviousObjectDetail,
   zoomInRow,
-
-  // other
-  closeNavbar,
 };
 
 const connector = connect(mapStateToProps, mapDispatchToProps);
@@ -326,12 +318,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   useListTimelinesQuery({ include: "events" });
 
   const {
-    question,
-    originalQuestion,
     uiControls,
-    isNativeEditorOpen,
-    isAnySidebarOpen,
-    closeNavbar,
     initializeQB,
     locationChanged,
     setUIControls,
@@ -389,12 +376,10 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     () => _.debounce(forceUpdate, 400),
     [forceUpdate],
   );
-  const timeout = useRef<number>();
+  const timeout = useRef<number>(undefined);
 
   const previousUIControls = usePrevious(uiControls);
   const previousLocation = usePrevious(location);
-  const wasShowingAnySidebar = usePrevious(isAnySidebarOpen);
-  const wasNativeEditorOpen = usePrevious(isNativeEditorOpen);
 
   const openModal = useCallback(
     (modal: QueryBuilderUIControls["modal"]) => setUIControls({ modal }),
@@ -457,21 +442,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     closeQB();
     clearTimeout(timeout.current);
   });
-
-  useEffect(() => {
-    if (
-      (isAnySidebarOpen && !wasShowingAnySidebar) ||
-      (isNativeEditorOpen && !wasNativeEditorOpen)
-    ) {
-      closeNavbar();
-    }
-  }, [
-    isAnySidebarOpen,
-    wasShowingAnySidebar,
-    isNativeEditorOpen,
-    wasNativeEditorOpen,
-    closeNavbar,
-  ]);
 
   useEffect(() => {
     const { isShowingDataReference, isShowingTemplateTagsEditor } = uiControls;
@@ -539,15 +509,31 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     setIsShowingToaster(false);
   }, []);
 
-  const isNewQuestion = !originalQuestion;
-  const isLocationAllowed = useCallback(
-    (location?: Location) =>
-      isNavigationAllowed({
+  const store = useStore();
+  const isCallbackScheduledRef = useRef(isCallbackScheduled);
+  isCallbackScheduledRef.current = isCallbackScheduled;
+
+  // Decide blocking from the store at call time, not from values captured in
+  // render. React 19 can run a Back navigation against a render that has not
+  // committed the freshly-dirtied question yet, so a render-captured decision
+  // reads the question as clean and lets the navigation through without the
+  // discard prompt (metabase#76382).
+  const isBlocking = useCallback(
+    (location?: Location) => {
+      const state = store.getState();
+      if (
+        !getShouldShowUnsavedChangesWarning(state) ||
+        isCallbackScheduledRef.current
+      ) {
+        return false;
+      }
+      return !isNavigationAllowed({
         destination: location,
-        question,
-        isNewQuestion,
-      }),
-    [question, isNewQuestion],
+        question: getQuestion(state),
+        isNewQuestion: !getOriginalQuestion(state),
+      });
+    },
+    [store],
   );
 
   const handleCmdEnter = () => {
@@ -580,7 +566,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
 
       <LeaveRouteConfirmModal
         isEnabled={shouldShowUnsavedChangesWarning && !isCallbackScheduled}
-        isLocationAllowed={isLocationAllowed}
+        isBlocking={isBlocking}
       />
     </>
   );

@@ -24,12 +24,7 @@ function MoveCardToast({ card, destination }: MoveCardToastProps) {
   const type = card.type;
 
   if (!destination) {
-    return (
-      <Flex align="center">
-        <Icon name="warning" mr="sm" />
-        {t`Something went wrong`}
-      </Flex>
-    );
+    return <Flex align="center">{t`Something went wrong`}</Flex>;
   }
 
   const link =

@@ -366,3 +366,33 @@
         (testing "Should NOT throw an exception for valid non-cyclic chain"
           ;; This should complete, without throwing an exception, and return a dependency graph
           (is (some? (#'qp.resolve-referenced/check-for-circular-references entrypoint-query))))))))
+
+(deftest shared-snippet-references-are-visited-once-test
+  (testing "Snippets reachable through many paths are only walked once when checking for circular references"
+    (let [depth             10
+          snippet-id        (fn [level which] (+ 100 (* 2 level) which))
+          snippet-name      (fn [level which] (str "snippet-" level "-" which))
+          snippets          (for [level (range (inc depth))
+                                  which [0 1]
+                                  :let  [refs (when (< level depth)
+                                                [[(snippet-id (inc level) 0) (snippet-name (inc level) 0)]
+                                                 [(snippet-id (inc level) 1) (snippet-name (inc level) 1)]])]]
+                              (make-snippet {:id           (snippet-id level which)
+                                             :name         (snippet-name level which)
+                                             :content      (apply str "x" (for [[_ ref-name] refs]
+                                                                            (str " {{snippet: " ref-name "}}")))
+                                             :snippet-refs refs}))
+          metadata-provider (lib.tu/mock-metadata-provider meta/metadata-provider {:native-query-snippets snippets})
+          query             (lib/query
+                             metadata-provider
+                             {:database (meta/id)
+                              :type     :native
+                              :native   {:query         "SELECT {{snippet: snippet-0-0}}"
+                                         :template-tags (make-snippet-template-tag (snippet-id 0 0) (snippet-name 0 0))}})
+          fetches           (atom 0)
+          orig              lib.metadata/native-query-snippet]
+      (mt/with-dynamic-fn-redefs [lib.metadata/native-query-snippet (fn [mp id]
+                                                                      (swap! fetches inc)
+                                                                      (orig mp id))]
+        (#'qp.resolve-referenced/check-for-circular-references query))
+      (is (< @fetches (* 2 (count snippets)))))))

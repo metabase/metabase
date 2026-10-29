@@ -174,8 +174,7 @@ export const Comments = ({
 
     if (error) {
       sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "feedback-warning",
+        variant: "negative",
         message: t`Failed to send comment`,
       });
     }
@@ -197,7 +196,11 @@ export const Comments = ({
         >
           {title && <Title order={3}>{title}</Title>}
           {showCloseButton && (
-            <ActionIcon aria-label={t`Close`} onClick={closeSidebar}>
+            <ActionIcon
+              variant="subtle"
+              aria-label={t`Close`}
+              onClick={closeSidebar}
+            >
               <Icon name="close" c="text-primary" />
             </ActionIcon>
           )}

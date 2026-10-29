@@ -25,6 +25,7 @@ export function useTableEditingToastController() {
         dispatch(
           addUndo({
             icon: null,
+            variant: "negative",
             renderChildren: () => <ErrorUpdateToast error={error} />,
             timeout: null, // removes automatic toast hide
             onDismiss,
