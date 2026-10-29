@@ -4,13 +4,14 @@
   `test/metabase/test/data/dataset_definitions/*.edn`, for the end-to-end test in `dev.dbt-import.e2e-test`. Not
   something that runs regularly: only when the checkout changes.
 
-  [[regenerate!]] copies the checkout to a scratch directory the way [[dev.dbt-import.fixture/regenerate!]] does,
-  builds it there with `dbt seed` and `dbt run` against the Postgres in `:connection`, and reads back the four mart
-  tables the project's semantic models are defined on: `fact_sales`, `dim_customer`, `dim_product` and `dim_order`.
-  `dim_date` has no semantic model and no metric reaches it, so it is left out. The surrogate keys dbt computes become
-  the tables' primary keys and `fact_sales`'s foreign keys, so a sync of the loaded dataset knows the joins the
-  converter's implicit-join dimensions rely on. Rows are ordered by primary key, so a regeneration's diff is only what
-  changed.
+  [[regenerate!]] copies the checkout to a scratch directory (see [[fixture/with-scratch-project]]), builds it there
+  with `dbt seed` and `dbt run` against the Postgres in `:connection`, and reads back the four mart tables the
+  project's semantic models are defined on: `fact_sales`, `dim_customer`, `dim_product` and `dim_order`. `dim_date` has
+  no semantic model and no metric reaches it, so it is left out. The surrogate keys dbt computes become the tables'
+  primary keys and `fact_sales`'s foreign keys, so a sync of the loaded dataset knows the joins the converter's
+  implicit-join dimensions rely on. Rows are ordered by primary key, so a regeneration's diff is only what changed.
+  Column base types are the ones the Postgres driver gives the same types during sync, so the driver has to be loaded,
+  as it is in a dev REPL.
 
   Run from a REPL at the repo root, with a Postgres to build in. The connection defaults to the one the test suite
   uses for the `:postgres` driver (the `MB_POSTGRESQL_TEST_*` env vars), building in database `dbt_bi`, which has to
@@ -22,6 +23,9 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [dev.dbt-import.fixture :as fixture]
+   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   ;; for the `#t` print-method of `LocalDate`, which the dataset EDN is written with
+   [metabase.util.date-2]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
@@ -29,8 +33,6 @@
    [next.jdbc.result-set :as jdbc.rs])
   (:import
    (java.io File)
-   (java.nio.file Files)
-   (java.nio.file.attribute FileAttribute)
    (java.time LocalDate)))
 
 (set! *warn-on-reflection* true)
@@ -58,16 +60,7 @@
                                                        "product_key"  "dim_product"
                                                        "order_key"    "dim_order"}}])
 
-(def ^:private udt->base-type
-  "The Metabase base type for each Postgres type (`information_schema.columns.udt_name`) the marts use. Anything else
-  is an error, so a change to the project's column types is noticed."
-  {"text"   :type/Text
-   "int4"   :type/Integer
-   "int8"   :type/BigInteger
-   "float8" :type/Float
-   "date"   :type/Date})
-
-(mr/def ::connection
+(mr/def ::connection-overrides
   "How to reach the Postgres to build the project in. Every key defaults to the test suite's `:postgres` connection."
   [:map {:closed true}
    [:host     {:optional true} :string]
@@ -84,7 +77,8 @@
    [:fk         {:optional true} :keyword]])
 
 (mr/def ::value
-  "A cell of a mart table: dates are read back as `LocalDate`s, nothing else needs converting."
+  "A cell of a mart table: dates are read back as `LocalDate`s, which print as the `#t` literals the dataset EDN
+  takes; nothing else needs converting."
   [:maybe [:or :string :int :double (ms/InstanceOfClass LocalDate)]])
 
 (mr/def ::row
@@ -97,8 +91,8 @@
 (def ^:private DataSource
   (ms/InstanceOfClass javax.sql.DataSource))
 
-(mu/defn- with-defaults :- ::connection
-  [{:keys [host port dbname user password]} :- ::connection]
+(mu/defn- with-defaults :- ::fixture/connection
+  [{:keys [host port dbname user password]} :- ::connection-overrides]
   (let [env (fn [k default] (or (System/getenv (str "MB_POSTGRESQL_TEST_" k)) default))]
     {:host     (or host (env "HOST" "localhost"))
      :port     (or port (parse-long (env "PORT" "5432")))
@@ -106,40 +100,15 @@
      :user     (or user (env "USER" "postgres"))
      :password (or password (env "PASSWORD" nil))}))
 
-(mu/defn- profiles-yaml :- :string
-  "A `profiles.yml` for the project pointing dbt at `connection`, building in schema `public` like the README's."
-  [{:keys [host port dbname user password]} :- ::connection]
-  (str/join "\n" ["dbt_business_intelligence:"
-                  "  target: dev"
-                  "  outputs:"
-                  "    dev:"
-                  "      type: postgres"
-                  (str "      host: " host)
-                  (str "      port: " port)
-                  (str "      user: " user)
-                  (str "      password: " (pr-str (or password "")))
-                  (str "      dbname: " dbname)
-                  "      schema: public"
-                  "      threads: 4"
-                  ""]))
-
 (mu/defn- build!
   "Build the checkout at `project` in a scratch copy against `connection`: `dbt seed`, then `dbt run` of the project's
   own models."
   [^File project :- (ms/InstanceOfClass File)
-   connection    :- ::connection]
-  (let [scratch  (.toFile (Files/createTempDirectory "dbt-import-marts" (make-array FileAttribute 0)))
-        profiles (io/file scratch "profiles")]
-    (try
-      (fixture/copy-project project scratch)
-      (.mkdirs profiles)
-      (spit (io/file profiles "profiles.yml") (profiles-yaml connection))
-      (when-not (.isDirectory (io/file scratch "dbt_packages"))
-        (fixture/dbt! scratch profiles "deps"))
-      (fixture/dbt! scratch profiles "seed")
-      (fixture/dbt! scratch profiles "run" "--select" (str "package:" package-name))
-      (finally
-        (fixture/delete-recursively! scratch)))))
+   connection    :- ::fixture/connection]
+  (fixture/with-scratch-project project connection
+    (fn [scratch profiles-dir]
+      (fixture/dbt! scratch profiles-dir "seed")
+      (fixture/dbt! scratch profiles-dir "run" "--select" (str "package:" package-name)))))
 
 (mu/defn- field-definitions :- [:sequential ::field-definition]
   "The dataset field definitions for `table`, from the columns Postgres reports for it, in column order."
@@ -151,21 +120,14 @@
                                                           ORDER BY ordinal_position"
                                                          table]
                                                       {:builder-fn jdbc.rs/as-unqualified-maps})
-        :let [base-type (or (udt->base-type udt_name)
-                            (throw (ex-info (format "no base type for Postgres type %s of %s.%s; add it to udt->base-type"
+        :let [base-type (or (sql-jdbc.sync/database-type->base-type :postgres (keyword udt_name))
+                            (throw (ex-info (format "the Postgres driver has no base type for type %s of %s.%s"
                                                     udt_name table column_name)
                                             {:table table, :column column_name, :udt udt_name})))
               fk        (get fks column_name)]]
     (cond-> {:field-name column_name, :base-type base-type}
       (= column_name pk) (assoc :pk? true)
       fk                 (assoc :fk (keyword fk)))))
-
-(mu/defn- edn-value :- :string
-  "A row value as the dataset EDN writes it: dates as `#t` literals, everything else as it prints."
-  [v :- ::value]
-  (if (instance? LocalDate v)
-    (str "#t " (pr-str (str v)))
-    (pr-str v)))
 
 (mu/defn- rows :- [:sequential ::row]
   "The rows of `table`, ordered by `pk`, as vectors of values in the order of `field-definitions`."
@@ -197,7 +159,7 @@
   [[table-name field-definitions table-rows] :- ::table-definition]
   (str "[" (pr-str table-name) "\n"
        "  [" (str/join "\n   " (map edn-field-definition field-definitions)) "]\n"
-       "  [" (str/join "\n   " (map (fn [row] (str "[" (str/join ", " (map edn-value row)) "]")) table-rows)) "]]"))
+       "  [" (str/join "\n   " (map (fn [row] (str "[" (str/join ", " (map pr-str row)) "]")) table-rows)) "]]"))
 
 (mu/defn- edn-dataset :- :string
   [table-definitions :- [:sequential ::table-definition]]
@@ -216,12 +178,9 @@
     :- [:map {:closed true}
         [:project    {:optional true} :string]
         [:out        {:optional true} :string]
-        [:connection {:optional true} ::connection]]]
-   (let [project    (io/file project)
-         connection (with-defaults (or connection {}))]
-     (when-not (.isFile (io/file project "dbt_project.yml"))
-       (throw (ex-info (str project " is not a dbt project; pass :project") {})))
-     (build! project connection)
+        [:connection {:optional true} ::connection-overrides]]]
+   (let [connection (with-defaults (or connection {}))]
+     (build! (io/file project) connection)
      (let [ds          (jdbc/get-datasource (assoc connection :dbtype "postgresql"))
            definitions (vec (for [table tables
                                   :let  [fields (vec (field-definitions ds table))]]

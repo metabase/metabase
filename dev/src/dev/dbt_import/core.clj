@@ -7,7 +7,8 @@
    [dev.dbt-import.resolve :as resolve]
    [dev.dbt-import.schemas.resolved :as resolved]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 (mr/def ::report
   "What a run converted, with the file each metric was written to and the dimensions it could not give the metric,
@@ -16,7 +17,7 @@
    [:out-dir     :string]
    [:converted   [:sequential [:map
                                [:name                   :string]
-                               [:entity-id              ::resolved/entity-id]
+                               [:entity-id              ms/NanoIdString]
                                [:path                   :string]
                                [:unsupported-dimensions [:sequential ::resolved/unsupported-dimension]]]]]
    [:unsupported [:sequential [:map
@@ -38,7 +39,7 @@
     {:out-dir     out-dir
      :converted   (vec (for [{:keys [path metric]} files
                              :when metric]
-                         {:name                   (-> metric :metric :name)
+                         {:name                   (-> metric :ir :name)
                           :entity-id              (:entity-id metric)
                           :path                   path
                           :unsupported-dimensions (:unsupported-dimensions metric)}))

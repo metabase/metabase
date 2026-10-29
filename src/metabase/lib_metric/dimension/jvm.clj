@@ -136,7 +136,7 @@
     :group-type/main "main"
     (:group-type/join.explicit :group-type/join.implicit) "connection"))
 
-(defn- group-id
+(defn group-id
   "Id for a column group, derived from the group's identity rather than generated.
 
    The id is persisted on every dimension that belongs to the group and is one of the keys

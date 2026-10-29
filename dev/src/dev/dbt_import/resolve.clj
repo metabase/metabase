@@ -4,192 +4,79 @@
   Takes the IR (see [[dev.dbt-import.schemas.ir]]) and a config and, for every metric, builds with Lib the query that
   computes it against the [[dev.dbt-import.metadata]] provider for its database: the source table, one aggregation,
   and a filter per `where_sql_template`; plus a deterministic `entity_id`. For a simple or cumulative metric the
-  aggregation is over the measure's `expr`; for a ratio or derived metric it is arithmetic over `[:metric id]`
-  references to the cards its input metrics became, which is why metrics are resolved in dependency order (see
-  [[order-metrics]]) and each converted metric is added to the provider as a card. An input used with a filter of its
-  own is inlined as the filtered form of its aggregation (see [[filtered-input]]). Metrics that cannot be expressed as
-  a single-aggregation Metabase metric are reported in `:unsupported` with a reason instead of failing the run.
+  aggregation is over the measure's `expr` (see [[measure-aggregation]]); for a ratio or derived metric it is
+  arithmetic over `[:metric id]` references to the cards its input metrics became, which is why metrics are resolved in
+  dependency order (see [[order-metrics]]) and each converted metric is added to the provider as a card. An input used
+  with a filter of its own is inlined as the filtered form of its aggregation (see [[filtered-input]]). Metrics that
+  cannot be expressed as a single-aggregation Metabase metric are reported in `:unsupported` with a reason instead of
+  failing the run (see [[dev.dbt-import.unsupported]]).
 
-  The manifest's column list is documentation, not the warehouse schema: a project may declare no `data_type`, or
-  not document the column at all. Such a column is a Field of unknown type in the provider (see
-  [[metadata/column]]); the instance supplies the type when the serdes import binds the field, and a column that does
-  not exist fails there, with the authoritative metadata.
-
-  SQL, in a measure's `expr` or in a filter, goes through [[dev.dbt-import.sql]] in the dialect of the config's
-  `:driver`. A filter's references are resolved here: a dimension reached through the model's own primary entity (or
-  `metric_time`) is one of its columns; one reached through another entity is on the semantic model that has the
-  entity as its primary or a unique entity, and its column is reached by an implicit join through the entity's column
-  on this model (see [[join-context]]).
-
-  Each metric also gets its curated dimension set (see [[dimension-set]]): the dbt dimensions of its own semantic
-  model, the dimensions of every semantic model its foreign and unique entities join to, and the measure's
-  `agg_time_dimension` as the default, bucketed by the metric's `time_granularity` when it has one. A dimension
-  mapping targets a column, so a dimension whose `expr` is SQL is reported per metric rather than written.
+  The stage's parts: [[dev.dbt-import.resolve.columns]] binds a metric to its table and columns and makes the context
+  the rest works in, [[dev.dbt-import.resolve.filters]] turns filter templates into clauses, and
+  [[dev.dbt-import.resolve.dimensions]] builds each metric's curated dimension set. This namespace holds the
+  aggregations and puts the metrics together.
 
   Only knows the IR, not the manifest, so another semantic layer's parser would plug in unchanged."
   (:require
-   [better-cond.core :as b]
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
    [clojure.string :as str]
    [dev.dbt-import.metadata :as metadata]
+   [dev.dbt-import.resolve.columns :as resolve.columns]
+   [dev.dbt-import.resolve.dimensions :as resolve.dimensions]
+   [dev.dbt-import.resolve.filters :as resolve.filters]
    [dev.dbt-import.schemas.ir :as schemas.ir]
    [dev.dbt-import.schemas.resolved :as schemas.resolved]
    [dev.dbt-import.sql :as sql]
-   [medley.core :as m]
-   [metabase.lib-metric.schema :as lib-metric.schema]
+   [dev.dbt-import.unsupported :as unsupported]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
    [metabase.lib.schema.expression :as lib.schema.expression]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.lib.schema.ref :as lib.schema.ref]
-   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.sql-tools.core :as sql-tools]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr])
-  (:import
-   (clojure.lang ExceptionInfo)))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
-(mu/defn entity-id :- ::schemas.resolved/entity-id
+(mu/defn entity-id :- ms/NanoIdString
   "A deterministic `entity_id` for the string `s`. Re-running the converter on the same input produces the same IDs,
   so a re-import updates the existing metrics instead of duplicating them."
   [s :- :string]
   ;; generate-nano-id seeds a RNG from a hex string parsed as a long, so hand it 15 hex chars (60 bits) of the hash
   (u/generate-nano-id (subs (codecs/bytes->hex (buddy-hash/sha256 s)) 0 15)))
 
-(mu/defn- metric-entity-id :- ::schemas.resolved/entity-id
+(mu/defn- metric-entity-id :- ms/NanoIdString
   [{:keys [unique-id]} :- ::schemas.ir/metric]
   (entity-id (str "dbt-import/metric/" unique-id)))
 
-(mu/defn- collection-entity-id :- ::schemas.resolved/entity-id
+(mu/defn- collection-entity-id :- ms/NanoIdString
   [project :- [:maybe :string]]
   (entity-id (str "dbt-import/collection/" project)))
-
-(def ^:private identifier-re
-  "A bare column name, optionally table-qualified. Each part is either quoted (`\"Sales\"`, `` `sales` ``) or a run of
-  letters, digits and underscores in any script that is not all digits (so `1.0` is not table `1`, column `0`); a
-  leading digit is legal in a warehouse when quoted, and dbt projects write it unquoted in `expr`. Surrounding
-  whitespace, including the newline a YAML block scalar adds, is ignored."
-  (let [bare "(?=[\\p{L}\\p{N}_]*[\\p{L}_])[\\p{L}\\p{N}_]+"]
-    (re-pattern (str "(?s)^\\s*"
-                     "(?:(?:\"[^\"]+\"|`[^`]+`|" bare ")\\s*\\.\\s*)?"
-                     "(?:\"([^\"]+)\"|`([^`]+)`|(" bare "))"
-                     "\\s*$"))))
-
-(def ^:private integer-literal-re #"(?s)^\s*\d+\s*$")
-(def ^:private keyword-literal-re #"(?is)^\s*(?:true|false|null)\s*$")
-(def ^:private wildcard-re #"(?s)^\s*\*\s*$")
-
-(mr/def ::parsed-expr
-  [:map
-   [:kind  [:enum :column :literal :wildcard :sql]]
-   [:name  {:optional true} :string]
-   [:value {:optional true} :string]])
-
-(mu/defn- parse-expr :- ::parsed-expr
-  "What an IR `expr` is: a bare column name (`:name`, unquoted and unqualified), a literal (`:value`, as written, so
-  the report can quote it), the wildcard `*`, or anything else, which is SQL."
-  [expr :- :string]
-  (cond
-    (re-matches wildcard-re expr)
-    {:kind :wildcard}
-
-    (or (re-matches integer-literal-re expr)
-        (re-matches keyword-literal-re expr))
-    {:kind :literal, :value (str/trim expr)}
-
-    :else
-    (if-let [[_ quoted backticked bare] (re-matches identifier-re expr)]
-      {:kind :column, :name (or quoted backticked bare)}
-      {:kind :sql})))
-
-(mu/defn- find-column :- [:maybe ::schemas.ir/column]
-  "`columns` entry named `column-name`, exactly or ignoring case."
-  [columns     :- [:map-of :string ::schemas.ir/column]
-   column-name :- :string]
-  (or (get columns column-name)
-      (m/find-first #(= (u/lower-case-en (:name %)) (u/lower-case-en column-name)) (vals columns))))
-
-(mr/def ::context
-  "What resolving one metric's SQL needs: the query being built, the semantic model whose columns bare identifiers
-  name, the metric, the SQL dialect, and the callback that turns one of that model's column names into a Lib ref.
-  `config`, `provider` and `models` (every semantic model, by name) are what [[join-context]] needs to make the same
-  kind of context for a semantic model a foreign entity joins to."
-  [:map
-   [:config         ::schemas.resolved/config]
-   [:provider       ::lib.schema.metadata/metadata-provider]
-   [:models         [:map-of :string ::schemas.ir/semantic-model]]
-   [:query          ::lib.schema/query]
-   [:model          ::schemas.ir/semantic-model]
-   [:metric         ::schemas.ir/metric]
-   [:dialect        ::sql/dialect]
-   [:resolve-column ::sql/resolve-column]])
-
-(mu/defn- declared-base-type :- [:maybe :keyword]
-  "The base type the project's declared `data_type` for `column-name` maps to, nil when it declares none. Throws
-  [[sql/unsupported]] when it declares one the driver does not know."
-  [config      :- ::schemas.resolved/config
-   columns     :- [:map-of :string ::schemas.ir/column]
-   column-name :- :string]
-  (let [column    (find-column columns column-name)
-        data-type (some-> (:data-type column) str/trim not-empty)]
-    (when data-type
-      (or (metadata/base-type (:driver config) (:base-types config) data-type)
-          (sql/unsupported "no base type known for column %s of type %s; add it to :base-types"
-                           (pr-str (:name column)) (pr-str data-type))))))
-
-(mu/defn- column-ref :- ::lib.schema.ref/ref
-  "Lib ref for `column-name` on `table-id`, by its documented spelling when the project documents it."
-  [config      :- ::schemas.resolved/config
-   provider    :- ::lib.schema.metadata/metadata-provider
-   table-id    :- ::lib.schema.id/table
-   columns     :- [:map-of :string ::schemas.ir/column]
-   column-name :- :string]
-  (declared-base-type config columns column-name)
-  (lib/ref (metadata/column provider table-id (or (:name (find-column columns column-name)) column-name))))
-
-(defn- known-type?
-  "Is `base-type` a type, rather than the `:type/*` of a column the manifest does not type?"
-  [base-type]
-  (and base-type (not= base-type :type/*)))
-
-(mu/defn- column-or-sql :- ::sql/value
-  "The Lib expression for a dimension's or entity's `expr`: a bare column name, or a SQL expression."
-  [{:keys [dialect resolve-column]} :- ::context
-   expr                             :- :string]
-  (let [{:keys [kind], column-name :name} (parse-expr expr)]
-    (case kind
-      :column (resolve-column column-name)
-      :sql    (sql/expression->mbql dialect expr resolve-column)
-      (sql/unsupported "%s is neither a column nor a SQL expression" (pr-str expr)))))
 
 (mu/defn- measure-expression :- [:maybe ::sql/value]
   "The Lib expression the measure aggregates: nil for a row count (`1`, or `*` under `count`); for `sum_boolean` the
   condition to count rows by, a bare boolean column counting where it is true; otherwise a column or value
   expression. A measure over any other literal has no Metabase equivalent."
-  [{:keys [query dialect resolve-column]} :- ::context
+  [{:keys [query dialect resolve-column]} :- ::resolve.columns/context
    agg                                    :- :keyword
    expr                                   :- :string]
-  (let [{:keys [kind], column-name :name, literal :value} (parse-expr expr)
+  (let [{:keys [kind], column-name :name, literal :value} (resolve.columns/parse-expr expr)
         literal-unsupported (fn [literal]
-                              (sql/unsupported "%s over the literal %s has no Metabase equivalent" (name agg) literal))]
+                              (unsupported/throw! "%s over the literal %s has no Metabase equivalent" (name agg) literal))]
     (case kind
       ;; `count(*)`, like `count(1)`, is a row count
       :wildcard (when-not (= agg :count)
-                  (sql/unsupported "%s over * has no Metabase equivalent" (name agg)))
+                  (unsupported/throw! "%s over * has no Metabase equivalent" (name agg)))
       :literal  (when-not (and (= literal "1") (#{:sum :count} agg))
                   (literal-unsupported literal))
       :column   (let [column (resolve-column column-name)]
                   (if (= agg :sum_boolean)
                     (let [base-type (lib/type-of query column)]
                       ;; a column the project types as anything but boolean cannot be summed as one; an untyped one is trusted
-                      (when (and (known-type? base-type) (not (isa? base-type :type/Boolean)))
-                        (sql/unsupported "sum_boolean over the non-boolean column %s" (pr-str column-name)))
+                      (when (and (resolve.columns/known-type? base-type) (not (isa? base-type :type/Boolean)))
+                        (unsupported/throw! "sum_boolean over the non-boolean column %s" (pr-str column-name)))
                       (lib/= column true))
                     column))
       :sql      (let [value (if (= agg :sum_boolean)
@@ -199,579 +86,159 @@
                     value
                     (literal-unsupported (pr-str value)))))))
 
-(mu/defn- aggregation :- ::lib.schema.aggregation/aggregation
-  "The Lib aggregation clause for the metric over `expression`, nil being a row count. A cumulative metric runs over
+(mr/def ::aggregation
+  "An aggregation in the form the Lib clauses are built from, see [[canonical-aggregation]]. `agg` is a dbt
+  aggregation type, or one of the converter's own: `:row-count` for a `count` or `sum` over no expression,
+  `:count-non-null` for a `count` over a column, which SQL skips nulls for, and `:count-where` for a `sum_boolean`,
+  whose expression is the condition to count rows by. `percentile` is set for a `:percentile`."
+  [:map {:closed true}
+   [:agg        [:enum :row-count :count-non-null :count-where
+                 :sum :average :min :max :median :count_distinct :percentile]]
+   [:expression [:maybe ::sql/value]]
+   [:percentile {:optional true} :double]])
+
+(mu/defn- canonical-aggregation :- ::aggregation
+  "The aggregation `agg` over `expression` (see [[measure-expression]]) in the form the Lib clauses are built from, so
+  that the special cases are decided once and [[aggregation-clause]] and [[filtered-aggregation-clause]] are each a
+  flat `case`."
+  [{:keys [agg agg-params]} :- ::schemas.ir/aggregation
+   expression               :- [:maybe ::sql/value]]
+  (cond
+    ;; measure-expression gives no expression for a row count only
+    (nil? expression)    {:agg :row-count, :expression nil}
+    (= agg :count)       {:agg :count-non-null, :expression expression}
+    (= agg :sum_boolean) {:agg :count-where, :expression expression}
+    ;; dbt takes the percentile as a fraction, which is what Lib takes; the parse stage checked the range
+    (= agg :percentile)  {:agg :percentile, :expression expression, :percentile (double (:percentile agg-params))}
+    :else                {:agg agg, :expression expression}))
+
+(mu/defn- measure-aggregation :- ::aggregation
+  "The aggregation of a simple metric, or of an input to a composed one, over its measure's `expr`, each failure
+  saying which `expr`."
+  [context                     :- ::resolve.columns/context
+   {:keys [agg expr] :as aggregation} :- ::schemas.ir/aggregation]
+  (canonical-aggregation aggregation
+                         (unsupported/with-reason-prefix (str "expr " (pr-str expr))
+                           #(measure-expression context agg expr))))
+
+(mu/defn- aggregation-clause :- ::lib.schema.aggregation/aggregation
+  "The Lib aggregation clause for `aggregation` (see [[canonical-aggregation]]). A cumulative metric runs over
   everything up to each row, which Metabase has for a sum and a row count only; a running count of a column, which
   skips nulls, is the running sum of 1 where the column is not null."
-  [{:keys [type agg agg-params fill-nulls-with]} :- ::schemas.ir/metric.simple
-   expression                                    :- [:maybe ::sql/value]]
-  (let [f      expression
-        clause (if (= type :cumulative)
-                 (case agg
-                   ;; a sum of the literal 1 is a row count
-                   :sum   (if f (lib/cum-sum f) (lib/cum-count))
-                   :count (if f
-                            (lib/cum-sum (lib/case [[(lib/not-null f) 1]] 0))
-                            (lib/cum-count))
-                   (sql/unsupported "a running %s has no Metabase equivalent: only a running sum or row count does" (name agg)))
-                 (case agg
-                   ;; SQL COUNT(col) skips nulls, COUNT(1) does not
-                   :count          (if f (lib/count-where (lib/not-null f)) (lib/count))
-                   ;; a sum of the literal 1 is a row count
-                   :sum            (if f (lib/sum f) (lib/count))
-                   :average        (lib/avg f)
-                   :min            (lib/min f)
-                   :max            (lib/max f)
-                   :median         (lib/median f)
-                   :count_distinct (lib/distinct f)
-                   ;; the expression is already the condition to count rows by
-                   :sum_boolean    (lib/count-where f)
-                   ;; dbt takes the percentile as a fraction, which is what Lib takes; resolve-simple checks the range
-                   :percentile     (lib/percentile f (double (:percentile agg-params)))))]
-    (if (some? fill-nulls-with)
-      (lib/coalesce clause fill-nulls-with)
-      clause)))
+  [metric-type                         :- [:enum :simple :cumulative]
+   {:keys [agg expression percentile]} :- ::aggregation]
+  (if (= metric-type :cumulative)
+    (case agg
+      :row-count      (lib/cum-count)
+      :count-non-null (lib/cum-sum (lib/case [[(lib/not-null expression) 1]] 0))
+      :sum            (lib/cum-sum expression)
+      (unsupported/throw! "a running %s has no Metabase equivalent: only a running sum or row count does"
+                          (if (= agg :count-where) "sum_boolean" (name agg))))
+    (case agg
+      :row-count      (lib/count)
+      :count-non-null (lib/count-where (lib/not-null expression))
+      :count-where    (lib/count-where expression)
+      :sum            (lib/sum expression)
+      :average        (lib/avg expression)
+      :min            (lib/min expression)
+      :max            (lib/max expression)
+      :median         (lib/median expression)
+      :count_distinct (lib/distinct expression)
+      :percentile     (lib/percentile expression percentile))))
 
-(mu/defn- entity-column :- :string
-  "The column `entity`'s expr names. An implicit join needs a column on each side, so an entity whose expr is SQL is
-  [[sql/unsupported]]."
-  [{entity-name :name, :keys [expr]} :- ::schemas.ir/entity]
-  (let [{:keys [kind], column-name :name} (parse-expr expr)]
-    (if (= kind :column)
-      column-name
-      (sql/unsupported "entity %s is the SQL expression %s, not a column; an implicit join needs a column"
-                       (pr-str entity-name) (pr-str expr)))))
+(mu/defn- filtered-aggregation-clause :- ::lib.schema.aggregation/aggregation
+  "The Lib clause for `aggregation` over the rows `condition` holds for: `sum-where`, `count-where` or
+  `distinct-where`. Only a sum, a count, a distinct count and a `sum_boolean` have a filtered form."
+  [{:keys [agg expression]} :- ::aggregation
+   condition                :- ::lib.schema.expression/boolean]
+  (case agg
+    :row-count      (lib/count-where condition)
+    :count-non-null (lib/count-where (lib/and condition (lib/not-null expression)))
+    :count-where    (lib/count-where (lib/and condition expression))
+    :sum            (lib/sum-where expression condition)
+    :count_distinct (lib/distinct-where expression condition)
+    (unsupported/throw! "a filtered %s has no Metabase equivalent: only sum, count, count_distinct and sum_boolean have a filtered form"
+                        (name agg))))
 
-(mu/defn- keyed-by? :- :boolean
-  "Whether a reference through `entity-name` can join to `model`: the entity is the model's primary entity, or one of
-  its `unique` entities. Either identifies one row of the model, which is what a join from another model needs; a
-  `foreign` or `natural` entity does not."
-  [{:keys [primary-entity entities]} :- ::schemas.ir/semantic-model
-   entity-name                       :- :string]
-  (boolean (or (= entity-name primary-entity)
-               (m/find-first #(and (= entity-name (:name %)) (= :unique (:type %))) entities))))
-
-(mu/defn- join-targets :- [:sequential ::schemas.ir/semantic-model]
-  "The semantic models a reference through `entity-name` from `context`'s model can join to: the other models that
-  are [[keyed-by?]] it, by name. An entity joins to the one such model."
-  [{:keys [models model]} :- ::context
-   entity-name            :- :string]
-  (->> (vals models)
-       (filter #(and (not= (:name %) (:name model)) (keyed-by? % entity-name)))
-       (sort-by :name)))
-
-(mu/defn- join-context :- ::context
-  "A context for the semantic model the `entity` of `context`'s model joins to (see [[join-targets]]): bare column
-  names resolve to that model's columns, reached through the entity's column on this model. Metabase spells that
-  `:source-field` on the ref and joins implicitly, so the instance's metadata has to know the foreign key for the query
-  to run. [[sql/unsupported]] when there is no such model, more than one that the config's `:entity-models` does not
-  choose between, the join column on either side is SQL, or the model is in another Metabase database."
-  [{:keys [config provider resolve-column] :as context} :- ::context
-   {entity-name :name, :as entity}                      :- ::schemas.ir/entity]
-  (b/cond
-    :let [candidates (join-targets context entity-name)
-          chosen     (get-in config [:entity-models entity-name])]
-
-    (empty? candidates)
-    (sql/unsupported "no semantic model has entity %s as its primary or a unique entity" (pr-str entity-name))
-
-    (and (next candidates) (not chosen))
-    (sql/unsupported (str "more than one semantic model has entity %s as its primary or a unique entity: %s;"
-                          " name the one to join to in :entity-models")
-                     (pr-str entity-name) (str/join ", " (map (comp pr-str :name) candidates)))
-
-    (and (next candidates) (not (some #(= chosen (:name %)) candidates)))
-    (sql/unsupported (str ":entity-models names semantic model %s for entity %s, but the models with it as their"
-                          " primary or a unique entity are %s")
-                     (pr-str chosen) (pr-str entity-name) (str/join ", " (map (comp pr-str :name) candidates)))
-
-    :let [target        (if (next candidates)
-                          (m/find-first #(= chosen (:name %)) candidates)
-                          (first candidates))
-          target-entity (m/find-first #(= entity-name (:name %)) (:entities target))]
-
-    (not target-entity)
-    (sql/unsupported "semantic model %s names %s as its primary_entity but has no entity of that name to join on"
-                     (pr-str (:name target)) (pr-str entity-name))
-
-    :let [{:keys [relation]} target
-          database           (get-in config [:databases (:database relation)])]
-
-    (not= database (metadata/database-name provider))
-    (sql/unsupported "semantic model %s is in Metabase database %s, not %s; a join across databases is not supported"
-                     (pr-str (:name target)) (pr-str database) (pr-str (metadata/database-name provider)))
-
-    :let [fk-ref (resolve-column (entity-column entity))
-          table  (metadata/table provider (:schema relation) (:table relation))]
-
-    :do (entity-column target-entity)
-
-    :else
-    (assoc context
-           :model          target
-           :resolve-column (fn [column-name]
-                             (-> (column-ref config provider (:id table) (:columns target) column-name)
-                                 (lib/update-options assoc :source-field (nth fk-ref 2)))))))
-
-(mr/def ::dimension-reference
-  "A dbt dimension and the context whose columns its expr is written against."
-  [:map
-   [:dimension ::schemas.ir/dimension]
-   [:context   ::context]])
-
-(mu/defn- own-dimension :- ::dimension-reference
-  "The dimension named `dimension-name` on `context`'s model."
-  [{:keys [model] :as context} :- ::context
-   dimension-name              :- :string]
-  (if-let [dimension (m/find-first #(= dimension-name (:name %)) (:dimensions model))]
-    {:dimension dimension, :context context}
-    (sql/unsupported "dimension %s is not on semantic model %s" (pr-str dimension-name) (pr-str (:name model)))))
-
-(mu/defn- dimension-reference :- ::dimension-reference
-  "The dimension `dimension-ref` names and the context its expr is written against. dbt writes a dimension reference
-  as `<entity>__<dimension>`: through the model's primary entity it is one of the model's own dimensions, through a
-  foreign entity it is on the semantic model that entity is primary for (see [[join-context]]). `metric_time` is the
-  measure's `agg_time_dimension`."
-  [{:keys [model metric] :as context} :- ::context
-   dimension-ref                      :- :string]
-  (b/cond
-    (= dimension-ref "metric_time")
-    (if-let [dimension-name (:agg-time-dimension metric)]
-      (own-dimension context dimension-name)
-      (sql/unsupported "metric_time: the measure has no agg_time_dimension"))
-
-    :let [[prefix dimension-name & more] (str/split dimension-ref #"__")]
-
-    ;; no entity prefix at all
-    (nil? dimension-name)
-    (own-dimension context prefix)
-
-    (seq more)
-    (sql/unsupported "%s reaches a dimension through more than one entity, which is not supported" (pr-str dimension-ref))
-
-    (= prefix (:primary-entity model))
-    (own-dimension context dimension-name)
-
-    :let [entity (m/find-first #(= prefix (:name %)) (:entities model))]
-
-    entity
-    (own-dimension (join-context context entity) dimension-name)
-
-    :else
-    (sql/unsupported "entity %s is not on semantic model %s" (pr-str prefix) (pr-str (:name model)))))
-
-(def ^:private grain-aliases
-  "dbt granularities read as a Metabase unit of another name. A fiscal quarter is a calendar quarter until custom
-  calendars are supported."
-  {"fiscal_quarter" "quarter"})
-
-(mu/defn- grain->unit :- [:maybe ::lib.schema.temporal-bucketing/unit.date-time.truncate]
-  "The Metabase truncation unit the dbt granularity `grain` names, for the dimension `dimension-name`; nil when
-  Metabase has no unit of that name (`nanosecond`). A dbt granularity truncates, so it is never an extraction unit
-  like `day-of-week`."
-  [grain          :- :string
-   dimension-name :- :string]
-  (let [unit-name (get grain-aliases grain grain)
-        unit      (keyword unit-name)]
-    (when (mr/validate ::lib.schema.temporal-bucketing/unit.date-time.truncate unit)
-      (when-not (= unit-name grain)
-        (log/infof "Reading the %s granularity of %s as %s" grain dimension-name unit-name))
-      ;; dbt weeks are ISO weeks; a Metabase week starts on the day the instance's start-of-week setting names
-      (when (= unit :week)
-        (log/warnf (str "The week granularity of %s is read as a Metabase week, which starts on the day the instance's"
-                        " start-of-week setting names; dbt weeks start on Monday")
-                   dimension-name))
-      unit)))
-
-(mu/defn- available-unit :- [:maybe ::lib.schema.temporal-bucketing/unit]
-  "The Metabase unit the dbt granularity `grain` names (see [[grain->unit]]), when `column`, the ref for the dimension
-  `dimension-name`, can be bucketed by it; nil otherwise. For a column of known type Lib says which units it supports
-  (a date has no `hour`). A column the project does not type is a Field of unknown type, which Lib cannot bucket at
-  all; dbt declares the dimension `type: time`, and that is trusted: the unit applies as written, and the instance's
-  own metadata is the check, when the import binds the field."
-  [{:keys [query]} :- ::context
-   column          :- ::lib.schema.ref/ref
-   grain           :- :string
-   dimension-name  :- :string]
-  (when-let [unit (grain->unit grain dimension-name)]
-    (when (or (not (known-type? (lib/type-of query column)))
-              (m/find-first #(= unit (:unit %)) (lib/available-temporal-buckets query column)))
-      unit)))
-
-(mu/defn- time-dimension-clause :- ::lib.schema.ref/ref
-  "`column`, the ref for `dimension`, bucketed by `grain`, a dbt granularity name; nil means the dimension's own. See
-  [[available-unit]] for which grains a column takes."
-  [context                                  :- ::context
-   {:keys [granularity expr] :as dimension} :- ::schemas.ir/dimension
-   column                                   :- ::sql/value
-   grain                                    :- [:maybe :string]]
-  (b/cond
-    (not= :time (:type dimension))
-    (sql/unsupported "TimeDimension(%s): %s is not a time dimension" (pr-str (:name dimension)) (pr-str (:name dimension)))
-
-    (not= :column (:kind (parse-expr expr)))
-    (sql/unsupported "cannot bucket the SQL expression %s by time" (pr-str expr))
-
-    :let [grain (or grain (some-> granularity name))
-          unit  (available-unit context column grain (:name dimension))]
-
-    (not unit)
-    (sql/unsupported "granularity %s has no Metabase temporal unit for %s" (pr-str grain) (pr-str (:name dimension)))
-
-    :else
-    (lib/with-temporal-bucket column unit)))
-
-(mu/defn- reference-clause :- ::sql/value
-  "The Lib expression a filter template's reference stands for."
-  [{:keys [model] :as context}                           :- ::context
-   {:keys [kind grain arguments methods], ref-name :name} :- ::sql/reference]
-  ;; `entity_path=[...]` names the join path to a dimension; the converter reaches one through the entity in the
-  ;; reference itself and cannot follow another path, so the argument is reported rather than dropped. A `Metric`
-  ;; reference is reported whatever its arguments.
-  (when (and arguments (not= kind :metric))
-    (sql/unsupported "%s has the argument %s, which is not supported: only the name and, for TimeDimension, a grain"
-                     (pr-str ref-name) arguments))
-  ;; `.grain('month')` is read (see [[sql/render-filter]]); `.date_part('month')` and anything else chained on is not
-  (when (and methods (not= kind :metric))
-    (sql/unsupported "%s has the method call %s, which is not supported: only .grain('<granularity>') is"
-                     (pr-str ref-name) methods))
-  (case kind
-    :metric
-    (sql/unsupported "Metric(%s): filters on other metrics are not supported yet (QRES-5)" (pr-str ref-name))
-
-    :entity
-    (if-let [entity (m/find-first #(= ref-name (:name %)) (:entities model))]
-      (do
-        (when grain
-          (sql/unsupported "Entity(%s) has the grain %s, but an entity is a key, not a time dimension"
-                           (pr-str ref-name) (pr-str grain)))
-        (column-or-sql context (:expr entity)))
-      (sql/unsupported "entity %s is not on semantic model %s" (pr-str ref-name) (pr-str (:name model))))
-
-    (:dimension :time-dimension)
-    (let [{:keys [dimension context]} (dimension-reference context ref-name)
-          column                      (column-or-sql context (:expr dimension))]
-      ;; `Dimension('x').grain('month')` means what `TimeDimension('x', 'month')` does
-      (if (or (= kind :time-dimension) grain)
-        (time-dimension-clause context dimension column grain)
-        column))))
-
-(mu/defn- dimension-id :- ::lib-metric.schema/dimension-id
-  "The id of the curated dimension `reference` (`<entity>__<dimension>`, or a bare name for the model's own) of the
-  metric `metric-unique-id`. Derived, not generated, so a re-run writes the same ids and a re-import updates the
-  dimensions in place; scoped to the metric, as Metabase scopes the ids it computes (see
-  `metabase.lib-metric.dimension.jvm/dimension-id`)."
-  [metric-unique-id :- :string
-   reference        :- :string]
-  (u/name-uuid (str "dbt-import/dimension/" metric-unique-id "/" reference)))
-
-(mu/defn- dimension-group :- ::lib.schema.metadata/dimension-group
-  "The group of the dimensions of `model`: the metric's own table (`main`) or one joined to (`connection`), named
-  after the model's label, or its table when it has none. The id is derived the way
-  `metabase.lib-metric.dimension.jvm/group-id` derives it, so these are the groups the instance computes."
-  [group-type               :- [:enum "main" "connection"]
-   {:keys [label relation]} :- ::schemas.ir/semantic-model]
-  (let [display-name (or label (:table relation))]
-    {:id           (u/name-uuid (str group-type "/" display-name))
-     :type         group-type
-     :display-name display-name}))
-
-(mu/defn- default-temporal-unit :- [:maybe ::lib.schema.temporal-bucketing/unit]
-  "The unit a time dimension's `granularity` names, when Lib can bucket `column` by it; nil otherwise."
-  [context                                     :- ::context
-   {:keys [granularity], dimension-name :name} :- ::schemas.ir/dimension
-   column                                      :- ::lib.schema.ref/ref]
-  (when granularity
-    (available-unit context column (name granularity) dimension-name)))
-
-(mr/def ::dimension-pair
-  "A curated dimension and the mapping that binds it to a column, with the dbt `reference` they were made from
-  (`<entity>__<dimension>`, or a bare name for the metric's own model), see [[with-unique-names]]."
-  [:map
-   [:dimension ::lib-metric.schema/persisted-dimension]
-   [:mapping   ::lib-metric.schema/dimension-mapping]
-   [:reference :string]])
-
-(mu/defn- dimension-pair :- ::dimension-pair
-  "The curated dimension and mapping for the dbt `dimension` of `context`'s model, in `group`. `reference` is the
-  dbt spelling of the dimension from the metric's model, which seeds the id. A dimension mapping targets a column, so
-  a dimension whose expr is anything else is [[sql/unsupported]]."
-  [{:keys [query provider metric resolve-column] :as context}                      :- ::context
-   group                                                                           :- ::lib.schema.metadata/dimension-group
-   reference                                                                       :- :string
-   {dimension-name :name, dimension-type :type, :keys [expr label], :as dimension} :- ::schemas.ir/dimension]
-  (let [{:keys [kind], column-name :name} (parse-expr expr)]
-    (case kind
-      :sql    (sql/unsupported "dimension %s is the SQL expression %s; a dimension mapping targets a column, not SQL"
-                               (pr-str dimension-name) (pr-str expr))
-      :column nil
-      (sql/unsupported "dimension %s is %s, not a column" (pr-str dimension-name) (pr-str expr)))
-    (let [column-ref (resolve-column column-name)
-          field-id   (nth column-ref 2)
-          field      (lib.metadata/field provider field-id)
-          base-type  (lib/type-of query column-ref)
-          unit       (when (= dimension-type :time)
-                       (default-temporal-unit context dimension column-ref))
-          id         (dimension-id (:unique-id metric) reference)]
-      {:dimension (cond-> {:id           id
-                           :name         dimension-name
-                           :display-name (or label dimension-name)
-                           :sources      [{:type :field, :field-id field-id}]
-                           :group        group}
-                    (known-type? base-type) (assoc :effective-type base-type)
-                    unit                    (assoc :default-temporal-unit unit))
-       :mapping   {:type         :table
-                   :table-id     (:table-id field)
-                   :dimension-id id
-                   :target       column-ref}
-       :reference reference})))
-
-(mr/def ::dimension-result
-  "A [[dimension-pair]], or why a dbt dimension could not become one."
-  [:or ::dimension-pair ::schemas.resolved/unsupported-dimension])
-
-(mu/defn- model-dimensions :- [:sequential ::dimension-result]
-  "A [[dimension-pair]] for every dimension of `context`'s model, or the reason it cannot be one. `entity-name`
-  prefixes the dimensions' references; nil for the metric's own model."
-  [{:keys [model] :as context} :- ::context
-   group                       :- ::lib.schema.metadata/dimension-group
-   entity-name                 :- [:maybe :string]]
-  (vec (for [{dimension-name :name, :as dimension} (:dimensions model)
-             :let [reference (if entity-name (str entity-name "__" dimension-name) dimension-name)]]
-         (try
-           (dimension-pair context group reference dimension)
-           (catch ExceptionInfo e
-             (if (sql/unsupported? e)
-               {:name dimension-name, :reason (ex-message e)}
-               (throw e)))))))
-
-(mu/defn- joined-dimensions :- [:sequential ::dimension-result]
-  "The dimensions reached through the foreign or unique `entity` of `context`'s model, see [[join-context]]. When the
-  join itself cannot be made, every dimension of the models the entity would join to is reported with the reason, so
-  a dimension the project declares is never silently dropped; an entity no other model is keyed by has no dimensions
-  behind it, and is just a key."
-  [context                         :- ::context
-   {entity-name :name, :as entity} :- ::schemas.ir/entity]
-  (try
-    (let [{:keys [model] :as join} (join-context context entity)]
-      (model-dimensions join (dimension-group "connection" model) entity-name))
-    (catch ExceptionInfo e
-      (if (sql/unsupported? e)
-        (vec (for [target    (join-targets context entity-name)
-                   dimension (:dimensions target)]
-               {:name (:name dimension), :reason (ex-message e)}))
-        (throw e)))))
-
-(mr/def ::dimension-set
-  "A metric's curated dimensions, their mappings, and the dbt dimensions that could not become one."
-  [:map
-   [:dimensions             ::lib-metric.schema/persisted-dimensions]
-   [:dimension-mappings     [:sequential ::lib-metric.schema/dimension-mapping]]
-   [:unsupported-dimensions [:sequential ::schemas.resolved/unsupported-dimension]]])
-
-(mu/defn- metric-time-unit :- ::lib.schema.temporal-bucketing/unit
-  "The default temporal unit of the default dimension `column` of a metric with `time-granularity`, dbt's coarsest
-  grain for querying the metric. Metabase cannot hold a breakout to a grain, so the grain becomes the default unit of
-  the default dimension instead, which is what a user breaking the metric out by time gets first. A grain Lib cannot
-  bucket `column` by, such as a custom calendar's, is [[sql/unsupported]]."
-  [context          :- ::context
-   time-granularity :- :string
-   dimension-name   :- :string
-   column           :- ::lib.schema.ref/ref]
-  (or (available-unit context column time-granularity dimension-name)
-      (sql/unsupported "time_granularity %s has no Metabase temporal unit for %s"
-                       (pr-str time-granularity) (pr-str dimension-name))))
-
-(mu/defn- with-default-dimension :- [:sequential ::dimension-result]
-  "`results` with the metric's `agg_time_dimension`, one of its own model's dimensions, marked as the default, and
-  bucketed by the metric's `time_granularity` when it has one (see [[metric-time-unit]]). An `agg_time_dimension`
-  that is not a dimension of the model is reported; one that is but could not be converted already is."
-  [{:keys [model metric] :as context} :- ::context
-   results                            :- [:sequential ::dimension-result]]
-  (b/cond
-    :let [{:keys [agg-time-dimension time-granularity]} metric]
-
-    (nil? agg-time-dimension)
-    results
-
-    (not (m/find-first #(= agg-time-dimension (:name %)) (:dimensions model)))
-    (conj results {:name   agg-time-dimension
-                   :reason (format "agg_time_dimension %s is not a dimension of semantic model %s"
-                                   (pr-str agg-time-dimension) (pr-str (:name model)))})
-
-    :else
-    (mapv (fn [{:keys [dimension mapping] :as result}]
-            (if (and dimension
-                     (= agg-time-dimension (:name dimension))
-                     (= "main" (-> dimension :group :type)))
-              (let [unit (when time-granularity
-                           (metric-time-unit context time-granularity agg-time-dimension (:target mapping)))]
-                (cond-> (assoc-in result [:dimension :default] true)
-                  unit (assoc-in [:dimension :default-temporal-unit] unit)))
-              result))
-          results)))
-
-(mu/defn- with-unique-names :- [:sequential ::dimension-result]
-  "`results` with no two curated dimensions of the same name: a joined dimension named like another dimension of the
-  set takes its dbt reference, `<entity>__<dimension>`, as its name, which is how dbt itself tells the two apart. The
-  metric's own dimensions keep their names. Display names are left alone: two dimensions may share one, as two
-  columns of the same name on the metric's table and a joined table do in Metabase, and their groups tell them apart."
-  [results :- [:sequential ::dimension-result]]
-  (let [shared? (->> (keep (comp :name :dimension) results)
-                     frequencies
-                     (m/filter-vals #(> % 1))
-                     keys
-                     set)]
-    (mapv (fn [{:keys [dimension reference] :as result}]
-            (if (and dimension
-                     (shared? (:name dimension))
-                     (= "connection" (-> dimension :group :type)))
-              (assoc-in result [:dimension :name] reference)
-              result))
-          results)))
-
-(mu/defn- dimension-set :- ::dimension-set
-  "The curated dimension set of the metric `context` is for: its own model's dimensions first, then those reached
-  through each of its foreign and unique entities, in the order the model declares them. A unique entity is a key
-  into another model keyed by it just as a foreign entity is; the model's primary entity names its own dimensions. No
-  two dimensions share a name (see [[with-unique-names]])."
-  [{:keys [model] :as context} :- ::context]
-  (let [results (->> (into (model-dimensions context (dimension-group "main" model) nil)
-                           (comp (filter #(#{:foreign :unique} (:type %)))
-                                 (mapcat #(joined-dimensions context %)))
-                           (:entities model))
-                     (with-default-dimension context)
-                     with-unique-names)
-        pairs   (filter :mapping results)]
-    {:dimensions             (mapv :dimension pairs)
-     :dimension-mappings     (mapv :mapping pairs)
-     :unsupported-dimensions (filterv :reason results)}))
-
-(mu/defn- filter-clause :- ::lib.schema.expression/boolean
-  "The Lib filter clause for one `where_sql_template`."
-  [{:keys [dialect resolve-column] :as context} :- ::context
-   template                                     :- :string]
-  (let [{:keys [sql references]} (sql/render-filter template)]
-    ;; a template that still holds Jinja the renderer did not recognise, `{{ var('x') }}` or a reference written
-    ;; in a way it does not read, is better reported as that than as referring to nothing, which the parse does
-    (when (and (empty? references) (not (sql/jinja? sql)))
-      (sql/unsupported "the filter references no dimension or entity"))
-    (sql/condition->mbql dialect sql (fn [identifier]
-                                       (if-let [reference (get references identifier)]
-                                         (reference-clause context reference)
-                                         (resolve-column identifier))))))
-
-(defn- with-context
-  "Run `thunk`; an [[sql/unsupported]] it throws is rethrown with `context` in front of its message."
-  [context thunk]
-  (try
-    (thunk)
-    (catch ExceptionInfo e
-      (if (sql/unsupported? e)
-        (sql/unsupported "%s: %s" context (ex-message e))
-        (throw e)))))
-
-(mu/defn- metric-context :- ::context
-  "The context for resolving `metric` against `model`: the provider for the model's database, a query over its table
-  and a callback for its columns. [[sql/unsupported]] when the config maps the model's warehouse database to no
-  Metabase database."
-  [config                               :- ::schemas.resolved/config
-   providers                            :- [:map-of :string ::lib.schema.metadata/metadata-provider]
-   semantic-models                      :- [:map-of :string ::schemas.ir/semantic-model]
-   {:keys [relation columns] :as model} :- ::schemas.ir/semantic-model
-   metric                               :- ::schemas.ir/metric]
-  (let [database (get-in config [:databases (:database relation)])]
-    (when-not database
-      (sql/unsupported "no Metabase database configured for warehouse database %s; add it to :databases"
-                       (pr-str (:database relation))))
-    (let [provider (get providers database)
-          table    (metadata/table provider (:schema relation) (:table relation))]
-      {:config         config
-       :provider       provider
-       :models         semantic-models
-       :query          (lib/query provider table)
-       :model          model
-       :metric         metric
-       :dialect        (sql-tools/driver->dialect (:driver config))
-       :resolve-column (partial column-ref config provider (:id table) columns)})))
+(mu/defn- with-fill-nulls :- ::lib.schema.aggregation/aggregation
+  "`clause` taking `fill-nulls-with` where it is null, as `coalesce`; `clause` as it is when there is nothing to fill
+  with."
+  [clause          :- ::lib.schema.aggregation/aggregation
+   fill-nulls-with :- [:maybe :int]]
+  (if (some? fill-nulls-with)
+    (lib/coalesce clause fill-nulls-with)
+    clause))
 
 (mu/defn- resolved-metric :- ::schemas.resolved/metric
-  "The resolve stage's output for the metric of `context`, computed by `query`: the query, the metric's dimension set
-  and entity_id, and the card added to the provider for it, which later metrics refer to. The dimension set comes
-  first, since it can still report the metric (see [[with-default-dimension]]), and a reported metric must leave no
-  card behind for a later metric to refer to."
-  [{:keys [provider metric] :as context} :- ::context
-   query                                 :- ::lib.schema/query]
-  (let [dimensions (dimension-set context)
-        entity-id  (metric-entity-id metric)
-        card-id    (metadata/add-metric! provider {:name          (:label metric)
-                                                   :description   (:description metric)
+  "The resolve stage's output for the metric `ir` of `context`: the query over its table, `aggregation` filtered by
+  `filters`; its dimension set and entity_id; and the card added to the provider for it, which later metrics refer to.
+  The dimension set comes first, since it can still report the metric (see [[resolve.dimensions/dimension-set]]), and a
+  reported metric must leave no card behind for a later metric to refer to."
+  [{:keys [provider query model agg-time-dimension] :as context} :- ::resolve.columns/context
+   ir                                                            :- ::schemas.ir/metric
+   aggregation                                                   :- ::lib.schema.aggregation/aggregation
+   filters                                                       :- [:sequential ::lib.schema.expression/boolean]]
+  (let [dimensions (resolve.dimensions/dimension-set context)
+        query      (reduce lib/filter (lib/aggregate query aggregation) filters)
+        entity-id  (metric-entity-id ir)
+        card-id    (metadata/add-metric! provider {:name          (:label ir)
+                                                   :description   (:description ir)
                                                    :table-id      (get-in query [:stages 0 :source-table])
                                                    :dataset-query query
                                                    :entity-id     entity-id})]
-    (merge {:metric            metric
-            :entity-id         entity-id
-            :card-id           card-id
-            :metadata-provider provider
-            :query             query}
+    (merge {:ir                 ir
+            :entity-id          entity-id
+            :card-id            card-id
+            :metadata-provider  provider
+            :semantic-model     (:name model)
+            :agg-time-dimension agg-time-dimension
+            :query              query}
            dimensions)))
-
-(mu/defn- filter-clauses :- [:sequential ::lib.schema.expression/boolean]
-  "The Lib filter clauses for `templates`, each failure saying which template."
-  [context   :- ::context
-   templates :- [:sequential :string]]
-  (mapv (fn [template]
-          (with-context (str "filter " (pr-str template)) #(filter-clause context template)))
-        templates))
 
 (mu/defn- resolve-simple :- ::schemas.resolved/metric
   "Resolve a simple or cumulative metric: one aggregation over its measure's `expr`, filtered by its templates."
   [config          :- ::schemas.resolved/config
    providers       :- [:map-of :string ::lib.schema.metadata/metadata-provider]
    semantic-models :- [:map-of :string ::schemas.ir/semantic-model]
-   {:keys [agg expr agg-params non-additive-dimension filters semantic-model fill-nulls-with] :as metric}
-   :- ::schemas.ir/metric.simple]
-  (let [model      (get semantic-models semantic-model)
-        percentile (:percentile agg-params)]
+   {:keys [type expr filters semantic-model fill-nulls-with agg-time-dimension] :as ir} :- ::schemas.ir/metric.simple]
+  (let [model (get semantic-models semantic-model)]
     (when-not model
-      (sql/unsupported "semantic model %s not found" (pr-str semantic-model)))
-    (when non-additive-dimension
-      (sql/unsupported "non-additive measures have no Metabase equivalent"))
-    (when (= agg :percentile)
-      (cond
-        (nil? percentile)
-        (sql/unsupported "percentile aggregation without a percentile value")
-
-        ;; dbt takes the percentile as a fraction and nothing else: `95` is not read as 95%, since `1.5` could not be
-        (not (<= 0 percentile 1))
-        (sql/unsupported "percentile %s is out of range: dbt takes a fraction between 0 and 1" percentile)
-
-        (:use_discrete_percentile agg-params)
-        (sql/unsupported "discrete percentiles have no Metabase equivalent: Metabase percentiles are continuous")))
-    (let [{:keys [query] :as context} (metric-context config providers semantic-models model metric)
-          expression  (with-context (str "expr " (pr-str expr)) #(measure-expression context agg expr))
-          filters     (filter-clauses context filters)
-          result-type (when (and (some? fill-nulls-with) (#{:min :max} agg) expression)
-                        (lib/type-of query expression))]
+      (unsupported/throw! "semantic model %s not found" (pr-str semantic-model)))
+    (let [{:keys [query] :as context}             (resolve.columns/metric-context config providers semantic-models model ir agg-time-dimension)
+          {:keys [agg expression] :as aggregation} (measure-aggregation context ir)
+          filter-clauses                           (resolve.filters/filter-clauses context filters)
+          result-type                              (when (and (some? fill-nulls-with) (#{:min :max} agg) expression)
+                                                     (lib/type-of query expression))]
       ;; COALESCE(MAX(text), 0) fails in the warehouse; every other aggregation has a numeric result
-      (when (and (known-type? result-type) (not (isa? result-type :type/Number)))
-        (sql/unsupported "fill_nulls_with %s on a non-numeric aggregation: %s of %s, which is %s"
-                         fill-nulls-with (name agg) (pr-str expr) result-type))
-      (resolved-metric context (reduce lib/filter (lib/aggregate query (aggregation metric expression)) filters)))))
+      (when (and (resolve.columns/known-type? result-type) (not (isa? result-type :type/Number)))
+        (unsupported/throw! "fill_nulls_with %s on a non-numeric aggregation: %s of %s, which is %s"
+                            fill-nulls-with (name agg) (pr-str expr) result-type))
+      (resolved-metric context ir (with-fill-nulls (aggregation-clause type aggregation) fill-nulls-with) filter-clauses))))
 
-(mr/def ::inputs
-  "What the metrics a ratio or derived metric may refer to became, by name: `resolved`, or `failed` with the reason."
-  [:map
+(mr/def ::outcomes
+  "What the metrics resolved before the one at hand became, by name: `resolved`, or `failed` with the reason, the parse
+  stage's reports included. A ratio or derived metric refers to them."
+  [:map {:closed true}
    [:resolved [:map-of :string ::schemas.resolved/metric]]
    [:failed   [:map-of :string :string]]])
 
 (mu/defn- metric-inputs :- [:sequential ::schemas.ir/metric-input]
   "The references a metric makes to other metrics; none for a simple or cumulative one."
-  [metric :- ::schemas.ir/metric]
-  (case (:type metric)
-    :ratio   [(:numerator metric) (:denominator metric)]
-    :derived (:inputs metric)
+  [ir :- ::schemas.ir/metric]
+  (case (:type ir)
+    :ratio   [(:numerator ir) (:denominator ir)]
+    :derived (:inputs ir)
     []))
+
+(mu/defn- resolved-input :- ::schemas.resolved/metric
+  "What the metric `metric-input` refers to became. [[unsupported/throw!]] when it is not in the manifest, or was not
+  converted."
+  [{:keys [resolved failed]} :- ::outcomes
+   {:keys [metric]}          :- ::schemas.ir/metric-input]
+  (or (get resolved metric)
+      (if (contains? failed metric)
+        (unsupported/throw! "metric %s was not converted: %s" (pr-str metric) (get failed metric))
+        (unsupported/throw! "metric %s not found" (pr-str metric)))))
 
 (defn- conjunction
   "`clauses` as one condition: the clause itself when there is one, otherwise their `:and`."
@@ -781,146 +248,117 @@
     (first clauses)))
 
 (mu/defn- filtered-input :- ::lib.schema.aggregation/aggregation
-  "A reference to `resolved-input` that carries a filter of its own, inlined as the filtered form of the input's
-  aggregation over its measure, `sum-where`, `count-where` or `distinct-where`, with the input metric's own filters
-  and the reference's combined, so the metric stays one card. Only a simple metric can be inlined, and only a sum, a
-  count and a distinct count have a filtered form."
-  [context                  :- ::context
-   resolved-input           :- ::schemas.resolved/metric
+  "A reference to `input` that carries a filter of its own, inlined as the filtered form of the input's aggregation over
+  its measure (see [[filtered-aggregation-clause]]), with the input metric's own filters and the reference's combined,
+  so the metric stays one card. Only a simple metric can be inlined."
+  [context                  :- ::resolve.columns/context
+   {input-ir :ir}           :- ::schemas.resolved/metric
    {:keys [metric filters]} :- ::schemas.ir/metric-input]
-  (let [{:keys [type agg expr fill-nulls-with], input-filters :filters} (:metric resolved-input)]
+  (let [{:keys [type fill-nulls-with], input-filters :filters} input-ir]
     (when-not (= type :simple)
-      (sql/unsupported "metric %s is a %s metric; only a simple metric can take a filter where it is referred to"
-                       (pr-str metric) (name type)))
-    (let [expression (with-context (str "expr " (pr-str expr)) #(measure-expression context agg expr))
-          condition  (conjunction (filter-clauses context (into (vec input-filters) filters)))
-          clause     (case agg
-                       :sum            (if expression (lib/sum-where expression condition) (lib/count-where condition))
-                       ;; SQL COUNT(col) skips nulls, COUNT(1) does not
-                       :count          (if expression
-                                         (lib/count-where (lib/and condition (lib/not-null expression)))
-                                         (lib/count-where condition))
-                       :count_distinct (lib/distinct-where expression condition)
-                       ;; the expression is already the condition to count rows by
-                       :sum_boolean    (lib/count-where (lib/and condition expression))
-                       (sql/unsupported "a filtered %s has no Metabase equivalent: only sum, count and count_distinct have a filtered form"
-                                        (name agg)))]
-      (if (some? fill-nulls-with)
-        (lib/coalesce clause fill-nulls-with)
-        clause))))
+      (unsupported/throw! "metric %s is a %s metric; only a simple metric can take a filter where it is referred to"
+                          (pr-str metric) (name type)))
+    (let [aggregation (measure-aggregation context input-ir)
+          condition   (conjunction (resolve.filters/filter-clauses context (into (vec input-filters) filters)))]
+      (with-fill-nulls (filtered-aggregation-clause aggregation condition) fill-nulls-with))))
 
 (mu/defn- input-leaf :- ::lib.schema.aggregation/aggregation
   "What a reference to another metric becomes in a ratio or derived metric's aggregation: a `[:metric id]` reference
   to the card the input became or, when the reference carries a filter, the input's aggregation inlined (see
-  [[filtered-input]]). An input that is not in the manifest, or was not converted, is [[sql/unsupported]]."
-  [{:keys [provider] :as context}          :- [:maybe ::context]
-   {:keys [resolved failed]}                :- ::inputs
-   {:keys [metric filters] :as metric-input} :- ::schemas.ir/metric-input]
-  (let [resolved-input (get resolved metric)]
-    (cond
-      (and (not resolved-input) (contains? failed metric))
-      (sql/unsupported "metric %s was not converted: %s" (pr-str metric) (get failed metric))
-
-      (not resolved-input)
-      (sql/unsupported "metric %s not found" (pr-str metric))
-
-      (seq filters)
-      (filtered-input context resolved-input metric-input)
-
-      :else
+  [[filtered-input]])."
+  [{:keys [provider] :as context}     :- ::resolve.columns/context
+   outcomes                           :- ::outcomes
+   {:keys [filters] :as metric-input} :- ::schemas.ir/metric-input]
+  (let [input (resolved-input outcomes metric-input)]
+    (if (seq filters)
+      (filtered-input context input metric-input)
       ;; the ref's effective type is the input card's, which the instance works out itself, and would be `:type/*`
       ;; for a column the project does not type
-      (-> (lib/ref (lib.metadata/metric provider (:card-id resolved-input)))
+      (-> (lib/ref (lib.metadata/metric provider (:card-id input)))
           (lib/update-options dissoc :effective-type)))))
 
 (mu/defn- composed-expression :- ::lib.schema.aggregation/aggregation
   "The aggregation of a ratio or derived metric: arithmetic over what its inputs became (see [[input-leaf]]). A derived
   `expr` is SQL whose identifiers are the inputs' aliases, or names."
-  [{:keys [dialect] :as context} :- ::context
-   inputs                        :- ::inputs
-   {:keys [type expr] :as metric} :- ::schemas.ir/metric]
+  [{:keys [dialect] :as context} :- ::resolve.columns/context
+   outcomes                      :- ::outcomes
+   {:keys [type expr] :as ir}    :- ::schemas.ir/metric]
   (case type
     :ratio
-    (lib// (input-leaf context inputs (:numerator metric))
-           (input-leaf context inputs (:denominator metric)))
+    (lib// (input-leaf context outcomes (:numerator ir))
+           (input-leaf context outcomes (:denominator ir)))
 
     :derived
-    (let [by-name (into {} (map (fn [{:keys [alias] :as input} ] [(or alias (:metric input)) input])) (:inputs metric))
+    (let [by-name (into {} (map (fn [{:keys [alias] :as input}] [(or alias (:metric input)) input])) (:inputs ir))
           value   (sql/expression->mbql dialect expr
                                         (fn [identifier]
                                           (if-let [input (get by-name identifier)]
-                                            (input-leaf context inputs input)
-                                            (sql/unsupported "%s is not one of the metric's inputs (%s)"
-                                                             (pr-str identifier) (str/join ", " (map pr-str (keys by-name)))))))]
+                                            (input-leaf context outcomes input)
+                                            (unsupported/throw! "%s is not one of the metric's inputs (%s)"
+                                                                (pr-str identifier) (str/join ", " (map pr-str (keys by-name)))))))]
       (if (vector? value)
         value
-        (sql/unsupported "expr %s is the constant %s, not arithmetic over the inputs" (pr-str expr) (pr-str value))))))
+        (unsupported/throw! "expr %s is the constant %s, not arithmetic over the inputs" (pr-str expr) (pr-str value))))))
 
 (mu/defn- resolve-composed :- ::schemas.resolved/metric
-  "Resolve a ratio or derived metric against what its `inputs` became. Its table, and so its dimensions, are its
-  inputs', which must all be on one semantic model; its default dimension is their `agg_time_dimension` when they
-  agree on one. Its `fill_nulls_with`, if any, wraps the arithmetic in `coalesce`, as on a simple metric."
-  [config                      :- ::schemas.resolved/config
-   providers                   :- [:map-of :string ::lib.schema.metadata/metadata-provider]
-   semantic-models             :- [:map-of :string ::schemas.ir/semantic-model]
-   {:keys [resolved] :as inputs} :- ::inputs
-   {:keys [fill-nulls-with] :as metric} :- ::schemas.ir/metric]
-  (let [metric-inputs (metric-inputs metric)
-        present       (keep #(get resolved (:metric %)) metric-inputs)
-        models        (distinct (map #(-> % :metric :semantic-model) present))]
-    (when (empty? present)
-      ;; nothing to build on: say why the first input is missing
-      (run! #(input-leaf nil inputs %) metric-inputs))
-    (when (next models)
-      (sql/unsupported "inputs are on different semantic models (%s); a metric has one table"
-                       (str/join ", " (map #(format "%s on %s" (-> % :metric :name) (-> % :metric :semantic-model)) present))))
-    (let [model-name         (first models)
-          agg-time-dimension (let [candidates (distinct (map #(-> % :metric :agg-time-dimension) present))]
+  "Resolve a ratio or derived metric against what its inputs became (see [[resolved-input]]). Its table, and so its
+  dimensions, are its inputs', which must all be on one semantic model; its default dimension is their
+  `agg_time_dimension` when they agree on one. Its `fill_nulls_with`, if any, wraps the arithmetic in `coalesce`, as
+  on a simple metric."
+  [config                                       :- ::schemas.resolved/config
+   providers                                    :- [:map-of :string ::lib.schema.metadata/metadata-provider]
+   semantic-models                              :- [:map-of :string ::schemas.ir/semantic-model]
+   outcomes                                     :- ::outcomes
+   {:keys [type expr filters fill-nulls-with] :as ir} :- ::schemas.ir/metric]
+  (let [prefix      (case type
+                      :ratio   "ratio"
+                      :derived (str "expr " (pr-str expr)))
+        inputs      (unsupported/with-reason-prefix prefix #(mapv (partial resolved-input outcomes) (metric-inputs ir)))
+        model-names (distinct (map :semantic-model inputs))]
+    (when (next model-names)
+      (unsupported/throw! "inputs are on different semantic models (%s); a metric has one table"
+                          (str/join ", " (map #(format "%s on %s" (-> % :ir :name) (:semantic-model %)) inputs))))
+    (let [agg-time-dimension (let [candidates (distinct (map :agg-time-dimension inputs))]
                                (when-not (next candidates)
                                  (first candidates)))
-          metric             (assoc metric :semantic-model model-name, :agg-time-dimension agg-time-dimension)
-          {:keys [query] :as context} (metric-context config providers semantic-models (get semantic-models model-name) metric)
-          expression         (with-context (case (:type metric) :ratio "ratio" :derived (str "expr " (pr-str (:expr metric))))
-                               #(composed-expression context inputs metric))
-          expression         (if (some? fill-nulls-with)
-                               (lib/coalesce expression fill-nulls-with)
-                               expression)
-          filters            (filter-clauses context (:filters metric))]
-      (resolved-metric context (reduce lib/filter (lib/aggregate query expression) filters)))))
+          context            (resolve.columns/metric-context config providers semantic-models
+                                                     (get semantic-models (first model-names)) ir agg-time-dimension)
+          expression         (unsupported/with-reason-prefix prefix #(composed-expression context outcomes ir))]
+      (resolved-metric context ir (with-fill-nulls expression fill-nulls-with) (resolve.filters/filter-clauses context filters)))))
 
 (mu/defn resolve-metric :- [:or ::schemas.resolved/metric ::schemas.ir/unsupported]
   "Resolve one IR metric against the IR `semantic-models` (keyed by name), the metadata `providers` (keyed by Metabase
-  database name, see [[metadata/providers]]) and `config`, or explain why it cannot be a Metabase metric. `inputs` is
-  what the metrics a ratio or derived metric refers to became (see [[resolve-manifest]]); a simple metric needs none.
+  database name, see [[metadata/providers]]) and `config`, or explain why it cannot be a Metabase metric. `outcomes`
+  is what the metrics a ratio or derived metric refers to became (see [[resolve-manifest]]); a simple metric needs
+  none.
 
-  A metric the converter does not support is reported with the reason (see [[sql/unsupported]]). Any other exception
-  while resolving a metric is a bug in the converter or an input it did not anticipate; it is logged with its stack
-  and reported the same way, so one bad metric does not stop the others from being written."
+  A metric the converter does not support is reported with the reason (see [[unsupported/throw!]]). Any other
+  exception while resolving a metric is a bug in the converter or an input it did not anticipate; it is logged with
+  its stack and reported the same way, so one bad metric does not stop the others from being written."
   ([config          :- ::schemas.resolved/config
     providers       :- [:map-of :string ::lib.schema.metadata/metadata-provider]
     semantic-models :- [:map-of :string ::schemas.ir/semantic-model]
-    metric          :- ::schemas.ir/metric]
-   (resolve-metric config providers semantic-models {:resolved {}, :failed {}} metric))
+    ir              :- ::schemas.ir/metric]
+   (resolve-metric config providers semantic-models {:resolved {}, :failed {}} ir))
 
   ([config          :- ::schemas.resolved/config
     providers       :- [:map-of :string ::lib.schema.metadata/metadata-provider]
     semantic-models :- [:map-of :string ::schemas.ir/semantic-model]
-    inputs          :- ::inputs
-    metric          :- ::schemas.ir/metric]
+    outcomes        :- ::outcomes
+    {metric-name :name, :keys [unique-id] :as ir} :- ::schemas.ir/metric]
    (try
-     (case (:type metric)
-       (:simple :cumulative) (resolve-simple config providers semantic-models metric)
-       (:ratio :derived)     (resolve-composed config providers semantic-models inputs metric))
+     (case (:type ir)
+       (:simple :cumulative) (resolve-simple config providers semantic-models ir)
+       (:ratio :derived)     (resolve-composed config providers semantic-models outcomes ir))
      (catch Exception e
-       (when-not (sql/unsupported? e)
-         (log/errorf e "Error resolving metric %s" (pr-str (:name metric))))
-       {:name      (:name metric)
-        :unique-id (:unique-id metric)
-        :reason    (if (sql/unsupported? e)
-                     (ex-message e)
-                     (format "error resolving metric (%s): %s" (pr-str (class e)) (ex-message e)))}))))
+       (if (unsupported/exception? e)
+         (unsupported/report metric-name unique-id (ex-message e))
+         (do
+           (log/errorf e "Error resolving metric %s" (pr-str metric-name))
+           (unsupported/report metric-name unique-id
+                               (format "error resolving metric (%s): %s" (pr-str (class e)) (ex-message e)))))))))
 
-(mu/defn- order-metrics :- [:map
+(mu/defn- order-metrics :- [:map {:closed true}
                             [:ordered [:sequential ::schemas.ir/metric]]
                             [:cyclic  [:sequential ::schemas.ir/metric]]]
   "`metrics` with every ratio or derived metric after the metrics it refers to, otherwise in their order, so the cards
@@ -940,6 +378,13 @@
                                     (into placed (map :name) ready)
                                     (into ordered ready)))))))
 
+(mu/defn- outcomes :- ::outcomes
+  "What the `metrics` resolved and the `unsupported` reported so far are to the next metric, by name."
+  [metrics     :- [:sequential ::schemas.resolved/metric]
+   unsupported :- [:sequential ::schemas.ir/unsupported]]
+  {:resolved (u/index-by (comp :name :ir) metrics)
+   :failed   (into {} (map (juxt :name :reason)) unsupported)})
+
 (mu/defn resolve-manifest :- ::schemas.resolved/manifest
   "Resolve every metric in the IR, each after the metrics it refers to. Unsupported metrics from the parse stage are
   carried over, so the result's `:unsupported` is the complete list for the run, and a ratio or derived metric over
@@ -948,28 +393,19 @@
    {:keys [semantic-models metrics unsupported source] :as ir} :- ::schemas.ir/manifest]
   (let [providers                (metadata/providers config ir)
         {:keys [ordered cyclic]} (order-metrics metrics)
-        results                  (reduce (fn [{:keys [resolved failed] :as results} metric]
+        results                  (reduce (fn [{:keys [metrics unsupported] :as results} metric]
                                            (let [result (resolve-metric config providers semantic-models
-                                                                        {:resolved resolved, :failed failed} metric)]
+                                                                        (outcomes metrics unsupported) metric)]
                                              (if (contains? result :reason)
-                                               (-> results
-                                                   (update :failed assoc (:name metric) (:reason result))
-                                                   (update :unsupported conj result))
-                                               (-> results
-                                                   (update :resolved assoc (:name metric) result)
-                                                   (update :metrics conj result)))))
-                                         {:resolved    {}
-                                          :failed      (into {} (map (juxt :name :reason)) unsupported)
-                                          :metrics     []
-                                          :unsupported []}
+                                               (update results :unsupported conj result)
+                                               (update results :metrics conj result))))
+                                         {:metrics [], :unsupported (vec unsupported)}
                                          ordered)]
     {:collection  {:name      (:collection-name config "dbt metrics")
                    :entity-id (collection-entity-id (:project source))}
      :metrics     (:metrics results)
-     :unsupported (-> (vec unsupported)
-                      (into (:unsupported results))
-                      (into (map (fn [{metric-name :name, :keys [unique-id]}]
-                                   {:name      metric-name
-                                    :unique-id unique-id
-                                    :reason    "metric refers to itself, directly or through the metrics it refers to"}))
-                            cyclic))}))
+     :unsupported (into (:unsupported results)
+                        (map (fn [{metric-name :name, :keys [unique-id]}]
+                               (unsupported/report metric-name unique-id
+                                                   "metric refers to itself, directly or through the metrics it refers to")))
+                        cyclic)}))

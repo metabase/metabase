@@ -12,6 +12,7 @@
    [clojure.java.io :as io]
    [clojure.test :refer [deftest is testing]]
    [dev.dbt-import.core :as dbt-import]
+   [dev.dbt-import.test-util :as tu]
    [medley.core :as m]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
@@ -25,12 +26,7 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util.date-2 :as u.date]
-   [toucan2.core :as t2])
-  (:import
-   (java.nio.file Files)
-   (java.nio.file.attribute FileAttribute)))
-
-(set! *warn-on-reflection* true)
+   [toucan2.core :as t2]))
 
 (defn- marts-dataset
   "The mart tables as a test dataset definition: the database the converted metrics run against."
@@ -39,25 +35,19 @@
                          (edn/read-string {:readers {'t u.date/parse}}
                                           (slurp (io/resource "dbt_import/flexanalytics_marts.edn")))))
 
-(def ^:private manifest-path
-  (delay (.getPath ^java.net.URL (io/resource "dbt_import/flexanalytics_manifest.json"))))
-
-(defn- temp-dir []
-  (str (Files/createTempDirectory "dbt-import-e2e" (make-array FileAttribute 0))))
-
 (defn- convert-and-import!
   "Convert the fixture manifest for the current test database and import the result, the way the README says to.
   Returns the converter's report."
   []
-  (let [out-dir (temp-dir)
-        report  (dbt-import/convert! {:manifest @manifest-path
-                                      :out-dir  out-dir
-                                      :config   {:databases     {"dbt_bi" (:name (mt/db))}
-                                                 :driver        :postgres
-                                                 :creator-email (:email (mt/fetch-user :crowberto))}})]
-    (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-      (serdes.load/load-metabase! (serdes.ingest/ingest-yaml out-dir)))
-    report))
+  (mt/with-temp-dir [out-dir nil]
+    (let [report (dbt-import/convert! {:manifest tu/flexanalytics-manifest-filename
+                                       :out-dir  out-dir
+                                       :config   {:databases     {"dbt_bi" (:name (mt/db))}
+                                                  :driver        :postgres
+                                                  :creator-email (:email (mt/fetch-user :crowberto))}})]
+      (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+        (serdes.load/load-metabase! (serdes.ingest/ingest-yaml out-dir)))
+      report)))
 
 (defn- imported-cards
   "The imported Card for each converted metric, by metric name."

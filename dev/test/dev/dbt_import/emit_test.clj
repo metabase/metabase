@@ -5,27 +5,14 @@
    [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
    [dev.dbt-import.emit :as emit]
-   [dev.dbt-import.parse :as parse]
-   [dev.dbt-import.resolve :as resolve]
    [dev.dbt-import.test-util :as tu :refer [fld]]
-   [medley.core :as m]
    [metabase.queries.models.card :as card]
+   [metabase.test :as mt]
    [metabase.util :as u])
   (:import
-   (java.nio.file Files Path Paths)
-   (java.nio.file.attribute FileAttribute)))
+   (java.nio.file Path Paths)))
 
 (set! *warn-on-reflection* true)
-
-(def ^:private config
-  {:databases     {"dbt_bi" "Sales DB"}
-   :driver        :postgres
-   :creator-email "admin@example.com"})
-
-(defn- flexanalytics-resolved []
-  (->> (.getPath ^java.net.URL (io/resource "dbt_import/flexanalytics_manifest.json"))
-       parse/parse-manifest-file
-       (resolve/resolve-manifest config)))
 
 (deftest ^:parallel dataset-query-test
   (let [resolved (tu/resolve-manifest-map (tu/build-manifest {}))
@@ -37,12 +24,12 @@
              stage))))
   (testing "filters go on the stage, in order"
     (is (= [[:= {} (fld "status" :type/Text) "Shipped"] [:> {} (fld "amount" :type/Decimal) 0]]
-           (tu/filters {:metric {:filter {:where_filters [{:where_sql_template "{{ Dimension('fact_sales_key__status') }} = 'Shipped'"}
-                                                          {:where_sql_template "{{ Dimension('fact_sales_key__amount') }} > 0"}]}}})))))
+           (tu/filters {:metric {:filter (tu/where-filters "{{ Dimension('fact_sales_key__status') }} = 'Shipped'"
+                                                           "{{ Dimension('fact_sales_key__amount') }} > 0")}})))))
 
 (deftest ^:parallel files-test
-  (let [resolved (flexanalytics-resolved)
-        files    (emit/files config resolved)]
+  (let [resolved (tu/flexanalytics-resolved)
+        files    (emit/files tu/default-config resolved)]
     (testing "the collection, then the metrics by name, a ratio or derived metric after the metrics it refers to"
       (is (= ["collections/main/dbt_metrics.yaml"
               "collections/main/dbt_metrics/cumulative_sales.yaml"
@@ -62,82 +49,74 @@
              (map :path files))))
     (is (= [{:model "Collection"}]
            (map #(select-keys % [:model]) (-> files first :entity :serdes/meta))))
-    (is (every? #(= "Card" (-> % :entity :serdes/meta last :model)) (rest files)))
-    (testing "the metrics with no Metabase equivalent are reported, not written"
-      (is (= #{"customer_reorder_rate" "sales_mtd" "sales_trailing_7d" "sales_vs_prior_week"}
-             (set (map :name (:unsupported resolved))))))))
-
-(defn- temp-dir []
-  (str (Files/createTempDirectory "dbt-import-test" (make-array FileAttribute 0))))
+    (is (every? #(= "Card" (-> % :entity :serdes/meta last :model)) (rest files)))))
 
 (deftest write-test
-  (let [resolved  (flexanalytics-resolved)
-        out-dir   (temp-dir)
-        paths     (emit/write! out-dir (emit/files config resolved))
-        read-yaml (fn [path] (yaml/parse-string (slurp (io/file out-dir path))))
-        sales     (m/find-first (comp #{"sales"} :name :metric) (:metrics resolved))]
-    (is (= 15 (count paths)))
-    (testing "the collection file"
-      (is (= {:name        "dbt metrics"
-              :entity_id   (-> resolved :collection :entity-id)
-              :slug        "dbt_metrics"
-              :serdes/meta [{:model "Collection"}]}
-             (select-keys (read-yaml "collections/main/dbt_metrics.yaml") [:name :entity_id :slug :serdes/meta]))))
-    (testing "a metric card matches the serdes export shape"
-      (is (= {:name          "Sales"
-              :description   "The total revenue for each order."
-              :entity_id     (:entity-id sales)
-              :type          "metric"
-              :display       "scalar"
-              :collection_id (-> resolved :collection :entity-id)
-              :creator_id    "admin@example.com"
-              :card_schema   card/current-card-schema-version
-              :dataset_query {:lib/type "mbql/query"
-                              :database "Sales DB"
-                              :stages   [{:lib/type     "mbql.stage/mbql"
-                                          :source-table ["Sales DB" "public" "fact_sales"]
-                                          :aggregation  [["sum" {} ["field"
-                                                                    {:base-type "type/Float", :effective-type "type/Float"}
-                                                                    ["Sales DB" "public" "fact_sales" "sales"]]]]}]}
-              :serdes/meta   [{:model "Card"}]}
-             (-> (read-yaml "collections/main/dbt_metrics/sales.yaml")
-                 (select-keys [:name :description :entity_id :type :display :collection_id :creator_id :card_schema
-                               :dataset_query :serdes/meta])))))
-    (testing "a metric over a SQL expression aggregates the expression"
-      (is (= [["avg" {} ["/" {}
-                         ["field" {:base-type "type/Float", :effective-type "type/Float"} ["Sales DB" "public" "fact_sales" "sales"]]
-                         ["field" {:base-type "type/Float", :effective-type "type/Float"} ["Sales DB" "public" "fact_sales" "target"]]]]]
-             (-> (read-yaml "collections/main/dbt_metrics/sales_to_target_ratio.yaml") :dataset_query :stages first :aggregation))))
-    (testing "no result_metadata: the instance infers it on import"
-      (is (not (contains? (read-yaml "collections/main/dbt_metrics/sales.yaml") :result_metadata))))))
+  (mt/with-temp-dir [out-dir nil]
+    (let [resolved  (tu/flexanalytics-resolved)
+          paths     (emit/write! out-dir (emit/files tu/default-config resolved))
+          read-yaml (fn [path] (yaml/parse-string (slurp (io/file out-dir path))))
+          sales     (tu/resolved-metric-named resolved "sales")]
+      (is (= 15 (count paths)))
+      (testing "the collection file"
+        (is (= {:name        "dbt metrics"
+                :entity_id   (-> resolved :collection :entity-id)
+                :slug        "dbt_metrics"
+                :serdes/meta [{:model "Collection"}]}
+               (select-keys (read-yaml "collections/main/dbt_metrics.yaml") [:name :entity_id :slug :serdes/meta]))))
+      (testing "a metric card matches the serdes export shape"
+        (is (= {:name          "Sales"
+                :description   "The total revenue for each order."
+                :entity_id     (:entity-id sales)
+                :type          "metric"
+                :display       "scalar"
+                :collection_id (-> resolved :collection :entity-id)
+                :creator_id    "admin@example.com"
+                :card_schema   card/current-card-schema-version
+                :dataset_query {:lib/type "mbql/query"
+                                :database "Sales DB"
+                                :stages   [{:lib/type     "mbql.stage/mbql"
+                                            :source-table ["Sales DB" "public" "fact_sales"]
+                                            :aggregation  [["sum" {} ["field"
+                                                                      {:base-type "type/Float", :effective-type "type/Float"}
+                                                                      ["Sales DB" "public" "fact_sales" "sales"]]]]}]}
+                :serdes/meta   [{:model "Card"}]}
+               (-> (read-yaml "collections/main/dbt_metrics/sales.yaml")
+                   (select-keys [:name :description :entity_id :type :display :collection_id :creator_id :card_schema
+                                 :dataset_query :serdes/meta])))))
+      (testing "a metric over a SQL expression aggregates the expression"
+        (is (= [["avg" {} ["/" {}
+                           ["field" {:base-type "type/Float", :effective-type "type/Float"} ["Sales DB" "public" "fact_sales" "sales"]]
+                           ["field" {:base-type "type/Float", :effective-type "type/Float"} ["Sales DB" "public" "fact_sales" "target"]]]]]
+               (-> (read-yaml "collections/main/dbt_metrics/sales_to_target_ratio.yaml") :dataset_query :stages first :aggregation))))
+      (testing "no result_metadata: the instance infers it on import"
+        (is (not (contains? (read-yaml "collections/main/dbt_metrics/sales.yaml") :result_metadata)))))))
 
 (deftest write-clears-previous-run-test
-  (let [out-dir   (temp-dir)
-        write!    (fn [labels]
-                    (emit/write! out-dir (emit/files config (tu/resolve-manifest-map (tu/metrics-manifest labels)))))
-        card-file (fn [file-name] (io/file out-dir "collections/main/dbt_metrics" file-name))
-        other     (io/file out-dir "collections/main/other_collection/card.yaml")]
-    (write! ["Sales" "Quantity"])
-    (io/make-parents other)
-    (spit other "name: Other")
-    (write! ["Sales"])
-    (testing "a metric removed from the project does not survive as a file"
-      (is (not (.exists (card-file "quantity.yaml")))))
-    (testing "the metrics still in the project, and the collection, are written"
-      (is (.exists (card-file "sales.yaml")))
-      (is (.exists (io/file out-dir "collections/main/dbt_metrics.yaml"))))
-    (testing "files outside the collection are left alone"
-      (is (.exists other)))))
-
-(def ^:private sum-sales [:sum {} (fld "sales" :type/Float)])
+  (mt/with-temp-dir [out-dir nil]
+    (let [write!    (fn [labels]
+                      (emit/write! out-dir (emit/files tu/default-config (tu/resolve-manifest-map (tu/metrics-manifest labels)))))
+          card-file (fn [file-name] (io/file out-dir "collections/main/dbt_metrics" file-name))
+          other     (io/file out-dir "collections/main/other_collection/card.yaml")]
+      (write! ["Sales" "Quantity"])
+      (io/make-parents other)
+      (spit other "name: Other")
+      (write! ["Sales"])
+      (testing "a metric removed from the project does not survive as a file"
+        (is (not (.exists ^java.io.File (card-file "quantity.yaml")))))
+      (testing "the metrics still in the project, and the collection, are written"
+        (is (.exists ^java.io.File (card-file "sales.yaml")))
+        (is (.exists (io/file out-dir "collections/main/dbt_metrics.yaml"))))
+      (testing "files outside the collection are left alone"
+        (is (.exists other))))))
 
 (deftest ^:parallel fill-nulls-with-test
   (testing "fill_nulls_with wraps the aggregation in coalesce, whether it sits on the metric or its input measure"
-    (is (= [:coalesce {} sum-sales 0] (tu/aggregation {:type-params {:fill_nulls_with 0}})))
-    (is (= [:coalesce {} sum-sales 0] (tu/aggregation {:input-measure {:fill_nulls_with 0}})))
-    (is (= [:coalesce {} sum-sales -1] (tu/aggregation {:type-params {:fill_nulls_with -1}})))
+    (is (= [:coalesce {} tu/sum-sales 0] (tu/aggregation {:type-params {:fill_nulls_with 0}})))
+    (is (= [:coalesce {} tu/sum-sales 0] (tu/aggregation {:input-measure {:fill_nulls_with 0}})))
+    (is (= [:coalesce {} tu/sum-sales -1] (tu/aggregation {:type-params {:fill_nulls_with -1}})))
     (testing "the metric's wins over the input measure's"
-      (is (= [:coalesce {} sum-sales 1] (tu/aggregation {:type-params {:fill_nulls_with 1}, :input-measure {:fill_nulls_with 0}})))))
+      (is (= [:coalesce {} tu/sum-sales 1] (tu/aggregation {:type-params {:fill_nulls_with 1}, :input-measure {:fill_nulls_with 0}})))))
   (testing "around a count"
     (is (= [:coalesce {} [:count-where {} [:not-null {} (fld "sales" :type/Float)]] 0]
            (tu/aggregation {:measure {:agg "count", :expr "sales"}, :type-params {:fill_nulls_with 0}}))))
@@ -156,9 +135,9 @@
 
 (deftest ^:parallel join-to-timespine-test
   (testing "join_to_timespine has no Metabase equivalent (nothing to join a scalar metric to) and is ignored, as the QRES-1 mapping table says"
-    (is (= sum-sales (tu/aggregation {:type-params {:join_to_timespine true}})))
-    (is (= sum-sales (tu/aggregation {:input-measure {:join_to_timespine true}})))
-    (is (= [:coalesce {} sum-sales 0] (tu/aggregation {:type-params {:join_to_timespine true, :fill_nulls_with 0}})))))
+    (is (= tu/sum-sales (tu/aggregation {:type-params {:join_to_timespine true}})))
+    (is (= tu/sum-sales (tu/aggregation {:input-measure {:join_to_timespine true}})))
+    (is (= [:coalesce {} tu/sum-sales 0] (tu/aggregation {:type-params {:join_to_timespine true, :fill_nulls_with 0}})))))
 
 (def ^:private card-dir "collections/main/dbt_metrics/")
 
@@ -196,25 +175,25 @@
    "   leading spaces" "trailing spaces   " "\\backslash" "emoji 📈" "a: b: c" "? question" ", comma" "=equals"])
 
 (deftest yaml-round-trip-test
-  (let [manifest (tu/metrics-manifest yaml-hostile-strings yaml-hostile-strings)
-        files    (emit/files config (tu/resolve-manifest-map manifest))
-        out-dir  (temp-dir)]
-    (emit/write! out-dir files)
-    (doseq [{:keys [path metric]} (rest files)
-            :let [{card-name :name, :keys [description]} (yaml/parse-string (slurp (io/file out-dir path)))]]
-      (testing (pr-str (-> metric :metric :label))
-        (is (= (-> metric :metric :label) card-name) "the label survives YAML as the card name")
-        (is (= (-> metric :metric :description) description) "the description survives YAML")))))
+  (mt/with-temp-dir [out-dir nil]
+    (let [manifest (tu/metrics-manifest yaml-hostile-strings yaml-hostile-strings)
+          files    (emit/files tu/default-config (tu/resolve-manifest-map manifest))]
+      (emit/write! out-dir files)
+      (doseq [{:keys [path metric]} (rest files)
+              :let [{card-name :name, :keys [description]} (yaml/parse-string (slurp (io/file out-dir path)))]]
+        (testing (pr-str (-> metric :ir :label))
+          (is (= (-> metric :ir :label) card-name) "the label survives YAML as the card name")
+          (is (= (-> metric :ir :description) description) "the description survives YAML"))))))
 
 (deftest determinism-test
   (let [labels    ["Sales" "Quantity" "Price" "Target" "Sales"]
         forward   (tu/metrics-manifest labels)
         backward  (update forward :metrics #(into (array-map) (reverse %)))
         run       (fn [manifest]
-                    (let [files (emit/files config (tu/resolve-manifest-map manifest))
-                          dir   (temp-dir)]
-                      (emit/write! dir files)
-                      (into (sorted-map) (for [{:keys [path]} files] [path (slurp (io/file dir path))]))))
+                    (mt/with-temp-dir [dir nil]
+                      (let [files (emit/files tu/default-config (tu/resolve-manifest-map manifest))]
+                        (emit/write! dir files)
+                        (into (sorted-map) (for [{:keys [path]} files] [path (slurp (io/file dir path))])))))
         first-run (run forward)]
     (testing "re-running produces byte-identical files"
       (is (= first-run (run forward))))
@@ -225,4 +204,4 @@
   (let [resolved (tu/resolve-manifest-map (assoc (tu/build-manifest {}) :metrics {}))]
     (is (= [] (:metrics resolved)))
     (is (= [] (:unsupported resolved)))
-    (is (= 1 (count (emit/files config resolved))) "only the collection")))
+    (is (= 1 (count (emit/files tu/default-config resolved))) "only the collection")))

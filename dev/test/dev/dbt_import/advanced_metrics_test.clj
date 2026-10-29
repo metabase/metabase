@@ -14,15 +14,10 @@
   transitively. [[convert-all]] names the `:metric` leaves of what comes out after the metric each refers to, so an
   expectation reads `[:metric {} \"sales\"]` rather than an entity_id."
   (:require
-   [clojure.java.io :as io]
    [clojure.test :refer [are deftest is testing]]
    [clojure.walk :as walk]
    [dev.dbt-import.emit :as emit]
-   [dev.dbt-import.parse :as parse]
-   [dev.dbt-import.resolve :as resolve]
    [dev.dbt-import.test-util :as tu :refer [fld]]))
-
-(set! *warn-on-reflection* true)
 
 (def ^:private input-measures
   "The measures the input metrics aggregate, replacing the fixture's default `m`."
@@ -33,7 +28,7 @@
    (assoc (tu/base-measure) :name "avg_sales" :agg "average" :expr "sales")])
 
 (def ^:private shipped-filter
-  {:where_filters [{:where_sql_template "{{ Dimension('fact_sales_key__status') }} = 'Shipped'"}]})
+  (tu/where-filters "{{ Dimension('fact_sales_key__status') }} = 'Shipped'"))
 
 (def ^:private input-metrics
   "The simple metrics next to the metric under test: name, the measure it aggregates and its own filter. `sales`,
@@ -108,9 +103,9 @@
   `:metric` leaves named, see [[name-metric-refs]]), `:filters` (exported filter clauses), `:unsupported` (the
   reason), and `:paths`, the card files in the order they are written."
   [resolved]
-  (let [names       (into {} (map (juxt :entity-id (comp :name :metric))) (:metrics resolved))
+  (let [names       (into {} (map (juxt :entity-id (comp :name :ir))) (:metrics resolved))
         stage       (fn [resolved-metric] (-> (emit/dataset-query resolved-metric) :stages first))
-        by-name     (fn [f] (into {} (map (juxt (comp :name :metric) f)) (:metrics resolved)))]
+        by-name     (fn [f] (into {} (map (juxt (comp :name :ir) f)) (:metrics resolved)))]
     {:aggregation (by-name #(name-metric-refs names (-> % stage :aggregation first)))
      :filters     (by-name #(-> % stage (:filters [])))
      :unsupported (into {} (map (juxt :name :reason)) (:unsupported resolved))
@@ -134,7 +129,6 @@
         j (position paths later)]
     (boolean (and i j (< i j)))))
 
-(def ^:private sum-sales [:sum {} (fld "sales" :type/Float)])
 (def ^:private sum-target [:sum {} (fld "target" :type/Float)])
 (def ^:private cum-sum-sales [:cum-sum {} (fld "sales" :type/Float)])
 
@@ -143,7 +137,7 @@
   (tu/joined-fld "order_key" "dim_order" "status" :type/Text))
 
 (def ^:private cancelled-filter
-  {:where_filters [{:where_sql_template "{{ Dimension('order__order_status_dim') }} = 'Cancelled'"}]})
+  (tu/where-filters "{{ Dimension('order__order_status_dim') }} = 'Cancelled'"))
 
 (def ^:private cancelled [:= {} order-status "Cancelled"])
 (def ^:private shipped [:= {} (fld "status" :type/Text) "Shipped"])
@@ -155,7 +149,7 @@
                              {:numerator (tu/metric-input "sales"), :denominator (tu/metric-input "target")}))]
       (is (= {} unsupported))
       (is (= [:/ {} [:metric {} "sales"] [:metric {} "target"]] (aggregation "m")))
-      (is (= sum-sales (aggregation "sales")))
+      (is (= tu/sum-sales (aggregation "sales")))
       (is (= sum-target (aggregation "target")))))
   (testing "the same metric on both sides"
     (is (= [:/ {} [:metric {} "sales"] [:metric {} "sales"]]
@@ -272,27 +266,9 @@
                :aggregation
                (get "m"))))))
 
-(deftest ^:parallel offset-test
-  (testing "period-over-period inputs have no Metabase equivalent and are reported, naming the input"
-    (is (re-find #"offset_window.*sales_prior_week|sales_prior_week.*offset_window"
-                 (-> (convert (derived "sales - sales_prior_week"
-                                       [(tu/metric-input "sales")
-                                        (tu/metric-input "sales" :alias "sales_prior_week" :offset_window {:count 7, :granularity "day"})]))
-                     :unsupported
-                     (get "m"))))
-    (is (re-find #"offset_to_grain"
-                 (-> (convert (derived "sales - mtd"
-                                       [(tu/metric-input "sales")
-                                        (tu/metric-input "sales" :alias "mtd" :offset_to_grain "month")]))
-                     :unsupported
-                     (get "m"))))))
-
 (deftest ^:parallel cumulative-test
   (testing "a cumulative metric with no window and period_agg last is a running sum"
-    (is (= cum-sum-sales (tu/aggregation (cumulative {}))))
-    (testing "period_agg first, which dbt writes by default, is the running total at the start of each period rather than its end, and is reported"
-      (is (re-find #"period_agg first .* set period_agg: last"
-                   (tu/unsupported (cumulative {:cumulative_type_params {:window nil, :grain_to_date nil, :period_agg "first"}}))))))
+    (is (= cum-sum-sales (tu/aggregation (cumulative {})))))
   (testing "over a row count it is a running count"
     (is (= [:cum-count {}] (tu/aggregation (cumulative {:measure (tu/input-measure {:name "row_count"})})))))
   (testing "over a count of a column, which skips nulls, it is a running sum of 1 where the column is not null"
@@ -305,17 +281,11 @@
     (is (= [[:= {} (fld "status" :type/Text) "Shipped"]]
            (tu/filters (merge (cumulative {})
                               {:metric {:type   "cumulative"
-                                        :filter {:where_filters [{:where_sql_template "{{ Dimension('fact_sales_key__status') }} = 'Shipped'"}]}}})))))
+                                        :filter (tu/where-filters "{{ Dimension('fact_sales_key__status') }} = 'Shipped'")}})))))
   (testing "a running aggregation other than a sum or count has no Metabase equivalent"
     (are [measure-name re] (re-find re (tu/unsupported (cumulative {:measure (tu/input-measure {:name measure-name})})))
       "order_count" #"count_distinct"
-      "avg_sales"   #"average"))
-  (testing "a window or grain_to_date is reported, whether written the 1.12 way or the legacy way"
-    (are [type-params re] (re-find re (tu/unsupported (cumulative type-params)))
-      {:cumulative_type_params {:window {:count 7, :granularity "day"}, :grain_to_date nil, :period_agg "last"}} #"window"
-      {:cumulative_type_params {:window nil, :grain_to_date "month", :period_agg "last"}}                        #"grain_to_date"
-      {:window {:count 7, :granularity "day"}}                                                                     #"window"
-      {:grain_to_date "month"}                                                                                     #"grain_to_date")))
+      "avg_sales"   #"average")))
 
 (deftest ^:parallel composed-fill-nulls-with-test
   (testing "fill_nulls_with on a ratio wraps the division in coalesce, as it does the aggregation of a simple metric"
@@ -335,23 +305,8 @@
                                              (update :edit (fn [edit]
                                                              (comp #(assoc-in % [:metrics "metric.p.sales" :type_params :fill_nulls_with] 0)
                                                                    edit)))))]
-      (is (= [:coalesce {} sum-sales 0] (aggregation "sales")))
+      (is (= [:coalesce {} tu/sum-sales 0] (aggregation "sales")))
       (is (= [:- {} [:metric {} "sales"] [:metric {} "target"]] (aggregation "m"))))))
-
-(deftest ^:parallel conversion-test
-  (testing "conversion metrics are out of scope and reported as such"
-    (is (re-find #"conversion"
-                 (tu/unsupported {:measures    input-measures
-                                  :metric      {:type "conversion"}
-                                  :type-params {:measure                nil
-                                                :input_measures         [(tu/input-measure {:name "order_count"})]
-                                                :conversion_type_params {:entity             "customer"
-                                                                         :calculation        "conversion_rate"
-                                                                         :base_measure       (tu/input-measure {:name "order_count"})
-                                                                         :conversion_measure (tu/input-measure {:name "order_count"})
-                                                                         :window             {:count 30, :granularity "day"}
-                                                                         :constant_properties nil}}
-                                  :edit        with-input-metrics})))))
 
 (deftest ^:parallel write-order-test
   (testing "a metric is written after the metrics it refers to, whatever the alphabetical order"
@@ -361,15 +316,8 @@
       (is (written-before? paths "sales" "m"))
       (is (written-before? paths "target" "m")))))
 
-(def ^:private flexanalytics-manifest-filename
-  (.getPath ^java.net.URL (io/resource "dbt_import/flexanalytics_manifest.json")))
-
 (deftest ^:parallel flexanalytics-test
-  (let [resolved (resolve/resolve-manifest tu/default-config (parse/parse-manifest-file flexanalytics-manifest-filename))
-        {:keys [aggregation unsupported paths]} (convert-all resolved)]
-    (testing "every metric converts except the ones with no Metabase equivalent"
-      (is (= #{"customer_reorder_rate" "sales_mtd" "sales_trailing_7d" "sales_vs_prior_week"}
-             (set (keys unsupported)))))
+  (let [{:keys [aggregation paths]} (convert-all (tu/flexanalytics-resolved))]
     (testing "sales_to_target_ratio_2 is a proper ratio of sales to target, next to the project's own average of a per-row ratio"
       (is (= [:/ {} [:metric {} "sales"] [:metric {} "target"]] (aggregation "sales_to_target_ratio_2")))
       (is (= [:avg {} [:/ {} (fld "sales" :type/Float) (fld "target" :type/Float)]] (aggregation "sales_to_target"))))

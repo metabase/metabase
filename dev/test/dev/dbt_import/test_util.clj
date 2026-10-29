@@ -1,5 +1,5 @@
 (ns dev.dbt-import.test-util
-  "Shared fixture for the converter's tests.
+  "Shared fixtures for the converter's tests.
 
   [[build-manifest]] makes a small manifest in the shape `dbt parse` writes (manifest v12, dbt 1.12): a fact table
   `fact_sales` with one metric `m` (sum of `sales`), and two dimension tables, `dim_product` and `dim_order`, that its
@@ -7,18 +7,19 @@
   runs it through the whole pipeline ([[dbt-manifest/decode-manifest]] → [[parse/parse-manifest]] →
   [[resolve/resolve-manifest]] → [[emit/files]]); [[aggregation]], [[filters]], [[dimension-set]] and [[unsupported]]
   pick out the clause the metric converted to, its filters, its curated dimensions, or the reason it did not, for an
-  `is` to compare against."
+  `is` to compare against.
+
+  The checked-in manifests are here too: [[flexanalytics-manifest-filename]], with [[flexanalytics-manifest]],
+  [[flexanalytics-ir]] and [[flexanalytics-resolved]] for each stage's view of it, and
+  [[parcel-delivery-manifest-filename]]."
   (:require
+   [clojure.java.io :as io]
    [dev.dbt-import.emit :as emit]
    [dev.dbt-import.parse :as parse]
    [dev.dbt-import.resolve :as resolve]
    [dev.dbt-import.schemas.dbt-manifest :as dbt-manifest]
    [medley.core :as m]
-   [metabase.util :as u]
-   [metabase.util.json :as json])
-  (:import
-   (java.nio.file Files)
-   (java.nio.file.attribute FileAttribute)))
+   [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
 
@@ -29,6 +30,41 @@
    :driver        :postgres
    :creator-email "admin@example.com"})
 
+(def flexanalytics-manifest-filename
+  "The flexanalytics/dbt-business-intelligence manifest, trimmed to the sections the converter reads; see
+  [[dev.dbt-import.fixture]]."
+  (.getPath ^java.net.URL (io/resource "dbt_import/flexanalytics_manifest.json")))
+
+(def parcel-delivery-manifest-filename
+  "The manifest of the small project under `dev/resources/dbt_import/parcel_delivery/`, written on the dbt 1.12 inline
+  spec; see [[dev.dbt-import.fixture]]."
+  (.getPath ^java.net.URL (io/resource "dbt_import/parcel_delivery_manifest.json")))
+
+(defn flexanalytics-manifest
+  "The flexanalytics fixture, read and decoded but not yet parsed into the IR."
+  []
+  (parse/read-manifest flexanalytics-manifest-filename))
+
+(defn flexanalytics-ir
+  "The flexanalytics fixture parsed into the IR."
+  []
+  (parse/parse-manifest-file flexanalytics-manifest-filename))
+
+(defn flexanalytics-resolved
+  "The flexanalytics fixture resolved with [[default-config]]."
+  []
+  (resolve/resolve-manifest default-config (flexanalytics-ir)))
+
+(defn metric-named
+  "The IR metric named `metric-name` among `metrics`, a parsed manifest's `:metrics`."
+  [metrics metric-name]
+  (m/find-first #(= metric-name (:name %)) metrics))
+
+(defn resolved-metric-named
+  "The resolved metric named `metric-name` in `resolved`, a resolved manifest."
+  [resolved metric-name]
+  (m/find-first #(= metric-name (-> % :ir :name)) (:metrics resolved)))
+
 (def model-id "model.p.fact_sales")
 (def sm-id "semantic_model.p.fact_sales")
 (def product-model-id "model.p.dim_product")
@@ -37,13 +73,20 @@
 (def order-sm-id "semantic_model.p.dim_order")
 
 (defn fld
-  "The `:field` clause serdes writes for `column` on `public.fact_sales`. A nil `base-type` means a column whose type the
-  manifest does not declare, which the converter types as `:type/*` for the instance to fill in."
+  "The `:field` clause serdes writes for `column` on `public.fact_sales` of [[db]], or on `schema`.`table` of `db`. A
+  nil `base-type` means a column whose type the manifest does not declare, which the converter types as `:type/*` for
+  the instance to fill in."
   ([column base-type]
-   (fld "public" "fact_sales" column base-type))
+   (fld db "public" "fact_sales" column base-type))
   ([schema table column base-type]
+   (fld db schema table column base-type))
+  ([db schema table column base-type]
    (let [base-type (or base-type :type/*)]
      [:field {:base-type base-type, :effective-type base-type} [db schema table column]])))
+
+(def sum-sales
+  "What the fixture's metric `m` converts to untouched: the sum of `sales`."
+  [:sum {} (fld "sales" :type/Float)])
 
 (defn joined-fld
   "The `:field` clause serdes writes for `column` on dimension table `public.<table>`, reached from `fact_sales` through
@@ -61,11 +104,10 @@
   [table column]
   [db "public" table column])
 
-(defn group-id
-  "The id Metabase gives a dimension group, derived from its type and display name the same way
-  `metabase.lib-metric.dimension.jvm/group-id` does, so the converter's groups are the groups the instance computes."
-  [group-type display-name]
-  (u/name-uuid (str group-type "/" display-name)))
+(defn where-filters
+  "A metric or measure `filter` as the manifest writes it: one where clause per `template`."
+  [& templates]
+  {:where_filters (mapv (fn [template] {:where_sql_template template}) templates)})
 
 (def pg-columns
   "Columns of `fact_sales`: name, declared Postgres `data_type`, the base type Postgres sync gives it, and a coarse
@@ -287,9 +329,14 @@
 
 (defn build-manifest
   "A manifest with the `fact_sales` model node and semantic model, the `dim_product` and `dim_order` ones it joins to,
-  and one metric `m` (sum of `sales`), tweaked with `:measure` (merged into the measure), `:measures` (replaces them),
-  `:input-measure`, `:metric`, `:type-params`, `:columns` (merged into the fact node's columns; `::remove` drops one)
-  and finally `:edit`, a fn over the whole manifest."
+  and one metric `m` (sum of `sales`), tweaked by, in this order:
+
+  * `:measures` replaces the fact table's measures; otherwise `:measure` is merged into its one measure, `m`;
+  * `:columns` is merged into the fact node's columns (a data type of `::remove` drops the column);
+  * `:input-measure` is merged into the metric's `type_params.measure`;
+  * `:metric` is merged into the metric, then `:type-params` over its `type_params`, so `:type-params` wins over a
+    `:type_params` in `:metric`, which wins over `:input-measure`;
+  * `:edit`, a fn over the whole manifest, runs last and may change anything."
   [{im-overrides :input-measure, :keys [measure measures metric type-params columns edit]}]
   (let [im      (input-measure im-overrides)
         metric' (as-> (base-metric) $metric
@@ -332,7 +379,7 @@
   dimension mappings in portable form, or nil when the metric was not converted."
   [config resolved metric-name]
   (some (fn [{:keys [entity metric]}]
-          (when (= metric-name (-> metric :metric :name))
+          (when (= metric-name (-> metric :ir :name))
             entity))
         (emit/files config resolved)))
 
@@ -346,7 +393,7 @@
   (let [config      (merge default-config config)
         metric-name (or metric-name (get-in tweaks [:metric :name]) "m")
         resolved    (resolve-manifest-map config (build-manifest tweaks))]
-    (if-let [converted (m/find-first #(= metric-name (-> % :metric :name)) (:metrics resolved))]
+    (if-let [converted (resolved-metric-named resolved metric-name)]
       (let [stage  (-> (emit/dataset-query converted) :stages first)
             entity (card-entity config resolved metric-name)]
         {:aggregation            (first (:aggregation stage))
@@ -360,23 +407,24 @@
         (throw (ex-info (format "metric %s was neither converted nor reported" (pr-str metric-name))
                         {:resolved resolved}))))))
 
-(defn aggregation
-  "The aggregation clause the metric [[convert]] builds from `tweaks` converts to. When it is reported instead, the
-  `{:unsupported reason}` map, so a failing `is` shows the reason."
-  [tweaks]
+(defn- converted
+  "`(f (k result))` where `result` is what [[convert]] makes of `tweaks`, when the metric converted. When it was
+  reported instead, the `{:unsupported reason}` map, so a failing `is` shows the reason."
+  [tweaks k f]
   (let [result (convert tweaks)]
-    (if (contains? result :aggregation)
-      (:aggregation result)
+    (if (contains? result k)
+      (f (k result))
       result)))
 
-(defn filters
-  "The filter clauses of the query the metric [[convert]] builds from `tweaks` converts to, in order. When it is
-  reported instead, the `{:unsupported reason}` map, so a failing `is` shows the reason."
+(defn aggregation
+  "The aggregation clause the metric [[convert]] builds from `tweaks` converts to."
   [tweaks]
-  (let [result (convert tweaks)]
-    (if (contains? result :filters)
-      (:filters result)
-      result)))
+  (converted tweaks :aggregation identity))
+
+(defn filters
+  "The filter clauses of the query the metric [[convert]] builds from `tweaks` converts to, in order."
+  [tweaks]
+  (converted tweaks :filters identity))
 
 (defn unsupported
   "The reason the metric [[convert]] builds from `tweaks` is reported as unsupported. When it converts instead, a
@@ -387,19 +435,14 @@
         (str "converted to " (pr-str (select-keys result [:aggregation :filters]))))))
 
 (defn dimension-names
-  "The names of the curated dimensions of the metric [[convert]] builds from `tweaks`, in the order they are written.
-  When it is reported instead, the `{:unsupported reason}` map."
+  "The names of the curated dimensions of the metric [[convert]] builds from `tweaks`, in the order they are written."
   [tweaks]
-  (let [result (convert tweaks)]
-    (if (contains? result :dimensions)
-      (mapv :name (:dimensions result))
-      result)))
+  (converted tweaks :dimensions #(mapv :name %)))
 
 (defn dimension-set
   "The curated dimensions of the metric [[convert]] builds from `tweaks`, keyed by name. Each is the portable
   dimension merged with the `:table-id` and `:target` of its mapping, without the ids that tie the two together, so a
-  test compares what a dimension *is* and leaves ids to the tests about ids. When the metric is reported instead, the
-  `{:unsupported reason}` map."
+  test compares what a dimension *is* and leaves ids to the tests about ids."
   [tweaks]
   (let [{:keys [dimensions dimension-mappings] :as result} (convert tweaks)]
     (if (contains? result :dimensions)
@@ -413,12 +456,9 @@
 
 (defn unsupported-dimensions
   "The dimensions of the metric [[convert]] builds from `tweaks` that could not become curated dimensions, as a map of
-  dimension name → reason. When the metric is reported instead, the `{:unsupported reason}` map."
+  dimension name → reason."
   [tweaks]
-  (let [result (convert tweaks)]
-    (if (contains? result :unsupported-dimensions)
-      (into {} (map (juxt :name :reason)) (:unsupported-dimensions result))
-      result)))
+  (converted tweaks :unsupported-dimensions #(into {} (map (juxt :name :reason)) %)))
 
 (defn metrics-manifest
   "A manifest whose metrics all sum `sales` and differ only in `label` (and description). Metric names are m0, m1, …"
@@ -439,6 +479,3 @@
   "The card files [[emit/files]] produces for a built manifest, without the collection file."
   [manifest]
   (rest (emit/files default-config (resolve-manifest-map manifest))))
-
-(defn temp-dir []
-  (str (Files/createTempDirectory "dbt-import-test" (make-array FileAttribute 0))))

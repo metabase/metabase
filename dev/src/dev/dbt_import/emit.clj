@@ -86,11 +86,11 @@
 (mu/defn- card-entity :- ::entity
   [config     :- ::resolved/config
    collection :- ::resolved/collection
-   {:keys [metric entity-id] :as resolved-metric} :- ::resolved/metric]
+   {:keys [ir entity-id] :as resolved-metric} :- ::resolved/metric]
   (merge
-   {:serdes/meta            [{:model "Card" :id entity-id :label (:label metric)}]
-    :name                   (:label metric)
-    :description            (:description metric)
+   {:serdes/meta            [{:model "Card" :id entity-id :label (:label ir)}]
+    :name                   (:label ir)
+    :description            (:description ir)
     :entity_id              entity-id
     :type                   :metric
     :display                :scalar
@@ -115,8 +115,8 @@
         unique-name     (lib/non-truncating-unique-name-generator)]
     (into [{:path   (str "collections/main/" collection-slug ".yaml")
             :entity (collection-entity collection)}]
-          (map (fn [{:keys [entity-id metric] :as resolved-metric}]
-                 (let [file-name (unique-name entity-id (storage.util/slugify-name (:label metric)))]
+          (map (fn [{:keys [entity-id ir] :as resolved-metric}]
+                 (let [file-name (unique-name entity-id (storage.util/slugify-name (:label ir)))]
                    {:path   (str "collections/main/" collection-slug "/" file-name ".yaml")
                     :entity (card-entity config collection resolved-metric)
                     :metric resolved-metric})))
