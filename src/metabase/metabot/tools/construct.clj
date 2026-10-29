@@ -862,8 +862,8 @@
       (format "%s: aggregation and window functions such as `offset` cannot be custom columns - move them to `aggregation:` or `order-by:`" (me/error-message error)))))
 
 (defn- problem-rank
-  "Where `error` goes in the list: 0 when [[not-runnable-problem]] states its cause, 1 for Malli's own
-  message, and 2 when it can only offer the usual cause of a missing key."
+  "Return where `error` sorts among the listed problems: 0 when [[not-runnable-problem]] states its cause,
+  1 for Malli's own message, and 2 when it can only offer the usual cause of a missing key."
   [error]
   (cond
     (and (= :malli.core/missing-key (:type error))
@@ -874,9 +874,10 @@
 (def ^:private max-not-runnable-problems 3)
 
 (defn- not-runnable-problem-lines
-  "One line per distinct problem among `errors`, in [[problem-rank]] order: its first path, how many
-  other places have it, and the problem. Lines past [[max-not-runnable-problems]] are counted instead
-  of listed."
+  "Return one line per distinct problem among `errors`, in [[problem-rank]] order.
+  Each line gives the problem's first path, how many other places have it, and the problem.
+  Lines past [[max-not-runnable-problems]] are replaced by a count.
+  Paths use the original stage indexes recorded in `repaired-query`."
   [errors repaired-query]
   (let [located  (for [error (sort-by problem-rank errors)]
                    {:path    (repr/query-path (repr/original-query-path repaired-query (:in error)))
@@ -895,9 +896,9 @@
 (defn- query-not-runnable-explanation
   "Explain why `pmbql-query` fails the query builder's `canRun` check, or return nil.
 
-  Each distinct problem is listed once, with how many places have it, in [[problem-rank]] order. Add
-  the usual causes if [[not-runnable-problem]] cannot explain any of them. `repaired-query` supplies
-  the original stage indexes and defaults to `pmbql-query`."
+  Each distinct problem is listed once, with how many places have it, in [[problem-rank]] order.
+  The usual causes are added when [[not-runnable-problem]] cannot explain any of them.
+  The optional `repaired-query` supplies the original stage indexes and defaults to `pmbql-query`."
   ([pmbql-query] (query-not-runnable-explanation pmbql-query pmbql-query))
   ([pmbql-query repaired-query]
    (binding [lib.schema.expression/*suppress-expression-type-check?* true]

@@ -3356,8 +3356,10 @@
       (is (str/starts-with? (explain (invalid :a) (invalid :b) (invalid :c) (missing :alias))
                             "stages[0].alias: missing `alias`; stages[0].a (and 2 other places): should be an integer")))
     (testing "Malli's own messages are listed before a guessed cause, however often it repeats"
-      (let [untyped (fn [i] {:type :malli.core/missing-key :in [:stages 0 :filters i 2 1 :base-type]})
-            no-join {:schema (mc/schema [:fn {:error/message "no join named \"first\""} any?]) :value 1 :in [:stages]}]
+      (let [untyped (fn [i] {:type :malli.core/missing-key, :in [:stages 0 :filters i 2 1 :base-type]})
+            no-join {:schema (mc/schema [:fn {:error/message "no join named \"first\""} any?])
+                     :value  1
+                     :in     [:stages]}]
         (is (str/starts-with? (apply explain (conj (mapv untyped (range 4)) no-join))
                               (str "stages: no join named \"first\"; "
                                    "stages[0].filters[0][2][1].base-type (and 3 other places): a field reference by name is missing `base-type`")))))
