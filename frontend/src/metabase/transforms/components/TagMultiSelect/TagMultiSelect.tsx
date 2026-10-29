@@ -101,7 +101,6 @@ export function TagMultiSelect({
   return (
     <>
       <MultiSelect
-        classNames={{ option: S.option }}
         value={tagIds.map(getValue)}
         data={getOptions(tags, trimmedSearchValue, requireTransformWriteAccess)}
         placeholder={readOnly ? t`Tags are read-only` : t`Add tags`}
@@ -219,7 +218,12 @@ function ExistingTagSelectItem({
           <Tooltip
             label={t`This tag contains a transform you don't have permission to run.`}
           >
-            <Icon name="lock_filled" size={14} ml="xxs" />
+            <Icon
+              className={S.lockIcon}
+              name="lock_filled"
+              size={14}
+              ml="xxs"
+            />
           </Tooltip>
         )}
       </Text>

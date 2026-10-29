@@ -1,15 +1,6 @@
-.option[data-combobox-disabled] {
+/* Disabled options ignore the mouse; the lock icon opts back in for its tooltip */
+.lockIcon {
   pointer-events: all;
-  cursor: not-allowed;
-
-  &:hover {
-    background-color: transparent;
-  }
-
-  .selectItem {
-    color: inherit;
-    background-color: inherit;
-  }
 }
 
 .actionIcon {
