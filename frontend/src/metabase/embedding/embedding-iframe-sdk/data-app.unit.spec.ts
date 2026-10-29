@@ -141,11 +141,17 @@ describe("metabase-data-app", () => {
     );
   });
 
-  it.each([
-    { isGuest: true },
-    { useExistingUserSession: true },
-    { guestEmbedProviderUri: "/guest" },
-  ])("rejects unsupported auth methods: %p", (config) => {
+  it.each<[Record<string, unknown>, string]>([
+    [{ isGuest: true }, "Guest embeds are not supported for data apps."],
+    [
+      { useExistingUserSession: true },
+      "Existing browser sessions are not supported for data apps.",
+    ],
+    [
+      { guestEmbedProviderUri: "/guest" },
+      "Guest embeds are not supported for data apps.",
+    ],
+  ])("rejects unsupported auth methods: %p", (config, message) => {
     window.metabaseConfig = { instanceUrl: INSTANCE_URL, ...config };
     const element = setup();
     expect(element.querySelector("iframe")).toBeNull();
@@ -153,7 +159,7 @@ describe("metabase-data-app", () => {
     expect(consoleError).toHaveBeenCalledWith(
       "[metabase.embed.error]",
       expect.objectContaining({
-        message: "Data apps require SSO authentication.",
+        message,
       }),
     );
   });
@@ -198,18 +204,61 @@ describe("metabase-data-app", () => {
     );
   });
 
-  it("replaces the frame when credentials change", () => {
-    const element = setup();
-    const original = element.querySelector("iframe");
+  it.each([
+    [undefined, "development-key"],
+    ["development-key", "next-key"],
+    ["development-key", undefined],
+  ])(
+    "replaces the frame when the API key changes from %s to %s",
+    (apiKey, nextApiKey) => {
+      window.metabaseConfig = { instanceUrl: INSTANCE_URL, apiKey };
+      const element = setup();
+      const original = element.querySelector("iframe")!;
 
+      window.metabaseConfig.apiKey = nextApiKey;
+
+      const next = element.querySelector("iframe")!;
+      expect(next).not.toBe(original);
+
+      const postMessage = jest.spyOn(next.contentWindow!, "postMessage");
+      ready(original);
+      expect(postMessage).not.toHaveBeenCalled();
+
+      ready(next);
+      expect(postMessage).toHaveBeenCalledWith(
+        {
+          type: "metabase.embed.setSettings",
+          data: expect.objectContaining({ apiKey: nextApiKey }),
+        },
+        new URL(INSTANCE_URL).origin,
+      );
+    },
+  );
+
+  it("keeps the frame and local key when the route or locale changes", () => {
     window.metabaseConfig = {
       instanceUrl: INSTANCE_URL,
       apiKey: "development-key",
     };
+    const element = setup();
+    const iframe = element.querySelector("iframe")!;
+    const postMessage = jest.spyOn(iframe.contentWindow!, "postMessage");
+    ready(iframe);
 
-    expect(element.querySelector("iframe")).not.toBe(original);
-    expect(element.querySelector("iframe")?.src).not.toContain(
-      "development-key",
+    element.path = "sales/customers";
+    window.metabaseConfig.locale = "fr";
+
+    expect(element.querySelector("iframe")).toBe(iframe);
+    expect(postMessage).toHaveBeenLastCalledWith(
+      {
+        type: "metabase.embed.setSettings",
+        data: expect.objectContaining({
+          path: "sales/customers",
+          apiKey: "development-key",
+          locale: "fr",
+        }),
+      },
+      new URL(INSTANCE_URL).origin,
     );
   });
 

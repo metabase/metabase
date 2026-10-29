@@ -531,7 +531,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
 
       if (settings.useExistingUserSession) {
         raiseError(
-          "Using existing browser sessions are not supported for data apps.",
+          "Existing browser sessions are not supported for data apps.",
         );
       }
 
@@ -836,16 +836,17 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     settings: Partial<SdkIframeEmbedElementSettings>,
     nextValues: SdkIframeEmbedElementSettings,
   ): boolean {
+    if (nextValues.componentName !== "metabase-data-app") {
+      return false;
+    }
+
     const hasDataAppPathChanged =
-      nextValues.componentName === "metabase-data-app" &&
       "path" in settings &&
       normalizeDataAppPath(nextValues.path) !==
         normalizeDataAppPath(this._dataAppPath ?? "");
 
     const hasDataAppApiKeyChanged =
-      nextValues.componentName === "metabase-data-app" &&
-      "apiKey" in settings &&
-      nextValues.apiKey !== this._dataAppApiKey;
+      "apiKey" in settings && nextValues.apiKey !== this._dataAppApiKey;
 
     if (!hasDataAppPathChanged && !hasDataAppApiKeyChanged) {
       return false;
@@ -853,7 +854,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
 
     this._validateEmbedSettings(nextValues);
 
-    // Do not remount when the app name remains the same.
+    // Keep the current app mounted unless its credentials change.
     // `useDataAppPathNavigation` hook will do client-side routing.
     if (
       !hasDataAppApiKeyChanged &&

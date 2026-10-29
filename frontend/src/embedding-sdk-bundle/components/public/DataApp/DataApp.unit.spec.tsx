@@ -18,6 +18,7 @@ import {
   setPluginsReady,
 } from "embedding-sdk-bundle/store/reducer";
 import { getIsLocalhost } from "embedding-sdk-shared/lib/get-is-localhost";
+import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import { MetabaseReduxProvider } from "metabase/redux";
 import { defer } from "metabase/utils/promise";
 
@@ -417,6 +418,45 @@ describe("DataApp", () => {
     expect(screen.queryByTestId("data-app-frame")).not.toBeInTheDocument();
     expect(requestSession).not.toHaveBeenCalled();
   });
+
+  it.each<{ name: string; authConfig: MetabaseAuthConfig }>([
+    {
+      name: "another key",
+      authConfig: {
+        metabaseInstanceUrl: CONFIG.metabaseInstanceUrl,
+        apiKey: "next-key",
+      },
+    },
+    { name: "SSO", authConfig: CONFIG },
+  ])(
+    "replaces the frame when switching from a local key to $name",
+    ({ authConfig }) => {
+      ensureMetabaseProviderPropsStore().setProps({
+        authConfig: {
+          metabaseInstanceUrl: CONFIG.metabaseInstanceUrl,
+          apiKey: "development-key",
+        },
+      });
+      const { iframe } = setup({ path: "sales" });
+
+      act(() =>
+        ensureMetabaseProviderPropsStore().setProps({
+          authConfig,
+        }),
+      );
+
+      const next = screen.getByTestId<HTMLIFrameElement>("data-app-frame");
+      expect(next).not.toBe(iframe);
+
+      const postMessage = jest.spyOn(next.contentWindow!, "postMessage");
+      message(iframe, "metabase.embed.iframeReady");
+      expect(postMessage).not.toHaveBeenCalled();
+
+      message(next, "metabase.embed.iframeReady");
+      expect(postMessage).toHaveBeenCalledTimes(1);
+      expect(postMessage.mock.calls[0][0].data.apiKey).toBe(authConfig.apiKey);
+    },
+  );
 
   it("does not load the iframe for guest embeds", () => {
     ensureMetabaseProviderPropsStore().setProps({
