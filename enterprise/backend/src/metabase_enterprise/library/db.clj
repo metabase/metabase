@@ -8,9 +8,9 @@
    [toucan2.core :as t2]))
 
 (mu/defn card-types-in-collections
-  "The set of Card types present in the Collections with `collection-ids`."
+  "The set of types of the unarchived Cards in the Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select-fn-set :type [:model/Card :type] :collection_id [:in collection-ids]))
+  (t2/select-fn-set :type [:model/Card :type] :collection_id [:in collection-ids] :archived false))
 
 (mu/defn published-table-in-collections?
   "Whether a published Table exists in the Collections with `collection-ids`."
@@ -18,9 +18,9 @@
   (t2/exists? :model/Table :is_published true :collection_id [:in collection-ids]))
 
 (mu/defn dashboard-in-collections?
-  "Whether a Dashboard exists in the Collections with `collection-ids`."
+  "Whether an unarchived Dashboard exists in the Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/exists? :model/Dashboard :collection_id [:in collection-ids]))
+  (t2/exists? :model/Dashboard :collection_id [:in collection-ids] :archived false))
 
 (mu/defn library-collections
   "The readable Library Collections, ordered by name."

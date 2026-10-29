@@ -97,20 +97,6 @@ const LIBRARY_COLLECTION_WITH_ONLY_DASHBOARDS = createMockCollection({
     }),
   ],
 });
-// `GET /api/ee/library` counts trashed cards in `below`, but the collection
-// tree doesn't, so its folders are empty
-const LIBRARY_COLLECTION_WITH_ONLY_TRASHED_METRICS = createMockCollection({
-  ...LIBRARY_COLLECTION,
-  below: ["metric"],
-  children: [
-    createMockCollection({ id: 6465, name: "Data", type: "library-data" }),
-    createMockCollection({
-      id: 6466,
-      name: "Metrics",
-      type: "library-metrics",
-    }),
-  ],
-});
 const LIBRARY_COLLECTION_WITH_ONLY_METRICS = createMockCollection({
   ...LIBRARY_COLLECTION,
   below: ["metric"],
@@ -676,16 +662,6 @@ describe("DataSourceSelector", () => {
       setup({
         ...setupOpts,
         libraryCollection: LIBRARY_COLLECTION_WITH_ONLY_DASHBOARDS,
-      });
-
-      expect(await screen.findByText("Orders")).toBeInTheDocument();
-      expect(screen.queryByText("Library")).not.toBeInTheDocument();
-    });
-
-    it("should not offer a Library whose only metrics are in the trash", async () => {
-      setup({
-        ...setupOpts,
-        libraryCollection: LIBRARY_COLLECTION_WITH_ONLY_TRASHED_METRICS,
       });
 
       expect(await screen.findByText("Orders")).toBeInTheDocument();
