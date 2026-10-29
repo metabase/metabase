@@ -2656,7 +2656,7 @@
                  mp import-resolver export-resolver))))
 
 ;;; ============================================================
-;;; Pass 4 -- infer base-type / effective-type on cross-stage field references
+;;; Passes 4.5 and 5 -- infer base-type / effective-type on cross-stage field references
 ;;;
 ;;; A cross-stage field reference looks like `["field" {opts} "<column-name>"]` where the
 ;;; third element is a **string** (the column's name in the previous stage's output) rather
@@ -2843,20 +2843,18 @@
         [(:name match) (:types match)]))))
 
 (defn- maybe-fill-cross-stage-types
-  "Given a cross-stage field clause and a name→types map, return the clause with its column name
-  canonicalised (surrounding double-quotes stripped when that is what makes it match a real
-  column) and `base-type` / `effective-type` filled in (when missing and known).
+  "Return the by-name field `clause` with the spelling [[match-cross-stage-column]] finds for it in `cols`,
+  and with `base-type` / `effective-type` filled in when missing and known.
+  Returns `clause` unchanged when no column matches.
 
-  Idempotent: once the name is canonical it matches exactly on the next pass (no rename), and
-  once `base-type` is present it is left alone."
+  Idempotent: once renamed, the ref matches exactly on the next pass, and a present `base-type` is kept."
   [clause cols]
   (let [opts     (nth clause 1)
         col-name (nth clause 2)]
     (if-let [[canonical-name types] (match-cross-stage-column cols col-name)]
       (cond-> clause
-        ;; Canonicalise the name when quote-stripping / display-name recovery was needed to
-        ;; match. A bare `base-type` stamp without this would leave the ref pointing at a
-        ;; non-existent column.
+        ;; Rename the ref when it matched only after quote-stripping or loose matching.
+        ;; A `base-type` stamp alone would leave it pointing at a column that doesn't exist.
         (not= canonical-name col-name)
         (assoc 2 canonical-name)
         ;; Stamp inferred types only when the LLM didn't author a `base-type` already and the
@@ -3097,7 +3095,7 @@
 ;;; Pass 5.7 -- assert cross-stage / source-card string refs resolved
 ;;;
 ;;; A `["field" {} "<name>"]` ref into a previous stage or a source-card must name a real
-;;; output column. The inference passes above (5 / 5.5) stamp `base-type` onto every such ref
+;;; output column. The inference passes above (4.5 / 5) stamp `base-type` onto every such ref
 ;;; that matches; anything still missing `base-type` afterward matched nothing - the LLM
 ;;; named a column that doesn't exist (typically a UI display label like "Max of X" instead of
 ;;; the machine name "max"). lib's resolver passes a typeless string-named field ref through
