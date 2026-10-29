@@ -1,6 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useEffect, useState } from "react";
-import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import {
@@ -33,6 +32,7 @@ import type {
   Transform,
   TransformDagDirection,
   TransformDagRunId,
+  TransformRunId,
   TransformTagId,
 } from "metabase-types/api";
 
@@ -155,11 +155,16 @@ type RunStatusSectionProps = {
 
 function RunStatusSection({ transform, isScheduled }: RunStatusSectionProps) {
   const { id, last_run } = transform;
+  const [cancelingRunId, setCancelingRunId] = useState<TransformRunId>();
 
-  const status = last_run?.status;
-  const previousStatus = usePrevious(status);
+  if (last_run?.status === "canceling" && last_run.id !== cancelingRunId) {
+    setCancelingRunId(last_run.id);
+  }
 
-  const runExtra = status === "succeeded" && previousStatus === "canceling" && (
+  const succeededBeforeCancel =
+    last_run?.status === "succeeded" && last_run.id === cancelingRunId;
+
+  const runExtra = succeededBeforeCancel && (
     <Box
       c="text-disabled"
       ml="xl"

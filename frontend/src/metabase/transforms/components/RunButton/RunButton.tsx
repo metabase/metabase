@@ -22,15 +22,19 @@ import type {
   TransformJobId,
   TransformRun,
 } from "metabase-types/api";
+import { PENDING_RUN_ID } from "metabase-types/api";
 
 import { isActiveRunStatus } from "../../utils";
 import { LockedTransformsHoverCard } from "../LockedTransformsHoverCard/LockedTransformsHoverCard";
 
 const RECENT_TIMEOUT = 5000;
 
+type RunButtonRun = Pick<TransformRun, "status"> &
+  Partial<Pick<TransformRun, "id">>;
+
 type RunButtonProps = {
   id: TransformId | TransformJobId | undefined;
-  run: Pick<TransformRun, "status"> | null | undefined;
+  run: RunButtonRun | null | undefined;
   isDisabled?: boolean;
   isLoading?: boolean;
   allowCancellation?: boolean;
@@ -75,6 +79,9 @@ export const RunButton = forwardRef(function RunButton(
 
   const isRunning = isActiveRunStatus(run?.status);
   const showMenu = menuItems != null && !isRunning;
+  // The server only knows which run to cancel once it has accepted the run.
+  const showCancel =
+    allowCancellation && run?.status === "started" && run.id !== PENDING_RUN_ID;
 
   const runButton = (
     <Button.Group>
@@ -107,7 +114,7 @@ export const RunButton = forwardRef(function RunButton(
           <Menu.Dropdown>{menuItems}</Menu.Dropdown>
         </Menu>
       )}
-      {allowCancellation && run?.status === "started" && (
+      {showCancel && (
         <Tooltip label={t`Cancel`}>
           <Button
             onClick={onCancel}

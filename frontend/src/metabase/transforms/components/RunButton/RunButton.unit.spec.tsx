@@ -5,6 +5,7 @@ import { createMockState } from "__support__/state";
 import { act, fireEvent, renderWithProviders, screen } from "__support__/ui";
 import { Menu } from "metabase/ui";
 import type { TransformRun } from "metabase-types/api";
+import { PENDING_RUN_ID } from "metabase-types/api";
 import { createMockTransformRun } from "metabase-types/api/mocks";
 
 import { RunButton } from "./RunButton";
@@ -13,11 +14,13 @@ function setup({
   isMeterLocked = null,
   run = null,
   menuItems,
+  allowCancellation,
   onRun = jest.fn(),
 }: {
   isMeterLocked?: boolean | null;
   run?: TransformRun | null;
   menuItems?: ReactNode;
+  allowCancellation?: boolean;
   onRun?: () => void;
 } = {}) {
   jest.useFakeTimers();
@@ -25,7 +28,13 @@ function setup({
     settings: mockSettings({ "transforms-meter-locked": isMeterLocked }),
   });
   renderWithProviders(
-    <RunButton id={1} run={run} onRun={onRun} menuItems={menuItems} />,
+    <RunButton
+      id={1}
+      run={run}
+      onRun={onRun}
+      menuItems={menuItems}
+      allowCancellation={allowCancellation}
+    />,
     {
       storeInitialState: state,
     },
@@ -76,6 +85,29 @@ describe("RunButton", () => {
       expect(
         screen.queryByTestId("run-options-button"),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("with cancellation", () => {
+    it("offers to cancel a run that the server has accepted", () => {
+      setup({
+        allowCancellation: true,
+        run: createMockTransformRun({ id: 1, status: "started" }),
+      });
+
+      expect(screen.getByTestId("cancel-button")).toBeInTheDocument();
+    });
+
+    it("does not offer to cancel a run that the server has not accepted yet", () => {
+      setup({
+        allowCancellation: true,
+        run: createMockTransformRun({ id: PENDING_RUN_ID, status: "started" }),
+      });
+
+      expect(
+        screen.getByRole("button", { name: "Running now…" }),
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId("cancel-button")).not.toBeInTheDocument();
     });
   });
 

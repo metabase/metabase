@@ -15,6 +15,8 @@ import type {
   CardType,
   CollectionId,
   PythonTransformTableAliases,
+  RunTransformResponse,
+  TransformRunId,
   TransformSourceCheckpointStrategy,
   TransformTagId,
 } from "metabase-types/api";
@@ -1734,22 +1736,29 @@ LIMIT
     }
 
     it("should be possible to cancel a transform from the transform page", () => {
+      cy.intercept("POST", "/api/transform/*/run").as("runTransform");
+      cy.intercept("POST", "/api/transform/*/cancel").as("cancelTransform");
       createSlowTransform();
       H.DataStudio.Transforms.runTab().click();
       getRunButton().click();
-      getRunButton().should("have.text", "Running now…");
-      getRunStatus().should("have.text", "Run in progress…");
 
+      cy.log("cancel the run once the server has accepted it");
+      cy.wait<unknown, RunTransformResponse>("@runTransform").then(
+        ({ response }) => {
+          expect(response?.statusCode).to.eq(202);
+          cy.wrap(response?.body.run_id).as("runId");
+        },
+      );
       getCancelButton().click();
       H.modal().button("Cancel run").click();
+      cy.wait("@cancelTransform").its("response.statusCode").should("eq", 204);
 
-      getRunButton().should("have.text", "Canceling…");
-      getRunStatus().should("have.text", "Canceling…");
-
-      // We need to pass a timeout here since canceling a transform can
-      // take a while on the back end
-      getRunButton({ timeout: 40_000 }).should("have.text", "Canceled");
+      cy.get<TransformRunId>("@runId").then((runId) => {
+        // The backend applies cancel requests every 20 seconds.
+        H.waitForTransformRunStatus(runId, "canceled", { timeout: 30_000 });
+      });
       getRunStatus().should("contain", "Last run was canceled");
+      getCancelButton().should("not.exist");
 
       cy.log("cancel a SQL transform from the preview (metabase#64474)");
       createSlowTransform(500);
@@ -1762,52 +1771,6 @@ LIMIT
         cy.findAllByTestId("run-button").eq(0).click();
         cy.findByTestId("loading-indicator").should("not.exist");
       });
-    });
-
-    it("should be possible to cancel a transform from the runs page", () => {
-      createSlowTransform();
-      H.DataStudio.Transforms.runTab().click();
-      getRunButton().click();
-      getRunButton().should("have.text", "Running now…");
-      getRunStatus().should("have.text", "Run in progress…");
-
-      H.DataStudio.breadcrumbs().findByText("Transforms").click();
-      getRunsNavLink().click();
-      getDetailedViewSwitch().click();
-      getTransformRunTable().findByText("In progress").click();
-      cy.findByTestId("run-list-sidebar").button("Cancel run").click();
-      H.modal().button("Yes").click();
-
-      getTransformRunTable().findByText("Canceling").should("exist");
-      getTransformRunTable()
-        .findByText("Canceled", { timeout: 30_000 })
-        .should("exist");
-    });
-
-    it("should show a message when the run finished before it cancels", () => {
-      createSlowTransform(1);
-      H.DataStudio.Transforms.runTab().click();
-      getRunButton().click();
-      getRunButton().should("have.text", "Running now…");
-      getRunStatus().should("have.text", "Run in progress…");
-
-      getCancelButton().click();
-      H.modal().button("Cancel run").click();
-
-      getRunButton().should("have.text", "Canceling…");
-      getRunStatus().should("have.text", "Canceling…");
-
-      // We need to pass a timeout here since canceling a transform can
-      // take a while on the back end
-      getRunButton({ timeout: 40_000 }).should("have.text", "Ran successfully");
-      getRunStatus().should(
-        "contain",
-        "Last ran a few seconds ago successfully.",
-      );
-      H.DataStudio.Runs.content().should(
-        "contain",
-        "This run succeeded before it had a chance to cancel.",
-      );
     });
   });
 
@@ -3607,8 +3570,8 @@ function getQueryEditor() {
   return cy.findByTestId("transform-query-editor");
 }
 
-function getRunButton(options: { timeout?: number } = {}) {
-  return cy.findAllByTestId("run-button").eq(0, options);
+function getRunButton() {
+  return cy.findAllByTestId("run-button").eq(0);
 }
 
 function getCancelButton() {

@@ -2,16 +2,24 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import {
+  setupCancelCurrentTransformRunEndpoint,
+  setupGetTransformEndpoint,
   setupListDagRunTransformRunsEndpoint,
   setupListDagTransformsEndpoint,
   setupListTransformTagsEndpoint,
   setupRunTransformDagEndpoint,
+  setupRunTransformEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { useGetTransformQuery } from "metabase/api";
 import { UndoListing } from "metabase/common/components/UndoListing";
+import { defer } from "metabase/utils/promise";
 import type {
   RunTransformDagResponse,
+  RunTransformResponse,
   Transform,
+  TransformId,
+  TransformRun,
   TransformRunForJobRun,
 } from "metabase-types/api";
 import {
@@ -24,6 +32,9 @@ import { RunSection } from "./RunSection";
 
 const TRANSFORM_ID = 10;
 const DAG_RUN_ID = 1;
+const RUN_ID = 20;
+const SUCCEEDED_BEFORE_CANCEL_MESSAGE =
+  "This run succeeded before it had a chance to cancel.";
 
 const DEFAULT_DAG_MEMBERS: TransformRunForJobRun[] = [
   createMockTransformRunForJobRun({
@@ -168,6 +179,214 @@ describe("RunSection DAG run flow", () => {
     ).toBeInTheDocument();
     expect(
       screen.queryByText("Scheduled to run as part of a reprocess run."),
+    ).not.toBeInTheDocument();
+  });
+});
+
+const settleOnCleanup: (() => void)[] = [];
+
+function TransformRunSection({ transformId }: { transformId: TransformId }) {
+  const { data: transform } = useGetTransformQuery(transformId);
+  return transform != null ? <RunSection transform={transform} /> : null;
+}
+
+function setupRunLifecycle({
+  lastRun = null,
+}: { lastRun?: TransformRun | null } = {}) {
+  // The GET endpoint serves this object as it is at request time.
+  const serverTransform = createMockTransform({
+    id: TRANSFORM_ID,
+    last_run: lastRun,
+  });
+  const runResponse = defer<RunTransformResponse>();
+  const cancelResponse = defer<number>();
+  settleOnCleanup.push(
+    () => runResponse.resolve({ run_id: RUN_ID }),
+    () => cancelResponse.resolve(204),
+  );
+
+  setupGetTransformEndpoint(serverTransform);
+  setupListTransformTagsEndpoint([]);
+  setupRunTransformEndpoint(TRANSFORM_ID, () => runResponse.promise);
+  setupCancelCurrentTransformRunEndpoint(
+    TRANSFORM_ID,
+    () => cancelResponse.promise,
+  );
+
+  renderWithProviders(<TransformRunSection transformId={TRANSFORM_ID} />, {
+    withUndos: true,
+  });
+
+  return { serverTransform, runResponse, cancelResponse };
+}
+
+async function requestCancel() {
+  await userEvent.click(await screen.findByTestId("cancel-button"));
+  await userEvent.click(
+    await screen.findByRole("button", { name: "Cancel run" }),
+  );
+}
+
+describe("RunSection run and cancel lifecycle", () => {
+  afterEach(() => {
+    settleOnCleanup.splice(0).forEach((settle) => settle());
+  });
+
+  it("offers to cancel a run only after the server accepts it", async () => {
+    const { serverTransform, runResponse } = setupRunLifecycle();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Run now" }),
+    );
+
+    expect(
+      await screen.findByRole("button", { name: "Running now…" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("cancel-button")).not.toBeInTheDocument();
+
+    serverTransform.last_run = createMockTransformRun({
+      id: RUN_ID,
+      status: "started",
+      end_time: null,
+    });
+    runResponse.resolve({ run_id: RUN_ID });
+
+    expect(await screen.findByTestId("cancel-button")).toBeInTheDocument();
+  });
+
+  it("shows the run as canceling until the server reports it canceled", async () => {
+    const { serverTransform, cancelResponse } = setupRunLifecycle({
+      lastRun: createMockTransformRun({
+        id: RUN_ID,
+        status: "started",
+        end_time: null,
+      }),
+    });
+
+    await requestCancel();
+
+    expect(
+      await screen.findByRole("button", { name: "Canceling…" }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("run-status")).toHaveTextContent("Canceling…");
+    expect(
+      fetchMock.callHistory.called(
+        `path:/api/transform/${TRANSFORM_ID}/cancel`,
+      ),
+    ).toBe(true);
+
+    serverTransform.last_run = createMockTransformRun({
+      id: RUN_ID,
+      status: "canceled",
+    });
+    cancelResponse.resolve(204);
+
+    expect(
+      await screen.findByRole("button", { name: "Canceled" }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("run-status")).toHaveTextContent(
+      "Last run was canceled",
+    );
+  });
+
+  it("shows the final state without an error when the run ended before the cancel request reached the server", async () => {
+    const { serverTransform, cancelResponse } = setupRunLifecycle({
+      lastRun: createMockTransformRun({
+        id: RUN_ID,
+        status: "started",
+        end_time: null,
+      }),
+    });
+
+    await requestCancel();
+    expect(
+      await screen.findByRole("button", { name: "Canceling…" }),
+    ).toBeInTheDocument();
+
+    serverTransform.last_run = createMockTransformRun({
+      id: RUN_ID,
+      status: "succeeded",
+    });
+    cancelResponse.resolve(404);
+
+    expect(
+      await screen.findByRole("button", { name: "Ran successfully" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(SUCCEEDED_BEFORE_CANCEL_MESSAGE),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Failed to cancel transform"),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("RunSection success before cancel", () => {
+  const cancelingTransform = createMockTransform({
+    id: TRANSFORM_ID,
+    last_run: createMockTransformRun({
+      id: RUN_ID,
+      status: "canceling",
+      end_time: null,
+    }),
+  });
+  const succeededTransform = createMockTransform({
+    id: TRANSFORM_ID,
+    last_run: createMockTransformRun({ id: RUN_ID, status: "succeeded" }),
+  });
+
+  function setupCanceledRunThatSucceeded() {
+    setupListTransformTagsEndpoint([]);
+    const { rerender } = renderWithProviders(
+      <RunSection transform={cancelingTransform} />,
+    );
+    rerender(<RunSection transform={succeededTransform} />);
+    return { rerender };
+  }
+
+  it("keeps the message when the transform is fetched again", () => {
+    const { rerender } = setupCanceledRunThatSucceeded();
+    expect(
+      screen.getByText(SUCCEEDED_BEFORE_CANCEL_MESSAGE),
+    ).toBeInTheDocument();
+
+    rerender(<RunSection transform={{ ...succeededTransform }} />);
+
+    expect(
+      screen.getByText(SUCCEEDED_BEFORE_CANCEL_MESSAGE),
+    ).toBeInTheDocument();
+  });
+
+  it("drops the message when another run starts", () => {
+    const { rerender } = setupCanceledRunThatSucceeded();
+
+    rerender(
+      <RunSection
+        transform={createMockTransform({
+          id: TRANSFORM_ID,
+          last_run: createMockTransformRun({
+            id: RUN_ID + 1,
+            status: "started",
+            end_time: null,
+          }),
+        })}
+      />,
+    );
+
+    expect(
+      screen.queryByText(SUCCEEDED_BEFORE_CANCEL_MESSAGE),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not show the message for a run that succeeded without a cancel request", () => {
+    setupListTransformTagsEndpoint([]);
+    renderWithProviders(<RunSection transform={succeededTransform} />);
+
+    expect(screen.getByTestId("run-status")).toHaveTextContent(
+      /Last ran .*successfully\./,
+    );
+    expect(
+      screen.queryByText(SUCCEEDED_BEFORE_CANCEL_MESSAGE),
     ).not.toBeInTheDocument();
   });
 });
