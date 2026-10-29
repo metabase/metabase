@@ -4,6 +4,7 @@ import type {
   CollectionId,
   ListTransformJobRunsResponse,
   PythonTransformTableAliases,
+  RunTransformJobResponse,
   RunTransformResponse,
   SchemaName,
   TemplateTags,
@@ -29,6 +30,13 @@ const TERMINAL_RUN_STATUSES = [
 ] as const satisfies readonly TransformRunStatus[];
 
 type TerminalRunStatus = (typeof TERMINAL_RUN_STATUSES)[number];
+
+const RUN_BUTTON_TEXT: Record<TerminalRunStatus, string> = {
+  succeeded: "Ran successfully",
+  failed: "Run failed",
+  timeout: "Run failed",
+  canceled: "Canceled",
+};
 
 const RUN_STATUS_TEXT: Record<TerminalRunStatus, RegExp> = {
   succeeded: /^Last ran .*successfully\./,
@@ -194,10 +202,6 @@ export function runTransformJobFromUiAndWaitForStatus(
   assertRunStatusShown(status);
 }
 
-type RunTransformJobResponse = {
-  job_run_id: TransformJobRunId | null;
-};
-
 function getJobIdFromRunUrl(url: string): TransformJobId {
   const [, jobId] =
     new URL(url).pathname.match(/\/api\/transform-job\/(\d+)\/run$/) ?? [];
@@ -209,6 +213,7 @@ function getRunButton() {
 }
 
 function assertRunStatusShown(status: TerminalRunStatus) {
+  getRunButton().should("have.text", RUN_BUTTON_TEXT[status]);
   cy.findByTestId("run-status")
     .invoke("text")
     .should("match", RUN_STATUS_TEXT[status]);
