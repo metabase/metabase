@@ -3197,7 +3197,8 @@
           (throw e))))))
 
 (defn- with-alias-on-join-fields
-  "Return `join` with its alias on each field ref in its `fields`, as lib's join normalization does."
+  "Return `join` with its alias on each field ref in its `fields`.
+  Lib's join normalization later adds the alias to every clause there."
   [join]
   (let [alias (when (map? join) (get join "alias"))]
     (cond-> join

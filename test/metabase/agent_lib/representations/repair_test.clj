@@ -4193,8 +4193,8 @@
       (is (= [(assoc-in (orders-col "USER_ID") [1 "join-alias"] "First")]
              (join-fields min-total-by-user-stage [(orders-col "USER_ID")]))))
     (testing "a path ref there to a column the grouped join doesn't return is reported"
-      (is (=? {:error :unresolved-join-alias-field}
-              (repair-error (fields-query min-total-by-user-stage [(orders-col "TOTAL")])))))))
+      (is (= [[1 "First" ["ORDERS.TOTAL"]]]
+             (join-problems (fields-query min-total-by-user-stage [(orders-col "TOTAL")])))))))
 
 (deftest ^:parallel alias-less-join-fields-left-for-validation-test
   (let [fields-of (fn [column]
