@@ -318,6 +318,63 @@
                    (tu/unsupported {:edit   foreign-target
                                     :metric {:filter planes-filter}}))))))
 
+(def ^:private order-dimensions
+  "The dimensions of `dim_order`, column and SQL alike."
+  ["order_status_dim" "is_cancelled_order" "order_date"])
+
+(deftest ^:parallel cross-database-join-test
+  (let [other-db (fn [m]
+                   (-> m
+                       (assoc-in [:semantic_models tu/order-sm-id :node_relation :database] "other_db")
+                       (assoc-in [:nodes tu/order-model-id :database] "other_db")))
+        config   {:databases {"dbt_bi" tu/db, "other_db" "Other DB"}}
+        reason   (str "semantic model \"dim_order\" is in Metabase database \"Other DB\", not \"Sales DB\"; a join"
+                      " across databases is not supported")]
+    (testing (str "a join to a semantic model in another Metabase database cannot be made, so every dimension behind"
+                  " it is reported with that reason")
+      (let [reasons (tu/unsupported-dimensions {:config config, :edit other-db})]
+        (doseq [dimension-name order-dimensions]
+          (testing dimension-name
+            (is (= reason (reason-for reasons dimension-name)))))
+        (is (not-any? (set order-dimensions) (tu/dimension-names {:config config, :edit other-db})))))
+    (testing "and a filter through the entity is reported the same way"
+      (is (= (str "filter " (pr-str "{{ Dimension('order__order_status_dim') }} = 'Shipped'") ": " reason)
+             (tu/unsupported {:config config, :edit other-db, :metric {:filter shipped-order-filter}}))))))
+
+(deftest ^:parallel primary-entity-without-entity-test
+  (testing "a semantic model whose primary_entity names no entity of its own has no column to join on"
+    (let [virtual-order (tu/edit-semantic-model tu/order-sm-id #(assoc % :primary_entity "order", :entities []))
+          reason        (str "semantic model \"dim_order\" names \"order\" as its primary_entity but has no entity of"
+                             " that name to join on")
+          reasons       (tu/unsupported-dimensions {:edit virtual-order})]
+      (doseq [dimension-name order-dimensions]
+        (testing dimension-name
+          (is (= reason (reason-for reasons dimension-name)))))
+      (is (= (str "filter " (pr-str "{{ Dimension('order__order_status_dim') }} = 'Shipped'") ": " reason)
+             (tu/unsupported {:edit virtual-order, :metric {:filter shipped-order-filter}}))))))
+
+(deftest ^:parallel literal-expr-test
+  (testing "a dimension whose expr is a literal is neither a column nor SQL, and is reported as such"
+    (let [literal-dimensions (tu/edit-semantic-model #(update % :dimensions conj
+                                                              (tu/dimension "one" "categorical" :expr "1")
+                                                              (tu/dimension "star" "categorical" :expr "*")
+                                                              (tu/dimension "yes" "categorical" :expr "true")))
+          reasons            (tu/unsupported-dimensions {:edit literal-dimensions})]
+      (are [dimension-name reason] (= reason (reason-for reasons dimension-name))
+        "one"  "dimension \"one\" is \"1\", not a column"
+        "star" "dimension \"star\" is \"*\", not a column"
+        "yes"  "dimension \"yes\" is \"true\", not a column")
+      (testing "in a filter too"
+        (is (re-find #"\"1\" is neither a column nor a SQL expression"
+                     (tu/unsupported {:edit   literal-dimensions
+                                      :metric {:filter (tu/where-filters
+                                                        "{{ Dimension('fact_sales_key__one') }} = 1")}}))))))
+  (testing "so is an entity whose expr is a literal, when a filter refers to it"
+    (is (re-find #"\"1\" is neither a column nor a SQL expression"
+                 (tu/unsupported {:edit   (tu/edit-semantic-model
+                                           #(update % :entities conj (tu/entity "one" "foreign" :expr "1")))
+                                  :metric {:filter (tu/where-filters "{{ Entity('one') }} = 1")}})))))
+
 (deftest ^:parallel metric-time-granularity-test
   (testing "a metric's time_granularity is the default temporal unit of its default dimension"
     (are [grain unit] (= (assoc (local-dimension "date_day" :type/Date)

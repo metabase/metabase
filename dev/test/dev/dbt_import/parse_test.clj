@@ -43,8 +43,9 @@
 (deftest ^:parallel parse-manifest-test
   (let [parsed (tu/flexanalytics-ir)]
     (is (mr/validate ::ir/manifest parsed))
-    (is (= {:tool "dbt", :version "1.12.6", :project "dbt_business_intelligence"}
-           (:source parsed)))
+    ;; the fixture is regenerated with whatever dbt 1.x is current, so the patch version is not pinned
+    (is (=? {:tool "dbt", :version #"^1\.\d+\.\d+", :project "dbt_business_intelligence"}
+            (:source parsed)))
     (is (= #{"fact_sales" "dim_customer" "dim_product" "dim_order"}
            (set (keys (:semantic-models parsed)))))
     (testing (str "the nine simple metrics parse, including the create_metric: true ones, and so do the ratio, derived"
@@ -264,6 +265,24 @@
                     :is_partition false
                     :expr         "date_day"
                     :type_params  {:time_granularity "fiscal_quarter", :validity_params nil}})))))
+
+(deftest ^:parallel invalid-manifest-errors-test
+  (testing "the exception's :errors say where in the manifest the problem is, and what was expected there"
+    (let [errors-of (fn [edit]
+                      (try
+                        (tu/convert {:edit edit})
+                        (catch ExceptionInfo e
+                          (:errors (ex-data e)))))]
+      (is (=? {:semantic_models {tu/sm-id {:measures [{:agg [#"^should be either :sum, :min, :max, .*:count$"]}]}}}
+              (errors-of (fn [m] (assoc-in m [:semantic_models tu/sm-id :measures 0 :agg] "approx_count_distinct")))))
+      (is (=? {:metrics {"metric.p.funnel" {:type [#"^should be either :simple, :ratio, :cumulative, :derived.*"]}}}
+              (errors-of (add-metric {:unique_id "metric.p.funnel", :name "funnel", :type "funnel"}))))
+      (testing "an item of a list is placed by its index"
+        (is (=? [#"^should be either :primary, :unique, :foreign or :natural$"]
+                (get-in (errors-of (fn [m]
+                                     (update-in m [:semantic_models tu/sm-id :entities] conj
+                                                {:name "k", :type "composite"})))
+                        [:semantic_models tu/sm-id :entities 4 :type])))))))
 
 (defn- re-home-model
   "Move the model node to `node-id` with `resource-type`, and point the semantic model at it."

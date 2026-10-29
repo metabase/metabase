@@ -5,6 +5,7 @@
    [clojure.test :refer [are deftest is testing]]
    [dev.dbt-import.emit :as emit]
    [dev.dbt-import.test-util :as tu :refer [fld]]
+   [medley.core :as m]
    [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -30,23 +31,16 @@
 (deftest ^:parallel files-test
   (let [resolved (tu/flexanalytics-resolved)
         files    (emit/files tu/default-config resolved)]
-    (testing "the collection, then the metrics by name, a ratio or derived metric after the metrics it refers to"
-      (is (= ["collections/main/dbt_metrics.yaml"
-              "collections/main/dbt_metrics/cumulative_sales.yaml"
-              "collections/main/dbt_metrics/customer_count.yaml"
-              "collections/main/dbt_metrics/order_count.yaml"
-              "collections/main/dbt_metrics/price.yaml"
-              "collections/main/dbt_metrics/product_count.yaml"
-              "collections/main/dbt_metrics/quantity.yaml"
-              "collections/main/dbt_metrics/rowcount.yaml"
-              "collections/main/dbt_metrics/sales.yaml"
-              "collections/main/dbt_metrics/sales_to_target_ratio.yaml"
-              "collections/main/dbt_metrics/target.yaml"
-              "collections/main/dbt_metrics/cancelled_order_share.yaml"
-              "collections/main/dbt_metrics/sales_minus_target.yaml"
-              "collections/main/dbt_metrics/sales_pct_of_target.yaml"
-              "collections/main/dbt_metrics/sales_to_target_ratio_2.yaml"]
-             (map :path files))))
+    ;; which metrics resolve, and in what order, is [[dev.dbt-import.resolve-test/resolve-manifest-test]]'s business
+    (testing "the collection, then one card per resolved metric, in the order they were resolved"
+      (is (= "collections/main/dbt_metrics.yaml" (-> files first :path)))
+      (is (= (map (comp :name :ir) (:metrics resolved))
+             (map (comp :name :ir :metric) (rest files)))))
+    (testing "a card's file is its slugified label, under the collection's directory"
+      (is (= "collections/main/dbt_metrics/sales_to_target_ratio.yaml"
+             (:path (m/find-first #(= "Sales to Target Ratio" (-> % :metric :ir :label)) files))))
+      (is (every? #(re-matches #"collections/main/dbt_metrics/[a-z0-9_]+\.yaml" (:path %)) (rest files)))
+      (is (apply distinct? (map :path files))))
     (is (= [{:model "Collection"}]
            (map #(select-keys % [:model]) (-> files first :entity :serdes/meta))))
     (is (every? #(= "Card" (-> % :entity :serdes/meta last :model)) (rest files)))))
@@ -61,7 +55,7 @@
           float-field (fn [column]
                         ["field" {:base-type "type/Float", :effective-type "type/Float"}
                          ["Sales DB" "public" "fact_sales" column]])]
-      (is (= 15 (count paths)))
+      (is (= (inc (count (:metrics resolved))) (count paths)) "the collection and one card per metric")
       (testing "the collection file"
         (is (= {:name        "dbt metrics"
                 :entity_id   (-> resolved :collection :entity-id)

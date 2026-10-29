@@ -56,8 +56,9 @@
 (deftest ^:parallel parse-semantic-models-test
   (let [{:keys [semantic-models] :as manifest} @parsed]
     (is (mr/validate ::ir/manifest manifest))
-    (is (= {:tool "dbt", :version "1.12.6", :project "parcel_delivery"}
-           (:source manifest)))
+    ;; the fixture is regenerated with whatever dbt 1.x is current, so the patch version is not pinned
+    (is (=? {:tool "dbt", :version #"^1\.\d+\.\d+", :project "parcel_delivery"}
+            (:source manifest)))
     (is (= #{"daily_depot_volume" "delivery_runs" "parcels" "delivery_exceptions"}
            (set (keys semantic-models))))
     (testing "the inline spec declares no measures: every aggregation lives on a metric"
