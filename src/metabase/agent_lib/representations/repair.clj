@@ -2858,10 +2858,11 @@
 
 (defn- cols-through-alias
   "Return the columns in `cols` that `field-ref` can name: those that came through its join alias, or all of them
-  when it has none."
+  when it has none.
+  Returns nil when no column came through its join alias."
   [cols field-ref]
   (if-let [alias (get (nth field-ref 1) "join-alias")]
-    (filterv #(= alias (:join-alias %)) cols)
+    (not-empty (filterv #(= alias (:join-alias %)) cols))
     cols))
 
 (defn- infer-cross-stage-field-types-in-stage
@@ -2875,7 +2876,7 @@
     (postwalk-outside-join-stages
      (fn [node]
        (if-let [ref-cols (when (string-cross-stage-field-clause? aliases node)
-                           (not-empty (cols-through-alias cols node)))]
+                           (cols-through-alias cols node))]
          (maybe-fill-cross-stage-types node ref-cols)
          node))
      stage)))
@@ -3122,9 +3123,8 @@
   (let [aliases (stage-join-aliases stage)]
     (match/match-one (without-join-stages stage)
       (node :guard (and (unstamped-cross-stage-ref? aliases node)
-                        (let [ref-cols (cols-through-alias cols node)]
-                          (and (seq ref-cols)
-                               (nil? (match-cross-stage-column ref-cols (nth node 2)))))))
+                        (when-let [ref-cols (cols-through-alias cols node)]
+                          (nil? (match-cross-stage-column ref-cols (nth node 2))))))
       node)))
 
 (defn- assert-cross-stage-refs-resolved*
@@ -3141,15 +3141,18 @@
                         (get stage "source-card") (mini-resolved-columns-for-source-card mp query idx content-store)
                         (pos? idx)                (mini-resolved-columns mp query idx content-store))]
         (when-let [bad (first-unresolved-cross-stage-ref stage cols)]
-          (throw (ex-info
-                  (format "No column named %s is available to reference in this stage. Reference a column by its machine name (e.g. an aggregation is `max`, `count`, `sum` - never its display label like `Max of X`), not a UI label. Available column names: %s."
-                          (quoting/quoted (nth bad 2))
-                          (str/join ", " (map (comp quoting/quoted :name) cols)))
-                  {:agent-error? true
-                   :error        :unresolved-cross-stage-field
-                   :stage        idx
-                   :clause       bad
-                   :available    (mapv :name cols)}))))))
+          (let [alias     (get (nth bad 1) "join-alias")
+                available (cols-through-alias cols bad)]
+            (throw (ex-info
+                    (format "No column named %s is available to reference in this stage. Reference a column by its machine name (e.g. an aggregation is `max`, `count`, `sum` - never its display label like `Max of X`), not a UI label. Available column names: %s."
+                            (cond-> (quoting/quoted (nth bad 2))
+                              alias (str " from join " (quoting/quoted alias)))
+                            (str/join ", " (map (comp quoting/quoted :name) available)))
+                    {:agent-error? true
+                     :error        :unresolved-cross-stage-field
+                     :stage        idx
+                     :clause       bad
+                     :available    (mapv :name available)})))))))
   query)
 
 ;;; ============================================================
