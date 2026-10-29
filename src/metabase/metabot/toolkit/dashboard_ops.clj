@@ -725,24 +725,45 @@
 
 ;;; ------------------------------------------------ Entry ---------------------------------------------------------
 
-(defn card-refs
-  "The ids of the cards `op`, an op from [[prepare-ops]], references.
-   Those are the cards it puts on the dashboard, and the card a parameter it adds or updates draws its values from.
-   The caller resolves these into the `cards` map for [[compile-ops]], which rejects any it left out."
+(def ^:private parameter-ops
+  "The ops that leave a parameter with the properties they send."
+  #{"add_parameter" "update_parameter"})
+
+(defn- placed-card-ids
+  "The ids of the cards `op` puts on the dashboard."
   [op]
   (remove nil?
           (case (:op op)
-            "add_card"                           (cons (:card_id op) (:series op))
-            "replace_card"                       [(:card_id op)]
-            "set_series"                         (:card_ids op)
-            ("add_parameter" "update_parameter") [(get-in op [:values_source_config :card_id])]
+            "add_card"     (cons (:card_id op) (:series op))
+            "replace_card" [(:card_id op)]
+            "set_series"   (:card_ids op)
             nil)))
 
+(defn- source-card-id
+  "The card `parameter` takes its values from, or nil when its values come from somewhere else."
+  [parameter]
+  ;; Matches what the save read-checks: a source card counts only while the source type is card.
+  (when (= :card (some-> (:values_source_type parameter) keyword))
+    (get-in parameter [:values_source_config :card_id])))
+
+(defn card-refs
+  "The ids of the cards `op`, an op from [[prepare-ops]], may need a row for.
+   Those are the cards it puts on the dashboard, and the source card in a parameter config it sends.
+   The caller resolves these into the `cards` map for [[compile-ops]], which rejects any it needs and left out."
+  [op]
+  (concat (placed-card-ids op)
+          (when (contains? parameter-ops (:op op))
+            (some-> (get-in op [:values_source_config :card_id]) vector))))
+
 (defn- check-cards-resolved!
-  "Every card `op` references must be in the caller's `cards` map.
-   The caller leaves out the cards its user cannot read, so this is where an op naming one fails."
+  "Every card `op` puts on the dashboard must be in the caller's `cards` map.
+   So must the source card of a parameter it leaves with a card source, which may come from the config it already had.
+   The caller leaves out the cards its user cannot read, so this is where an op naming one fails.
+   `state` is the state after the op."
   [state op]
-  (doseq [card-id (card-refs op)
+  (doseq [card-id (concat (placed-card-ids op)
+                          (when (contains? parameter-ops (:op op))
+                            (some-> (find-row state :parameters (:parameter_id op)) source-card-id vector)))
           :when   (not (contains? (::cards state) card-id))]
     (fail! :unknown-card {:card-id card-id})))
 
@@ -769,7 +790,9 @@
   [idx op]
   (at-op idx op #(if-let [explanation (mr/explain dashboard-op-schema/op-schema op)]
                    (fail! :invalid-op {:explanation (me/humanize explanation)})
-                   (compact-op op))))
+                   ;; A patch's declared properties are nullable too, so a strict client fills them with null as well.
+                   (cond-> (compact-op op)
+                     (map? (:patch op)) (update :patch compact-op)))))
 
 (defn prepare-ops
   "The ops, each checked against [[dashboard-op-schema/op-schema]] and then stripped of null values.
@@ -794,6 +817,7 @@
    It runs the ops through [[prepare-ops]] before applying any, so it also takes ops that have not been through it.
    The `cards` map holds the row of each card the ops may touch, keyed by id.
    It covers the cards [[card-refs]] finds in `ops` and the cards already on the dashboard.
+   Those include the source cards of the dashboard's parameters.
    It leaves out cards the user cannot read.
    This namespace does no I/O, so the caller resolves them.
    Throws an error from [[errors]] on the first invalid op; read it with [[error-data]]."

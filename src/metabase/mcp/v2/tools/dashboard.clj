@@ -50,9 +50,10 @@
   "Every card id the compiled payload may need metadata for: those already on the dashboard, plus
    any named by an op."
   [dash ops]
-  (into (set (keep :card_id (:dashcards dash)))
-        (mapcat dashboard-ops/card-refs)
-        ops))
+  (-> (set (keep :card_id (:dashcards dash)))
+      ;; A parameter's source card is checked whenever an op leaves it with a card source, even one it already had.
+      (into (keep (comp :card_id :values_source_config)) (:parameters dash))
+      (into (mapcat dashboard-ops/card-refs) ops)))
 
 (defn- fetch-cards
   "The `{card-id card}` map for `ids`, behind read checks.

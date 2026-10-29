@@ -169,6 +169,9 @@
               [:parameter_mappings {:optional true}
                [:maybe [:sequential [:map {:description "A parameter mapping, replacing the dashcard's list."}
                                      [:parameter_id {:optional true} [:maybe [:string {:min 1}]]]
+                                     [:card_id {:optional true}
+                                      [:maybe [:int {:min         1
+                                                     :description "Card it filters, of this dashcard or its series."}]]]
                                      [:target {:optional true} [:maybe [:sequential :any]]]]]]]
               [:inline_parameters {:optional true} inline-parameters-schema]]]])
    (op-map "add_tab" (str "Add a tab. Existing cards are adopted only when the save ends with "
