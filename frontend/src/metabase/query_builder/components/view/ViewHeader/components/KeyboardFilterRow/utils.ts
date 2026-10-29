@@ -282,7 +282,7 @@ export function isValidValue(operator: DraftOperator, value: string) {
 export function getDraftStateFromFilter(
   query: Lib.Query,
   stageIndex: number,
-  filter: Lib.FilterClause,
+  filter: Lib.Filterable,
 ): DraftState | undefined {
   const coordinateParts = Lib.coordinateFilterParts(query, stageIndex, filter);
   if (coordinateParts != null) {

@@ -912,7 +912,7 @@ function useMaxDropdownWidth(
 }
 
 /** The match count and the notes under the options, or null for none. */
-function getValueCountsFooter(
+export function getValueCountsFooter(
   valueCounts: ValueCounts,
   operator: DraftOperator,
   values: string[],
@@ -1142,7 +1142,7 @@ function getValuePlaceholder(operator: DraftOperator, values: string[]) {
   return operator.isNumeric ? t`Number` : t`Value`;
 }
 
-function useFieldValues(
+export function useFieldValues(
   query: Lib.Query,
   column: Lib.ColumnMetadata,
   text: string,

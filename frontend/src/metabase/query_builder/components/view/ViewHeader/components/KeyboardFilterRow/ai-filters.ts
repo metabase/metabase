@@ -232,6 +232,69 @@ interface UseAiFiltersOpts {
  * request in natural language, like "pro customers in the EU". It is one call
  * to the LLM, with no agent loop.
  */
+type SuggestFilters = ReturnType<typeof useSuggestPrototypeFiltersMutation>[0];
+
+export type AiFiltersResult =
+  | { status: "ok"; filters: Lib.ExpressionClause[] }
+  | { status: "error"; message: string; reason?: string };
+
+/** One request to the AI for filters, outside of a hook's single state. */
+export async function requestAiFilters(
+  suggestFilters: SuggestFilters,
+  query: Lib.Query,
+  stageIndex: number,
+  prompt: string,
+): Promise<AiFiltersResult> {
+  const columns = getAiColumns(query, stageIndex);
+  try {
+    const response = await suggestFilters({
+      prompt,
+      today: dayjs().format("YYYY-MM-DD"),
+      columns: columns.map((column, index) => ({
+        id: index,
+        table: column.table,
+        name: column.name,
+        kind: column.kind,
+        field_id: column.fieldId,
+        operators: column.operators.map((operator) => ({
+          key: operator.key,
+          label: operator.label,
+          value_kind: operator.valueKind,
+          options: operator.options,
+        })),
+      })),
+    }).unwrap();
+    if (response.status === "rejected") {
+      return {
+        status: "error",
+        message: t`Sorry, we couldn't create filters for this request. Rephrase it, or pick a column.`,
+        reason: response.reason,
+      };
+    }
+    const filters = response.filters.map(({ column, operator, values }) =>
+      columns[column]?.operators
+        .find(({ key }) => key === operator)
+        ?.getFilterClause(values),
+    );
+    if (filters.length === 0 || filters.some((filter) => filter == null)) {
+      return {
+        status: "error",
+        message: t`Sorry, we couldn't create filters for this request. Rephrase it, or pick a column.`,
+        reason: t`The AI gave a filter that is not valid.`,
+      };
+    }
+    return {
+      status: "ok",
+      filters: filters.filter((filter) => filter != null),
+    };
+  } catch {
+    return {
+      status: "error",
+      message: t`The AI could not answer. Try again, or pick a column.`,
+    };
+  }
+}
+
 export function useAiFilters({
   query,
   stageIndex,
@@ -246,54 +309,18 @@ export function useAiFilters({
       return;
     }
     setState({ status: "loading" });
-    const columns = getAiColumns(query, stageIndex);
-    try {
-      const response = await suggestFilters({
-        prompt,
-        today: dayjs().format("YYYY-MM-DD"),
-        columns: columns.map((column, index) => ({
-          id: index,
-          table: column.table,
-          name: column.name,
-          kind: column.kind,
-          field_id: column.fieldId,
-          operators: column.operators.map((operator) => ({
-            key: operator.key,
-            label: operator.label,
-            value_kind: operator.valueKind,
-            options: operator.options,
-          })),
-        })),
-      }).unwrap();
-      if (response.status === "rejected") {
-        setState({
-          status: "error",
-          message: t`Sorry, we couldn't create filters for this request. Rephrase it, or pick a column.`,
-          reason: response.reason,
-        });
-        return;
-      }
-      const filters = response.filters.map(({ column, operator, values }) =>
-        columns[column]?.operators
-          .find(({ key }) => key === operator)
-          ?.getFilterClause(values),
-      );
-      if (filters.length === 0 || filters.some((filter) => filter == null)) {
-        setState({
-          status: "error",
-          message: t`Sorry, we couldn't create filters for this request. Rephrase it, or pick a column.`,
-          reason: t`The AI gave a filter that is not valid.`,
-        });
-        return;
-      }
-      setState({ status: "idle" });
-      onFilters(filters.filter((filter) => filter != null));
-    } catch {
-      setState({
-        status: "error",
-        message: t`The AI could not answer. Try again, or pick a column.`,
-      });
+    const result = await requestAiFilters(
+      suggestFilters,
+      query,
+      stageIndex,
+      prompt,
+    );
+    if (result.status === "error") {
+      setState(result);
+      return;
     }
+    setState({ status: "idle" });
+    onFilters(result.filters);
   };
 
   const reset = () => {

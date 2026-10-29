@@ -4,6 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import { usePrevious } from "react-use";
 
 import { useToggle } from "metabase/common/hooks/use-toggle";
+import {
+  FILTER_BAR_VERSION,
+  PrototypeVersionSwitcher,
+  usePrototypeSetting,
+} from "metabase/prototype";
 import type {
   DatasetEditorTab,
   QueryBuilderMode,
@@ -19,6 +24,9 @@ import { ViewSection } from "../ViewSection";
 import ViewTitleHeaderS from "./ViewTitleHeader.module.css";
 import {
   AdHocQuestionLeftSide,
+  FilterExpressionBar,
+  FilterExpressionBarB,
+  FilterExpressionBarC,
   KeyboardFilterRow,
   QueryBuilderBackButton,
   SavedQuestionLeftSide,
@@ -117,6 +125,7 @@ export function ViewTitleHeader({
     { turnOn: expandFilters, turnOff: collapseFilters },
   ] = useToggle(!question?.isSaved());
   const [draftFilterKey, setDraftFilterKey] = useState<number | null>(null);
+  const [filterBarVersion] = usePrototypeSetting(FILTER_BAR_VERSION);
 
   const addDraftFilter = useCallback(() => {
     expandFilters();
@@ -227,20 +236,60 @@ export function ViewTitleHeader({
         />
       </ViewSection>
 
-      {KeyboardFilterRow.shouldRender({
-        question,
-        queryBuilderMode,
-      }) && (
-        <KeyboardFilterRow
-          expanded={areFiltersExpanded}
-          question={question}
-          isDirty={isDirty}
-          draftKey={draftFilterKey}
-          onAddDraft={addDraftFilter}
-          onRemoveDraft={removeDraftFilter}
-          updateQuestion={updateQuestion}
+      {filterBarVersion === "a" &&
+        FilterExpressionBar.shouldRender({ question, queryBuilderMode }) && (
+          <FilterExpressionBar
+            expanded={areFiltersExpanded}
+            question={question}
+            draftKey={draftFilterKey}
+            onAddDraft={addDraftFilter}
+            onRemoveDraft={removeDraftFilter}
+            updateQuestion={updateQuestion}
+          />
+        )}
+      {filterBarVersion === "b" &&
+        FilterExpressionBarB.shouldRender({ question, queryBuilderMode }) && (
+          <FilterExpressionBarB
+            expanded={areFiltersExpanded}
+            question={question}
+            draftKey={draftFilterKey}
+            onAddDraft={addDraftFilter}
+            onRemoveDraft={removeDraftFilter}
+            updateQuestion={updateQuestion}
+          />
+        )}
+      {filterBarVersion === "c" &&
+        FilterExpressionBarC.shouldRender({ question, queryBuilderMode }) && (
+          <FilterExpressionBarC
+            expanded={areFiltersExpanded}
+            question={question}
+            draftKey={draftFilterKey}
+            onAddDraft={addDraftFilter}
+            onRemoveDraft={removeDraftFilter}
+            updateQuestion={updateQuestion}
+          />
+        )}
+      {FilterExpressionBar.shouldRender({ question, queryBuilderMode }) && (
+        <PrototypeVersionSwitcher
+          setting={FILTER_BAR_VERSION}
+          label="Filter prototype"
         />
       )}
+      {filterBarVersion === "pills" &&
+        KeyboardFilterRow.shouldRender({
+          question,
+          queryBuilderMode,
+        }) && (
+          <KeyboardFilterRow
+            expanded={areFiltersExpanded}
+            question={question}
+            isDirty={isDirty}
+            draftKey={draftFilterKey}
+            onAddDraft={addDraftFilter}
+            onRemoveDraft={removeDraftFilter}
+            updateQuestion={updateQuestion}
+          />
+        )}
     </>
   );
 }

@@ -5,6 +5,21 @@ import type {
   SegmentedPrototypeSetting,
 } from "./types";
 
+export const FILTER_BAR_VERSION: SegmentedPrototypeSetting = {
+  type: "segmented",
+  key: "filter-bar-version",
+  label: "Filter bar",
+  description:
+    "Versions A, B and C: one line of free text where filters turn into pills, joined with and / or / parentheses. Pills: the separate filter pills. The switcher at the bottom of the question page changes it too.",
+  options: [
+    { value: "a", label: "Version A" },
+    { value: "b", label: "Version B" },
+    { value: "c", label: "Version C" },
+    { value: "pills", label: "Pills" },
+  ],
+  defaultValue: "a",
+};
+
 export const AUTO_APPLY_TYPED_VALUES: SegmentedPrototypeSetting = {
   type: "segmented",
   key: "auto-apply-typed-values",
@@ -79,6 +94,7 @@ export const SHOW_RUNTIME_ESTIMATE: BooleanPrototypeSetting = {
  * reads them with `usePrototypeSetting`. See PROTOTYPE.md.
  */
 export const PROTOTYPE_SETTINGS: readonly PrototypeSetting[] = [
+  FILTER_BAR_VERSION,
   AUTO_APPLY_TYPED_VALUES,
   AUTO_APPLY_DELAY_MS,
   LOADING_SPINNER_DELAY_MS,

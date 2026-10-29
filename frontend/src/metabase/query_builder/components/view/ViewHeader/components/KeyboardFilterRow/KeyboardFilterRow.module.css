@@ -16,7 +16,6 @@
   color: var(--mb-color-text-primary);
   font-size: var(--mantine-font-size-md);
   line-height: var(--mantine-line-height-md);
-  box-shadow: var(--mantine-shadow-xs);
 }
 
 .addButton {
