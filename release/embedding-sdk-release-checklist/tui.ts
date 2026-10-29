@@ -17,12 +17,13 @@ import {
 import {
   type Interaction,
   type Step,
+  type StepPullRequest,
   type StepResult,
   type StepState,
   checkWithoutThrowing,
   describeFailure,
 } from "./checklist";
-import { type PullRequest, forgetNpmDistTags } from "./external-calls";
+import { forgetNpmDistTags } from "./external-calls";
 
 const ICONS: Record<StepState, string> = {
   done: "✅",
@@ -74,8 +75,9 @@ export async function showStatus(
     for (const line of row.result?.lines ?? []) {
       console.log(`      ${colorize(line)}`);
     }
-    for (const line of row.result ? linkLinesOf(row.result) : []) {
-      console.log(`  ${line}`);
+    const linkLines = row.result ? linkSectionsOf(row.result) : [];
+    for (const line of linkLines.filter(Boolean)) {
+      console.log(`    ${line}`);
     }
   }
 }
@@ -350,7 +352,6 @@ function detailsOf(row: Row & { kind: "step" }, spinner: string): string[] {
   if (!result) {
     return [...about, `${heading("Now:")} ${spinner} checking...`];
   }
-  const linkLines = linkLinesOf(result);
   return [
     ...about,
     `${heading("Now:")} ${ICONS[result.state]} ${STATE_NAMES[result.state]}`,
@@ -362,27 +363,56 @@ function detailsOf(row: Row & { kind: "step" }, spinner: string): string[] {
           ...result.action.description.flatMap((line) => wrap(line, "    ")),
         ]
       : []),
-    ...(linkLines.length > 0 ? ["", heading("Links:"), ...linkLines] : []),
+    ...linkSectionsOf(result),
   ];
 }
 
-// the PRs of the step with their state, then its other pages
-function linkLinesOf(result: StepResult): string[] {
+// The PRs and pages of the step under two headers: this release, then
+// earlier releases. A page that a line of the step already shows is not
+// repeated.
+export function linkSectionsOf(result: StepResult): string[] {
+  const isInTheLinesAbove = (url: string) =>
+    result.lines.some((line) => line.includes(url));
+  const linesOf = (isAboutAnEarlierRelease: boolean) => [
+    ...(result.pullRequests ?? [])
+      .filter(
+        (pr) =>
+          Boolean(pr.isAboutAnEarlierRelease) === isAboutAnEarlierRelease &&
+          !isInTheLinesAbove(pr.url),
+      )
+      .map(pullRequestLine),
+    ...(result.links ?? [])
+      .filter(
+        (link) =>
+          Boolean(link.isAboutAnEarlierRelease) === isAboutAnEarlierRelease &&
+          !isInTheLinesAbove(link.url),
+      )
+      .map((link) => `    ${colorize(link.url)}  ${colorize(link.label)}`),
+  ];
+  const thisRelease = linesOf(false);
+  const earlierReleases = linesOf(true);
   return [
-    ...(result.pullRequests ?? []).map(pullRequestLine),
-    ...(result.links ?? []).map(
-      (link) => `    ${colorize(link.url)}  ${colorize(link.label)}`,
-    ),
+    ...(thisRelease.length > 0
+      ? ["", heading("Links about this release:"), ...thisRelease]
+      : []),
+    ...(earlierReleases.length > 0
+      ? [
+          "",
+          heading("Links about earlier releases, for reference:"),
+          ...earlierReleases,
+        ]
+      : []),
   ];
 }
 
 // "    open    https://github.com/.../pull/1  title"
-function pullRequestLine(pullRequest: PullRequest): string {
+function pullRequestLine(pullRequest: StepPullRequest): string {
   const state =
     pullRequest.state === "OPEN" && pullRequest.isDraft
       ? "draft"
       : pullRequest.state.toLowerCase();
-  return `    ${style(PULL_REQUEST_STATE_COLORS[state] ?? "", state.padEnd(7))} ${colorize(pullRequest.url)}  ${colorize(pullRequest.title)}`;
+  const label = pullRequest.label ? `${style(BOLD, pullRequest.label)}: ` : "";
+  return `    ${style(PULL_REQUEST_STATE_COLORS[state] ?? "", state.padEnd(7))} ${colorize(pullRequest.url)}  ${label}${colorize(pullRequest.title)}`;
 }
 
 // every open or draft PR of every step, once

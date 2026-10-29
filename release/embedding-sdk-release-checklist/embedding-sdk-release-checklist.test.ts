@@ -53,11 +53,12 @@ import {
   REACT,
   SHOPPY,
   type SampleRepo,
+  checkDefaultBranch,
   checkSampleRepo,
   checkShoppyProductionInstance,
-  checkStableBranch,
+  checkStableBranchFastForward,
 } from "./sample-repos";
-import { highlight } from "./tui";
+import { highlight, linkSectionsOf } from "./tui";
 
 const METABASE = "metabase/metabase";
 const ENTRY = path.join(
@@ -221,11 +222,16 @@ describe("gold 65 as on 2026-10-28", () => {
     }
   });
 
-  test("the stable branches are blocked by the update PRs", async () => {
+  test("the stable branches are blocked by the update PRs, and the default branches by the fast-forward", async () => {
     fakeWorld("gold", 65);
-    const result = await checkStableBranch(NEXTJS, 65);
-    expect(result.state).toBe("blocked");
-    expect(linesOf(result)).toContain("blocked by the update PR");
+    const fastForward = await checkStableBranchFastForward(NEXTJS, 65);
+    expect(fastForward.state).toBe("blocked");
+    expect(linesOf(fastForward)).toContain("blocked by the update PR");
+    const defaultBranch = await checkDefaultBranch(NEXTJS, 65);
+    expect(defaultBranch.state).toBe("blocked");
+    expect(linesOf(defaultBranch)).toContain(
+      "blocked by the fast-forward of 65-stable to main",
+    );
   });
 });
 
@@ -869,26 +875,84 @@ describe("react 65-stable and the default branch", () => {
       sampleRepoFiles(REACT, 65, "0.65.1"),
     );
 
-  test("main is ahead of 65-stable: a person fast-forwards it", async () => {
-    fakeWorld("gold", 65, afterTheMerge);
-    const result = await checkStableBranch(REACT, 65);
-    expect(result.state).toBe("manual");
-    expect(linesOf(result)).toContain("gh api -X PATCH");
+  test("main is ahead of 65-stable: the step shows the commits, then fast-forwards it after a yes", async () => {
+    const store = fakeWorld("gold", 65, afterTheMerge);
+    const before = await checkStableBranchFastForward(REACT, 65);
+    expect(before.state).toBe("todo");
+    expect(linesOf(before)).toContain(
+      "main has 1 commits that 65-stable does not have",
+    );
+    const description = before.action?.description.join("\n") ?? "";
+    expect(description).toContain("fake commit: docker-compose.yml");
+    expect(description).toContain("-F force=false");
+    expect(description).toContain("It does not change the default branch");
+
+    const { printed } = await runTheAction(before);
+    expect(printed.join("\n")).toContain(
+      `Check it: https://github.com/${REACT.name}/tree/65-stable`,
+    );
+    const branches = store.load().branches;
+    expect(branches[`${REACT.name}@65-stable`]).toEqual(
+      branches[`${REACT.name}@main`],
+    );
+    expect((await checkStableBranchFastForward(REACT, 65)).state).toBe("done");
+    expect(store.load().defaultBranches[REACT.name]).toBe("64-stable");
   });
 
-  test("65-stable contains main, the default branch is 64-stable: a person changes it", async () => {
+  test("after the fast-forward, the default branch is its own step, with its own yes", async () => {
     const store = fakeWorld("gold", 65, afterTheMerge);
-    doAsAPerson(store, `fast-forward ${REACT.name}`);
-    const result = await checkStableBranch(REACT, 65);
-    expect(result.state).toBe("manual");
-    expect(linesOf(result)).toContain("gh repo edit");
+    expect((await checkDefaultBranch(REACT, 65)).state).toBe("blocked");
+    await runTheAction(await checkStableBranchFastForward(REACT, 65));
+
+    const before = await checkDefaultBranch(REACT, 65);
+    expect(before.state).toBe("todo");
+    expect(linesOf(before)).toContain("the default branch is 64-stable");
+    expect(before.action?.description.join("\n")).toContain(
+      "from 64-stable to 65-stable",
+    );
+
+    const { printed } = await runTheAction(before);
+    expect(printed.join("\n")).toContain(
+      `Check it: https://github.com/${REACT.name}`,
+    );
+    expect(store.load().defaultBranches[REACT.name]).toBe("65-stable");
+    expect((await checkDefaultBranch(REACT, 65)).state).toBe("done");
   });
 
-  test("65-stable contains main and is the default branch: done", async () => {
-    const store = fakeWorld("gold", 65, afterTheMerge);
-    doAsAPerson(store, `fast-forward ${REACT.name}`);
-    doAsAPerson(store, `default branch of ${REACT.name}`);
-    expect((await checkStableBranch(REACT, 65)).state).toBe("done");
+  // after the release, fixes go to 65-stable with their own PRs
+  const backportOn65Stable = (world: FakeWorld) => {
+    afterTheMerge(world);
+    const files = sampleRepoFiles(REACT, 65, "0.65.1");
+    files["e2e/retries.txt"] = "retry failed e2e tests once\n";
+    setSampleRepoBranch(world, REACT, "65-stable", files);
+    world.comparisons = { [`${REACT.name}:65-stable...main`]: "diverged" };
+  };
+
+  test("a backport on 65-stable after the release: the fast-forward step stays done", async () => {
+    fakeWorld("gold", 65, backportOn65Stable);
+    const result = await checkStableBranchFastForward(REACT, 65);
+    expect(result.state).toBe("done");
+    expect(linesOf(result)).toContain("65-stable is on 65");
+  });
+
+  test("a backport on 65-stable after the release: the default-branch step stays done", async () => {
+    fakeWorld("gold", 65, (world) => {
+      backportOn65Stable(world);
+      world.defaultBranches[REACT.name] = "65-stable";
+    });
+    expect((await checkDefaultBranch(REACT, 65)).state).toBe("done");
+  });
+
+  test("65-stable and main have diverged: a person reconciles them, and nothing is offered", async () => {
+    fakeWorld("gold", 65, (world) => {
+      afterTheMerge(world);
+      world.comparisons = { [`${REACT.name}:65-stable...main`]: "diverged" };
+    });
+    const result = await checkStableBranchFastForward(REACT, 65);
+    expect(result.state).toBe("manual");
+    expect(linesOf(result)).toContain("is not on 65 yet");
+    expect(result.action).toBeUndefined();
+    expect((await checkDefaultBranch(REACT, 65)).state).toBe("blocked");
   });
 
   test("no 65-stable yet: the cron creates it, and no default-branch command yet", async () => {
@@ -896,7 +960,7 @@ describe("react 65-stable and the default branch", () => {
       afterTheMerge(world);
       delete world.branches[`${REACT.name}@65-stable`];
     });
-    const result = await checkStableBranch(REACT, 65);
+    const result = await checkStableBranchFastForward(REACT, 65);
     expect(result.state).toBe("inProgress");
     expect(linesOf(result)).not.toContain("gh repo edit");
   });
@@ -916,7 +980,7 @@ describe("react 65-stable and the default branch", () => {
         url: `https://github.com/${REACT.name}/actions/runs/11`,
       });
     });
-    const result = await checkStableBranch(REACT, 65);
+    const result = await checkStableBranchFastForward(REACT, 65);
     expect(result.state).toBe("manual");
     expect(linesOf(result)).toContain(
       `failed: https://github.com/${REACT.name}/actions/runs/11`,
@@ -929,7 +993,7 @@ describe("react 65-stable and the default branch", () => {
       afterTheMerge(world);
       world.comparisons = { [`${REACT.name}:65-stable...main`]: "behind" };
     });
-    const result = await checkStableBranch(REACT, 65);
+    const result = await checkStableBranchFastForward(REACT, 65);
     expect(result.state).toBe("manual");
     expect(linesOf(result)).toContain("Fix it by hand");
   });
@@ -1165,14 +1229,17 @@ describe("links", () => {
     );
   });
 
-  test("a stable branch links the branch, the compare view, the settings and the cron", async () => {
+  test("the stable steps link the branch, the compare view, the cron and the settings", async () => {
     fakeWorld("gold", 65);
-    const result = await checkStableBranch(REACT, 65);
-    expect(result.links?.map((link) => link.url)).toEqual([
+    const fastForward = await checkStableBranchFastForward(REACT, 65);
+    expect(fastForward.links?.map((link) => link.url)).toEqual([
       `https://github.com/${REACT.name}/tree/65-stable`,
       `https://github.com/${REACT.name}/compare/65-stable...main`,
-      `https://github.com/${REACT.name}/settings`,
       `https://github.com/${REACT.name}/actions/workflows/create-version-branch.yml`,
+    ]);
+    const defaultBranch = await checkDefaultBranch(REACT, 65);
+    expect(defaultBranch.links?.map((link) => link.url)).toEqual([
+      `https://github.com/${REACT.name}/settings`,
     ]);
   });
 
@@ -1230,7 +1297,7 @@ describe("the fake scenarios", () => {
       phase: "gold",
       major: 65,
       scenario: "cron-failed",
-      check: () => checkStableBranch(REACT, 65),
+      check: () => checkStableBranchFastForward(REACT, 65),
       state: "manual",
       line: "the last run of the hourly create-version-branch.yml failed",
     },
@@ -1325,4 +1392,68 @@ test("the colors change no text, and a link stays one piece", () => {
   expect(highlight("sdk-version-bump-0.65.0")).toContain(
     "\u001b[35msdk-version-bump-0.65.0\u001b[0m",
   );
+});
+
+describe("links of this release and of earlier releases", () => {
+  const earlierRelease = (result: StepResult) => [
+    ...(result.pullRequests ?? [])
+      .filter((pr) => pr.isAboutAnEarlierRelease)
+      .map((pr) => pr.url),
+    ...(result.links ?? [])
+      .filter((link) => link.isAboutAnEarlierRelease)
+      .map((link) => link.label),
+  ];
+  const thisRelease = (result: StepResult) => [
+    ...(result.pullRequests ?? [])
+      .filter((pr) => !pr.isAboutAnEarlierRelease)
+      .map((pr) => pr.url),
+    ...(result.links ?? [])
+      .filter((link) => !link.isAboutAnEarlierRelease)
+      .map((link) => link.label),
+  ];
+
+  test("step 2 puts the preminor of 64 gold under earlier releases, and its own PR under this release", async () => {
+    fakeWorld("gold", 65);
+    const before = await checkPreminorBump(65);
+    expect(thisRelease(before)).toEqual([]);
+    expect(earlierRelease(before)).toEqual([
+      "https://github.com/metabase/metabase/pull/84154",
+      "0.65.0-alpha.0 on npm",
+    ]);
+
+    await runTheAction(before);
+    const after = await checkPreminorBump(65);
+    expect(thisRelease(after)).toEqual([
+      "https://github.com/metabase/metabase/pull/90003",
+      expect.stringMatching(/^bump run on master \(/),
+    ]);
+    expect(earlierRelease(after)).toEqual([
+      "https://github.com/metabase/metabase/pull/84154",
+      "0.65.0-alpha.0 on npm",
+    ]);
+  });
+
+  test("step 1 has only links of this release", async () => {
+    fakeWorld("gold", 65);
+    const result = await checkPatchBump(65);
+    expect(earlierRelease(result)).toEqual([]);
+    expect(thisRelease(result)).toEqual([
+      "https://github.com/metabase/metabase/pull/85635",
+      "npm release run of 0.65.1",
+      "0.65.1 on npm",
+    ]);
+  });
+
+  test("the panel shows the two headers, and no link that a line above already shows", async () => {
+    fakeWorld("gold", 65);
+    await runTheAction(await checkPreminorBump(65));
+    const result = await checkPreminorBump(65);
+    const sections = stripANSI(linkSectionsOf(result).join("\n"));
+    expect(sections).toContain("Links about this release:");
+    expect(sections).toContain("Links about earlier releases, for reference:");
+    // "review and merge <the open PR>" is a line of the step
+    expect(linesOf(result)).toContain("pull/90003");
+    expect(sections).not.toContain("pull/90003");
+    expect(sections).toContain("pull/84154");
+  });
 });

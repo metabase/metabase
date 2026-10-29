@@ -120,8 +120,55 @@ export function fakeExternalCalls(store: FakeStore): ExternalCalls {
       return baseFiles === headFiles ? "identical" : "ahead";
     },
 
+    // the fake has no history: one commit with the files that differ
+    async commitsMissingFrom(repo, base, head) {
+      const world = store.load();
+      const baseFiles = filesOf(world, repo, base) ?? {};
+      const headFiles = filesOf(world, repo, head) ?? {};
+      const changedFiles = Object.keys(headFiles).filter(
+        (file) => headFiles[file] !== baseFiles[file],
+      );
+      return changedFiles.length === 0
+        ? []
+        : [
+            {
+              sha: shaOf(JSON.stringify(headFiles)),
+              title: `fake commit: ${changedFiles.join(", ")}`,
+              author: "fake",
+              url: `https://github.com/${repo}/commit/fake`,
+            },
+          ];
+    },
+
     async defaultBranchOf(repo) {
       return store.load().defaultBranches[repo] ?? "main";
+    },
+
+    async fastForwardBranch(repo, branch, sha) {
+      change(store, (world) => {
+        const source = Object.keys(world.branches).find(
+          (key) =>
+            key.startsWith(`${repo}@`) &&
+            shaOf(JSON.stringify(world.branches[key])) === sha,
+        );
+        if (!source) {
+          throw new Error(`fake: ${repo} has no commit ${sha}`);
+        }
+        const comparisonKey = `${repo}:${branch}...${source.split("@")[1]}`;
+        if (world.comparisons?.[comparisonKey] === "diverged") {
+          throw new Error(`fake: ${branch} is not a fast-forward of ${sha}`);
+        }
+        delete world.comparisons?.[comparisonKey];
+        world.branches[`${repo}@${branch}`] = { ...world.branches[source] };
+      });
+      say(`fast-forwarded ${repo} ${branch} to ${sha}`);
+    },
+
+    async setDefaultBranch(repo, branch) {
+      change(store, (world) => {
+        world.defaultBranches[repo] = branch;
+      });
+      say(`${repo} has the default branch ${branch} now`);
     },
 
     async findPullRequestsFromBranch(repo, head, base) {
@@ -273,31 +320,6 @@ export function fakeHumanActions(store: FakeStore): FakeHumanAction[] {
     });
   }
 
-  for (const key of newestStableBranches(world)) {
-    const [repo, branch] = key.split("@");
-    const main = world.branches[`${repo}@main`];
-    if (main && JSON.stringify(main) !== JSON.stringify(world.branches[key])) {
-      actions.push({
-        label: `fast-forward ${repo} ${branch} to main`,
-        run: () =>
-          change(store, (world) => {
-            world.branches[key] = { ...world.branches[`${repo}@main`] };
-            say(`fast-forwarded ${repo} ${branch} to main`);
-          }),
-      });
-    }
-    if ((world.defaultBranches[repo] ?? "main") !== branch) {
-      actions.push({
-        label: `make ${branch} the default branch of ${repo}`,
-        run: () =>
-          change(store, (world) => {
-            world.defaultBranches[repo] = branch;
-            say(`${repo} has the default branch ${branch} now`);
-          }),
-      });
-    }
-  }
-
   const newestImageMajor = Math.max(
     ...world.dockerImageTags.map((tag) => Number(/^v1\.(\d+)/.exec(tag)?.[1])),
   );
@@ -365,20 +387,6 @@ const METABASE = "metabase/metabase";
 
 function say(line: string): void {
   console.log(`  [fake] ${line}`);
-}
-
-// "<repo>@<N>-stable" with the highest N of each repo: older stable branches
-// stay as they are
-function newestStableBranches(world: FakeWorld): string[] {
-  const newest = new Map<string, number>();
-  for (const key of Object.keys(world.branches)) {
-    const [repo, branch] = key.split("@");
-    const major = Number(/^(\d+)-stable$/.exec(branch)?.[1]);
-    if (major > (newest.get(repo) ?? 0)) {
-      newest.set(repo, major);
-    }
-  }
-  return [...newest].map(([repo, major]) => `${repo}@${major}-stable`);
 }
 
 // loads the world, changes it, and saves it

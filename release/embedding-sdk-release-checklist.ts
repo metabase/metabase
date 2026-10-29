@@ -42,9 +42,10 @@ import {
   NEXTJS,
   REACT,
   SHOPPY,
+  checkDefaultBranch,
   checkSampleRepo,
   checkShoppyProductionInstance,
-  checkStableBranch,
+  checkStableBranchFastForward,
 } from "./embedding-sdk-release-checklist/sample-repos";
 import {
   runInTerminal,
@@ -154,16 +155,21 @@ if (phase === "beta") {
       `Shoppy pins the Metabase Docker image (local runs and E2E) and @metabase/embedding-sdk-react (yarn). A PR on main moves both to ${major}. Its merge deploys production.`,
       () => checkSampleRepo(SHOPPY, major),
     ),
-    step(
-      `nextjs: move ${major}-stable to main and make it the default branch`,
-      `An hourly workflow of the repo creates ${major}-stable from main when npm latest moves to ${major}. After the update PR merges, ${major}-stable must contain main and become the default branch, so people who open the repo get ${major}. A person does it: the step prints the commands.`,
-      () => checkStableBranch(NEXTJS, major),
-    ),
-    step(
-      `react: move ${major}-stable to main and make it the default branch`,
-      `An hourly workflow of the repo creates ${major}-stable from main when npm latest moves to ${major}. After the update PR merges, ${major}-stable must contain main and become the default branch, so people who open the repo get ${major}. A person does it: the step prints the commands.`,
-      () => checkStableBranch(REACT, major),
-    ),
+    ...[NEXTJS, REACT].flatMap((repo) => {
+      const app = repo === NEXTJS ? "nextjs" : "react";
+      return [
+        step(
+          `${app}: fast-forward ${major}-stable to main`,
+          `An hourly workflow of the repo creates ${major}-stable from main when npm latest moves to ${major}, so it starts as the old main. After the update PR merges, main has commits that ${major}-stable does not have. This step moves ${major}-stable to main with a fast-forward, after it shows those commits.`,
+          () => checkStableBranchFastForward(repo, major),
+        ),
+        step(
+          `${app}: make ${major}-stable the default branch`,
+          `The default branch is what people see when they open the repo on GitHub, and what a new clone gets. After the fast-forward, this step changes it to ${major}-stable, so they get Metabase ${major}. It is a repo setting, with its own "yes".`,
+          () => checkDefaultBranch(repo, major),
+        ),
+      ];
+    }),
   ];
 }
 

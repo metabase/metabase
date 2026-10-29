@@ -227,6 +227,8 @@ function gold65AsOn20261028(): FakeWorld {
       ...sampleRepoBranches(SHOPPY, 64, "0.64.0", ["main"]),
     },
     pullRequests: [
+      // the preminor of 64 gold, which made master 0.65.0-alpha.0
+      mergedBumpPr(84154, "master", "0.65.0-alpha.0"),
       mergedBumpPr(85621, "release-x.65.x", "0.65.0"),
       mergedBumpPr(85635, "release-x.65.x", "0.65.1"),
     ],

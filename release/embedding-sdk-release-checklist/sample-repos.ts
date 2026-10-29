@@ -13,6 +13,7 @@ import {
   type ActionOutcome,
   type Interaction,
   type Link,
+  type StepPullRequest,
   type StepResult,
   askToContinueDespiteWarnings,
   blocked,
@@ -25,13 +26,16 @@ import {
 } from "./checklist";
 import { didRunFail, embeddingSdkMajorOf } from "./embedding-sdk-version-bumps";
 import {
+  type Commit,
   type PullRequest,
   SHOPPY_PRODUCTION_URL,
   cloneMainInto,
+  commitsMissingFrom,
   compareBranches,
   defaultBranchOf,
   doesBranchExist,
   doesDockerImageTagExist,
+  fastForwardBranch,
   findOpenPullRequestsTo,
   findPullRequestsFromBranch,
   findWorkflowRuns,
@@ -40,6 +44,7 @@ import {
   openPullRequest,
   pushNewBranch,
   readFileOnBranch,
+  setDefaultBranch,
   shaOfBranch,
   stateOfWorkflow,
   updateLockfileIn,
@@ -206,15 +211,32 @@ async function shoppyProductionInstanceState(
   );
 }
 
-// After the PR merges, <major>-stable must contain main and be the default
-// branch. This script only opens PRs, so it prints the commands for that.
-export async function checkStableBranch(
+// After the update PR merges, main has commits that <major>-stable does not
+// have. The step moves <major>-stable to main with a fast-forward, after a
+// "yes", and shows those commits first.
+export async function checkStableBranchFastForward(
   repo: SampleRepo,
   major: number,
 ): Promise<StepResult> {
-  return withLinks(await stableBranchState(repo, major), {
+  return withLinks(await fastForwardState(repo, major), {
     pullRequests: await updatePullRequestsOf(repo, major),
     links: await stableBranchLinksOf(repo, major),
+  });
+}
+
+// Then <major>-stable becomes the default branch of the repo, after its own
+// "yes": people who open the repo get the newest major.
+export async function checkDefaultBranch(
+  repo: SampleRepo,
+  major: number,
+): Promise<StepResult> {
+  return withLinks(await defaultBranchState(repo, major), {
+    links: [
+      {
+        label: "the default branch, in the repo settings",
+        url: `https://github.com/${repo.name}/settings`,
+      },
+    ],
   });
 }
 
@@ -231,25 +253,19 @@ async function stableBranchLinksOf(
         url: `https://github.com/${repo.name}/tree/${stableBranch}`,
       },
       {
-        label: `what main has and ${stableBranch} does not`,
+        label: `the commits of main that ${stableBranch} does not have yet`,
         url: `https://github.com/${repo.name}/compare/${stableBranch}...main`,
       },
     );
   }
-  links.push(
-    {
-      label: "the default branch, in the repo settings",
-      url: `https://github.com/${repo.name}/settings`,
-    },
-    {
-      label: `the runs of ${CREATE_STABLE_BRANCH_WORKFLOW}`,
-      url: `https://github.com/${repo.name}/actions/workflows/${CREATE_STABLE_BRANCH_WORKFLOW}`,
-    },
-  );
+  links.push({
+    label: `the runs of the hourly workflow that creates ${stableBranch} (${CREATE_STABLE_BRANCH_WORKFLOW})`,
+    url: `https://github.com/${repo.name}/actions/workflows/${CREATE_STABLE_BRANCH_WORKFLOW}`,
+  });
   return links;
 }
 
-async function stableBranchState(
+async function fastForwardState(
   repo: SampleRepo,
   major: number,
 ): Promise<StepResult> {
@@ -289,32 +305,106 @@ async function stableBranchState(
     );
   }
 
+  // after the release, fixes go to <major>-stable with their own PRs, so the
+  // branches can diverge: the step is done once <major>-stable has the update
+  if (await isBranchOnMajor(repo, stableBranch, major)) {
+    return done(`${stableBranch} is on ${major}`);
+  }
   const comparison = await compareBranches(repo.name, stableBranch, "main");
   if (comparison === "diverged") {
     return manual(
-      `${stableBranch} and main have diverged: reconcile them by hand`,
+      `${stableBranch} and main have diverged, and ${stableBranch} is not on ${major} yet: reconcile them by hand`,
     );
   }
   if (comparison === "ahead") {
-    return manual(
-      `main has commits that ${stableBranch} does not have: fast-forward it.`,
-      `Run: gh api -X PATCH repos/${repo.name}/git/refs/heads/${stableBranch} -f sha=${await shaOfBranch(repo.name, "main")} -F force=false`,
+    const mainSha = await shaOfBranch(repo.name, "main");
+    if (!mainSha) {
+      throw new Error(`${repo.name} has no main`);
+    }
+    const commits = await commitsMissingFrom(repo.name, stableBranch, "main");
+    return todo(
+      fastForwardAction(repo, stableBranch, mainSha, commits),
+      `main has ${commits.length} commits that ${stableBranch} does not have`,
     );
   }
-  if (!(await isBranchOnMajor(repo, stableBranch, major))) {
-    return manual(
-      `${stableBranch} contains main, but it is not on ${major}: ${await describePinsOnBranch(repo, stableBranch)}. Fix it by hand.`,
-    );
-  }
+  return manual(
+    `${stableBranch} contains main, but it is not on ${major}: ${await describePinsOnBranch(repo, stableBranch)}. Fix it by hand.`,
+  );
+}
+
+async function defaultBranchState(
+  repo: SampleRepo,
+  major: number,
+): Promise<StepResult> {
+  const stableBranch = `${major}-stable`;
 
   const defaultBranch = await defaultBranchOf(repo.name);
-  if (defaultBranch !== stableBranch) {
-    return manual(
-      `the default branch is ${defaultBranch}.`,
-      `Run: gh repo edit ${repo.name} --default-branch ${stableBranch}`,
-    );
+  if (defaultBranch === stableBranch) {
+    return done(`${stableBranch} is the default branch`);
   }
-  return done(`${stableBranch} contains main and is the default branch`);
+  if (!(await isStableBranchOnMajor(repo, major))) {
+    return blocked(`the fast-forward of ${stableBranch} to main`);
+  }
+  return todo(
+    setDefaultBranchAction(repo, stableBranch, defaultBranch),
+    `the default branch is ${defaultBranch}`,
+  );
+}
+
+async function isStableBranchOnMajor(
+  repo: SampleRepo,
+  major: number,
+): Promise<boolean> {
+  return (await fastForwardState(repo, major)).state === "done";
+}
+
+function fastForwardAction(
+  repo: SampleRepo,
+  stableBranch: string,
+  mainSha: string,
+  commits: Commit[],
+): Action {
+  return {
+    description: [
+      `Moves ${stableBranch} of ${repo.name} to main (${mainSha.slice(0, 7)}) with a fast-forward. ${stableBranch} gets these ${commits.length} commits of main:`,
+      ...commits.map(
+        (commit) =>
+          `  ${commit.sha.slice(0, 7)} ${commit.title} (${commit.author})`,
+      ),
+      `GitHub does it only if it is a fast-forward (force=false), so ${stableBranch} loses no commit. It does not change the default branch: the next step does.`,
+      `It runs: gh api -X PATCH repos/${repo.name}/git/refs/heads/${stableBranch} -f sha=${mainSha} -F force=false`,
+    ],
+    run: async (interaction) => {
+      // the commit that we showed, also when main moved while we waited
+      await fastForwardBranch(repo.name, stableBranch, mainSha);
+      interaction.print(
+        `  ${stableBranch} is at ${mainSha.slice(0, 7)} now. Check it: https://github.com/${repo.name}/tree/${stableBranch}`,
+      );
+      return "done";
+    },
+  };
+}
+
+function setDefaultBranchAction(
+  repo: SampleRepo,
+  stableBranch: string,
+  currentDefaultBranch: string,
+): Action {
+  return {
+    description: [
+      `Changes the default branch of ${repo.name} from ${currentDefaultBranch} to ${stableBranch}. It is a repo setting, not a commit.`,
+      `People who open the repo on GitHub, and new clones, then get ${stableBranch}.`,
+      `To undo it, set ${currentDefaultBranch} again in the repo settings.`,
+      `It runs: gh api -X PATCH repos/${repo.name} -f default_branch=${stableBranch}`,
+    ],
+    run: async (interaction) => {
+      await setDefaultBranch(repo.name, stableBranch);
+      interaction.print(
+        `  The default branch of ${repo.name} is ${stableBranch} now. Check it: https://github.com/${repo.name}`,
+      );
+      return "done";
+    },
+  };
 }
 
 // The update action
@@ -623,15 +713,16 @@ async function lockfilesNextToOnBranch(
 async function updatePullRequestsOf(
   repo: SampleRepo,
   major: number,
-): Promise<PullRequest[]> {
+): Promise<StepPullRequest[]> {
   const updateBranch = `update-to-${major}`;
   return [
     ...(await findPullRequestsFromBranch(repo.name, updateBranch, "main")),
-    ...(await findOtherOpenPullRequestsThatMentionMajor(
-      repo,
-      updateBranch,
-      major,
-    )),
+    ...(
+      await findOtherOpenPullRequestsThatMentionMajor(repo, updateBranch, major)
+    ).map((pr) => ({
+      ...pr,
+      label: `another open PR about ${major}, check it is not the same update`,
+    })),
   ];
 }
 

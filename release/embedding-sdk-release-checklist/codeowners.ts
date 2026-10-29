@@ -32,11 +32,13 @@ const EMBEDDING_TEAM = "@metabase/embedding";
 // branch, with a commit on the first beta bump PR.
 export async function checkCodeowners(major: number): Promise<StepResult> {
   return withLinks(await codeownersState(major), {
-    pullRequests: await findPullRequestsFromBranch(
-      METABASE_REPO,
-      `sdk-version-bump-0.${major}.0-beta.0`,
-      `release-x.${major}.x`,
-    ),
+    pullRequests: (
+      await findPullRequestsFromBranch(
+        METABASE_REPO,
+        `sdk-version-bump-0.${major}.0-beta.0`,
+        `release-x.${major}.x`,
+      )
+    ).map((pr) => ({ ...pr, label: "the first beta bump PR" })),
     links: await codeownersLinksOf(`release-x.${major}.x`),
   });
 }

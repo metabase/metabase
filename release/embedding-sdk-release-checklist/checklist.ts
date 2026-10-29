@@ -36,15 +36,26 @@ export type Action = {
   run: (interaction: Interaction) => Promise<ActionOutcome>;
 };
 
-// a page to look at, for example a workflow run or the npm page of a version
-export type Link = { label: string; url: string };
+// A page to look at, for example a workflow run or the npm page of a version.
+// The UI puts the pages about an earlier release under their own header.
+export type Link = {
+  label: string;
+  url: string;
+  isAboutAnEarlierRelease?: boolean;
+};
+
+// a PR of the step, with what it is to the step when its title does not say it
+export type StepPullRequest = PullRequest & {
+  label?: string;
+  isAboutAnEarlierRelease?: boolean;
+};
 
 export type StepResult = {
   state: StepState;
   lines: string[];
   action?: Action;
   // the PRs of the step (open, draft or merged), shown with their links
-  pullRequests?: PullRequest[];
+  pullRequests?: StepPullRequest[];
   // the other pages of the step that exist now
   links?: Link[];
 };
@@ -103,7 +114,7 @@ export function withLinks(
   {
     pullRequests = [],
     links = [],
-  }: { pullRequests?: PullRequest[]; links?: Link[] },
+  }: { pullRequests?: StepPullRequest[]; links?: Link[] },
 ): StepResult {
   return { ...result, pullRequests, links };
 }

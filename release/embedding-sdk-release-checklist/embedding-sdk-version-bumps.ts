@@ -13,6 +13,7 @@ import {
 import {
   type Action,
   type Link,
+  type StepPullRequest,
   type StepResult,
   blocked,
   done,
@@ -56,10 +57,10 @@ export function isChecklistOver(
 
 // Beta: release-x.<major>.x goes from 0.<major>.0-alpha.N to 0.<major>.0-beta.0.
 export async function checkBetaBump(major: number): Promise<StepResult> {
-  return withLinks(await betaBumpState(major), {
-    pullRequests: await bumpPullRequestsOf(`release-x.${major}.x`),
-    links: await bumpLinksOf(`release-x.${major}.x`),
-  });
+  return withLinks(
+    await betaBumpState(major),
+    await bumpLinksOf(`release-x.${major}.x`, major),
+  );
 }
 
 async function betaBumpState(major: number): Promise<StepResult> {
@@ -103,10 +104,10 @@ async function betaBumpState(major: number): Promise<StepResult> {
 // Gold: release-x.<major>.x goes from 0.<major>.0-beta.N to 0.<major>.0, and
 // npm latest moves to it.
 export async function checkPatchBump(major: number): Promise<StepResult> {
-  return withLinks(await patchBumpState(major), {
-    pullRequests: await bumpPullRequestsOf(`release-x.${major}.x`),
-    links: await bumpLinksOf(`release-x.${major}.x`),
-  });
+  return withLinks(
+    await patchBumpState(major),
+    await bumpLinksOf(`release-x.${major}.x`, major),
+  );
 }
 
 async function patchBumpState(major: number): Promise<StepResult> {
@@ -174,10 +175,10 @@ async function patchBumpState(major: number): Promise<StepResult> {
 // Gold: master goes from 0.<major>.0-alpha.N to 0.<major + 1>.0-alpha.0, so
 // that release-x.<major + 1>.x gets the right version when it is cut.
 export async function checkPreminorBump(major: number): Promise<StepResult> {
-  return withLinks(await preminorBumpState(major), {
-    pullRequests: await bumpPullRequestsOf("master"),
-    links: await bumpLinksOf("master"),
-  });
+  return withLinks(
+    await preminorBumpState(major),
+    await bumpLinksOf("master", major + 1),
+  );
 }
 
 async function preminorBumpState(major: number): Promise<StepResult> {
@@ -437,21 +438,6 @@ function nextVersionAfter(
 
 // Questions about bump PRs and workflow runs
 
-// the open bump PRs to the branch, and the last merged one: the one that made
-// the version the branch has now
-async function bumpPullRequestsOf(branch: string): Promise<PullRequest[]> {
-  const pullRequests = await findPullRequestsWithBranchPrefix(
-    METABASE_REPO,
-    "sdk-version-bump-",
-    branch,
-  );
-  const lastMerged = pullRequests.find((pr) => pr.state === "MERGED");
-  return [
-    ...pullRequests.filter((pr) => pr.state === "OPEN"),
-    ...(lastMerged ? [lastMerged] : []),
-  ];
-}
-
 // the bump workflow pushes the branch sdk-version-bump-<new version>
 function bumpBranchFor(version: string): string {
   return `sdk-version-bump-${version}`;
@@ -512,33 +498,81 @@ async function findLatestReleaseRunOfVersion(
     : runOfThePr;
 }
 
-// the last bump run, the release run of the version on the branch, and its
-// npm page once npm has it
-async function bumpLinksOf(branch: string): Promise<Link[]> {
+// The PRs and pages of a bump step: the open bump PRs to the branch, the last
+// merged one (the one that made the version the branch has now), the last bump
+// run, and the release run and npm page of that version. Until the bump of
+// this release merges, the merged PR and the version can be from an earlier
+// release: on master, before the preminor to 66 merges, they are the ones of
+// the preminor to 65.
+async function bumpLinksOf(
+  branch: string,
+  majorOfTheStep: number,
+): Promise<{ pullRequests: StepPullRequest[]; links: Link[] }> {
   if (!(await doesBranchExist(METABASE_REPO, branch))) {
-    return [];
+    return { pullRequests: [], links: [] };
   }
+  const bumpPullRequests = await findPullRequestsWithBranchPrefix(
+    METABASE_REPO,
+    "sdk-version-bump-",
+    branch,
+  );
+  const lastMerged = bumpPullRequests.find((pr) => pr.state === "MERGED");
+  const pullRequests = [
+    ...bumpPullRequests.filter((pr) => pr.state === "OPEN"),
+    ...(lastMerged ? [lastMerged] : []),
+  ].map((pr) => ({
+    ...pr,
+    isAboutAnEarlierRelease: !isVersionOfMajor(
+      pr.headRefName.slice("sdk-version-bump-".length),
+      majorOfTheStep,
+    ),
+  }));
+
   const links: Link[] = [];
   const version = await embeddingSdkVersionOnBranch(branch);
+  const isVersionOfAnEarlierRelease = !isVersionOfMajor(
+    version,
+    majorOfTheStep,
+  );
   const [lastBumpRun] = await findWorkflowRuns(
     METABASE_REPO,
     BUMP_WORKFLOW,
     branch,
   );
   if (lastBumpRun) {
-    links.push({ label: "the last bump run", url: lastBumpRun.url });
+    // the run that opened a PR of this release is the last one
+    const hasAPullRequestOfThisRelease = pullRequests.some(
+      (pr) => !pr.isAboutAnEarlierRelease,
+    );
+    links.push({
+      label: `bump run on ${branch} (${lastBumpRun.createdAt.slice(0, 10)})`,
+      url: lastBumpRun.url,
+      isAboutAnEarlierRelease:
+        isVersionOfAnEarlierRelease && !hasAPullRequestOfThisRelease,
+    });
   }
   const releaseRun = await findLatestReleaseRunOfVersion(branch, version);
   if (releaseRun) {
-    links.push({ label: `the release run of ${version}`, url: releaseRun.url });
+    links.push({
+      label: `npm release run of ${version}`,
+      url: releaseRun.url,
+      isAboutAnEarlierRelease: isVersionOfAnEarlierRelease,
+    });
   }
   if (Object.values(await readNpmDistTags()).includes(version)) {
     links.push({
       label: `${version} on npm`,
       url: `https://www.npmjs.com/package/@metabase/embedding-sdk-react/v/${version}`,
+      isAboutAnEarlierRelease: isVersionOfAnEarlierRelease,
     });
   }
-  return links;
+  return { pullRequests, links };
+}
+
+function isVersionOfMajor(version: string, major: number): boolean {
+  return (
+    Boolean(semver.valid(version)) && embeddingSdkMajorOf(version) === major
+  );
 }
 
 function isRunStillRunning(run: WorkflowRun): boolean {

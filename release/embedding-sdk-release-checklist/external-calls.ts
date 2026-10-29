@@ -25,6 +25,13 @@ export type WorkflowRun = {
   createdAt: string;
 };
 
+export type Commit = {
+  sha: string;
+  title: string;
+  author: string;
+  url: string;
+};
+
 // "npm", or the Yarn 1 of packageManager, for example "yarn@1.22.22"
 export type PackageManager = "npm" | `yarn@1${string}`;
 
@@ -54,7 +61,16 @@ export type ExternalCalls = {
   // "ahead": head has commits that base does not have. "behind": the
   // opposite. "identical" or "diverged" otherwise.
   compareBranches(repo: string, base: string, head: string): Promise<string>;
+  // the commits of `head` that `base` does not have, oldest first
+  commitsMissingFrom(
+    repo: string,
+    base: string,
+    head: string,
+  ): Promise<Commit[]>;
   defaultBranchOf(repo: string): Promise<string>;
+  // moves `branch` to `sha`; GitHub refuses it when it is not a fast-forward
+  fastForwardBranch(repo: string, branch: string, sha: string): Promise<void>;
+  setDefaultBranch(repo: string, branch: string): Promise<void>;
 
   // every PR (open, closed or merged) from `head` to `base`, no forks
   findPullRequestsFromBranch(
@@ -144,6 +160,17 @@ export const compareBranches: ExternalCalls["compareBranches"] = (...args) =>
 
 export const defaultBranchOf: ExternalCalls["defaultBranchOf"] = (...args) =>
   externalCalls.defaultBranchOf(...args);
+
+export const commitsMissingFrom: ExternalCalls["commitsMissingFrom"] = (
+  ...args
+) => externalCalls.commitsMissingFrom(...args);
+
+export const fastForwardBranch: ExternalCalls["fastForwardBranch"] = (
+  ...args
+) => externalCalls.fastForwardBranch(...args);
+
+export const setDefaultBranch: ExternalCalls["setDefaultBranch"] = (...args) =>
+  externalCalls.setDefaultBranch(...args);
 
 export const findPullRequestsFromBranch: ExternalCalls["findPullRequestsFromBranch"] =
   (...args) => externalCalls.findPullRequestsFromBranch(...args);
@@ -265,11 +292,54 @@ export function realExternalCalls(): ExternalCalls {
       return comparison.status;
     },
 
+    async commitsMissingFrom(repo, base, head) {
+      const comparison: {
+        commits: {
+          sha: string;
+          html_url: string;
+          author: { login: string } | null;
+          commit: { message: string; author: { name: string } };
+        }[];
+      } = JSON.parse(
+        await requireApi(`repos/${repo}/compare/${base}...${head}`),
+      );
+      return comparison.commits.map((commit) => ({
+        sha: commit.sha,
+        title: commit.commit.message.split("\n")[0],
+        author: commit.author?.login ?? commit.commit.author.name,
+        url: commit.html_url,
+      }));
+    },
+
     async defaultBranchOf(repo) {
       const repoInfo: { default_branch: string } = JSON.parse(
         await requireApi(`repos/${repo}`),
       );
       return repoInfo.default_branch;
+    },
+
+    async fastForwardBranch(repo, branch, sha) {
+      await gh([
+        "api",
+        "-X",
+        "PATCH",
+        `repos/${repo}/git/refs/heads/${branch}`,
+        "-f",
+        `sha=${sha}`,
+        "-F",
+        "force=false",
+      ]);
+    },
+
+    async setDefaultBranch(repo, branch) {
+      await gh([
+        "api",
+        "-X",
+        "PATCH",
+        `repos/${repo}`,
+        "-f",
+        `default_branch=${branch}`,
+      ]);
     },
 
     // We look PRs up by branch name: a plain `gh pr list` stops at 30 PRs and
