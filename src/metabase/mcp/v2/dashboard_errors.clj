@@ -40,7 +40,7 @@
    (fn [{:keys [tab-id]}] (message/msg ["no tab with id %s on this dashboard."] tab-id))
 
    :no-free-space
-   (fn [_] (message/raw "no free space on this tab for another card — remove or resize something first."))
+   (fn [_] (message/raw "No free space on this tab for another card — remove or resize something first."))
 
    :link-needs-url-or-entity
    (fn [_] (message/raw "pass exactly one of `url` or `entity`."))
@@ -152,12 +152,33 @@
   [idx op-name detail]
   (common/throw-teaching-error (op-message idx op-name detail)))
 
+(def ^:private tab-ops
+  "The ops whose `tab_id` names the tab they act on."
+  #{"rename_tab" "move_tab" "duplicate_tab" "remove_tab"})
+
+(defn- op-label
+  "What the op prefix names for error `code` from the op called `op-name`.
+   That is the op name, except that a missing or unknown `dashcard_id`, `tab_id` or `parameter_id` names that key,
+   and `add_parameter` reports an existing parameter unquoted. MCP's errors read that way before the compiler moved,
+   and this keeps them unchanged."
+  [code op-name]
+  (case code
+    (:missing-dashcard-id :unknown-dashcard)   "dashcard_id"
+    (:missing-parameter-id :unknown-parameter) "parameter_id"
+    :missing-tab-id                            "tab_id"
+    :unknown-tab                               (if (contains? tab-ops op-name) "tab_id" op-name)
+    :parameter-exists                          (message/raw "add_parameter")
+    op-name))
+
 (defn error-message
-  "The teaching message for compiler error `data`, as read by [[dashboard-ops/error-data]]."
-  [{code ::dashboard-ops/error :keys [op-index op] :as data}]
-  (let [detail ((get details code) data)]
-    (if op-index
-      (op-message op-index op detail)
+  "The teaching message for compiler error `data`, as read by [[dashboard-ops/error-data]].
+   An error with no `:op-index`, or a `:no-free-space` error, has no op prefix."
+  [{code ::dashboard-ops/error :keys [op-index op-name] :as data}]
+  (let [detail-fn (or (get details code)
+                      (throw (ex-info (str "No MCP wording for dashboard op error " code) {:code code})))
+        detail    (detail-fn data)]
+    (if (and op-index (not= :no-free-space code))
+      (op-message op-index (op-label code op-name) detail)
       (message/msg ["%s"] detail))))
 
 (defn compile-ops
