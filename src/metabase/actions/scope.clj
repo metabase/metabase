@@ -3,7 +3,8 @@
    [metabase.actions.db :as actions.db]
    [metabase.actions.types :as types]
    [metabase.lib.core :as lib]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]))
 
 ;; TODO Perhaps we will prefer the FE just sending this explicitly instead?
 ;; For now, it is not doing this, so we infer it.
@@ -45,7 +46,7 @@
     (:model-id scope) (hydrate-from-card (:model-id scope))
 
     (:table-id scope)
-    (update :database-id #(or % (actions.db/table-database-id (:table-id scope)) missing-id))))
+    (update :database-id #(or % (:db_id (warehouse-schema.db/table (:table-id scope))) missing-id))))
 
 (defn- strip-nils
   "Remove any keys corresponding to nil values from the given map."

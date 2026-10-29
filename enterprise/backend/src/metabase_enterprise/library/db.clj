@@ -37,11 +37,6 @@
                            :archive-operation-id      nil})]
               :order-by [[:%lower.name :asc]]}))
 
-(mu/defn collection-type
-  "The type of the Collection with `collection-id`."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one-fn :type [:model/Collection :type] :id collection-id))
-
 (mu/defn unarchived-card-collection-types-reducible
   "Reducible distinct Collection ID and Card type pairs of the unarchived Cards."
   []

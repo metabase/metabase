@@ -391,7 +391,7 @@
   [{field-name :name, table-id :table_id, parent-id :parent_id}]
   (conj (vec (if-let [parent (warehouse-schema.db/field parent-id)]
                (qualified-name-components parent)
-               (let [{table-name :name, schema :schema} (warehouse-schema.db/table-name-and-schema table-id)]
+               (let [{table-name :name, schema :schema} (warehouse-schema.db/table table-id)]
                  (conj (when schema
                          [schema])
                        table-name))))
@@ -407,7 +407,7 @@
   (mdb/memoize-for-application-db
    (fn [field-id]
      {:pre [(integer? field-id)]}
-     (warehouse-schema.db/field-table-id field-id))))
+     (:table_id (warehouse-schema.db/field field-id)))))
 
 (defn field-id->database-id
   "Return the ID of the Database this Field belongs to."

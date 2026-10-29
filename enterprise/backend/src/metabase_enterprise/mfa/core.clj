@@ -4,7 +4,6 @@
   Consumers outside this module must go through this namespace; they must not require mfa.gate,
   or mfa.settings directly."
   (:require
-   [metabase-enterprise.mfa.db :as mfa.db]
    [metabase-enterprise.mfa.enrollment :as enrollment]
    [metabase-enterprise.mfa.gate :as gate]
    [metabase-enterprise.mfa.settings]
@@ -12,6 +11,7 @@
    [metabase.channel.email.messages :as messages]
    [metabase.mfa.settings]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.users.db :as users.db]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [potemkin :as p]))
@@ -94,7 +94,7 @@
                        ;; nil = no confirmed enrollment — same message, no oracle semantics
                        (throw (ex-info (tru "Authentication session expired. Please log in again.")
                                        {:status-code 401})))
-        user-email (mfa.db/user-email user-id)]
+        user-email (:email (users.db/user user-id))]
     (try
       (messages/send-mfa-login-code-email! user-email code)
       (catch Throwable e

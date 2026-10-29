@@ -9,6 +9,7 @@
    [metabase.permissions-rest.db :as permissions-rest.db]
    [metabase.permissions-rest.schema :as permissions-rest.schema]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.db :as permissions.db]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.request.core :as request]
    [metabase.settings.core :as setting]
@@ -181,7 +182,7 @@
   (perms/check-manager-of-group id)
   (api/check-404 (empty? (perms/hidden-tenant-group-ids [id])))
   (api/check-404
-   (some-> (permissions-rest.db/permissions-group id)
+   (some-> (permissions.db/permissions-group id)
            (t2/hydrate :members)
            (maybe-fix-name (setting/get :use-tenants)))))
 
@@ -240,11 +241,11 @@
                       [:name ms/NonBlankString]]]
   (perms/check-manager-of-group group-id)
   (api/check-404 (empty? (perms/hidden-tenant-group-ids [group-id])))
-  (let [group (permissions-rest.db/permissions-group group-id)]
+  (let [group (permissions.db/permissions-group group-id)]
     (api/check-404 group)
     (permissions-rest.db/rename-permissions-group! group-id name)
     ;; return the updated group
-    (u/prog1 (permissions-rest.db/permissions-group group-id)
+    (u/prog1 (permissions.db/permissions-group group-id)
       (events/publish-event! :event/group-update
                              {:user-id api/*current-user-id*
                               :object <>
@@ -260,7 +261,7 @@
                           [:group-id ms/PositiveInt]]]
   (perms/check-manager-of-group group-id)
   (api/check-404 (empty? (perms/hidden-tenant-group-ids [group-id])))
-  (let [group (permissions-rest.db/permissions-group group-id)]
+  (let [group (permissions.db/permissions-group group-id)]
     (permissions-rest.db/delete-permissions-group! group-id)
     (events/publish-event! :event/group-delete {:object group
                                                 :user-id api/*current-user-id*}))
@@ -328,7 +329,7 @@
   (perms/check-advanced-permissions-enabled :group-manager)
   ;; Make sure only Super user or Group Managers can call this
   (perms/check-group-manager)
-  (let [old (permissions-rest.db/group-membership id)]
+  (let [old (permissions.db/permissions-group-membership id)]
     (api/check-404 old)
     (perms/check-tenant-groups-visible! [(:group_id old)])
     (perms/check-manager-of-group (:group_id old))
@@ -336,7 +337,7 @@
      (permissions-rest.db/non-admin-user-exists? (:user_id old))
      [400 (tru "Admin cannot be a group manager.")])
     (permissions-rest.db/set-group-membership-manager! (:id old) is_group_manager)
-    (permissions-rest.db/group-membership (:id old))))
+    (permissions.db/permissions-group-membership (:id old))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -361,7 +362,7 @@
   "Remove a User from a PermissionsGroup (delete their membership)."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (let [membership (permissions-rest.db/group-membership id)]
+  (let [membership (permissions.db/permissions-group-membership id)]
     (api/check-404 membership)
     (perms/check-tenant-groups-visible! [(:group_id membership)])
     (perms/check-manager-of-group (:group_id membership))
