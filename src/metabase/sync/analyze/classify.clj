@@ -17,7 +17,6 @@
 
   In the future, we plan to add more classifiers, including ML ones that run offline."
   (:require
-   [clojure.data :as data]
    [metabase.analyze.core :as analyze]
    [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.lib.metadata :as lib.metadata]
@@ -43,7 +42,7 @@
   [model]
   (case model
     :model/Field #{:semantic_type :preview_display :has_field_values}
-    :model/Table #{:entity_type}))
+    :model/Table #{:entity_type :detected_event_settings}))
 
 (def ^:private FieldOrTableInstance
   [:or
@@ -55,7 +54,11 @@
   [original-model :- FieldOrTableInstance
    updated-model  :- FieldOrTableInstance]
   (assert (= (type original-model) (type updated-model)))
-  (let [[_ values-to-set] (data/diff original-model updated-model)]
+  ;; Whole values, not `clojure.data/diff`, which recurses into map values like `detected_event_settings` and would
+  ;; set only the parts of them that changed
+  (let [values-to-set (not-empty (into {}
+                                       (remove (fn [[k v]] (= v (get original-model k))))
+                                       updated-model))]
     (when (seq values-to-set)
       (log/debugf "Based on classification, updating these values of %s: %s"
                   (sync-util/name-for-logging original-model)
@@ -139,7 +142,12 @@
   [table :- i/TableInstance]
   (let [updated-table (sync-util/with-error-handling (format "Error running classifier on %s"
                                                              (sync-util/name-for-logging table))
-                        (analyze/infer-entity-type-by-name table))]
+                        (let [detected (analyze/detect-event-schema
+                                        (sync.db/active-fields-metadata-for-table (u/the-id table)))]
+                          ;; Event tables are recognized by their columns, not their name
+                          (cond-> (assoc (analyze/infer-entity-type-by-name table)
+                                         :detected_event_settings detected)
+                            detected (assoc :entity_type :entity/EventTable))))]
     (if (instance? Exception updated-table)
       table
       (save-model-updates! table updated-table))))

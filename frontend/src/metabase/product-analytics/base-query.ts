@@ -1,17 +1,12 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import type { ColumnRoles } from "metabase/event-tables";
 import { getDateFilterClause } from "metabase/querying/filters/utils/dates";
 import * as Lib from "metabase-lib";
 import type { TableId } from "metabase-types/api";
 
-import {
-  COLUMN_ROLES,
-  type ColumnRoles,
-  type ExtraColumn,
-  type ProjectedColumn,
-  type UsersTableLink,
-} from "./columns";
+import type { ExtraColumn, ProjectedColumn, UsersTableLink } from "./columns";
 import {
   parseDateRange,
   serializeDateRange,
@@ -307,7 +302,7 @@ export const buildBaseQuery = (
   }
 
   const eventColumns = _.uniq([
-    ...COLUMN_ROLES.flatMap((role) => columns[role] ?? []),
+    ...Object.values(columns).flatMap((column) => column ?? []),
     ...extraColumns
       .filter(({ from }) => from === "events")
       .map(({ column }) => column),

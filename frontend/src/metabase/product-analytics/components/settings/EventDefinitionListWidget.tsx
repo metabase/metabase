@@ -9,6 +9,7 @@ import {
   SortableList,
 } from "metabase/common/components/Sortable";
 import { useDndSensors, useToast } from "metabase/common/hooks";
+import type { SettingWidgetProps } from "metabase/event-tables";
 import { useMetadataProvider } from "metabase/metadata-store";
 import { Box, Button, Group, Icon, Stack, Text } from "metabase/ui";
 import { moveElement } from "metabase/utils/arrays";
@@ -22,7 +23,6 @@ import {
   segmentToEventDefinition,
 } from "../../segments/to-event-definition";
 import type { PaletteSegment } from "../../segments/types";
-import type { SettingWidgetProps } from "../../settings/types";
 import { EventDefinitionEditor } from "../events/EventDefinitionEditor";
 import { EventDefinitionSummary } from "../events/EventDefinitionSummary";
 import { SegmentDropZone } from "../events/SegmentDropZone";

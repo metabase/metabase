@@ -415,6 +415,8 @@ Routing back to the builder:
 
 ## Open questions: column roles
 
+The first two are taken up in [event-table-settings.plan.md](event-table-settings.plan.md).
+
 The defaults in [`column-roles.ts`](../../../frontend/src/metabase/product-analytics/analyses/column-roles.ts) are overfit. Each role's name list starts with `pa_events_resolved`'s exact column names, so every role there maps to itself. The generic fallbacks (`user_id`, `ts`, `timestamp`, `event`, `path`) haven't been tried on a real second table. Before this ships, work out:
 
 - **Where roles live.** Make the table's metadata the source of truth (the "event table" question in [product-analytics.md](product-analytics.md)), with per-analysis overrides on top. The settings already allow this: the default would read the table's roles, and a stored value still wins.

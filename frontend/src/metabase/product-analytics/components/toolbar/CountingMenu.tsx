@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { SettingWidgetProps } from "metabase/event-tables";
 import { Button, Icon, Menu } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
@@ -8,7 +9,6 @@ import {
   useSegmentDropTarget,
 } from "../../segments/drag-context";
 import { isPeopleSegment } from "../../segments/to-event-definition";
-import type { SettingWidgetProps } from "../../settings/types";
 import type { Grain } from "../../spec/types";
 
 import S from "./CountingMenu.module.css";

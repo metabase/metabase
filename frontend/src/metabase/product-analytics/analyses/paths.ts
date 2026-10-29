@@ -1,13 +1,13 @@
 import { t } from "ttag";
 
+import { withWidgetProps } from "metabase/event-tables";
 import { SegmentedControl } from "metabase/ui";
 
 import { DurationWidget } from "../components/settings/DurationWidget";
 import { EventDefinitionSetWidget } from "../components/settings/EventDefinitionSetWidget";
 import { EventDefinitionWidget } from "../components/settings/EventDefinitionWidget";
 import { NumberStepperWidget } from "../components/settings/NumberStepperWidget";
-import { withWidgetProps } from "../settings/with-widget-props";
-import type { Grain, PathsVisit, TimeUnit } from "../spec/types";
+import type { Grain, PathsSpec, PathsVisit, TimeUnit } from "../spec/types";
 import { parseStepLabel } from "../sql/analyses/base";
 import { BREAKOUT_COLUMN } from "../sql/analyses/breakout";
 
@@ -21,6 +21,7 @@ import {
   getCommonSpec,
   getEventDefinitionProps,
   getPageviewSpec,
+  incomplete,
   isBoolean,
   isEventDefinitionList,
   isOneOf,
@@ -50,6 +51,16 @@ const getVisitSpec = (settings: PathsSettings): PathsVisit =>
   settings["paths.visit"] === "session"
     ? { kind: "session" }
     : { kind: "inactivity", gap: settings["paths.inactivity"] };
+
+/** A table without event names can still name each step by its page. */
+const getStepNames = (
+  settings: PathsSettings,
+): PathsSpec["stepNames"] | undefined => {
+  if (settings["columns.event_name"] !== null) {
+    return "event";
+  }
+  return settings["columns.url_path"] !== null ? "url_path" : undefined;
+};
 
 const getMinVolumeTitle = (grain: Grain): string => {
   switch (grain) {
@@ -206,6 +217,16 @@ export const PATHS_CONFIG: AnalysisConfig<"paths"> = {
   },
   settings: SETTINGS,
   toSpec: (settings, events) => {
+    const stepNames = getStepNames(settings);
+    if (stepNames === undefined) {
+      return incomplete([
+        {
+          key: "columns.event_name",
+          message: t`Pick an event name or URL path column to name each step.`,
+          isTableSetting: true,
+        },
+      ]);
+    }
     const direction = settings["paths.direction"];
     // A hidden event keeps its value but mustn't reach the query.
     const start = direction !== "to" ? settings["paths.start"] : null;
@@ -231,6 +252,7 @@ export const PATHS_CONFIG: AnalysisConfig<"paths"> = {
         hideNoisyEvents: settings["paths.hide_noisy_events"],
         maxNodes: settings["paths.max_nodes"],
         minVolume: settings["paths.min_volume"],
+        stepNames,
       },
       ...getPageviewSpec(settings, events),
       output: {},

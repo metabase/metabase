@@ -82,6 +82,23 @@ export type Table = {
   is_published: boolean;
   collection?: Collection;
   can_write?: boolean;
+
+  /** Event table settings sync detected from the table's columns. */
+  detected_event_settings?: DetectedEventSettings | null;
+  /** Event table settings a user set, over the detected ones. */
+  event_settings?: EventTableStoredSettings | null;
+};
+
+/**
+ * Product analytics settings for an event table, keyed like an analysis's
+ * settings, e.g. `{ "columns.person": "user_id" }`. Only what was set.
+ */
+export type EventTableStoredSettings = Record<string, unknown>;
+
+export type DetectedEventSettings = {
+  /** The known event schema the table's columns match, e.g. `"segment"`. */
+  schema: string;
+  settings: EventTableStoredSettings;
 };
 
 export type TableOwner = Pick<
@@ -168,6 +185,7 @@ export interface UpdateTableRequest {
   owner_email?: string | null;
   owner_user_id?: UserId | null;
   collection_id?: CollectionId | null;
+  event_settings?: EventTableStoredSettings | null;
 }
 
 export interface UpdateTableListRequest {

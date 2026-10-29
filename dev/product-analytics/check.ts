@@ -838,15 +838,17 @@ type FixtureEvent = {
   country?: string;
   /** False for the history before the date range. True when left out. */
   inRange?: boolean;
+  /** `/` when left out. */
+  urlPath?: string;
 };
 
 // Events are named after their flag, so paths tell their steps apart.
 const fixtureEventsSql = (events: FixtureEvent[]): string =>
   events
     .map(
-      ({ actor, flag, at, country = "", inRange = true }) =>
+      ({ actor, flag, at, country = "", inRange = true, urlPath = "/" }) =>
         `SELECT '${actor}' AS person_id, toDateTime('${at}') AS created_at, ` +
-        `'s' AS session_id, '${flag}' AS event_name, '/' AS url_path, ` +
+        `'s' AS session_id, '${flag}' AS event_name, '${urlPath}' AS url_path, ` +
         `'${country}' AS country, ${Number(inRange)} AS ${IN_RANGE_FLAG}, ` +
         Object.values(FLAG)
           .map((other) => `${Number(other === flag)} AS ${other}`)
@@ -1485,6 +1487,37 @@ const pathsFixtureRows = (events: FixtureEvent[], mergeRepeats: boolean) => {
 };
 const stepLabel = (step: number, flag: (typeof FLAG)[keyof typeof FLAG]) =>
   `${step}. ${flag}`;
+
+console.log("\npaths without event names");
+{
+  const spec: AnalysisSpec = {
+    ...pathsDefault,
+    paths: pathsDefault.paths && {
+      ...pathsDefault.paths,
+      minVolume: 1,
+      stepNames: "url_path",
+    },
+  };
+  // Each event's page differs from its name, so the labels show which names the step.
+  const events = fixtureEvents("pages", [
+    [FLAG.pricing, "2026-01-01 00:00:00"],
+    [FLAG.trial, "2026-01-01 00:01:00"],
+  ]).map((event) => ({ ...event, urlPath: `/page/${event.flag}` }));
+  checkRows(
+    "names every step by its URL path",
+    await chJson(
+      buildSql(spec, fixtureEventsSql(events), baseColumns(spec)).sql,
+    ),
+    [
+      {
+        source: `1. /page/${FLAG.pricing}`,
+        target: `2. /page/${FLAG.trial}`,
+        weight: 1,
+      },
+      { source: `2. /page/${FLAG.trial}`, target: "3. (dropped)", weight: 1 },
+    ],
+  );
+}
 
 console.log("\npaths with an excluded event");
 checkRows(

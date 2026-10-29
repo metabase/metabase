@@ -1,8 +1,8 @@
+import type { ColumnRole } from "metabase/event-tables";
 import * as Lib from "metabase-lib";
 import type { OpaqueDatasetQuery } from "metabase-types/api";
 import { isRecord } from "metabase-types/guards";
 
-import type { ColumnRole } from "./columns";
 import {
   isPeopleSegmentRef,
   toPeopleSegmentRef,

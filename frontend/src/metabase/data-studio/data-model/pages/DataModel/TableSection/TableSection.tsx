@@ -5,6 +5,11 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { trackDependencyEntitySelected } from "metabase/common/data-studio/analytics";
 import {
+  getEventTableSettings,
+  getMissingColumnRoles,
+  isEventTable,
+} from "metabase/event-tables";
+import {
   FieldOrderPicker,
   NameDescriptionInput,
 } from "metabase/metadata/components";
@@ -38,6 +43,7 @@ import {
   isConcreteTableId,
 } from "metabase-types/api";
 
+import { EventSettings } from "./EventSettings";
 import { MeasureList } from "./MeasureList";
 import { SegmentList } from "./SegmentList";
 import { TableActionsMenu } from "./TableActionsMenu";
@@ -76,6 +82,12 @@ const TableSectionBase = ({
   const [modalType, setModalType] = useState<TableModalType>();
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
+  // Also when a link asks for the tab: setting up a table's events is what
+  // makes it an event table.
+  const hasEventSettings = isEventTable(table) || activeTab === "events";
+  const hasMissingColumnRoles =
+    hasEventSettings &&
+    getMissingColumnRoles(getEventTableSettings(table)).length > 0;
   const readOnly = !table.can_write;
   const isLibraryEnabled = PLUGIN_LIBRARY.isEnabled;
   const isDependencyGraphEnabled = PLUGIN_DEPENDENCIES.isEnabled;
@@ -144,8 +156,18 @@ const TableSectionBase = ({
     <Stack data-testid="table-section" gap="lg" pb="xxl">
       <Box>
         <Tabs value={activeTab} onChange={handleTabChange}>
-          <Tabs.List mb="lg">
+          <Tabs.List className={S.tabsList} mb="lg">
             <Tabs.Tab value="details">{t`Details`}</Tabs.Tab>
+            {hasEventSettings && (
+              <Tabs.Tab
+                value="events"
+                rightSection={
+                  hasMissingColumnRoles && (
+                    <Icon name="warning" c="feedback-warning" />
+                  )
+                }
+              >{t`Events`}</Tabs.Tab>
+            )}
             <Tabs.Tab value="field">{t`Fields`}</Tabs.Tab>
             <Tabs.Tab value="segments">{t`Segments`}</Tabs.Tab>
             <Tabs.Tab value="measures">{t`Measures`}</Tabs.Tab>
@@ -291,6 +313,12 @@ const TableSectionBase = ({
           <Tabs.Panel value="measures">
             <MeasureList table={table} />
           </Tabs.Panel>
+
+          {hasEventSettings && (
+            <Tabs.Panel value="events">
+              <EventSettings table={table} />
+            </Tabs.Panel>
+          )}
         </Tabs>
       </Box>
 

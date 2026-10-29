@@ -1,3 +1,8 @@
+import {
+  type StoredSettings,
+  computeSettings,
+  getSettingWidgets,
+} from "metabase/event-tables";
 import { registerVisualizations } from "metabase/visualizations/register";
 import type { Table } from "metabase-types/api";
 import { createMockField, createMockTable } from "metabase-types/api/mocks";
@@ -5,8 +10,6 @@ import { createMockField, createMockTable } from "metabase-types/api/mocks";
 import { buildSql } from "../build-sql";
 import { createFlagAllocator } from "../events/allocate-flags";
 import { createMockEventDefinition } from "../events/mocks";
-import { computeSettings, getSettingWidgets } from "../settings/compute";
-import type { StoredSettings } from "../settings/types";
 import type { AnalysisKind } from "../spec/types";
 
 import { ANALYSIS_KINDS, getAnalysisConfig } from "./config";
@@ -84,7 +87,7 @@ const PURCHASED = createMockEventDefinition({ name: "Purchased" });
 /** What each analysis needs to run that has no default without a table. */
 const REQUIRED_EVENTS: Record<AnalysisKind, StoredSettings> = {
   funnel: { "funnel.steps": [SIGNED_UP, PURCHASED] },
-  paths: { "paths.start": SIGNED_UP },
+  paths: { "paths.start": SIGNED_UP, "columns.event_name": "event_name" },
   habit: { "habit.active": SIGNED_UP },
   lifecycle: { "lifecycle.active": SIGNED_UP },
   cohorts: {
@@ -107,6 +110,14 @@ const EVENT_TABLE = createMockTable({
     }),
     createMockField({ id: 7, name: "amount", base_type: "type/Float" }),
   ],
+  detected_event_settings: {
+    schema: "posthog",
+    settings: {
+      "columns.timestamp": "ts",
+      "columns.person": "user_id",
+      "columns.event_name": "event_name",
+    },
+  },
 });
 
 const SESSION_TABLE = createMockTable({
@@ -115,6 +126,13 @@ const SESSION_TABLE = createMockTable({
     ...(EVENT_TABLE.fields ?? []),
     createMockField({ id: 9, name: "session_id", base_type: "type/Text" }),
   ],
+  detected_event_settings: {
+    schema: "amplitude",
+    settings: {
+      ...EVENT_TABLE.detected_event_settings?.settings,
+      "columns.session": "session_id",
+    },
+  },
 });
 
 const USERS_TABLE = createMockTable({
@@ -360,14 +378,58 @@ describe("analysis settings", () => {
     });
   });
 
-  it("picks column role defaults from the table", () => {
-    const { computed } = setup({ kind: "funnel", table: EVENT_TABLE });
+  it("takes column roles from the table: a user's choices over sync's", () => {
+    const table = createMockTable({
+      ...EVENT_TABLE,
+      event_settings: {
+        "columns.event_name": null,
+        "columns.url_path": "plan",
+      },
+    });
+    const { computed } = setup({ kind: "funnel", table });
 
     expect(computed["columns.timestamp"]).toBe("ts");
     expect(computed["columns.person"]).toBe("user_id");
     expect(computed["columns.session"]).toBeNull();
-    expect(computed["columns.event_name"]).toBe("event_name");
-    expect(computed["columns.url_path"]).toBeNull();
+    expect(computed["columns.event_name"]).toBeNull();
+    expect(computed["columns.url_path"]).toBe("plan");
+  });
+
+  it("overrides the table's column roles for one analysis", () => {
+    const { computed } = setup({
+      kind: "funnel",
+      table: EVENT_TABLE,
+      stored: { "columns.timestamp": "signed_up_at" },
+    });
+
+    expect(computed["columns.timestamp"]).toBe("signed_up_at");
+    expect(computed["columns.person"]).toBe("user_id");
+  });
+
+  it("leaves a role empty when nothing set or detected it", () => {
+    const table = createMockTable({
+      ...EVENT_TABLE,
+      detected_event_settings: null,
+    });
+    const { computed } = setup({ kind: "funnel", table });
+
+    expect(computed["columns.timestamp"]).toBeNull();
+    expect(computed["columns.person"]).toBeNull();
+  });
+
+  it("ignores a detected or table column the table no longer has", () => {
+    const table = createMockTable({
+      ...EVENT_TABLE,
+      detected_event_settings: {
+        schema: "posthog",
+        settings: { "columns.timestamp": "missing" },
+      },
+      event_settings: { "columns.person": "missing" },
+    });
+    const { computed } = setup({ kind: "funnel", table });
+
+    expect(computed["columns.timestamp"]).toBeNull();
+    expect(computed["columns.person"]).toBeNull();
   });
 
   it("drops a stored column the table doesn't have", () => {
@@ -785,6 +847,28 @@ describe("analysis settings", () => {
       );
     });
 
+    it("names every step by its URL path without an event name column", () => {
+      const { spec, sql } = getPathsSql({
+        "columns.event_name": null,
+        "columns.url_path": "path",
+      });
+
+      expect(spec.paths?.stepNames).toBe("url_path");
+      expect(sql).toContain("ifNull(url_path, '') AS step_name");
+    });
+
+    it("asks for a column to name steps by when there's neither", () => {
+      const { specResult } = setup({
+        kind: "paths",
+        stored: { ...REQUIRED_EVENTS.paths, "columns.event_name": null },
+      });
+
+      expect(specResult).toEqual({
+        status: "incomplete",
+        missing: [expect.objectContaining({ isTableSetting: true })],
+      });
+    });
+
     it("names pageviews like other events without a URL path column", () => {
       const { spec, sql } = getPathsSql({ pageviews: PAGEVIEW });
 
@@ -850,6 +934,7 @@ describe("analysis settings", () => {
       (direction) => {
         const { specResult } = setup({
           kind: "paths",
+          table: EVENT_TABLE,
           stored: { "paths.direction": direction },
         });
         const spec = getReadySpec(specResult);
@@ -863,6 +948,7 @@ describe("analysis settings", () => {
       const getBoundsSql = (direction: string) => {
         const { specResult } = setup({
           kind: "paths",
+          table: EVENT_TABLE,
           stored: { "paths.direction": direction },
         });
         const built = buildSql(getReadySpec(specResult), "SELECT 1", {
@@ -884,6 +970,7 @@ describe("analysis settings", () => {
     it("leaves the event its direction hides out of the query", () => {
       const { specResult, allocation } = setup({
         kind: "paths",
+        table: EVENT_TABLE,
         stored: {
           "paths.direction": "from",
           "paths.start": SIGNED_UP,

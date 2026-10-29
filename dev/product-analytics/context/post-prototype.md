@@ -2,7 +2,55 @@
 
 Work we've decided is needed, but not for the prototype. Each section stands on its own.
 
-## Path cleaning
+## Source of truth for an analysis
+
+An analysis is defined by its analysis settings, like `funnel.view` ("How to display the funnel"). They use the viz settings engine, so defaults, validation, dependencies between settings and widgets come for free. But they're used differently: viz settings take a query result and compute how to draw it, while analysis settings build the query itself.
+
+Today the source of truth is split:
+
+- **Dashboards and subscriptions** run the query saved with the card.
+- **The event analysis builder** throws that query away when it reopens the card, and builds a new one from the saved settings.
+
+So the two can disagree. If we change how queries are built from settings, a saved analysis shows one thing on a dashboard and another when opened. Before this ships, decide which one is the source of truth and when a query gets rebuilt.
+
+### Sparse settings
+
+Like viz settings, analysis settings are sparse: only what the user changed is saved, and everything else is a default computed on read. With viz settings that's caused trouble, because changing a default changes every existing card that relied on it. We should consider a different approach for analysis settings.
+
+Table settings make this harder to decide. An analysis that never changed its column roles follows the table's (see [event-table-settings.plan.md](event-table-settings.plan.md)), so an admin changing them changes every such analysis:
+
+- **Against following the table:** someone who saved an analysis was happy with how it looked, and an admin's change later shouldn't change it under them.
+- **For following it:** a fix should reach every analysis, and a table whose columns change shouldn't leave analyses pointing at a column that's gone. For path cleaning especially, analyses that each kept their own copy of the rules would end up with slightly different cleaning scattered across them.
+
+So the answer may differ per setting: some follow the table, and others are fixed when the analysis is saved.
+
+## IDs in saved analyses
+
+The prototype's settings refer to tables and fields by their numeric ids, which differ between instances, so they don't survive serialization, and dependency tracking can't see them. Don't copy this when hardening. Event table settings name columns instead, which are portable.
+
+## Event schemas
+
+Sync recognizes event tables by matching their columns against known schemas ([event-table-settings.plan.md](event-table-settings.plan.md#detection)). Apart from Track's, the prototype's schemas were written from memory of each vendor's docs, not checked against real exports. Don't copy them as they are.
+
+### Validate them
+
+Check each one against the vendor's current docs, and against a real export where there's one to read:
+
+- **GA4:** Google's public sample export (`bigquery-public-data.ga4_obfuscated_sample_ecommerce`) has the real columns.
+- **Snowplow:** Snowplow publishes the `atomic.events` table definition.
+- **Segment, RudderStack, Amplitude, Mixpanel, PostHog:** their warehouse and export docs, and the dbt packages built on them, which list the source columns they read.
+
+Keeping them current is mostly a matter of watching for changes: vendors rarely rename warehouse columns, because their customers' SQL depends on them, but they do add them. The matching only needs a few columns per schema, so added columns don't break it; renames do. A scheduled job, rather than a test, could compare each schema with the vendor's published one, such as GA4's sample dataset.
+
+### Sources split across tables
+
+An event table is one table, but some sources split their events across several:
+
+- **Segment and RudderStack** write `tracks` (every event, with only the common columns), `pages` (pageviews, with `path` and no event name), `identifies`, and one table per event with its properties. The prototype only recognizes `tracks`. The per-event tables have the same common columns, so each of them is likely recognized as an event table too, and fills the table picker.
+- **GA4** exports one table per day (`events_20261029`, plus `events_intraday_…`). Each day is recognized as its own event table, while analyses need every day at once, which BigQuery reads with a wildcard (`events_*`).
+
+Outside Metabase, people usually model these into one events table first: a view or dbt model that unions `tracks` and `pages` (pageviews as an event named for the page), stitches `anonymous_id` to `user_id` through `identifies`, and for GA4 reads the wildcard. Here that means a view in the warehouse, or a model once the table picker accepts models. Recognizing a source should then mean recognizing the modelled table, and not offering the raw pieces.
+
 
 Paths that name pageviews by their URL need the URLs cleaned first. Without cleaning, real data turns into a long tail of nodes that each appear once:
 
@@ -56,7 +104,7 @@ So it can be a driver feature, the way `:regex` gates `regexextract`.
 
 **UX.** Users shouldn't edit the expression. They'd see an ordered list of rules: pattern, replacement, and a preview against sample paths. The list compiles to the expression, with good defaults for the generic rules.
 
-**Where it lives.** It's per table, not per analysis, so it belongs with the column roles in table metadata. Meanwhile, a model with a cleaned-path custom column works today with no new UX, once the table picker accepts models.
+**Where it lives.** It's per table, not per analysis, so it belongs with the column roles in table metadata ([event-table-settings.plan.md](event-table-settings.plan.md)). Meanwhile, a model with a cleaned-path custom column works today with no new UX, once the table picker accepts models.
 
 ## Recognizing pageviews in other schemas
 

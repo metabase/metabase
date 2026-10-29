@@ -4,6 +4,7 @@
    [metabase.analyze.classifiers.category]
    [metabase.analyze.classifiers.core]
    [metabase.analyze.classifiers.data-sensitivity]
+   [metabase.analyze.classifiers.event-schema]
    [metabase.analyze.classifiers.name]
    [metabase.analyze.fingerprint.fingerprinters]
    [metabase.analyze.query-results]
@@ -13,6 +14,7 @@
   metabase.analyze.classifiers.category/keep-me
   metabase.analyze.classifiers.core/keep-me
   metabase.analyze.classifiers.data-sensitivity/keep-me
+  metabase.analyze.classifiers.event-schema/keep-me
   metabase.analyze.classifiers.name/keep-me
   metabase.analyze.fingerprint.fingerprinters/keep-me
   metabase.analyze.query-results/keep-me)
@@ -25,6 +27,8 @@
   run-classifiers]
  [metabase.analyze.classifiers.data-sensitivity
   infer-data-sensitivity]
+ [metabase.analyze.classifiers.event-schema
+  detect-event-schema]
  [metabase.analyze.classifiers.name
   infer-entity-type-by-name
   infer-semantic-type-by-name]

@@ -1,9 +1,9 @@
 import { t } from "ttag";
 
+import type { SettingWidgetProps } from "metabase/event-tables";
 import { Group, Select } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import type { SettingWidgetProps } from "../../settings/types";
 import type { Duration, TimeUnit } from "../../spec/types";
 
 import { NumberStepperWidget } from "./NumberStepperWidget";

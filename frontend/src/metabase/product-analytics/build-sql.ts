@@ -1,9 +1,8 @@
-import {
-  COLUMN_ROLES,
-  type ColumnRoles,
-  PLANNER_COLUMN_NAMES,
-  type ProjectedColumn,
-} from "./columns";
+// Type-only: the barrel's widgets need a browser, and the SQL builds without one.
+import type { ColumnRoles } from "metabase/event-tables";
+import { getObjectKeys } from "metabase/utils/objects";
+
+import { PLANNER_COLUMN_NAMES, type ProjectedColumn } from "./columns";
 import type { AnalysisSpec } from "./spec/types";
 import { planCohorts } from "./sql/analyses/cohorts";
 import { planFunnel } from "./sql/analyses/funnel";
@@ -122,7 +121,7 @@ const projectBase = (
 ) => {
   const segmentFlags = peopleSegments?.flags ?? [];
   const projected = [
-    ...COLUMN_ROLES.map((role) => {
+    ...getObjectKeys(PLANNER_COLUMN_NAMES).map((role) => {
       const source = columns[role];
       const sql = source !== null ? ident(source) : MISSING_COLUMN_SQL[role];
       return `${sql} AS ${PLANNER_COLUMN_NAMES[role]}`;

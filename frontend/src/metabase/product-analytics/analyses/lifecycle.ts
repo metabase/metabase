@@ -1,15 +1,19 @@
 import { t } from "ttag";
 
+import {
+  ColumnPickerWidget,
+  getDateColumnOptions,
+  isDateColumnInTable,
+  withWidgetProps,
+} from "metabase/event-tables";
 import { color } from "metabase/ui/colors";
 import type { ColorName } from "metabase/ui/colors/types";
 import * as Lib from "metabase-lib";
 
 import { FIRST_SEEN_COLUMN } from "../columns";
 import { CheckboxCardsWidget } from "../components/settings/CheckboxCardsWidget";
-import { ColumnPickerWidget } from "../components/settings/ColumnPickerWidget";
 import { EventDefinitionWidget } from "../components/settings/EventDefinitionWidget";
 import { formatPeriod } from "../drills/describe";
-import { withWidgetProps } from "../settings/with-widget-props";
 import type { Granularity, LifecycleStateName, Period } from "../spec/types";
 import { pointString } from "../sql/analyses/base";
 import {
@@ -23,7 +27,6 @@ import {
   getBreakoutSpec,
   getChartPerGroupSettings,
 } from "./breakout";
-import { getDateColumnOptions, isDateColumnInTable } from "./column-roles";
 import { commonSettings } from "./common-settings";
 import { getAxisTitleSettings } from "./series-settings";
 import {

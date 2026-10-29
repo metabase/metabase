@@ -1,9 +1,9 @@
+import { type StoredSettings, computeSettings } from "metabase/event-tables";
+
 import { getAnalysisConfig } from "./analyses/config";
 import { buildSql } from "./build-sql";
 import { createFlagAllocator } from "./events/allocate-flags";
 import { createMockEventDefinition } from "./events/mocks";
-import { computeSettings } from "./settings/compute";
-import type { StoredSettings } from "./settings/types";
 import type { AnalysisKind } from "./spec/types";
 
 const getSpec = (kind: AnalysisKind, stored: StoredSettings) => {

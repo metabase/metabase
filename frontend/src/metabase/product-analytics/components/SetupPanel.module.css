@@ -40,3 +40,9 @@
   min-height: 0;
   overflow-y: auto;
 }
+
+/* Stays below the advanced settings while they scroll. */
+.footer {
+  flex-shrink: 0;
+  border-top: 1px solid var(--mb-color-border-neutral);
+}

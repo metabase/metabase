@@ -1,13 +1,16 @@
 import type {
+  EventTableSettings,
+  SettingDefinitions,
+} from "metabase/event-tables";
+import type {
   CardDisplayType,
   Table,
   VisualizationSettings,
 } from "metabase-types/api";
 
-import type { ColumnRole, ExtraColumn, UsersTableLink } from "../columns";
+import type { ExtraColumn, UsersTableLink } from "../columns";
 import type { EventDefinition, EventFlags } from "../events/types";
 import type { AnalysisFilters } from "../filters";
-import type { SettingDefinitions } from "../settings/types";
 import type {
   AnalysisKind,
   AnalysisSpec,
@@ -47,11 +50,7 @@ export type AnalysisContext = {
   displayColors?: DisplayColors;
 };
 
-export type ColumnRoleSettings = {
-  [R in ColumnRole as `columns.${R}`]: string | null;
-};
-
-export type CommonSettings = ColumnRoleSettings & {
+export type CommonSettings = EventTableSettings & {
   /** Paths name these events by their page, not their event name. */
   pageviews: EventDefinition | null;
   counting: Grain;
@@ -136,6 +135,8 @@ export type AnalysisSettingDefinitions<S> = SettingDefinitions<
 export type MissingSetting = {
   key: string;
   message: string;
+  /** Set in the event table settings, rather than the setup panel. */
+  isTableSetting?: boolean;
 };
 
 /** Settings are incomplete until every event the analysis needs is chosen. */

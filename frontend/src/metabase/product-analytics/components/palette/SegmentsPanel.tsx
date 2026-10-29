@@ -2,7 +2,10 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { useUpdateSegmentMutation } from "metabase/api";
-import { getUserCanWriteSegments } from "metabase/common/data-studio/selectors";
+import {
+  canAccessDataStudio,
+  getUserCanWriteSegments,
+} from "metabase/common/data-studio/selectors";
 import { useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import {
@@ -183,6 +186,7 @@ const PaletteSection = ({
     (state) =>
       table !== undefined && getUserCanWriteSegments(state, table.is_published),
   );
+  const hasDataStudioAccess = useSelector(canAccessDataStudio);
   const [updateSegment] = useUpdateSegmentMutation();
 
   const removeSegment = async (segment: Segment) => {
@@ -206,14 +210,9 @@ const PaletteSection = ({
     return {
       editUrl: Urls.dataModelSegment(segment.id),
       revisionsUrl: Urls.dataModelSegmentRevisions(segment.id),
-      dataStudioUrl: table.is_published
-        ? Urls.dataStudioPublishedTableSegment(table.id, segment.id)
-        : Urls.dataStudioDataModelSegment({
-            databaseId: table.db_id,
-            schemaName: table.schema,
-            tableId: table.id,
-            segmentId: segment.id,
-          }),
+      dataStudioUrl: hasDataStudioAccess
+        ? getSegmentDataStudioUrl(table, segment)
+        : undefined,
       onRemove: () => removeSegment(segment),
     };
   };
@@ -339,3 +338,14 @@ const PaletteSection = ({
     </Stack>
   );
 };
+
+/** The segment's page in Data Studio: in the library for a published table. */
+const getSegmentDataStudioUrl = (table: Table, segment: Segment): string =>
+  table.is_published
+    ? Urls.dataStudioPublishedTableSegment(table.id, segment.id)
+    : Urls.dataStudioDataModelSegment({
+        databaseId: table.db_id,
+        schemaName: table.schema,
+        tableId: table.id,
+        segmentId: segment.id,
+      });

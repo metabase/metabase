@@ -1,11 +1,11 @@
 import { useDisclosure } from "@mantine/hooks";
 
+import type { SettingWidgetProps } from "metabase/event-tables";
 import { DatePicker } from "metabase/querying/common/components/DatePicker";
 import { getDateFilterDisplayName } from "metabase/querying/filters/utils/dates";
 import { Button, Icon, Popover } from "metabase/ui";
 
 import { parseDateRange, serializeDateRange } from "../../date-range";
-import type { SettingWidgetProps } from "../../settings/types";
 
 export const DateRangeButton = ({
   value,

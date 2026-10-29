@@ -6,6 +6,7 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { AddToDashSelectDashModal } from "metabase/common/components/Pickers/AddToDashSelectDashModal";
 import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal";
 import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
+import type { StoredSettings } from "metabase/event-tables";
 import { useNavigate } from "metabase/router";
 import { Group, Stack } from "metabase/ui";
 import type {
@@ -22,7 +23,6 @@ import { useDrillQueries } from "../drills/use-drill-queries";
 import { type AnalysisFilters, withPeopleFilter } from "../filters";
 import { SegmentDragProvider } from "../segments/drag-context";
 import type { PaletteSegment } from "../segments/types";
-import type { StoredSettings } from "../settings/types";
 import type { AnalysisKind } from "../spec/types";
 import { grainLabel } from "../sql/compile/grain";
 import type { DrillPoint } from "../sql/compose";
@@ -39,6 +39,10 @@ import { AnalysisTitle, getNewAnalysisTitle } from "./AnalysisTitle";
 import { AnalysisToolbar } from "./AnalysisToolbar";
 import { ArchivedAnalysisBanner } from "./ArchivedAnalysisBanner";
 import { DisplayPanel } from "./DisplayPanel";
+import {
+  EventTableSettingsModal,
+  useTableSettingsUrl,
+} from "./EventTableSettingsModal";
 import { EventsPanel } from "./EventsPanel";
 import { FilterPills, useFilterCount } from "./FilterPills";
 import { SetupPanel } from "./SetupPanel";
@@ -99,6 +103,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
       _.pick(savedCard?.visualization_settings ?? {}, TIMELINE_SETTING_KEYS),
     );
   const [displayColors, setDisplayColors] = useState<DisplayColors>({});
+  const [isTableSettingsOpen, setIsTableSettingsOpen] = useState(false);
   const handleChangeColor = useCallback(
     (key: string, color: string) =>
       setDisplayColors((colors) => ({ ...colors, [key]: color })),
@@ -124,6 +129,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     spec,
     widgets,
     missing,
+    missingColumnRoles,
     display,
     question,
     vizSettings,
@@ -136,6 +142,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     onChangeSettings,
     colors: displayColors,
   });
+  const tableSettingsUrl = useTableSettingsUrl(table);
   // Only while "Show as" is offered: a view without it keeps the stored value.
   const breakoutViewWidget = widgets.find(
     (widget) => widget.id === "breakout_view",
@@ -385,6 +392,11 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
               setupLabel={config.setupLabel}
               widgets={widgets}
               isHinted={isSetupHinted}
+              onOpenTableSettings={
+                table !== undefined
+                  ? () => setIsTableSettingsOpen(true)
+                  : undefined
+              }
               onClose={() => setPanel(null)}
             />
           )}
@@ -402,6 +414,14 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
                 isLoading={query.isLoading}
                 error={query.error}
                 missing={missing}
+                tableSetup={
+                  table !== undefined && missingColumnRoles.length > 0
+                    ? {
+                        dataStudioUrl: tableSettingsUrl,
+                      }
+                    : undefined
+                }
+                onOpenTableSettings={() => setIsTableSettingsOpen(true)}
                 setupLabel={config.setupLabel}
                 onOpenSetup={
                   panel !== "setup" ? () => setPanel("setup") : undefined
@@ -453,6 +473,17 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
           isLocationAllowed() || drillActions.isDrilling()
         }
       />
+      {table !== undefined && (
+        <EventTableSettingsModal
+          table={table}
+          widgets={widgets.filter(
+            (widget) => widget.group === "columns" && !widget.hidden,
+          )}
+          stored={stored}
+          opened={isTableSettingsOpen}
+          onClose={() => setIsTableSettingsOpen(false)}
+        />
+      )}
     </SegmentDragProvider>
   );
 };

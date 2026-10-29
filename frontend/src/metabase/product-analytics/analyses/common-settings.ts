@@ -1,10 +1,18 @@
 import { t } from "ttag";
 
+import {
+  type ColumnRoleKey,
+  type ColumnRoles,
+  EVENT_TABLE_SETTINGS,
+  type EventTableSettings,
+  type SettingDefinition,
+  getEventTableSettings,
+  isColumnInTable,
+  withWidgetProps,
+} from "metabase/event-tables";
 import { SegmentedControl } from "metabase/ui";
 
-import type { ColumnRole, ColumnRoles } from "../columns";
 import { AddFilterButton } from "../components/AddFilterButton";
-import { ColumnPickerWidget } from "../components/settings/ColumnPickerWidget";
 import { EventDefinitionWidget } from "../components/settings/EventDefinitionWidget";
 import { BreakoutMenu } from "../components/toolbar/BreakoutMenu";
 import { CountingMenu } from "../components/toolbar/CountingMenu";
@@ -12,29 +20,18 @@ import { DateRangeButton } from "../components/toolbar/DateRangeButton";
 import { GranularityButton } from "../components/toolbar/GranularityButton";
 import { DEFAULT_DATE_RANGE, parseDateRange } from "../date-range";
 import { NO_FILTERS, isAnalysisFilters } from "../filters";
-import type { SettingDefinition } from "../settings/types";
-import { withWidgetProps } from "../settings/with-widget-props";
 import type { ActorGrain, Grain, Granularity } from "../spec/types";
 
 import { BREAKOUT_VIEWS, isBreakout } from "./breakout";
-import {
-  getColumnOptions,
-  getDefaultColumn,
-  getUserPropertyOptions,
-  isColumnInTable,
-  isUserPropertyColumn,
-} from "./column-roles";
+import { getUserPropertyOptions, isUserPropertyColumn } from "./column-roles";
 import { isOneOf, isOptionalEventDefinition } from "./setting-helpers";
 import type {
   AnalysisContext,
   AnalysisSettingDefinitions,
-  ColumnRoleSettings,
   CommonSettings,
 } from "./types";
 
-type ColumnRoleKey = `columns.${ColumnRole}`;
-
-export const getColumnRoles = (settings: ColumnRoleSettings): ColumnRoles => ({
+export const getColumnRoles = (settings: EventTableSettings): ColumnRoles => ({
   timestamp: settings["columns.timestamp"],
   person: settings["columns.person"],
   session: settings["columns.session"],
@@ -42,21 +39,15 @@ export const getColumnRoles = (settings: ColumnRoleSettings): ColumnRoles => ({
   url_path: settings["columns.url_path"],
 });
 
-const columnRoleSetting = (
-  role: ColumnRole,
-  getTitle: () => string,
-  isRequired: boolean,
+/**
+ * A table setting, defaulting to the table's value: an analysis only keeps
+ * what it overrides, so it follows later changes to the table.
+ */
+const tableSetting = (
+  key: ColumnRoleKey,
 ): SettingDefinition<AnalysisContext, CommonSettings, ColumnRoleKey> => ({
-  getTitle,
-  group: "columns",
-  getSection: () => "advanced",
-  widget: ColumnPickerWidget,
-  getDefault: (context) => getDefaultColumn(context.table, role),
-  isValid: (value, context) => isColumnInTable(context.table, value),
-  getProps: (context) => ({
-    columns: getColumnOptions(context.table),
-    isRequired,
-  }),
+  ...EVENT_TABLE_SETTINGS[key],
+  getDefault: (context) => getEventTableSettings(context.table)[key],
 });
 
 const COLUMN_FOR_GRAIN: Record<ActorGrain, ColumnRoleKey> = {
@@ -67,12 +58,12 @@ const COLUMN_FOR_GRAIN: Record<ActorGrain, ColumnRoleKey> = {
 /** Every row is an event, so events are always countable. */
 const isCountable = (
   grain: Grain,
-  settings: Partial<ColumnRoleSettings>,
+  settings: Partial<EventTableSettings>,
 ): boolean =>
   grain === "event" || typeof settings[COLUMN_FOR_GRAIN[grain]] === "string";
 
 export const hasSessionColumn = (
-  settings: Partial<ColumnRoleSettings>,
+  settings: Partial<EventTableSettings>,
 ): boolean => isCountable("session", settings);
 
 type GranularityOptions = {
@@ -187,19 +178,11 @@ export const commonSettings = ({
       usersTable: context.usersTable,
     }),
   }),
-  "columns.timestamp": columnRoleSetting(
-    "timestamp",
-    () => t`Event time`,
-    true,
-  ),
-  "columns.person": columnRoleSetting("person", () => t`Person`, true),
-  "columns.session": columnRoleSetting("session", () => t`Session`, false),
-  "columns.event_name": columnRoleSetting(
-    "event_name",
-    () => t`Event name`,
-    false,
-  ),
-  "columns.url_path": columnRoleSetting("url_path", () => t`URL path`, false),
+  "columns.timestamp": tableSetting("columns.timestamp"),
+  "columns.person": tableSetting("columns.person"),
+  "columns.event_name": tableSetting("columns.event_name"),
+  "columns.session": tableSetting("columns.session"),
+  "columns.url_path": tableSetting("columns.url_path"),
   pageviews: withWidgetProps({
     getTitle: () => t`Pageviews`,
     getHint: () =>
@@ -210,5 +193,7 @@ export const commonSettings = ({
     getDefault: (context) => context.detectedPageviews ?? null,
     isValid: (value) => isOptionalEventDefinition(value),
     getProps: (context) => ({ table: context.table, emptyLabel: t`None` }),
+    // temporarily hidden until we have better UX for this
+    getHidden: () => true,
   }),
 });

@@ -1,9 +1,9 @@
+import type { ColumnRoles } from "metabase/event-tables";
 import * as Lib from "metabase-lib";
 import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import { ORDERS_ID, PEOPLE_ID } from "metabase-types/api/mocks/presets";
 
 import { buildBaseQuery } from "./base-query";
-import type { ColumnRoles } from "./columns";
 import { createFlagAllocator } from "./events/allocate-flags";
 import {
   type MockFilter,

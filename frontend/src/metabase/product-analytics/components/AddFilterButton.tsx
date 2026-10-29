@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import type { SettingWidgetProps } from "metabase/event-tables";
 import { useMetadataProvider } from "metabase/metadata-store";
 import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
 import { MultiStageFilterPicker } from "metabase/querying/filters/components/FilterPicker/MultiStageFilterPicker";
@@ -27,7 +28,6 @@ import {
 import { segmentFilterables } from "../segments/to-event-definition";
 import { usePaletteSegments } from "../segments/use-palette-segments";
 import { useSegmentDrafts } from "../segments/use-segment-drafts";
-import type { SettingWidgetProps } from "../settings/types";
 
 import S from "./AddFilterButton.module.css";
 import { useFilterCount } from "./FilterPills";

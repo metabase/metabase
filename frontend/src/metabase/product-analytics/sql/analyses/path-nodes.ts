@@ -14,7 +14,10 @@ export const PATHS_COLUMNS: PathsColumns = {
 };
 
 /** What a step is called: a pageview's URL path, or any other event's name. */
-export const stepNameSql = ({ pageview }: AnalysisSpec): string => {
+export const stepNameSql = ({ pageview, paths }: AnalysisSpec): string => {
+  if (paths?.stepNames === "url_path") {
+    return "ifNull(url_path, '')";
+  }
   const eventName = "ifNull(event_name, '')";
   return pageview !== undefined
     ? `if(${flagSql(pageview.flag)}, url_path, ${eventName})`

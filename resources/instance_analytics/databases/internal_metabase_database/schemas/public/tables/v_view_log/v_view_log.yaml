@@ -3,7 +3,7 @@ display_name: V View Log
 created_at: '2023-10-31T13:16:53.281011Z'
 db_id: Internal Metabase Database
 schema: public
-entity_type: entity/EventTable
+entity_type: entity/GenericTable
 active: true
 field_order: database
 initial_sync_status: complete

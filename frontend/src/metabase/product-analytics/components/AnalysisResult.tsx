@@ -3,6 +3,7 @@ import { useRef } from "react";
 import { t } from "ttag";
 import { noop } from "underscore";
 
+import { ForwardRefLink } from "metabase/common/components/Link";
 import CS from "metabase/css/core/index.css";
 import {
   ActionIcon,
@@ -86,9 +87,12 @@ type AnalysisResultProps = {
   error: string | undefined;
   /** Settings still to fill in. When non-empty, this replaces the result. */
   missing: MissingSetting[];
+  /** Asks for the table's setup first, when it lacks roles every analysis needs. */
+  tableSetup?: { dataStudioUrl: string | undefined };
   setupLabel: string;
   /** Omit when the setup panel is already open. */
   onOpenSetup?: () => void;
+  onOpenTableSettings: () => void;
   clickActionsMode: ClickActionsMode;
   /** Shown in place of the chart, once there's a result. */
   placeholder?: string;
@@ -104,8 +108,10 @@ export const AnalysisResult = ({
   isLoading,
   error,
   missing,
+  tableSetup,
   setupLabel,
   onOpenSetup,
+  onOpenTableSettings,
   clickActionsMode,
   placeholder,
   isDisplayOpen,
@@ -113,7 +119,8 @@ export const AnalysisResult = ({
   timelineProps,
 }: AnalysisResultProps) => {
   // Errors and loading come first: settings can't be finished without a table.
-  const isIncomplete = missing.length > 0 && !error && !isLoading;
+  const isIncomplete =
+    (missing.length > 0 || tableSetup !== undefined) && !error && !isLoading;
   const isShowingVisualization =
     !isIncomplete && !isLoading && !error && rawSeries !== null;
   // A rerun empties `dataset`, so the last chart shown stays up under the
@@ -151,11 +158,18 @@ export const AnalysisResult = ({
           </Tooltip>
         </Group>
         <Stack gap="sm" flex={1} mih={0}>
-          {isIncomplete && (
+          {isIncomplete && tableSetup !== undefined && (
+            <TableSetup
+              dataStudioUrl={tableSetup.dataStudioUrl}
+              onOpenTableSettings={onOpenTableSettings}
+            />
+          )}
+          {isIncomplete && tableSetup === undefined && (
             <IncompleteSettings
               missing={missing}
               setupLabel={setupLabel}
               onOpenSetup={onOpenSetup}
+              onOpenTableSettings={onOpenTableSettings}
             />
           )}
           {!isIncomplete && error && <Alert color="error">{error}</Alert>}
@@ -198,12 +212,14 @@ type IncompleteSettingsProps = {
   missing: MissingSetting[];
   setupLabel: string;
   onOpenSetup?: () => void;
+  onOpenTableSettings: () => void;
 };
 
 const IncompleteSettings = ({
   missing,
   setupLabel,
   onOpenSetup,
+  onOpenTableSettings,
 }: IncompleteSettingsProps) => (
   <Stack align="center" justify="center" gap="sm" flex={1} ta="center">
     <Title order={4} c="text-secondary">
@@ -214,10 +230,44 @@ const IncompleteSettings = ({
         {message}
       </Text>
     ))}
-    {onOpenSetup && (
-      <Button variant="filled" onClick={onOpenSetup}>
-        {setupLabel}
+    {missing.some((setting) => setting.isTableSetting) ? (
+      <Button variant="filled" onClick={onOpenTableSettings}>
+        {t`Event table settings`}
       </Button>
+    ) : (
+      onOpenSetup && (
+        <Button variant="filled" onClick={onOpenSetup}>
+          {setupLabel}
+        </Button>
+      )
     )}
+  </Stack>
+);
+
+type TableSetupProps = {
+  /** Data Studio's settings for the table, for someone who can edit it. */
+  dataStudioUrl: string | undefined;
+  onOpenTableSettings: () => void;
+};
+
+const TableSetup = ({
+  dataStudioUrl,
+  onOpenTableSettings,
+}: TableSetupProps) => (
+  <Stack align="center" justify="center" flex={1} ta="center">
+    <Title order={4} c="text-secondary">
+      {t`This table isn't set up for event analysis yet`}
+    </Title>
+    <Group justify="center" gap="sm">
+      {dataStudioUrl !== undefined ? (
+        <Button variant="filled" component={ForwardRefLink} to={dataStudioUrl}>
+          {t`Set up in Data Studio`}
+        </Button>
+      ) : (
+        <Button variant="filled" onClick={onOpenTableSettings}>
+          {t`Pick columns for this analysis`}
+        </Button>
+      )}
+    </Group>
   </Stack>
 );

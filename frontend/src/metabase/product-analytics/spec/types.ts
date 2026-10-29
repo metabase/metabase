@@ -109,6 +109,11 @@ export interface PathsSpec {
   hideNoisyEvents: boolean;
   maxNodes: number;
   minVolume: number;
+  /**
+   * What names each step: the event's name, with pageviews named by their
+   * URL path, or every event's URL path, for tables without event names.
+   */
+  stepNames: "event" | "url_path";
 }
 
 export interface HabitSpec {
