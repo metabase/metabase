@@ -301,9 +301,9 @@
         cards     (subscription-cards dashboard)
         channel   (build-channel nil (or channel "email") true args)
         ;; Send `collection_id` and `collection_position` as nil.
-        ;; The Pulse model sets the collection from `dashboard_id`, so a value here has no effect.
-        ;; Anyone who can view a dashboard can subscribe to it.
-        ;; Both keys are optional. The nil values only make this explicit.
+        ;; `create-pulse-with-perm-checks!` ignores both for a dashboard subscription. The subscription
+        ;; goes in the collection of its dashboard. Anyone who can view a dashboard can subscribe to it.
+        ;; The nil values only make this explicit.
         pulse     (pulse.api/create-pulse-with-perm-checks!
                    cards
                    [channel]
