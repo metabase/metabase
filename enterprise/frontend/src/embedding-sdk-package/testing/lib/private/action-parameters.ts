@@ -8,20 +8,15 @@ function isValueOfType(
   value: unknown,
   jsType: ActionParameterSchema["jsType"],
 ): boolean {
-  if (value === null || jsType === undefined || jsType === "unknown") {
+  if (jsType === undefined || jsType === "unknown") {
     return true;
   }
 
-  switch (jsType) {
-    case "string":
-      return typeof value === "string";
-    case "number":
-      return typeof value === "number";
-    case "boolean":
-      return typeof value === "boolean";
-    case "Date":
-      return typeof value === "string" || value instanceof Date;
+  if (jsType === "Date") {
+    return typeof value === "string" || value instanceof Date;
   }
+
+  return typeof value === jsType;
 }
 
 export function getActionParametersError(
@@ -49,11 +44,12 @@ export function getActionParametersError(
     return `"${missingParameter.slug}" is required`;
   }
 
-  const mistypedParameter = action.parameters.find(
-    (parameter) =>
-      parameters[parameter.slug] !== undefined &&
-      !isValueOfType(parameters[parameter.slug], parameter.jsType),
-  );
+  const mistypedParameter = action.parameters.find((parameter) => {
+    const value = parameters[parameter.slug];
+    const isEmptyValue = value === undefined || value === null;
+
+    return !isEmptyValue && !isValueOfType(value, parameter.jsType);
+  });
 
   return mistypedParameter
     ? `"${mistypedParameter.slug}" must be a ${mistypedParameter.jsType} value`
