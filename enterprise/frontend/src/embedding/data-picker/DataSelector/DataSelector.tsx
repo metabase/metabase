@@ -81,6 +81,14 @@ type DataSelectorStep =
   | typeof SCHEMA_STEP
   | typeof TABLE_STEP;
 
+// Each step's parent; back climbs it to the closest step with a choice
+const PARENT_STEP = {
+  [DATA_BUCKET_STEP]: null,
+  [DATABASE_STEP]: DATA_BUCKET_STEP,
+  [SCHEMA_STEP]: DATABASE_STEP,
+  [TABLE_STEP]: SCHEMA_STEP,
+} as const satisfies Record<DataSelectorStep, DataSelectorStep | null>;
+
 // The trimmed search response withAvailableModels hands to connect; only its
 // `available_models` field is read, but it carries the rest of the payload.
 type AvailableModelsResult = Omit<SearchResponse, "data">;
@@ -667,30 +675,30 @@ export class UnconnectedDataSelector extends Component<
       return null;
     }
 
-    let index = steps.indexOf(activeStep);
-    if (index === -1) {
-      console.error(`Step ${activeStep} not found in ${steps}.`);
-      return null;
+    // Back goes to the closest parent with something to pick: climb past parents
+    // that aren't in `steps` or have nothing to choose (`hasStepChoice`). None, no back link.
+    let step: DataSelectorStep | null = PARENT_STEP[activeStep];
+    while (
+      step !== null &&
+      !(steps.includes(step) && this.hasStepChoice(step))
+    ) {
+      step = PARENT_STEP[step];
     }
+    return step;
+  }
 
-    // move to previous step
-    index -= 1;
-
-    // possibly skip another step backwards
-    if (steps[index] === SCHEMA_STEP && this.state.schemas.length === 1) {
-      index -= 1;
+  hasStepChoice(step: DataSelectorStep): boolean {
+    switch (step) {
+      case DATA_BUCKET_STEP:
+        // data bucket step doesn't make a lot of sense when there're no models, saved questions, metrics, or the semantic layer
+        return this.hasUsableSavedEntities();
+      case DATABASE_STEP:
+        return true;
+      case SCHEMA_STEP:
+        return this.state.schemas.length > 1;
+      case TABLE_STEP:
+        return true;
     }
-
-    // data bucket step doesn't make a lot of sense when there're no models, saved questions, metrics, or the semantic layer
-    if (steps[index] === DATA_BUCKET_STEP && !this.hasUsableSavedEntities()) {
-      return null;
-    }
-
-    // can't go back to a previous step
-    if (index < 0) {
-      return null;
-    }
-    return steps[index];
   }
 
   togglePopoverOpen = (): void => {

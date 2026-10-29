@@ -336,6 +336,39 @@ describe("DataSourceSelector", () => {
 
       expect(screen.queryByPlaceholderText("Find...")).not.toBeInTheDocument();
     });
+
+    it("should return to the schema list when going back from the tables with two schemas", async () => {
+      const twoSchemaDatabase = createMockDatabase({
+        id: OTHER_DB_ID,
+        name: "Two Schema Database",
+        tables: [
+          createMockTable({
+            id: OTHER_DB_TABLE_ID,
+            db_id: OTHER_DB_ID,
+            schema: "accounting",
+            display_name: "Ledger",
+          }),
+          createMockTable({
+            id: getNextId(OTHER_DB_TABLE_ID),
+            db_id: OTHER_DB_ID,
+            schema: "finance",
+            display_name: "Budget",
+          }),
+        ],
+      });
+      setup({
+        ...setupOpts,
+        databases: [createSampleDatabase(), twoSchemaDatabase],
+      });
+
+      await userEvent.click(await screen.findByText("Two Schema Database"));
+      await userEvent.click(await screen.findByText("Accounting"));
+      expect(await screen.findByText("Ledger")).toBeInTheDocument();
+      await userEvent.click(screen.getByLabelText("chevronleft icon"));
+
+      expect(await screen.findByText("Finance")).toBeInTheDocument();
+      expect(screen.getByText("Accounting")).toBeInTheDocument();
+    });
   });
 
   describe("both models and tables are available", () => {
