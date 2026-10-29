@@ -2765,13 +2765,20 @@ describe("scenarios > admin > transforms > jobs", () => {
         createMbqlTransform({
           tagIds: [tag.id],
         });
-        H.createTransformJob({
-          name: "New job",
-          schedule: "* * * * * ? *", // every second
-          tag_ids: [tag.id],
-        });
+        H.createTransformJob(
+          {
+            name: "New job",
+            schedule: "* * * * * ? *", // every second
+            tag_ids: [tag.id],
+          },
+          { wrapId: true },
+        );
       });
       H.waitForSucceededTransformRuns();
+      cy.log("deactivate the job so it cannot fire during later tests");
+      cy.get<number>("@transformJobId").then((jobId) =>
+        cy.request("PUT", `/api/transform-job/${jobId}`, { active: false }),
+      );
       visitRunListPage();
       getTransformRunTable().within(() => {
         cy.findAllByText("MBQL transform").should("have.length.gte", 1);
@@ -3858,11 +3865,12 @@ function createPythonLibrary(path: string, source: string) {
 }
 
 function runPythonScriptAndWaitForSuccess() {
+  cy.intercept("POST", "/api/ee/transforms-python/test-run").as(
+    "pythonTestRun",
+  );
   getQueryEditor().findByTestId("run-button").click();
-
-  getQueryEditor()
-    .findByTestId("loading-indicator", { timeout: 60000 })
-    .should("not.exist");
+  // The backend waits up to 60 s for the Python runner to finish a test run.
+  cy.wait("@pythonTestRun", { timeout: 60_000 });
 
   H.DataStudio.Transforms.pythonResults().should("be.visible");
 }
