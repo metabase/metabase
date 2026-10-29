@@ -637,6 +637,17 @@
     (testing "data_sensitivity parses the same when descriptions are asked"
       (is (= :PUBLIC (get-in parsed [:fields "A" :data-sensitivity]))))))
 
+(deftest parse-response-strips-control-characters-test
+  (let [parsed (llm/parse-response [(field "A")]
+                                   {:fields [(entry "A"
+                                                    :reasoning "saw\u0000 a\u0007 value\nin the sample"
+                                                    :description "Customer\u0000 email")]}
+                                   everything)]
+    (testing "reasoning keeps line breaks and loses other control characters"
+      (is (= "saw a value\nin the sample" (get-in parsed [:fields "A" :reasoning]))))
+    (testing "description loses control characters"
+      (is (= "Customer email" (get-in parsed [:fields "A" :description]))))))
+
 (deftest parse-response-description-markup-test
   (let [field-a (field "A" :sample_values ["https://docs.example.com/x"])]
     (doseq [description ["Customer email. [Verify account](//evil.example/login)"
