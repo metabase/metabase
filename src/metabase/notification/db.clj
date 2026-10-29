@@ -85,7 +85,7 @@
 (mu/defn notification
   "The Notification with `notification-id`, or nil."
   [notification-id :- ms/PositiveInt]
-  (t2/select-one :model/Notification notification-id))
+  (t2/select-one :model/Notification :id [:auto/param notification-id]))
 
 (mu/defn notification-by-internal-id
   "The seeded Notification with `internal-id`, or nil."
@@ -258,7 +258,7 @@
 (mu/defn subscription
   "The NotificationSubscription with `subscription-id`, or nil."
   [subscription-id :- ms/PositiveInt]
-  (t2/select-one :model/NotificationSubscription subscription-id))
+  (t2/select-one :model/NotificationSubscription :id [:auto/param subscription-id]))
 
 (mu/defn subscriptions-for-notifications
   "The NotificationSubscriptions of the Notifications with `notification-ids` (nil entries are ignored)."
@@ -379,7 +379,7 @@
 (mu/defn channel-template-channel-type
   "The `:channel_type` of the ChannelTemplate with `template-id`."
   [template-id :- ms/PositiveInt]
-  (t2/select-one-fn :channel_type [:model/ChannelTemplate :channel_type] template-id))
+  (t2/select-one-fn :channel_type [:model/ChannelTemplate :channel_type] :id [:auto/param template-id]))
 
 (mu/defn insert-channel-template!
   "Insert `template` and return its ID."
@@ -677,7 +677,7 @@
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- [:maybe ::lib.schema.id/card]]
-  (t2/select-one :model/Card card-id))
+  (t2/select-one :model/Card :id [:auto/param card-id]))
 
 (mu/defn unarchived-card
   "The Card with `card-id` if it is not archived, or nil."
@@ -687,17 +687,17 @@
 (mu/defn card-name
   "The name of the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :name :model/Card card-id))
+  (t2/select-one-fn :name :model/Card :id [:auto/param card-id]))
 
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/Dashboard dashboard-id))
+  (t2/select-one :model/Dashboard :id [:auto/param dashboard-id]))
 
 (mu/defn dashboard-name
   "The name of the Dashboard with `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one-fn :name :model/Dashboard dashboard-id))
+  (t2/select-one-fn :name :model/Dashboard :id [:auto/param dashboard-id]))
 
 (mu/defn dashboard-tabs
   "The DashboardTabs of the Dashboard with `dashboard-id`."
@@ -717,13 +717,13 @@
 (mu/defn user-email
   "The email of the User with `user-id`."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one-fn :email [:model/User :email] user-id))
+  (t2/select-one-fn :email [:model/User :email] :id [:auto/param user-id]))
 
 (mu/defn user-summary
   "The ID, names, email, and derived common name of the User with `user-id`, or nil (also for a nil `user-id`, e.g.
   a system-created notification without a creator)."
   [user-id :- [:maybe ::lib.schema.id/user]]
-  (t2/select-one [:model/User :id :first_name :last_name :email] user-id))
+  (t2/select-one [:model/User :id :first_name :last_name :email] :id [:auto/param user-id]))
 
 (mu/defn active-users-by-id
   "A map of ID to active User for `user-ids`."
