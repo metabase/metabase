@@ -90,7 +90,7 @@
   (testing "@@session variables get the same read-only verdict and SQL on both backends (QUE-997)"
     (doseq [dialect ["postgres" "redshift" "mysql"]
             sql     ["select @@session.x := 1" "select @@session.x"]
-            :let    [verdict #(sql-parsing/is-single-stmt-of-type? (sql-parsing/parser %) dialect sql "read-only")]]
+            :let    [verdict #(sql-parsing/validate-executable-stmt (sql-parsing/parser %) dialect sql "read-only")]]
       (is (= (verdict :sqlglot) (verdict :sqlglot-java)) [dialect sql]))))
 
 (deftest aliased-and-plain-select-of-one-column-test
@@ -144,7 +144,7 @@
           (binding [settings/*parser-backend-override* backend]
             (is (= [{:schema nil :table "b"} {:schema "s" :table "a"}]
                    (sql-tools/referenced-tables-raw :postgres "SELECT * FROM s.a JOIN b ON a.id = b.id")))
-            (is (true? (:is-single-stmt? (sql-tools/is-single-stmt-of-type? :postgres "SELECT 1" "read-only")))))))
+            (is (= :allowed (:verdict (sql-tools/validate-executable-stmt :postgres "SELECT 1" "read-only")))))))
       (let [matches  #(mt/metric-value system :metabase-sql-parsing/shadow-comparisons
                                        {:method % :dialect "postgres" :outcome "match"})
             deadline (+ (System/currentTimeMillis) 30000)]
