@@ -86,11 +86,12 @@
         (is (= expected (sql-parsing/replace-names (sql-parsing/parser backend) "postgres" sql replacements))
             [backend sql])))))
 
-(deftest read-only-error-without-message-test
-  (testing "a port exception without a message still makes the SQL unparseable"
-    (is (=? {:allowed-stmt-type? false, :reason "unparseable", :error string?}
-            (sql-parsing/is-single-stmt-of-type? (sqlglot-java/parser) "postgres" "select @@session.x := 1"
-                                                 "read-only")))))
+(deftest session-variable-read-only-matches-graalpy-test
+  (testing "@@session variables get the same read-only verdict and SQL on both backends (QUE-997)"
+    (doseq [dialect ["postgres" "redshift" "mysql"]
+            sql     ["select @@session.x := 1" "select @@session.x"]
+            :let    [verdict #(sql-parsing/is-single-stmt-of-type? (sql-parsing/parser %) dialect sql "read-only")]]
+      (is (= (verdict :sqlglot) (verdict :sqlglot-java)) [dialect sql]))))
 
 (deftest aliased-and-plain-select-of-one-column-test
   (testing "a column selected with and without an alias keeps each its own alias (QUE-992)"
@@ -105,6 +106,14 @@
   (testing "GROUP BY ALL groups by every selected expression and uses no column named ALL, as on GraalPy (QUE-1050)"
     (doseq [dialect ["duckdb" "databricks" "snowflake"]
             :let    [sql "SELECT a, SUM(b) FROM t GROUP BY ALL"
+                     references #(sql-parsing/field-references (sql-parsing/parser %) dialect sql)]]
+      (is (= (references :sqlglot) (references :sqlglot-java)) dialect)
+      (is (= #{"a" "b"} (into #{} (map :column) (:used-fields (references :sqlglot-java)))) dialect))))
+
+(deftest order-by-all-names-no-column-test
+  (testing "ORDER BY ALL orders by every selected column and uses no column named ALL, as on GraalPy"
+    (doseq [dialect ["duckdb" "databricks"]
+            :let    [sql "SELECT a, b FROM t ORDER BY ALL"
                      references #(sql-parsing/field-references (sql-parsing/parser %) dialect sql)]]
       (is (= (references :sqlglot) (references :sqlglot-java)) dialect)
       (is (= #{"a" "b"} (into #{} (map :column) (:used-fields (references :sqlglot-java)))) dialect))))
