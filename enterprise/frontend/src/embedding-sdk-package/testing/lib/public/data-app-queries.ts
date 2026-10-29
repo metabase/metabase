@@ -11,6 +11,7 @@ import type { MetabaseQueryMock } from "embedding-sdk-package/testing/lib/privat
 import type { SchemaColumn } from "embedding-sdk-shared/lib/create-metabase-query/schema";
 import type { DatasetColumn, RowValues } from "metabase-types/api";
 
+import { isRecord } from "../private/guards";
 import { getQueryResultColumns } from "../private/query-result-columns";
 
 export type DataAppQueryMockCall<TDynamic> = {
@@ -38,10 +39,6 @@ type DynamicQueryFor<TQuery, TDynamic> = TDynamic &
     : MetabaseDynamicQuery<QueryEntity<undefined, TQuery>, TQuery>);
 
 const DEFAULT_DATE_VALUE = "1970-01-01T00:00:00Z";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function getDefaultValue(column: SchemaColumn): RowValue {
   switch (column.jsType) {

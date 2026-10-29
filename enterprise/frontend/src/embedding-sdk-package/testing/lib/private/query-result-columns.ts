@@ -1,7 +1,10 @@
+import { isNamedBreakout } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
 import type {
   SchemaColumn,
   SchemaJavaScriptType,
 } from "embedding-sdk-shared/lib/create-metabase-query/schema";
+
+import { isRecord } from "./guards";
 
 const JAVASCRIPT_TYPES: readonly SchemaJavaScriptType[] = [
   "string",
@@ -10,10 +13,6 @@ const JAVASCRIPT_TYPES: readonly SchemaJavaScriptType[] = [
   "Date",
   "unknown",
 ];
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function readArray(value: unknown): readonly unknown[] {
   return Array.isArray(value) ? value : [];
@@ -62,11 +61,7 @@ function getBreakoutColumn(
   breakout: unknown,
   inputColumns: readonly SchemaColumn[],
 ): SchemaColumn | null {
-  if (
-    isRecord(breakout) &&
-    breakout.type === "breakout" &&
-    typeof breakout.name === "string"
-  ) {
+  if (isNamedBreakout(breakout)) {
     const column = getBreakoutColumn(breakout.column, inputColumns);
     return column && { ...column, name: breakout.name };
   }

@@ -4,6 +4,8 @@ import type { QueryDatasetResult } from "embedding-sdk-bundle/lib/query-dataset"
 import type { MetabaseEmbeddingSdkBundleExports } from "embedding-sdk-bundle/types/sdk-bundle";
 import type { NativeDatasetQuery } from "metabase-types/api";
 
+import { isRecord } from "./guards";
+
 export type MetabaseQueryMock = {
   query: unknown;
   dynamicQuery: unknown;
@@ -14,10 +16,6 @@ type QueryHandlers = {
   resolveDatasetQuery: MetabaseEmbeddingSdkBundleExports["resolveDatasetQuery"];
   queryDataset: MetabaseEmbeddingSdkBundleExports["queryDataset"];
 };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function getQueryClauses(dynamicQuery: unknown) {
   return _.omit(isRecord(dynamicQuery) ? dynamicQuery : {}, "enabled");
