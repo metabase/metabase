@@ -37,12 +37,12 @@
 (mr/def ::file
   "One YAML file to write: its path relative to the export root, the entity it holds, and for a card the resolved
   metric it came from."
-  [:map
+  [:map {:closed true}
    [:path :string]
    [:entity ::entity]
    [:metric {:optional true} ::resolved/metric]])
 
-(mu/defn- with-portable-refs
+(mu/defn- with-portable-refs :- :any
   "Run `thunk` with serdes' id lookups bound to `metadata-provider`, so what it exports names the provider's made-up
   database, table and field ids the way a real export names an instance's."
   [metadata-provider :- ::lib.schema.metadata/metadata-provider
@@ -53,25 +53,26 @@
             ;; the only other ids in a metric's query are the `[:metric id]` references of a ratio or derived metric
             serdes/*export-fk*          (fn [card-id model]
                                           (when-not (#{'Card :model/Card} model)
-                                            (throw (ex-info (str "unexpected foreign key to " model) {:id card-id})))
+                                            (throw (ex-info (format "unexpected foreign key to %s" model)
+                                                            {:id card-id})))
                                           (metadata/portable-card-ref metadata-provider card-id))]
     (thunk)))
 
 (mu/defn dataset-query :- :map
-  "A resolved metric's query as serdes writes it: `serdes/export-mbql` strips the clause ids and turns the provider's
+  "A resolved metric's query as serdes writes it: [[serdes/export-mbql]] strips the clause ids and turns the provider's
   ids into names, and a `[:metric id]` reference into the referenced metric's `entity_id`."
   [{:keys [metadata-provider query]} :- ::resolved/metric]
   (with-portable-refs metadata-provider #(serdes/export-mbql query)))
 
-(mu/defn dimensions :- [:map
+(mu/defn dimensions :- [:map {:closed true}
                         [:dimensions         [:sequential :map]]
                         [:dimension_mappings [:sequential :map]]]
   "A resolved metric's curated dimensions and mappings as serdes writes them on a Card, through the metrics module's
   own export, which turns the field ids in a dimension's `:sources` and a mapping's `:table-id` and `:target` into
   names."
-  [{:keys [metadata-provider dimensions dimension-mappings]} :- ::resolved/metric]
+  [{:keys [metadata-provider dimension-mappings], persisted-dimensions :dimensions} :- ::resolved/metric]
   (with-portable-refs metadata-provider
-    #(do {:dimensions         (metrics/export-dimensions dimensions)
+    #(do {:dimensions         (metrics/export-dimensions persisted-dimensions)
           :dimension_mappings (metrics/export-dimension-mappings dimension-mappings)})))
 
 (mu/defn- collection-entity :- ::entity
@@ -122,7 +123,7 @@
                     :metric resolved-metric})))
           metrics)))
 
-(mu/defn- clear-previous-run!
+(mu/defn- clear-previous-run! :- :nil
   "Delete what an earlier run wrote for the collections among `entries`: each collection's own YAML and the directory
   of its cards (the layout [[files]] writes). Without this a metric renamed since the last run leaves two files with
   the same `entity_id`, and a metric removed from the project survives as a file and is imported again, since serdes

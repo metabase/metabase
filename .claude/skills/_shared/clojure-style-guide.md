@@ -25,7 +25,10 @@ This guide covers Clojure and ClojureScript coding conventions for Metabase. See
 
 - Every public var in `src` or `enterprise/backend/src` must have docstring
 - Format using Markdown conventions
-- Reference other vars with `[[other-var]]` not backticks
+- Refer to a namespace or var as a link, `[[metabase.util.json/decode]]` or `[[metabase.sql-parsing.core]]`, never in
+  backticks: the brackets tell tooling it is a real namespace or var, so it can be resolved and linked. An
+  alias-qualified `[[sql/unsupported]]` or an unqualified `[[decode-manifest]]` works too. Backticks are for everything
+  else: keys, literals, SQL, file names, shell commands.
 
 A docstring states the *contract*: what it returns (including when it returns nil), what its
 params mean, what it throws versus swallows, and any precondition or invariant the caller must
@@ -43,13 +46,6 @@ These seven things are, and each is a reason to cut or relocate:
 | **Instructions to the reader** — "callers should trust this", "don't bother checking", "you should use X" | State the contract; the caller decides | Cut, keeping any actual guarantee as a plain statement |
 | **Invented precision** — score bands, thresholds, or tables no code enforces | Reads as spec, isn't | Cut, or make the code enforce it |
 | **A note on the wrong var** — describing how overrides behave, on the base/default impl | Nobody reading the override sees it | Move to the overrides it describes |
-
-**Referring to code:**
-
-- Name a namespace or var in a docstring or comment as a link, `[[metabase.util.json/decode]]` or
-  `[[metabase.sql-parsing.core]]`, not in backticks. The brackets tell tooling it is a real namespace or var in the
-  codebase, so it can be resolved and linked; an alias-qualified `[[sql/unsupported]]` or an unqualified
-  `[[decode-manifest]]` works too. Backticks are for everything else: keys, literals, SQL, file names, shell commands.
 
 **Comments:**
 
@@ -189,8 +185,7 @@ destructuring in particular, since it names the local after the key. kondo's `:s
 (first (filter #(= metric-name (:name %)) metrics))
 ```
 
-`medley.core` is aliased as `m`. It says what is meant, and stops at the first match instead of building a lazy seq to
-take one element from.
+`medley.core` is aliased as `m`. It says what is meant.
 
 **Check non-emptiness with `seq`, not `count`:**
 
@@ -619,7 +614,7 @@ Other useful map ops:
 - **`(:import (java.time …))` + `(LocalDate/now)`** in new code — use `[java-time.api :as t]` + `[metabase.util.date-2 :as u.date]`. Direct `java.time` interop only when a Java API genuinely needs the class.
 - **Vanilla `defmethod`** — use `methodical/defmethod` (it takes a docstring; the codebase uses it uniformly).
 - **`(when (premium/has-feature? :flag) …)` in code** — gate via `defenterprise` so OSS/EE bodies live in their respective namespaces; never sprinkle runtime feature checks.
-- **`(set! *warn-on-reflection* true)` missing from a file that does Java interop, or present in one that does not** — the line is there to surface reflective calls, so it follows the interop, not the convention of neighbouring files. In `.cljc`, it is `#?(:clj (set! *warn-on-reflection* true))` when a `:clj` branch does interop. See "Java interop".
+- **`(set! *warn-on-reflection* true)` missing from a file that does Java interop, or present in one that does not** — the line is there to surface reflective calls, so it follows the interop, not the convention of neighbouring files. In `.cljc`, it is `#?(:clj (set! *warn-on-reflection* true))` when a `:clj` branch does interop. See the `*warn-on-reflection*` paragraph under "Code Organization".
 - **`(ns … (:require [a :as a] [b :as b]))` on one line; `(:import java.io.File java.net.URI)` bare** — both wrong shapes. Requires one per line under `:require`, imports as `(Package Class)` lists.
 - **Inventing a fresh `:as` alias for `metabase.util`, `metabase.util.malli`, `metabase.util.log`, `java-time.api`, etc.** — use the canonical alias (see the table in Style Conventions). Mixing aliases makes `grep`-based discovery worse.
 - **`(def Foo [:map …])` for a Malli schema** — `(mr/def ::foo "doc" [:map …])` and reference it as `::foo`, even in `dev/`. See "Schemas".

@@ -1,15 +1,47 @@
-# Ingestion Steps
+# dbt metrics → Metabase metrics
 
-## Clone Flexanalytics Repo
+A developer tool, under `dev/`, that reads the `manifest.json` a dbt project writes and turns the metrics of its
+semantic layer into Metabase metric cards, as a serdes export tree that `import` loads. Each dbt metric becomes one
+card: one aggregation over one table, filtered as the metric is, with a curated set of dimensions it can be broken out
+by. What dbt can say that Metabase cannot is reported, metric by metric, with the reason, and the run goes on.
+
+The pipeline is three stages, each knowing only the previous stage's schema (see `dev.dbt-import.schemas.*`):
+
+1. `parse` (`dev.dbt-import.parse`): the manifest, decoded against `dev.dbt-import.schemas.dbt-manifest`, becomes an
+   intermediate representation (`dev.dbt-import.schemas.ir`) free of Metabase vocabulary: semantic models with their
+   entities, dimensions and measures, and metrics over them. dbt's own defaulting rules are applied here, and what is
+   structurally beyond Metabase (a cumulative window, a conversion metric) is reported here.
+2. `resolve` (`dev.dbt-import.resolve` and its `columns`, `filters` and `dimensions` parts): every IR metric is bound to
+   a Lib query against a metadata provider built from the manifest (`dev.dbt-import.metadata`), with a deterministic
+   `entity_id` and its dimension set. SQL in a measure's `expr` or a filter goes through sqlglot
+   (`dev.dbt-import.sql`). What cannot be expressed as one Metabase metric is reported here.
+3. `emit` (`dev.dbt-import.emit`): the resolved metrics become serdes entities, written as YAML with serdes' own export
+   turning the provider's ids back into names.
+
+MBQL is never written or read by hand: queries are built with `metabase.lib.core`, and what the converter needs to know
+about them comes from Lib.
+
+## Converting a manifest
+
+### Producing `target/manifest.json`
+
+The converter was developed against https://github.com/flexanalytics/dbt-business-intelligence, a dbt project on the
+legacy semantic-layer spec. Clone it, then run dbt's `deps` and `parse` commands in the checkout. With `uv` installed
+no dbt installation is needed:
 
 ```sh
 git clone https://github.com/flexanalytics/dbt-business-intelligence
+cd dbt-business-intelligence
+uvx --from dbt-core --with dbt-postgres dbt deps
+uvx --from dbt-core --with dbt-postgres dbt parse
 ```
 
-## Create dbt config (so it uses the correct SQL dialect plugin for macros):
+With a `dbt` of your own on `PATH`, `dbt deps` and `dbt parse` do the same. Either way `target/manifest.json` now
+exists.
 
-This is only needed to run `dbt` by hand; the fixture generator below writes its own. Save this in
-`~/.dbt/profiles.yml`:
+`dbt parse` needs a profile for the project, so that macros resolve against the right adapter and the manifest records
+a warehouse database name, but it never connects. Save this as `~/.dbt/profiles.yml`; everything but `type` and
+`dbname` can be nonsense:
 
 ```yaml
 dbt_business_intelligence:
@@ -25,29 +57,9 @@ dbt_business_intelligence:
       schema: public
 ```
 
-Note that it doesn't actually connect to Postgres so the `user`, `password`, etc. can be nonsense.
+(The fixture generator described under "Fixtures and tests" writes a profile of its own and needs none of this.)
 
-## Generate `target/manifest.json`:
-
-If you have `uv` installed:
-
-```sh
-uvx --from dbt-core --with dbt-postgres dbt deps
-uvx --from dbt-core --with dbt-postgres dbt parse
-```
-
-If you don't have `uv` installed but have `dbt` itself installed you should instead be able to do:
-
-```sh
-dbt deps
-dbt parse
-```
-
-I haven't tested this.
-
-`target/manifest.json` should now exist.
-
-## Supported dbt versions
+### Supported dbt versions
 
 The converter reads manifests written by **dbt 1.12 or later**, on manifest schema v12. It checks `metadata` first
 and rejects anything else up front with `Unsupported dbt manifest`, naming the `dbt_version` and `dbt_schema_version`
@@ -57,7 +69,7 @@ it found. Older releases are not supported, even though dbt 1.8 to 1.11 also wri
 an older project, upgrade dbt and run `dbt parse` again; a project on the legacy spec (top-level `semantic_models:`
 and `metrics:`) needs no changes for that, dbt 1.12 still parses it.
 
-## Convert the manifest to Metabase metrics
+### Running the converter
 
 From a dev REPL (needs the `:ee` alias on the classpath for the serdes YAML writer):
 
@@ -71,40 +83,221 @@ From a dev REPL (needs the `:ee` alias on the classpath for the serdes YAML writ
                                  :creator-email "admin@example.com"}})  ; the user the cards are created as
 ```
 
-The config's `:databases` is the only mapping the manifest cannot supply: the key is the warehouse database as dbt
-knows it (`node_relation.database` in the manifest), the value is the name of the Metabase Database it is connected
-as. `:driver` picks whose `database-type->base-type` turns the project's declared column types into Metabase base
-types. `:base-types` overrides that for types the driver does not know, `:collection-name` renames the target
-collection, and `:entity-models` (entity name → semantic model name) says which semantic model a foreign entity joins
-to when more than one semantic model has that entity as its primary entity; all three are optional. A column the
-project does not document, or documents without a `data_type`, is emitted
-without a base type: the instance supplies it when the import binds the field, and a column that does not exist in the
-warehouse fails there. The converter trusts what dbt says about such a column where it has to decide something: a
-`type: time` dimension over it is bucketed by the grain as written (a typed column takes only the grains Metabase
-allows its type, so a date has no `hour`), a bare column in a boolean position is taken for a boolean, and a division
-by it is not taken for integer division.
+The config (`dev.dbt-import.schemas.resolved/config`) has three required keys and two optional ones:
 
-`convert!` returns a report: `:converted` lists each metric with its `entity_id` and file, and `:unsupported` lists
-every metric that could not be converted with the reason ("Limitations" below collects every reason). Nothing is
-silently dropped, and one bad metric does not stop the run: an unexpected exception while resolving a metric is logged
-with its stack and reported like any other unsupported metric, naming the exception. A ratio or derived metric over a
-metric that was reported is reported too, with that metric's reason (`metric "x" was not converted: ...`), whichever
-stage reported it. Entity IDs are derived from the
-dbt metric's unique ID, so re-running and re-importing updates the existing cards instead of duplicating them. A
-re-run first deletes what the previous run wrote for the collection (`collections/main/<collection>.yaml` and
-`collections/main/<collection>/`), so a metric renamed or removed from the project since then does not survive as a
-stale file: import never deletes, so a stale card file would come back as a card. Anything else under `:out-dir` is
-left alone.
+- `:databases` is the one mapping the manifest cannot supply: the key is the warehouse database as dbt knows it
+  (`node_relation.database` in the manifest), the value is the name of the Metabase Database it is connected as.
+- `:driver` is the Metabase driver those databases use. Its own `database-type->base-type` mapping turns the
+  project's declared column types into Metabase base types, so a `data_type` the driver has no mapping for is
+  reported; the fix is a mapping in the driver, which is meant to have one for every type its warehouse has.
+- `:creator-email` is the user the cards are created as. Serdes resolves it by email and synthesizes an inactive
+  user when none exists, but a card cannot be imported without one.
+- `:collection-name` (optional) names the collection the metrics are written to; the default is `dbt metrics`.
+- `:entity-models` (optional, entity name → semantic model name) says which semantic model a foreign entity joins
+  to when more than one semantic model has that entity as its primary entity.
+
+A column the project does not document, or documents without a `data_type`, is emitted without a base type: the
+instance supplies it when the import binds the field, and a column that does not exist in the warehouse fails there.
+The converter trusts what dbt says about such a column where it has to decide something: a `type: time` dimension
+over it is bucketed by the grain as written (a typed column takes only the grains Metabase allows its type, so a date
+has no `hour`), a bare column in a boolean position is taken for a boolean, and a division by it is not taken for
+integer division.
+
+### The report
+
+`convert!` returns a map:
+
+- `:out-dir`, the directory written to;
+- `:converted`, one entry per metric written: `{:name :entity-id :path :unsupported-dimensions}`, the dbt metric
+  name, the card's `entity_id`, the YAML file relative to `:out-dir`, and the metric's dbt dimensions that could not
+  become curated dimensions, each `{:name :reason}`;
+- `:unsupported`, one `{:name :reason}` per metric that could not be converted. "Limitations" below collects every
+  reason.
+
+Nothing is silently dropped, and one bad metric does not stop the run: an unexpected exception while resolving a
+metric is logged with its stack and reported like any other unsupported metric, naming the exception. A ratio or
+derived metric over a metric that was reported is reported too, with that metric's reason (`metric "x" was not
+converted: ...`), whichever stage reported it.
+
+Entity IDs are derived from the dbt metric's unique ID, so re-running and re-importing updates the existing cards
+instead of duplicating them. A re-run first deletes what the previous run wrote for the collection
+(`collections/main/<collection>.yaml` and `collections/main/<collection>/`), so a metric renamed or removed from the
+project since then does not survive as a stale file: import never deletes, so a stale card file would come back as a
+card. Anything else under `:out-dir` is left alone.
+
+### Importing the result
 
 The output is a serdes tree, `collections/main/<collection>.yaml` plus one card per metric under
-`collections/main/<collection>/`, in the same format `export` produces. Import it into the instance from QRES-2:
+`collections/main/<collection>/`, in the same format `export` produces. Import it into an instance with the serdes
+command line:
 
 ```sh
 MB_DB_CONNECTION_URI=... clojure -M:run:ee import /path/to/serdes-out -e
 ```
 
-Then open each metric in the UI, run it, and compare the number against a hand-written SQL query. The end-to-end
-test below does the same thing against a test instance.
+`-e` is `--continue-on-error`: the import goes on past an entity it cannot load, so one card whose field refs do not
+bind does not stop the rest. Drop it to stop at the first error instead.
+
+Then open each metric in the UI, run it, and compare the number against a hand-written SQL query. The end-to-end test
+under "Fixtures and tests" does the same thing against a test instance.
+
+## What converts
+
+### Simple metrics
+
+A simple metric is one aggregation over one semantic model: on the legacy spec the measure the metric points at, on
+the dbt 1.12 inline spec the metric's own `agg` and `expr`. The `expr` is a bare column name, the literal `1`, `*`
+under `count`, or SQL (see "Filters and SQL expressions" for the SQL subset). The aggregation maps as follows:
+
+| dbt | Metabase |
+| -- | -- |
+| `sum` of a column or expression | `sum` |
+| `sum` of the literal `1`; `count` of `1` or `*` | `count`, a row count |
+| `count` of a column or expression | `count-where` the expression is not null, since SQL's `count` skips nulls |
+| `count_distinct` | `distinct` |
+| `average` | `avg` |
+| `min`, `max`, `median` | `min`, `max`, `median` |
+| `percentile` with `agg_params.percentile` | `percentile` with the same fraction (dbt takes `0.95`, not `95`); discrete percentiles are reported |
+| `sum_boolean` of a boolean column | `count-where` the column is true |
+| `sum_boolean` of a SQL condition | `count-where` the condition |
+| `fill_nulls_with`, on the metric or its measure | the aggregation wrapped in `coalesce`; reported on a `min` or `max` of a non-numeric column, which the warehouse would reject |
+| `join_to_timespine` | ignored: there is nothing to join a scalar metric to |
+| `filter`, on the metric or its measure | one filter clause per `where_sql_template`, see "Filters and SQL expressions" |
+| `agg_time_dimension` | the metric's default dimension, see "Entities and dimensions"; one that is not a dimension of the model is reported under the metric's `:unsupported-dimensions` |
+| `non_additive_dimension` | reported, see "Limitations" |
+
+Any other aggregation over a literal (`average` of `1`, `sum` of `2`) has no Metabase equivalent and is reported.
+
+### Metrics that compose other metrics
+
+Ratio, derived and cumulative metrics refer to other metrics (on the legacy spec a cumulative one refers to a
+measure). On the legacy spec they are top-level `metrics:` entries; on the inline spec they sit under a model's
+`metrics:` like the simple ones (the `parcel_delivery` fixture's `daily_depot_volume.yml` has a ratio and a derived
+metric there). They convert as follows; the metrics they refer to are written before them.
+
+| dbt | Metabase |
+| -- | -- |
+| `ratio` of `numerator` to `denominator` | one metric card whose aggregation divides `[:metric ...]` references to the input metrics' cards |
+| `derived` with `expr` over `metrics` | the same arithmetic over `[:metric ...]` references, aliases resolved; `x / nullif(y, 0)` is `x / y` |
+| an input (`numerator`, `denominator`, `metrics[]`) with its own `filter` | inlined as the filtered form of the input's aggregation, with the input's own filters and the reference's combined, so the metric stays one card: `sum-where` for a `sum`, `count-where` for a count or `sum_boolean`, `distinct-where` for a `count_distinct` |
+| `cumulative` with no window and `period_agg: last` over a `sum`, a row count or a `count` of a column | `cum-sum` / `cum-count`, or for a `count` of a column (which skips nulls) `cum-sum` of a `case` that is 1 where the column is not null; the metric's filters apply as on a simple metric |
+| `fill_nulls_with` on a `ratio` or `derived` metric | the arithmetic wrapped in `coalesce`, as on a simple metric; an input's own `fill_nulls_with` stays on the input's card |
+| `conversion` | out of scope, reported |
+
+The inputs of a ratio or derived metric have to be on one semantic model, since a metric queries one table. Every
+other form is reported with the reason: a cumulative `window` or `grain_to_date`, a cumulative `period_agg` of
+`first` (dbt's default when none is written) or `average`, a cumulative metric over an aggregation other than a sum or
+a count, an input with an `offset_window` or `offset_to_grain`, a `filter` on an input whose aggregation has no
+filtered form. "Limitations" lists them all with the reasoning. `period_agg` only matters when the metric is queried
+coarser than its grain, but that is exactly where the number would silently differ, so a project has to say
+`period_agg: last` to convert a cumulative metric.
+
+### Entities and dimensions
+
+Each metric card is written with a curated dimension set (`dimensions` and `dimension_mappings`), so it can be broken
+out in the UI as soon as it is imported:
+
+- Every dimension of the metric's own semantic model whose `expr` is a column becomes a dimension of the metric's
+  table. A time dimension's `time_granularity` is its default temporal unit, when Metabase can bucket the column by it:
+  a typed column takes the units Lib allows its type, and a column the project does not type takes the grain as
+  written, since dbt says it is a time dimension and the instance checks the column when the import binds it.
+- Every foreign or unique entity of the model joins to the other semantic model that is keyed by an entity of the same
+  name: one that has it as its primary entity or as a unique entity, either of which identifies one row. (These are
+  the joins MetricFlow itself allows, except that a model's primary entity is not followed to another model keyed by
+  it: it names the model's own dimensions in filters, and the dimension set stays with that.) That model's dimensions
+  become dimensions of the metric too, reached by an implicit join: the mapping's target names the joined column with
+  `:source-field` set to the entity's column on the metric's table, the same way Metabase represents a column reached
+  through a foreign key. The instance has to know that foreign key, through sync or a Field edit, for the breakout to
+  run. No explicit join clause is written to the query. Both semantic models have to be in the same Metabase database.
+- The measure's `agg_time_dimension` (the model default or the measure's own) is the metric's default dimension; one
+  that is not a dimension of the model is reported under the metric's `:unsupported-dimensions`. A metric
+  `time_granularity` (dbt's coarsest grain for querying the metric, standard or from a custom calendar) becomes that
+  dimension's default temporal unit instead of its own `time_granularity`, so a user breaking the metric out by time
+  gets the metric's grain first. Metabase cannot hold a breakout to a grain, so a finer breakout is still a click
+  away; a grain Metabase has no unit for, or cannot bucket the column by, is reported.
+- A metric's free-form `meta` (the flexanalytics project puts `format` and `synonyms` there) is parsed into the IR and
+  written nowhere: a card's `visualization_settings` key number formatting by column name, which a metric's
+  aggregation does not have until it is run, so there is no place to put a `format` without guessing at the project's
+  own convention for it.
+
+Dimension ids are derived from the metric's dbt unique ID and the dimension's reference, so a re-run writes the same
+ids and a re-import updates the dimensions in place. Groups are named after the semantic model's label, or its table.
+Dimensions are named after the dbt dimension, except that no two dimensions of a metric share a name: a joined
+dimension named like another dimension of the set (a `status` on both the fact table and `dim_order`) is named by its
+dbt reference instead, `order__status`, the way dbt itself tells the two apart. Its display name, column, group and id
+are unchanged, so two dimensions may still share a display name, as two same-named columns of the metric's table and
+a joined table do in Metabase; their groups tell them apart.
+
+A dbt dimension that cannot be a curated dimension, because its `expr` is SQL or because the join behind its foreign
+entity cannot be made, is listed per metric under `:unsupported-dimensions` in the report rather than dropped;
+"Limitations" lists the cases.
+
+### Filters and SQL expressions
+
+A measure's `expr` may be SQL rather than a column, and a metric or measure may carry a `filter` of Jinja-wrapped
+MetricFlow references around SQL. Both go through sqlglot (`metabase.sql-parsing.core/parse-expression`, used by
+`dev.dbt-import.sql`), which parses an expression on its own in the dialect of the config's `:driver`, and a subset
+of SQL maps onto MBQL:
+
+- column references, literals (numbers, strings, `TRUE` and `FALSE`, and `NULL` as a value, as in `nullif(x, NULL)`),
+  unary minus, `+ - * /` and `^`, comparisons, `AND`/`OR`/`NOT`, `IN` and `NOT IN` over a list of values, `BETWEEN`
+  and `NOT BETWEEN`. A comparison, `IN` or `BETWEEN` with a `NULL` literal as an operand is reported: in SQL it is
+  null, so never true, while the `[:= x nil]` it would become is a null check that matches the null rows. A `/` of two
+  known integers is reported on the warehouses that truncate the quotient (Postgres, SQL Server, Redshift,
+  Presto/Trino, SQLite), since Metabase's `/` does not; a bare column as a condition (`WHERE is_returned`) is
+  `column = true`, and is reported when the project types the column as anything but boolean (see "Limitations" for
+  both);
+- `IS [NOT] NULL`, `IS [NOT] TRUE` and `IS [NOT] FALSE`, the negated boolean forms as `!= ... OR IS NULL` so that
+  they still hold for a null column;
+- `IS [NOT] DISTINCT FROM`, the null-safe comparison. Against a literal it is `=` or `!=`: `=` is null, so false in a
+  filter, for a null column, and Metabase compiles `!=` on a column to include the nulls (on an expression it does
+  not, so `OR IS NULL` is added). Between two columns it is spelled out over `IS NULL` checks with every branch
+  two-valued: `a IS NOT DISTINCT FROM b` is `(a IS NOT NULL AND b IS NOT NULL AND a = b) OR (a IS NULL AND b IS NULL)`
+  and `a IS DISTINCT FROM b` is `(a IS NOT NULL AND b IS NOT NULL AND a != b) OR (a IS NULL AND b IS NOT NULL) OR
+  (a IS NOT NULL AND b IS NULL)`. The longer form was chosen over `COALESCE(..., FALSE)` because it runs on warehouses
+  with no boolean values (SQL Server, Oracle) too;
+- `LIKE` and `ILIKE` with any literal pattern, with or without `ESCAPE`. A `%x%`, `x%`, `%x` or `x%y` pattern, or
+  one literal with a run of `_`, is `contains`, `starts-with` or `ends-with` (and `length` where the pattern pins one),
+  which read as what was written and run on any warehouse; a pattern with no wildcard is `=`, over `lower` for
+  `ILIKE`. Any other pattern is the equivalent anchored regular expression through the regex fallback below, over
+  `lower` with lower-cased literals for `ILIKE`;
+- `SIMILAR TO`, and the regex operators `~`, `~*`, `!~`, `!~*` and `regexp_like`, through the regex fallback: MBQL has
+  no regex filter, but the first match `regex-match-first` finds is null exactly when the regex does not match, so
+  `[:not-null [:regex-match-first x regex]]` is one. The regex is wrapped in a group of its own, so that a group
+  inside it cannot make the match null when the regex matches, and `~*` prefixes `(?i)`. A `SIMILAR TO` pattern is
+  rewritten to POSIX form (`%` to `.*`, `_` to `.`, `.` made literal, the escape character honoured). This needs the
+  warehouse driver to support regular expressions (the `:regex` feature; Postgres does, SQL Server does not), and
+  `(?i)` to be understood where `~*` is used;
+- both forms of `CASE`, with or without `ELSE`, the simple `CASE x WHEN v` as `CASE WHEN x = v`;
+- `CAST` (and `::`) to an integer, decimal, float, text, date or timestamp type, as `integer`, `float`, `text`,
+  `date` and `datetime`;
+- the functions with an MBQL expression function of the same meaning: `coalesce`, `nullif` (as the `CASE` it stands
+  for; `x / NULLIF(y, 0)` is plain division, since Metabase's `/` already returns NULL for a zero divisor), `abs`,
+  `floor`, `ceil`/`ceiling`, `round` (to a literal number of decimals, as `round(x * 10^n) / 10^n`), `sqrt`, `exp`,
+  `log` (base 10, as in Metabase; `ln` does not map), `power`, `lower`, `upper`, `trim`/`ltrim`/`rtrim` (of spaces),
+  `length`/`char_length`, `replace`, `substring`/`substr`, `concat` and `||`, `extract`/`date_part` of `year`,
+  `quarter`, `month`, `day`, `hour`, `minute` or `second`, `now()`/`current_timestamp`, `current_date`, and
+  `date_trunc` over a column to a Metabase temporal unit (`minute` through `year`), which is the column bucketed by
+  that unit.
+
+Anything outside that subset is reported, naming the construct; see "Limitations".
+
+A caveat on weeks: dbt's `week` grain, and `date_trunc('week', ...)` on most warehouses, is the ISO week, which starts
+on Monday. A Metabase `week` starts on the day the instance's "First day of the week" setting names (Sunday by
+default), so a metric filtered or broken out by week agrees with dbt only on an instance set to Monday. The converter
+reads `week` as the Metabase unit and logs a warning naming the dimension each time it does; `extract(dow ...)` and
+`extract(week ...)` are reported for the same reason.
+
+In a filter, `Dimension('<entity>__<dimension>')` resolves to one of the metric's own columns when the entity is the
+semantic model's primary entity, and `TimeDimension(..., '<grain>')`, or equivalently `Dimension(...).grain('<grain>')`,
+additionally buckets it by the matching Metabase temporal unit; `metric_time` is the measure's `agg_time_dimension` and
+`Entity('<name>')` is that entity's column. A dimension reached through a foreign entity is on the semantic model that
+entity is primary for, and resolves to that model's column joined implicitly through the entity's column (see
+"Entities and dimensions"). `Metric(...)` references are reported (see "Limitations"), and so is a reference with any
+argument beyond its name and grain, such as `Dimension('customer__region', entity_path=['order'])`: the converter
+reaches a dimension through the entity named in the reference and cannot follow another path. Any other method
+chained onto a reference (`.date_part('month')`) is reported too, and so is Jinja that is not one of those four
+references (`{{ var('x') }}`), as Jinja the converter could not parse.
 
 ## Limitations
 
@@ -181,14 +374,17 @@ them. The same conditions inside a `filter` make the metric itself unsupported, 
 | -- | -- | -- | -- |
 | a dimension whose `expr` is SQL | `dimensions: [{name: is_large_order, type: categorical, expr: "amount > 100"}]`, or any `derived_semantics` dimension | A dimension mapping targets a column of the table or of a joined table. There is no place in it for an expression. | Extend Metabase metrics so a dimension mapping can target an expression, or let a table carry computed columns the mapping can point at. |
 | a foreign entity whose `expr` is SQL, on either side of the join | `entities: [{name: customer, type: foreign, expr: "cast(customer_key as varchar)"}]` | An implicit join is a foreign-key column pointing at a primary-key column (`:source-field`). | Extend Metabase metrics so the join behind a dimension mapping can be an explicit join on an expression. |
+| a join to a semantic model in another Metabase database | `dim_customer` in warehouse database `crm`, mapped to another Metabase Database than the fact table's | An implicit join is a foreign key within one database; Metabase has no cross-database join. | Nothing short of a cross-database join in Metabase. |
 
 ### Manifest and configuration errors
 
-These are reported the same way, but they are fixed in the project or the config rather than being limits of the
-conversion:
+These are reported the same way, but they are fixed in the project, the config or the driver rather than being limits
+of the conversion:
 
 - A warehouse database with no entry in the config's `:databases`.
-- A column whose `data_type` the config's `:driver` does not know; add it to `:base-types`.
+- A column declared with a `data_type` the config's `:driver` has no base type for. Drivers are meant to map every
+  type their warehouse has, so the fix is a mapping in the driver (the way `bytea` became `:type/Binary` on Postgres
+  for this tool), not a setting in the config.
 - A metric whose semantic model, measure or input metric is not in the manifest, for example because it is disabled.
 - A foreign or unique entity that more than one other semantic model is keyed by (`customer` declared `type: primary`
   on both `dim_customer` and `dim_customer_history`, or `primary` on one and `unique` on the other) with no entry in
@@ -200,16 +396,98 @@ conversion:
   converter: `95` is reported rather than read as 95%, since `1.5` could not be and the two readings would have to
   meet somewhere.
 
-## The end-to-end test
+## Fixtures and tests
 
-`dev/test/dev/dbt_import/e2e_test.clj` is the import of QRES-2 as a test: it loads the project's mart tables into a
-Postgres test dataset, converts the fixture manifest for that database, imports the YAML with serdes, and checks that
-every converted metric returns the number a hand-written SQL query does, that the curated dimensions break a metric
-out through their implicit joins, that the cards came through with result metadata, and that importing a second time
-updates the cards instead of duplicating them. It runs on Postgres only: the manifest names its tables
-`public.fact_sales` and so on, serdes binds a field ref by exact name, and a Postgres test dataset is called exactly
-that, where H2 would upper-case it. Like the other tests in `dev/test`, it is not picked up by the default test run,
-so run it by name with the Postgres driver enabled:
+### The test fixtures
+
+Two manifests under `dev/resources/dbt_import/`, one per way of writing a dbt semantic layer, both trimmed to the
+sections the converter reads and both written by `dbt parse` under dbt 1.12.6 (manifest schema v12). That is the only
+kind of manifest the converter accepts, see "Supported dbt versions".
+
+`flexanalytics_manifest.json` is the flexanalytics project's manifest, on the **legacy spec** (top-level
+`semantic_models:` with `measures:`, and `metrics:` pointing at a measure), plus the nine metrics in
+`flexanalytics_extra_metrics.yml`: the project only defines simple metrics, so that file adds two ratio, three
+derived and three cumulative metrics and one conversion metric, in the shape dbt itself writes, so that every row of
+the "Metrics that compose other metrics" table and the reported cases next to it have a fixture.
+`sales_to_target_ratio_2` is the correct ratio form of the project's `sales_to_target`, which averages a per-row
+`sales / target`; both are kept. To run the extra metrics in a dev instance, paste them into the clone's
+`semantic_models.yml` under `metrics:` and `dbt parse` it the same way.
+
+`parcel_delivery_manifest.json` is the manifest of the small project checked in under `parcel_delivery/`, on the
+**dbt 1.12 inline spec**, see the next section. It is the shape of four redacted models from a customer's project,
+renamed onto a parcel-delivery domain with the BigQuery types turned into Postgres ones: four semantic models, nineteen
+metrics covering every aggregation the inline spec allows except `sum_boolean`, `median` and `min`/`max`, a ratio, a
+derived metric, two cumulative metrics (both over a `count_distinct`, so both are reported), filters, a SQL `expr`,
+and `derived_semantics` SQL dimensions. `dev/test/dev/dbt_import/inline_spec_test.clj` pins down what the parser makes
+of it and what the pipeline converts.
+
+Regenerate a fixture after changing its project (or the clone, or the extra metrics), from a REPL at the repo root:
+
+```clojure
+(dev.dbt-import.fixture/regenerate! :parcel-delivery)
+(dev.dbt-import.fixture/regenerate! :flexanalytics)                                                   ; ~/dbt-business-intelligence
+(dev.dbt-import.fixture/regenerate! :flexanalytics {:project "/path/to/dbt-business-intelligence"})
+```
+
+`dev.dbt-import.fixture/regenerate!` copies the project to a scratch directory with a `profiles.yml` of its own, so
+that `dbt parse` has the adapter and the warehouse database name it needs (it never connects, and the project itself
+is never modified), splices the extra metrics in for flexanalytics, runs `dbt parse` (through `uvx` unless `dbt` is on
+`PATH`) and writes the trimmed result the way Python's `json.dumps(indent=1)` would, with keys in dbt's order, so a
+regeneration's diff is only what changed, plus dbt's `created_at` and `generated_at` timestamps.
+`dev.dbt-import.marts/regenerate!`, below, reuses the same scratch copy to build the project.
+
+### The dbt 1.12 inline spec
+
+dbt 1.12 lets a project declare its semantic layer on the models themselves instead of in separate top-level blocks:
+`semantic_model:` nested under the entry in `models:`, `entity:` and `dimension:` on the entries under `columns:`,
+`agg_time_dimension` on the model, further SQL dimensions under `derived_semantics:`, and `metrics:` on the model
+with their own `agg` and `expr` and no `measures:` list anywhere. Composed metrics sit under a model's `metrics:` too,
+with new keywords: a ratio's `numerator` and `denominator` stand alone, a derived metric lists `input_metrics`, and a
+cumulative one names its `input_metric` and a `period_agg`. (dbt also insists on a time spine model before it will
+parse any metric; `parcel_delivery/models/time_spine.sql` is the smallest one that satisfies it, and the converter
+never reads it.)
+
+The bet behind reading `manifest.json` rather than the YAML was that dbt normalizes both specs into the same
+`semantic_models` plus `metrics` structure. It does, with three differences the parser handles:
+
+- A semantic model's `measures` is empty. Every aggregation is on a metric.
+- A simple metric carries `type_params.metric_aggregation_params` (`semantic_model`, `agg`, `agg_params`,
+  `agg_time_dimension` already defaulted from the model, `non_additive_dimension`) with the expression next to it in
+  `type_params.expr`. dbt documents a missing `expr` as meaning the column is the metric's name, and the parser
+  defaults it that way; every metric of the fixture writes an `expr`, so the fixture does not exhibit it.
+  `agg_params` is written for every aggregation, and `percentile_type: continuous` comes out as
+  `use_approximate_percentile: true`, not as a discrete percentile.
+- A cumulative metric depends on the simple metric it runs over (`cumulative_type_params.metric` and `depends_on`),
+  not on a semantic model. The parser takes that metric's aggregation, semantic model and filters; a window or
+  `grain_to_date` is reported as on the legacy spec.
+
+Entities and dimensions come out exactly as on the legacy spec, including a primary entity declared without a name,
+which dbt names after its column, and the `derived_semantics` dimensions, which arrive with their SQL as `expr`.
+Everything after the parser is none the wiser: the inline-spec fixture's simple, ratio and derived metrics convert to
+the same clauses the legacy one's do, and its two cumulative metrics, both over a `count_distinct`, are reported as a
+legacy-spec one over a `count_distinct` is.
+
+### Running the tests
+
+The tests live in `dev/test/dev/dbt_import/`. Namespaces under `dev.` are outside the module system, so the default
+test run and CI do not pick them up; run them by name:
+
+```sh
+./bin/test-agent :only '[dev.dbt-import.parse-test dev.dbt-import.inline-spec-test dev.dbt-import.resolve-test dev.dbt-import.advanced-metrics-test dev.dbt-import.dimensions-test dev.dbt-import.emit-test]'
+```
+
+All but the end-to-end test need no database: they run the fixtures and small hand-built manifests through the
+pipeline and compare the clauses that come out.
+
+### The end-to-end test
+
+`dev/test/dev/dbt_import/e2e_test.clj` is the import described under "Importing the result" as a test: it loads the
+project's mart tables into a Postgres test dataset, converts the fixture manifest for that database, imports the YAML
+with serdes, and checks that every converted metric returns the number a hand-written SQL query does, that the
+curated dimensions break a metric out through their implicit joins, that the cards came through with result metadata,
+and that importing a second time updates the cards instead of duplicating them. It runs on Postgres only: the manifest
+names its tables `public.fact_sales` and so on, serdes binds a field ref by exact name, and a Postgres test dataset is
+called exactly that, where H2 would upper-case it. Run it by name with the Postgres driver enabled:
 
 ```sh
 ./bin/test-agent --drivers=postgres :only '[dev.dbt-import.e2e-test]'
@@ -227,197 +505,5 @@ to exist):
 (dev.dbt-import.marts/regenerate! {:connection {:port 15432, :user "postgres", :password "password"}})
 ```
 
-It copies the clone to a scratch directory like `dev.dbt-import.fixture/regenerate!` does, runs `dbt seed` and
-`dbt run` there against that Postgres, and dumps the tables.
-
-## The test fixtures
-
-Two manifests under `dev/resources/dbt_import/`, one per way of writing a dbt semantic layer, both trimmed to the
-sections the converter reads and both written by `dbt parse` under dbt 1.12.6 (manifest schema v12). That is the only
-kind of manifest the converter accepts, see "Supported dbt versions".
-
-`flexanalytics_manifest.json` is the flexanalytics project's manifest, on the **legacy spec** (top-level
-`semantic_models:` with `measures:`, and `metrics:` pointing at a measure), plus the metrics in
-`flexanalytics_extra_metrics.yml`: the project only defines simple metrics, so that file adds one of each type that
-composes other metrics (ratio, derived, cumulative) and a conversion metric, in the shape dbt itself writes.
-`sales_to_target_ratio_2` is the correct ratio form of the project's `sales_to_target`, which averages a per-row
-`sales / target`; both are kept. To run the extra metrics in a dev instance (QRES-2), paste them into the clone's
-`semantic_models.yml` under `metrics:` and `dbt parse` it the same way.
-
-`parcel_delivery_manifest.json` is the manifest of the small project checked in under `parcel_delivery/`, on the
-**dbt 1.12 inline spec**, see the next section. It is the shape of four redacted models from a customer's project,
-renamed onto a parcel-delivery domain with the BigQuery types turned into Postgres ones: four semantic models, nineteen
-metrics covering every aggregation the inline spec allows except `sum_boolean`, `median` and `min`/`max`, a ratio, a
-derived metric, two cumulative ones, filters, a SQL `expr`, and `derived_semantics` SQL dimensions.
-`dev/test/dev/dbt_import/inline_spec_test.clj` pins down what the parser makes of it and what the pipeline converts.
-
-Regenerate a fixture after changing its project (or the clone, or the extra metrics), from a REPL at the repo root:
-
-```clojure
-(dev.dbt-import.fixture/regenerate! :parcel-delivery)
-(dev.dbt-import.fixture/regenerate! :flexanalytics)                                                   ; ~/dbt-business-intelligence
-(dev.dbt-import.fixture/regenerate! :flexanalytics {:project "/path/to/dbt-business-intelligence"})
-```
-
-It copies the project to a scratch directory, writes a `profiles.yml` there (`dbt parse` needs a profile for the
-adapter and the warehouse database name, which the manifest records, but never connects), splices the extra metrics
-in for flexanalytics, runs `dbt parse` (through `uvx` unless `dbt` is on PATH) and writes the trimmed result in the
-format dbt writes, so a regeneration's diff is only what changed, plus dbt's `created_at` and `generated_at`
-timestamps. The project is not modified.
-
-## The dbt 1.12 inline spec
-
-dbt 1.12 lets a project declare its semantic layer on the models themselves instead of in separate top-level blocks:
-`semantic_model:` nested under the entry in `models:`, `entity:` and `dimension:` on the entries under `columns:`,
-`agg_time_dimension` on the model, further SQL dimensions under `derived_semantics:`, and `metrics:` on the model
-with their own `agg` and `expr` and no `measures:` list anywhere. Composed metrics use new keywords too: a ratio's
-`numerator` and `denominator` stand alone, a derived metric lists `input_metrics`, and a cumulative one names its
-`input_metric` and a `period_agg`. (dbt also insists on a time spine model before it will parse any metric;
-`parcel_delivery/models/time_spine.sql` is the smallest one that satisfies it, and the converter never reads it.)
-
-The bet behind reading `manifest.json` rather than the YAML was that dbt normalizes both specs into the same
-`semantic_models` plus `metrics` structure. It does, with three differences the parser handles (QRES-6):
-
-- A semantic model's `measures` is empty. Every aggregation is on a metric.
-- A simple metric carries `type_params.metric_aggregation_params` (`semantic_model`, `agg`, `agg_params`,
-  `agg_time_dimension` already defaulted from the model, `non_additive_dimension`) with the expression next to it in
-  `type_params.expr`, nil when the column is the metric's name. `agg_params` is written for every aggregation, and
-  `percentile_type: continuous` comes out as `use_approximate_percentile: true`, not as a discrete percentile.
-- A cumulative metric depends on the simple metric it runs over (`cumulative_type_params.metric` and `depends_on`),
-  not on a semantic model. The parser takes that metric's aggregation, semantic model and filters; a window or
-  `grain_to_date` is reported as on the legacy spec.
-
-Entities and dimensions come out exactly as on the legacy spec, including a primary entity declared without a name,
-which dbt names after its column, and the `derived_semantics` dimensions, which arrive with their SQL as `expr`.
-Everything after the parser is none the wiser: the inline-spec fixture converts to the same clauses the legacy one
-does.
-
-## Filters and SQL expressions
-
-A measure's `expr` may be SQL rather than a column, and a metric or measure may carry a `filter` of Jinja-wrapped
-MetricFlow references around SQL. Both go through sqlglot (`metabase.sql-parsing.core/parse-expression`, used by
-`dev.dbt-import.sql`), which parses an expression on its own in the dialect of the config's `:driver`, and a subset
-of SQL maps onto MBQL:
-
-- column references, literals, `+ - * /` and `^`, comparisons, `AND`/`OR`/`NOT`, `IN`, `BETWEEN`. A comparison, `IN`
-  or `BETWEEN` with a `NULL` literal as an operand is reported: in SQL it is null, so never true, while the
-  `[:= x nil]` it would become is a null check that matches the null rows. A `/` of two known integers is reported on
-  the warehouses that truncate the quotient (Postgres, SQL Server, Redshift, Presto/Trino, SQLite), since Metabase's
-  `/` does not; a bare column as a condition (`WHERE is_returned`) is `column = true`, and is reported when the
-  project types the column as anything but boolean (see "Limitations" for both);
-- `IS [NOT] NULL`, `IS [NOT] TRUE` and `IS [NOT] FALSE`, the negated boolean forms as `!= ... OR IS NULL` so that
-  they still hold for a null column;
-- `IS [NOT] DISTINCT FROM`, the null-safe comparison. Against a literal it is `=` or `!=`: `=` is null, so false in a
-  filter, for a null column, and Metabase compiles `!=` on a column to include the nulls (on an expression it does
-  not, so `OR IS NULL` is added). Between two columns it is spelled out over `IS NULL` checks with every branch
-  two-valued: `a IS NOT DISTINCT FROM b` is `(a IS NOT NULL AND b IS NOT NULL AND a = b) OR (a IS NULL AND b IS NULL)`
-  and `a IS DISTINCT FROM b` is `(a IS NOT NULL AND b IS NOT NULL AND a != b) OR (a IS NULL AND b IS NOT NULL) OR
-  (a IS NOT NULL AND b IS NULL)`. The longer form was chosen over `COALESCE(..., FALSE)` because it runs on warehouses
-  with no boolean values (SQL Server, Oracle) too;
-- `LIKE` and `ILIKE` with any literal pattern, with or without `ESCAPE`. A `%x%`, `x%`, `%x` or `x%y` pattern, or
-  one literal with a run of `_`, is `contains`, `starts-with` or `ends-with` (and `length` where the pattern pins one),
-  which read as what was written and run on any warehouse; a pattern with no wildcard is `=`, over `lower` for
-  `ILIKE`. Any other pattern is the equivalent anchored regular expression through the regex fallback below, over
-  `lower` with lower-cased literals for `ILIKE`;
-- `SIMILAR TO`, and the regex operators `~`, `~*`, `!~`, `!~*` and `regexp_like`, through the regex fallback: MBQL has
-  no regex filter, but the first match `regex-match-first` finds is null exactly when the regex does not match, so
-  `[:not-null [:regex-match-first x regex]]` is one. The regex is wrapped in a group of its own, so that a group
-  inside it cannot make the match null when the regex matches, and `~*` prefixes `(?i)`. A `SIMILAR TO` pattern is
-  rewritten to POSIX form (`%` to `.*`, `_` to `.`, `.` made literal, the escape character honoured). This needs the
-  warehouse driver to support regular expressions (the `:regex` feature; Postgres does, SQL Server does not), and
-  `(?i)` to be understood where `~*` is used;
-- both forms of `CASE`, the simple `CASE x WHEN v` as `CASE WHEN x = v`;
-- `CAST` (and `::`) to an integer, decimal, float, text, date or timestamp type, as `integer`, `float`, `text`,
-  `date` and `datetime`;
-- the functions with an MBQL expression function of the same meaning: `coalesce`, `nullif` (as the `CASE` it stands
-  for; `x / NULLIF(y, 0)` is plain division, since Metabase's `/` already returns NULL for a zero divisor), `abs`,
-  `floor`, `ceil`/`ceiling`, `round` (to a literal number of decimals, as `round(x * 10^n) / 10^n`), `sqrt`, `exp`,
-  `log` (base 10, as in Metabase; `ln` does not map), `power`, `lower`, `upper`, `trim`/`ltrim`/`rtrim` (of spaces),
-  `length`/`char_length`, `replace`, `substring`/`substr`, `concat` and `||`, `extract`/`date_part` of `year`,
-  `quarter`, `month`, `day`, `hour`, `minute` or `second`, `now()`/`current_timestamp`, `current_date`, and
-  `date_trunc` over a column to a Metabase temporal unit (`minute` through `year`), which is the column bucketed by
-  that unit.
-
-Anything outside that subset is reported, naming the construct; see "Limitations".
-
-A caveat on weeks: dbt's `week` grain, and `date_trunc('week', ...)` on most warehouses, is the ISO week, which starts
-on Monday. A Metabase `week` starts on the day the instance's "First day of the week" setting names (Sunday by
-default), so a metric filtered or broken out by week agrees with dbt only on an instance set to Monday. The converter
-reads `week` as the Metabase unit and logs a warning naming the dimension each time it does; `extract(dow ...)` and
-`extract(week ...)` are reported for the same reason.
-
-In a filter, `Dimension('<entity>__<dimension>')` resolves to one of the metric's own columns when the entity is the
-semantic model's primary entity, and `TimeDimension(..., '<grain>')`, or equivalently `Dimension(...).grain('<grain>')`,
-additionally buckets it by the matching Metabase temporal unit; `metric_time` is the measure's `agg_time_dimension` and
-`Entity('<name>')` is that entity's column. A
-dimension reached through a foreign entity is on the semantic model that entity is primary for, and resolves to that
-model's column joined implicitly through the entity's column (see "Entities and dimensions"). `Metric(...)` references
-are reported (see "Limitations"), and so is a reference with any argument beyond its name and grain, such as
-`Dimension('customer__region', entity_path=['order'])`: the converter reaches a dimension through the entity named in
-the reference and cannot follow another path. Any other method chained onto a reference (`.date_part('month')`) is
-reported too, and so is Jinja that is not one of those four references (`{{ var('x') }}`), as Jinja the converter
-could not parse.
-
-## Advanced metric types
-
-Metrics that compose other metrics (QRES-5) are always top-level `metrics:` entries. They convert as follows; the
-metrics they refer to are written before them.
-
-| dbt | Metabase |
-| -- | -- |
-| `ratio` of `numerator` to `denominator` | one metric card whose aggregation divides `[:metric ...]` references to the input metrics' cards |
-| `derived` with `expr` over `metrics` | the same arithmetic over `[:metric ...]` references, aliases resolved; `x / nullif(y, 0)` is `x / y` |
-| an input (`numerator`, `denominator`, `metrics[]`) with its own `filter` | inlined as `sum-where`, `count-where` or `distinct-where` over the input's measure, with the input's own filters and the reference's combined, so the metric stays one card |
-| `cumulative` with no window and `period_agg: last` over a `sum`, a row count or a `count` of a column | `cum-sum` / `cum-count`, or for a `count` of a column (which skips nulls) `cum-sum` of a `case` that is 1 where the column is not null; the metric's filters apply as on a simple metric |
-| `fill_nulls_with` on a `ratio` or `derived` metric | the arithmetic wrapped in `coalesce`, as on a simple metric; an input's own `fill_nulls_with` stays on the input's card |
-| `conversion` | out of scope, reported |
-
-Every other form is reported with the reason: a cumulative `window` or `grain_to_date`, a cumulative `period_agg` of
-`first` (dbt's default when none is written) or `average`, an input with an `offset_window` or `offset_to_grain`, a
-`conversion` metric, a `filter` on an input whose aggregation has no filtered form. "Limitations" lists them all with
-the reasoning. `period_agg` only matters when the metric is queried coarser than its grain, but that is exactly where
-the number would silently differ, so a project has to say `period_agg: last` to convert a cumulative metric.
-
-## Entities and dimensions
-
-Each metric card is written with a curated dimension set (`dimensions` and `dimension_mappings`), so it can be broken
-out in the UI as soon as it is imported:
-
-- Every dimension of the metric's own semantic model whose `expr` is a column becomes a dimension of the metric's
-  table. A time dimension's `time_granularity` is its default temporal unit, when Metabase can bucket the column by it:
-  a typed column takes the units Lib allows its type, and a column the project does not type takes the grain as
-  written, since dbt says it is a time dimension and the instance checks the column when the import binds it.
-- Every foreign or unique entity of the model joins to the other semantic model that is keyed by an entity of the same
-  name: one that has it as its primary entity or as a unique entity, either of which identifies one row. (These are
-  the joins MetricFlow itself allows, except that a model's primary entity is not followed to another model keyed by
-  it: it names the model's own dimensions in filters, and the dimension set stays with that.) That model's dimensions
-  become dimensions of the metric too, reached by an implicit join: the mapping's target names the joined column with
-  `:source-field` set to the entity's column on the metric's table, the same way Metabase represents a column reached
-  through a foreign key. The instance has to know that foreign key, through sync or a Field edit, for the breakout to
-  run. No explicit join clause is written to the query.
-- The measure's `agg_time_dimension` (the model default or the measure's own) is the metric's default dimension. A
-  metric `time_granularity` (dbt's coarsest grain for querying the metric, standard or from a custom calendar) becomes
-  that dimension's default temporal unit instead of its own `time_granularity`, so a user breaking the metric out by
-  time gets the metric's grain first. Metabase cannot hold a breakout to a grain, so a finer breakout is still a click
-  away; a grain Metabase has no unit for, or cannot bucket the column by, is reported.
-- A metric's free-form `meta` (the flexanalytics project puts `format` and `synonyms` there) is parsed into the IR and
-  written nowhere: a card's `visualization_settings` key number formatting by column name, which a metric's
-  aggregation does not have until it is run, so there is no place to put a `format` without guessing at the project's
-  own convention for it.
-
-Dimension ids are derived from the metric's dbt unique ID and the dimension's reference, so a re-run writes the same
-ids and a re-import updates the dimensions in place. Groups are named after the semantic model's label, or its table.
-Dimensions are named after the dbt dimension, except that no two dimensions of a metric share a name: a joined
-dimension named like another dimension of the set (a `status` on both the fact table and `dim_order`) is named by its
-dbt reference instead, `order__status`, the way dbt itself tells the two apart. Its display name, column, group and id
-are unchanged, so two dimensions may still share a display name, as two same-named columns of the metric's table and
-a joined table do in Metabase; their groups tell them apart.
-
-A dbt dimension that cannot be a curated dimension, because its `expr` is SQL or because the join behind its foreign
-entity cannot be made, is listed per metric under `:unsupported-dimensions` in the report rather than dropped;
-"Limitations" lists the cases.
-
-Pipeline: `parse` (manifest -> IR) -> `resolve` (IR + config -> Lib queries against a metadata provider built from the
-manifest, entity ids) -> `emit` (serdes YAML, with serdes' own MBQL export turning the provider's ids back into
-names). MBQL is never written or read by hand: queries are built with `metabase.lib.core` and what the converter needs
-to know about them comes from Lib. Each stage only knows the previous stage's schema, see `dev.dbt-import.schemas.*`.
+It builds the project in the same kind of scratch copy `dev.dbt-import.fixture/regenerate!` uses, with `dbt seed` and
+`dbt run` against that Postgres, and dumps the tables.

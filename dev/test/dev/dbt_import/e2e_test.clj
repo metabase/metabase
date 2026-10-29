@@ -1,5 +1,5 @@
 (ns dev.dbt-import.e2e-test
-  "The converter's output imported into a real instance (QRES-2), which the unit tests cannot check: that the YAML
+  "The converter's output imported into a real instance, which the unit tests cannot check: that the YAML
   imports, the field refs bind, the metrics run and return the numbers a hand-written SQL query does, the curated
   dimensions break a metric out through their implicit joins, and that importing again updates the cards instead of
   duplicating them.

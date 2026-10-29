@@ -25,10 +25,11 @@
    [dev.dbt-import.resolve.columns :as resolve.columns]
    [dev.dbt-import.resolve.dimensions :as resolve.dimensions]
    [dev.dbt-import.resolve.filters :as resolve.filters]
-   [dev.dbt-import.schemas.ir :as schemas.ir]
-   [dev.dbt-import.schemas.resolved :as schemas.resolved]
+   [dev.dbt-import.schemas.ir :as ir]
+   [dev.dbt-import.schemas.resolved :as resolved]
    [dev.dbt-import.sql :as sql]
    [dev.dbt-import.unsupported :as unsupported]
+   [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.aggregation :as lib.schema.aggregation]
@@ -48,7 +49,7 @@
   (u/generate-nano-id (subs (codecs/bytes->hex (buddy-hash/sha256 s)) 0 15)))
 
 (mu/defn- metric-entity-id :- ms/NanoIdString
-  [{:keys [unique-id]} :- ::schemas.ir/metric]
+  [{:keys [unique-id]} :- ::ir/metric]
   (entity-id (str "dbt-import/metric/" unique-id)))
 
 (mu/defn- collection-entity-id :- ms/NanoIdString
@@ -64,7 +65,8 @@
    expr                                   :- :string]
   (let [{:keys [kind], column-name :name, literal :value} (resolve.columns/parse-expr expr)
         literal-unsupported (fn [literal]
-                              (unsupported/throw! "%s over the literal %s has no Metabase equivalent" (name agg) literal))]
+                              (unsupported/throw! "%s over the literal %s has no Metabase equivalent"
+                                                  (name agg) literal))]
     (case kind
       ;; `count(*)`, like `count(1)`, is a row count
       :wildcard (when-not (= agg :count)
@@ -74,7 +76,8 @@
       :column   (let [column (resolve-column column-name)]
                   (if (= agg :sum_boolean)
                     (let [base-type (lib/type-of query column)]
-                      ;; a column the project types as anything but boolean cannot be summed as one; an untyped one is trusted
+                      ;; a column the project types as anything but boolean cannot be summed as one; an untyped one is
+                      ;; trusted
                       (when (and (resolve.columns/known-type? base-type) (not (isa? base-type :type/Boolean)))
                         (unsupported/throw! "sum_boolean over the non-boolean column %s" (pr-str column-name)))
                       (lib/= column true))
@@ -98,10 +101,10 @@
    [:percentile {:optional true} :double]])
 
 (mu/defn- canonical-aggregation :- ::aggregation
-  "The aggregation `agg` over `expression` (see [[measure-expression]]) in the form the Lib clauses are built from, so
-  that the special cases are decided once and [[aggregation-clause]] and [[filtered-aggregation-clause]] are each a
-  flat `case`."
-  [{:keys [agg agg-params]} :- ::schemas.ir/aggregation
+  "The aggregation of the simple metric `ir` over `expression` (see [[measure-expression]]) in the form the Lib
+  clauses are built from, so that the special cases are decided once and [[aggregation-clause]] and
+  [[filtered-aggregation-clause]] are each a flat `case`."
+  [{:keys [agg agg-params]} :- ::ir/metric.simple
    expression               :- [:maybe ::sql/value]]
   (cond
     ;; measure-expression gives no expression for a row count only
@@ -113,11 +116,11 @@
     :else                {:agg agg, :expression expression}))
 
 (mu/defn- measure-aggregation :- ::aggregation
-  "The aggregation of a simple metric, or of an input to a composed one, over its measure's `expr`, each failure
-  saying which `expr`."
-  [context                     :- ::resolve.columns/context
-   {:keys [agg expr] :as aggregation} :- ::schemas.ir/aggregation]
-  (canonical-aggregation aggregation
+  "The aggregation of the simple metric `ir`, or of a simple input to a composed one, over its measure's `expr`, each
+  failure saying which `expr`."
+  [context                   :- ::resolve.columns/context
+   {:keys [agg expr] :as ir} :- ::ir/metric.simple]
+  (canonical-aggregation ir
                          (unsupported/with-reason-prefix (str "expr " (pr-str expr))
                            #(measure-expression context agg expr))))
 
@@ -157,7 +160,8 @@
     :count-where    (lib/count-where (lib/and condition expression))
     :sum            (lib/sum-where expression condition)
     :count_distinct (lib/distinct-where expression condition)
-    (unsupported/throw! "a filtered %s has no Metabase equivalent: only sum, count, count_distinct and sum_boolean have a filtered form"
+    (unsupported/throw! (str "a filtered %s has no Metabase equivalent: only sum, count, count_distinct and sum_boolean"
+                             " have a filtered form")
                         (name agg))))
 
 (mu/defn- with-fill-nulls :- ::lib.schema.aggregation/aggregation
@@ -169,25 +173,25 @@
     (lib/coalesce clause fill-nulls-with)
     clause))
 
-(mu/defn- resolved-metric :- ::schemas.resolved/metric
+(mu/defn- resolved-metric :- ::resolved/metric
   "The resolve stage's output for the metric `ir` of `context`: the query over its table, `aggregation` filtered by
   `filters`; its dimension set and entity_id; and the card added to the provider for it, which later metrics refer to.
   The dimension set comes first, since it can still report the metric (see [[resolve.dimensions/dimension-set]]), and a
   reported metric must leave no card behind for a later metric to refer to."
   [{:keys [provider query model agg-time-dimension] :as context} :- ::resolve.columns/context
-   ir                                                            :- ::schemas.ir/metric
+   ir                                                            :- ::ir/metric
    aggregation                                                   :- ::lib.schema.aggregation/aggregation
    filters                                                       :- [:sequential ::lib.schema.expression/boolean]]
   (let [dimensions (resolve.dimensions/dimension-set context)
         query      (reduce lib/filter (lib/aggregate query aggregation) filters)
-        entity-id  (metric-entity-id ir)
+        nano-id    (metric-entity-id ir)
         card-id    (metadata/add-metric! provider {:name          (:label ir)
                                                    :description   (:description ir)
                                                    :table-id      (get-in query [:stages 0 :source-table])
                                                    :dataset-query query
-                                                   :entity-id     entity-id})]
+                                                   :entity-id     nano-id})]
     (merge {:ir                 ir
-            :entity-id          entity-id
+            :entity-id          nano-id
             :card-id            card-id
             :metadata-provider  provider
             :semantic-model     (:name model)
@@ -195,16 +199,18 @@
             :query              query}
            dimensions)))
 
-(mu/defn- resolve-simple :- ::schemas.resolved/metric
+(mu/defn- resolve-simple :- ::resolved/metric
   "Resolve a simple or cumulative metric: one aggregation over its measure's `expr`, filtered by its templates."
-  [config          :- ::schemas.resolved/config
+  [config          :- ::resolved/config
    providers       :- [:map-of :string ::lib.schema.metadata/metadata-provider]
-   semantic-models :- [:map-of :string ::schemas.ir/semantic-model]
-   {:keys [type expr filters semantic-model fill-nulls-with agg-time-dimension] :as ir} :- ::schemas.ir/metric.simple]
+   semantic-models :- [:map-of :string ::ir/semantic-model]
+   {metric-type :type, :keys [expr filters semantic-model fill-nulls-with agg-time-dimension] :as ir}
+   :- ::ir/metric.simple]
   (let [model (get semantic-models semantic-model)]
     (when-not model
       (unsupported/throw! "semantic model %s not found" (pr-str semantic-model)))
-    (let [{:keys [query] :as context}             (resolve.columns/metric-context config providers semantic-models model ir agg-time-dimension)
+    (let [{:keys [query] :as context}             (resolve.columns/metric-context config providers semantic-models
+                                                                                  model ir agg-time-dimension)
           {:keys [agg expression] :as aggregation} (measure-aggregation context ir)
           filter-clauses                           (resolve.filters/filter-clauses context filters)
           result-type                              (when (and (some? fill-nulls-with) (#{:min :max} agg) expression)
@@ -213,36 +219,38 @@
       (when (and (resolve.columns/known-type? result-type) (not (isa? result-type :type/Number)))
         (unsupported/throw! "fill_nulls_with %s on a non-numeric aggregation: %s of %s, which is %s"
                             fill-nulls-with (name agg) (pr-str expr) result-type))
-      (resolved-metric context ir (with-fill-nulls (aggregation-clause type aggregation) fill-nulls-with) filter-clauses))))
+      (resolved-metric context ir
+                       (with-fill-nulls (aggregation-clause metric-type aggregation) fill-nulls-with)
+                       filter-clauses))))
 
 (mr/def ::outcomes
   "What the metrics resolved before the one at hand became, by name: `resolved`, or `failed` with the reason, the parse
   stage's reports included. A ratio or derived metric refers to them."
   [:map {:closed true}
-   [:resolved [:map-of :string ::schemas.resolved/metric]]
+   [:resolved [:map-of :string ::resolved/metric]]
    [:failed   [:map-of :string :string]]])
 
-(mu/defn- metric-inputs :- [:sequential ::schemas.ir/metric-input]
+(mu/defn- metric-inputs :- [:sequential ::ir/metric-input]
   "The references a metric makes to other metrics; none for a simple or cumulative one."
-  [ir :- ::schemas.ir/metric]
+  [ir :- ::ir/metric]
   (case (:type ir)
     :ratio   [(:numerator ir) (:denominator ir)]
     :derived (:inputs ir)
     []))
 
-(mu/defn- resolved-input :- ::schemas.resolved/metric
+(mu/defn- resolved-input :- ::resolved/metric
   "What the metric `metric-input` refers to became. [[unsupported/throw!]] when it is not in the manifest, or was not
   converted."
   [{:keys [resolved failed]} :- ::outcomes
-   {:keys [metric]}          :- ::schemas.ir/metric-input]
+   {:keys [metric]}          :- ::ir/metric-input]
   (or (get resolved metric)
       (if (contains? failed metric)
         (unsupported/throw! "metric %s was not converted: %s" (pr-str metric) (get failed metric))
         (unsupported/throw! "metric %s not found" (pr-str metric)))))
 
-(defn- conjunction
+(mu/defn- conjunction :- ::lib.schema.expression/boolean
   "`clauses` as one condition: the clause itself when there is one, otherwise their `:and`."
-  [clauses]
+  [clauses :- [:sequential ::lib.schema.expression/boolean]]
   (if (next clauses)
     (apply lib/and clauses)
     (first clauses)))
@@ -252,12 +260,12 @@
   its measure (see [[filtered-aggregation-clause]]), with the input metric's own filters and the reference's combined,
   so the metric stays one card. Only a simple metric can be inlined."
   [context                  :- ::resolve.columns/context
-   {input-ir :ir}           :- ::schemas.resolved/metric
-   {:keys [metric filters]} :- ::schemas.ir/metric-input]
-  (let [{:keys [type fill-nulls-with], input-filters :filters} input-ir]
-    (when-not (= type :simple)
+   {input-ir :ir}           :- ::resolved/metric
+   {:keys [metric filters]} :- ::ir/metric-input]
+  (let [{input-type :type, :keys [fill-nulls-with], input-filters :filters} input-ir]
+    (when-not (= input-type :simple)
       (unsupported/throw! "metric %s is a %s metric; only a simple metric can take a filter where it is referred to"
-                          (pr-str metric) (name type)))
+                          (pr-str metric) (name input-type)))
     (let [aggregation (measure-aggregation context input-ir)
           condition   (conjunction (resolve.filters/filter-clauses context (into (vec input-filters) filters)))]
       (with-fill-nulls (filtered-aggregation-clause aggregation condition) fill-nulls-with))))
@@ -268,7 +276,7 @@
   [[filtered-input]])."
   [{:keys [provider] :as context}     :- ::resolve.columns/context
    outcomes                           :- ::outcomes
-   {:keys [filters] :as metric-input} :- ::schemas.ir/metric-input]
+   {:keys [filters] :as metric-input} :- ::ir/metric-input]
   (let [input (resolved-input outcomes metric-input)]
     (if (seq filters)
       (filtered-input context input metric-input)
@@ -282,35 +290,37 @@
   `expr` is SQL whose identifiers are the inputs' aliases, or names."
   [{:keys [dialect] :as context} :- ::resolve.columns/context
    outcomes                      :- ::outcomes
-   {:keys [type expr] :as ir}    :- ::schemas.ir/metric]
-  (case type
+   {metric-type :type, :keys [expr] :as ir} :- ::ir/metric]
+  (case metric-type
     :ratio
     (lib// (input-leaf context outcomes (:numerator ir))
            (input-leaf context outcomes (:denominator ir)))
 
     :derived
-    (let [by-name (into {} (map (fn [{:keys [alias] :as input}] [(or alias (:metric input)) input])) (:inputs ir))
+    (let [by-name (m/index-by #(or (:alias %) (:metric %)) (:inputs ir))
           value   (sql/expression->mbql dialect expr
                                         (fn [identifier]
                                           (if-let [input (get by-name identifier)]
                                             (input-leaf context outcomes input)
                                             (unsupported/throw! "%s is not one of the metric's inputs (%s)"
-                                                                (pr-str identifier) (str/join ", " (map pr-str (keys by-name)))))))]
+                                                                (pr-str identifier)
+                                                                (str/join ", " (map pr-str (keys by-name)))))))]
       (if (vector? value)
         value
-        (unsupported/throw! "expr %s is the constant %s, not arithmetic over the inputs" (pr-str expr) (pr-str value))))))
+        (unsupported/throw! "expr %s is the constant %s, not arithmetic over the inputs"
+                            (pr-str expr) (pr-str value))))))
 
-(mu/defn- resolve-composed :- ::schemas.resolved/metric
+(mu/defn- resolve-composed :- ::resolved/metric
   "Resolve a ratio or derived metric against what its inputs became (see [[resolved-input]]). Its table, and so its
   dimensions, are its inputs', which must all be on one semantic model; its default dimension is their
   `agg_time_dimension` when they agree on one. Its `fill_nulls_with`, if any, wraps the arithmetic in `coalesce`, as
   on a simple metric."
-  [config                                       :- ::schemas.resolved/config
+  [config                                       :- ::resolved/config
    providers                                    :- [:map-of :string ::lib.schema.metadata/metadata-provider]
-   semantic-models                              :- [:map-of :string ::schemas.ir/semantic-model]
+   semantic-models                              :- [:map-of :string ::ir/semantic-model]
    outcomes                                     :- ::outcomes
-   {:keys [type expr filters fill-nulls-with] :as ir} :- ::schemas.ir/metric]
-  (let [prefix      (case type
+   {metric-type :type, :keys [expr filters fill-nulls-with] :as ir} :- ::ir/metric]
+  (let [prefix      (case metric-type
                       :ratio   "ratio"
                       :derived (str "expr " (pr-str expr)))
         inputs      (unsupported/with-reason-prefix prefix #(mapv (partial resolved-input outcomes) (metric-inputs ir)))
@@ -324,9 +334,11 @@
           context            (resolve.columns/metric-context config providers semantic-models
                                                      (get semantic-models (first model-names)) ir agg-time-dimension)
           expression         (unsupported/with-reason-prefix prefix #(composed-expression context outcomes ir))]
-      (resolved-metric context ir (with-fill-nulls expression fill-nulls-with) (resolve.filters/filter-clauses context filters)))))
+      (resolved-metric context ir
+                       (with-fill-nulls expression fill-nulls-with)
+                       (resolve.filters/filter-clauses context filters)))))
 
-(mu/defn resolve-metric :- [:or ::schemas.resolved/metric ::schemas.ir/unsupported]
+(mu/defn resolve-metric :- [:or ::resolved/metric ::ir/unsupported]
   "Resolve one IR metric against the IR `semantic-models` (keyed by name), the metadata `providers` (keyed by Metabase
   database name, see [[metadata/providers]]) and `config`, or explain why it cannot be a Metabase metric. `outcomes`
   is what the metrics a ratio or derived metric refers to became (see [[resolve-manifest]]); a simple metric needs
@@ -335,17 +347,17 @@
   A metric the converter does not support is reported with the reason (see [[unsupported/throw!]]). Any other
   exception while resolving a metric is a bug in the converter or an input it did not anticipate; it is logged with
   its stack and reported the same way, so one bad metric does not stop the others from being written."
-  ([config          :- ::schemas.resolved/config
+  ([config          :- ::resolved/config
     providers       :- [:map-of :string ::lib.schema.metadata/metadata-provider]
-    semantic-models :- [:map-of :string ::schemas.ir/semantic-model]
-    ir              :- ::schemas.ir/metric]
+    semantic-models :- [:map-of :string ::ir/semantic-model]
+    ir              :- ::ir/metric]
    (resolve-metric config providers semantic-models {:resolved {}, :failed {}} ir))
 
-  ([config          :- ::schemas.resolved/config
+  ([config          :- ::resolved/config
     providers       :- [:map-of :string ::lib.schema.metadata/metadata-provider]
-    semantic-models :- [:map-of :string ::schemas.ir/semantic-model]
+    semantic-models :- [:map-of :string ::ir/semantic-model]
     outcomes        :- ::outcomes
-    {metric-name :name, :keys [unique-id] :as ir} :- ::schemas.ir/metric]
+    {metric-name :name, :keys [unique-id] :as ir} :- ::ir/metric]
    (try
      (case (:type ir)
        (:simple :cumulative) (resolve-simple config providers semantic-models ir)
@@ -359,13 +371,13 @@
                                (format "error resolving metric (%s): %s" (pr-str (class e)) (ex-message e)))))))))
 
 (mu/defn- order-metrics :- [:map {:closed true}
-                            [:ordered [:sequential ::schemas.ir/metric]]
-                            [:cyclic  [:sequential ::schemas.ir/metric]]]
+                            [:ordered [:sequential ::ir/metric]]
+                            [:cyclic  [:sequential ::ir/metric]]]
   "`metrics` with every ratio or derived metric after the metrics it refers to, otherwise in their order, so the cards
   a metric refers to exist, and are written, before it. A metric that refers to itself, directly or through others,
   can never be placed and is `cyclic`. A reference to a metric that is not in `metrics` holds nothing back; it is
   reported when the metric is resolved."
-  [metrics :- [:sequential ::schemas.ir/metric]]
+  [metrics :- [:sequential ::ir/metric]]
   (let [names (into #{} (map :name) metrics)]
     (loop [remaining metrics, placed #{}, ordered []]
       (let [ready? (fn [metric]
@@ -380,17 +392,17 @@
 
 (mu/defn- outcomes :- ::outcomes
   "What the `metrics` resolved and the `unsupported` reported so far are to the next metric, by name."
-  [metrics     :- [:sequential ::schemas.resolved/metric]
-   unsupported :- [:sequential ::schemas.ir/unsupported]]
+  [metrics     :- [:sequential ::resolved/metric]
+   unsupported :- [:sequential ::ir/unsupported]]
   {:resolved (u/index-by (comp :name :ir) metrics)
    :failed   (into {} (map (juxt :name :reason)) unsupported)})
 
-(mu/defn resolve-manifest :- ::schemas.resolved/manifest
+(mu/defn resolve-manifest :- ::resolved/manifest
   "Resolve every metric in the IR, each after the metrics it refers to. Unsupported metrics from the parse stage are
   carried over, so the result's `:unsupported` is the complete list for the run, and a ratio or derived metric over
   one of them is reported with that metric's reason rather than as referring to a metric that does not exist."
-  [config                                                     :- ::schemas.resolved/config
-   {:keys [semantic-models metrics unsupported source] :as ir} :- ::schemas.ir/manifest]
+  [config                                                     :- ::resolved/config
+   {:keys [semantic-models metrics unsupported source] :as ir} :- ::ir/manifest]
   (let [providers                (metadata/providers config ir)
         {:keys [ordered cyclic]} (order-metrics metrics)
         results                  (reduce (fn [{:keys [metrics unsupported] :as results} metric]
@@ -407,5 +419,6 @@
      :unsupported (into (:unsupported results)
                         (map (fn [{metric-name :name, :keys [unique-id]}]
                                (unsupported/report metric-name unique-id
-                                                   "metric refers to itself, directly or through the metrics it refers to")))
+                                                   (str "metric refers to itself, directly or through the metrics it"
+                                                        " refers to"))))
                         cyclic)}))

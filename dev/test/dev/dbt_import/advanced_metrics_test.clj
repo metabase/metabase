@@ -1,12 +1,12 @@
 (ns dev.dbt-import.advanced-metrics-test
-  "The metric types that compose other metrics (QRES-5): a ratio or derived metric becomes the same arithmetic over
+  "The metric types that compose other metrics: a ratio or derived metric becomes the same arithmetic over
   `:metric` references to the cards its input metrics convert to, an input with a filter of its own is inlined as a
   `:sum-where`, `:count-where` or `:distinct-where` so the metric stays one card, a cumulative metric becomes
   `:cum-sum` or `:cum-count`, and what has no Metabase equivalent (offsets, cumulative windows, conversion) is
   reported.
 
-  Written ahead of the implementation as its target. The parse-time reasons for what is reported (offsets, windows,
-  conversion) are in `dev.dbt-import.parse-test/advanced-metric-types-test`.
+  The parse-time reasons for what is reported (offsets, windows, conversion) are in
+  [[dev.dbt-import.parse-test/advanced-metric-types-test]].
 
   Each built manifest puts simple metrics (see [[input-metrics]]) next to the metric under test, `m`, in the shape
   dbt 1.12 writes: a ratio or derived
@@ -56,7 +56,8 @@
   [manifest]
   (let [base (get-in manifest [:metrics "metric.p.m"])]
     (update manifest :metrics into
-            (map (fn [[metric-name :as input-metric]] [(str "metric.p." metric-name) (simple-metric base input-metric)]))
+            (map (fn [[metric-name :as input-metric]]
+                   [(str "metric.p." metric-name) (simple-metric base input-metric)]))
             input-metrics)))
 
 (defn- composed
@@ -72,7 +73,8 @@
 
 (def ^:private period-agg-last
   "The `cumulative_type_params` of a cumulative metric with no window and `period_agg: last`, the one `period_agg` the
-  converter accepts (dbt's default, `first`, is reported; see `dev.dbt-import.parse-test/advanced-metric-types-test`)."
+  converter accepts (dbt's default, `first`, is reported; see
+  [[dev.dbt-import.parse-test/advanced-metric-types-test]])."
   {:window nil, :grain_to_date nil, :period_agg "last"})
 
 (defn- cumulative
@@ -153,12 +155,14 @@
       (is (= sum-target (aggregation "target")))))
   (testing "the same metric on both sides"
     (is (= [:/ {} [:metric {} "sales"] [:metric {} "sales"]]
-           (-> (convert (composed "ratio" ["sales"] {:numerator (tu/metric-input "sales"), :denominator (tu/metric-input "sales")}))
+           (-> (convert (composed "ratio" ["sales"]
+                                  {:numerator (tu/metric-input "sales"), :denominator (tu/metric-input "sales")}))
                :aggregation
                (get "m")))))
   (testing "an input that is not in the manifest is reported"
     (is (re-find #"^ratio: metric \"nope\" not found"
-                 (-> (convert (composed "ratio" ["sales" "nope"] {:numerator (tu/metric-input "sales"), :denominator (tu/metric-input "nope")}))
+                 (-> (convert (composed "ratio" ["sales" "nope"]
+                                        {:numerator (tu/metric-input "sales"), :denominator (tu/metric-input "nope")}))
                      :unsupported
                      (get "m")))))
   (testing "an input the parse stage reported is reported with that reason, not as missing"
@@ -168,24 +172,30 @@
                                  (-> (simple-metric base ["sales_7d" "sales" nil])
                                      (assoc :type "cumulative")
                                      (assoc-in [:type_params :cumulative_type_params]
-                                               {:window {:count 7, :granularity "day"}, :grain_to_date nil, :period_agg "last"})))))
+                                               {:window        {:count 7, :granularity "day"}
+                                                :grain_to_date nil
+                                                :period_agg    "last"})))))
           {:keys [unsupported]} (convert (-> (composed "ratio" ["sales_7d" "sales"]
-                                                       {:numerator (tu/metric-input "sales_7d"), :denominator (tu/metric-input "sales")})
+                                                       {:numerator   (tu/metric-input "sales_7d")
+                                                        :denominator (tu/metric-input "sales")})
                                              (update :edit (fn [edit] (comp windowed edit)))))]
       (is (re-find #"^a cumulative metric with a window of 7 day" (get unsupported "sales_7d")))
       (is (re-find #"^ratio: metric \"sales_7d\" was not converted: a cumulative metric with a window of 7 day"
                    (get unsupported "m"))))))
 
 (defn- filtered-ratio
-  "Tweaks for a ratio `m` of `numerator` filtered by `cancelled-filter` (with `alias`, when given) to `denominator`."
-  [numerator denominator & {:keys [alias]}]
-  (composed "ratio" (distinct [numerator denominator])
-            {:numerator   (tu/metric-input numerator :alias alias :filter cancelled-filter)
-             :denominator (tu/metric-input denominator)}))
+  "Tweaks for a ratio `m` of the metric `numerator-name` filtered by `cancelled-filter` (with `input-alias`, when
+  given) to the metric `denominator-name`."
+  [numerator-name denominator-name & {:keys [input-alias]}]
+  (composed "ratio" (distinct [numerator-name denominator-name])
+            {:numerator   (tu/metric-input numerator-name :alias input-alias :filter cancelled-filter)
+             :denominator (tu/metric-input denominator-name)}))
 
 (deftest ^:parallel ratio-input-filter-test
-  (testing "an input with its own filter is inlined as the filtered form of its aggregation, so the metric stays one card"
-    (let [{:keys [aggregation filters unsupported]} (convert (filtered-ratio "order_count" "order_count" :alias "cancelled_orders"))]
+  (testing (str "an input with its own filter is inlined as the filtered form of its aggregation, so the metric stays"
+                " one card")
+    (let [{:keys [aggregation filters unsupported]}
+          (convert (filtered-ratio "order_count" "order_count" :input-alias "cancelled_orders"))]
       (is (= {} unsupported))
       (is (= [:/ {} [:distinct-where {} (fld "order_key" :type/Text) cancelled] [:metric {} "order_count"]]
              (aggregation "m")))
@@ -204,7 +214,8 @@
   (testing "an alias alone changes nothing: the ratio refers to the input itself"
     (is (= [:/ {} [:metric {} "sales"] [:metric {} "target"]]
            (-> (convert (composed "ratio" ["sales" "target"]
-                                  {:numerator (tu/metric-input "sales" :alias "num"), :denominator (tu/metric-input "target" :alias "den")}))
+                                  {:numerator   (tu/metric-input "sales" :alias "num")
+                                   :denominator (tu/metric-input "target" :alias "den")}))
                :aggregation
                (get "m"))))))
 
@@ -227,7 +238,8 @@
   (testing "aliases name the inputs in the expr"
     (is (= [:* {} [:/ {} [:metric {} "sales"] [:metric {} "target"]] 100]
            (-> (convert (derived "sales_amt / target_amt * 100"
-                                 [(tu/metric-input "sales" :alias "sales_amt") (tu/metric-input "target" :alias "target_amt")]))
+                                 [(tu/metric-input "sales" :alias "sales_amt")
+                                  (tu/metric-input "target" :alias "target_amt")]))
                :aggregation
                (get "m")))))
   (testing "a derived metric over a derived metric refers to its card"
@@ -237,11 +249,14 @@
                                  (-> base
                                      (assoc :name "d", :unique_id "metric.p.d", :label "d")
                                      (assoc-in [:type_params :expr] "sales - target")
-                                     (assoc-in [:type_params :metrics] [(tu/metric-input "sales") (tu/metric-input "target")])
-                                     (assoc-in [:type_params :input_measures] [(tu/input-measure {:name "sales"}) (tu/input-measure {:name "target"})])
+                                     (assoc-in [:type_params :metrics]
+                                               [(tu/metric-input "sales") (tu/metric-input "target")])
+                                     (assoc-in [:type_params :input_measures]
+                                               [(tu/input-measure {:name "sales"}) (tu/input-measure {:name "target"})])
                                      (assoc-in [:depends_on :nodes] ["metric.p.sales" "metric.p.target"])))))
           tweaks   (-> (composed "derived" ["d"] {:expr "d * 2", :metrics [(tu/metric-input "d")]})
-                       (assoc-in [:type-params :input_measures] [(tu/input-measure {:name "sales"}) (tu/input-measure {:name "target"})])
+                       (assoc-in [:type-params :input_measures]
+                                 [(tu/input-measure {:name "sales"}) (tu/input-measure {:name "target"})])
                        (update :edit (fn [edit] (comp d-metric edit))))
           {:keys [aggregation unsupported]} (convert tweaks)]
       (is (= {} unsupported))
@@ -276,12 +291,16 @@
       (is (= [:cum-sum {} [:case {} [[[:not-null {} order-key] 1]] 0]]
              (tu/aggregation (assoc (cumulative {:measure (tu/input-measure {:name "order_key_count"})})
                                     :measures (conj input-measures
-                                                    (assoc (tu/base-measure) :name "order_key_count" :agg "count" :expr "order_key"))))))))
+                                                    (assoc (tu/base-measure)
+                                                           :name "order_key_count"
+                                                           :agg  "count"
+                                                           :expr "order_key"))))))))
   (testing "a filter on the metric applies as on a simple one"
     (is (= [[:= {} (fld "status" :type/Text) "Shipped"]]
            (tu/filters (merge (cumulative {})
                               {:metric {:type   "cumulative"
-                                        :filter (tu/where-filters "{{ Dimension('fact_sales_key__status') }} = 'Shipped'")}})))))
+                                        :filter (tu/where-filters
+                                                 "{{ Dimension('fact_sales_key__status') }} = 'Shipped'")}})))))
   (testing "a running aggregation other than a sum or count has no Metabase equivalent"
     (are [measure-name re] (re-find re (tu/unsupported (cumulative {:measure (tu/input-measure {:name measure-name})})))
       "order_count" #"count_distinct"
@@ -291,7 +310,8 @@
   (testing "fill_nulls_with on a ratio wraps the division in coalesce, as it does the aggregation of a simple metric"
     (is (= [:coalesce {} [:/ {} [:metric {} "sales"] [:metric {} "target"]] 0]
            (-> (convert (assoc-in (composed "ratio" ["sales" "target"]
-                                            {:numerator (tu/metric-input "sales"), :denominator (tu/metric-input "target")})
+                                            {:numerator   (tu/metric-input "sales")
+                                             :denominator (tu/metric-input "target")})
                                   [:type-params :fill_nulls_with] 0))
                :aggregation
                (get "m")))))
@@ -301,24 +321,25 @@
                :aggregation
                (get "m")))))
   (testing "an input's own fill_nulls_with stays on the input's card, not on the metric referring to it"
-    (let [{:keys [aggregation]} (convert (-> (derived "sales - target")
-                                             (update :edit (fn [edit]
-                                                             (comp #(assoc-in % [:metrics "metric.p.sales" :type_params :fill_nulls_with] 0)
-                                                                   edit)))))]
+    (let [fill-sales            #(assoc-in % [:metrics "metric.p.sales" :type_params :fill_nulls_with] 0)
+          {:keys [aggregation]} (convert (-> (derived "sales - target")
+                                             (update :edit (fn [edit] (comp fill-sales edit)))))]
       (is (= [:coalesce {} tu/sum-sales 0] (aggregation "sales")))
       (is (= [:- {} [:metric {} "sales"] [:metric {} "target"]] (aggregation "m"))))))
 
 (deftest ^:parallel write-order-test
   (testing "a metric is written after the metrics it refers to, whatever the alphabetical order"
     (let [{:keys [paths]} (convert (composed "ratio" ["sales" "target"]
-                                             {:numerator (tu/metric-input "sales"), :denominator (tu/metric-input "target")}))]
+                                             {:numerator   (tu/metric-input "sales")
+                                             :denominator (tu/metric-input "target")}))]
       (is (every? some? (map (partial position paths) ["m" "sales" "target"])) (pr-str paths))
       (is (written-before? paths "sales" "m"))
       (is (written-before? paths "target" "m")))))
 
 (deftest ^:parallel flexanalytics-test
   (let [{:keys [aggregation paths]} (convert-all (tu/flexanalytics-resolved))]
-    (testing "sales_to_target_ratio_2 is a proper ratio of sales to target, next to the project's own average of a per-row ratio"
+    (testing (str "sales_to_target_ratio_2 is a proper ratio of sales to target, next to the project's own average of"
+                  " a per-row ratio")
       (is (= [:/ {} [:metric {} "sales"] [:metric {} "target"]] (aggregation "sales_to_target_ratio_2")))
       (is (= [:avg {} [:/ {} (fld "sales" :type/Float) (fld "target" :type/Float)]] (aggregation "sales_to_target"))))
     (testing "the derived metrics"

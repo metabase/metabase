@@ -225,7 +225,7 @@
 (defn name-uuid
   "The name-based (version 3) UUID of the string `s`, as a string. The same `s` always gives the same UUID, so this is
   for an id that has to be derived from an identity rather than generated, like the id of a dimension computed from
-  its column; `random-uuid` is for everything else. `s` is hashed as UTF-8 whatever the platform charset."
+  its column; [[random-uuid]] is for everything else. `s` is hashed as UTF-8 whatever the platform charset."
   ^String [^String s]
   (str (UUID/nameUUIDFromBytes (string-to-bytes s))))
 

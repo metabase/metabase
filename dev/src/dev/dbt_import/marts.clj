@@ -1,7 +1,7 @@
 (ns dev.dbt-import.marts
   "Regenerates `dev/resources/dbt_import/flexanalytics_marts.edn`: the mart tables of
   https://github.com/flexanalytics/dbt-business-intelligence as a test dataset definition, in the format of
-  `test/metabase/test/data/dataset_definitions/*.edn`, for the end-to-end test in `dev.dbt-import.e2e-test`. Not
+  `test/metabase/test/data/dataset_definitions/*.edn`, for the end-to-end test in [[dev.dbt-import.e2e-test]]. Not
   something that runs regularly: only when the checkout changes.
 
   [[regenerate!]] copies the checkout to a scratch directory (see [[fixture/with-scratch-project]]), builds it there
@@ -70,6 +70,8 @@
    [:password {:optional true} [:maybe :string]]])
 
 (mr/def ::field-definition
+  "A column of a mart table in the dataset definition format: its name, base type, and whether it is the primary key
+  or a foreign key to another table."
   [:map {:closed true}
    [:field-name :string]
    [:base-type  :keyword]
@@ -82,13 +84,15 @@
   [:maybe [:or :string :int :double (ms/InstanceOfClass LocalDate)]])
 
 (mr/def ::row
+  "One row of a mart table, its values in column order."
   [:sequential ::value])
 
 (mr/def ::table-definition
   "A table in the dataset definition format: name, field definitions, rows."
   [:tuple :string [:sequential ::field-definition] [:sequential ::row]])
 
-(def ^:private DataSource
+(mr/def ::data-source
+  "The JDBC data source for the Postgres the project was built in."
   (ms/InstanceOfClass javax.sql.DataSource))
 
 (mu/defn- with-defaults :- ::fixture/connection
@@ -100,7 +104,7 @@
      :user     (or user (env "USER" "postgres"))
      :password (or password (env "PASSWORD" nil))}))
 
-(mu/defn- build!
+(mu/defn- build! :- :nil
   "Build the checkout at `project` in a scratch copy against `connection`: `dbt seed`, then `dbt run` of the project's
   own models."
   [^File project :- (ms/InstanceOfClass File)
@@ -112,7 +116,7 @@
 
 (mu/defn- field-definitions :- [:sequential ::field-definition]
   "The dataset field definitions for `table`, from the columns Postgres reports for it, in column order."
-  [ds                     :- DataSource
+  [ds                     :- ::data-source
    {:keys [table pk fks]} :- ::table]
   (for [{:keys [column_name udt_name]} (jdbc/execute! ds ["SELECT column_name, udt_name
                                                           FROM information_schema.columns
@@ -130,11 +134,11 @@
       fk                 (assoc :fk (keyword fk)))))
 
 (mu/defn- rows :- [:sequential ::row]
-  "The rows of `table`, ordered by `pk`, as vectors of values in the order of `field-definitions`."
-  [ds                 :- DataSource
+  "The rows of `table`, ordered by `pk`, as vectors of values in the order of `fields`, its field definitions."
+  [ds                 :- ::data-source
    {:keys [table pk]} :- ::table
-   field-definitions  :- [:sequential ::field-definition]]
-  (let [columns (map :field-name field-definitions)
+   fields             :- [:sequential ::field-definition]]
+  (let [columns (map :field-name fields)
         sql     (format "SELECT %s FROM public.%s ORDER BY %s"
                         (str/join ", " (map #(str \" % \") columns))
                         table
@@ -156,9 +160,9 @@
 (mu/defn- edn-table-definition :- :string
   "One table of the dataset EDN, laid out like the checked-in dataset definitions: one field definition and one row
   per line."
-  [[table-name field-definitions table-rows] :- ::table-definition]
+  [[table-name fields table-rows] :- ::table-definition]
   (str "[" (pr-str table-name) "\n"
-       "  [" (str/join "\n   " (map edn-field-definition field-definitions)) "]\n"
+       "  [" (str/join "\n   " (map edn-field-definition fields)) "]\n"
        "  [" (str/join "\n   " (map (fn [row] (str "[" (str/join ", " (map pr-str row)) "]")) table-rows)) "]]"))
 
 (mu/defn- edn-dataset :- :string

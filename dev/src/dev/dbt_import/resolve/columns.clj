@@ -17,8 +17,8 @@
    [better-cond.core :as b]
    [clojure.string :as str]
    [dev.dbt-import.metadata :as metadata]
-   [dev.dbt-import.schemas.ir :as schemas.ir]
-   [dev.dbt-import.schemas.resolved :as schemas.resolved]
+   [dev.dbt-import.schemas.ir :as ir]
+   [dev.dbt-import.schemas.resolved :as resolved]
    [dev.dbt-import.sql :as sql]
    [dev.dbt-import.unsupported :as unsupported]
    [medley.core :as m]
@@ -79,34 +79,35 @@
   semantic model, by name) are what [[join-context]] needs to make the same kind of context for a semantic model a
   foreign entity joins to."
   [:map {:closed true}
-   [:config             ::schemas.resolved/config]
+   [:config             ::resolved/config]
    [:provider           ::lib.schema.metadata/metadata-provider]
-   [:semantic-models    [:map-of :string ::schemas.ir/semantic-model]]
+   [:semantic-models    [:map-of :string ::ir/semantic-model]]
    [:query              ::lib.schema/query]
-   [:model              ::schemas.ir/semantic-model]
+   [:model              ::ir/semantic-model]
    [:metric-unique-id   :string]
    [:agg-time-dimension [:maybe :string]]
    [:time-granularity   [:maybe :string]]
    [:dialect            ::sql/dialect]
    [:resolve-column     ::sql/resolve-column]])
 
-(mu/defn- check-declared-type!
-  "[[unsupported/throw!]] when `column`, as the project documents it, declares a `data_type` the driver does not know.
-  No column, or no `data_type`, is fine: the column's type is unknown and the instance supplies it."
-  [config :- ::schemas.resolved/config
-   column :- [:maybe ::schemas.ir/column]]
+(mu/defn- check-declared-type! :- :nil
+  "[[unsupported/throw!]] when `column`, as the project documents it, declares a `data_type` the driver does not map
+  to a base type; the fix is a mapping in the driver (see [[resolved/driver]]). No column, or no `data_type`, is fine:
+  the column's type is unknown and the instance supplies it."
+  [config :- ::resolved/config
+   column :- [:maybe ::ir/column]]
   (when-let [data-type (some-> (:data-type column) str/trim not-empty)]
-    (when-not (metadata/base-type (:driver config) (:base-types config) data-type)
-      (unsupported/throw! "no base type known for column %s of type %s; add it to :base-types"
-                          (pr-str (:name column)) (pr-str data-type)))))
+    (when-not (metadata/base-type (:driver config) data-type)
+      (unsupported/throw! "no base type known for column %s of type %s: the %s driver has no mapping for it"
+                          (pr-str (:name column)) (pr-str data-type) (name (:driver config))))))
 
 (mu/defn column-ref :- ::lib.schema.ref/ref
   "Lib ref for `column-name` on `table-id`, by its documented spelling when the project documents it in `columns`
   (see [[metadata/find-named]])."
-  [config      :- ::schemas.resolved/config
+  [config      :- ::resolved/config
    provider    :- ::lib.schema.metadata/metadata-provider
    table-id    :- ::lib.schema.id/table
-   columns     :- [:map-of :string ::schemas.ir/column]
+   columns     :- [:map-of :string ::ir/column]
    column-name :- :string]
   (let [column (metadata/find-named (vals columns) column-name)]
     (check-declared-type! config column)
@@ -127,7 +128,7 @@
       :sql    (sql/expression->mbql dialect expr resolve-column)
       (unsupported/throw! "%s is neither a column nor a SQL expression" (pr-str expr)))))
 
-(mu/defn own-entity :- ::schemas.ir/entity
+(mu/defn own-entity :- ::ir/entity
   "The entity named `entity-name` on `context`'s model."
   [{:keys [model]} :- ::context
    entity-name     :- :string]
@@ -137,7 +138,7 @@
 (mu/defn- entity-column-name :- [:maybe :string]
   "The column `entity`'s expr names; nil when the expr is SQL, which an implicit join has no use for: it needs a
   column on each side."
-  [{:keys [expr]} :- ::schemas.ir/entity]
+  [{:keys [expr]} :- ::ir/entity]
   (let [{:keys [kind], column-name :name} (parse-expr expr)]
     (when (= kind :column)
       column-name)))
@@ -146,12 +147,12 @@
   "Whether a reference through `entity-name` can join to `model`: the entity is the model's primary entity, or one of
   its `unique` entities. Either identifies one row of the model, which is what a join from another model needs; a
   `foreign` or `natural` entity does not."
-  [{:keys [primary-entity entities]} :- ::schemas.ir/semantic-model
+  [{:keys [primary-entity entities]} :- ::ir/semantic-model
    entity-name                       :- :string]
   (boolean (or (= entity-name primary-entity)
                (m/find-first #(and (= entity-name (:name %)) (= :unique (:type %))) entities))))
 
-(mu/defn join-targets :- [:sequential ::schemas.ir/semantic-model]
+(mu/defn join-targets :- [:sequential ::ir/semantic-model]
   "The semantic models a reference through `entity-name` from `context`'s model can join to: the other models that
   are [[keyed-by?]] it, by name. An entity joins to the one such model."
   [{:keys [semantic-models model]} :- ::context
@@ -167,7 +168,7 @@
   to run. [[unsupported/throw!]] when there is no such model, more than one that the config's `:entity-models` does
   not choose between, the join column on either side is SQL, or the model is in another Metabase database."
   [{:keys [config provider resolve-column] :as context} :- ::context
-   {entity-name :name, :as entity}                      :- ::schemas.ir/entity]
+   {entity-name :name, :as entity}                      :- ::ir/entity]
   (b/cond
     :let [candidates (join-targets context entity-name)
           chosen     (get-in config [:entity-models entity-name])]
@@ -207,7 +208,8 @@
                         (pr-str entity-name) (pr-str (:expr entity)))
 
     (not (entity-column-name target-entity))
-    (unsupported/throw! "entity %s on semantic model %s is the SQL expression %s, not a column; an implicit join needs a column"
+    (unsupported/throw! (str "entity %s on semantic model %s is the SQL expression %s, not a column; an implicit join"
+                             " needs a column")
                         (pr-str entity-name) (pr-str (:name target)) (pr-str (:expr target-entity)))
 
     :let [fk-ref (resolve-column fk-column)
@@ -225,11 +227,11 @@
   table and a callback for its columns. `agg-time-dimension` is the metric's own for a simple metric; a ratio or
   derived metric takes its inputs' (see [[dev.dbt-import.resolve/resolve-composed]]). [[unsupported/throw!]] when the
   config maps the model's warehouse database to no Metabase database."
-  [config                              :- ::schemas.resolved/config
+  [config                              :- ::resolved/config
    providers                           :- [:map-of :string ::lib.schema.metadata/metadata-provider]
-   semantic-models                     :- [:map-of :string ::schemas.ir/semantic-model]
-   {:keys [columns] :as model}         :- ::schemas.ir/semantic-model
-   {:keys [unique-id time-granularity]} :- ::schemas.ir/metric
+   semantic-models                     :- [:map-of :string ::ir/semantic-model]
+   {:keys [columns] :as model}         :- ::ir/semantic-model
+   {:keys [unique-id time-granularity]} :- ::ir/metric
    agg-time-dimension                  :- [:maybe :string]]
   (let [database (metadata/model-database config model)]
     (when-not database

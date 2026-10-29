@@ -110,7 +110,8 @@
 (mu/defn parse-semantic-model :- ::ir/semantic-model
   "Parse one manifest semantic model. Needs the whole `manifest` to look up the model node that holds column types."
   [manifest :- ::dbt-manifest/manifest
-   {model-name :name, :keys [unique_id label description node_relation defaults primary_entity entities dimensions measures]
+   {model-name :name
+    :keys      [unique_id label description node_relation defaults primary_entity entities dimensions measures]
     :as        semantic-model}
    :- ::dbt-manifest/semantic-model]
   (let [default-agg-time-dimension (:agg_time_dimension defaults)]
@@ -150,37 +151,39 @@
    :meta             metric-meta})
 
 (mu/defn- parse-metric-input :- ::ir/metric-input
-  [{metric-name :name, :keys [alias filter]} :- ::dbt-manifest/metric-input]
+  [{metric-name :name, input-alias :alias, input-filter :filter} :- ::dbt-manifest/metric-input]
   {:metric  metric-name
-   :alias   alias
-   :filters (filter-templates filter)})
+   :alias   input-alias
+   :filters (filter-templates input-filter)})
 
 (mu/defn- offset-reason :- [:maybe :string]
   "Why a ratio or derived metric with `inputs` cannot be converted: the first input shifted in time, if any. MBQL's
   `offset` is relative to the rows of the result, not to a span of time, so period-over-period comparisons have no
   faithful equivalent."
   [inputs :- [:sequential ::dbt-manifest/metric-input]]
-  (some (fn [{metric-name :name, :keys [alias offset_window offset_to_grain]}]
-          (let [input-name (or alias metric-name)]
+  (some (fn [{metric-name :name, input-alias :alias, :keys [offset_window offset_to_grain]}]
+          (let [input-name (or input-alias metric-name)]
             (cond
               offset_window
-              (format "input %s has an offset_window of %d %s: period-over-period comparisons have no Metabase equivalent"
+              (format (str "input %s has an offset_window of %d %s: period-over-period comparisons have no Metabase"
+                           " equivalent")
                       (pr-str input-name) (:count offset_window) (:granularity offset_window))
 
               offset_to_grain
-              (format "input %s has an offset_to_grain of %s: comparisons with the start of a period have no Metabase equivalent"
+              (format (str "input %s has an offset_to_grain of %s: comparisons with the start of a period have no"
+                           " Metabase equivalent")
                       (pr-str input-name) (pr-str offset_to_grain)))))
         inputs))
 
 (mu/defn- parse-ratio :- ::ir/metric.ratio
   [{:keys [type_params] :as metric} :- ::dbt-manifest/metric]
-  (let [{:keys [numerator denominator]} type_params]
-    (when (or (nil? numerator) (nil? denominator))
+  (let [{numerator-input :numerator, denominator-input :denominator} type_params]
+    (when (or (nil? numerator-input) (nil? denominator-input))
       (unsupported/throw! "ratio metric without a numerator and a denominator"))
-    (some-> (offset-reason [numerator denominator]) unsupported/throw!)
+    (some-> (offset-reason [numerator-input denominator-input]) unsupported/throw!)
     (assoc (metric-common :ratio metric)
-           :numerator   (parse-metric-input numerator)
-           :denominator (parse-metric-input denominator))))
+           :numerator   (parse-metric-input numerator-input)
+           :denominator (parse-metric-input denominator-input))))
 
 (mu/defn- parse-derived :- ::ir/metric.derived
   [{:keys [type_params] :as metric} :- ::dbt-manifest/metric]
@@ -207,11 +210,13 @@
         period-agg    (or (:period_agg cumulative_type_params) :first)]
     (cond
       window
-      (format "a cumulative metric with a window of %d %s has no Metabase equivalent: MBQL has no rolling-window aggregation"
+      (format (str "a cumulative metric with a window of %d %s has no Metabase equivalent: MBQL has no rolling-window"
+                   " aggregation")
               (:count window) (:granularity window))
 
       grain-to-date
-      (format "a cumulative metric with grain_to_date %s has no Metabase equivalent: a running total that resets at each %s needs a breakout the metric cannot require"
+      (format (str "a cumulative metric with grain_to_date %s has no Metabase equivalent: a running total that resets"
+                   " at each %s needs a breakout the metric cannot require")
               (pr-str grain-to-date) grain-to-date)
 
       (not= period-agg :last)
@@ -243,7 +248,8 @@
       "discrete percentiles have no Metabase equivalent: Metabase percentiles are continuous")))
 
 (mu/defn- node-id-with-prefix :- [:maybe :string]
-  "The first of the `depends_on.nodes` ids `node-ids` of the kind `prefix` names, `\"metric.\"` or `\"semantic_model.\"`."
+  "The first of the `depends_on.nodes` ids `node-ids` of the kind `prefix` names, `\"metric.\"` or
+  `\"semantic_model.\"`."
   [prefix   :- :string
    node-ids :- [:sequential :string]]
   (m/find-first #(str/starts-with? % prefix) node-ids))
@@ -267,7 +273,8 @@
       (when-not input-metric
         (unsupported/throw! "input metric %s not found in manifest" (pr-str input-metric-id)))
       (when-not (= :simple (:type input-metric))
-        (unsupported/throw! "a cumulative metric over the %s metric %s has no Metabase equivalent: only a simple aggregation can run cumulatively"
+        (unsupported/throw! (str "a cumulative metric over the %s metric %s has no Metabase equivalent: only a simple"
+                                 " aggregation can run cumulatively")
                             (name (:type input-metric)) (pr-str (:name input-metric))))
       {:metric  input-metric
        :filters (into (filter-templates (:filter input-metric))
@@ -289,8 +296,9 @@
   "The aggregation of `metric` and what comes with it (see `::aggregation-source`). On the legacy spec
   `type_params.measure` points at a measure of the semantic model in `depends_on`, and the measure's own filter,
   `fill_nulls_with` and `join_to_timespine` come along. On the 1.12 inline spec the metric carries the aggregation
-  itself, in `metric_aggregation_params` and `expr`; a nil `expr` means the column is the metric's name (verified
-  against the `parcel_delivery` fixture, dbt 1.12.6). [[unsupported/throw!]] when the semantic model or the measure is
+  itself, in `metric_aggregation_params` and `expr`; a nil `expr` means the column is the metric's name, as dbt
+  documents (every metric of the `parcel_delivery` fixture writes an `expr`, so the fixture does not exhibit it).
+  [[unsupported/throw!]] when the semantic model or the measure is
   not in the manifest, or the metric has neither a measure nor `metric_aggregation_params`."
   [semantic-models                                    :- [:map-of :string ::ir/semantic-model]
    {metric-name :name, :keys [type_params depends_on]} :- ::dbt-manifest/metric]
@@ -336,9 +344,10 @@
    {metric-type :type, :keys [type_params] :as metric} :- ::dbt-manifest/metric]
   (when (= metric-type :cumulative)
     (some-> (cumulative-reason type_params) unsupported/throw!))
-  (let [input                                                  (when (= metric-type :cumulative)
-                                                                 (cumulative-input metrics metric))
-        {:keys [semantic-model aggregation measure] :as source} (aggregation-source semantic-models (or (:metric input) metric))]
+  (let [input  (when (= metric-type :cumulative)
+                 (cumulative-input metrics metric))
+        source (aggregation-source semantic-models (or (:metric input) metric))
+        {:keys [semantic-model aggregation measure]} source]
     (some-> (aggregation-reason aggregation) unsupported/throw!)
     (-> (metric-common metric-type metric)
         (merge aggregation)
@@ -368,7 +377,8 @@
         (:simple :cumulative) (parse-simple semantic-models metrics metric)
         :ratio                (parse-ratio metric)
         :derived              (parse-derived metric)
-        :conversion           (unsupported/throw! "conversion metrics are out of scope: a per-entity funnel is nothing a Metabase metric expresses")))
+        :conversion           (unsupported/throw! (str "conversion metrics are out of scope: a per-entity funnel is"
+                                                       " nothing a Metabase metric expresses"))))
     (fn [reason]
       (unsupported/report metric-name unique_id reason)))))
 
@@ -376,18 +386,17 @@
   "Parse a decoded manifest (see [[read-manifest]]) into the IR. Metrics that cannot be parsed land in `:unsupported`
   with a reason instead of failing the run."
   [manifest :- ::dbt-manifest/manifest]
-  (let [semantic-models                   (update-vals (:semantic_models manifest)
-                                                       #(parse-semantic-model manifest %))
-        {metrics false, unsupported-metrics true} (->> (vals (:metrics manifest))
-                                               (sort-by :name)
-                                               (map #(parse-metric semantic-models (:metrics manifest) %))
-                                               (group-by #(contains? % :reason)))]
+  (let [semantic-models (update-vals (:semantic_models manifest) #(parse-semantic-model manifest %))
+        parsed          (->> (vals (:metrics manifest))
+                             (sort-by :name)
+                             (mapv #(parse-metric semantic-models (:metrics manifest) %)))
+        unsupported?    #(contains? % :reason)]
     {:source          {:tool    "dbt"
                        :version (-> manifest :metadata :dbt_version)
                        :project (-> manifest :metadata :project_name)}
      :semantic-models (u/index-by :name (vals semantic-models))
-     :metrics         (vec metrics)
-     :unsupported     (vec unsupported-metrics)}))
+     :metrics         (vec (remove unsupported? parsed))
+     :unsupported     (filterv unsupported? parsed)}))
 
 (mu/defn parse-manifest-file :- ::ir/manifest
   "[[read-manifest]] then [[parse-manifest]]."
@@ -397,6 +406,6 @@
 (comment
   (def %manifest-filename
     "Path to the flexanalytics manifest for REPL use; see the README for how to generate it."
-    "/home/cam/dbt-business-intelligence/target/manifest.json")
+    "/path/to/dbt-business-intelligence/target/manifest.json")
 
   (parse-manifest-file %manifest-filename))

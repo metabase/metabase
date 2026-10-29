@@ -1,6 +1,5 @@
 (ns dev.dbt-import.emit-test
   (:require
-   [clj-yaml.core :as yaml]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
@@ -8,7 +7,8 @@
    [dev.dbt-import.test-util :as tu :refer [fld]]
    [metabase.queries.models.card :as card]
    [metabase.test :as mt]
-   [metabase.util :as u])
+   [metabase.util :as u]
+   [metabase.util.yaml :as yaml])
   (:import
    (java.nio.file Path Paths)))
 
@@ -53,10 +53,14 @@
 
 (deftest write-test
   (mt/with-temp-dir [out-dir nil]
-    (let [resolved  (tu/flexanalytics-resolved)
-          paths     (emit/write! out-dir (emit/files tu/default-config resolved))
-          read-yaml (fn [path] (yaml/parse-string (slurp (io/file out-dir path))))
-          sales     (tu/resolved-metric-named resolved "sales")]
+    (let [resolved    (tu/flexanalytics-resolved)
+          paths       (emit/write! out-dir (emit/files tu/default-config resolved))
+          read-yaml   (fn [path] (yaml/parse-string (slurp (io/file out-dir path))))
+          sales       (tu/resolved-metric-named resolved "sales")
+          ;; a float column's field ref as it reads back from YAML, keywords as strings
+          float-field (fn [column]
+                        ["field" {:base-type "type/Float", :effective-type "type/Float"}
+                         ["Sales DB" "public" "fact_sales" column]])]
       (is (= 15 (count paths)))
       (testing "the collection file"
         (is (= {:name        "dbt metrics"
@@ -77,25 +81,25 @@
                                 :database "Sales DB"
                                 :stages   [{:lib/type     "mbql.stage/mbql"
                                             :source-table ["Sales DB" "public" "fact_sales"]
-                                            :aggregation  [["sum" {} ["field"
-                                                                      {:base-type "type/Float", :effective-type "type/Float"}
-                                                                      ["Sales DB" "public" "fact_sales" "sales"]]]]}]}
+                                            :aggregation  [["sum" {} (float-field "sales")]]}]}
                 :serdes/meta   [{:model "Card"}]}
                (-> (read-yaml "collections/main/dbt_metrics/sales.yaml")
                    (select-keys [:name :description :entity_id :type :display :collection_id :creator_id :card_schema
                                  :dataset_query :serdes/meta])))))
       (testing "a metric over a SQL expression aggregates the expression"
-        (is (= [["avg" {} ["/" {}
-                           ["field" {:base-type "type/Float", :effective-type "type/Float"} ["Sales DB" "public" "fact_sales" "sales"]]
-                           ["field" {:base-type "type/Float", :effective-type "type/Float"} ["Sales DB" "public" "fact_sales" "target"]]]]]
-               (-> (read-yaml "collections/main/dbt_metrics/sales_to_target_ratio.yaml") :dataset_query :stages first :aggregation))))
+        (is (= [["avg" {} ["/" {} (float-field "sales") (float-field "target")]]]
+               (-> (read-yaml "collections/main/dbt_metrics/sales_to_target_ratio.yaml")
+                   :dataset_query :stages first :aggregation))))
       (testing "no result_metadata: the instance infers it on import"
         (is (not (contains? (read-yaml "collections/main/dbt_metrics/sales.yaml") :result_metadata)))))))
 
 (deftest write-clears-previous-run-test
   (mt/with-temp-dir [out-dir nil]
     (let [write!    (fn [labels]
-                      (emit/write! out-dir (emit/files tu/default-config (tu/resolve-manifest-map (tu/metrics-manifest labels)))))
+                      (->> (tu/metrics-manifest labels)
+                           tu/resolve-manifest-map
+                           (emit/files tu/default-config)
+                           (emit/write! out-dir)))
           card-file (fn [file-name] (io/file out-dir "collections/main/dbt_metrics" file-name))
           other     (io/file out-dir "collections/main/other_collection/card.yaml")]
       (write! ["Sales" "Quantity"])
@@ -116,7 +120,8 @@
     (is (= [:coalesce {} tu/sum-sales 0] (tu/aggregation {:input-measure {:fill_nulls_with 0}})))
     (is (= [:coalesce {} tu/sum-sales -1] (tu/aggregation {:type-params {:fill_nulls_with -1}})))
     (testing "the metric's wins over the input measure's"
-      (is (= [:coalesce {} tu/sum-sales 1] (tu/aggregation {:type-params {:fill_nulls_with 1}, :input-measure {:fill_nulls_with 0}})))))
+      (is (= [:coalesce {} tu/sum-sales 1]
+             (tu/aggregation {:type-params {:fill_nulls_with 1}, :input-measure {:fill_nulls_with 0}})))))
   (testing "around a count"
     (is (= [:coalesce {} [:count-where {} [:not-null {} (fld "sales" :type/Float)]] 0]
            (tu/aggregation {:measure {:agg "count", :expr "sales"}, :type-params {:fill_nulls_with 0}}))))
@@ -131,18 +136,22 @@
       "customer_key" "date_day"))
   (testing "a column of unknown type is trusted"
     (is (= [:coalesce {} [:max {} (fld "x" nil)] 0]
-           (tu/aggregation {:measure {:agg "max", :expr "x"}, :columns {"x" nil}, :type-params {:fill_nulls_with 0}})))))
+           (tu/aggregation {:measure     {:agg "max", :expr "x"}
+                            :columns     {"x" nil}
+                            :type-params {:fill_nulls_with 0}})))))
 
 (deftest ^:parallel join-to-timespine-test
-  (testing "join_to_timespine has no Metabase equivalent (nothing to join a scalar metric to) and is ignored, as the QRES-1 mapping table says"
+  (testing "join_to_timespine has no Metabase equivalent (nothing to join a scalar metric to) and is ignored"
     (is (= tu/sum-sales (tu/aggregation {:type-params {:join_to_timespine true}})))
     (is (= tu/sum-sales (tu/aggregation {:input-measure {:join_to_timespine true}})))
-    (is (= [:coalesce {} tu/sum-sales 0] (tu/aggregation {:type-params {:join_to_timespine true, :fill_nulls_with 0}})))))
+    (is (= [:coalesce {} tu/sum-sales 0]
+           (tu/aggregation {:type-params {:join_to_timespine true, :fill_nulls_with 0}})))))
 
 (def ^:private card-dir "collections/main/dbt_metrics/")
 
 (def ^:private adversarial-labels
-  ["Sales" "sales" "SALES" "Sales!" "Sales?" "Sales 2" "sales_2" "sales_2" "../../etc/passwd" "..\\..\\windows\\system32"
+  ["Sales" "sales" "SALES" "Sales!" "Sales?" "Sales 2" "sales_2" "sales_2" "../../etc/passwd"
+   "..\\..\\windows\\system32"
    "a/b" "a/b/c" "." ".." "..." "📈" "📉" "📈📉" "Umsatz pro Größe" "日本語の売上" "Ventes €" (apply str (repeat 300 "x"))
    (apply str (repeat 120 "é")) (apply str (repeat 80 "日")) "con" "nul" "CON" "aux.yaml" "x.yaml" "  leading space"
    "trailing space  " "tab\tname" "new\nline" "#hash" "-dash" ":colon" "*star" "\"quoted\"" "'single'" "null" "true"])
@@ -161,7 +170,8 @@
         (is (not (str/includes? file-name "/")) "a label cannot add a directory level")
         (is (str/ends-with? file-name ".yaml"))
         (is (<= (count (.getBytes ^String file-name "UTF-8")) 255) "fits a file name on ext4 and APFS")
-        (is (.startsWith (.normalize ^Path (.resolve ^Path root ^String path)) root) "stays inside the export directory")))))
+        (is (.startsWith (.normalize ^Path (.resolve ^Path root ^String path)) root)
+            "stays inside the export directory")))))
 
 (deftest ^:parallel label-fallback-test
   (testing "a nil or blank label falls back to the metric name"
@@ -169,7 +179,8 @@
            (map #(-> % :entity :name) (tu/card-files (tu/metrics-manifest [nil "" "  "])))))))
 
 (def ^:private yaml-hostile-strings
-  ["key: value" "- not a list" "# not a comment" "'single'" "\"double\"" "multi\nline\n\nparagraphs" "trailing newline\n"
+  ["key: value" "- not a list" "# not a comment" "'single'" "\"double\"" "multi\nline\n\nparagraphs"
+   "trailing newline\n"
    "tab\there" "unicode ✓ ünï 日本" "---" "..." "null" "true" "false" "123" "1e3" "0x1F" "~" "{curly}" "[square]"
    "&anchor" "*alias" "!tag" "%percent" "@at" "`backtick`" "| pipe" "> greater" "| Metric | Definition |\n|---|---|"
    "   leading spaces" "trailing spaces   " "\\backslash" "emoji 📈" "a: b: c" "? question" ", comma" "=equals"])

@@ -80,9 +80,9 @@
    (fld db "public" "fact_sales" column base-type))
   ([schema table column base-type]
    (fld db schema table column base-type))
-  ([db schema table column base-type]
+  ([database schema table column base-type]
    (let [base-type (or base-type :type/*)]
-     [:field {:base-type base-type, :effective-type base-type} [db schema table column]])))
+     [:field {:base-type base-type, :effective-type base-type} [database schema table column]])))
 
 (def sum-sales
   "What the fixture's metric `m` converts to untouched: the sum of `sales`."
@@ -242,10 +242,10 @@
    :config         {:enabled true, :group nil, :meta {}}})
 
 (defn dimension-semantic-model
-  "A semantic model over dimension table `public.<table-name>` with no measures: one primary `entity` and
-  `dimensions`."
-  [sm-id node-id table-name label entity dimensions]
-  {:unique_id      sm-id
+  "A semantic model over dimension table `public.<table-name>` with no measures: one `primary-entity` and
+  `model-dimensions`."
+  [model-sm-id node-id table-name label primary-entity model-dimensions]
+  {:unique_id      model-sm-id
    :name           table-name
    :label          label
    :description    nil
@@ -256,8 +256,8 @@
                     :relation_name (format "\"dbt_bi\".\"public\".\"%s\"" table-name)}
    :defaults       nil
    :primary_entity nil
-   :entities       [entity]
-   :dimensions     dimensions
+   :entities       [primary-entity]
+   :dimensions     model-dimensions
    :measures       []
    :depends_on     {:macros [], :nodes [node-id]}
    :config         {:enabled true, :group nil, :meta {}}})
@@ -356,11 +356,12 @@
       edit edit)))
 
 (defn edit-semantic-model
-  "A `:edit` fn for [[build-manifest]] that applies `f` to the semantic model `sm-id` (default the fact table's)."
+  "A `:edit` fn for [[build-manifest]] that applies `f` to the semantic model `model-sm-id` (default the fact
+  table's)."
   ([f]
    (edit-semantic-model sm-id f))
-  ([sm-id f]
-   #(update-in % [:semantic_models sm-id] f)))
+  ([model-sm-id f]
+   #(update-in % [:semantic_models model-sm-id] f)))
 
 (defn round-trip
   "The manifest as `dbt parse` would write it and the converter would read it: JSON with string keys."
@@ -378,9 +379,9 @@
   "The serdes Card entity [[emit/files]] writes for the resolved metric named `metric-name`, with its dimensions and
   dimension mappings in portable form, or nil when the metric was not converted."
   [config resolved metric-name]
-  (some (fn [{:keys [entity metric]}]
+  (some (fn [{card :entity, :keys [metric]}]
           (when (= metric-name (-> metric :ir :name))
-            entity))
+            card))
         (emit/files config resolved)))
 
 (defn convert
@@ -394,13 +395,13 @@
         metric-name (or metric-name (get-in tweaks [:metric :name]) "m")
         resolved    (resolve-manifest-map config (build-manifest tweaks))]
     (if-let [converted (resolved-metric-named resolved metric-name)]
-      (let [stage  (-> (emit/dataset-query converted) :stages first)
-            entity (card-entity config resolved metric-name)]
+      (let [stage (-> (emit/dataset-query converted) :stages first)
+            card  (card-entity config resolved metric-name)]
         {:aggregation            (first (:aggregation stage))
          :filters                (:filters stage [])
          :source-table           (:source-table stage)
-         :dimensions             (:dimensions entity)
-         :dimension-mappings     (:dimension_mappings entity)
+         :dimensions             (:dimensions card)
+         :dimension-mappings     (:dimension_mappings card)
          :unsupported-dimensions (:unsupported-dimensions converted)})
       (if-let [unsupported (m/find-first #(= metric-name (:name %)) (:unsupported resolved))]
         {:unsupported (:reason unsupported)}
@@ -448,9 +449,9 @@
     (if (contains? result :dimensions)
       (let [mapping-for (m/index-by :dimension-id dimension-mappings)]
         (into {}
-              (map (fn [{:keys [id] :as dimension}]
-                     [(:name dimension) (merge (dissoc dimension :id)
-                                               (select-keys (mapping-for id) [:table-id :target]))]))
+              (map (fn [{:keys [id] :as curated}]
+                     [(:name curated) (merge (dissoc curated :id)
+                                             (select-keys (mapping-for id) [:table-id :target]))]))
               dimensions))
       result)))
 
