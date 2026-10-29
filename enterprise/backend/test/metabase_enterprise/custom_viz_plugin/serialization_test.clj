@@ -87,7 +87,8 @@
 (defn- plugin-yaml [identifier & {:as extra}]
   (merge {:serdes/meta [{:model "CustomVizPlugin"}]
           :identifier  identifier
-          :enabled     true}
+          :enabled     true
+          :files       (vec (sort (keys (plugin-files identifier))))}
          extra))
 
 (deftest export-writes-the-yaml-and-the-bundles-files-test
@@ -101,10 +102,11 @@
         (export! dump-dir)
         (let [plugin-dir (io/file dump-dir "custom_viz_plugins" "Thumbs")
               yaml-file  (io/file plugin-dir "custom_viz_plugin.yaml")]
-          (testing "YAML contains only identity and enabled state"
+          (testing "YAML contains identity, enabled state, and declared resource files"
             (is (= {:serdes/meta [{:model "CustomVizPlugin"}]
                     :identifier  "Thumbs"
-                    :enabled     false}
+                    :enabled     false
+                    :files       (vec (sort (keys files)))}
                    (yaml/from-file yaml-file))
                 "`enabled` is written only when false"))
           (testing "only declared resources are exported, byte for byte"
@@ -209,7 +211,8 @@
                    :error_message #(re-find #"Bundle must be less than 5MB" %)
                    :bundle        nil
                    :bundle_hash   nil}
-                  (t2/select-one :model/CustomVizPlugin :identifier "big"))))))))
+                  (t2/select-one [:model/CustomVizPlugin :status :error_message :bundle :bundle_hash]
+                                 :identifier "big"))))))))
 
 (deftest import-fails-naming-a-directory-not-named-by-its-identifier-test
   (mt/with-model-cleanup [:model/CustomVizPlugin]
