@@ -19,6 +19,7 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.queries.db :as queries.db]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -135,7 +136,7 @@
    ;; not all sandboxes have Cards
    (when card-id
      ;; not all Cards have saved result metadata
-     (when-let [result-metadata (not-empty (sandbox.db/card-result-metadata card-id))]
+     (when-let [result-metadata (not-empty (:result_metadata (queries.db/card card-id)))]
        (check-columns-match-table table-id result-metadata))))
 
   ([table-id :- ::lib.schema.id/table
@@ -194,7 +195,7 @@
   Card cannot add fields or change types vs. the original Table."
   [card-id new-result-metadata]
   (when-let [gtaps-using-this-card (not-empty (sandbox.db/sandboxes-using-card card-id))]
-    (let [original-result-metadata (sandbox.db/card-result-metadata card-id)]
+    (let [original-result-metadata (:result_metadata (queries.db/card card-id))]
       (when-not (= original-result-metadata new-result-metadata)
         (doseq [{table-id :table_id} gtaps-using-this-card]
           (try

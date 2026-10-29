@@ -71,6 +71,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
    [metabase.documents.prose-mirror :as prose-mirror]
+   [metabase.measures.db :as measures.db]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.query-export :as query-export]
@@ -86,6 +87,8 @@
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.queries.db :as queries.db]
+   [metabase.segments.db :as segments.db]
    [metabase.transforms.core :as transforms]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -499,7 +502,7 @@
 (defn- present-source-card
   "Resolve a source-card id to a typed item map (model / metric / question)."
   [source-card-id]
-  (let [src-card (metabot.db/card-type-row source-card-id)
+  (let [src-card (queries.db/card source-card-id)
         src-type (case (:type src-card)
                    :model  "model"
                    :metric "metric"
@@ -699,8 +702,8 @@
 
 (defn- check-measure-or-segment-resource-database [model id]
   (when-let [table-id (case model
-                        :model/Measure (metabot.db/measure-table-id id)
-                        :model/Segment (metabot.db/segment-table-id id))]
+                        :model/Measure (:table_id (measures.db/measure id))
+                        :model/Segment (:table_id (segments.db/segment id)))]
     (check-table-resource-database table-id)))
 
 (defn- active-table-resource [id]

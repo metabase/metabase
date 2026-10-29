@@ -19,11 +19,6 @@
   [session-id :- :string]
   (t2/exists? :model/McpSessionLog :id session-id))
 
-(mu/defn session-client-identity
-  "The client name and version of the McpSessionLog with `session-id`, or nil."
-  [session-id :- :string]
-  (t2/select-one [:model/McpSessionLog :client_name :client_version] :id session-id))
-
 (mu/defn insert-session-log!
   "Insert the McpSessionLog `row`."
   [row :- [:map {:closed true}

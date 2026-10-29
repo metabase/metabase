@@ -55,16 +55,6 @@
                       [:= :archived false]
                       (when id [:= :id id])]}))
 
-(mu/defn measure-table-id
-  "The Table ID of the Measure with `id`."
-  [id :- ::lib.schema.id/measure]
-  (t2/select-one-fn :table_id :model/Measure :id id))
-
-(mu/defn segment-table-id
-  "The Table ID of the Segment with `id`."
-  [id :- ::lib.schema.id/segment]
-  (t2/select-one-fn :table_id :model/Segment :id id))
-
 (mu/defn ai-contexts
   "The entity type, entity ID, and AI context of every OsiAiContext."
   []

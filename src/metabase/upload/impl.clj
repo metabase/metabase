@@ -33,8 +33,10 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]
    [metabase.warehouse-schema.models.table :as table]
+   [metabase.warehouses.db :as warehouses.db]
    [toucan2.core :as t2])
   (:import
    (com.ibm.icu.text Transliterator)
@@ -632,7 +634,7 @@
        [:db-id ms/PositiveInt]
        [:schema-name {:optional true} [:maybe :string]]
        [:table-prefix {:optional true} [:maybe :string]]]]
-  (let [database (or (upload.db/database db-id)
+  (let [database (or (warehouses.db/database db-id)
                      (throw (ex-info (tru "The uploads database does not exist.")
                                      {:status-code 422})))]
     (check-can-create-upload database schema-name)
@@ -988,7 +990,7 @@
        [:filename :string]
        [:file (ms/InstanceOfClass File)]
        [:action update-action-schema]]]
-  (let [table    (api/check-404 (upload.db/table table-id))
+  (let [table    (api/check-404 (warehouse-schema.db/table table-id))
         database (table/database table)
         replace? (= :metabase.upload/replace action)]
     (check-can-update database table)

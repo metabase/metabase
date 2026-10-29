@@ -13,6 +13,7 @@
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.public-sharing.validation :as public-sharing.validation]
+   [metabase.queries.db :as queries.db]
    [metabase.query-processor.api :as api.dataset]
    [metabase.query-processor.card :as qp.card]
    [metabase.util :as u]
@@ -37,6 +38,13 @@
                               (update-vals #(api.macros/decode-and-validate-params
                                              :body m.document/CardCreateSchema %)))))}
    [:map-of key-schema m.document/CardCreateSchema]])
+
+(defn- unarchived-document
+  "The Document with `document-id` if it is not archived, or nil."
+  [document-id]
+  (let [document (documents.db/document document-id)]
+    (when-not (:archived document)
+      document)))
 
 (def ^:private DocumentCreateOptions
   [:map {:closed true}
@@ -197,7 +205,7 @@
   (api/create-check :model/Document {:collection_id collection_id})
   (let [existing-document (api/check-404
                            (api/read-check
-                            (documents.db/unarchived-document from-document-id)))
+                            (unarchived-document from-document-id)))
         document-data {:name                (or name (:name existing-document))
                        :document            (:document existing-document)
                        :content_type        (:content_type existing-document)
@@ -256,14 +264,14 @@
   ;; Use a transaction to prevent race conditions when two requests arrive simultaneously.
   ;; Only one request will successfully create the UUID; both will return the same value.
   (t2/with-transaction [_conn]
-    (if-let [existing-uuid (documents.db/document-public-uuid document-id)]
+    (if-let [existing-uuid (:public_uuid (documents.db/document document-id))]
       {:uuid existing-uuid}
       (do
         (documents.db/update-document! document-id
                                        {:public_uuid       (str (random-uuid))
                                         :made_public_by_id api/*current-user-id*})
         ;; Always select after update to ensure we return what's actually stored
-        {:uuid (documents.db/document-public-uuid document-id)}))))
+        {:uuid (:public_uuid (documents.db/document document-id))}))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -315,7 +323,7 @@
 
    Throws a 404 exception via `api/check-404` if any validation fails. Returns card-id on success."
   [document-id card-id]
-  (let [document (api/check-404 (documents.db/unarchived-document document-id))]
+  (let [document (api/check-404 (unarchived-document document-id))]
     (api/read-check document)
     (api/check-404 (and (contains? (set (prose-mirror/card-ids document)) card-id)
                         (documents.db/unarchived-card-in-document-exists? card-id document-id)))))
@@ -354,7 +362,7 @@
        [:pivot_results {:default false} ms/BooleanValue]]]
   (validate-card-in-document document-id card-id)
   (qp.card/process-query-for-card
-   (api/check-404 (documents.db/card card-id)) export-format
+   (api/check-404 (queries.db/card card-id)) export-format
    :parameters  parameters
    :constraints nil
    :context     (api.dataset/export-format->context export-format)

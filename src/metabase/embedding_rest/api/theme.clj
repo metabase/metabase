@@ -4,6 +4,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.embedding-rest.db :as embedding-rest.db]
+   [metabase.embedding.db :as embedding.db]
    [metabase.embedding.settings :as embedding.settings]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
@@ -35,7 +36,7 @@
   "Fetch a single embedding theme by ID."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/check-404 (embedding-rest.db/embedding-theme-exists? id))
-  (embedding-rest.db/embedding-theme id))
+  (embedding.db/embedding-theme id))
 
 (api.macros/defendpoint :post "/" :- ::EmbeddingTheme
   "Create a new embedding theme."
@@ -59,7 +60,7 @@
                                              (cond-> {}
                                                name (assoc :name name)
                                                settings (assoc :settings settings)))
-  (embedding-rest.db/embedding-theme id))
+  (embedding.db/embedding-theme id))
 
 (api.macros/defendpoint :delete "/:id" :- :nil
   "Delete an embedding theme."
@@ -72,7 +73,7 @@
   "Copy an embedding theme."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/check-404 (embedding-rest.db/embedding-theme-exists? id))
-  (let [source-theme (embedding-rest.db/embedding-theme id)]
+  (let [source-theme (embedding.db/embedding-theme id)]
     (embedding-rest.db/insert-embedding-theme! {:name (tru "Copy of {0}" (:name source-theme))
                                                 :settings (:settings source-theme)})))
 

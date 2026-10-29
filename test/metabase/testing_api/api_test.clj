@@ -13,7 +13,8 @@
    [metabase.test :as mt]
    [metabase.testing-api.api :as testing]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]))
+   [metabase.util.date-2 :as u.date]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -154,3 +155,20 @@
                                 :model-reasoning "true"}}]]
             (is (nil? (mt/user-http-request :rasta :put 204 "testing/llm-providers" {:value vllm})))
             (is (= vllm (vec (llm.settings/llm-providers))))))))))
+
+(deftest seed-ai-usage-test
+  (testing "POST seeds one chat LLM call per count, each in its own agent loop, and DELETE removes them"
+    (let [user-id   (mt/user->id :rasta)
+          seed-rows #(t2/select :model/AiUsageLog :user_id user-id :model "test/model" :source "metabot_agent")]
+      (try
+        (is (= {:inserted 3}
+               (mt/user-http-request :crowberto :post 200 "testing/metabot/seed-ai-usage"
+                                     {:user_id user-id :count 3})))
+        (let [rows (seed-rows)]
+          (is (= 3 (count rows)))
+          (is (= 3 (count (distinct (map :request_id rows)))) "each row is its own agent loop")
+          (is (every? :request_id rows)))
+        (finally
+          (is (= {:deleted 3}
+                 (mt/user-http-request :crowberto :delete 200 "testing/metabot/seed-ai-usage" {:user_id user-id})))
+          (is (empty? (seed-rows))))))))

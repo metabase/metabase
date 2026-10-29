@@ -11,11 +11,12 @@
   (:require
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.embedding-rest.api.common :as api.embed.common]
-   [metabase.embedding-rest.db :as embedding-rest.db]
    [metabase.embedding.jwt :as embed]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.queries.db :as queries.db]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.request.core :as request]
    [metabase.tiles.api :as api.tiles]
@@ -59,7 +60,7 @@
    query-params :- api.embed.common/QueryParams]
   (let [unsigned-token (check-and-unsign token)
         card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
-        card           (api/check-404 (embedding-rest.db/card card-id))]
+        card           (api/check-404 (queries.db/card card-id))]
     (api.embed.common/process-query-for-card-with-params
      :export-format    :api
      :card             card
@@ -75,7 +76,7 @@
   from the token, so a preview reflects the settings being edited rather than the published ones."
   [unsigned-token]
   (let [card-id (api.embed.common/unsigned-token->card-id unsigned-token)]
-    (-> (api/check-404 (embedding-rest.db/card card-id))
+    (-> (api/check-404 (queries.db/card card-id))
         (assoc :embedding_params (token-embedding-params unsigned-token)))))
 
 (api.macros/defendpoint :get "/card/:token/params/:param-key/values" :- ms/FieldValuesResult
@@ -176,9 +177,9 @@
    query-params :- api.embed.common/QueryParams]
   (let [unsigned-token   (check-and-unsign token)
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
-        dashboard        (api/check-404 (embedding-rest.db/dashboard dashboard-id))
-        dashcard         (api/check-404 (embedding-rest.db/dashcard dashcard-id))
-        card             (api/check-404 (embedding-rest.db/active-card card-id))
+        dashboard        (api/check-404 (dashboards.db/dashboard dashboard-id))
+        dashcard         (api/check-404 (dashboards.db/dashboard-card dashcard-id))
+        card             (api/check-404 (api.embed.common/active-card card-id))
         embedding-params (token-embedding-params unsigned-token)
         token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
     (api.embed.common/process-query-for-dashcard
@@ -201,7 +202,7 @@
    query-params :- api.embed.common/QueryParams]
   (let [unsigned-token (check-and-unsign token)
         card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
-        card           (api/check-404 (embedding-rest.db/card card-id))]
+        card           (api/check-404 (queries.db/card card-id))]
     (api.embed.common/process-query-for-card-with-params
      :export-format    :api
      :card             card
@@ -223,9 +224,9 @@
    query-params :- api.embed.common/QueryParams]
   (let [unsigned-token   (check-and-unsign token)
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
-        dashboard        (api/check-404 (embedding-rest.db/dashboard dashboard-id))
-        dashcard         (api/check-404 (embedding-rest.db/dashcard dashcard-id))
-        card             (api/check-404 (embedding-rest.db/active-card card-id))
+        dashboard        (api/check-404 (dashboards.db/dashboard dashboard-id))
+        dashcard         (api/check-404 (dashboards.db/dashboard-card dashcard-id))
+        card             (api/check-404 (api.embed.common/active-card card-id))
         embedding-params (token-embedding-params unsigned-token)
         token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
     (api.embed.common/process-query-for-dashcard
@@ -257,7 +258,7 @@
        [:lonField ::api.tiles/legacy-ref]]]
   (let [unsigned-token   (check-and-unsign token)
         card-id    (api.embed.common/unsigned-token->card-id unsigned-token)
-        card       (api/check-404 (embedding-rest.db/card card-id))]
+        card       (api/check-404 (queries.db/card card-id))]
     (request/as-admin
       (api.embed.common/process-tiles-query-for-card
        card
@@ -286,9 +287,9 @@
        [:lonField ::api.tiles/legacy-ref]]]
   (let [unsigned-token   (check-and-unsign token)
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
-        dashboard        (api/check-404 (embedding-rest.db/dashboard dashboard-id))
-        dashcard         (api/check-404 (embedding-rest.db/dashcard dashcard-id))
-        card             (api/check-404 (embedding-rest.db/active-card card-id))]
+        dashboard        (api/check-404 (dashboards.db/dashboard dashboard-id))
+        dashcard         (api/check-404 (dashboards.db/dashboard-card dashcard-id))
+        card             (api/check-404 (api.embed.common/active-card card-id))]
     (api.embed.common/process-tiles-query-for-dashcard
      dashboard dashcard card
      (api.embed.common/tile-parameters-for-dashboard

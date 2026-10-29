@@ -42,6 +42,18 @@ const EXPECTED_OPERATORS = [
   "Not empty",
 ];
 
+const EXPECTED_KEY_OPERATORS = [
+  "Is",
+  "Is not",
+  "Between",
+  "Greater than",
+  "Greater than or equal to",
+  "Less than",
+  "Less than or equal to",
+  "Is empty",
+  "Not empty",
+];
+
 type SetupOpts = {
   query?: Lib.Query;
   column?: Lib.ColumnMetadata;
@@ -133,6 +145,25 @@ describe("NumberFilterPicker", () => {
       );
     });
 
+    it.each([
+      ["primary", "ID"],
+      ["foreign", "PRODUCT_ID"],
+    ])("should list operators for a %s key column", async (_, columnName) => {
+      const query = createQuery();
+      const columns = Lib.filterableColumns(query, 0);
+      const column = columnFinder(query, columns)("ORDERS", columnName);
+      setup({ query, column });
+
+      await userEvent.click(screen.getByLabelText("Filter operator"));
+      const menu = await screen.findByRole("menu");
+      const menuItems = within(menu).getAllByRole("menuitem");
+
+      expect(menuItems).toHaveLength(EXPECTED_KEY_OPERATORS.length);
+      EXPECTED_KEY_OPERATORS.forEach((operatorName) =>
+        expect(within(menu).getByText(operatorName)).toBeInTheDocument(),
+      );
+    });
+
     describe("with one value", () => {
       it.each(NUMERIC_TEST_CASES)(
         "should add a filter with a %s value",
@@ -195,9 +226,53 @@ describe("NumberFilterPicker", () => {
         });
         expect(getNextFilterColumnName()).toBe("ID");
       });
+
+      it("should add a filter with a value out of the 64-bit integer range", async () => {
+        const query = createQuery();
+        const columns = Lib.filterableColumns(query, -1);
+        const findColumn = columnFinder(query, columns);
+        const column = findColumn("ORDERS", "ID");
+        const { getNextFilterParts } = setup({ query, column });
+
+        const input = screen.getByLabelText("Filter value");
+        await userEvent.type(input, "-9223372036854775809");
+        await userEvent.click(
+          screen.getByRole("button", { name: "Add filter" }),
+        );
+        expect(getNextFilterParts()).toMatchObject({
+          operator: "=",
+          values: [-9223372036854775809n],
+        });
+      });
     });
 
     describe("with two values", () => {
+      it("should add a filter with big integer min and max values", async () => {
+        const query = createQuery();
+        const columns = Lib.filterableColumns(query, -1);
+        const findColumn = columnFinder(query, columns);
+        const column = findColumn("ORDERS", "ID");
+        const { getNextFilterParts } = setup({ query, column });
+
+        await setOperator("Between");
+        await userEvent.type(
+          screen.getByPlaceholderText("Min"),
+          "-9223372036854775808",
+        );
+        await userEvent.type(
+          screen.getByPlaceholderText("Max"),
+          "9223372036854775807",
+        );
+        await userEvent.click(
+          screen.getByRole("button", { name: "Add filter" }),
+        );
+
+        expect(getNextFilterParts()).toMatchObject({
+          operator: "between",
+          values: [-9223372036854775808n, 9223372036854775807n],
+        });
+      });
+
       it.each(BETWEEN_TEST_CASES)(
         "should add a filter with %i to %i values",
         async (leftValue, rightValue) => {

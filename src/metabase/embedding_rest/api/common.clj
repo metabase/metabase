@@ -4,10 +4,10 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.database-routing.core :as database-routing]
    [metabase.eid-translation.core :as eid-translation]
-   [metabase.embedding-rest.db :as embedding-rest.db]
    [metabase.embedding.jwt :as embed]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
@@ -18,6 +18,7 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.public-sharing-rest.api :as api.public]
    [metabase.queries.core :as queries]
+   [metabase.queries.db :as queries.db]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.parameters.operators :as params.ops]
@@ -350,13 +351,19 @@
   (->> (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
        (eid-translation/->id :model/Card)))
 
+(defn active-card
+  "The Card with `card-id` unless it is archived, in which case nil; a trashed Card keeps its DashboardCard rows."
+  [card-id]
+  (let [card (queries.db/card card-id)]
+    (when-not (:archived card) card)))
+
 (defn card-for-unsigned-token
   "Return the info needed for embedding about Card specified in `token`."
   [unsigned-token & {:keys [embedding-params enable-embedding?]}]
   (let [card-id      (unsigned-token->card-id unsigned-token)
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
         resolved-embedding-params (or embedding-params
-                                      (embedding-rest.db/card-embedding-params card-id))]
+                                      (:embedding_params (queries.db/card card-id)))]
     (-> (api.public/public-card card-id :enable-embedding? enable-embedding?)
         api.public/combine-parameters-and-template-tags
         (remove-token-parameters token-params)
@@ -469,7 +476,7 @@
                                                               [:enable-embedding? {:optional true} [:maybe :boolean]]]]]
   (let [dashboard-id (unsigned-token->dashboard-id unsigned-token)
         embedding-params (or embedding-params
-                             (embedding-rest.db/dashboard-embedding-params dashboard-id))
+                             (:embedding_params (dashboards.db/dashboard dashboard-id)))
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
     (-> (api.public/public-dashboard dashboard-id :enable-embedding? enable-embedding?)
         (substitute-token-parameters-in-text token-params)
@@ -623,7 +630,7 @@
    & {:keys [preview] :or {preview false}}]
   (let [unsigned-token                                 (embed/unsign token)
         dashboard-id                                   (unsigned-token->dashboard-id unsigned-token)
-        dashboard                                      (embedding-rest.db/dashboard dashboard-id)
+        dashboard                                      (dashboards.db/dashboard dashboard-id)
         _                                              (when-not preview (check-embedding-enabled-for-dashboard dashboard))
         slug-token-params                              (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
         {parameters                 :parameters
@@ -678,7 +685,7 @@
   ([token param-key value {:keys [preview] :or {preview false}}]
    (let [unsigned-token             (embed/unsign token)
          dashboard-id               (unsigned-token->dashboard-id unsigned-token)
-         dashboard                  (embedding-rest.db/dashboard dashboard-id)
+         dashboard                  (dashboards.db/dashboard dashboard-id)
          _                          (when-not preview (check-embedding-enabled-for-dashboard dashboard))
          slug-token-params          (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
          parameters                 (:parameters dashboard)
