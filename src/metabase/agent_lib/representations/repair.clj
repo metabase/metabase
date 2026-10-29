@@ -2686,23 +2686,32 @@
   (let [joins (get stage "joins")]
     (into #{} (keep #(when (map? %) (get % "alias"))) (when (sequential? joins) joins))))
 
+(defn- hidden-join-keys
+  "Return the keys of `join` that the cross-stage passes leave alone.
+  These are its own `stages`, and its `fields` when it has no alias."
+  [join]
+  ;; Refs in an alias-less join's `fields` can't be told from refs to the previous stage, and validation reports the
+  ;; missing alias.
+  (cond-> ["stages"]
+    (not (non-blank-string? (get join "alias"))) (conj "fields")))
+
 (defn- without-join-stages
-  "Return `stage` with each join's own `stages` removed, keeping the stage's own clauses and the rest of each join."
+  "Return `stage` without its joins' [[hidden-join-keys]], keeping the stage's own clauses and the rest of each join."
   [stage]
   (cond-> stage
     (sequential? (get stage "joins"))
-    (update "joins" (partial mapv #(cond-> % (map? %) (dissoc "stages"))))))
+    (update "joins" (partial mapv #(if (map? %) (apply dissoc % (hidden-join-keys %)) %)))))
 
 (defn- postwalk-outside-join-stages
   "Apply `f` with `walk/postwalk` to the parts of `stage` that [[without-join-stages]] keeps.
-  Each join's own `stages` come back unchanged."
+  Each join's [[hidden-join-keys]] come back unchanged."
   [f stage]
   (let [joins (get stage "joins")]
     (cond-> (walk/postwalk f (without-join-stages stage))
       (sequential? joins)
       (update "joins" #(mapv (fn [walked join]
                                (cond-> walked
-                                 (and (map? join) (contains? join "stages")) (assoc "stages" (get join "stages"))))
+                                 (map? join) (merge (select-keys join (hidden-join-keys join)))))
                              %
                              joins)))))
 
