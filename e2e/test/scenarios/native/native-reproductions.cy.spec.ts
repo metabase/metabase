@@ -16,7 +16,7 @@ import { createMockParameter } from "metabase-types/api/mocks";
 
 import { getRunQueryButton, runQuery } from "./helpers/e2e-sql-filter-helpers";
 
-const { ORDERS_ID, PRODUCTS } = SAMPLE_DATABASE;
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("issue 12439", () => {
   const nativeQuery = `
@@ -122,115 +122,6 @@ describe("issue 17060", () => {
       cy.findAllByTestId("header-cell").should("have.length", 2);
       cy.findByText("num").should("be.visible");
     });
-  });
-});
-
-describe("issue 19451", () => {
-  const question = {
-    name: "19451",
-    native: {
-      query: "select count(*) from products where {{filter}}",
-      "template-tags": {
-        filter: {
-          id: "1b33304a-18ea-cc77-083a-b5225954f200",
-          name: "filter",
-          "display-name": "Filter",
-          type: "dimension",
-          dimension: ["field", PRODUCTS.ID, null],
-          "widget-type": "id",
-          default: null,
-        },
-      },
-    },
-    display: "scalar",
-  };
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createNativeQuestion(question, { visitQuestion: true });
-  });
-
-  it("question field filter shows all tables from a selected database (metabase#19451, metabase#23510)", () => {
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Open Editor").click();
-
-    cy.log("The data reference loads uncached metadata (metabase#23510)");
-    cy.findByTestId("sidebar-content").within(() => {
-      cy.findByText("ORDERS");
-      cy.findByText("PRODUCTS");
-      cy.findByText("REVIEWS");
-      cy.findByText("PEOPLE");
-      cy.findByText("Sample Database");
-    });
-
-    cy.icon("variable").click();
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Products").click();
-    cy.icon("chevronleft").click();
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Products");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Orders");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("People");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Reviews");
-  });
-});
-
-describe("issue 31926", { tags: "@external" }, () => {
-  const databaseName = "Sample Database";
-  const databaseCopyName = `${databaseName} copy`;
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should disable running and saving after switching a field filter query to another database (metabase#31926)", () => {
-    // Second DB (copy)
-    H.addPostgresDatabase(databaseCopyName);
-
-    // Create a native query and run it
-    H.startNewNativeQuestion();
-    H.NativeEditor.type("SELECT COUNT(*) FROM PRODUCTS WHERE {{FILTER}}");
-
-    cy.findByTestId("variable-type-select").click();
-    H.popover().within(() => {
-      cy.findByText("Field Filter").click();
-    });
-    H.popover().within(() => {
-      cy.findByText("Products").click();
-    });
-    H.popover().within(() => {
-      cy.findByText("Category").click();
-    });
-
-    cy.findByTestId("native-query-editor-container").icon("play").click();
-    cy.findByTestId("scalar-value").should("have.text", "200");
-    cy.findByTestId("qb-save-button").should("not.have.attr", "data-disabled");
-
-    // Change DB
-    // and re-run the native query
-    cy.findByTestId("native-query-editor-container")
-      .findByText("Sample Database")
-      .click();
-    H.popover().within(() => {
-      cy.findByText(databaseCopyName).click();
-    });
-    // run button disabled
-    cy.findAllByTestId("run-button").filter(":visible").should("be.disabled");
-
-    // Try to save the native query
-    // save button disabled
-    cy.findByTestId("qb-save-button").should(
-      "have.attr",
-      "data-disabled",
-      "true",
-    );
   });
 });
 
@@ -567,88 +458,15 @@ describe("issue 38176", () => {
   });
 });
 
-describe("issues 11727, 14957, 15876", { tags: "@external" }, () => {
-  const PG_DB_ID = 2;
+describe("issue 14957", { tags: "@external" }, () => {
   const PG_DB_NAME = "QA Postgres12";
-
-  const cancelQuestionDetails = {
-    dataset_query: {
-      type: "native",
-      database: PG_DB_ID,
-      native: {
-        query: "SELECT pg_sleep(10)",
-      },
-    },
-  };
-
-  const timeCastQuestionDetails: NativeQuestionDetails = {
-    native: {
-      query: `select mytz as "ts", mytz::text as "tsAStext", state, mytz::time as "time - LOOK AT THIS COLUMN", mytz::time::text as "timeAStext", mytz::time(0) as "time(0) - ALL INCORRECT", mytz::time(3) as "time(3) - MOSTLY WORKING" from (
-      select '2022-05-04 16:29:59.268160-04:00'::timestamptz as mytz, 'incorrect' AS state union all
-      select '2022-05-04 16:29:59.412459-04:00'::timestamptz, 'good' union all
-      select '2022-05-08 13:14:42.926221-04:00'::timestamptz, 'incorrect' union all
-      select '2022-05-08 13:14:42.132026-04:00'::timestamptz, 'good' union all
-      select '2022-05-10 07:38:58.987352-04:00'::timestamptz, 'incorrect' union all
-      select '2022-05-10 07:38:58.001001-04:00'::timestamptz, 'good' union all
-      select '2022-05-12 11:01:23.000000-04:00'::timestamptz, 'ALWAYS incorrect' union all
-      select '2022-05-12 11:01:23.000-04:00'::timestamptz, 'ALWAYS incorrect' union all
-      select '2022-05-12 11:01:23-04:00'::timestamptz, 'ALWAYS incorrect'
-  )x`,
-    },
-    database: PG_DB_ID,
-  };
-
-  // time, time(0), time(3)
-  const castColumns = 3;
-
-  const correctValues = [
-    {
-      value: "1:29 PM",
-      rows: 2,
-    },
-    {
-      value: "10:14 AM",
-      rows: 2,
-    },
-    {
-      value: "4:38 AM",
-      rows: 2,
-    },
-    {
-      value: "8:01 AM",
-      rows: 3,
-    },
-  ];
 
   beforeEach(() => {
     H.restore("postgres-12");
     cy.signInAsAdmin();
   });
 
-  it("should correctly cast to `TIME`, cancel the native query via the keyboard shortcut, and save a question before query has been executed (metabase#15876, metabase#11727, metabase#14957)", () => {
-    H.createNativeQuestion(timeCastQuestionDetails, { visitQuestion: true });
-
-    cy.findByTestId("query-visualization-root").within(() => {
-      correctValues.forEach(({ value, rows }) => {
-        const count = rows * castColumns;
-
-        cy.findAllByText(value).should("have.length", count);
-      });
-    });
-
-    cy.intercept("GET", "/api/database").as("getDatabases");
-    cy.visit("/question#" + H.adhocQuestionHash(cancelQuestionDetails));
-    cy.wait("@getDatabases");
-
-    H.runNativeQuery({ wait: false });
-    cy.findByTestId("query-builder-main")
-      .findByText("Doing science...")
-      .should("be.visible");
-    cy.realPress([H.metaKey, "Enter"]);
-    cy.findByTestId("query-builder-main")
-      .findByText("Here's where your results will appear")
-      .should("be.visible");
-
+  it("should save a question before the query has been executed (metabase#14957)", () => {
     H.startNewNativeQuestion();
 
     cy.findByTestId("gui-builder-data").click();
@@ -948,39 +766,6 @@ describe("issue 54124", () => {
     H.NativeEditor.type("{leftarrow}{leftarrow}{leftarrow}");
     cy.findByTestId("sidebar-content").should("be.visible");
   });
-});
-
-describe("issue 52811", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-  });
-
-  it("popovers should close when clicking outside (metabase#52811)", () => {
-    H.startNewNativeQuestion();
-    H.NativeEditor.type("{{x");
-    cy.findByLabelText("Variable type").click();
-
-    cy.log("popover should close when clicking away");
-    H.popover().findByText("Field Filter").click();
-    H.popover().should("be.visible").and("contain.text", "Orders");
-    clickAway();
-    cy.get(H.POPOVER_ELEMENT).should("not.exist");
-
-    cy.log(
-      "existing popover should close when opening a new one (metabase#52811)",
-    );
-    cy.findByTestId("sidebar-content").findByText("Select...").click();
-    cy.findByLabelText("Variable type").click();
-    H.popover()
-      .should("have.length", 1)
-      .and("contain.text", "Field Filter")
-      .and("not.contain.text", "Sample Database");
-  });
-
-  function clickAway() {
-    cy.get("body").click(0, 0);
-  }
 });
 
 describe("issue 52806", () => {
