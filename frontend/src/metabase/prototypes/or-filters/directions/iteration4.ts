@@ -27,6 +27,17 @@ import { ExpressionBarNotebook as SeparationExpressionBarNotebook } from "./iter
 import { ExpressionBarSplitPrototype as SeparationExpressionBarSplitPrototype } from "./iteration-4-separation/ExpressionBarPrototype";
 import { SummarizeBar as SeparationSummarizeBar } from "./iteration-4-separation/SummarizeBar";
 import {
+  DataViewCanvas as AddFilter2DataViewCanvas,
+  SummaryInBarDataZone as AddFilter2SummaryInBarDataZone,
+} from "./iteration-4-with-add-filter-2/DataViewCanvas";
+import {
+  type ExpressionBarProps as AddFilter2ExpressionBarProps,
+  ExpressionBar as AddFilter2RowsExpressionBar,
+} from "./iteration-4-with-add-filter-2/ExpressionBar";
+import { ExpressionBarNotebook as AddFilter2ExpressionBarNotebook } from "./iteration-4-with-add-filter-2/ExpressionBarNotebook";
+import { ExpressionBarSplitPrototype as AddFilter2ExpressionBarSplitPrototype } from "./iteration-4-with-add-filter-2/ExpressionBarPrototype";
+import { SummarizeBar as AddFilter2SummarizeBar } from "./iteration-4-with-add-filter-2/SummarizeBar";
+import {
   DataViewCanvas as AddFilterDataViewCanvas,
   SummaryInBarDataZone as AddFilterSummaryInBarDataZone,
 } from "./iteration-4-with-add-filter/DataViewCanvas";
@@ -68,11 +79,20 @@ const AddFilterNotebookRowsBar = (props: AddFilterExpressionBarProps) =>
     hasRoundOps: true,
   });
 
+/** Same bar, from the second add-filter copy of the components. */
+const AddFilter2NotebookRowsBar = (props: AddFilter2ExpressionBarProps) =>
+  createElement(AddFilter2RowsExpressionBar, {
+    ...props,
+    isInNotebook: true,
+    rowsFromNesting: 2,
+    hasRoundOps: true,
+  });
+
 export const ITERATION_4_DIRECTIONS: FilterDirection[] = [
   {
     id: "iteration-4-draft",
     get name() {
-      return t`Iteration 4 draft`;
+      return t`Darker summary pills`;
     },
     get description() {
       return t`"Aggregation filters from the legend" without filtering from the legend or the y-axis: the chart is just a chart. Filters on the summary (Count ≥ 3) sit in the same bar as the row filters, at its end, always AND-ed on, as pills a shade darker than the row filters. While editing, the bar only breaks into indented rows once parentheses nest two levels deep; a single level of groups stays on one line.`;
@@ -101,10 +121,10 @@ export const ITERATION_4_DIRECTIONS: FilterDirection[] = [
     id: "iteration-4-separation",
     hasCompactReadingOn: true,
     get name() {
-      return t`Iteration 4 separation`;
+      return t`Separation`;
     },
     get description() {
-      return t`A copy of "Iteration 4 draft" with its own copy of the components, so tweaks here leave the draft alone.`;
+      return t`A copy of "Draft" with its own copy of the components, so tweaks here leave the draft alone.`;
     },
     Component: SeparationExpressionBarSplitPrototype,
     Canvas: (props) =>
@@ -129,10 +149,10 @@ export const ITERATION_4_DIRECTIONS: FilterDirection[] = [
   {
     id: "iteration-4-with-add-filter",
     get name() {
-      return t`Iteration 4 with add filter`;
+      return t`With add filter`;
     },
     get description() {
-      return t`A copy of "Iteration 4 draft" with its own copy of the components, for trying an explicit "add filter" affordance without touching the draft.`;
+      return t`A copy of "Draft" with its own copy of the components, for trying an explicit "add filter" affordance without touching the draft.`;
     },
     Component: AddFilterExpressionBarSplitPrototype,
     Canvas: (props) =>
@@ -150,6 +170,34 @@ export const ITERATION_4_DIRECTIONS: FilterDirection[] = [
         ...props,
         FilterBar: AddFilterNotebookRowsBar,
         SummarizeBar: AddFilterSummarizeBar,
+        appliesOnVisualize: true,
+      }),
+    initialExample: REALISTIC_EXAMPLES[0],
+  },
+  {
+    id: "iteration-4-with-add-filter-2",
+    get name() {
+      return t`Without AND`;
+    },
+    get description() {
+      return t`A copy of "With add filter": the bar-click filter menu uses symbols (≤, ≥) and adds an "any operator" entry for the series; ANDs are implicit (never shown, never typed), only OR and parentheses can be added, and summary pills are the same purple as row filters.`;
+    },
+    Component: AddFilter2ExpressionBarSplitPrototype,
+    Canvas: (props) =>
+      createElement(AddFilter2DataViewCanvas, {
+        ...props,
+        DataZone: (zoneProps) =>
+          createElement(AddFilter2SummaryInBarDataZone, {
+            ...zoneProps,
+            focusKey: FOCUS_KEY,
+          }),
+        hasThresholdsBesideLegend: false,
+      }),
+    NotebookCanvas: (props) =>
+      createElement(AddFilter2ExpressionBarNotebook, {
+        ...props,
+        FilterBar: AddFilter2NotebookRowsBar,
+        SummarizeBar: AddFilter2SummarizeBar,
         appliesOnVisualize: true,
       }),
     initialExample: REALISTIC_EXAMPLES[0],

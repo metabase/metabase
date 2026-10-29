@@ -14,6 +14,7 @@ import _ from "underscore";
 import { useGetAdhocQueryQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useMetadataProviderUnfiltered } from "metabase/metadata-store";
+import { FilterPickerBody } from "metabase/querying/filters/components/FilterPicker/FilterPickerBody";
 import {
   Box,
   Button,
@@ -38,6 +39,7 @@ import type {
 } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
+import { toFilterClause } from "../../harness/clauses";
 import { ALL_DRILLS_CLICK_MODE } from "../../harness/drillMode";
 
 import {
@@ -58,6 +60,8 @@ type QuestionChartProps = {
   hasNewMenu?: boolean;
   /** "nested" folds the filters behind one "Filter" entry; "flat" lists them under the drills. */
   menuLayout?: "nested" | "flat";
+  /** Sets the menu's first entry apart with a divider, like the app's drill popover. */
+  hasFirstActionDivider?: boolean;
   onPick: (query: Lib.Query, target: DrillOptionTarget) => void;
   /** Today's popover produced a new query. */
   onLegacyDrill?: (query: Lib.Query) => void;
@@ -74,6 +78,8 @@ type QuestionChartProps = {
    * One measure gets a title even when split into series.
    */
   yAxisTitle?: (frame: AxisTitleFrame) => ReactNode;
+  /** Bar-click thresholds read "Count ≥ 12", plus a "Count…" entry with the full picker. */
+  hasSymbolThresholds?: boolean;
 };
 
 type OpenMenu = { model: DrillMenuModel; x: number; y: number };
@@ -88,6 +94,7 @@ export function QuestionChart({
   display,
   hasNewMenu = true,
   menuLayout = "nested",
+  hasFirstActionDivider = false,
   onPick,
   onLegacyDrill,
   pickQuery = query,
@@ -95,6 +102,7 @@ export function QuestionChart({
   legendAccessory,
   legendWrap,
   yAxisTitle,
+  hasSymbolThresholds,
 }: QuestionChartProps) {
   const metadataProvider = useMetadataProviderUnfiltered(Lib.databaseID(query));
   const jsQuery = useMemo(() => Lib.toJsQuery(query), [query]);
@@ -152,7 +160,13 @@ export function QuestionChart({
     }
     const event = clicked?.event;
     const model = clicked
-      ? getDrillMenu({ query, clicked, groupCount, markNoun })
+      ? getDrillMenu({
+          query,
+          clicked,
+          groupCount,
+          markNoun,
+          hasSymbolThresholds,
+        })
       : undefined;
     setMenu(
       model && event
@@ -245,6 +259,7 @@ export function QuestionChart({
             menu={menu}
             query={query}
             markNoun={markNoun}
+            hasFirstActionDivider={hasFirstActionDivider}
             onClose={() => setMenu(undefined)}
             onPick={(option) => {
               setMenu(undefined);
@@ -261,6 +276,7 @@ export function QuestionChart({
   );
 }
 
+const SUMMARY_STAGE = 1;
 const LEGEND_ACCESSORY_GAP = 12;
 const LEGEND_WRAP_PADDING = 10;
 
@@ -449,6 +465,7 @@ type DrillMenuProps = {
   menu: OpenMenu;
   query: Lib.Query;
   markNoun: string;
+  hasFirstActionDivider?: boolean;
   onClose: () => void;
   onPick: (option: DrillOption) => void;
   onAction: (query: Lib.Query) => void;
@@ -560,14 +577,23 @@ function getEffectiveDisplay(
 const SUBMENU_MIN_WIDTH = 300;
 
 /** A submenu that replaces the main list, like today's popover. */
-type NestedView = { kind: "action"; action: DrillAction } | { kind: "filter" };
+type NestedView =
+  | { kind: "action"; action: DrillAction }
+  | { kind: "filter" }
+  | { kind: "picker"; option: DrillOption };
 
 /**
  * Today's drill-through popover: same layout and type, submenus replace the
  * list behind a back button. Every filter sits behind one "Filter" entry
  * under "Break out by…".
  */
-function NestedDrillMenu({ menu, onClose, onPick, onAction }: DrillMenuProps) {
+function NestedDrillMenu({
+  menu,
+  hasFirstActionDivider,
+  onClose,
+  onPick,
+  onAction,
+}: DrillMenuProps) {
   const [views, setViews] = useState<NestedView[]>([]);
   const view = views.at(-1);
 
@@ -615,18 +641,33 @@ function NestedDrillMenu({ menu, onClose, onPick, onAction }: DrillMenuProps) {
         >
           {view && (
             <PopoverBackButton mb="sm" onClick={goBack}>
-              {view.kind === "filter" ? t`Filter…` : view.action.title}
+              {view.kind === "action"
+                ? view.action.title
+                : view.kind === "picker"
+                  ? t`Filter ${view.option.title.replace(/…$/, "").toLowerCase()}`
+                  : t`Filter…`}
             </PopoverBackButton>
           )}
           {view == null && (
             <NestedMainView
               model={menu.model}
+              hasFirstActionDivider={hasFirstActionDivider}
               onAction={handleAction}
               onFilter={() => openView({ kind: "filter" })}
             />
           )}
           {view?.kind === "filter" && (
-            <NestedFilterView options={menu.model.options} onPick={onPick} />
+            <NestedFilterView
+              options={menu.model.options}
+              onPick={(option) =>
+                option.picker
+                  ? openView({ kind: "picker", option })
+                  : onPick(option)
+              }
+            />
+          )}
+          {view?.kind === "picker" && view.option.picker && (
+            <SummaryPicker option={view.option} onPick={onPick} />
           )}
           {view?.kind === "action" && (
             <>
@@ -649,11 +690,17 @@ function NestedDrillMenu({ menu, onClose, onPick, onAction }: DrillMenuProps) {
 
 type NestedMainViewProps = {
   model: DrillMenuModel;
+  hasFirstActionDivider?: boolean;
   onAction: (action: DrillAction) => void;
   onFilter: () => void;
 };
 
-function NestedMainView({ model, onAction, onFilter }: NestedMainViewProps) {
+function NestedMainView({
+  model,
+  hasFirstActionDivider,
+  onAction,
+  onFilter,
+}: NestedMainViewProps) {
   const filterIndex =
     model.actions.findIndex((action) => action.id === "pivot") + 1;
   const hasFilter = model.options.length > 0;
@@ -669,6 +716,9 @@ function NestedMainView({ model, onAction, onFilter }: NestedMainViewProps) {
           <NestedMenuButton icon={action.icon} onClick={() => onAction(action)}>
             {action.title}
           </NestedMenuButton>
+          {hasFirstActionDivider && index === 0 && model.actions.length > 1 && (
+            <Divider mx="-xl" my="xs" />
+          )}
         </Fragment>
       ))}
     </>
@@ -703,6 +753,39 @@ function NestedFilterView({ options, onPick }: NestedFilterViewProps) {
         </Fragment>
       ))}
     </>
+  );
+}
+
+type SummaryPickerProps = {
+  option: DrillOption;
+  onPick: (option: DrillOption) => void;
+};
+
+/** The app's own filter picker on the clicked measure, any operator. */
+function SummaryPicker({ option, onPick }: SummaryPickerProps) {
+  if (!option.picker) {
+    return null;
+  }
+  const { query: summaryQuery, column } = option.picker;
+  return (
+    <Box mx="-xl" mb="-lg" fw="normal">
+      <FilterPickerBody
+        query={summaryQuery}
+        stageIndex={SUMMARY_STAGE}
+        column={column}
+        onChange={(clause) =>
+          onPick({
+            ...option,
+            apply: () =>
+              Lib.filter(
+                summaryQuery,
+                SUMMARY_STAGE,
+                toFilterClause(summaryQuery, SUMMARY_STAGE, clause),
+              ),
+          })
+        }
+      />
+    </Box>
   );
 }
 

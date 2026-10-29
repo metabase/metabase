@@ -19,6 +19,8 @@ export type DrillOption = {
   title: string;
   detail: string;
   apply: (query: Lib.Query) => Lib.Query;
+  /** Opens the app's filter picker on this summary column instead of applying right away. */
+  picker?: { query: Lib.Query; column: Lib.ColumnMetadata };
 };
 
 /** One of today's drill-throughs, kept as is at the top of the menu. */
@@ -186,6 +188,7 @@ function summaryOptions(
   value: number,
   formattedValue: string,
   markNoun: string,
+  hasSymbols = false,
 ): DrillOption[] {
   const summaryQuery = withSummaryStage(query);
   const target = Lib.filterableColumns(summaryQuery, SUMMARY_STAGE).find(
@@ -219,6 +222,32 @@ function summaryOptions(
       Lib.numberFilterClause({ operator, column: target, values: [value] }),
     );
   };
+  if (hasSymbols) {
+    return [
+      {
+        id: "at-least",
+        target: "summary",
+        title: `${measureName} ≥ ${formattedValue}`,
+        detail: t`Hides the ${markNoun} under ${formattedValue}`,
+        apply: withThreshold(">="),
+      },
+      {
+        id: "at-most",
+        target: "summary",
+        title: `${measureName} ≤ ${formattedValue}`,
+        detail: t`Hides the ${markNoun} over ${formattedValue}`,
+        apply: withThreshold("<="),
+      },
+      {
+        id: "any-operator",
+        target: "summary",
+        title: t`${measureName}…`,
+        detail: t`Pick any operator`,
+        apply: (current) => current,
+        picker: { query: summaryQuery, column: target },
+      },
+    ];
+  }
   return [
     {
       id: "at-least",
@@ -345,6 +374,8 @@ type GetDrillMenuOpts = {
   groupCount: number;
   /** What one group is called on this chart: "bars", "points"… */
   markNoun: string;
+  /** Thresholds read "Count ≥ 12", plus an entry that opens the full picker. */
+  hasSymbolThresholds?: boolean;
 };
 
 /**
@@ -357,6 +388,7 @@ export function getDrillMenu({
   clicked,
   groupCount,
   markNoun,
+  hasSymbolThresholds,
 }: GetDrillMenuOpts): DrillMenuModel | undefined {
   const rowsQuery = rowsOnly(query);
   // The click comes from the full query's results, so the drills must see the
@@ -422,6 +454,7 @@ export function getDrillMenu({
         clicked.value,
         formattedMeasure,
         markNoun,
+        hasSymbolThresholds,
       ),
     );
   }
