@@ -65,21 +65,30 @@ const ChartSettingsWidget = ({
       style={style}
     >
       {title && (
-        <Group align="center" gap="xxs" mb={inline && !hidden ? 0 : "sm"}>
-          <Text
-            component="label"
-            fw="bold"
-            fz={isFormField ? "0.75rem" : undefined}
-            lh={variant === "default" ? "normal" : "0.875rem"}
-            htmlFor={extraWidgetProps.id}
-          >
-            {title}
-          </Text>
-          {hint && (
-            <Tooltip label={hint}>
-              <Icon name="info" size={14} />
-            </Tooltip>
-          )}
+        <Group
+          align="center"
+          gap="xxs"
+          wrap="nowrap"
+          mb={inline && !hidden ? 0 : "sm"}
+        >
+          {/* Inline, so the hint follows a title that wraps rather than taking a line of its own. */}
+          <Box miw={0}>
+            <Text
+              component="label"
+              display="inline"
+              fw="bold"
+              fz={isFormField ? "0.75rem" : undefined}
+              lh={variant === "default" ? "normal" : "0.875rem"}
+              htmlFor={extraWidgetProps.id}
+            >
+              {title}
+            </Text>
+            {hint && (
+              <Tooltip label={hint}>
+                <Icon className={S.hint} name="info" size={14} />
+              </Tooltip>
+            )}
+          </Box>
           {titleAction !== undefined && <Box ml="auto">{titleAction}</Box>}
         </Group>
       )}

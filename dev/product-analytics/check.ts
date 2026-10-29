@@ -1468,6 +1468,91 @@ checkGroups(
   { US: 4 },
 );
 
+// Errors are excluded. An excluded event is taken out of the visit before its
+// steps are numbered and repeats are merged, so the steps on either side of it
+// join up, rather than the path dropping off there.
+const pathsFixtureRows = (events: FixtureEvent[], mergeRepeats: boolean) => {
+  const spec: AnalysisSpec = {
+    ...pathsDefault,
+    paths: pathsDefault.paths && {
+      ...pathsDefault.paths,
+      excluded: [{ flag: FLAG.error }],
+      minVolume: 1,
+      mergeRepeats,
+    },
+  };
+  return chJson(
+    buildSql(spec, fixtureEventsSql(events), baseColumns(spec)).sql,
+  );
+};
+const stepLabel = (step: number, flag: (typeof FLAG)[keyof typeof FLAG]) =>
+  `${step}. ${flag}`;
+
+console.log("\npaths with an excluded event");
+checkRows(
+  "an excluded event between two steps joins them, however many times it happens",
+  await pathsFixtureRows(
+    [
+      ...fixtureEvents("once", [
+        [FLAG.pricing, "2026-01-01 00:00:00"],
+        [FLAG.error, "2026-01-01 00:01:00"],
+        [FLAG.trial, "2026-01-01 00:02:00"],
+      ]),
+      ...fixtureEvents("twice", [
+        [FLAG.pricing, "2026-01-01 00:00:00"],
+        [FLAG.error, "2026-01-01 00:01:00"],
+        [FLAG.error, "2026-01-01 00:02:00"],
+        [FLAG.trial, "2026-01-01 00:03:00"],
+      ]),
+    ],
+    false,
+  ),
+  [
+    {
+      source: stepLabel(1, FLAG.pricing),
+      target: stepLabel(2, FLAG.trial),
+      weight: 2,
+    },
+    { source: stepLabel(2, FLAG.trial), target: "3. (dropped)", weight: 2 },
+  ],
+);
+// Trial, error, trial: without the error, the trials are a repeat.
+const AROUND_AN_ERROR = fixtureEvents("around", [
+  [FLAG.pricing, "2026-01-01 00:00:00"],
+  [FLAG.trial, "2026-01-01 00:01:00"],
+  [FLAG.error, "2026-01-01 00:02:00"],
+  [FLAG.trial, "2026-01-01 00:03:00"],
+]);
+checkRows(
+  "merging repeats makes one step of the same step on either side of an excluded event",
+  await pathsFixtureRows(AROUND_AN_ERROR, true),
+  [
+    {
+      source: stepLabel(1, FLAG.pricing),
+      target: stepLabel(2, FLAG.trial),
+      weight: 1,
+    },
+    { source: stepLabel(2, FLAG.trial), target: "3. (dropped)", weight: 1 },
+  ],
+);
+checkRows(
+  "without merging repeats, the same step on either side of an excluded event is two",
+  await pathsFixtureRows(AROUND_AN_ERROR, false),
+  [
+    {
+      source: stepLabel(1, FLAG.pricing),
+      target: stepLabel(2, FLAG.trial),
+      weight: 1,
+    },
+    {
+      source: stepLabel(2, FLAG.trial),
+      target: stepLabel(3, FLAG.trial),
+      weight: 1,
+    },
+    { source: stepLabel(3, FLAG.trial), target: "4. (dropped)", weight: 1 },
+  ],
+);
+
 if (failures.length > 0) {
   console.error(`\n${failures.length} check(s) failed`);
   process.exit(1);

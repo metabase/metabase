@@ -27,6 +27,7 @@ import {
 import {
   getCommonSpec,
   getEventDefinitionProps,
+  isBoolean,
   isOneOf,
   isOptionalEventDefinition,
   ready,
@@ -98,8 +99,6 @@ const SETTINGS: AnalysisSettingDefinitions<CohortsSettings> = {
   }),
   "cohorts.start": withWidgetProps({
     getTitle: () => t`What marks the start of a cohort?`,
-    getHint: () =>
-      t`Each person's clock starts the first time they do it in the date range, even if they did it before.`,
     getSection: () => "setup",
     widget: EventDefinitionWidget,
     getDefault: () => null,
@@ -134,6 +133,16 @@ const SETTINGS: AnalysisSettingDefinitions<CohortsSettings> = {
       w: "100%",
     }),
   }),
+  "cohorts.first_time_ever": {
+    getTitle: () => t`Only include someone's first ever start event`,
+    getHint: () =>
+      t`Excludes anyone who did the starting event before the date range. This checks each person's whole history, so it can be slow.`,
+    getSection: () => "advanced",
+    inline: true,
+    widget: "toggle",
+    getDefault: () => false,
+    isValid: (value) => isBoolean(value),
+  },
   "cohorts.display": withWidgetProps({
     getTitle: () => t`What value do you want to see?`,
     getSection: () => "advanced",
@@ -240,6 +249,7 @@ export const COHORTS_CONFIG: AnalysisConfig<"cohorts"> = {
       cohorts: {
         // Empty means any event starts the clock, or counts as coming back.
         start: start === null ? undefined : { flag: events.flagFor(start) },
+        firstTimeEver: settings["cohorts.first_time_ever"],
         return:
           returning === null ? undefined : { flag: events.flagFor(returning) },
         returnRule: settings["cohorts.return_rule"],

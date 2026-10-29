@@ -17,6 +17,7 @@ import {
   breakoutOrderBy,
   withBreakout,
 } from "./breakout";
+import { IN_RANGE_FLAG } from "./lookback";
 
 const COHORT_PERIODS: Record<Granularity, Period> = {
   hour: "day",
@@ -47,22 +48,31 @@ export const planCohorts = (spec: AnalysisSpec): QueryPlan => {
   const period = periodOf(spec);
   const isGrouped = spec.breakout !== undefined;
   const warnings: string[] = [];
+  const isStart =
+    cohorts.start !== undefined ? flagSql(cohorts.start.flag) : "1";
+  // First time ever reads all history, but the events outside the range
+  // only tell who started before it.
+  const inRange = (condition: string): string =>
+    cohorts.firstTimeEver ? `${condition} AND ${IN_RANGE_FLAG} = 1` : condition;
 
   const base = scopedEvents(
     spec,
     undefined,
     [
-      {
-        as: "is_start",
-        sql: cohorts.start !== undefined ? flagSql(cohorts.start.flag) : "1",
-      },
+      { as: "is_start", sql: isStart },
       {
         as: "is_return",
         sql: cohorts.return !== undefined ? flagSql(cohorts.return.flag) : "1",
       },
       SESSION_EXTRA_COLUMN,
     ],
-    { breakoutAnchor: "is_start" },
+    {
+      breakoutAnchor: "is_start",
+      extraWhere:
+        cohorts.firstTimeEver && isStart !== "1"
+          ? [`(${IN_RANGE_FLAG} = 1 OR ${isStart})`]
+          : [],
+    },
   );
   warnings.push(...base.warnings);
 
@@ -70,15 +80,20 @@ export const planCohorts = (spec: AnalysisSpec): QueryPlan => {
 
   ctes.push({
     name: "first_starts",
-    note: `when each ${spec.grain} first did the starting event in the date range`,
+    note: cohorts.firstTimeEver
+      ? `when each ${spec.grain} first did the starting event, if it was their first time ever`
+      : `when each ${spec.grain} first did the starting event in the date range`,
     deps: ["scoped_events"],
     body: [
       "SELECT",
       "  actor,",
-      "  minIf(ts, is_start) AS start_ts",
+      `  minIf(ts, ${inRange("is_start")}) AS start_ts`,
       "FROM scoped_events",
       "GROUP BY actor",
-      "HAVING countIf(is_start) > 0",
+      `HAVING countIf(${inRange("is_start")}) > 0`,
+      ...(cohorts.firstTimeEver
+        ? ["   AND start_ts = minIf(ts, is_start)"]
+        : []),
     ].join("\n"),
   });
 
@@ -115,7 +130,7 @@ export const planCohorts = (spec: AnalysisSpec): QueryPlan => {
   // Returns only count inside the date range, so an actor's offsets stop at
   // the range's last period. Past it nothing is known, so those cells are
   // left out rather than shown as nobody coming back.
-  const lastPeriod = `(SELECT max(${startOf(period, "ts")}) FROM scoped_events)`;
+  const lastPeriod = `(SELECT max(${startOf(period, "ts")}) FROM scoped_events${cohorts.firstTimeEver ? ` WHERE ${IN_RANGE_FLAG} = 1` : ""})`;
   ctes.push({
     name: "offsets",
     note: `how many ${period}s after their start each actor came back, in which sessions, and how many the date range can show`,
@@ -129,7 +144,7 @@ export const planCohorts = (spec: AnalysisSpec): QueryPlan => {
       `  max(dateDiff('${period}', s.started, ${startOf(period, "e.ts")})) AS furthest,`,
       `  dateDiff('${period}', s.started, ${lastPeriod}) AS observable`,
       "FROM starts AS s",
-      "LEFT JOIN (SELECT actor, ts, session FROM scoped_events WHERE is_return) AS e",
+      `LEFT JOIN (SELECT actor, ts, session FROM scoped_events WHERE ${inRange("is_return")}) AS e`,
       "  ON e.actor = s.actor",
       "GROUP BY cohort, actor, s.started",
     ].join("\n"),

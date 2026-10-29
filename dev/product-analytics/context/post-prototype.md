@@ -96,6 +96,17 @@ Prototype analyses lean on ClickHouse in ways that may not hold up when a few pe
 
 Before choosing each analysis's MBQL shape, benchmark it against a heavy-tailed dataset, not only typical volumes.
 
+## Reading by date range
+
+Analyses assume a date range reads less than the whole table. Lifecycle's `person__first_seen_at` exists so it doesn't have to read history from before the range. Whether a range actually reads less depends on the table:
+
+- **Track:** `pa_events` is partitioned by month on `created_at`, so a range skips the months outside it. `sql/04_pa_events_resolved.sql` does the same for the prototype.
+- **Columnar warehouses:** BigQuery tables are usually partitioned by date. Snowflake, Redshift and Delta skip by each block's min and max values, which works when events are loaded in time order.
+- **Postgres and MySQL:** usually not partitioned, so a range often reads the whole table anyway.
+- **Load time vs. event time:** a table partitioned on when rows were loaded (BigQuery's `_PARTITIONTIME`, a loader's `received_at`) skips nothing when the analysis filters on the event's own time.
+
+Some settings read all history whatever the table: Cohorts' "first ever start event" reads every past start event, and every past event when the start is "Any event". On Track, `event_name` isn't in `pa_events`' sort key, so filtering to the start event can only skip by `event_type` (pageview or custom event). When the start is "Any event", `person__first_seen_at` could answer it without reading history.
+
 ## Draft segments
 
 Drafts are segments made in the segments panel and not saved to the table yet. The prototype keeps them in `sessionStorage` (`segments/use-segment-drafts.ts`), so they survive a reload in the same tab and nowhere else: a new tab, another browser or a teammate doesn't see them.

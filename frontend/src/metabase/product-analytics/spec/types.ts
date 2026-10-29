@@ -97,7 +97,8 @@ export interface PathsSpec {
   /** Null: paths end at the last step of each visit. Unused for "from". */
   end: FlagRef | null;
   steps: number;
-  included: FlagRef[];
+  /** Never steps, unless they're the starting or ending event. */
+  excluded: FlagRef[];
   visit: PathsVisit;
   mergeRepeats: boolean;
   /** Drops steps that make up an outsized share of all events. */
@@ -155,9 +156,11 @@ export type BreakoutSpec =
 export interface CohortsSpec {
   /**
    * What starts an actor's clock: their first time doing it in the date
-   * range. Undefined: any event does.
+   * range, or ever with `firstTimeEver`. Undefined: any event does.
    */
   start?: FlagRef;
+  /** Leaves out actors who did the starting event before the date range. */
+  firstTimeEver: boolean;
   /** What counts as coming back. Undefined: any event does. */
   return?: FlagRef;
   returnRule: "exactly" | "onOrAfter";

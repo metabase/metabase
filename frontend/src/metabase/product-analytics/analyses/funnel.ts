@@ -160,7 +160,7 @@ const SETTINGS: AnalysisSettingDefinitions<FunnelSettings> = {
   }),
   "funnel.window": {
     getTitle: () => t`How long does someone get to finish the steps?`,
-    getSection: () => "advanced",
+    getSection: () => "setup",
     widget: DurationWidget,
     getDefault: () => ({ value: 7, unit: "day" }),
     isValid: (value) => isPositiveDuration(value),

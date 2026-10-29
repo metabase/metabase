@@ -18,7 +18,7 @@ export const AVG_EVENTS_COLUMN = "avg_events";
 export const AVG_SESSIONS_COLUMN = "avg_sessions";
 
 import { actorBreakoutsCte, breakoutEventColumns } from "./breakout";
-import { IN_RANGE_FLAG, getLookbackDays } from "./lookback";
+import { ALL_HISTORY_DAYS, IN_RANGE_FLAG, getLookbackDays } from "./lookback";
 
 export interface BaseBlock {
   ctes: Cte[];
@@ -44,7 +44,12 @@ export const scopedEvents = (
   const actor = compileGrain(spec.grain);
   const scope = compileActorPredicate(spec.scope);
   warnings.push(...scope.warnings);
-  const hasLookback = getLookbackDays(spec) > 0;
+  const lookbackDays = getLookbackDays(spec);
+  const hasLookback = lookbackDays > 0;
+  const lookbackNote =
+    lookbackDays === ALL_HISTORY_DAYS
+      ? "every event before it"
+      : `the ${lookbackDays} days before it`;
 
   const rowWhere = [
     ...extraWhere,
@@ -87,7 +92,7 @@ export const scopedEvents = (
   ctes.push({
     name: "scoped_events",
     note: hasLookback
-      ? `every event in range, and the ${getLookbackDays(spec)} days before it marked by ${IN_RANGE_FLAG}, for the chosen grain`
+      ? `every event in range, and ${lookbackNote} marked by ${IN_RANGE_FLAG}, for the chosen grain`
       : "every event in range, for the chosen grain",
     deps: scope.having.length
       ? ["events_base", "scope_actors"]

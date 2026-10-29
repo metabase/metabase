@@ -27,7 +27,7 @@ import {
 } from "./filters";
 import { findColumn, findJoinedColumn } from "./find-column";
 import type { AllocatedPeopleSegment } from "./segments/types";
-import { IN_RANGE_FLAG } from "./sql/analyses/lookback";
+import { ALL_HISTORY_DAYS, IN_RANGE_FLAG } from "./sql/analyses/lookback";
 
 const STAGE = -1;
 
@@ -71,7 +71,7 @@ export type BaseQueryInput = {
   /**
    * Days of history to read before the date range, from `getLookbackDays`.
    * When it's more than 0, an `IN_RANGE_FLAG` column marks the events inside
-   * the range.
+   * the range. `ALL_HISTORY_DAYS` reads every event, after the range too.
    */
   lookbackDays: number;
 };
@@ -141,10 +141,25 @@ const applyFilters = (
   return filtered;
 };
 
-export type FilteredQueryInput = Pick<
-  BaseQueryInput,
-  "dateRange" | "columns" | "filters"
->;
+export type FilteredQueryInput = Pick<BaseQueryInput, "columns" | "filters"> & {
+  /** Undefined: every event. */
+  dateRange: string | undefined;
+};
+
+/** The date range widened by the lookback. Undefined: every event. */
+const getReadRange = (
+  dateRange: string,
+  lookbackDays: number,
+): string | undefined => {
+  const dateFilter = parseDateRange(dateRange);
+  if (lookbackDays === 0 || dateFilter === undefined) {
+    return dateRange;
+  }
+  if (lookbackDays === ALL_HISTORY_DAYS) {
+    return undefined;
+  }
+  return serializeDateRange(widenDateRange(dateFilter, lookbackDays));
+};
 
 /** A query on the event table, limited to the date range and the filters. */
 export const buildFilteredQuery = (
@@ -153,7 +168,8 @@ export const buildFilteredQuery = (
   { dateRange, columns, filters }: FilteredQueryInput,
 ): Lib.Query => {
   let query = Lib.queryFromTableOrCardMetadata(metadataProvider, tableMetadata);
-  const dateFilter = parseDateRange(dateRange);
+  const dateFilter =
+    dateRange !== undefined ? parseDateRange(dateRange) : undefined;
   if (dateFilter !== undefined && columns.timestamp !== null) {
     query = Lib.filter(
       query,
@@ -248,10 +264,7 @@ export const buildBaseQuery = (
 
   const hasLookback = lookbackDays > 0;
   const dateFilter = parseDateRange(dateRange);
-  const readRange =
-    hasLookback && dateFilter !== undefined
-      ? serializeDateRange(widenDateRange(dateFilter, lookbackDays))
-      : dateRange;
+  const readRange = getReadRange(dateRange, lookbackDays);
 
   // Cohorts are applied to the compiled SQL instead; see `BaseColumns`.
   let query = buildFilteredQuery(metadataProvider, tableMetadata, {

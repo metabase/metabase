@@ -22,11 +22,16 @@
 -- or not, across every visitor_id stitched into them. It's on every event,
 -- like PostHog's person created_at, so lifecycle can tell who's new without
 -- reading history from before the date range.
+--
+-- Partitioned by month like pa_events, so a date range skips the months
+-- outside it, as it would on Track's table. Within a month, rows are in
+-- person order, which suits the analyses' per-person grouping.
 
 DROP TABLE IF EXISTS product_analytics.pa_events_resolved;
 
 CREATE TABLE product_analytics.pa_events_resolved
 ENGINE = MergeTree()
+PARTITION BY toYYYYMM(created_at)
 ORDER BY (person_id, created_at)
 AS
 WITH identity_map AS (

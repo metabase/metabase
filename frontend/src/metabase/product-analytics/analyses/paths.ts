@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { SegmentedControl } from "metabase/ui";
 
 import { DurationWidget } from "../components/settings/DurationWidget";
-import { EventDefinitionListWidget } from "../components/settings/EventDefinitionListWidget";
+import { EventDefinitionSetWidget } from "../components/settings/EventDefinitionSetWidget";
 import { EventDefinitionWidget } from "../components/settings/EventDefinitionWidget";
 import { NumberStepperWidget } from "../components/settings/NumberStepperWidget";
 import { withWidgetProps } from "../settings/with-widget-props";
@@ -54,11 +54,11 @@ const getVisitSpec = (settings: PathsSettings): PathsVisit =>
 const getMinVolumeTitle = (grain: Grain): string => {
   switch (grain) {
     case "person":
-      return t`Group steps with fewer than this many people into Other`;
+      return t`Minimum people for an event at each step`;
     case "session":
-      return t`Group steps with fewer than this many sessions into Other`;
+      return t`Minimum sessions for an event at each step`;
     case "event":
-      return t`Group steps with fewer than this many events into Other`;
+      return t`Minimum events for an event at each step`;
   }
 };
 
@@ -116,14 +116,6 @@ const SETTINGS: AnalysisSettingDefinitions<PathsSettings> = {
     getDefault: () => 5,
     isValid: (value) => isPositiveInteger(value),
   },
-  "paths.included": withWidgetProps({
-    getTitle: () => t`Which kind of events count as steps?`,
-    getSection: () => "advanced",
-    widget: EventDefinitionListWidget,
-    getDefault: () => [],
-    isValid: (value) => isEventDefinitionList(value),
-    getProps: getEventDefinitionProps,
-  }),
   "paths.visit": withWidgetProps({
     getTitle: () => t`What counts as a visit?`,
     getSection: () => "advanced",
@@ -154,18 +146,26 @@ const SETTINGS: AnalysisSettingDefinitions<PathsSettings> = {
     getProps: () => ({ units: INACTIVITY_UNITS }),
     readDependencies: ["paths.visit"],
   }),
-  "paths.merge_repeats": {
-    getTitle: () => t`Merge repeats of the same step`,
+  "paths.excluded": withWidgetProps({
+    getTitle: () => t`Which events are excluded?`,
     getSection: () => "advanced",
-    inline: true,
-    widget: "toggle",
-    getDefault: () => true,
-    isValid: (value) => isBoolean(value),
-  },
+    widget: EventDefinitionSetWidget,
+    getDefault: () => [],
+    isValid: (value) => isEventDefinitionList(value),
+    getProps: getEventDefinitionProps,
+  }),
   "paths.hide_noisy_events": {
     getTitle: () => t`Hide noisy events`,
     getHint: () =>
-      t`Noisy events make up at least 20% of all steps and happen at least three times as often as the average event. Starting and ending events are never hidden.`,
+      t`A noisy event makes up at least 20% of all events and happens at least three times as often as the average event.`,
+    getSection: () => "advanced",
+    inline: true,
+    widget: "toggle",
+    getDefault: () => false,
+    isValid: (value) => isBoolean(value),
+  },
+  "paths.merge_repeats": {
+    getTitle: () => t`Merge repeats of the same event`,
     getSection: () => "advanced",
     inline: true,
     widget: "toggle",
@@ -182,6 +182,7 @@ const SETTINGS: AnalysisSettingDefinitions<PathsSettings> = {
   },
   "paths.min_volume": {
     getTitle: (_context, settings) => getMinVolumeTitle(settings.counting),
+    getHint: () => t`Events with fewer are grouped into (Other).`,
     getSection: () => "advanced",
     widget: NumberStepperWidget,
     getDefault: () => 5,
@@ -222,7 +223,7 @@ export const PATHS_CONFIG: AnalysisConfig<"paths"> = {
         start: start !== null ? { flag: events.flagFor(start) } : null,
         end: end !== null ? { flag: events.flagFor(end) } : null,
         steps: settings["paths.steps"],
-        included: settings["paths.included"].map((event) => ({
+        excluded: settings["paths.excluded"].map((event) => ({
           flag: events.flagFor(event),
         })),
         visit: getVisitSpec(settings),

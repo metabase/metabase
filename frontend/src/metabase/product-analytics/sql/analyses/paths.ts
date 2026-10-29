@@ -167,8 +167,8 @@ const pathWindowCtes = (
 ): { ctes: Cte[]; warnings: string[] } => {
   const warnings: string[] = [];
 
-  const isStep = paths.included.length
-    ? paths.included.map((ref) => flagSql(ref.flag)).join("\n     OR ")
+  const isStep = paths.excluded.length
+    ? `NOT (${paths.excluded.map((ref) => flagSql(ref.flag)).join("\n     OR ")})`
     : "1";
 
   const start = paths.direction !== "to" ? paths.start : null;
@@ -212,9 +212,6 @@ const pathWindowCtes = (
         `WHERE share >= greatest(${NOISY_SHARE}, ${NOISY_FAIR_SHARE_MULTIPLE} / step_names)`,
       ].join("\n"),
     });
-    warnings.push(
-      "Noisy events are hidden, except where they are the starting or ending event.",
-    );
   }
 
   const dedupe = paths.mergeRepeats;

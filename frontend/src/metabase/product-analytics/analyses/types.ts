@@ -78,7 +78,7 @@ export type PathsSettings = CommonSettings & {
   "paths.start": EventDefinition | null;
   "paths.end": EventDefinition | null;
   "paths.steps": number;
-  "paths.included": EventDefinition[];
+  "paths.excluded": EventDefinition[];
   "paths.visit": PathsVisit["kind"];
   /** How long a break ends a visit, when visits aren't sessions. */
   "paths.inactivity": Duration;
@@ -107,6 +107,8 @@ export type LifecycleSettings = CommonSettings & {
 export type CohortsSettings = CommonSettings & {
   /** The first time an actor does it in the date range starts their clock. Null: any event. */
   "cohorts.start": EventDefinition | null;
+  /** Only actors who first did the starting event in the date range, rather than before it. */
+  "cohorts.first_time_ever": boolean;
   "cohorts.return": EventDefinition | null;
   "cohorts.return_rule": CohortsSpec["returnRule"];
   /** A table with a row per cohort, or retention curves on a line chart. */
