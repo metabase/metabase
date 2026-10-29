@@ -38,7 +38,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [toucan2.core :as t2])
   (:import
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
@@ -161,7 +160,7 @@
   after the transform was made incremental."
   [{:keys [source]}]
   (let [field-id (get-in source [:source-incremental-strategy :checkpoint-filter-field-id])
-        table-id (when field-id (:table_id (warehouse-schema.db/field field-id)))]
+        table-id (when field-id (transforms-base.db/field-table-id field-id))]
     (table-template-tag-name (:query source) table-id)))
 
 ;;; ------------------------------------------------- Transform Normalization -------------------------------------------------
@@ -538,7 +537,7 @@
      (let [table (if (nil? (:schema table))
                    (if-let [actual-schema (resolve-nil-schema (:engine database) database table)]
                      (do (transforms-base.db/update-table! (:id table) {:schema actual-schema})
-                         (-> (warehouse-schema.db/table (:id table))
+                         (-> (transforms-base.db/table (:id table))
                              (t2/hydrate :db)))
                      table)
                    table)]

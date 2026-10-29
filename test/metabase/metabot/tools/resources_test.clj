@@ -2148,9 +2148,9 @@
     (mt/with-temp [:model/Document {id :id} {:name "Plan" :view_count 0}]
       (mt/with-current-user (mt/user->id :crowberto)
         (is (not (error? (read-uris {:uris [(str "metabase://document/" id)]}))))
-        (is (= 0 (t2/select-one-fn :view_count :model/Document id)))
+        (is (= 0 (t2/select-one-fn :view_count :model/Document :id id)))
         (documents/get-document id)
-        (is (= 1 (t2/select-one-fn :view_count :model/Document id)))))))
+        (is (= 1 (t2/select-one-fn :view_count :model/Document :id id)))))))
 
 (deftest ^:parallel uri-aspect-aliases-test
   (doseq [[alias canonical] [["metabase://table/1/columns/2" "metabase://table/1/fields/2"]

@@ -34,7 +34,8 @@
   (testing "Creating a session with Google SSO authentication tracks the auth_identity_id"
     (mt/with-temp [:model/User user {}
                    :model/AuthIdentity google-auth {:user_id (:id user)
-                                                    :provider "google"}]
+                                                    :provider "google"
+                                                    :metadata {:sso_source "google"}}]
       (let [device-info {:device_id "test-device-456"
                          :embedded false
                          :token_exchange false
@@ -50,7 +51,8 @@
   (testing "Creating a session with LDAP authentication tracks the auth_identity_id"
     (mt/with-temp [:model/User user {}
                    :model/AuthIdentity ldap-auth {:user_id (:id user)
-                                                  :provider "ldap"}]
+                                                  :provider "ldap"
+                                                  :metadata {:login_attributes {:uid "testuser"}}}]
       (let [device-info {:device_id "test-device-789"
                          :embedded false
                          :token_exchange false
@@ -174,7 +176,7 @@
       (auth-identity/set-password! (:id user) "test-password")
       (let [expires-at (t/plus (t/offset-date-time) (t/days 7))
             password-auth (t2/select-one :model/AuthIdentity :user_id (:id user) :provider "password")]
-        (t2/update! :model/AuthIdentity (:id password-auth) {:expires_at expires-at})
+        (t2/update! :model/AuthIdentity :id (:id password-auth) {:expires_at expires-at})
         (let [device-info {:device_id "test-device-expires"
                            :embedded false
                            :token_exchange false

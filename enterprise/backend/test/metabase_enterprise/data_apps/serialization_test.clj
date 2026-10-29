@@ -90,7 +90,7 @@
                      (->> (file-seq (io/file dump-dir "collections"))
                           (filter #(.isFile ^java.io.File %))
                           (map (comp :entity_id yaml/from-file))))))
-            (t2/delete! :model/DataApp (:id app))
+            (t2/delete! :model/DataApp :id (:id app))
             (import! dump-dir)
             (let [imported (t2/select-one :model/DataApp :entity_id (:entity_id app))]
               (is (=? {:name          "sales-ops"
@@ -221,7 +221,7 @@
                 (doseq [path ["data_app__sales_ops.yaml" "data_app__sales_ops/venues_list.yaml"
                               "data_app__sales_ops/rename_venue.yaml"]]
                   (is (.exists (io/file dump-dir "collections" "data_apps" path)) path)))
-              (t2/delete! :model/DataApp app-id)
+              (t2/delete! :model/DataApp :id app-id)
               (is (not (t2/exists? :model/Card :entity_id question-eid)) "deleting the app deletes its collection's cards")
               (import! dump-dir)
               (let [imported      (t2/select-one :model/DataApp :entity_id app-entity-id)

@@ -23,7 +23,7 @@
      #(some? (lib/primary-source-table-id %))]]])
 
 (mr/def ::measure.definition
-  "The `:definition` a Measure create or update accepts: an MBQL query, possibly legacy, never empty."
+  "The `:definition` column of a Measure, decoded."
   ::lib-be.schema/maybe-legacy-query)
 
 (mr/def ::measure.dimension
@@ -35,13 +35,12 @@
   ::lib-metric.schema/dimension-mapping)
 
 (mr/def ::measure
-  "A Measure as selected from the app DB: every column of `:measure`, with an unreadable `:definition` read back as an
-  empty query, plus `:creator` and `:table` some callers hydrate onto it."
+  "A Measure as selected from the app DB: every column of `:measure`, plus `:creator` and `:table` some callers
+  hydrate onto it."
   [:merge
    ::measure.update
    [:map {:closed true}
     [:id                 ms/PositiveInt]
-    [:definition         {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]
     [:creator            {:optional true} [:maybe :metabase.users.schema/user]]
     [:table              {:optional true} [:maybe :metabase.warehouse-schema.schema/table]]]])
 

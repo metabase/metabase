@@ -86,7 +86,7 @@
   "Apply `changes` to the User with `user-id`, returning the number updated."
   [user-id :- ::lib.schema.id/user
    changes :- ::users.schema/user.update]
-  (t2/update! :model/User user-id changes))
+  (t2/update! :model/User :id user-id changes))
 
 (mu/defn user-group-memberships
   "Rows of User ID, group name, and group entity ID for the memberships of the Users with `user-ids`, excluding the
@@ -145,12 +145,12 @@
   "Apply `changes` to the PermissionsGroup with `group-id`, returning the number updated."
   [group-id :- ms/PositiveInt
    changes  :- (mut/select-keys ::permissions.schema/permissions-group.update [:name :entity_id :magic_group_type :is_tenant_group])]
-  (t2/update! :model/PermissionsGroup group-id changes))
+  (t2/update! :model/PermissionsGroup :id group-id changes))
 
 (mu/defn delete-group!
   "Delete the PermissionsGroup with `group-id`, returning the number deleted."
   [group-id :- ms/PositiveInt]
-  (t2/delete! :model/PermissionsGroup group-id))
+  (t2/delete! :model/PermissionsGroup :id group-id))
 
 (mu/defn group-member-user-ids
   "The user IDs of the members of the PermissionsGroup with `group-id`."

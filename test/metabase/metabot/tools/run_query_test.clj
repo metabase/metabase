@@ -11,7 +11,9 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.agent.core :as agent]
+   [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.config :as metabot.config]
+   [metabase.metabot.query-repair-test :as query-repair-test]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.test-util :as mut]
@@ -173,6 +175,22 @@
                                                    {:status :completed, :data {:cols [], :rows []}})]
       (run-tool! {"q1" (venues-by-id)} {:query_id "q1"}))
     (is (=? {:context :metabot, :executed-by (mt/user->id :rasta)} @info))))
+
+(deftest run-query-runs-stripped-query-from-state-test
+  (testing "a query in conversation state without its :lib/* keys runs once the state is read (BOT-2410)"
+    ;; State persisted before the viewing context kept the `:lib/*` keys holds such queries. The repair happens where
+    ;; the agent reads the state, in `memory/initialize`, so the memory goes through it here as it does in the loop.
+    (let [mp       (mt/metadata-provider)
+          q        (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                       (lib/aggregate (lib/count)))
+          stripped (query-repair-test/strip-lib-keys (lib/order-by q (lib/aggregation-ref q 0) :desc))]
+      (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]
+        (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+          (let [{:keys [output structured-output]}
+                (call-tool! (assoc (memory/initialize [] {:queries {"q1" stripped}}) :conversation-id conversation-id)
+                            {:query_id "q1"})]
+            (is (=? {:query-id "q1", :returned 1} structured-output))
+            (is (= ["| Count |" "| --- |" "| 100 |"] (data-lines output)))))))))
 
 (deftest run-query-refusals-test
   (testing "nothing runs while an admin has query execution turned off"
@@ -476,7 +494,7 @@
                    :model/Field    _              {:table_id table-id, :name "ID", :base_type :type/Integer}]
       (let [mp    (lib-be/application-database-metadata-provider db-id)
             query (lib/prepare-for-serialization (lib/query mp (lib.metadata/table mp table-id)))]
-        (t2/delete! :model/Database db-id)
+        (t2/delete! :model/Database :id db-id)
         (is (= database-not-found (run-tool! {"q1" query} {:query_id "q1"})))))))
 
 (defn- not-read-only
@@ -582,17 +600,17 @@
                                                          :dataset_query (card-query hidden-metabot-sql)}]
       (perms/grant-collection-read-permissions! (perms-group/all-users) open)
       (mark-saved-by-metabot! [metabot-sql-card metabot-mixed metabot-write-card edited-sql-card hidden-metabot-sql])
-      (t2/update! :model/Card edited-sql-card {:display :bar})
+      (t2/update! :model/Card :id edited-sql-card {:display :bar})
       (let [no-permission (refusal ::run-query/no-permission "You do not have permission to run query q1.")]
         (testing "a saved question runs with SQL execution on or off, whether it is a notebook or a SQL question"
           (doseq [[shape card-id] {"a notebook question"                        notebook-card
                                    "a SQL question"                             sql-card
                                    "a notebook question over a SQL question"    over-sql-card
                                    "a SQL question Metabot saved, edited since" edited-sql-card}
-                  run!            [run-sql-off-tool! run-sql-tool!]]
+                  tool!           [run-sql-off-tool! run-sql-tool!]]
             (testing shape
               (is (=? {:structured-output {:returned 1, :truncated? false}}
-                      (run! {"q1" (card-query card-id)} {:query_id "q1"}))))))
+                      (tool! {"q1" (card-query card-id)} {:query_id "q1"}))))))
         (testing "a user without native query permission can read a saved SQL question"
           (mt/with-no-data-perms-for-all-users!
             (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
@@ -627,9 +645,9 @@
                         (run-sql-tool! {"q1" (card-query metabot-write-card)} {:query_id "q1"}))))
               (is (false? @ran?)))))
         (testing "SQL Metabot saved under a question the user can't read gets the permission refusal"
-          (doseq [run! [run-sql-off-tool! run-sql-tool!]]
+          (doseq [tool! [run-sql-off-tool! run-sql-tool!]]
             (is (= no-permission
-                   (run! {"q1" (card-query over-hidden-sql)} {:query_id "q1"})))))
+                   (tool! {"q1" (card-query over-hidden-sql)} {:query_id "q1"})))))
         (testing "SQL that references a question the user can't read is refused before it is compiled"
           (let [tag (str "#" hidden-metabot-sql)]
             (is (= no-permission
@@ -872,7 +890,7 @@
         (mt/with-dynamic-fn-redefs [sql-tools/read-only-select?
                                     (fn [driver sql]
                                       (u/prog1 (read-only? driver sql)
-                                        (t2/update! :model/NativeQuerySnippet snippet-id
+                                        (t2/update! :model/NativeQuerySnippet :id snippet-id
                                                     {:content "SELECT 2 AS N FOR UPDATE"})))]
           (binding [qp.pipeline/*execute* (fn [_driver query respond]
                                             (swap! driver-ran-sql conj (get-in query [:native :query]))

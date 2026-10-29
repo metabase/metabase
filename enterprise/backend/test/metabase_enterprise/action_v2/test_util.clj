@@ -68,8 +68,8 @@
     (sync-new-table! db table-name)))
 
 (defn toggle-data-editing-enabled! [db-id on-or-off]
-  (let [current-settings (t2/select-one-fn :settings :model/Database db-id)]
-    (t2/update! :model/Database db-id {:settings (assoc current-settings :database-enable-table-editing (boolean on-or-off))})))
+  (let [current-settings (t2/select-one-fn :settings :model/Database :id db-id)]
+    (t2/update! :model/Database :id db-id {:settings (assoc current-settings :database-enable-table-editing (boolean on-or-off))})))
 
 (defmacro with-data-editing-enabled! [on-or-off & body]
   `(mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:database-enable-table-editing ~on-or-off}}
@@ -85,7 +85,7 @@
 (defn do-with-test-tables!
   "Impl of [[with-test-tables!]]."
   [[column-map create-table-opts] thunk]
-  (let [db            (t2/select-one :model/Database (mt/id))
+  (let [db            (t2/select-one :model/Database :id (mt/id))
         driver        (:engine db)
         auto-inc-type (driver/upload-type->database-type driver :metabase.upload/auto-incrementing-int-pk)
         column-map    (walk/postwalk-replace {'auto-inc-type auto-inc-type} column-map)
