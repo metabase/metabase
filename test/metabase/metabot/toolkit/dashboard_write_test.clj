@@ -69,7 +69,7 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Card card {}]
         (let [dash-name "Created then read back by the toolkit"]
-          (mt/with-dynamic-fn-redefs [metabase.metabot.toolkit.dashboard-write/hydrated
+          (mt/with-dynamic-fn-redefs [dashboard-write/hydrated
                                       (fn [_] (throw (ex-info "read back failed" {})))]
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"read back failed"
                                   (dashboard-write/write! {:attrs {:name dash-name}
