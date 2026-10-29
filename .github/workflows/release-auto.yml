@@ -172,3 +172,43 @@ jobs:
     with:
       version: ${{ needs.prepare.outputs.version }}
       commit: ${{ needs.prepare.outputs.commit }}
+
+  notify-failure:
+    needs: [prepare, trigger-release, auto-publish-release]
+    if: ${{ always() && (failure() || cancelled() || contains(needs.*.result, 'cancelled')) }}
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            release
+            .github
+      - name: Prepare release scripts
+        uses: ./.github/actions/prepare-release-scripts
+      - name: Send release failure message
+        uses: actions/github-script@v9
+        env:
+          RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+          MAJOR_VERSION: ${{ inputs.version }}
+          RELEASE_KIND: ${{ inputs.kind }}
+          JOB_RESULTS: ${{ toJSON(needs) }}
+          SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        with:
+          script: |
+            const { sendSlackMessage, githubRunLink } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            const version = process.env.RELEASE_VERSION || `v0.${process.env.MAJOR_VERSION}.x (${process.env.RELEASE_KIND}; exact version not available)`;
+            const details = Object.entries(JSON.parse(process.env.JOB_RESULTS))
+              .filter(([, job]) => ['failure', 'cancelled'].includes(job.result))
+              .map(([name, job]) => `${name}: ${job.result}`)
+              .join('\n') || 'The workflow was canceled.';
+            const runLink = githubRunLink('View workflow run', context.runId.toString(), context.repo.owner, context.repo.repo);
+
+            await sendSlackMessage({
+              channelName: process.env.SLACK_RELEASE_CHANNEL,
+              message: `:x: Release ${version} failed or was canceled.\n${runLink}\n${details}`,
+            });
