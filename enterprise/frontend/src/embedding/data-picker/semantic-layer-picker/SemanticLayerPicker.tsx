@@ -103,7 +103,7 @@ export function SemanticLayerPicker({
 
 // Only Data and Metrics hold data sources. Empty subfolders inside them are left
 // out by `buildCollectionTree`, in `SavedEntityPicker.tsx`.
-export function getLibraryFolders(
+function getLibraryFolders(
   children: Collection[],
   { canSelectMetric }: { canSelectMetric: boolean },
 ) {

@@ -9,7 +9,6 @@ import {
   databaseApi,
   useLazyListDatabaseSchemaTablesQuery,
   useLazyListDatabaseSchemasQuery,
-  useListCollectionsTreeQuery,
   useListDatabasesQuery,
   useSearchQuery,
 } from "metabase/api";
@@ -41,7 +40,6 @@ import {
 import { parseSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 import type {
   CardType,
-  Collection,
   CollectionId,
   DatabaseId,
   LibraryCollection,
@@ -64,12 +62,7 @@ import {
 } from "../TriggerComponents";
 import { CONTAINER_WIDTH, DATA_BUCKET } from "../constants";
 import { SavedEntityPicker } from "../saved-entity-picker/SavedEntityPicker";
-import { COLLECTION_TREE_REQUEST } from "../saved-entity-picker/constants";
-import { findCollectionById } from "../saved-entity-picker/utils";
-import {
-  SemanticLayerPicker,
-  getLibraryFolders,
-} from "../semantic-layer-picker/SemanticLayerPicker";
+import { SemanticLayerPicker } from "../semantic-layer-picker/SemanticLayerPicker";
 import type { DataPickerDataType, SavedEntityType } from "../types";
 import { getDataTypes } from "../utils";
 
@@ -161,7 +154,6 @@ interface SchemaFetchersProps {
 
 interface LibraryInjectedProps {
   libraryCollection?: LibraryCollection;
-  libraryChildCollections?: Collection[];
 }
 
 interface AvailableModelsInjectedProps {
@@ -214,16 +206,6 @@ export function DataSourceSelector(props: DataSourceSelectorProps) {
     PLUGIN_LIBRARY.useGetLibraryCollection({
       skip: !props.canSelectSemanticLayer,
     });
-  // The Library's `below` counts trashed cards, so its folders come from the
-  // collection tree, which `SemanticLayerPicker` lists them from too
-  const { data: collections, isLoading: isCollectionTreeLoading } =
-    useListCollectionsTreeQuery(COLLECTION_TREE_REQUEST, {
-      skip: !libraryCollection,
-    });
-  const libraryNode =
-    libraryCollection && collections
-      ? findCollectionById(collections, libraryCollection.id)
-      : null;
 
   return (
     <DataSelector
@@ -232,8 +214,7 @@ export function DataSourceSelector(props: DataSourceSelectorProps) {
       triggerContentComponent={TableTrigger}
       {...props}
       libraryCollection={libraryCollection}
-      libraryChildCollections={libraryNode?.children}
-      allLoading={isLibraryLoading || isCollectionTreeLoading}
+      allLoading={isLibraryLoading}
     />
   );
 }
@@ -550,11 +531,14 @@ export class UnconnectedDataSelector extends Component<
   };
 
   hasSemanticLayer = (): boolean => {
-    const { canSelectSemanticLayer, libraryChildCollections = [] } = this.props;
-    const libraryFolders = getLibraryFolders(libraryChildCollections, {
-      canSelectMetric: this.canSelectSemanticLayerMetrics(),
-    });
-    return canSelectSemanticLayer && libraryFolders.length > 0;
+    const { canSelectSemanticLayer, libraryCollection } = this.props;
+    const libraryContents = libraryCollection?.below ?? [];
+    return (
+      canSelectSemanticLayer &&
+      (libraryContents.includes("table") ||
+        (this.canSelectSemanticLayerMetrics() &&
+          libraryContents.includes("metric")))
+    );
   };
 
   // Semantic layer metrics follow the Metrics bucket's rules
