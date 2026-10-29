@@ -26,10 +26,15 @@
                          (collection/visible-collection-filter-clause)]
               :order-by [[:%lower.name :asc]]}))
 
-(mu/defn timeline :- [:maybe ::timeline.schema/timeline]
-  "The ::timeline.schema/timeline with `id`, or nil."
+(mu/defn timeline
+  "The Timeline with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/Timeline :id [:auto/param id]))
+  (t2/select-one :model/Timeline :id id))
+
+(mu/defn timeline-icon
+  "The icon of the Timeline with `id`, or nil."
+  [id :- ms/PositiveInt]
+  (t2/select-one-fn :icon :model/Timeline :id id))
 
 (mu/defn timelines-by-id
   "A map of id to Timeline for the Timelines with `ids`."
@@ -59,15 +64,20 @@
   [id :- ms/PositiveInt]
   (t2/delete! :model/Timeline :id id))
 
+(mu/defn collection
+  "The Collection with `collection-id`, or nil."
+  [collection-id :- ::lib.schema.id/collection]
+  (t2/select-one :model/Collection :id collection-id))
+
 (mu/defn insert-timeline-event!
   "Insert the TimelineEvent `row` and return the inserted instance."
   [row :- (mut/select-keys ::timeline.schema/timeline-event.update [:name :timestamp :timezone :timeline_id :creator_id :description :time_matters :icon :archived])]
   (t2/insert-returning-instance! :model/TimelineEvent row))
 
-(mu/defn timeline-event :- [:maybe ::timeline.schema/timeline-event]
-  "The ::timeline.schema/timeline-event with `id`, or nil."
+(mu/defn timeline-event
+  "The TimelineEvent with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/TimelineEvent :id [:auto/param id]))
+  (t2/select-one :model/TimelineEvent :id id))
 
 (mu/defn timeline-events-for-timelines
   "The TimelineEvents of the Timelines with `timeline-ids`, unarchived only unless `all?`, and (when `start` and/or

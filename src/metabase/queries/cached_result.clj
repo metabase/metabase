@@ -14,7 +14,6 @@
   (:require
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
-   [metabase.queries.db :as queries.db]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.result-serialization :as qp.result-serialization]
    [metabase.util :as u]
@@ -190,7 +189,7 @@
   FE already expects) from a stored_result row and an optional `sort` keyword. Returns nil
   when the blob is missing/unreadable so the caller can 404."
   [stored-result sort]
-  (when-let [qp-result (deserialize-cached-result (queries.db/stored-result-data (:id stored-result)))]
+  (when-let [qp-result (deserialize-cached-result (:result_data stored-result))]
     (let [sorted (apply-sort qp-result sort)
           data   (:data sorted)]
       {:status      "completed"

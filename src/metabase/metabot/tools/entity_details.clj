@@ -3,13 +3,11 @@
    [medley.core :as m]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.api.common :as api]
-   [metabase.dashboards.db :as dashboards.db]
    [metabase.documents.core :as documents]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
-   [metabase.measures.db :as measures.db]
    [metabase.metabot.config :as metabot.config]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
@@ -17,8 +15,6 @@
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.models.interface :as mi]
    [metabase.parameters.field-values :as params.field-values]
-   [metabase.segments.db :as segments.db]
-   [metabase.users.db :as users.db]
    [metabase.util :as u]
    [metabase.util.humanization :as u.humanization]
    [metabase.util.i18n :as i18n]
@@ -35,8 +31,8 @@
   [model-key id]
   (when id
     (case model-key
-      :model/Measure (:entity_id (measures.db/measure id))
-      :model/Segment (:entity_id (segments.db/segment id)))))
+      :model/Measure (metabot.db/measure-entity-id id)
+      :model/Segment (metabot.db/segment-entity-id id))))
 
 (defn- convert-measure-or-segment
   "Convert a measure or segment metadata object to the format expected by the API.
@@ -108,7 +104,7 @@
   [_args]
   (if-let [{:keys [id email first_name last_name]}
            (or (some-> api/*current-user* deref)
-               (some-> api/*current-user-id* users.db/user))]
+               (metabot.db/user-summary api/*current-user-id*))]
     {:structured-output (merge {:id id
                                 :type :user
                                 :name (str first_name " " last_name)
@@ -123,11 +119,11 @@
   (when-not (int? dashboard-id)
     (throw (ex-info "Invalid dashboard_id format"
                     {:agent-error? true :status-code 400})))
-  (if-let [dashboard (dashboards.db/dashboard dashboard-id)]
+  (if-let [dashboard (metabot.db/dashboard-summary dashboard-id)]
     (do (api/read-check dashboard)
         {:structured-output
          (-> dashboard
-             (select-keys [:id :description :name :parameters])
+             (dissoc :collection_id)
              (assoc :type :dashboard
                     :verified (verified-review? dashboard-id "dashboard")))})
     {:output "dashboard not found"}))
@@ -502,7 +498,7 @@
                      {:agent-error? true :status-code 400})))
    (when-let [base (if metadata-provider
                      (lib.metadata/table metadata-provider id)
-                     (metabot.tools.u/get-table id))]
+                     (metabot.tools.u/get-table id :db_id :description :name :schema))]
      (let [query-needed? (or with-fields? with-related-tables? with-metrics? with-measures? with-segments?)
            db-id (if metadata-provider (:db-id base) (:db_id base))
            ;; Database metadata including :name so LLM can build portable FK paths
@@ -869,8 +865,8 @@
    id   :- :int]
   (let [{:keys [lookup-fn definition-key]} (measure-or-segment-dispatch kind)
         table-id (case kind
-                   :measure (:table_id (measures.db/measure id))
-                   :segment (:table_id (segments.db/segment id)))]
+                   :measure (metabot.db/measure-table-id id)
+                   :segment (metabot.db/segment-table-id id))]
     (when-not table-id
       (throw (ex-info (format "%s %s not found" (name kind) id)
                       {:agent-error? true :status-code 404})))

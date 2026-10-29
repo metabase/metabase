@@ -15,7 +15,6 @@
    [metabase.metabot.self.claude]
    [metabase.metabot.usage]
    [metabase.permissions.core :as perms]
-   [metabase.queries.db :as queries.db]
    [metabase.query-processor.core :as qp]
    [metabase.test :as mt]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
@@ -97,7 +96,7 @@
         (is (some? result))
         (is (some? (:stored_result_id result)))
         (is (some? sr))
-        (is (pos? (count (queries.db/stored-result-data (:id sr)))))
+        (is (pos? (count (:result_data sr))))
         (is (= 1 (:row_count sr))
             "the QP's top-level :row_count (1 row for an unbucketed count) is persisted on the snapshot")))))
 
@@ -154,7 +153,7 @@
             (is (= "done" (:status final)))
             (is (some? result))
             (is (some? sr))
-            (is (pos? (count (queries.db/stored-result-data (:id sr)))))
+            (is (pos? (count (:result_data sr))))
             (is (nil? (:interestingness_score result)))))))))
 
 (deftest run-one-iteration-writes-contextual-score-test
@@ -229,7 +228,7 @@
             (is (= "done" (:status final)))
             (is (some? result))
             (is (some? sr))
-            (is (pos? (count (queries.db/stored-result-data (:id sr)))))
+            (is (pos? (count (:result_data sr))))
             (is (nil? (:contextual_interestingness_score result)))
             (is (double? (:interestingness_score result))
                 "heuristic score still computed when contextual fails")))))))
@@ -315,7 +314,8 @@
                                      :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
       (let [thread (temp-thread! (:id u))
             row    (pending-query! (:id thread) (:id card)
-                                   {:database (mt/id) :type :query :query {:source-table Integer/MAX_VALUE :aggregation [[:count]]}})
+                                   {:database 999999 :type :query
+                                    :query {:source-table 1 :aggregation [[:count]]}})
             final  (drain-until-terminal! (:id row))]
         (is (= "error" (:status final)))
         (is (some? (:error_message final)))

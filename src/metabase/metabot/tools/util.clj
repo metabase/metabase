@@ -10,10 +10,8 @@
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.self.core :as self.core]
    [metabase.models.interface :as mi]
-   [metabase.queries.db :as queries.db]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [metabase.warehouse-schema.db :as warehouse-schema.db]))
+   [metabase.util.log :as log]))
 
 (defn handle-agent-error
   "Return an agent output for agent errors, re-throw `e` otherwise.
@@ -171,15 +169,15 @@
       api/read-check))
 
 (defn get-table
-  "Get the active table with ID `id`, if the current user can read it."
-  [id]
-  (let [table (warehouse-schema.db/table id)]
-    (api/read-check (when (:active table) table))))
+  "Get the `fields` of the table with ID `id`."
+  [id & fields]
+  (-> (metabot.db/active-table-with-columns (into [:model/Table :id] fields) id)
+      api/read-check))
 
 (defn get-card
   "Retrieve the card with `id` from the app DB."
   [id]
-  (-> (queries.db/card id)
+  (-> (metabot.db/card id)
       api/read-check))
 
 (defn get-card-by-entity-id
@@ -214,7 +212,7 @@
 (defn table-query
   "Return a query based on the table with ID `table-id`."
   [table-id]
-  (when-let [table (get-table table-id)]
+  (when-let [table (get-table table-id :db_id)]
     (let [mp (lib-be/application-database-metadata-provider (:db_id table))]
       (lib/query mp (lib.metadata/table mp table-id)))))
 

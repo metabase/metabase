@@ -3,24 +3,16 @@
   (:require
    [clojure.string :as str]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.util :as metabot.tools.u]
-   [metabase.queries.db :as queries.db]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.warehouse-schema.db :as warehouse-schema.db]))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
 ;;; Source Resolution
-
-(defn- card-of-type
-  "The Card with `card-id` if it is of `card-type`, or nil."
-  [card-id card-type]
-  (let [card (queries.db/card card-id)]
-    (when (= card-type (:type card))
-      card)))
 
 (defn- resolve-source
   "Resolve the source entity from the provided source parameters.
@@ -28,7 +20,7 @@
   [{:keys [table_id model_id metric_id query_id report_id]} memory]
   (cond
     table_id
-    (let [table (warehouse-schema.db/table table_id)]
+    (let [table (metabot.db/table table_id)]
       (when-not table
         (throw (ex-info (str "Table not found with ID: " table_id)
                         {:agent-error? true :table-id table_id})))
@@ -36,7 +28,7 @@
        :path (str "/auto/dashboard/table/" table_id)})
 
     model_id
-    (let [model (card-of-type model_id :model)]
+    (let [model (metabot.db/card-of-type model_id :model)]
       (when-not model
         (throw (ex-info (str "Model not found with ID: " model_id)
                         {:agent-error? true :model-id model_id})))
@@ -44,7 +36,7 @@
        :path (str "/auto/dashboard/model/" model_id)})
 
     metric_id
-    (let [metric (card-of-type metric_id :metric)]
+    (let [metric (metabot.db/card-of-type metric_id :metric)]
       (when-not metric
         (throw (ex-info (str "Metric not found with ID: " metric_id)
                         {:agent-error? true :metric-id metric_id})))
@@ -52,7 +44,7 @@
        :path (str "/auto/dashboard/metric/" metric_id)})
 
     report_id
-    (let [report (card-of-type report_id :question)]
+    (let [report (metabot.db/card-of-type report_id :question)]
       (when-not report
         (throw (ex-info (str "Report/Question not found with ID: " report_id)
                         {:agent-error? true :report-id report_id})))

@@ -3,12 +3,12 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.lib.core :as lib]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.parameters.field-values :as params.field-values]
    [metabase.request.core :as request]
-   [metabase.sync.core :as sync]
-   [metabase.warehouse-schema.db :as warehouse-schema.db]))
+   [metabase.sync.core :as sync]))
 
 (defn- build-field-statistics [fvs fp limit]
   (merge
@@ -25,7 +25,7 @@
   (or fingerprint
       ;; Run with admin perms to match behavior during normal sync.
       (and (pos? (:updated-fingerprints (request/as-admin (sync/refingerprint-field! field))))
-           (:fingerprint (warehouse-schema.db/field id)))))
+           (metabot.db/field-fingerprint id))))
 
 (defn- field-statistics
   "Fingerprint statistics are global (computed across every row of the table), so they're withheld
@@ -36,7 +36,7 @@
   caller's column metadata, since saved Card result metadata can be stale or user-edited."
   [{:keys [id fingerprint]} limit]
   (if id
-    (let [field (warehouse-schema.db/field id)
+    (let [field (metabot.db/field id)
           table-id (:table_id field)
           fvs (params.field-values/get-or-create-field-values! field)
           restricted? (or (not (int? table-id))
