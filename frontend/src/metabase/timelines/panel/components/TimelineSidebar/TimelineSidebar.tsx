@@ -6,8 +6,10 @@ import { SidebarContent } from "metabase/common/components/SidebarContent";
 import { Box, Button, Icon } from "metabase/ui";
 import {
   hideTimelineEvents,
+  hideTimelines,
   showCreatedTimelineEvent,
   showTimelineEvents,
+  showTimelines,
 } from "metabase/visualizations/lib/timeline-events-visibility";
 import type {
   TimelineEventsVisibilityIntent,
@@ -111,15 +113,29 @@ export const TimelineSidebar = ({
     [onUpdateVisibility],
   );
 
-  // the header checkbox reflects the events the card lists, so it acts on those
+  // a focused sidebar lists only the clicked events, so the header acts on those
   const handleShowTimeline = useCallback(
-    (timeline: Timeline) => handleShowTimelineEvents(timeline.events ?? []),
-    [handleShowTimelineEvents],
+    (timeline: Timeline) =>
+      isFocused
+        ? handleShowTimelineEvents(timeline.events ?? [])
+        : onUpdateVisibility(
+            (visibility, allTimelines) =>
+              showTimelines(visibility, [timeline.id], allTimelines),
+            "show",
+          ),
+    [isFocused, handleShowTimelineEvents, onUpdateVisibility],
   );
 
   const handleHideTimeline = useCallback(
-    (timeline: Timeline) => handleHideTimelineEvents(timeline.events ?? []),
-    [handleHideTimelineEvents],
+    (timeline: Timeline) =>
+      isFocused
+        ? handleHideTimelineEvents(timeline.events ?? [])
+        : onUpdateVisibility(
+            (visibility, allTimelines) =>
+              hideTimelines(visibility, [timeline.id], allTimelines),
+            "hide",
+          ),
+    [isFocused, handleHideTimelineEvents, onUpdateVisibility],
   );
 
   const handleEventCreated = useCallback(
