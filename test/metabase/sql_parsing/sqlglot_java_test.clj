@@ -92,6 +92,15 @@
             (sql-parsing/is-single-stmt-of-type? (sqlglot-java/parser) "postgres" "select @@session.x := 1"
                                                  "read-only")))))
 
+(deftest aliased-and-plain-select-of-one-column-test
+  (testing "a column selected with and without an alias keeps each its own alias (QUE-992)"
+    (doseq [backend [:sqlglot :sqlglot-java]]
+      (is (= ["b" "a"]
+             (mapv :alias (:returned-fields (sql-parsing/field-references
+                                             (sql-parsing/parser backend) "postgres"
+                                             "SELECT u.a AS b, u.a FROM (SELECT a FROM x UNION SELECT a FROM y) u"))))
+          backend))))
+
 (deftest backend-dispatch-test
   (testing "every sql-tools multimethod runs its :sqlglot method for :sqlglot-java, through the backend hierarchy"
     (is (= 10 (count (interface-multimethods))))

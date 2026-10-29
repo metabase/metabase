@@ -1318,6 +1318,9 @@ class FieldReferenceWalker:
                 alias = expr.alias
                 for result in results:
                     if "col" in result:
+                        # Copy before setting the alias, as _find_returned_fields does: the same dict can be
+                        # shared with another select item (e.g. `u.a AS b, u.a`), which would take this alias too.
+                        result["col"] = dict(result["col"])
                         result["col"]["alias"] = alias
             return results
 
