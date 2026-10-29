@@ -86,7 +86,7 @@
                               [:<= (h2x/->date start) (h2x/->date :timestamp)])
                             (when end
                               [:<= (h2x/->date :timestamp) (h2x/->date end)])]])]}]
-    (t2/hydrate (t2/select :model/TimelineEvent clause) :creator)))
+    (t2/hydrate (t2/select :model/TimelineEvent (h2x/assert-map-or-nil! clause)) :creator)))
 
 (defn include-events
   "Include events on `timelines` passed in. Options are optional and include whether to return unarchived events or all

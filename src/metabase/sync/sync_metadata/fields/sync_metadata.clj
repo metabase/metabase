@@ -209,7 +209,7 @@
            {:preview_display false}))]
     ;; if any updates need to be done, do them and return 1 (because 1 Field was updated), otherwise return 0
     (if (and (seq updates)
-             (pos? (t2/update! :model/Field (u/the-id metabase-field) updates)))
+             (pos? (t2/update! :model/Field :id (u/the-id metabase-field) updates)))
       1
       0)))
 

@@ -171,7 +171,7 @@
                  (:dataset_query existing-action))]
     (t2/with-transaction [_conn]
       (when-let [action-row (not-empty (select-keys updates action-columns))]
-        (t2/update! :model/Action id action-row))
+        (t2/update! :model/Action :id id action-row))
       (when-let [type-row (not-empty (cond-> (apply dissoc updates :id action-columns)
                                        (= (or (:type updates) (:type existing-action))
                                           :implicit)
@@ -182,7 +182,7 @@
             (let [new-model (type->model (:type updates))]
               (t2/delete! existing-model :action_id id)
               (t2/insert! new-model (assoc type-row :action_id id)))
-            (t2/update! existing-model id type-row)))))))
+            (t2/update! existing-model :toucan/pk id type-row)))))))
 
 (mu/defn update!
   "Updates an Action and the related type table.

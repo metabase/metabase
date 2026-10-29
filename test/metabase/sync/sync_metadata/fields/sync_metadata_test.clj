@@ -20,7 +20,7 @@
                                        (seq db-settings) (assoc :settings db-settings))
                   :model/Table table (assoc table :db_id (u/the-id db))]
      (let [update-operations (atom [])]
-       (with-redefs [t2/update! (fn [model id updates]
+       (with-redefs [t2/update! (fn [model _pk-column id updates]
                                   (swap! update-operations conj [(name model) id updates])
                                   (count updates))]
          (#'sync-metadata/update-field-metadata-if-needed!
@@ -304,8 +304,8 @@
                                   :base-type  :type/Text}]
                                 [["ngoc@metabase.com"]]]]
         (try
-          (sync/sync-table! (t2/select-one :model/Table (mt/id :table)))
-          (let [original-field (t2/select-one :model/Field (mt/id :table :field))]
+          (sync/sync-table! (t2/select-one :model/Table :id (mt/id :table)))
+          (let [original-field (t2/select-one :model/Field :id (mt/id :table :field))]
             (testing "sanity check: the original state"
               (is (=? {:semantic_type  :type/Email
                        :fingerprint    (mt/malli=? :map)
@@ -322,8 +322,8 @@
                             "ALTER TABLE \"TABLE\" ADD COLUMN \"FIELD\" INTEGER;"
                             "INSERT INTO \"TABLE\"(field) VALUES(1);"]]
                  (next.jdbc/execute! conn [sql]))))
-            (sync/sync-table! (t2/select-one :model/Table (mt/id :table)))
-            (let [new-field (t2/select-one :model/Field (mt/id :table :field))]
+            (sync/sync-table! (t2/select-one :model/Table :id (mt/id :table)))
+            (let [new-field (t2/select-one :model/Field :id (mt/id :table :field))]
               (testing "updated field is re-fingerprinted and analyzed"
                 (is (=? {:semantic_type  nil
                          :fingerprint    (mt/malli=? :map)
@@ -332,4 +332,4 @@
                         new-field))
                 (is (not= (:fingerprint original-field) (:fingerprint new-field))))))
           (finally
-            (t2/delete! :model/Database (mt/id))))))))
+            (t2/delete! :model/Database :id (mt/id))))))))

@@ -46,8 +46,8 @@
             (Thread/sleep 1)
             ;; only an admin may rewrite the question a sandbox is built out of
             (mt/with-test-user :crowberto
-              (t2/update! :model/Card card-id {:dataset_query new-query
-                                               :updated_at    (t/local-date-time)})))
+              (t2/update! :model/Card :id card-id {:dataset_query new-query
+                                                   :updated_at    (t/local-date-time)})))
           (params.field-values/get-or-create-field-values!
            (t2/select-one :model/Field :id (mt/id :categories :id)))
           (is (= [(range 4 6)
@@ -66,7 +66,7 @@
                                          {:gtaps      {:categories {:remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}}
                                           :attributes login-attributes}
                                          (ee-params.field-values/hash-input-for-sandbox field)))
-              field (t2/select-one :model/Field (mt/id :categories :name))]
+              field (t2/select-one :model/Field :id (mt/id :categories :name))]
           (mt/with-temp [:model/User {user-id-1 :id} {}
                          :model/User {user-id-2 :id} {}]
 
@@ -98,7 +98,7 @@
     (testing "gtap with card and remappings"
       ;; hack so that we don't have to setup all the sandbox permissions the table
       (with-redefs [ee-params.field-values/field-is-sandboxed? (constantly true)]
-        (let [field (t2/select-one :model/Field (mt/id :categories :name))
+        (let [field (t2/select-one :model/Field :id (mt/id :categories :name))
               hash-input-for-user-id-with-attributes (fn [user-id login-attributes field]
                                                        (mt/with-temp-vals-in-db :model/User user-id {:login_attributes login-attributes}
                                                          (request/with-current-user user-id

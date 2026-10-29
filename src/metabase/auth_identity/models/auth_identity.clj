@@ -125,7 +125,7 @@
      (let [attrs {:credentials {:plaintext_password password}
                   :expires_at  (:expires-at opts)}]
        (if-let [pw-auth-identity (t2/select-one :model/AuthIdentity :user_id user-id :provider "password")]
-         (t2/update! :model/AuthIdentity (u/the-id pw-auth-identity) attrs)
+         (t2/update! :model/AuthIdentity :id (u/the-id pw-auth-identity) attrs)
          (t2/insert! :model/AuthIdentity (merge {:user_id user-id, :provider "password"} attrs))))
      (t2/delete! :model/AuthIdentity :user_id user-id :provider "emailed-secret-password-reset")
      (t2/delete! :model/Session :user_id user-id))))

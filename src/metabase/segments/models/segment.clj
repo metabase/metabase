@@ -94,7 +94,7 @@
       (:db_id table)
       (u/the-id table))))
   ([model pk]
-   (mi/can-read? (t2/select-one model pk))))
+   (mi/can-read? (t2/select-one model :toucan/pk pk))))
 
 (t2/define-before-update :model/Segment [segment]
   ;; throw an Exception if someone tries to update creator_id

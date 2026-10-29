@@ -237,7 +237,7 @@
   "Uses cache to prevent redundant look-ups with an action call chain."
   [table-id]
   (assert table-id "Id cannot be nil")
-  (cached-database (:db_id (cached-value [:table-by-db-ids table-id] #(t2/select-one [:model/Table :db_id] table-id)))))
+  (cached-database (:db_id (cached-value [:table-by-db-ids table-id] #(t2/select-one [:model/Table :db_id] :id table-id)))))
 
 (defn- log-before-after
   [level context before after]

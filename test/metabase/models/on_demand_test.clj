@@ -79,7 +79,7 @@
                 (reset! updated-field-names #{})
                 ;; now update the Card... since param didn't change at all FieldValues
                 ;; should not be updated
-                (t2/update! :model/Card (u/the-id card) card))))))))
+                (t2/update! :model/Card :id (u/the-id card) card))))))))
 
 (deftest existing-card-test-2
   (testing "Existing Card"
@@ -95,7 +95,7 @@
                 (mt/with-temp [:model/Field new-field {:table_id         (u/the-id table)
                                                        :has_field_values "list"
                                                        :name             "New Field"}]
-                  (t2/update! :model/Card (u/the-id card)
+                  (t2/update! :model/Card :id (u/the-id card)
                               {:dataset_query (native-query-with-template-tag new-field)})))))))))
 
 (deftest existing-card-test-3
@@ -110,7 +110,7 @@
               (fn [{:keys [field card]}]
                 ;; now change the query to one that references our Field in a
                 ;; on-demand DB. Field should have updated values
-                (t2/update! :model/Card (u/the-id card)
+                (t2/update! :model/Card :id (u/the-id card)
                             {:dataset_query (native-query-with-template-tag field)}))))))))
 
 (deftest existing-card-test-4
@@ -122,7 +122,7 @@
               {:db {:is_on_demand false}}
               (fn [{:keys [card]}]
                 ;; update the Card. Field should get updated values
-                (t2/update! :model/Card (u/the-id card) card))))))))
+                (t2/update! :model/Card :id (u/the-id card) card))))))))
 
 (deftest existing-card-test-5
   (testing "Existing Card"
@@ -135,7 +135,7 @@
               (fn [{:keys [field card]}]
                 ;; now change the query to one that references a Field. Field should
                 ;; not get values since DB is not On-Demand
-                (t2/update! :model/Card (u/the-id card)
+                (t2/update! :model/Card :id (u/the-id card)
                             {:dataset_query (native-query-with-template-tag field)}))))))))
 
 (deftest existing-card-test-6
@@ -151,7 +151,7 @@
                 (mt/with-temp [:model/Field new-field {:table_id         (u/the-id table)
                                                        :has_field_values "list"
                                                        :name             "New Field"}]
-                  (t2/update! :model/Card (u/the-id card)
+                  (t2/update! :model/Card :id (u/the-id card)
                               {:dataset_query (native-query-with-template-tag new-field)})))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

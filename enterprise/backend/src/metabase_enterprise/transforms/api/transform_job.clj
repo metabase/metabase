@@ -99,7 +99,7 @@
                                      :description description
                                      :schedule schedule
                                      :ui_display_type ui_display_type)]
-      (t2/update! :model/TransformJob job-id updates))
+      (t2/update! :model/TransformJob :id job-id updates))
     (when schedule
       (transforms.schedule/update-job! job-id schedule))
     ;; Update tag associations if provided

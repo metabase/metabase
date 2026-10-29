@@ -69,7 +69,7 @@
   from the token, so a preview reflects the settings being edited rather than the published ones."
   [unsigned-token]
   (let [card-id (api.embed.common/unsigned-token->card-id unsigned-token)]
-    (-> (api/check-404 (t2/select-one :model/Card card-id))
+    (-> (api/check-404 (t2/select-one :model/Card :id card-id))
         (assoc :embedding_params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])))))
 
 (api.macros/defendpoint :get "/card/:token/params/:param-key/values" :- ms/FieldValuesResult

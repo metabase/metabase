@@ -33,9 +33,9 @@
                                  :payload)]
     (case (:payload_type notification)
       ;; use the card name
-      :notification/card (->> notification :payload :card_id (t2/select-one-fn :name :model/Card))
+      :notification/card (->> notification :payload :card_id (t2/select-one-fn :name :model/Card :id))
       ;; use the dashboard name
-      :notification/dashboard (->> notification :payload :dashboard_id (t2/select-one-fn :name :model/Dashboard))
+      :notification/dashboard (->> notification :payload :dashboard_id (t2/select-one-fn :name :model/Dashboard :id))
       (name (:payload_type notification)))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -58,7 +58,7 @@
                                 :type :notification-recipient/raw-value)
           matching-recipient (m/find-first #(= email (-> % :details :value)) recipients)]
       (if matching-recipient
-        (t2/delete! :model/NotificationRecipient (:id matching-recipient))
+        (t2/delete! :model/NotificationRecipient :id (:id matching-recipient))
         (throw (ex-info (tru "Email doesn''t exist.") {:status-code 400})))))
   (events/publish-event! :event/notification-unsubscribe-ex {:details {:email email}
                                                              :object {:id notification-handler-id}})

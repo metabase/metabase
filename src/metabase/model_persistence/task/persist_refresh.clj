@@ -58,7 +58,7 @@
     (let [card (t2/select-one :model/Card :id (:card_id persisted-info))
           definition (persisted-info/metadata->definition (:result_metadata card)
                                                           (:table_name persisted-info))
-          _ (t2/update! :model/PersistedInfo (u/the-id persisted-info)
+          _ (t2/update! :model/PersistedInfo :id (u/the-id persisted-info)
                         {:definition definition,
                          :query_hash (persisted-info/query-hash (:dataset_query card))
                          :active false,
@@ -72,7 +72,7 @@
                                     (log/infof e "Error refreshing persisting model with card-id %s"
                                                (:card_id persisted-info))
                                     {:state :error :error (ex-message e)}))]
-      (t2/update! :model/PersistedInfo (u/the-id persisted-info)
+      (t2/update! :model/PersistedInfo :id (u/the-id persisted-info)
                   {:active (= state :success),
                    :refresh_end :%now,
                    :state (if (= state :success) "persisted" "error")

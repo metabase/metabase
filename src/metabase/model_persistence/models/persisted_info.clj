@@ -8,6 +8,7 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -122,7 +123,7 @@
   ([conditions-map]
    (mark-for-pruning! conditions-map "deletable"))
   ([conditions-map state]
-   (t2/update! :model/PersistedInfo conditions-map {:active false, :state state, :state_change_at :%now})))
+   (t2/update! :model/PersistedInfo (h2x/assert-map-or-nil! conditions-map) {:active false, :state state, :state_change_at :%now})))
 
 (defn invalidate!
   "Invalidates any caches corresponding to the `conditions-map`. Equivalent to toggling the caching off and on again."
@@ -181,7 +182,7 @@
 
                          (contains? #{"deletable" "off"} (:state existing-persisted-info))
                          (do
-                           (t2/update! :model/PersistedInfo (u/the-id existing-persisted-info)
+                           (t2/update! :model/PersistedInfo :id (u/the-id existing-persisted-info)
                                        {:active false, :state "creating", :state_change_at :%now})
                            (t2/select-one :model/PersistedInfo :card_id card-id)))]
     persisted-info))

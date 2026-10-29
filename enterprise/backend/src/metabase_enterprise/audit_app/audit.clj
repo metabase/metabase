@@ -76,7 +76,7 @@
 (defn- adjust-audit-db-to-source!
   [{audit-db-id :id}]
   ;; We need to move back to a schema that matches the serialized data
-  (t2/update! :model/Database audit-db-id {:engine "postgres"})
+  (t2/update! :model/Database :id audit-db-id {:engine "postgres"})
   ;; do a separate select and update of table ids that are not downcased
   ;; we don't want to try to downcase audit db tables that may already have a downcased version
   ;; some older migrations have both upper and lowercased table names
@@ -150,7 +150,7 @@
   [{audit-db-id :id :keys [engine] :as audit-db}]
   (when-not (= engine (mdb/db-type))
     ;; We need to move the loaded data back to the host db
-    (t2/update! :model/Database audit-db-id {:engine (name (mdb/db-type))})
+    (t2/update! :model/Database :id audit-db-id {:engine (name (mdb/db-type))})
     (case (mdb/db-type)
       :mysql
       (t2/update! :model/Table {:db_id audit-db-id} {:schema nil})

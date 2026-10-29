@@ -146,7 +146,7 @@
   "Test if the target table of a transform already exists."
   [{:keys [target] :as transform}]
   (let [db-id (transforms.i/target-db-id transform)
-        {driver :engine :as database} (t2/select-one :model/Database db-id)]
+        {driver :engine :as database} (t2/select-one :model/Database :id db-id)]
     (driver/table-exists? driver database target)))
 
 (defn target-table
@@ -176,7 +176,7 @@
                                                 :data_source :metabase-transform)
                                 {:create? true})]
     (when-not (:active table)
-      (t2/update! :model/Table (:id table) {:active true}))
+      (t2/update! :model/Table :id (:id table) {:active true}))
     table))
 
 (defn deactivate-table!
@@ -184,7 +184,7 @@
   [database target]
   (when-let [table (sync-table! database target)]
     ;; TODO this should probably be a function in the sync module
-    (t2/update! :model/Table (:id table) {:active false})))
+    (t2/update! :model/Table :id (:id table) {:active false})))
 
 (defn delete-target-table!
   "Delete the target table of a transform and sync it from the app db."
@@ -192,7 +192,7 @@
   (when target
     (let [target (update target :type keyword)
           database-id (transforms.i/target-db-id transform)
-          {driver :engine :as database} (t2/select-one :model/Database database-id)]
+          {driver :engine :as database} (t2/select-one :model/Database :id database-id)]
       (driver/drop-transform-target! driver database target)
       (log/info "Deactivating  target " (pr-str target) "for transform" id)
       (deactivate-table! database target))))
@@ -200,7 +200,7 @@
 (defn delete-target-table-by-id!
   "Delete the target table of the transform specified by `transform-id`."
   [transform-id]
-  (delete-target-table! (t2/select-one :model/Transform transform-id)))
+  (delete-target-table! (t2/select-one :model/Transform :id transform-id)))
 
 (defn massage-sql-query
   "Adjusts mbql query for use in a transform."
@@ -237,7 +237,7 @@
   Returns a map with `:query` (MBQL query selecting the max) and `:filter-column` (column metadata),
   or `nil` if the transform doesn't use checkpoint-based incremental strategy or the target table doesn't exist."
   [transform-id]
-  (let [{:keys [source target] :as transform} (t2/select-one :model/Transform transform-id)
+  (let [{:keys [source target] :as transform} (t2/select-one :model/Transform :id transform-id)
         db-id (transforms.i/target-db-id transform)]
     (when (checkpoint-incremental? source)
       (when-let [table (target-table db-id target)]
@@ -317,7 +317,7 @@
       :query
       (let [checkpoint (next-checkpoint id)
             query (:query source)
-            driver (some->> query :database (t2/select-one :model/Database) :engine keyword)]
+            driver (some->> query :database (t2/select-one :model/Database :id) :engine keyword)]
         (binding [driver/*compile-with-inline-parameters*
                   (or (= :clickhouse driver)
                       driver/*compile-with-inline-parameters*)]

@@ -120,7 +120,7 @@
                               (catch Exception _
                                 false))))))
             ;; clean up the database
-            (t2/delete! :model/Database (u/the-id db))))))))
+            (t2/delete! :model/Database :id (u/the-id db))))))))
 
 (deftest check-can-connect-before-sync-test
   (testing "Database sync should short-circuit and fail if the database at the connection has been deleted (metabase#7526)"
@@ -154,7 +154,7 @@
               ;; so fake it by changing the database details
               (let [details     (:details (mt/db))
                     new-details (merge details (tx/bad-connection-details driver/*driver*))]
-                (t2/update! :model/Database (u/the-id db) {:details new-details}))
+                (t2/update! :model/Database :id (u/the-id db) {:details new-details}))
               ;; otherwise destroy the db and use the original details
               (tx/destroy-db! driver/*driver* dbdef))
             (testing "after deleting a database, sync should fail"
@@ -163,7 +163,7 @@
               (testing "2: triggering the sync via the POST /api/database/:id/sync_schema endpoint should fail"
                 (mt/user-http-request :crowberto :post 422 (str "/database/" (u/the-id db) "/sync_schema"))))
             ;; clean up the database
-            (t2/delete! :model/Database (u/the-id db))))))))
+            (t2/delete! :model/Database :id (u/the-id db))))))))
 
 (deftest supports-table-privileges-matches-implementations-test
   (mt/test-drivers (mt/normal-drivers-with-feature :table-privileges)
@@ -348,9 +348,9 @@
   (testing "`describe-table-fks` should work for drivers that do not support `describe-fks`"
     (mt/test-drivers (set/difference (mt/normal-drivers-with-feature :metadata/key-constraints)
                                      (mt/normal-drivers-with-feature :describe-fks))
-      (let [orders   (t2/select-one :model/Table (mt/id :orders))
-            products (t2/select-one :model/Table (mt/id :products))
-            people   (t2/select-one :model/Table (mt/id :people))
+      (let [orders   (t2/select-one :model/Table :id (mt/id :orders))
+            products (t2/select-one :model/Table :id (mt/id :products))
+            people   (t2/select-one :model/Table :id (mt/id :people))
             fmt      (partial ddl.i/format-name driver/*driver*)]
         (is (= #{{:fk-column-name   (fmt "user_id")
                   :dest-table       (select-keys people [:name :schema])
@@ -365,9 +365,9 @@
   (testing "`describe-fks` works for drivers that support `describe-fks`"
     (mt/test-drivers (mt/normal-drivers-with-feature :metadata/key-constraints :describe-fks)
       (let [fmt           (partial ddl.i/format-name driver/*driver*)
-            orders        (t2/select-one :model/Table (mt/id :orders))
-            products      (t2/select-one :model/Table (mt/id :products))
-            people        (t2/select-one :model/Table (mt/id :people))
+            orders        (t2/select-one :model/Table :id (mt/id :orders))
+            products      (t2/select-one :model/Table :id (mt/id :products))
+            people        (t2/select-one :model/Table :id (mt/id :people))
             entire-db-fks (driver/describe-fks driver/*driver* (mt/db))
             schema-db-fks (driver/describe-fks driver/*driver* (mt/db)
                                                :schema-names (when (:schema orders) [(:schema orders)]))

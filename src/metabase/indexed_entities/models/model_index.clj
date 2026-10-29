@@ -147,9 +147,9 @@
                                               (t2/select :model/ModelIndexValue
                                                          :model_index_id (:id model-index)))]
     (if-not (str/blank? error-message)
-      (t2/update! :model/ModelIndex (:id model-index) {:state      "error"
-                                                       :error      error-message
-                                                       :indexed_at :%now})
+      (t2/update! :model/ModelIndex :id (:id model-index) {:state      "error"
+                                                           :error      error-message
+                                                           :indexed_at :%now})
       (try
         (t2/with-transaction [_conn]
           (let [{:keys [additions deletions]} (find-changes {:current-index current-index-values
@@ -171,7 +171,7 @@
                                     :model_pk       id
                                     :model_index_id (:id model-index)})
                                  additions-part)))))
-          (t2/update! :model/ModelIndex (:id model-index)
+          (t2/update! :model/ModelIndex :id (:id model-index)
                       {:indexed_at :%now
                        :error      nil
                        :state      (if (> (count values-to-index) max-indexed-values)
@@ -181,7 +181,7 @@
         (catch Exception e
           (log/errorf e "Error saving model-index values for model-index: %d, model: %d"
                       (:id model-index) (:model_id model-index))
-          (t2/update! :model/ModelIndex (:id model-index)
+          (t2/update! :model/ModelIndex :id (:id model-index)
                       {:state      "error"
                        :error      (ex-message e)
                        :indexed_at :%now}))))))

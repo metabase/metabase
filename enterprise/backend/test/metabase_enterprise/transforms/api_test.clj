@@ -42,7 +42,7 @@
   "Create a query filtering products by category, using shared utility.
    Returns a legacy MBQL query structure for API compatibility."
   [category]
-  (let [table-name (t2/select-one-fn :name :model/Table (mt/id :transforms_products))]
+  (let [table-name (t2/select-one-fn :name :model/Table :id (mt/id :transforms_products))]
     (query-test-util/make-query
      {:source-table  table-name
       :source-column "category"
@@ -65,7 +65,7 @@
                                                          :name table-name}})
                 transform-id (:id response)
                 crowberto-id (mt/user->id :crowberto)
-                creator-id (t2/select-one-fn :creator_id :model/Transform transform-id)]
+                creator-id (t2/select-one-fn :creator_id :model/Transform :id transform-id)]
             (testing "Response includes creator_id"
               (is (= crowberto-id (:creator_id response))))
             (testing "Database record has creator_id set correctly"
@@ -480,7 +480,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-premium-features #{:transforms}
         (mt/dataset transforms-dataset/transforms-test
-          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+          (let [schema (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))]
             (with-transform-cleanup! [{table1-name :name :as target1} {:type   "table"
                                                                        :schema schema
                                                                        :name   "gadget_products"}
@@ -884,7 +884,7 @@
                                            (let [response (mt/user-http-request :crowberto action 200 url req)
                                                  transform-id (:id response)
                                                  ;; Read the updated transform from the DB for accurate comparison
-                                                 transform (-> (t2/select-one :model/Transform transform-id)
+                                                 transform (-> (t2/select-one :model/Transform :id transform-id)
                                                                (t2/hydrate :transform_tag_ids))]
                                              (is (= exp-revisions (t2/count :model/Revision :model "Transform"
                                                                             :model_id transform-id)))

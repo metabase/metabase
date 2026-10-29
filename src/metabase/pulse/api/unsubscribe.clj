@@ -44,7 +44,7 @@
     (api/let-404 [pulse-channel (t2/select-one :model/PulseChannel :pulse_id pulse-id :channel_type "email")]
       (let [emails (get-in pulse-channel [:details :emails])]
         (if (some #{email} emails)
-          (t2/update! :model/PulseChannel (:id pulse-channel) (update-in pulse-channel [:details :emails] #(remove #{email} %)))
+          (t2/update! :model/PulseChannel :id (:id pulse-channel) (update-in pulse-channel [:details :emails] #(remove #{email} %)))
           (throw (ex-info (tru "Email for pulse-id doesn''t exist.")
                           {:type        type
                            :status-code 400}))))
@@ -72,6 +72,6 @@
           (throw (ex-info (tru "Email for pulse-id already exists.")
                           {:type        type
                            :status-code 400}))
-          (t2/update! :model/PulseChannel (:id pulse-channel) (update-in pulse-channel [:details :emails] conj email))))
+          (t2/update! :model/PulseChannel :id (:id pulse-channel) (update-in pulse-channel [:details :emails] conj email))))
       (events/publish-event! :event/subscription-unsubscribe-undo {:object {:email email}})
       {:status :success :title (:name (models.pulse/retrieve-notification pulse-id :archived false))})))

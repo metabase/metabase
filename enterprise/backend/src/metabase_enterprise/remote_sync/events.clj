@@ -74,18 +74,18 @@
 
       ;; If the entity was created and then removed/deleted before sync, just delete the entry from tracking
       (and (= "create" (:status existing)) (contains? #{"removed" "delete"} status))
-      (t2/delete! :model/RemoteSyncObject (:id existing))
+      (t2/delete! :model/RemoteSyncObject :id (:id existing))
 
       ;; Just update the status, object doesn't exist to update other info
       (= "delete" (:status existing))
-      (t2/update! :model/RemoteSyncObject (:id existing)
+      (t2/update! :model/RemoteSyncObject :id (:id existing)
                   {:status status
                    :status_changed_at (t/offset-date-time)})
 
       ;; If the entry was created, the status should remain create until synced
       (not (= "create" (:status existing)))
       (let [model (remote-sync-model-details model-type model-id)]
-        (t2/update! :model/RemoteSyncObject (:id existing)
+        (t2/update! :model/RemoteSyncObject :id (:id existing)
                     {:status status
                      :status_changed_at (t/offset-date-time)
                      :model_name (:name model)

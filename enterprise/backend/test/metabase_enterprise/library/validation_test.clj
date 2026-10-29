@@ -66,4 +66,4 @@
         (testing (str "Checking type " (:type col))
           (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                 #"Cannot update properties on a Library collection"
-                                (t2/update! :model/Collection (:id col) {:name "New Name"}))))))))
+                                (t2/update! :model/Collection :id (:id col) {:name "New Name"}))))))))

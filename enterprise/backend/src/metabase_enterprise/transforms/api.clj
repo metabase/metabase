@@ -62,7 +62,7 @@
 
 (defn- check-database-feature
   [transform]
-  (let [database (api/check-400 (t2/select-one :model/Database (transforms.i/target-db-id transform))
+  (let [database (api/check-400 (t2/select-one :model/Database :id (transforms.i/target-db-id transform))
                                 (deferred-tru "The target database cannot be found."))
         features (transforms.util/required-database-features transform)]
     (api/check-400 (not (:is_sample database))
@@ -151,7 +151,7 @@
   "Get a specific transform."
   [id]
   (api/check-superuser)
-  (let [{:keys [target] :as transform} (api/check-404 (t2/select-one :model/Transform id))
+  (let [{:keys [target] :as transform} (api/check-404 (t2/select-one :model/Transform :id id))
         target-table (transforms.util/target-table (transforms.i/target-db-id transform) target :active true)]
     (-> transform
         (t2/hydrate :last_run :transform_tag_ids :creator)
@@ -230,7 +230,7 @@
   (api/check-superuser)
   (let [transform (t2/with-transaction [_]
                     ;; Cycle detection should occur within the transaction to avoid race
-                    (let [old (t2/select-one :model/Transform id)
+                    (let [old (t2/select-one :model/Transform :id id)
                           new (merge old body)
                           target-fields #(-> % :target (select-keys [:schema :name]))]
                       ;; we must validate on a full transform object
@@ -244,11 +244,11 @@
                                            (transforms.util/target-table-exists? new)))
                                  403
                                  (deferred-tru "A table with that name already exists.")))
-                    (t2/update! :model/Transform id (dissoc body :tag_ids))
+                    (t2/update! :model/Transform :id id (dissoc body :tag_ids))
                     ;; Update tag associations if provided
                     (when (contains? body :tag_ids)
                       (transform.model/update-transform-tags! id (:tag_ids body)))
-                    (t2/hydrate (t2/select-one :model/Transform id) :transform_tag_ids :creator))]
+                    (t2/hydrate (t2/select-one :model/Transform :id id) :transform_tag_ids :creator))]
     (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
     transform))
 
@@ -261,8 +261,8 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (let [transform (api/check-404 (t2/select-one :model/Transform id))]
-    (t2/delete! :model/Transform id)
+  (let [transform (api/check-404 (t2/select-one :model/Transform :id id))]
+    (t2/delete! :model/Transform :id id)
     (events/publish-event! :event/transform-delete
                            {:object transform
                             :user-id api/*current-user-id*}))
@@ -289,7 +289,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (let [transform (api/check-404 (t2/select-one :model/Transform id))
+  (let [transform (api/check-404 (t2/select-one :model/Transform :id id))
         run (api/check-404 (transform-run/running-run-for-transform-id id))]
     (transform-run-cancelation/mark-cancel-started-run! (:id run))
     (when (transforms.util/python-transform? transform)
@@ -305,7 +305,7 @@
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (let [transform (api/check-404 (t2/select-one :model/Transform id))
+  (let [transform (api/check-404 (t2/select-one :model/Transform :id id))
         _         (check-feature-enabled! transform)
         start-promise (promise)]
     (u.jvm/in-virtual-thread*

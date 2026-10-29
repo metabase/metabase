@@ -235,7 +235,7 @@
   (perms/check-manager-of-group group-id)
   (let [group (t2/select-one :model/PermissionsGroup :id group-id)]
     (api/check-404 group)
-    (t2/update! :model/PermissionsGroup group-id
+    (t2/update! :model/PermissionsGroup :id group-id
                 {:name name})
     ;; return the updated group
     (u/prog1 (t2/select-one :model/PermissionsGroup :id group-id)
@@ -332,7 +332,7 @@
     (api/check
      (t2/exists? :model/User :id (:user_id old) :is_superuser false)
      [400 (tru "Admin cannot be a group manager.")])
-    (t2/update! :model/PermissionsGroupMembership (:id old)
+    (t2/update! :model/PermissionsGroupMembership :id (:id old)
                 {:is_group_manager is_group_manager})
     (t2/select-one :model/PermissionsGroupMembership :id (:id old))))
 

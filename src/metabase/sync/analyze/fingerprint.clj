@@ -12,6 +12,7 @@
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -35,7 +36,7 @@
   [field       :- i/FieldInstance
    fingerprint :- [:maybe ::lib.schema.metadata.fingerprint/fingerprint]]
   (log/debugf "Saving fingerprint for %s" (sync-util/name-for-logging field))
-  (t2/update! :model/Field (u/the-id field) (merge (incomplete-analysis-kvs) {:fingerprint fingerprint})))
+  (t2/update! :model/Field :id (u/the-id field) (merge (incomplete-analysis-kvs) {:fingerprint fingerprint})))
 
 (mr/def ::FingerprintStats
   [:map
@@ -188,7 +189,7 @@
    This should include NEW fields that are active and visible."
   [table :- i/TableInstance]
   (seq (t2/select :model/Field
-                  (honeysql-for-fields-that-need-fingerprint-updating table))))
+                  (h2x/assert-map-or-nil! (honeysql-for-fields-that-need-fingerprint-updating table)))))
 
 (mu/defn fingerprint-table!
   "Generate and save fingerprints for all the Fields in `table` that have not been previously analyzed."

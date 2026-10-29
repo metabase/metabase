@@ -931,7 +931,7 @@
     (let [updated-db (-> (assoc-in database [:details :dataset-filters-type] "inclusion")
                          (assoc-in [:details :dataset-filters-patterns] dataset-id)
                          (m/dissoc-in [:details :dataset-id]))]
-      (t2/update! :model/Database db-id {:details (:details updated-db)})
+      (t2/update! :model/Database :id db-id {:details (:details updated-db)})
       updated-db)))
 
 ;; TODO: THIS METHOD SHOULD NOT BE UPDATING THE APP-DB (which it does in [convert-dataset-id-to-filters!])
@@ -986,12 +986,12 @@
 (defmethod driver/create-table! :bigquery-cloud-sdk
   [driver database-id table-name column-definitions & {:keys [primary-key]}]
   (let [sql (#'driver.sql-jdbc/create-table!-sql driver table-name column-definitions :primary-key primary-key)]
-    (driver/execute-raw-queries! driver (t2/select-one :model/Database database-id) [sql])))
+    (driver/execute-raw-queries! driver (t2/select-one :model/Database :id database-id) [sql])))
 
 (defmethod driver/drop-table! :bigquery-cloud-sdk
   [driver database-id table-name]
   (let [sql (driver/compile-drop-table driver table-name)]
-    (driver/execute-raw-queries! driver (t2/select-one :model/Database database-id) [sql])))
+    (driver/execute-raw-queries! driver (t2/select-one :model/Database :id database-id) [sql])))
 
 (defn- convert-value-for-insertion
   [base-type value]
@@ -1044,7 +1044,7 @@
   ;; update their metadata caches frequently enough for timely transform runs (or interactive previews).
   ;; rather than waiting many minutes, we trade torward consistency by using SQL DML, whose table metadata
   ;; is consistent, and we do not see cached non-existence and things like that causing trouble.
-  (let [database   (t2/select-one :model/Database db-id)
+  (let [database   (t2/select-one :model/Database :id db-id)
         col-kws    (mapv (comp keyword name :name) columns)
         num-cols   (count col-kws)
         ;; bigquery allows 10k query parameters per request

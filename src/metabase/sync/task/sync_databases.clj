@@ -341,7 +341,7 @@
                 counter)
                ([counter db]
                 (try
-                  (t2/update! :model/Database (u/the-id db)
+                  (t2/update! :model/Database :id (u/the-id db)
                               (sync.schedules/schedule-map->cron-strings
                                ;; TODO (edpaget): this can go away after this patch is deployed to cloud
                                (if (= sync.schedules/old-sample-metadata-sync-schedule-cron-string

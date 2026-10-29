@@ -38,7 +38,7 @@
                   (perms/set-database-permission! group-id (mt/id) :perms/view-data      view-data)
                   (perms/set-database-permission! group-id (mt/id) :perms/create-queries :no)
                   (when table-is-published?
-                    (t2/update! :model/Table (mt/id :venues) {:is_published true :collection_id collection-id}))
+                    (t2/update! :model/Table :id (mt/id :venues) {:is_published true :collection_id collection-id}))
                   (if collection-readable?
                     (perms/grant-collection-read-permissions! group-id collection-id)
                     (do
@@ -66,7 +66,7 @@
           (mt/with-temp [:model/User       {user-id :id} {:email "view-data-test@example.com"}
                          :model/Collection collection {}]
             ;; Publish the venues table into this collection
-            (t2/update! :model/Table (mt/id :venues) {:is_published true :collection_id (u/the-id collection)})
+            (t2/update! :model/Table :id (mt/id :venues) {:is_published true :collection_id (u/the-id collection)})
             (let [all-users (perms/all-users-group)]
               ;; Set database-level permissions first to establish baseline
               (perms/set-database-permission! all-users (mt/id) :perms/view-data :blocked)
@@ -98,7 +98,7 @@
           (mt/with-temp [:model/User       {user-id :id} {:email "ee-db-access-test@example.com"}
                          :model/Collection collection {}]
             ;; Publish the venues table into this collection
-            (t2/update! :model/Table (mt/id :venues) {:is_published true :collection_id (u/the-id collection)})
+            (t2/update! :model/Table :id (mt/id :venues) {:is_published true :collection_id (u/the-id collection)})
             (let [all-users (perms/all-users-group)]
               ;; Set database-level permissions first to establish baseline
               (perms/set-database-permission! all-users (mt/id) :perms/view-data :unrestricted)
@@ -120,7 +120,7 @@
           (mt/with-temp [:model/User       {user-id :id} {:email "ee-db-access-test2@example.com"}
                          :model/Collection collection {}]
             ;; Publish the venues table into this collection
-            (t2/update! :model/Table (mt/id :venues) {:is_published true :collection_id (u/the-id collection)})
+            (t2/update! :model/Table :id (mt/id :venues) {:is_published true :collection_id (u/the-id collection)})
             (let [all-users (perms/all-users-group)]
               ;; Set database-level permissions first to establish baseline
               (perms/set-database-permission! all-users (mt/id) :perms/view-data :unrestricted)

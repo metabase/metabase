@@ -116,7 +116,7 @@
   (let [existing (api/write-check :model/Timeline id)
         current-archived (:archived (t2/select-one :model/Timeline :id id))]
     (collection/check-allowed-to-change-collection existing timeline-updates)
-    (t2/update! :model/Timeline id
+    (t2/update! :model/Timeline :id id
                 (u/select-keys-when timeline-updates
                                     :present #{:description :icon :collection_id :default :archived}
                                     :non-nil #{:name}))

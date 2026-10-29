@@ -25,7 +25,7 @@
                                                                "\n"
                                                                "def add_greeting(name):\n"
                                                                "    return f'Hello, {name}!'\n"))
-            (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+            (let [schema (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))]
               ;; Create and run a transform that uses the library
               (with-transform-cleanup! [{table-name :name :as target} {:type   "table"
                                                                        :schema schema
@@ -64,7 +64,7 @@
     (mt/test-drivers #{:postgres}
       (mt/with-premium-features #{:transforms :transforms-python}
         (mt/dataset transforms-dataset/transforms-test
-          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+          (let [schema (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))]
             (with-transform-cleanup! [{table-name :name :as target} {:type   "table"
                                                                      :schema schema
                                                                      :name   "target_table"}]

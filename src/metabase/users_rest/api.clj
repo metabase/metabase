@@ -24,6 +24,7 @@
    [metabase.users.schema :as users.schema]
    [metabase.users.settings :as users.settings]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -97,7 +98,7 @@
       (let [{email :email} user-before-update
             new-collection-name (collection/format-personal-collection-name first_name last_name email :site)]
         (when-not (= new-collection-name (:name collection))
-          (t2/update! :model/Collection (:id collection) {:name new-collection-name}))))))
+          (t2/update! :model/Collection :id (:id collection) {:name new-collection-name}))))))
 
 ;;; ------------ Serialize User Attribute Provenance ------------------
 
@@ -241,10 +242,10 @@
                                 :else                         (sql.helpers/where clauses [:= :tenant_id nil])))]
     {:data (cond-> (t2/select
                     (vec (cons :model/User (user-visible-columns)))
-                    (sql.helpers/order-by clauses
-                                          [:%lower.first_name :asc]
-                                          [:%lower.last_name :asc]
-                                          [:id :asc]))
+                    (h2x/assert-map-or-nil! (sql.helpers/order-by clauses
+                                                                  [:%lower.first_name :asc]
+                                                                  [:%lower.last_name :asc]
+                                                                  [:id :asc])))
              ;; For admins also include the IDs of Users' Personal Collections
              api/*is-superuser?*
              (t2/hydrate :personal_collection_id :tenant_collection_id)
@@ -280,8 +281,8 @@
                                   (not api/*is-superuser?*) (sql.helpers/where
                                                              [:= :tenant_id (:tenant_id @api/*current-user*)])
                                   true                      (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
-                    {:data   (t2/select (vec (cons :model/User (user-visible-columns))) clauses)
-                     :total  (t2/count :model/User (filter-clauses-without-paging clauses))
+                    {:data   (t2/select (vec (cons :model/User (user-visible-columns))) (h2x/assert-map-or-nil! clauses))
+                     :total  (t2/count :model/User (h2x/assert-map-or-nil! (filter-clauses-without-paging clauses)))
                      :limit  (request/limit)
                      :offset (request/offset)}))
           (within-group [] (let [user-ids (user/same-groups-user-ids api/*current-user-id*)
@@ -289,8 +290,8 @@
                                             (not api/*is-superuser?*) (sql.helpers/where [:= :tenant_id (:tenant_id @api/*current-user*)])
                                             (seq user-ids) (sql.helpers/where [:in :core_user.id user-ids])
                                             true           (sql.helpers/order-by [:%lower.last_name :asc] [:%lower.first_name :asc]))]
-                             {:data   (t2/select (vec (cons :model/User (user-visible-columns))) clauses)
-                              :total  (t2/count :model/User (filter-clauses-without-paging clauses))
+                             {:data   (t2/select (vec (cons :model/User (user-visible-columns))) (h2x/assert-map-or-nil! clauses))
+                              :total  (t2/count :model/User (h2x/assert-map-or-nil! (filter-clauses-without-paging clauses)))
                               :limit  (request/limit)
                               :offset (request/offset)}))
           (just-me [] {:data   [(fetch-user :id api/*current-user-id*)]
@@ -577,7 +578,7 @@
                                                            api/*is-superuser?* (conj :login_attributes :tenant_id))
                                                 :non-nil (cond-> #{:email}
                                                            api/*is-superuser?* (conj :is_superuser))))]
-          (t2/update! :model/User id changes)
+          (t2/update! :model/User :id id changes)
           (when (contains? changes :tenant_id)
             (api/check-400 (not (and (:tenant_id changes) (:is_superuser changes)))
                            "Superusers cannot be tenant users")
@@ -595,7 +596,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- reactivate-user! [existing-user]
-  (t2/update! :model/User (u/the-id existing-user)
+  (t2/update! :model/User :id (u/the-id existing-user)
               {:is_active     true
                :is_superuser  false
                ;; if the user originally logged in via Google Auth/LDAP and it's no longer enabled, convert them into a regular user

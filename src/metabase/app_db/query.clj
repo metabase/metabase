@@ -268,7 +268,7 @@
       (if-let [existing (apply t2/select-one model select-kvs)]
         (let [pk      (pk-key existing)
               updated (update-fn existing)]
-          (t2/update! model pk updated)
+          (t2/update! model :toucan/pk pk updated)
           ;; the private key may have been changed by the update, and this is OK.
           (pk-key updated pk))
         (t2/insert-returning-pk! model (update-fn nil))))))

@@ -116,7 +116,7 @@
         query      {:where where, :order-by [[:name :asc]]}
         hydrations (cond-> [:db]
                      (premium-features/has-feature? :transforms) (conj :transform))]
-    (as-> (t2/select :model/Table query) tables
+    (as-> (t2/select :model/Table (h2x/assert-map-or-nil! query)) tables
       (apply t2/hydrate tables hydrations)
       (into [] (comp (filter mi/can-read?)
                      (map schema.table/present-table))
@@ -218,7 +218,7 @@
                          (u/update-some :data_layer keyword)
                          (u/update-some :data_source keyword)
                          not-empty)]
-    (t2/update! :model/Table id changes))
+    (t2/update! :model/Table :id id changes))
   (let [updated-table        (t2/select-one :model/Table :id id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
     (if changed-field-order?
@@ -236,7 +236,7 @@
     (quick-task/submit-task!
      (fn []
        (doseq [[db-id tables] (group-by :db_id newly-unhidden)]
-         (let [database (t2/select-one :model/Database db-id)]
+         (let [database (t2/select-one :model/Database :id db-id)]
            ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
            ;; purposes of creating a new H2 database.
            (if (binding [driver.settings/*allow-testing-h2-connections* true]

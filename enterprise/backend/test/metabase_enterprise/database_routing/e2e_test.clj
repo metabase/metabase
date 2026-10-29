@@ -62,8 +62,8 @@
             {"db_name" "destination-db-2"}
             (with-temp-dbs! [router-db destination-db-1 destination-db-2]
               ;; configure the destination Databases
-              (t2/update! :model/Database (u/the-id destination-db-1) {:name "destination-db-1" :router_database_id (u/the-id router-db)})
-              (t2/update! :model/Database (u/the-id destination-db-2) {:name "destination-db-2" :router_database_id (u/the-id router-db)})
+              (t2/update! :model/Database :id (u/the-id destination-db-1) {:name "destination-db-1" :router_database_id (u/the-id router-db)})
+              (t2/update! :model/Database :id (u/the-id destination-db-2) {:name "destination-db-2" :router_database_id (u/the-id router-db)})
               ;; sync the Router database
               (sync/sync-database! router-db)
               ;; Configure the router database and set up a card that uses it.
@@ -91,7 +91,7 @@
     (mt/with-premium-features #{:database-routing}
       (binding [driver.settings/*allow-testing-h2-connections* true]
         (with-temp-dbs! [router-db destination-db]
-          (t2/update! :model/Database (u/the-id destination-db)
+          (t2/update! :model/Database :id (u/the-id destination-db)
                       {:name "destination-db" :router_database_id (u/the-id router-db)})
           (sync/sync-database! router-db)
           (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router-db)
@@ -122,7 +122,7 @@
           (with-temp-dbs! [router-db destination-db]
             ;; wiring an already-created (perm-carrying) DB as a destination mirrors the vulnerable
             ;; state: the destination retains permissions, so perms alone do not block access.
-            (t2/update! :model/Database (u/the-id destination-db)
+            (t2/update! :model/Database :id (u/the-id destination-db)
                         {:name "destination-db" :router_database_id (u/the-id router-db)})
             (sync/sync-database! router-db)
             (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router-db)
@@ -157,7 +157,7 @@
     (mt/with-premium-features #{:database-routing}
       (binding [driver.settings/*allow-testing-h2-connections* true]
         (with-temp-dbs! [router-db destination-db]
-          (t2/update! :model/Database (u/the-id destination-db)
+          (t2/update! :model/Database :id (u/the-id destination-db)
                       {:name "destination-db" :router_database_id (u/the-id router-db)})
           (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router-db)
                                                   :user_attribute "db_name"}]
@@ -180,7 +180,7 @@
         :crowberto
         {"db_name" "nonexistent_database_name"}
         (with-temp-dbs! [router-db destination-db]
-          (t2/update! :model/Database (u/the-id destination-db) {:name "my database name" :router_database_id (u/the-id router-db)})
+          (t2/update! :model/Database :id (u/the-id destination-db) {:name "my database name" :router_database_id (u/the-id router-db)})
           (sync/sync-database! router-db)
           (mt/with-temp [:model/DatabaseRouter _ {:database_id (u/the-id router-db)
                                                   :user_attribute "db_name"}]
@@ -212,7 +212,7 @@
           :rasta
           {"db_name" "destination database"}
           (with-temp-dbs! [router-db destination-db]
-            (t2/update! :model/Database (u/the-id destination-db) {:name "destination database" :router_database_id (u/the-id router-db)})
+            (t2/update! :model/Database :id (u/the-id destination-db) {:name "destination database" :router_database_id (u/the-id router-db)})
             (sync/sync-database! router-db)
             (execute-statement! router-db "INSERT INTO \"my_database_name\" (str) VALUES ('router')")
             (execute-statement! destination-db "INSERT INTO \"my_database_name\" (str) VALUES ('destination')")
@@ -273,8 +273,8 @@
             {"db_name" "destination-db-2"}
             (with-temp-dbs! [router-db destination-db-1 destination-db-2]
               ;; configure the destination Databases
-              (t2/update! :model/Database (u/the-id destination-db-1) {:name "destination-db-1" :router_database_id (u/the-id router-db)})
-              (t2/update! :model/Database (u/the-id destination-db-2) {:name "destination-db-2" :router_database_id (u/the-id router-db)})
+              (t2/update! :model/Database :id (u/the-id destination-db-1) {:name "destination-db-1" :router_database_id (u/the-id router-db)})
+              (t2/update! :model/Database :id (u/the-id destination-db-2) {:name "destination-db-2" :router_database_id (u/the-id router-db)})
               ;; sync the Router database
               (sync/sync-database! router-db)
               ;; Configure the router database and set up a card that uses it.
@@ -398,10 +398,10 @@
             (binding [tx/*use-routing-details* false]
               (mt/dataset (router-dataset driver/*driver*)
                 (let [router (mt/db)]
-                  (t2/update! :model/Database (u/the-id routed)
+                  (t2/update! :model/Database :id (u/the-id routed)
                               {:details (merge (:details routed)
                                                (routed-dataset-details driver/*driver*))})
-                  (t2/update! :model/Database (u/the-id router)
+                  (t2/update! :model/Database :id (u/the-id router)
                               {:details (merge (:details router)
                                                (router-dataset-details driver/*driver*))})
                   (let [router (t2/select-one :model/Database :id (u/the-id router))
@@ -456,12 +456,12 @@
                                                    [["us-east-1-foo"]
                                                     ["us-east-1-bar"]]]])
                 (let [router (mt/db)]
-                  (t2/update! :model/Database (u/the-id routed)
+                  (t2/update! :model/Database :id (u/the-id routed)
                               {:details (assoc (:details routed)
                                                :dbname nil
                                                :s3_staging_dir (tx/db-test-env-var-or-throw :athena :s3-staging-dir-routing)
                                                :region (tx/db-test-env-var-or-throw :athena :region-routing))})
-                  (t2/update! :model/Database (u/the-id router)
+                  (t2/update! :model/Database :id (u/the-id router)
                               {:details (assoc (:details router)
                                                :dbname nil)})
                   (let [router (t2/select-one :model/Database :id (u/the-id router))

@@ -101,7 +101,7 @@
 
 (t2/define-after-insert :model/Session
   [session]
-  (when-let [user (t2/select-one :model/User (:user_id session))]
+  (when-let [user (t2/select-one :model/User :id (:user_id session))]
     (let [event {:user-id (u/the-id user)}]
       (events/publish-event! :event/user-login event)
       (when (nil? (:last_login user))

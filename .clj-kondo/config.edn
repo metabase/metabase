@@ -65,6 +65,7 @@
   :metabase/missing-test-expr-requires-in-cljs               {:level :warning}
   :metabase/modules                                          {:level :warning} ; more config in `.clj-kondo/config/modules/config.edn`
   :metabase/namespace-name                                   {:level :warning}
+  :metabase/t2-implicit-pk                                   {:level :warning}
   :metabase/require-shape-checker                            {:level :warning}
   :metabase/test-helpers-use-non-thread-safe-functions       {:level :warning} ; more config in `.clj-kondo/config/test-helpers/config.edn`
   :metabase/tests-must-live-in-known-modules                 {:level :warning}
@@ -186,7 +187,9 @@
      ;; Safe in tests, where we typically use a private, temporary index per thread.
      metabase.search.core/reindex!
      metabase.util/run-count!
-     next.jdbc/execute!}}
+     next.jdbc/execute!
+     ;; pure validator: throws unless its argument is a map or nil, touches no state
+     metabase.util.honey-sql-2/assert-map-or-nil!}}
 
   :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests
   {:level      :warning
@@ -659,7 +662,36 @@
    metabase.util.malli.registry/def                                                                                          hooks.metabase.util.malli.registry/def
    metabase.util/case-enum                                                                                                   hooks.metabase.util/case-enum
    metabase.util/format-color                                                                                                hooks.metabase.util/format-color
-   metabase.xrays.api.automagic-dashboards-test/with-indexed-model!                                                          hooks.metabase.xrays.api.automagic-dashboards-test/with-indexed-model!}
+   metabase.xrays.api.automagic-dashboards-test/with-indexed-model!                                                          hooks.metabase.xrays.api.automagic-dashboards-test/with-indexed-model!
+   toucan2.core/count                                                                                                        hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/delete!                                                                                                      hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/exists?                                                                                                      hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/insert!                                                                                                      hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/insert-returning-instance!                                                                                   hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/insert-returning-instances!                                                                                  hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/insert-returning-pk!                                                                                         hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/insert-returning-pks!                                                                                        hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/query                                                                                                        hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/query-one                                                                                                    hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/reducible-query                                                                                              hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/reducible-select                                                                                             hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/reducible-update                                                                                             hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/reducible-update-returning-pks                                                                               hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/save!                                                                                                        hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select                                                                                                       hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-fn->fn                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-fn->pk                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-fn-reducible                                                                                          hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-fn-set                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-fn-vec                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-one                                                                                                   hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-one-fn                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-one-pk                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-pk->fn                                                                                                hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-pks-set                                                                                               hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/select-pks-vec                                                                                               hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/update!                                                                                                      hooks.metabase.toucan.db-ns/lint-query-call
+   toucan2.core/update-returning-pks!                                                                                        hooks.metabase.toucan.db-ns/lint-query-call}
 
   :macroexpand
   {clojurewerkz.quartzite.jobs/build                                                            macros.quartz/build-job

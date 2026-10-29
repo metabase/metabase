@@ -32,7 +32,7 @@
                                       (if (map? x)
                                         (reduce-kv
                                          (fn [acc k {:keys [key model] :as _hydrate-prop}]
-                                           (assoc acc key (t2/select-one model (get x k))))
+                                           (assoc acc key (t2/select-one model :toucan/pk (get x k))))
                                          x
                                          hydrates)
                                         x)))))}}}))

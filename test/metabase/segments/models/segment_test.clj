@@ -66,17 +66,17 @@
         (is (thrown-with-msg?
              Exception
              #"You cannot update the creator_id of a Segment"
-             (t2/update! :model/Segment id {:creator_id (mt/user->id :crowberto)}))))
+             (t2/update! :model/Segment :id id {:creator_id (mt/user->id :crowberto)}))))
 
       (testing "you shouldn't be able to set it to `nil` either"
         (is (thrown-with-msg?
              Exception
              #"You cannot update the creator_id of a Segment"
-             (t2/update! :model/Segment id {:creator_id nil}))))
+             (t2/update! :model/Segment :id id {:creator_id nil}))))
 
       (testing "calling `update!` with a value that is the same as the current value shouldn't throw an Exception"
         (is (= 0
-               (t2/update! :model/Segment id {:creator_id (mt/user->id :rasta)})))))))
+               (t2/update! :model/Segment :id id {:creator_id (mt/user->id :rasta)})))))))
 
 (deftest identity-hash-test
   (testing "Segment hashes are composed of the segment name and table identity-hash"
@@ -93,7 +93,7 @@
   (testing "Do not hydrate definition description if definition is nil"
     (mt/with-temp [:model/Segment {id :id} {:name "Segment"
                                             :table_id (mt/id :users)}]
-      (is (nil? (-> (t2/select-one :model/Segment id)
+      (is (nil? (-> (t2/select-one :model/Segment :id id)
                     (t2/hydrate :definition_description)
                     :definition_description))))))
 
@@ -134,7 +134,7 @@
                      :set {:definition (json/encode {:filter
                                                      [:= [:wheat-field Integer/MAX_VALUE nil] 4]})}
                      :where [:= :id id]})
-      (is (nil? (-> (t2/select-one :model/Segment id)
+      (is (nil? (-> (t2/select-one :model/Segment :id id)
                     (t2/hydrate :definition_description)
                     :definition_description))))))
 

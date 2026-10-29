@@ -71,6 +71,7 @@
    [metabase.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.string :as u.str]
@@ -729,7 +730,7 @@
         pk       (first (t2/primary-keys model))
         id       (get local pk)]
     (log/tracef "Upserting %s %d: old %s new %s" model-name id (pr-str local) (pr-str ingested))
-    (t2/update! model id ingested)
+    (t2/update! model :toucan/pk id ingested)
     (t2/select-one model pk id)))
 
 (defmethod load-update! :default [model-name ingested local]
@@ -1104,7 +1105,7 @@
   (when field-id
     (let [table-id (*import-table-fk* [db-name schema table-name])
           field-q  (recursively-find-field-q table-id (reverse fields))]
-      (t2/select-one-pk :model/Field field-q))))
+      (t2/select-one-pk :model/Field (h2x/assert-map-or-nil! field-q)))))
 
 (defn field->path
   "Given a `field_id` as exported by [[export-field-fk]], turn it into a `[{:model ...}]` path for the Field.

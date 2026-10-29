@@ -91,9 +91,9 @@
   (when (true? is_active)
     (t2/update! :model/User {:is_active false :tenant_id tenant-id :deactivated_with_tenant true}
                 {:is_active true :deactivated_with_tenant nil}))
-  (let [tenant-before-update (t2/select-one :model/Tenant tenant-id)
+  (let [tenant-before-update (t2/select-one :model/Tenant :id tenant-id)
         _                    (t2/update! :model/Tenant {:id tenant-id} tenant)
-        tenant-after-update  (t2/select-one :model/Tenant tenant-id)]
+        tenant-after-update  (t2/select-one :model/Tenant :id tenant-id)]
     (events/publish-event! :event/tenant-update {:object          tenant-after-update
                                                  :previous-object tenant-before-update})
     tenant-after-update))

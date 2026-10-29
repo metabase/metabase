@@ -904,7 +904,7 @@
   (let [table-or-id (first (keys table-perms))
         db-id (if (map? table-or-id)
                 (:db_id table-or-id)
-                (t2/select-one-fn :db_id :model/Table table-or-id))]
+                (t2/select-one-fn :db_id :model/Table :id table-or-id))]
     (with-cluster-lock {:perm-type (u/qualified-name perm-type)
                         :db-id db-id}
       (set-table-permissions-internal! group-or-id perm-type table-perms))))

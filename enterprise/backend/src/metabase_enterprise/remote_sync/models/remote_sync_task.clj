@@ -59,7 +59,7 @@
   This signal will be checked in update-progress! to stop further processing. Note that the worker thread must
   manually check this flag rather than being interrupted, as interrupting Quartz threads can cause issues."
   [task-id]
-  (t2/update! :model/RemoteSyncTask task-id
+  (t2/update! :model/RemoteSyncTask :id task-id
               {:cancelled true
                :ended_at (mi/now)
                :error_message "Task cancelled"}))
@@ -76,7 +76,7 @@
   (when (true? (t2/select-one-fn :cancelled :model/RemoteSyncTask :id task-id))
     (throw (ex-info "Remote sync task has been cancelled" {:task-id task-id
                                                            :cancelled? true})))
-  (t2/update! :model/RemoteSyncTask task-id
+  (t2/update! :model/RemoteSyncTask :id task-id
               {:progress progress
                :last_progress_report_at (mi/now)}))
 
@@ -87,7 +87,7 @@
 
   Returns the number of rows updated (should be 1 if successful)."
   [task-id version]
-  (t2/update! :model/RemoteSyncTask task-id
+  (t2/update! :model/RemoteSyncTask :id task-id
               {:version version}))
 
 (defn complete-sync-task!
@@ -97,7 +97,7 @@
 
   Returns the number of rows updated (should be 1 if successful)."
   [task-id]
-  (t2/update! :model/RemoteSyncTask task-id
+  (t2/update! :model/RemoteSyncTask :id task-id
               {:progress 1.0
                :ended_at (mi/now)}))
 
@@ -108,7 +108,7 @@
 
   Returns the number of rows updated (should be 1 if successful)."
   [task-id error-msg]
-  (t2/update! :model/RemoteSyncTask task-id
+  (t2/update! :model/RemoteSyncTask :id task-id
               {:ended_at (mi/now)
                :error_message error-msg}))
 

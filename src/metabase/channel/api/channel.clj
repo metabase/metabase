@@ -125,7 +125,7 @@
   "Get a channel"
   [{:keys [id]} :- [:map
                     [:id ms/PositiveInt]]]
-  (-> (t2/select-one :model/Channel id) api/read-check remove-details-if-needed))
+  (-> (t2/select-one :model/Channel :id id) api/read-check remove-details-if-needed))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -142,13 +142,13 @@
              [:type        {:optional true} [:maybe ChannelType]]
              [:active      {:optional true} [:maybe :boolean]]]
             :details-optional? true)]
-  (let [channel-before-update (api/write-check (t2/select-one :model/Channel id))]
+  (let [channel-before-update (api/write-check (t2/select-one :model/Channel :id id))]
     (when (and (:details body) (nil? (:type body)))
       (when-let [schema (details-schema-for-type (:type channel-before-update))]
         (when-not (mr/validate schema (:details body))
           (throw (ex-info (tru "Invalid channel details") {:status-code 400})))))
-    (t2/update! :model/Channel id body)
-    (u/prog1 (t2/select-one :model/Channel id)
+    (t2/update! :model/Channel :id id body)
+    (u/prog1 (t2/select-one :model/Channel :id id)
       (events/publish-event! :event/channel-update {:object          <>
                                                     :user-id         api/*current-user-id*
                                                     :previous-object channel-before-update}))))

@@ -396,9 +396,9 @@
                                    (map (fn [path-form] [:like :object (str path-form "%")])
                                         paths))
                              other-conditions)}]
-    (when-let [revoked (t2/select-fn-set :object :model/Permissions where)]
+    (when-let [revoked (t2/select-fn-set :object :model/Permissions (h2x/assert-map-or-nil! where))]
       (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" (u/the-id group-or-id) revoked))
-      (t2/delete! :model/Permissions where)
+      (t2/delete! :model/Permissions (h2x/assert-map-or-nil! where))
       (clear-current-user-cached-permissions!))))
 
 (defn grant-permissions!

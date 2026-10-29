@@ -109,7 +109,7 @@
       (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id (mt/id :venues :price)))
       (let [field-id   (mt/id :venues :price)
             full-fv-id (t2/select-one-pk :model/FieldValues :field_id field-id :type :full)]
-        (t2/update! :model/FieldValues full-fv-id
+        (t2/update! :model/FieldValues :id full-fv-id
                     {:human_readable_values ["$" "$$" "$$$" "$$$$"]})
         ;; sanity test without gtap
         (is (= [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]
@@ -194,7 +194,7 @@
                 new-values ["foo" "bar"]]
             (testing "Sanity check: make sure FieldValues exist"
               (is (some? fv-id)))
-            (t2/update! :model/FieldValues fv-id
+            (t2/update! :model/FieldValues :id fv-id
                         {:values new-values})
             (with-redefs [field-values/distinct-values (constantly {:values          (map vector new-values)
                                                                     :has_more_values false})]

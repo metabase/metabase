@@ -327,7 +327,7 @@
   (try
     (let [message-log (empty-message-log)
           {:keys [target] transform-id :id} transform
-          {driver :engine :as db} (t2/select-one :model/Database (:database target))
+          {driver :engine :as db} (t2/select-one :model/Database :id (:database target))
           {run-id :id} (transforms.util/try-start-unless-already-running transform-id run-method)]
       (some-> start-promise (deliver [:started run-id]))
       (log! message-log (i18n/tru "Executing Python transform"))

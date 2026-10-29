@@ -10,6 +10,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -119,7 +120,7 @@
                                     [:in :collection_id colls]
                                     (when (contains? colls nil)
                                       [:= :collection_id nil])]}
-          possible-pks     (t2/select-pks-set :model/Card clause)
+          possible-pks     (t2/select-pks-set :model/Card (h2x/assert-map-or-nil! clause))
           escaped-card-ids (set/difference (set cards) possible-pks)]
       (when (seq escaped-card-ids)
         ;; Analytics cards have stable entity_ids across instances, so cards that depend on them

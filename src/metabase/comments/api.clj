@@ -16,6 +16,7 @@
    [metabase.users.models.user :as user]
    [metabase.users.settings :as users.settings]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -147,8 +148,8 @@
         mentions   (->> (comment/mentions (:content comment))
                         (mentioned-ids-who-can-read entity))
         recipients (-> (t2/select-fn-set :email [:model/User :email]
-                                         (cond-> clause
-                                           (seq mentions) (sql.helpers/where :or [:in :id mentions])))
+                                         (h2x/assert-map-or-nil! (cond-> clause
+                                                                   (seq mentions) (sql.helpers/where :or [:in :id mentions]))))
                        (disj (:email @api/*current-user*)))
         payload    {:entity_type    (:target_type comment)
                     :entity_title   (:name entity)
@@ -237,7 +238,7 @@
     (when-let [updates (-> {:content content :html html :is_resolved is_resolved}
                            u/remove-nils
                            not-empty)]
-      (t2/update! :model/Comment comment-id updates))
+      (t2/update! :model/Comment :id comment-id updates))
 
     (let [updated-comment (-> (t2/select-one :model/Comment :id comment-id)
                               (t2/hydrate :creator :reactions))]
@@ -266,7 +267,7 @@
     (api/check-400 (not (:deleted_at comment)) "Comment is already deleted")
 
     ;; Soft delete the comment
-    (t2/update! :model/Comment comment-id {:deleted_at [:now]})
+    (t2/update! :model/Comment :id comment-id {:deleted_at [:now]})
 
     (events/publish-event! :event/comment-delete
                            {:object comment
@@ -323,10 +324,10 @@
                                                        :offset (request/offset)})
                  restrict-to-visible-users)]
     {:data   (->> (t2/select [:model/User :id :first_name :last_name :email]
-                             (-> clauses
-                                 (sql.helpers/order-by [:%lower.first_name :asc]
-                                                       [:%lower.last_name :asc]
-                                                       [:id :asc])))
+                             (h2x/assert-map-or-nil! (-> clauses
+                                                         (sql.helpers/order-by [:%lower.first_name :asc]
+                                                                               [:%lower.last_name :asc]
+                                                                               [:id :asc]))))
                   (mapv #(assoc % :model "user")))
      :total  (:count (t2/query-one
                       (merge {:select [[[:count [:distinct :core_user.id]] :count]]

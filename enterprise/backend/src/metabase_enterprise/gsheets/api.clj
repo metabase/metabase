@@ -383,7 +383,7 @@
 (comment
 
   ;; need an "attached dwh" locally?
-  (t2/update! :model/Database 1
+  (t2/update! :model/Database :id 1
               {:is_attached_dwh true
                :settings
                (str "{\"auto-cruft-tables\":[\".*_dlt_loads$\",\".*_dlt_pipeline_state$\",\".*_dlt_sentinel_table$\",\".*_dlt_spreadsheet_info$\",\".*_dlt_version$\"],"

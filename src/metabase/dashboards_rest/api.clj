@@ -949,7 +949,7 @@
   - The user info for the creator of the pulse
   - The users affected by the pulse"
   [{bad-pulse-id :id pulse-name :name :keys [parameters creator_id]}]
-  (let [creator (t2/select-one [:model/User :first_name :last_name :email] creator_id)]
+  (let [creator (t2/select-one [:model/User :first_name :last_name :email] :id creator_id)]
     {:pulse-id       bad-pulse-id
      :pulse-name     pulse-name
      :bad-parameters parameters
@@ -980,7 +980,7 @@
   [dashboard-id original-dashboard-params]
   (when (seq original-dashboard-params)
     (let [{:keys [resolved-params]} (t2/hydrate
-                                     (t2/select-one [:model/Dashboard :id :parameters] dashboard-id)
+                                     (t2/select-one [:model/Dashboard :id :parameters] :id dashboard-id)
                                      :resolved-params)
           dashboard-params (set (keys resolved-params))]
       (->> (t2/select :model/Pulse :dashboard_id dashboard-id :archived false)
@@ -1004,7 +1004,7 @@
     (let [{dashboard-name        :name
            dashboard-description :description
            dashboard-creator     :creator} (t2/hydrate
-                                            (t2/select-one [:model/Dashboard :name :description :creator_id] dashboard-id)
+                                            (t2/select-one [:model/Dashboard :name :description :creator_id] :id dashboard-id)
                                             :creator)]
       (for [broken-pulse broken-pulses]
         (assoc
@@ -1038,7 +1038,7 @@
           ;; the notifications were broken by the update.
           {original-params :resolved-params} (when parameters
                                                (t2/hydrate
-                                                (t2/select-one :model/Dashboard id)
+                                                (t2/select-one :model/Dashboard :id id)
                                                 [:dashcards :card]
                                                 :resolved-params))
           changes-stats                      (atom nil)
@@ -1074,7 +1074,7 @@
                              {:archived false})))
              (when (api/column-will-change? :collection_id current-dash dash-updates)
                (t2/update! :model/Card :dashboard_id id {:collection_id (:collection_id dash-updates)}))
-             (t2/update! :model/Dashboard id updates)
+             (t2/update! :model/Dashboard :id id updates)
              (when (contains? updates :collection_id)
                (events/publish-event! :event/collection-touch {:collection-id id :user-id api/*current-user-id*}))
               ;; Handle broken subscriptions, if any, when parameters changed
@@ -1120,7 +1120,7 @@
 
            (collections/check-for-remote-sync-update current-dash))
          true))
-      (let [dashboard (t2/select-one :model/Dashboard id)]
+      (let [dashboard (t2/select-one :model/Dashboard :id id)]
         ;; skip publishing the event if it's just a change in its collection position
         (when-not (= #{:collection_position}
                      (set (keys dash-updates)))
@@ -1241,11 +1241,11 @@
                  (u/prog1 (str (random-uuid))
                    ;; one transaction, so a failing handler cannot leave a saved link that a retry never reports
                    (t2/with-transaction [_conn]
-                     (t2/update! :model/Dashboard dashboard-id
+                     (t2/update! :model/Dashboard :id dashboard-id
                                  {:public_uuid       <>
                                   :made_public_by_id api/*current-user-id*})
                      (events/publish-event! :event/dashboard-public-link-created
-                                            {:object    (t2/select-one :model/Dashboard dashboard-id)
+                                            {:object    (t2/select-one :model/Dashboard :id dashboard-id)
                                              :object-id dashboard-id
                                              :user-id   api/*current-user-id*}))))]
     {:uuid uuid}))
@@ -1265,11 +1265,11 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Dashboard :id dashboard-id, :public_uuid [:not= nil], :archived false)
   (t2/with-transaction [_conn]
-    (t2/update! :model/Dashboard dashboard-id
+    (t2/update! :model/Dashboard :id dashboard-id
                 {:public_uuid       nil
                  :made_public_by_id nil})
     (events/publish-event! :event/dashboard-public-link-deleted
-                           {:object    (t2/select-one :model/Dashboard dashboard-id)
+                           {:object    (t2/select-one :model/Dashboard :id dashboard-id)
                             :object-id dashboard-id
                             :user-id   api/*current-user-id*}))
   {:status 204, :body nil})

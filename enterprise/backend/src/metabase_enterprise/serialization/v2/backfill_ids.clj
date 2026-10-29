@@ -21,7 +21,7 @@
       (log/infof "Backfilling entity_id for %s rows of %s" (pr-str (count missing)) (name model))
       (doseq [entity missing
               :let [eid (serdes/backfill-entity-id entity)]]
-        (t2/update! model (get entity pk) {:entity_id eid})))))
+        (t2/update! model :toucan/pk (get entity pk) {:entity_id eid})))))
 
 (defn has-entity-id?
   "Returns true if the model has an `:entity_id` column."

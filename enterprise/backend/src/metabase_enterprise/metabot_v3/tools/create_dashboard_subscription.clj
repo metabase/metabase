@@ -12,7 +12,7 @@
   [{:keys [dashboard-id email schedule]}]
   (perms/check-has-application-permission :subscription false)
   (if (int? dashboard-id)
-    (let [dashboard (some-> (t2/select-one :model/Dashboard dashboard-id)
+    (let [dashboard (some-> (t2/select-one :model/Dashboard :id dashboard-id)
                             api/read-check
                             (t2/hydrate [:dashcards :card]))
           cards (for [{:keys [id card]} (:dashcards dashboard)

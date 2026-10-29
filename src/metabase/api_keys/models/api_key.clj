@@ -185,7 +185,7 @@
                          [(mdb/unique-identifier) user-id])}
    (fn is-api-key-user?*
      [user-id]
-     (= :api-key (t2/select-one-fn :type :model/User user-id)))
+     (= :api-key (t2/select-one-fn :type :model/User :id user-id)))
    ;; cache the results for 60 minutes; TTL is here only to eventually clear out old entries/keep it from growing too
    ;; large
    :ttl/threshold (* 60 60 1000)))
@@ -233,7 +233,7 @@
                          [:prefix       ::api-keys.schema/prefix]]
   "Generate a new API key for an existing key with `id`."
   [id :- ::api-keys.schema/id]
-  (let [api-key-before (t2/select-one :model/ApiKey id)
+  (let [api-key-before (t2/select-one :model/ApiKey :id id)
         new-key        (key-with-unique-prefix)
         new-prefix     (prefix new-key)]
     (t2/with-transaction [_conn]

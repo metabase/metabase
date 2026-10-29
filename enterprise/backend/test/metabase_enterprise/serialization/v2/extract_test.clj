@@ -1571,8 +1571,8 @@
                                                                             :linkType "question"
                                                                             :targetId deleted-card-id}}}}}]
 
-      (t2/delete! :model/Card deleted-card-id)
-      (t2/delete! :model/Dashboard deleted-dash-id)
+      (t2/delete! :model/Card :id deleted-card-id)
+      (t2/delete! :model/Dashboard :id deleted-dash-id)
       (testing "the references to deleted cards and dashboards are ignored"
         (is (= #{[{:model "Dashboard" :id clickdash-eid :label "dashboard"}]
                  [{:model "Collection" :id coll-eid :label "some_collection"}]
@@ -1844,7 +1844,7 @@
                 {:card-id (:id c)}))]
       (when-not (= (:status res) :completed)
         (throw (ex-info "Query failed" res)))
-      (let [ser (serdes/extract-one "Card" nil (t2/select-one :model/Card (:id c)))]
+      (let [ser (serdes/extract-one "Card" nil (t2/select-one :model/Card :id (:id c)))]
         (is (=? {:base_type          :type/Integer
                  :id                 [string? "PUBLIC" "VENUES" "CATEGORY_ID"]
                  :fk_target_field_id [string? "PUBLIC" "CATEGORIES" "ID"]

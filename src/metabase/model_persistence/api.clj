@@ -17,6 +17,7 @@
    [metabase.request.core :as request]
    [metabase.system.core :as system]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -53,7 +54,7 @@
                            card-id           (sql.helpers/where [:= :p.card_id card-id])
                            limit             (sql.helpers/limit limit)
                            offset            (sql.helpers/offset offset))]
-    (as-> (t2/select :model/PersistedInfo query) results
+    (as-> (t2/select :model/PersistedInfo (h2x/assert-map-or-nil! query)) results
       (t2/hydrate results :creator)
       (map (fn [{:keys [database_id] :as pi}]
              (assoc pi
@@ -167,7 +168,7 @@
         enabled-dbs (filter (comp :persist-models-enabled :settings) (vals id->db))]
     (log/info "Disabling model persistence")
     (doseq [db enabled-dbs]
-      (t2/update! :model/Database (u/the-id db)
+      (t2/update! :model/Database :id (u/the-id db)
                   {:settings (not-empty (dissoc (:settings db) :persist-models-enabled))}))
     (task.persist-refresh/disable-persisting!)))
 
@@ -281,7 +282,7 @@
             schema           (ddl.i/schema-name database (system/site-uuid))]
         (if success?
           ;; do secrets require special handling to not clobber them or mess up encryption?
-          (do (t2/update! :model/Database id {:settings (assoc (:settings database) :persist-models-enabled true)})
+          (do (t2/update! :model/Database :id id {:settings (assoc (:settings database) :persist-models-enabled true)})
               (task.persist-refresh/schedule-persistence-for-database!
                database
                (model-persistence.settings/persisted-model-refresh-cron-schedule))
@@ -301,7 +302,7 @@
   (api/let-404 [database (t2/select-one :model/Database :id id)]
     (api/write-check database)
     (if (-> database :settings :persist-models-enabled)
-      (do (t2/update! :model/Database id {:settings (dissoc (:settings database) :persist-models-enabled)})
+      (do (t2/update! :model/Database :id id {:settings (dissoc (:settings database) :persist-models-enabled)})
           (persisted-info/mark-for-pruning! {:database_id id})
           (task.persist-refresh/unschedule-persistence-for-database! database)
           api/generic-204-no-content)

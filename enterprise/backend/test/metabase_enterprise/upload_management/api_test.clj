@@ -131,7 +131,7 @@
         (jdbc/execute! one-off-dbs/*conn* ["CREATE TABLE secret_dwh (id INTEGER, secret TEXT);"])
         (jdbc/execute! one-off-dbs/*conn* ["INSERT INTO secret_dwh VALUES (1, 'topsecret');"])
         (sync/sync-database! (data/db))
-        (t2/update! :model/Database (data/id) {:is_attached_dwh true})
+        (t2/update! :model/Database :id (data/id) {:is_attached_dwh true})
         (let [table (t2/select-one :model/Table :db_id (data/id) :name "SECRET_DWH")]
           (testing "preconditions: not an upload, rasta has no write permission, table physically present"
             (is (false? (:is_upload table)))

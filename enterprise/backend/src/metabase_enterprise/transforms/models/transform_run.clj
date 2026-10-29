@@ -53,7 +53,7 @@
   [transform-ids]
   (when (seq transform-ids)
     (into [] (map (comp t2.realize/realize #(dissoc % :rn)))
-          (t2/reducible-select :model/TransformRun (latest-runs-query transform-ids)))))
+          (t2/reducible-select :model/TransformRun (h2x/assert-map-or-nil! (latest-runs-query transform-ids))))))
 
 (defn start-run!
   "Start a run"
@@ -233,11 +233,11 @@
         count-options    (m/assoc-some {} :where where-clause)
         query-options    (merge {:order-by order-by :offset offset :limit limit}
                                 count-options)
-        runs             (t2/select :model/TransformRun query-options)]
+        runs             (t2/select :model/TransformRun (h2x/assert-map-or-nil! query-options))]
     {:data   (t2/hydrate runs [:transform :transform_tag_ids])
      :limit  limit
      :offset offset
-     :total  (t2/count :model/TransformRun count-options)}))
+     :total  (t2/count :model/TransformRun (h2x/assert-map-or-nil! count-options))}))
 
 (comment
   (t2/select :model/TransformRun)

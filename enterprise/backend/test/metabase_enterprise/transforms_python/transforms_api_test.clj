@@ -127,7 +127,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
       (mt/with-premium-features #{:transforms :transforms-python}
         (mt/dataset transforms-dataset/transforms-test
-          (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+          (let [schema (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))]
             (with-transform-cleanup! [{table-name :name :as target} {:type   "table"
                                                                      :schema schema
                                                                      :name   "target_table"}]
@@ -280,7 +280,7 @@
                            (disj :snowflake :redshift :bigquery-cloud-sdk))
         (mt/with-premium-features #{:transforms :transforms-python}
           (mt/dataset transforms-dataset/transforms-test
-            (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+            (let [schema (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))]
               (doseq [{:keys [expected
                               expect-early-feedback
                               expect-status
@@ -458,7 +458,7 @@
                              (disj :snowflake :bigquery-cloud-sdk :redshift :mongo))
           (mt/with-premium-features #{:transforms :transforms-python}
             (mt/dataset transforms-dataset/transforms-test
-              (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+              (let [schema (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))]
                 (with-redefs [transforms-python.execute/python-message-loop-sleep-duration Duration/ZERO]
                   (with-transform-cleanup! [target {:type   "table"
                                                     :schema schema

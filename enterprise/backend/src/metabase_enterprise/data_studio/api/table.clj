@@ -158,7 +158,7 @@
     (u.jvm/in-virtual-thread*
      (fn []
        (doseq [[db-id tables] (group-by :db_id newly-unhidden)]
-         (let [database (t2/select-one :model/Database db-id)]
+         (let [database (t2/select-one :model/Database :id db-id)]
            ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
            ;; purposes of creating a new H2 database.
            (if (binding [driver.settings/*allow-testing-h2-connections* true]

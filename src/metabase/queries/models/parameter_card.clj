@@ -5,6 +5,7 @@
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -69,7 +70,7 @@
       ;; TODO: Maybe update! should return different values for no rows to update vs
       ;; no changes to be made
       (if (m/mapply t2/exists? :model/ParameterCard conditions)
-        (t2/update! :model/ParameterCard conditions {:card_id card-id})
+        (t2/update! :model/ParameterCard (h2x/assert-map-or-nil! conditions) {:card_id card-id})
         (t2/insert! :model/ParameterCard (merge conditions {:card_id card-id}))))))
 
 (defn values-source-card-ids

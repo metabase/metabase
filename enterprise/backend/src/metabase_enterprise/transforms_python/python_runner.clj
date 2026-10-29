@@ -298,7 +298,7 @@
           tmp-meta-file (File/createTempFile manifest-path "")]
       (try
         (let [db-id       (t2/select-one-fn :db_id (t2/table-name :model/Table) :id table-id)
-              driver      (t2/select-one-fn :engine :model/Database db-id)
+              driver      (t2/select-one-fn :engine :model/Database :id db-id)
               fields-meta (fields-metadata driver table-id)
               manifest    (generate-manifest table-id fields-meta)]
           (transforms.instrumentation/with-stage-timing [run-id [:export :dwh-to-file]]

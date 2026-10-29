@@ -868,7 +868,7 @@
       (t2/delete! :model/RemoteSyncObject)
 
       ;; Trash the doc
-      (t2/update! :model/Document (:id doc) {:archived true})
+      (t2/update! :model/Document :id (:id doc) {:archived true})
       (events/publish-event! :event/document-update
                              {:object (assoc doc :archived true)
                               :user-id (mt/user->id :rasta)})
@@ -877,7 +877,7 @@
         (is (= "delete" (:status soft-delete-entry))))
 
       ;; Permanently delete from trash
-      (t2/delete! :model/Document (:id doc))
+      (t2/delete! :model/Document :id (:id doc))
       (events/publish-event! :event/document-delete
                              {:object doc :user-id (mt/user->id :rasta)})
 

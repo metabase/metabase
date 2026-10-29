@@ -173,7 +173,7 @@
     (actions/check-actions-enabled! action)
     {:uuid (or (:public_uuid action)
                (u/prog1 (str (random-uuid))
-                 (t2/update! :model/Action id
+                 (t2/update! :model/Action :id id
                              {:public_uuid <>
                               :made_public_by_id api/*current-user-id*})))}))
 
@@ -194,7 +194,7 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-exists? :model/Action :id id, :public_uuid [:not= nil], :archived false)
   (actions/check-actions-enabled! id)
-  (t2/update! :model/Action id {:public_uuid nil, :made_public_by_id nil})
+  (t2/update! :model/Action :id id {:public_uuid nil, :made_public_by_id nil})
   {:status 204, :body nil})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

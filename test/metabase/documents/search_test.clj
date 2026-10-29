@@ -121,8 +121,8 @@
 
       (testing "Document with higher view count appears in search"
         ;; Manually set view count to test search integration
-        (t2/update! :model/Document doc-id {:view_count 5
-                                            :last_viewed_at (t/offset-date-time)})
+        (t2/update! :model/Document :id doc-id {:view_count 5
+                                                :last_viewed_at (t/offset-date-time)})
         (search.tu/with-temp-index-table
           (let [results (mt/user-http-request :crowberto :get 200 "search" {:q "Viewed" :models "document"})
                 doc-results (filter #(= "document" (:model %)) (:data results))]
@@ -134,7 +134,7 @@
 
       (testing "Document with recent view appears in search results"
         (let [recent-time (t/minus (t/offset-date-time) (t/minutes 5))]
-          (t2/update! :model/Document doc-id {:last_viewed_at recent-time})
+          (t2/update! :model/Document :id doc-id {:last_viewed_at recent-time})
           (search.tu/with-temp-index-table
             (let [results (mt/user-http-request :crowberto :get 200 "search" {:q "Viewed" :models "document"})
                   doc-results (filter #(= "document" (:model %)) (:data results))]

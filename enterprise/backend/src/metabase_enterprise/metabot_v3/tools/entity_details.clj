@@ -55,7 +55,7 @@
   [_args]
   (if-let [{:keys [id email first_name last_name]}
            (or (some-> api/*current-user* deref)
-               (t2/select-one [:model/User :id :email :first_name :last_name] api/*current-user-id*))]
+               (t2/select-one [:model/User :id :email :first_name :last_name] :id api/*current-user-id*))]
     {:structured-output (merge {:id id
                                 :type :user
                                 :name (str first_name " " last_name)
@@ -73,7 +73,7 @@
   (when-not (int? dashboard-id)
     (throw (ex-info "Invalid dashboard_id format"
                     {:agent-error? true :status-code 400})))
-  (if-let [dashboard (t2/select-one [:model/Dashboard :id :description :name :collection_id] dashboard-id)]
+  (if-let [dashboard (t2/select-one [:model/Dashboard :id :description :name :collection_id] :id dashboard-id)]
     (do (api/read-check dashboard)
         {:structured-output
          (-> dashboard

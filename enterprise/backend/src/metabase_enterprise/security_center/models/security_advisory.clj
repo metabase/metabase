@@ -43,7 +43,7 @@
   (when (:acknowledged_at advisory)
     (throw (ex-info "Advisory already acknowledged" {:status-code 409})))
   (let [now (mi/now)]
-    (t2/update! :model/SecurityAdvisory (:id advisory)
+    (t2/update! :model/SecurityAdvisory :id (:id advisory)
                 {:acknowledged_by user-id
                  :acknowledged_at now})
     (events/publish-event! :event/security-advisory-acknowledge

@@ -183,38 +183,38 @@
     (testing "cards"
       (mt/with-model-cleanup [:model/Dependency]
         (mt/with-temp [:model/Card card {:dependency_analysis_version 0}]
-          (is (zero? (t2/select-one-fn :dependency_analysis_version :model/Card (:id card))))
+          (is (zero? (t2/select-one-fn :dependency_analysis_version :model/Card :id (:id card))))
           (mt/with-premium-features #{:dependencies}
             (card/update-card! {:card-before-update card
                                 :card-updates {:dataset_query (mt/mbql-query orders)}}))
           (is (= deps.graph/current-dependency-analysis-version
-                 (t2/select-one-fn :dependency_analysis_version :model/Card (:id card)))))))
+                 (t2/select-one-fn :dependency_analysis_version :model/Card :id (:id card)))))))
     (testing "transforms create"
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/Transform transform]
           (is (= deps.graph/current-dependency-analysis-version
-                 (t2/select-one-fn :dependency_analysis_version :model/Transform (:id transform)))))))
+                 (t2/select-one-fn :dependency_analysis_version :model/Transform :id (:id transform)))))))
     (testing "transforms update"
       (mt/with-premium-features #{}
         (mt/with-temp [:model/Transform transform]
-          (is (zero? (t2/select-one-fn :dependency_analysis_version :model/Transform (:id transform))))
+          (is (zero? (t2/select-one-fn :dependency_analysis_version :model/Transform :id (:id transform))))
           (mt/with-premium-features #{:dependencies}
-            (t2/update! :model/Transform (:id transform) {:source {:type "query" :query (mt/mbql-query products)}}))
+            (t2/update! :model/Transform :id (:id transform) {:source {:type "query" :query (mt/mbql-query products)}}))
           (is (= deps.graph/current-dependency-analysis-version
-                 (t2/select-one-fn :dependency_analysis_version :model/Transform (:id transform)))))))
+                 (t2/select-one-fn :dependency_analysis_version :model/Transform :id (:id transform)))))))
     (testing "snippets create"
       (mt/with-premium-features #{:dependencies}
         (mt/with-temp [:model/NativeQuerySnippet snippet]
           (is (= deps.graph/current-dependency-analysis-version
-                 (t2/select-one-fn :dependency_analysis_version :model/NativeQuerySnippet (:id snippet)))))))
+                 (t2/select-one-fn :dependency_analysis_version :model/NativeQuerySnippet :id (:id snippet)))))))
     (testing "snippets update"
       (mt/with-premium-features #{}
         (mt/with-temp [:model/NativeQuerySnippet snippet]
-          (is (zero? (t2/select-one-fn :dependency_analysis_version :model/NativeQuerySnippet (:id snippet))))
+          (is (zero? (t2/select-one-fn :dependency_analysis_version :model/NativeQuerySnippet :id (:id snippet))))
           (mt/with-premium-features #{:dependencies}
-            (t2/update! :model/NativeQuerySnippet (:id snippet) {:content "new content"}))
+            (t2/update! :model/NativeQuerySnippet :id (:id snippet) {:content "new content"}))
           (is (= deps.graph/current-dependency-analysis-version
-                 (t2/select-one-fn :dependency_analysis_version :model/NativeQuerySnippet (:id snippet)))))))))
+                 (t2/select-one-fn :dependency_analysis_version :model/NativeQuerySnippet :id (:id snippet)))))))))
 
 (deftest dependency-analysis-version-create-card-test
   (testing "dependency_analysis_version is updated when a card is created"

@@ -112,4 +112,4 @@
                     [:id ms/PositiveInt]]]
   (api/let-404 [model-index (t2/select-one :model/ModelIndex :id id)]
     (api/write-check :model/Card (:model_id model-index))
-    (t2/delete! :model/ModelIndex id)))
+    (t2/delete! :model/ModelIndex :id id)))

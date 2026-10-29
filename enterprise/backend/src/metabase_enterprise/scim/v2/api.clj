@@ -304,7 +304,7 @@
         (throw-scim-error 400 "You may not update the email of an existing user.")
         (try
           (t2/with-transaction [_conn]
-            (t2/update! :model/User (u/the-id current-user) updates)
+            (t2/update! :model/User :id (u/the-id current-user) updates)
             (let [user (-> (t2/select-one (cons :model/User user-cols)
                                           :entity_id id)
                            mb-user->scim)]
@@ -365,7 +365,7 @@
                            (= (u/lower-case-en op) "replace") (patch->user-updates path value))))
                      {}
                      (:Operations patch-ops))]
-        (t2/update! :model/User (u/the-id user) updates)
+        (t2/update! :model/User :id (u/the-id user) updates)
         (-> (get-user-by-entity-id id)
             mb-user->scim
             scim-response)))))
@@ -524,7 +524,7 @@
           entity-ids (map :value (:members scim-group))]
       (t2/with-transaction [_conn]
         (let [group (get-group-by-entity-id id)]
-          (t2/update! :model/PermissionsGroup (u/the-id group) {:name group-name})
+          (t2/update! :model/PermissionsGroup :id (u/the-id group) {:name group-name})
           (when (seq entity-ids)
             (update-group-membership (u/the-id group) entity-ids))
           (-> (get-group-by-entity-id id)
@@ -542,5 +542,5 @@
                     [:id ms/NonBlankString]]]
   (with-prometheus-counters
     (let [group (get-group-by-entity-id id)]
-      (t2/delete! :model/PermissionsGroup (u/the-id group))
+      (t2/delete! :model/PermissionsGroup :id (u/the-id group))
       (scim-response nil 204))))

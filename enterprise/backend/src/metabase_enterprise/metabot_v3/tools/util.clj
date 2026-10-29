@@ -12,6 +12,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [toucan2.core :as t2]))
 
 (defn handle-agent-error
@@ -141,13 +142,13 @@
 (defn get-database
   "Get the `fields` of the database with ID `id`."
   [id & fields]
-  (-> (t2/select-one (into [:model/Database :id] fields) id)
+  (-> (t2/select-one (into [:model/Database :id] fields) :toucan/pk id)
       api/read-check))
 
 (defn get-table
   "Get the `fields` of the table with ID `id`."
   [id & fields]
-  (-> (t2/select-one (into [:model/Table :id] fields) id)
+  (-> (t2/select-one (into [:model/Table :id] fields) :toucan/pk id)
       api/read-check))
 
 (defn get-card
@@ -231,7 +232,7 @@
             api/*is-superuser?* true]
     (t2/select-fn-vec #(select-keys % [:id :name :type])
                       :model/Card
-                      (metabot-metrics-and-models-query 1)))
+                      (h2x/assert-map-or-nil! (metabot-metrics-and-models-query 1))))
   -)
 
 (defn get-metrics-and-models
@@ -239,5 +240,5 @@
 
   Only cards visible to the current user are returned."
   [metabot-id & {:as opts}]
-  (t2/select :model/Card (-> (metabot-metrics-and-models-query metabot-id opts)
-                             (update :order-by (fnil conj []) [:id]))))
+  (t2/select :model/Card (h2x/assert-map-or-nil! (-> (metabot-metrics-and-models-query metabot-id opts)
+                                                     (update :order-by (fnil conj []) [:id])))))

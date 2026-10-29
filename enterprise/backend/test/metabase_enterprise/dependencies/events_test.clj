@@ -50,7 +50,7 @@
                   (into #{} (map #(dissoc % :id)
                                  (t2/select :model/Dependency :from_entity_id dashboard-id :from_entity_type :dashboard)))))
           (t2/delete! :model/DashboardCard :id basic-dashcard-id)
-          (t2/update! :model/Dashboard dashboard-id {:parameters []})
+          (t2/update! :model/Dashboard :id dashboard-id {:parameters []})
           (mt/with-temp [:model/Card {scalar-card-id :id} {:dataset_query (-> (lib/query mp products)
                                                                               (lib/aggregate (lib/count)))
                                                            :display :scalar}
@@ -125,7 +125,7 @@
                          :to_entity_id column-click-target-dashboard-id}}
                       (into #{} (map #(dissoc % :id)
                                      (t2/select :model/Dependency :from_entity_id dashboard-id :from_entity_type :dashboard)))))
-              (t2/delete! :model/Dashboard dashboard-id)
+              (t2/delete! :model/Dashboard :id dashboard-id)
               (events/publish-event! :event/dashboard-delete {:object updated-dashboard :user-id api/*current-user-id*})
               (is (empty? (t2/select :model/Dependency :from_entity_id dashboard-id :from_entity_type :dashboard))))))))))
 
@@ -165,7 +165,7 @@
                                                                             {:type "smartLink"
                                                                              :attrs {:entityId products-id
                                                                                      :model "table"}}]}]})]
-            (t2/update! :model/Document document-id updated-doc)
+            (t2/update! :model/Document :id document-id updated-doc)
             (events/publish-event! :event/document-update {:object updated-doc :user-id api/*current-user-id*})
             (is (=? #{{:from_entity_type :document
                        :from_entity_id document-id
@@ -177,7 +177,7 @@
                        :to_entity_id products-id}}
                     (into #{} (map #(dissoc % :id)
                                    (t2/select :model/Dependency :from_entity_id document-id :from_entity_type :document)))))
-            (t2/delete! :model/Document document-id)
+            (t2/delete! :model/Document :id document-id)
             (events/publish-event! :event/document-delete {:object document :user-id api/*current-user-id*})
             (is (empty? (t2/select :model/Dependency :from_entity_id document-id :from_entity_type :document)))))))))
 
@@ -198,7 +198,7 @@
                      :to_entity_id card1-id}}
                   (into #{} (map #(dissoc % :id)
                                  (t2/select :model/Dependency :from_entity_id sandbox-id :from_entity_type :sandbox)))))
-          (t2/update! :model/Sandbox sandbox-id (assoc sandbox :card_id card2-id))
+          (t2/update! :model/Sandbox :id sandbox-id (assoc sandbox :card_id card2-id))
           (let [updated-sandbox (t2/select-one :model/Sandbox :id sandbox-id)]
             (events/publish-event! :event/sandbox-update {:object updated-sandbox :user-id api/*current-user-id*})
             (is (=? #{{:from_entity_type :sandbox
@@ -207,7 +207,7 @@
                        :to_entity_id card2-id}}
                     (into #{} (map #(dissoc % :id)
                                    (t2/select :model/Dependency :from_entity_id sandbox-id :from_entity_type :sandbox)))))
-            (t2/delete! :model/Sandbox sandbox-id)
+            (t2/delete! :model/Sandbox :id sandbox-id)
             (events/publish-event! :event/sandbox-delete {:object sandbox :user-id api/*current-user-id*})
             (is (empty? (t2/select :model/Dependency :from_entity_id sandbox-id :from_entity_type :sandbox)))))))))
 
@@ -394,7 +394,7 @@
                    (into #{} (map #(dissoc % :id)
                                   (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment))))))
           (testing "updating segment definition recalculates dependencies"
-            (t2/update! :model/Segment segment-id {:definition {:filter [:= [:field category-field-id nil] "Widget"]}})
+            (t2/update! :model/Segment :id segment-id {:definition {:filter [:= [:field category-field-id nil] "Widget"]}})
             (let [updated-segment (t2/select-one :model/Segment :id segment-id)]
               (events/publish-event! :event/segment-update {:object updated-segment :user-id api/*current-user-id*})
               (is (= #{{:from_entity_type :segment
@@ -404,7 +404,7 @@
                      (into #{} (map #(dissoc % :id)
                                     (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment)))))))
           (testing "deleting segment removes all dependencies"
-            (t2/delete! :model/Segment segment-id)
+            (t2/delete! :model/Segment :id segment-id)
             (events/publish-event! :event/segment-delete {:object segment :user-id api/*current-user-id*})
             (is (empty? (t2/select :model/Dependency :from_entity_id segment-id :from_entity_type :segment)))))))))
 
