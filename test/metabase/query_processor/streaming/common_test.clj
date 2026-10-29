@@ -125,9 +125,30 @@
       "+5"
       "-1,234.56"
       "-$1,234.56"
+      "-1,234.56\u00a0€"
+      "-1,234.56\u00a0EUR"
+      "-1,234.56\u00a0USD"
+      "-1,234.56 EUR"
+      "-1,234.56 USD"
+      "-2\u00a0CA$"
+      "-2\u00a0kr"
+      "-2\u00a0CN¥"
+      "-2\u00a0SL Re"
       "-50%"
       "-1.5e3"
       "+1 555 1234"))
+  (testing "currency-like text with formula syntax still requires escaping"
+    (are [v] (= (str "'" v) (streaming.common/escape-spreadsheet-formula v))
+      "-1,234.56\u00a0EUR+1"
+      "-1,234.56\u00a0USD|cmd!A0"
+      "-1,234.56 EUR(1)"
+      "-1,234.56\u00a0EUR\n=1+1"
+      "-1,234.56EUR"
+      "-2\u00a0CA$+1"
+      "-2\u00a0kr|cmd!A0"
+      "-2\u00a0CN¥(1)"
+      "-2\u00a0SL Re\n=1+1"
+      "-2\u00a0arbitrary"))
   (testing "non-string values pass through untouched"
     (are [v] (= v (streaming.common/escape-spreadsheet-formula v))
       5

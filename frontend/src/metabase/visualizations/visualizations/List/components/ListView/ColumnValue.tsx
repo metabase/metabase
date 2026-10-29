@@ -261,20 +261,27 @@ export function ColumnValue({
         typeof options.currency === "string"
       ) {
         const currencySymbol = getCurrencySymbol(options?.currency);
-        const currencyValue = formattedValue.replace(currencySymbol, "");
+        const currencyIndex = formattedValue.indexOf(currencySymbol);
+        if (currencyIndex === -1) {
+          return <Text fw="bold">{formattedValue}</Text>;
+        }
+        const beforeCurrency = formattedValue.slice(0, currencyIndex);
+        const afterCurrency = formattedValue.slice(
+          currencyIndex + currencySymbol.length,
+        );
 
         return (
           <Text fw="bold">
-            <span
-              style={{
-                color: "var(--mb-color-text-disabled)",
-                fontWeight: "normal",
-                paddingRight: "0.25rem",
-              }}
+            {beforeCurrency}
+            <Text
+              component="span"
+              c="text-disabled"
+              fw="normal"
+              pr={afterCurrency ? "xxs" : undefined}
             >
               {currencySymbol}
-            </span>
-            {currencyValue}
+            </Text>
+            {afterCurrency}
           </Text>
         );
       }

@@ -51,6 +51,7 @@
     ::mb.viz/number-separators
     ::mb.viz/currency
     ::mb.viz/currency-style
+    ::mb.viz/currency-position
     ::mb.viz/currency-in-header
     ::mb.viz/decimals
     ::mb.viz/scale
@@ -66,27 +67,21 @@
     ::mb.viz/time-style})
 
 (defn- currency-format-string
-  "Adds a currency to the base format string as either a suffix (for pluralized names) or
-  prefix (for symbols or codes)."
-  [base-string format-settings]
+  "Adds the currency label at the configured position. Currency names always follow the amount."
+  [base-string {::mb.viz/keys [currency-style currency-position] :as format-settings}]
   (let [currency-code (::mb.viz/currency format-settings "USD")
         currency-identifier (streaming.common/currency-identifier format-settings)]
-    (condp = (::mb.viz/currency-style format-settings "symbol")
-      "symbol"
-      (if (currency/supports-symbol? currency-code)
-        (str "[$" currency-identifier "]" base-string)
-        (str "[$" currency-identifier "] " base-string))
+    (cond
+      (= currency-style "name")
+      (str base-string "\" " currency-identifier "\"")
 
-      "narrowSymbol"
-      (if (currency/supports-symbol? currency-code)
-        (str "[$" currency-identifier "]" base-string)
-        (str "[$" currency-identifier "] " base-string))
+      (= currency-position "after")
+      (str base-string "\"\u00a0\"[$" currency-identifier "]")
 
-      "code"
-      (str "[$" currency-identifier "] " base-string)
-
-      "name"
-      (str base-string "\" " currency-identifier "\""))))
+      :else
+      (str "[$" currency-identifier "]"
+           (when (or (= currency-style "code") (not (currency/supports-symbol? currency-code))) " ")
+           base-string))))
 
 (defn- unformatted-number?
   "Use default formatting for decimal number types that have no other format settings defined

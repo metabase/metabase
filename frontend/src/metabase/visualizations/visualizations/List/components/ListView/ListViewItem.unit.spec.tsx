@@ -140,35 +140,43 @@ describe("ListViewItem - ColumnValue rendering", () => {
     expect(screen.getAllByText("%").length).toBeGreaterThan(0);
   });
 
-  it("renders currency with symbol and value", () => {
-    const curCol = createMockColumn({
-      name: "price",
-      display_name: "Price",
-      semantic_type: "type/Currency",
-      base_type: "type/Float",
-      effective_type: "type/Float",
-    });
-    const cols = [curCol];
-    const row = [1234.56];
-    const rows = [row];
+  it.each([
+    ["before", "-$1,234.56"],
+    ["after", "-1,234.56\u00a0$"],
+  ] as const)(
+    "renders currency with the symbol %s the amount",
+    (position, expected) => {
+      const curCol = createMockColumn({
+        name: "price",
+        display_name: "Price",
+        semantic_type: "type/Currency",
+        base_type: "type/Float",
+        effective_type: "type/Float",
+      });
+      const cols = [curCol];
+      const row = [-1234.56];
+      const rows = [row];
 
-    const settings = makeSettings({
-      column: (col) =>
-        col.name === "price"
-          ? {
-              number_style: "currency",
-              currency: "USD",
-              currency_style: "symbol",
-            }
-          : {},
-    });
+      const settings = makeSettings({
+        column: (col) =>
+          col.name === "price"
+            ? {
+                number_style: "currency",
+                currency: "USD",
+                currency_style: "symbol",
+                currency_position: position,
+              }
+            : {},
+      });
 
-    renderItem({ row, rows, cols, settings, rightColumns: [curCol] });
+      renderItem({ row, rows, cols, settings, rightColumns: [curCol] });
 
-    // Symbol and numeric value should be rendered separately
-    expect(screen.getByText("$")).toBeInTheDocument();
-    expect(screen.getByText((t) => /1,?234\.56/.test(t))).toBeInTheDocument();
-  });
+      // Symbol and numeric value should be rendered separately
+      expect(screen.getByText("$")).toBeInTheDocument();
+      expect(screen.getByText((t) => /1,?234\.56/.test(t))).toBeInTheDocument();
+      expect(screen.getByText("$").parentElement?.textContent).toBe(expected);
+    },
+  );
 
   it("renders image for ImageURL semantic type", () => {
     const imgCol = createMockColumn({

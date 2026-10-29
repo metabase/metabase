@@ -212,6 +212,7 @@ const KEYS_TO_COMPARE = new Set([
   "number_style",
   "currency",
   "currency_style",
+  "currency_position",
   "number_separators",
   "decimals",
   "scale",

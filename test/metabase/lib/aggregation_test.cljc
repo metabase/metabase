@@ -634,6 +634,19 @@
                :lib/source     :source/aggregations}
               (lib/metadata query (first (lib/aggregations-metadata query -1))))))))
 
+(deftest ^:parallel preserve-currency-position-metadata-test
+  (let [metadata-provider (lib.tu/mock-metadata-provider
+                           meta/metadata-provider
+                           {:fields [(assoc (meta/field-metadata :venues :price)
+                                            :settings {:currency_position "after"})]})
+        price             (lib.metadata/field metadata-provider (meta/id :venues :price))
+        query             (-> (lib/query metadata-provider (meta/table-metadata :venues))
+                              (lib/aggregate (lib/sum price))
+                              (lib/aggregate (lib/distinct price)))
+        [sum-col count-col] (lib/aggregations-metadata query)]
+    (is (= {:currency_position "after"} (:settings sum-col)))
+    (is (nil? (:settings count-col)))))
+
 (deftest ^:parallel preserve-model-column-settings-metadata-test
   (testing "Aggregation metadata should return the `:settings` from model's result_metadata for the column being aggregated (#68692)"
     (let [;; Create a model with a column that has custom settings (like "multiply by a number")
