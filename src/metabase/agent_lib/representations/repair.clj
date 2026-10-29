@@ -2970,6 +2970,15 @@
          (contains? (first stages) "source-table")
          (not-any? #(contains? (first stages) %) ["aggregation" "breakout" "fields"]))))
 
+(defn- other-table-path-refs
+  "The `path-refs` into plain-table `join` whose field belongs to another table, or nil if there are
+  none. A ref is skipped when its field or the join's table can't be resolved."
+  [mp import-resolver join path-refs]
+  (when-let [table-id (try-resolve-source-table-id import-resolver (get-in join ["stages" 0 "source-table"]))]
+    (not-empty (filterv #(when-let [field-table-id (try-resolve-field-target-table-id mp import-resolver (nth % 2))]
+                           (not= field-table-id table-id))
+                        path-refs))))
+
 (defn- join-alias-refs
   "`stage`'s join-alias string refs (`:named`) and concrete-column join-alias refs (`:path`), each
   grouped by alias, outside the joins' [[hidden-join-keys]]."
@@ -3016,7 +3025,11 @@
         checks               (vec (for [join  (when (and (or (seq named) (seq path)) (sequential? joins)) joins)
                                         :let  [alias      (when (map? join) (get join "alias"))
                                                named-refs (get named alias)
-                                               path-refs  (when-not (plain-table-join? join) (get path alias))]
+                                               path-refs  (cond->> (get path alias)
+                                                            ;; a plain table join returns all its table's columns, so it
+                                                            ;; is resolved only for a ref to another table's column
+                                                            (plain-table-join? join)
+                                                            (other-table-path-refs mp @import-resolver join))]
                                         :when (or named-refs path-refs)
                                         :let  [cols (when (vector? (get join "stages"))
                                                       (resolved-columns mp (get query "database") (get join "stages") content-store
@@ -3058,8 +3071,9 @@
 (defn- repair-join-alias-refs*
   "Pass 4.7: type the join-alias string field refs of every stage from the referenced joins'
   returned columns, and raise one `:agent-error?` listing every join-alias ref, across all stages,
-  that names a column its join doesn't return. Only joins named by a string ref, or by a
-  concrete-column ref into a join that isn't a [[plain-table-join?]], are resolved."
+  that names a column its join doesn't return. Only joins named by a string ref or a
+  concrete-column ref are resolved, and a [[plain-table-join?]] only when such a ref names another
+  table's column."
   [query mp content-store]
   (if-not (and mp (map? query) (vector? (get query "stages")))
     query

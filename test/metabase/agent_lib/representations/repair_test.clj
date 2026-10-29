@@ -4290,6 +4290,16 @@
                               (query (orders-stage {"joins"   [(join "Plain" [(orders-stage {})])]
                                                     "filters" [["not-null" {} (join-ref "Plain" (conj orders "TOTAL"))]]}))))))))
 
+(deftest ^:parallel plain-table-join-other-table-path-ref-test
+  (let [plain-filtering (fn [target]
+                          (query (orders-stage {"joins"   [(join "Plain" [(orders-stage {})])]
+                                                "filters" [["not-null" {} (join-ref "Plain" target)]]})))]
+    (testing "a path ref through a plain table join to another table's column of the same name raises"
+      (is (= [[0 "Plain" ["PEOPLE.ID"]]]
+             (join-problems (plain-filtering ["Sample" "PUBLIC" "PEOPLE" "ID"])))))
+    (testing "a path ref to the joined table's own column is accepted"
+      (is (nil? (repair-error (plain-filtering (conj orders "ID"))))))))
+
 (deftest ^:parallel join-alias-field-type-idempotent-test
   (let [once (repair* first-order-query)]
     (is (= once (repair* once)))))
