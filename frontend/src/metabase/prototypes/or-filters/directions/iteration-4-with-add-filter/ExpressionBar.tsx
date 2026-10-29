@@ -12,10 +12,10 @@ import {
 } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
+import { noop } from "underscore";
 
 import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
-import { FilterPickerBody } from "metabase/querying/filters/components/FilterPicker/FilterPickerBody";
 import { NotebookCellItem } from "metabase/querying/notebook/components/NotebookCell";
 import {
   ActionIcon,
@@ -27,7 +27,7 @@ import {
   Popover,
   Text,
 } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 
 import { getFilterLabel, toFilterClause } from "../../harness/clauses";
 import {
@@ -44,12 +44,14 @@ import {
   toggleOperator,
   writeTokens,
 } from "../expression-bar-2/tokens";
-import {
-  LogicColumnList,
-  matchLogic,
-} from "../expression-bar-drill/LogicColumnList";
+import { matchLogic } from "../expression-bar-drill/LogicColumnList";
 
 import S from "./ExpressionBar.module.css";
+import {
+  type CancelReason,
+  type ColumnKeyState,
+  DraftFilterPill,
+} from "./draft-pill/DraftFilterPill";
 
 export type ExpressionBarProps = {
   query: Lib.Query;
@@ -68,6 +70,14 @@ export type ExpressionBarProps = {
 };
 
 const INDENT_REM = 1.5;
+
+/** The logic row above the columns in the pill's chooser. */
+const LOGIC_KEYWORDS = [
+  { label: "AND", token: opToken("and") },
+  { label: "OR", token: opToken("or") },
+  { label: "(", token: OPEN_PAREN },
+  { label: ")", token: CLOSE_PAREN },
+];
 
 /**
  * The drill-through bar that lays parentheses out as indented rows while you
@@ -98,11 +108,11 @@ export function ExpressionBar({
   const [caret, setCaret] = useState(committedTokens.length);
   const [text, setText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
-  // Arrow keys mean the next Enter picks from the list, not "apply".
-  const [hasNavigated, setHasNavigated] = useState(false);
-  const [draftColumn, setDraftColumn] = useState<Lib.ColumnMetadata>();
+  // Bumped to give the caret a fresh pill, back at its column step.
+  const [pillKey, setPillKey] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
-  const listRef = useRef<HTMLDivElement>(null);
+  // Focusing the idle caret opens the pill, except right after the pill closed.
+  const skipOpenOnFocusRef = useRef(false);
   const barRef = useRef<HTMLDivElement>(null);
   const shouldRefocusRef = useRef(false);
   const flashed = useFlashedLabels(query, stageIndex, committedTokens);
@@ -188,29 +198,47 @@ export function ExpressionBar({
     !isOp(token) ||
     (!isOp(tokens[caretIndex - 1]) && !isOp(tokens[caretIndex]));
 
-  // Typing toward a keyword highlights it in the logic row, not a column.
-  const typedMatch = hasNavigated ? undefined : matchLogic(text);
+  // The text typed in the pill's column step, for the logic row: a typed
+  // keyword lights up, and Space or Enter enters it, unless the arrow keys
+  // moved into the column list.
+  const [typed, setTyped] = useState("");
+  const [hasNavigated, setHasNavigated] = useState(false);
+  const typedLogic = matchLogic(typed);
   const logicMatch =
-    typedMatch && isTokenAllowed(typedMatch.token) ? typedMatch : undefined;
-  useSearchSync(listRef, text, isOpen && draftColumn == null, !logicMatch);
+    typedLogic && isTokenAllowed(typedLogic.token) && !hasNavigated
+      ? typedLogic
+      : undefined;
+  const isLogicRowVisible = typed.trim().length === 0 || typedLogic != null;
+
+  const handleTypedChange = (newTyped: string) => {
+    setTyped(newTyped);
+    setHasNavigated(false);
+  };
 
   const resetDraft = () => {
     setText("");
+    setTyped("");
     setHasNavigated(false);
-    setDraftColumn(undefined);
+    setPillKey((key) => key + 1);
   };
 
-  const close = () => {
+  // Closing keeps the caret focused, so typing or an arrow key reopens it.
+  const close = ({ keepFocus = false } = {}) => {
     resetDraft();
     setIsOpen(false);
+    if (keepFocus) {
+      skipOpenOnFocusRef.current = true;
+      focusInput();
+    }
   };
 
   // Arrow keys keep the popover as it is, so a closed one stays closed.
   const moveCaret = (index: number, { open = true } = {}) => {
     resetDraft();
     setCaret(index);
-    if (open) {
-      setIsOpen(true);
+    setIsOpen(open);
+    if (!open) {
+      skipOpenOnFocusRef.current = true;
     }
     focusInput();
   };
@@ -253,6 +281,53 @@ export function ExpressionBar({
     insert(filterToken(toFilterClause(query, stageIndex, filterable)));
   };
 
+  // The AI's filters from one request go in as "a and b and …" at the caret.
+  const handlePickFilters = (filterables: Lib.Filterable[]) => {
+    let next = { tokens, caret: caretIndex };
+    filterables.forEach((filterable, index) => {
+      if (index > 0) {
+        next = insertToken(next.tokens, next.caret, opToken("and"));
+      }
+      next = insertToken(
+        next.tokens,
+        next.caret,
+        filterToken(toFilterClause(query, stageIndex, filterable)),
+      );
+    });
+    setTokens(next.tokens);
+    setCaret(next.caret);
+    resetDraft();
+    focusInput();
+  };
+
+  const handlePillCancel = (reason: CancelReason) => {
+    if (reason === "click-outside") {
+      // A click in the bar moves the caret; one elsewhere closes the pill.
+      if (!isPointerInBarRef.current) {
+        close();
+      }
+      return;
+    }
+    close({ keepFocus: true });
+  };
+
+  const removeTokenBeforeCaret = () => {
+    if (caretIndex > 0) {
+      setTokens(removeTokenAt(tokens, caretIndex - 1));
+      setCaret(caretIndex - 1);
+      resetDraft();
+    }
+  };
+
+  const moveToAdjacentRow = (isUp: boolean) => {
+    const bar = barRef.current;
+    const target = bar && getSlotOnAdjacentRow(bar, caretIndex, isUp);
+    if (target != null) {
+      moveCaret(target);
+    }
+    return target != null;
+  };
+
   // The notebook has no Apply: every valid expression goes straight to its draft query.
   const lastAutoCommitRef = useRef<Token[]>();
   useEffect(() => {
@@ -272,6 +347,81 @@ export function ExpressionBar({
     inputRef.current?.blur();
   };
 
+  // The bar's own keys in the pill's column step: logic tokens, caret moves
+  // between tokens and rows, Apply on Enter, and Escape to close.
+  const handleColumnKeyDown = (
+    event: KeyboardEvent<HTMLInputElement>,
+    { text: typed, hasSelectedOption }: ColumnKeyState,
+  ) => {
+    const input = event.currentTarget;
+
+    if (event.key === "(" || event.key === ")") {
+      insert(event.key === "(" ? OPEN_PAREN : CLOSE_PAREN);
+      return true;
+    }
+    if (event.key === " " && logicMatch) {
+      insert(logicMatch.token);
+      return true;
+    }
+    if (event.key === "Enter") {
+      if (logicMatch) {
+        insert(logicMatch.token);
+        return true;
+      }
+      if (hasSelectedOption) {
+        return false;
+      }
+      if (typed.trim().length === 0) {
+        commit();
+        return true;
+      }
+      return false;
+    }
+    if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+      // Up and Down move between the rows of a nested expression; with no
+      // row there, they move in the column list.
+      if (
+        !hasSelectedOption &&
+        typed.length === 0 &&
+        moveToAdjacentRow(event.key === "ArrowUp")
+      ) {
+        return true;
+      }
+      setHasNavigated(true);
+      return false;
+    }
+    if (event.key === "Escape") {
+      if (typed.length > 0) {
+        resetDraft();
+      } else {
+        close({ keepFocus: true });
+      }
+      return true;
+    }
+    if (event.key === "Backspace" && typed.length === 0) {
+      removeTokenBeforeCaret();
+      return true;
+    }
+    if (
+      event.key === "ArrowLeft" &&
+      input.selectionStart === 0 &&
+      caretIndex > 0
+    ) {
+      moveCaret(caretIndex - 1);
+      return true;
+    }
+    if (
+      event.key === "ArrowRight" &&
+      input.selectionEnd === typed.length &&
+      caretIndex < tokens.length
+    ) {
+      moveCaret(caretIndex + 1);
+      return true;
+    }
+    return false;
+  };
+
+  // The idle caret, after the pill closed: the same moves, and any key opens the pill.
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     const input = event.currentTarget;
 
@@ -280,82 +430,39 @@ export function ExpressionBar({
       insert(event.key === "(" ? OPEN_PAREN : CLOSE_PAREN);
       return;
     }
-    if (event.key === " " && logicMatch) {
-      event.preventDefault();
-      insert(logicMatch.token);
-      return;
-    }
     if (event.key === "Enter") {
       event.preventDefault();
-      if (logicMatch) {
-        insert(logicMatch.token);
-      } else if (isOpen && (text.trim().length > 0 || hasNavigated)) {
-        forwardKey(listRef, "Enter");
-      } else {
-        commit();
-      }
+      commit();
       return;
-    }
-    if (event.key === "ArrowUp" && isOpen && !hasNavigated) {
-      event.preventDefault();
-      close();
-      return;
-    }
-    if ((event.key === "ArrowDown" || event.key === "ArrowUp") && !isOpen) {
-      const bar = barRef.current;
-      const target =
-        bar && getSlotOnAdjacentRow(bar, caretIndex, event.key === "ArrowUp");
-      if (target != null) {
-        event.preventDefault();
-        moveCaret(target, { open: false });
-        return;
-      }
-      // Up on the top row stays put; Down on the last row opens the list.
-      if (event.key === "ArrowUp") {
-        event.preventDefault();
-        return;
-      }
     }
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
-      setIsOpen(true);
-      setHasNavigated(true);
-      forwardKey(listRef, event.key);
+      if (
+        !moveToAdjacentRow(event.key === "ArrowUp") &&
+        event.key === "ArrowDown"
+      ) {
+        setIsOpen(true);
+      }
       return;
     }
     if (event.key === "Escape") {
       event.preventDefault();
-      if (text.length > 0) {
-        resetDraft();
-      } else if (isOpen) {
-        close();
-      } else {
-        input.blur();
-      }
+      input.blur();
       return;
     }
-    if (event.key === "Backspace" && text.length === 0 && caretIndex > 0) {
+    if (event.key === "Backspace") {
       event.preventDefault();
-      setTokens(removeTokenAt(tokens, caretIndex - 1));
-      setCaret(caretIndex - 1);
+      removeTokenBeforeCaret();
       return;
     }
-    if (
-      event.key === "ArrowLeft" &&
-      input.selectionStart === 0 &&
-      caretIndex > 0
-    ) {
+    if (event.key === "ArrowLeft" && caretIndex > 0) {
       event.preventDefault();
-      moveCaret(caretIndex - 1, { open: isOpen });
+      moveCaret(caretIndex - 1, { open: false });
       return;
     }
-    if (
-      event.key === "ArrowRight" &&
-      input.selectionEnd === text.length &&
-      caretIndex < tokens.length
-    ) {
+    if (event.key === "ArrowRight" && caretIndex < tokens.length) {
       event.preventDefault();
-      moveCaret(caretIndex + 1, { open: isOpen });
+      moveCaret(caretIndex + 1, { open: false });
     }
   };
 
@@ -374,89 +481,79 @@ export function ExpressionBar({
     }
   };
 
-  // Plain text at the caret; a pill only once a column is picked.
-  const caretView = (
-    <Popover
-      opened={isOpen}
-      position="bottom-start"
-      trapFocus={false}
-      returnFocus={false}
-      transitionProps={{ duration: 0 }}
-      // A click elsewhere in the bar only moves the caret; the popover stays.
-      onChange={(opened) => !opened && !isPointerInBarRef.current && close()}
-    >
-      <Popover.Target>
-        {draftColumn ? (
-          <span className={S.typingPill}>
-            <span className={S.typingColumn}>
-              {Lib.displayInfo(query, stageIndex, draftColumn).longDisplayName}
-            </span>
-            <Icon
-              name="close"
-              size={12}
-              className={S.typingClose}
-              aria-label={t`Cancel`}
-              onClick={() => {
-                resetDraft();
-                focusInput();
-              }}
-            />
-          </span>
-        ) : (
-          <span
-            className={cx(S.typing, {
-              [S.typingIdle]: !isOpen,
-              [S.typingText]: text.length > 0,
+  // The caret is the draft pill while it's open: the column chooser with the
+  // logic tokens on top, then the operator and the values, all inline. Closed,
+  // it's a plain text caret that reopens the pill on any key.
+  const caretView = isOpen ? (
+    <DraftFilterPill
+      key={`${caretIndex}:${pillKey}`}
+      query={query}
+      stageIndex={stageIndex}
+      initialText={text}
+      columnHeader={
+        isLogicRowVisible && (
+          <Group gap="xs" className={S.logicRow} py="xs">
+            <Text size="sm" fw="bold" c="text-secondary" mr="auto">
+              {t`Logic`}
+            </Text>
+            {LOGIC_KEYWORDS.map((keyword) => {
+              const isAllowed = isTokenAllowed(keyword.token);
+              return (
+                <button
+                  key={keyword.label}
+                  type="button"
+                  disabled={!isAllowed}
+                  className={cx(S.logicKeyword, {
+                    [S.logicKeywordOr]: keyword.label === "OR",
+                    [S.logicKeywordParen]: keyword.token.type === "paren",
+                    [S.logicKeywordActive]:
+                      isAllowed && keyword.label === logicMatch?.label,
+                  })}
+                  onClick={() => insert(keyword.token)}
+                >
+                  {keyword.label}
+                </button>
+              );
             })}
-          >
-            <input
-              ref={inputRef}
-              className={S.input}
-              style={{ width: `calc(${text.length}ch + 2px)` }}
-              value={text}
-              aria-label={t`Filter expression`}
-              onChange={(event) => {
-                setText(event.target.value);
-                setHasNavigated(false);
-                setIsOpen(true);
-              }}
-              onFocus={() => setIsOpen(true)}
-              onKeyDown={handleKeyDown}
-            />
-          </span>
-        )}
-      </Popover.Target>
-      <Popover.Dropdown data-testid="filter-picker-dropdown">
-        {draftColumn ? (
-          <FilterPickerBody
-            query={query}
-            stageIndex={stageIndex}
-            column={draftColumn}
-            isNew
-            onChange={(filter) => handlePickFilter(filter)}
-            onBack={() => {
-              setDraftColumn(undefined);
-              focusInput();
-            }}
-          />
-        ) : (
-          <LogicColumnList
-            listRef={listRef}
-            query={query}
-            stageIndex={stageIndex}
-            onFocusSteal={() => inputRef.current?.focus()}
-            text={text}
-            isLogicHighlightable={logicMatch != null}
-            isTokenAllowed={isTokenAllowed}
-            onPickToken={insert}
-            onPickColumn={(column) => {
-              setText("");
-              setDraftColumn(column);
-            }}
-          />
-        )}
-      </Popover.Dropdown>
-    </Popover>
+          </Group>
+        )
+      }
+      isColumnHighlightPaused={logicMatch != null}
+      onColumnTextChange={handleTypedChange}
+      onColumnKeyDown={handleColumnKeyDown}
+      onDraftChange={noop}
+      onSubmit={handlePickFilter}
+      onSubmitFilters={handlePickFilters}
+      onDone={resetDraft}
+      onCancel={handlePillCancel}
+      onRemove={() => close({ keepFocus: true })}
+    />
+  ) : (
+    <span
+      className={cx(S.typing, S.typingIdle, {
+        [S.typingText]: text.length > 0,
+      })}
+    >
+      <input
+        ref={inputRef}
+        className={S.input}
+        style={{ width: `calc(${text.length}ch + 2px)` }}
+        value={text}
+        aria-label={t`Filter expression`}
+        onChange={(event) => {
+          setText(event.target.value);
+          setIsOpen(true);
+        }}
+        onFocus={() => {
+          if (skipOpenOnFocusRef.current) {
+            skipOpenOnFocusRef.current = false;
+          } else {
+            setIsOpen(true);
+          }
+        }}
+        onKeyDown={handleKeyDown}
+      />
+    </span>
   );
 
   return (
@@ -564,7 +661,7 @@ export function ExpressionBar({
             />
           ),
         ]}
-        {tokens.length === 0 && text === "" && draftColumn == null && (
+        {tokens.length === 0 && text === "" && !isOpen && (
           <span className={S.placeholder}>{t`Type to filter…`}</span>
         )}
         <Group gap="sm" ml="auto" pl="md" wrap="nowrap">
@@ -730,57 +827,6 @@ function getSlotOnAdjacentRow(
       ? slot
       : best,
   ).index;
-}
-
-function getHiddenSearch(listRef: RefObject<HTMLDivElement>) {
-  return listRef.current?.querySelector("input") ?? undefined;
-}
-
-/**
- * Types the bar's text into the list's hidden search box, then highlights
- * the best match so Enter picks it.
- */
-export function useSearchSync(
-  listRef: RefObject<HTMLDivElement>,
-  text: string,
-  isActive: boolean,
-  shouldHighlight: boolean,
-) {
-  useEffect(() => {
-    if (!isActive) {
-      return;
-    }
-    // The dropdown renders in a portal; wait a tick for it to mount.
-    let highlightTimeout: ReturnType<typeof setTimeout>;
-    const syncTimeout = setTimeout(() => {
-      const input = getHiddenSearch(listRef);
-      const value = text.trim();
-      if (!input || input.value === value) {
-        return;
-      }
-      const setValue = Object.getOwnPropertyDescriptor(
-        HTMLInputElement.prototype,
-        "value",
-      )?.set;
-      setValue?.call(input, value);
-      input.dispatchEvent(new Event("input", { bubbles: true }));
-      if (value.length > 0 && shouldHighlight) {
-        // The list resets its cursor on search; move it once the reset has rendered.
-        highlightTimeout = setTimeout(() => forwardKey(listRef, "ArrowDown"));
-      }
-    });
-    return () => {
-      clearTimeout(syncTimeout);
-      clearTimeout(highlightTimeout);
-    };
-  }, [listRef, text, isActive, shouldHighlight]);
-}
-
-/** Arrow keys and Enter in the bar drive the list's own keyboard navigation. */
-export function forwardKey(listRef: RefObject<HTMLDivElement>, key: string) {
-  getHiddenSearch(listRef)?.dispatchEvent(
-    new KeyboardEvent("keydown", { key, bubbles: true }),
-  );
 }
 
 /** Nesting depth per token, so nested parens fade. */
@@ -981,5 +1027,56 @@ function FilterTokenView({
         />
       </Popover.Dropdown>
     </Popover>
+  );
+}
+
+function getHiddenSearch(listRef: RefObject<HTMLDivElement>) {
+  return listRef.current?.querySelector("input") ?? undefined;
+}
+
+/**
+ * Types the bar's text into the list's hidden search box, then highlights
+ * the best match so Enter picks it.
+ */
+export function useSearchSync(
+  listRef: RefObject<HTMLDivElement>,
+  text: string,
+  isActive: boolean,
+  shouldHighlight: boolean,
+) {
+  useEffect(() => {
+    if (!isActive) {
+      return;
+    }
+    // The dropdown renders in a portal; wait a tick for it to mount.
+    let highlightTimeout: ReturnType<typeof setTimeout>;
+    const syncTimeout = setTimeout(() => {
+      const input = getHiddenSearch(listRef);
+      const value = text.trim();
+      if (!input || input.value === value) {
+        return;
+      }
+      const setValue = Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      )?.set;
+      setValue?.call(input, value);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      if (value.length > 0 && shouldHighlight) {
+        // The list resets its cursor on search; move it once the reset has rendered.
+        highlightTimeout = setTimeout(() => forwardKey(listRef, "ArrowDown"));
+      }
+    });
+    return () => {
+      clearTimeout(syncTimeout);
+      clearTimeout(highlightTimeout);
+    };
+  }, [listRef, text, isActive, shouldHighlight]);
+}
+
+/** Arrow keys and Enter in the bar drive the list's own keyboard navigation. */
+export function forwardKey(listRef: RefObject<HTMLDivElement>, key: string) {
+  getHiddenSearch(listRef)?.dispatchEvent(
+    new KeyboardEvent("keydown", { key, bubbles: true }),
   );
 }
