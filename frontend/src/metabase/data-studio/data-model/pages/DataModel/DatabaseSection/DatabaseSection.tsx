@@ -14,10 +14,11 @@ import { DateTime } from "metabase/common/components/DateTime";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { useNumberFormatter } from "metabase/common/hooks/use-number-formatter";
+import { getUserIsAdmin } from "metabase/current-user";
 import { dayjs } from "metabase/dayjs";
 import { NameDescriptionInput } from "metabase/metadata/components";
 import { PLUGIN_METADATA_GENERATION } from "metabase/plugins";
-import { useDispatch } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { Button, Ellipsified, Group, Icon, Stack, Text } from "metabase/ui";
 import { DAY_OF_WEEK_OPTIONS } from "metabase/utils/date-time";
 import { isSyncInProgress } from "metabase/utils/syncing";
@@ -41,7 +42,7 @@ export function DatabaseSection({ databaseId }: DatabaseSectionProps) {
     data: database,
     error,
     isLoading,
-  } = useGetDatabaseQuery({ id: databaseId, include: "tables.fields" });
+  } = useGetDatabaseQuery({ id: databaseId, include: "tables" });
 
   if (isLoading || error != null || database == null) {
     return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
@@ -56,6 +57,10 @@ type DatabaseSectionContentProps = {
 
 function DatabaseSectionContent({ database }: DatabaseSectionContentProps) {
   const dispatch = useDispatch();
+  const isAdmin = useSelector(getUserIsAdmin);
+  // The sync, re-scan and update endpoints need write access to the database,
+  // which a data-model-only user and an attached DWH do not give.
+  const canEdit = isAdmin && !database.is_attached_dwh;
   const formatNumber = useNumberFormatter({ maximumFractionDigits: 0 });
   const { sendErrorToast, sendSuccessToast } = useMetadataToasts();
   const [updateDatabase] = useUpdateDatabaseMutation();
@@ -114,32 +119,37 @@ function DatabaseSectionContent({ database }: DatabaseSectionContentProps) {
         nameIcon="database"
         nameMaxLength={NAME_MAX_LENGTH}
         namePlaceholder={t`Give this database a name`}
+        readOnly={!canEdit}
         onNameChange={handleNameChange}
         onDescriptionChange={handleDescriptionChange}
       />
 
       <Group gap="sm">
-        <Button
-          leftSection={<Icon name="refresh" />}
-          loading={isRescanning}
-          onClick={handleRescan}
-        >
-          {t`Re-scan field values`}
-        </Button>
+        {canEdit && (
+          <Button
+            leftSection={<Icon name="refresh" />}
+            loading={isRescanning}
+            onClick={handleRescan}
+          >
+            {t`Re-scan field values`}
+          </Button>
+        )}
         <PLUGIN_METADATA_GENERATION.DatabaseButton databaseId={database.id} />
       </Group>
 
       <TableSectionGroup
         title={t`Syncing`}
         actions={
-          <Button
-            size="compact-md"
-            leftSection={<Icon name="sync" />}
-            loading={isSyncing}
-            onClick={handleSync}
-          >
-            {t`Sync now`}
-          </Button>
+          canEdit && (
+            <Button
+              size="compact-md"
+              leftSection={<Icon name="sync" />}
+              loading={isSyncing}
+              onClick={handleSync}
+            >
+              {t`Sync now`}
+            </Button>
+          )
         }
       >
         <Stack gap="lg" data-testid="database-syncing-section">
@@ -158,7 +168,6 @@ function DatabaseSectionContent({ database }: DatabaseSectionContentProps) {
         <Stack gap="lg" data-testid="database-stats-section">
           <MetadataRow label={t`Schemas`} value={formatNumber(stats.schemas)} />
           <MetadataRow label={t`Tables`} value={formatNumber(stats.tables)} />
-          <MetadataRow label={t`Fields`} value={formatNumber(stats.fields)} />
           <MetadataRow
             label={t`Rows`}
             value={
@@ -200,16 +209,11 @@ function MetadataRow({ label, value }: MetadataRowProps) {
 type DatabaseStats = {
   schemas: number;
   tables: number;
-  fields: number;
   rows: number | null;
 };
 
 function getDatabaseStats(tables: Table[]): DatabaseStats {
   const schemas = new Set(tables.map((table) => table.schema ?? ""));
-  const fields = tables.reduce(
-    (count, table) => count + (table.fields?.length ?? 0),
-    0,
-  );
   const rowCounts = tables
     .map((table) => table.estimated_row_count)
     .filter((count): count is number => count != null);
@@ -218,7 +222,7 @@ function getDatabaseStats(tables: Table[]): DatabaseStats {
       ? rowCounts.reduce((total, count) => total + count, 0)
       : null;
 
-  return { schemas: schemas.size, tables: tables.length, fields, rows };
+  return { schemas: schemas.size, tables: tables.length, rows };
 }
 
 /** The most recent update of a table of the database: a sync, a rename or a metadata edit. */
