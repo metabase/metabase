@@ -18,6 +18,7 @@
    [metabase.model-persistence.core :as model-persistence]
    [metabase.models.interface :as mi]
    [metabase.parameters.schema :as parameters.schema]
+   [metabase.queries.db :as queries.db]
    [metabase.queries.models.query :as query]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.core :as qp]
@@ -94,7 +95,7 @@
   "The Table, with its Fields, that the implicit `action` writes to: its model's source Table when it has a model."
   [{model-id :model_id, table-id :table_id} :- ::actions.schema/action]
   (let [table-id (if model-id
-                   (:table-id (query/query->database-and-table-ids (actions.db/card-query model-id)))
+                   (:table-id (query/query->database-and-table-ids (:dataset_query (queries.db/card model-id))))
                    table-id)]
     (first (when table-id (actions.db/tables-with-fields [table-id])))))
 
@@ -301,7 +302,7 @@
                  (qp/process-query
                   (qp/userland-query
                    (if-let [model-id (:model_id action)]
-                     (qp.card/query-for-card (actions.db/card model-id) prefetch-parameters nil nil)
+                     (qp.card/query-for-card (queries.db/card model-id) prefetch-parameters nil nil)
                      query)
                    info)))
         ;; only expose values for fields that are not hidden

@@ -6,11 +6,14 @@
    [clojure.string :as str]
    [metabase.lib.core :as lib]
    [metabase.lib.schema]
-   [metabase.metabot.db :as metabot.db]
+   [metabase.measures.db :as measures.db]
+   [metabase.metabot.query-repair :as query-repair]
+   [metabase.segments.db :as segments.db]
    [metabase.system.core :as system]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -36,20 +39,16 @@
   [query]
   #_{:clj-kondo/ignore [:discouraged-var]}
   (if (and (map? query)
-           ;; `:stages` alone (no `:lib/type`) also counts: a query round-tripped through
-           ;; the frontend's viewing context (`user_is_viewing` / `chart_configs`) comes
-           ;; back MBQL 5 but stripped of its internal `:lib/*` keys. Guarding on
-           ;; `:lib/type` alone let such a query fall through unconverted, leaking raw
-           ;; MBQL 5 into the `/question#<base64>` hash and crashing the frontend with
-           ;; "Stage 0 does not exist" (BOT-1604 follow-up).
+           ;; `:stages` alone (no `:lib/type`) also counts: a query stripped of its internal `:lib/*` keys is
+           ;; still MBQL 5. Guarding on `:lib/type` alone let such a query fall through unconverted, leaking raw
+           ;; MBQL 5 into the `/question#<base64>` hash and crashing the frontend with "Stage 0 does not exist"
+           ;; (BOT-1604 follow-up).
            (or (:lib/type query) (:stages query)))
     (try
-      (lib/->legacy-MBQL (lib/normalize :metabase.lib.schema/query query))
+      (lib/->legacy-MBQL (query-repair/normalize-query query))
       (catch Exception e
-        ;; Normalizing a `:lib/*`-stripped query can mint fresh `:lib/uuid`s that don't
-        ;; match positional aggregation/expression refs embedded elsewhere in the query
-        ;; (e.g. an order-by on the query's own aggregation), which fails conversion.
-        ;; Fall back to the raw query rather than failing the whole agent turn over a link.
+        ;; A ref that [[query-repair/normalize-query]] cannot repoint, such as one of several aggregations in a
+        ;; `:lib/*`-stripped query, fails conversion. Fall back to the raw query rather than failing the whole agent turn over a link.
         (log/warn e "Failed to convert MBQL 5 query to legacy MBQL for link resolution")
         query))
     query))
@@ -62,12 +61,14 @@
   Native-only queries use legacy MBQL because the embedding SDK opens its SQL editor only when
   `dataset_query.type` is `\"native\"`.
 
-  A query with `:stages` but no `:lib/type` stays in MBQL 5 if it normalizes to a valid query.
-  All other values go through [[->legacy-mbql]]."
+  A query with `:stages` but no `:lib/type` stays in MBQL 5 if it normalizes to a valid query; see
+  [[query-repair/normalize-query]] for the refs it repairs on the way. Conversation state repairs such a query as it
+  is read, so this is the last guard, for a query that reaches a link by another way. All other values go through
+  [[->legacy-mbql]]."
   [query]
   (or (when (and (map? query) (or (:lib/type query) (:stages query)))
         (try
-          (let [normalized (lib/normalize :metabase.lib.schema/query query)]
+          (let [normalized (query-repair/normalize-query query)]
             (when (and (not (lib/native-only-query? normalized))
                        (or (:lib/type query) (mr/validate :metabase.lib.schema/query normalized)))
               (cond-> (lib/prepare-for-serialization normalized)
@@ -158,7 +159,7 @@
   unknown."
   [entity-id]
   (let [measure-id (parse-long entity-id)
-        table-id   (some-> measure-id metabot.db/measure-table-id)]
+        table-id   (some-> measure-id measures.db/measure :table_id)]
     (if table-id
       (str "/data-studio/library/tables/" table-id "/measures/" measure-id)
       (log/warn "Measure not found for link resolution" {:measure-id entity-id}))))
@@ -168,8 +169,8 @@
   segment, or nil when the segment is unknown."
   [entity-id]
   (let [segment-id (parse-long entity-id)
-        table-id   (some-> segment-id metabot.db/segment-table-id)
-        db-id      (some-> table-id metabot.db/table-database-id)]
+        table-id   (some-> segment-id segments.db/segment :table_id)
+        db-id      (some-> table-id warehouse-schema.db/table :db_id)]
     (if db-id
       (str "/question#?db=" db-id "&table=" table-id "&segment=" segment-id)
       (log/warn "Segment not found for link resolution" {:segment-id entity-id}))))

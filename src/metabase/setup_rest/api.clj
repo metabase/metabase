@@ -11,6 +11,7 @@
    [metabase.setup-rest.db :as setup-rest.db]
    [metabase.setup.core :as setup]
    [metabase.system.core :as system]
+   [metabase.users.db :as users.db]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.malli :as mu]
@@ -101,7 +102,7 @@
                 (setting/restore-cache!)
                 (throw e))))]
     (let [{:keys [user-id session-key session]} (create!)
-          superuser (setup-rest.db/user user-id)]
+          superuser (users.db/user user-id)]
       (events/publish-event! :event/user-login {:user-id user-id})
       (when-not (:last_login superuser)
         (events/publish-event! :event/user-joined {:user-id user-id}))

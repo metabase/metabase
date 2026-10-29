@@ -352,7 +352,7 @@ const createDashboardWithCards = () => {
     H.createQuestion(questionDetails).then(({ body: { id: question_id } }) => {
       H.createQuestion(modelDetails).then(({ body: { id: model_id } }) => {
         H.createAction({ ...actionDetails, model_id }).then(
-          ({ body: { id: action_id } }) => {
+          ({ id: action_id }) => {
             cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
               dashcards: [
                 { id: -1, card_id: question_id, ...questionDashcardDetails },

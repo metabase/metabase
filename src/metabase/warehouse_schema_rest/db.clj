@@ -25,11 +25,6 @@
                       (warehouse-schema-overlay/table-query {:alias :target_t}) [:= :tf.table_id :target_t.id]]
              :where  [:= :sf.id source-field-id]}))
 
-(mu/defn field
-  "The Field with `field-id`, or nil."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
-
 (mu/defn set-nested-fields-active!
   "Set the active flag of the Fields of the Table with `table-id` whose NFC path matches the SQL LIKE
   `nfc-path-pattern`, returning the number updated."
@@ -129,26 +124,6 @@
   "The Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
-
-(mu/defn table
-  "The Table with `table-id`, or nil."
-  [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
-
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database database-id))
-
-(mu/defn non-destination-database
-  "The Database with `database-id` if it is not a routing destination, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id database-id :router_database_id nil))
-
-(mu/defn collection
-  "The Collection with `collection-id`, or nil."
-  [collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/select-one :model/Collection :id collection-id))
 
 (mu/defn active-unretired-field-ids-for-table
   "The ids of the active, unretired Fields of the Table with `table-id`, or nil."

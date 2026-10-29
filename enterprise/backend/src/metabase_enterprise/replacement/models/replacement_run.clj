@@ -124,7 +124,7 @@
                    (deliver on-complete :run/cancelled))
                  (throw (ex-info "Run canceled" {:run-id run-id})))))))
        (canceled? [_]
-         (not (:is_active (replacement.db/run-active-flag run-id))))
+         (not (:is_active (replacement.db/replacement-run run-id))))
        (start-run! [_]
          (start-run! run-id))
        (succeed-run! [_]

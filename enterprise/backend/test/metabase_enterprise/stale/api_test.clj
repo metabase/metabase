@@ -59,9 +59,9 @@
             (testing "count is correct"
               (is (= 4 (:total result))))
             (testing "Contains the correct data"
-              (= #{["card" (u/the-id card)] ["dashboard" (u/the-id dashboard)]
-                   ["card" (u/the-id card-2)] ["dashboard" (u/the-id dashboard-2)]}
-                 (->> result :data (map (juxt :model :id)) set)))))))))
+              (is (= #{["card" (u/the-id card)] ["dashboard" (u/the-id dashboard)]
+                       ["card" (u/the-id card-2)] ["dashboard" (u/the-id dashboard-2)]}
+                     (->> result :data (map (juxt :model :id)) set))))))))))
 
 (deftest recursive-search-skips-archived-descendants-test
   (testing "a recursive search does not descend into archived collections"
@@ -137,6 +137,13 @@
                         :data
                         (map :name)
                         set)))))))))
+
+(deftest malformed-before-date-is-a-400-test
+  (mt/with-premium-features #{:collection-cleanup}
+    (testing "An unparseable before_date is a client error, not a server error"
+      (is (= "invalid before_date: 'not-a-date' expected format: 'yyyy-MM-dd'"
+             (mt/user-http-request :crowberto :get 400 "ee/stale/root"
+                                   :before_date "not-a-date"))))))
 
 (deftest can-fetch-stale-candidates-2
   (mt/with-premium-features #{:collection-cleanup}

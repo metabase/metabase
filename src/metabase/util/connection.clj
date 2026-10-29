@@ -17,7 +17,7 @@
   (let [field (doto (.getDeclaredField com.mchange.v2.c3p0.C3P0Registry "classNamesToConnectionCustomizers")
                 (.setAccessible true))]
     (.put ^java.util.HashMap (.get field com.mchange.v2.c3p0.C3P0Registry)
-          (.getName klass) (.newInstance klass))))
+          (.getName klass) (.newInstance (.getDeclaredConstructor klass (into-array Class [])) (object-array 0)))))
 
 (defn- consume-rset [^ResultSet rset cb]
   (into {} (iteration

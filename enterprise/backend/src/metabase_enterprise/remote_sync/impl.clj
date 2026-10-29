@@ -1513,7 +1513,7 @@
   (e.g. `{:branch \"main\"}`, plus `:auto true` for system-triggered syncs); `user-id` is nil for
   system-triggered syncs."
   [topic task-id details user-id]
-  (let [task (remote-sync.db/task task-id)]
+  (let [task (remote-sync.db/remote-sync-task task-id)]
     (events/publish-event! topic
                            {:object  task
                             :details details
@@ -1546,7 +1546,7 @@
   is still open may be that the app DB is unreachable."
   [task-id]
   (try
-    (when (some-> (remote-sync.db/task task-id) remote-sync.task/running?)
+    (when (some-> (remote-sync.db/remote-sync-task task-id) remote-sync.task/running?)
       (log/warnf "Remote sync task %d ended without recording a result; failing it" task-id)
       (handle-task-result! {:status :error :message "Task ended without recording a result"} task-id))
     (catch Throwable t

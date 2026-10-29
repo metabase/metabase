@@ -9,6 +9,7 @@
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [metabase.warehouses.core :as warehouses]
+   [metabase.warehouses.db :as warehouses.db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -198,7 +199,7 @@
 
 (defn database-schemas
   "Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables."
-  [id {:keys [include-editable-data-model? include-hidden? can-query?]}]
+  [id {:keys [include-editable-data-model? include-hidden? can-query? exclude-unpublished-tables?]}]
   (let [filter-schemas (fn [schemas]
                          (if include-editable-data-model?
                            (->> schemas
@@ -207,10 +208,12 @@
                                 (map :schema))
                            (filter (partial can-read-schema? id) schemas)))
         filter-schemas-by-tables (fn [schemas]
-                                   (if can-query?
+                                   (if (or can-query? exclude-unpublished-tables?)
                                      (let [tables (warehouse-schema.db/active-tables-for-database id)
                                            _ (perms/prime-table-perms-cache {:db-ids #{id}})
-                                           filtered-tables (filter mi/can-query? tables)
+                                           filtered-tables (cond->> tables
+                                                             can-query?                  (filter mi/can-query?)
+                                                             exclude-unpublished-tables? (filter :is_published))
                                            allowed-schemas (set (map :schema filtered-tables))]
                                        (filter #(contains? allowed-schemas %) schemas))
                                      schemas))]
@@ -229,7 +232,7 @@
   `include-editable-data-model?` routes the filtering through data-model permissions instead."
   ([db-id schema]
    (schema-tables-list db-id schema {}))
-  ([db-id schema {:keys [include-hidden? include-editable-data-model? can-query? include-measures?]}]
+  ([db-id schema {:keys [include-hidden? include-editable-data-model? can-query? include-measures? exclude-unpublished-tables?]}]
    (when-not include-editable-data-model?
      (api/read-check :model/Database db-id)
      (api/check-403 (can-read-schema? db-id schema)))
@@ -240,7 +243,8 @@
          filtered-tables  (cond->> (if include-editable-data-model?
                                      (filter-tables-by-data-model-perms candidate-tables)
                                      (filter mi/can-read? candidate-tables))
-                            can-query? (filter mi/can-query?))
+                            can-query?                  (filter mi/can-query?)
+                            exclude-unpublished-tables? (filter :is_published))
          hydration-keys   (cond-> []
                             (premium-features/any-transforms-enabled?)   (conj :transform)
                             include-measures? (conj :measures))]
@@ -327,7 +331,7 @@
       include-database?
       (assoc :db (when-let [database (when (int? database_id)
                                        (or (get databases database_id)
-                                           (warehouse-schema.db/database database_id)))]
+                                           (warehouses.db/database database_id)))]
                    (when (mi/can-read? database) database)))
 
       include-fields?

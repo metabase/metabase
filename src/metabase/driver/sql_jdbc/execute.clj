@@ -887,7 +887,7 @@
   "Whether a row-read `SQLException` identifies an error in the query or its data.
   The default recognizes SQLState classes `21` (cardinality), `22` (data), `23` (integrity) and `42` (syntax or access
   rule). Drivers can extend or narrow that evidence. Unknown failures return false. Cancellation is checked separately."
-  {:added "0.66.0" :arglists '([driver ^SQLException e])}
+  {:added "0.65.3" :arglists '([driver ^SQLException e])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 

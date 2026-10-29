@@ -18,7 +18,7 @@
   `table-ids`."
   [table-ids f]
   (data-apps.tu/with-published-tables! [(mt/id :venues)]
-    (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
+    (mt/with-temp [:model/DataApp app {}
                    :model/Card card {:collection_id (:resource_collection_id app) :dataset_query (data-apps.tu/venues-query)}]
       (mt/with-model-cleanup [:model/Dependency]
         (when (seq table-ids)
@@ -60,7 +60,7 @@
                                                                               (lib/aggregate venues (lib/distinct (some #(when (= (mt/id :categories :name) (:id %)) %)
                                                                                                                         (lib/visible-columns venues)))))}
                                 :model/DataApp {collection-id :resource_collection_id :as app}
-                                {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
+                                {}
                                 :model/Card _ {:collection_id collection-id
                                                :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
                                 :model/PermissionsGroup group {}]
@@ -88,7 +88,7 @@
                        "UPDATE VENUES v SET NAME = 'x' WHERE v.ID IN (SELECT v2.ID FROM VENUES v2 [[JOIN CHECKINS c ON c.VENUE_ID = v2.ID AND c.ID = {{id}}]])"]]
             (testing sql
               (mt/with-temp [:model/DataApp {collection-id :resource_collection_id :as app}
-                             {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
+                             {}
                              :model/PermissionsGroup group {}]
                 (do-with-query-action!
                  collection-id sql
@@ -107,7 +107,7 @@
           (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus :model/AnalysisFinding]
             (mt/with-temp [:model/NativeQuerySnippet snippet {:name "birds source" :content "VENUES"}
                            :model/DataApp {collection-id :resource_collection_id :as app}
-                           {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
+                           {}
                            :model/PermissionsGroup group {}]
               (do-with-query-action!
                collection-id "DELETE FROM {{snippet: birds source}} WHERE ID = 1"
@@ -149,10 +149,10 @@
 (deftest group-permission-warnings-ignore-groups-without-access-test
   (mt/with-premium-features #{:data-apps :advanced-permissions :sandboxes}
     (mt/with-no-data-perms-for-all-users!
-      (with-app-reading! [_app [(mt/id :venues) (mt/id :orders)]]
+      (with-app-reading! [app [(mt/id :venues) (mt/id :orders)]]
         (mt/with-temp [:model/PermissionsGroup group {}]
           (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
-          (is (= [] (mt/user-http-request :crowberto :get 200 "ee/apps/birds/group-permission-warnings"))))))))
+          (is (= [] (mt/user-http-request :crowberto :get 200 (data-apps.tu/app-url app "group-permission-warnings")))))))))
 
 (deftest group-permission-warnings-include-inherited-access-test
   (mt/with-premium-features #{:data-apps :advanced-permissions :sandboxes}
@@ -164,7 +164,7 @@
           (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
           (is (=? [{:group_id (:id group)
                     :missing_tables [{:id (mt/id :orders) :name "Orders" :database_id (mt/id)}]}]
-                  (mt/user-http-request :crowberto :get 200 "ee/apps/birds/group-permission-warnings"))))))))
+                  (mt/user-http-request :crowberto :get 200 (data-apps.tu/app-url app "group-permission-warnings")))))))))
 
 (deftest group-permission-warnings-preserve-permissions-test
   (mt/with-premium-features #{:data-apps :advanced-permissions :sandboxes}
@@ -174,7 +174,7 @@
           (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
           (group-access/add-groups! app [(:id group)])
           (let [before (t2/select :model/DataPermissions)]
-            (mt/user-http-request :crowberto :get 200 "ee/apps/birds/group-permission-warnings")
+            (mt/user-http-request :crowberto :get 200 (data-apps.tu/app-url app "group-permission-warnings"))
             (is (= before (t2/select :model/DataPermissions)))))))))
 
 (deftest group-permission-warnings-include-direct-access-test
@@ -186,7 +186,7 @@
           (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
           (perms/set-table-permission! (:id group) (mt/id :venues) :perms/view-data :unrestricted)
           (perms/set-table-permission! (:id group) (mt/id :orders) :perms/view-data :unrestricted)
-          (is (= [] (mt/user-http-request :crowberto :get 200 "ee/apps/birds/group-permission-warnings"))))))))
+          (is (= [] (mt/user-http-request :crowberto :get 200 (data-apps.tu/app-url app "group-permission-warnings")))))))))
 
 (deftest group-permission-warnings-include-sandbox-access-test
   (mt/with-premium-features #{:data-apps :advanced-permissions :sandboxes}
@@ -200,13 +200,13 @@
                                               {"PUBLIC" {(mt/id :venues) :unrestricted
                                                          (mt/id :orders) :sandboxed}})
                                     (assoc :sandboxes [{:group_id (:id group) :table_id (mt/id :orders)}])))
-          (is (= [] (mt/user-http-request :crowberto :get 200 "ee/apps/birds/group-permission-warnings")))
+          (is (= [] (mt/user-http-request :crowberto :get 200 (data-apps.tu/app-url app "group-permission-warnings"))))
           (mt/user-http-request :crowberto :put 200 "permissions/graph"
                                 (assoc-in (data-perms.graph/api-graph)
                                           [:groups (:id group) (mt/id) :view-data "PUBLIC" (mt/id :orders)]
                                           :blocked))
           (is (=? [{:group_id (:id group) :missing_tables [{:id (mt/id :orders)}]}]
-                  (mt/user-http-request :crowberto :get 200 "ee/apps/birds/group-permission-warnings"))))))))
+                  (mt/user-http-request :crowberto :get 200 (data-apps.tu/app-url app "group-permission-warnings")))))))))
 
 (deftest group-permission-warnings-require-admin-test
   (mt/with-premium-features #{:data-apps :advanced-permissions :sandboxes}
@@ -214,7 +214,7 @@
       (with-app-reading! [app [(mt/id :venues) (mt/id :orders)]]
         (mt/with-temp [:model/PermissionsGroup group {}]
           (group-access/add-groups! app [(:id group)])
-          (mt/user-http-request :rasta :get 403 "ee/apps/birds/group-permission-warnings"))))))
+          (mt/user-http-request :rasta :get 403 (data-apps.tu/app-url app "group-permission-warnings")))))))
 
 (deftest group-permission-warnings-without-dependencies-test
   (mt/with-premium-features #{:data-apps :advanced-permissions :sandboxes}
@@ -222,7 +222,7 @@
       (with-app-reading! [app []]
         (mt/with-temp [:model/PermissionsGroup group {}]
           (group-access/add-groups! app [(:id group)])
-          (is (= [] (mt/user-http-request :crowberto :get 200 "ee/apps/birds/group-permission-warnings"))))))))
+          (is (= [] (mt/user-http-request :crowberto :get 200 (data-apps.tu/app-url app "group-permission-warnings")))))))))
 
 (deftest group-permission-warnings-missing-app-test
   (mt/with-premium-features #{:data-apps}
@@ -253,13 +253,13 @@
                                     (assoc-in [:groups (:id group) (mt/id) :view-data] :impersonated)
                                     (assoc :impersonations [{:group_id (:id group) :db_id (mt/id)
                                                              :attribute "role"}])))
-          (is (= [] (mt/user-http-request :crowberto :get 200 "ee/apps/birds/group-permission-warnings")))
+          (is (= [] (mt/user-http-request :crowberto :get 200 (data-apps.tu/app-url app "group-permission-warnings"))))
           (mt/user-http-request :crowberto :put 200 "permissions/graph"
                                 (assoc-in (data-perms.graph/api-graph)
                                           [:groups (:id group) (mt/id) :view-data]
                                           :blocked))
           (is (=? [{:group_id (:id group) :missing_tables [{:id (mt/id :venues)}]}]
-                  (mt/user-http-request :crowberto :get 200 "ee/apps/birds/group-permission-warnings"))))))))
+                  (mt/user-http-request :crowberto :get 200 (data-apps.tu/app-url app "group-permission-warnings")))))))))
 
 (deftest group-permission-warning-lookups-are-batched-test
   (mt/with-no-data-perms-for-all-users!
@@ -280,8 +280,8 @@
     (mt/with-temp [:model/PermissionsGroup group {}]
       (group-access/add-groups! app [(:id group)])
       (mt/with-premium-features #{}
-        (mt/user-http-request :crowberto :get 402 "ee/apps/birds/group-permission-warnings")
-        (mt/user-http-request :rasta :get 402 "ee/apps/birds/group-permission-warnings")))))
+        (mt/user-http-request :crowberto :get 402 (data-apps.tu/app-url app "group-permission-warnings"))
+        (mt/user-http-request :rasta :get 402 (data-apps.tu/app-url app "group-permission-warnings"))))))
 
 (deftest group-permission-warning-lookups-exclude-unrelated-permissions-test
   (mt/with-temp [:model/Database other-db {}
@@ -331,4 +331,4 @@
                                      :database_id (:id aviary) :database_name "Aviary"}
                                     {:id (:id albatrosses) :name "Albatrosses" :schema nil
                                      :database_id (:id zoo) :database_name "Zoo"}]}]
-                 (mt/user-http-request :crowberto :get 200 "ee/apps/birds/group-permission-warnings"))))))))
+                 (mt/user-http-request :crowberto :get 200 (data-apps.tu/app-url app "group-permission-warnings")))))))))

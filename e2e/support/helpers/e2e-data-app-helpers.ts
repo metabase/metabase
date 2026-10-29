@@ -1,20 +1,17 @@
 import yaml from "js-yaml";
 
-import { USERS, USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import * as Urls from "metabase/urls/data-apps";
 import type {
-  Collection,
-  CollectionId,
-  CollectionPermission,
-  CollectionPermissionsGraph,
+  CreateDataAppRequest,
   DataApp,
-  Group,
+  DataAppGroup,
+  GroupId,
   GroupInfo,
-  WritebackAction,
+  TableId,
 } from "metabase-types/api";
 
-import { createTestNativeQuery, updateSetting } from "./api";
-import type { DataAppTestEnv } from "./data-app-test-env";
+import { createLibrary, publishTables, updateSetting } from "./api";
 import { getIframeBody } from "./e2e-embedding-helpers";
 import {
   LOCAL_GIT_PATH,
@@ -24,6 +21,8 @@ import {
   setupGitSync,
 } from "./e2e-remote-sync-helpers";
 
+const DATA_APP_FIXTURES_PATH = "e2e/support/assets/data-apps";
+
 export const DATA_APP_NAME = "kitchen-sink";
 export const DATA_APP_DISPLAY_NAME = "Kitchen Sink";
 
@@ -32,113 +31,50 @@ export const visitDataAppRoute = (route: string) => {
   return cy.visit(`/apps/${DATA_APP_NAME}/${route}`);
 };
 
-export const fakeDataApp = (overrides: Partial<DataApp> = {}): DataApp => ({
-  id: 1,
-  entity_id: "e2eFakeDataAppEntityI",
-  name: DATA_APP_NAME,
-  display_name: DATA_APP_DISPLAY_NAME,
-  description: null,
-  version: 1,
-  outdated: false,
-  bundle_path: "dist/index.js",
-  enabled: true,
-  resource_collection_id: 1,
-  allowed_hosts: [],
-  bundle_hash: "e2e-bundle-hash",
-  created_at: "2024-01-01T00:00:00Z",
-  updated_at: "2024-01-01T00:00:00Z",
-  ...overrides,
-});
+export function createDataApp(
+  details: CreateDataAppRequest,
+): Cypress.Chainable<DataApp> {
+  return cy
+    .request<DataApp>("POST", "/api/ee/apps", details)
+    .then(({ body }) => body);
+}
 
-type MockDataAppOptions<TestEnv> = {
-  /** Display name (iframe title + admin list); defaults to the fixture dir name. */
-  displayName?: string;
-  /** `allowed_hosts` served in the bundle response header. */
-  allowedHosts?: string[];
-  /**
-   * Config a fixture reads at runtime, rather than hard-coding ids that track the
-   * Cypress snapshot.
-   */
-  testEnv?: TestEnv;
-  /** Delays the bundle response, so a loading assertion has a window to catch. */
-  bundleDelayMs?: number;
-};
+export function addDataAppGroups(
+  app: Pick<DataApp, "name">,
+  groupIds: GroupId[],
+): Cypress.Chainable<DataAppGroup[]> {
+  return cy
+    .request<DataAppGroup[]>("POST", `/api/ee/apps/${app.name}/groups`, {
+      group_ids: groupIds,
+    })
+    .then(({ body }) => body);
+}
 
-export const mockDataApp = <TestEnv = DataAppTestEnv>(
-  appName: string,
-  options: MockDataAppOptions<TestEnv> = {},
-) => {
-  const slug = appName;
-  const displayName = options.displayName ?? appName;
-  const allowedHosts = options.allowedHosts ?? [];
-
-  // the entrypoint checks for app access before serving its HTML
-  // we need to have a real app in the database - mocking the endpoint isn't enough
-  cy.request({
-    url: `/api/ee/apps/${slug}`,
-    failOnStatusCode: false,
-  }).then(({ status }) => {
-    if (status === 200) {
-      return;
-    }
-
-    expect(status).to.equal(404);
-
-    cy.log("register the data app");
-    cy.request("POST", "/api/ee/apps", {
-      name: slug,
-      display_name: displayName,
-      bundle_path: "dist/index.js",
-      allowed_hosts: allowedHosts,
-      enabled: true,
-    });
-
-    cy.log("assign the data app to all users group");
-    cy.request("POST", `/api/ee/apps/${slug}/groups`, {
-      group_ids: [USER_GROUPS.ALL_USERS_GROUP],
-    });
-  });
-
-  // Prelude runs in the sandbox realm before the bundle's factory, so the app
-  // can read the injected config as a global (see MockDataAppOptions.testEnv).
-  const prelude =
-    options.testEnv !== undefined
-      ? `globalThis.__METABASE_DATA_APP_TEST_ENV__ = ${JSON.stringify(options.testEnv)};\n`
-      : "";
-
-  return cy.task<string>("buildDataApp", { appName }).then((bundleCode) => {
-    const app = fakeDataApp({
-      name: slug,
-      display_name: displayName,
-      allowed_hosts: allowedHosts,
-    });
-
-    cy.intercept("GET", "/api/ee/apps/repo-status", {
-      configured: true,
-    });
-    cy.intercept("GET", "/api/ee/apps", [app]);
-    cy.intercept({ method: "GET", pathname: `/api/ee/apps/${slug}` }, app);
-    cy.intercept(
-      { method: "GET", pathname: `/api/ee/apps/${slug}/bundle` },
-      {
-        statusCode: 200,
-        headers: {
-          // Match the REAL bundle endpoint (`data_apps/api.clj`), which serves
-          // `application/javascript` + `nosniff`. The runtime fetch-and-evals the
-          // bundle, so the type is irrelevant there — but a stricter mock (e.g.
-          // `text/plain`) would diverge from production, so keep it aligned.
-          "content-type": "application/javascript",
-          "X-Content-Type-Options": "nosniff",
-          "X-Metabase-Data-App-Allowed-Hosts": JSON.stringify(allowedHosts),
+/**
+ * Writes `app`'s typed schema to `src/metabase.ts` of the fixture directory named
+ * `app.name`, builds that fixture, and uploads the build as the app's bundle.
+ */
+export function uploadDataAppBundle(
+  app: Pick<DataApp, "name">,
+): Cypress.Chainable<DataApp> {
+  return cy
+    .request<string>(`/api/ee/apps/${app.name}/typed-schema`)
+    .then(({ body: typedSchema }) =>
+      cy.task("writeDataAppFiles", {
+        files: {
+          [`${DATA_APP_FIXTURES_PATH}/${app.name}/src/metabase.ts`]:
+            typedSchema,
         },
-        body: prelude + bundleCode,
-        ...(options.bundleDelayMs ? { delay: options.bundleDelayMs } : {}),
-      },
-    );
-
-    return cy.wrap({ slug, displayName }, { log: false });
-  });
-};
+      }),
+    )
+    .then(() => cy.task<string>("buildDataApp", { appName: app.name }))
+    .then((bundle) =>
+      cy.request<DataApp>("PUT", `/api/ee/apps/${app.name}/bundle`, {
+        bundle,
+      }),
+    )
+    .then(({ body }) => body);
+}
 
 /**
  * The two rejections endpoint scope enforcement can emit. `scope_not_permitted` comes from
@@ -210,113 +146,6 @@ export function openDataApp(slug: string) {
 
 export function dataAppIframe(displayName: string) {
   return getIframeBody(`iframe[title="${displayName}"]`);
-}
-
-/**
- * Sets every non-admin group's access to a collection through the permission graph of
- * the collection's namespace: an app's own collection lives in `data-apps`, whose graph
- * is separate from the default one. A namespace graph lists only the groups holding a
- * grant in it, so the groups come from the groups API, not from the graph.
- */
-export function setDataAppCollectionAccess(
-  collectionId: CollectionId,
-  access: CollectionPermission,
-) {
-  return cy
-    .request<Collection>("GET", `/api/collection/${collectionId}`)
-    .then(({ body: collection }) => {
-      const namespace = collection.namespace ?? undefined;
-      const graphUrl =
-        namespace === undefined
-          ? "/api/collection/graph"
-          : `/api/collection/graph?namespace=${namespace}`;
-
-      cy.request<Group[]>("GET", "/api/permissions/group").then(
-        ({ body: allGroups }) => {
-          cy.request<CollectionPermissionsGraph>("GET", graphUrl).then(
-            ({ body: graph }) => {
-              const groups = Object.fromEntries(
-                allGroups
-                  .filter((group) => group.id !== USER_GROUPS.ADMIN_GROUP)
-                  .map((group) => [
-                    group.id,
-                    { ...graph.groups[group.id], [collectionId]: access },
-                  ]),
-              );
-
-              cy.request("PUT", "/api/collection/graph", {
-                ...graph,
-                ...(namespace === undefined ? {} : { namespace }),
-                groups,
-              });
-            },
-          );
-        },
-      );
-    });
-}
-
-/** Creates a data actions folder the non-admin groups hold `access` to. */
-export function createDataAppCollection({
-  name,
-  access,
-}: {
-  name: string;
-  access: CollectionPermission;
-}) {
-  return cy
-    .request<Collection>("POST", "/api/collection", {
-      name,
-      namespace: "data-actions",
-    })
-    .then(({ body: collection }) => {
-      setDataAppCollectionAccess(collection.id, access);
-      return cy.wrap(collection, { log: false });
-    });
-}
-
-/** Creates a query action without a model that inserts a team into `scoreboard_actions`. */
-export function createDataAppScoreboardAction({
-  name = "Add team",
-  collectionId = null,
-}: { name?: string; collectionId?: CollectionId | null } = {}) {
-  return createTestNativeQuery({
-    database: WRITABLE_DB_ID,
-    query:
-      "INSERT INTO scoreboard_actions (team_name, score) VALUES ({{team_name}}, {{score}})",
-    templateTags: {
-      team_name: { type: "text", "display-name": "Team name", required: true },
-      score: { type: "number", "display-name": "Score", required: true },
-    },
-  }).then((datasetQuery) =>
-    cy
-      .request<WritebackAction>("POST", "/api/action", {
-        name,
-        type: "query",
-        database_id: WRITABLE_DB_ID,
-        collection_id: collectionId,
-        dataset_query: datasetQuery,
-        parameters: [
-          {
-            id: "team_name",
-            slug: "team_name",
-            name: "Team name",
-            type: "string/=",
-            target: ["variable", ["template-tag", "team_name"]],
-            required: true,
-          },
-          {
-            id: "score",
-            slug: "score",
-            name: "Score",
-            type: "number/=",
-            target: ["variable", ["template-tag", "score"]],
-            required: true,
-          },
-        ],
-      })
-      .then(({ body: action }) => cy.wrap(action, { log: false })),
-  );
 }
 
 /**
@@ -440,24 +269,6 @@ export function writeDataAppResources(
   });
 }
 
-/** Declares one `defineAction` per action, as the app's typed schema does, by the action's entity ID. */
-export function declareDataAppActions(
-  appRoot: string,
-  actions: Array<{ exportName: string; actionEntityId: string }>,
-) {
-  return cy.task("writeDataAppFiles", {
-    files: {
-      [`${appRoot}/actions/orders.action.ts`]: [
-        'import { defineAction } from "@metabase/embedding-sdk-react/data-app";',
-        ...actions.map(
-          ({ exportName, actionEntityId }) =>
-            `export const ${exportName} = defineAction({ action: { id: "${actionEntityId}", parameters: [] } });`,
-        ),
-      ].join("\n"),
-    },
-  });
-}
-
 export const copySyncedDataAppsFixture = () =>
   cy.task("copyDirectory", {
     source: `${Cypress.config("projectRoot")}/e2e/support/assets/example_synced_data_apps`,
@@ -501,9 +312,10 @@ const isSyncedDataApp = (app: DataApp): app is SyncedDataApp =>
 /**
  * Writes the app's manifest into the sync repository as `data_apps/<slug>`, makes
  * the repository's `collections/data_apps/` what the host app holds, and
- * commits them, as an author does. The bundle is a placeholder, since specs
- * serve the built one through `mockDataApp`. Pass `initializeRepo: false` to
- * write into the repository an earlier call set up.
+ * commits them, as an author does. The bundle is a placeholder that every pull
+ * loads again, so a spec uploads the built one with `uploadDataAppBundle` after
+ * its last pull. Pass `initializeRepo: false` to write into the repository an
+ * earlier call set up.
  */
 function commitDataApp(
   appRoot: string,
@@ -528,7 +340,7 @@ function commitDataApp(
     cy.task("writeDataAppFiles", {
       files: {
         [`${appDir}/data_app.yaml`]: manifest,
-        [`${appDir}/dist/index.js`]: "// served by the spec",
+        [`${appDir}/dist/index.js`]: "// uploaded by the spec",
       },
     }),
   );
@@ -563,19 +375,17 @@ export function publishDataApp(
   });
 }
 
-/** Create a group and assign it to a data app by slug. */
-export function assignTestGroupToDataApp(slug: string) {
-  cy.request<GroupInfo>("POST", "/api/permissions/group", {
-    name: `Data app test group: ${slug}`,
-  })
-    .its("body")
-    .as("dataAppTestGroup");
-
-  cy.get<GroupInfo>("@dataAppTestGroup").then(({ id }) =>
-    cy.request("POST", `/api/ee/apps/${slug}/groups`, { group_ids: [id] }),
-  );
-
-  return cy.get<GroupInfo>("@dataAppTestGroup").its("id");
+/** Creates a group and adds it to `app`'s groups, yielding the group's ID. */
+export function assignTestGroupToDataApp(
+  app: Pick<DataApp, "name">,
+): Cypress.Chainable<GroupId> {
+  return cy
+    .request<GroupInfo>("POST", "/api/permissions/group", {
+      name: `Data app test group: ${app.name}`,
+    })
+    .then(({ body: group }) =>
+      addDataAppGroups(app, [group.id]).then(() => group.id),
+    );
 }
 
 const DATA_APP_DEV_HOST_APP_DIR =
@@ -596,11 +406,28 @@ export function visitDataAppDevApp(clientHost: string) {
   }).should("exist");
 }
 
-export function setUpDataAppDevServer(clientHost: string) {
+const DATA_APP_DEV_SLUG = "vite-6-data-app-host-app";
+
+type DataAppDevServerOpts = {
+  clientHost: string;
+  tableId: TableId;
+};
+
+export function setUpDataAppDevServer({
+  clientHost,
+  tableId,
+}: DataAppDevServerOpts) {
   const mbUrl = Cypress.config("baseUrl");
   if (!mbUrl) {
     throw new Error("baseUrl must be set for the data-app dev-server suite");
   }
+
+  createLibrary();
+  publishTables({ table_ids: [tableId] });
+  createDataApp({
+    name: DATA_APP_DEV_SLUG,
+    allowed_hosts: ["https://allowed.data-app.test"],
+  });
 
   cy.task("removeDataAppPaths", { paths: [DATA_APP_DEV_ENV_PATH] });
   waitForDataAppDevServerEnv(clientHost, mbUrl, { expectPresent: false });
