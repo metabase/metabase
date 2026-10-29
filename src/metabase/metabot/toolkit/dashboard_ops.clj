@@ -15,7 +15,7 @@
    primitives are the only code that touches the `:dashcards`/`:tabs`/`:parameters` vectors.
 
    An invalid op throws an `ex-info` whose data holds an error code from [[errors]] under `::error`, the values that
-   explain it, and the failing op's `:op-index` and `:op`.
+   explain it, and the failing op's `:op-index` and `:op-name`.
    This namespace words no errors: each tool turns that data into text for its own model."
   (:require
    [metabase.dashboards.autoplace :as autoplace]
@@ -29,37 +29,41 @@
 ;;; ------------------------------------------------- Errors -------------------------------------------------------
 
 (def errors
-  "Every error code [[compile-ops]] throws, mapped to the keys of the data that come with it.
-   Errors thrown while applying an op also carry `:op-index` (0-based, as sent) and `:op` (the op name as sent, or nil).
+  "Every error code [[compile-ops]] throws, mapped to the schema of the values that explain it.
+   A value the caller sent is `:any`, since a caller without MCP's argument schema can send anything; a value the
+   compiler read from the dashboard has its type.
+   Errors thrown while applying an op also carry `:op-index` (0-based, as sent) and `:op-name` (as sent, or nil).
    The `:cards-without-tab` check runs after the last op, so that error carries neither."
-  {:missing-op                         #{}
-   :unknown-op                         #{}
-   :invalid-new-id                     #{:id}
-   :duplicate-new-id                   #{:id}
-   :missing-dashcard-id                #{}
-   :unknown-dashcard                   #{:dashcard-id}
-   :missing-tab-id                     #{}
-   :unknown-tab                        #{:tab-id}
-   :no-free-space                      #{:tab-id}
-   :link-needs-url-or-entity           #{}
-   :unpatchable-key                    #{:key :use-op}
-   :unknown-patch-key                  #{:key}
-   :tab-index-out-of-range             #{:index :tab-count}
-   :cards-without-tab                  #{:dashcard-ids}
-   :missing-parameter-id               #{}
-   :unknown-parameter                  #{:parameter-id}
-   :parameter-exists                   #{:parameter-id}
-   :set-and-cleared                    #{:field}
-   :conflicting-parameter-destinations #{}
-   :missing-parameter-destination      #{}
-   :parameter-index-out-of-range       #{:index :parameter-count}
-   :field-not-exposed                  #{:dashcard-id :field-id :parameter-id}
-   :no-card-behind-dashcard            #{:dashcard-id}
-   :unknown-template-tag               #{:card-id :tag :tags}
-   :unwireable-tag                     #{:tag :tag-type :wireable-tags}
-   :unknown-text-tag                   #{:target :dashcard-id :placeholders}
-   :unresolved-target                  #{:target :card-id :parameter-id}
-   :missing-wire-target                #{}})
+  {:missing-op                         [:map {:closed true}]
+   :unknown-op                         [:map {:closed true}]
+   :invalid-new-id                     [:map {:closed true} [:id :any]]
+   :duplicate-new-id                   [:map {:closed true} [:id :int]]
+   :missing-dashcard-id                [:map {:closed true}]
+   :unknown-dashcard                   [:map {:closed true} [:dashcard-id :any]]
+   :missing-tab-id                     [:map {:closed true}]
+   :unknown-tab                        [:map {:closed true} [:tab-id :any]]
+   :no-free-space                      [:map {:closed true} [:tab-id [:maybe :int]]]
+   :link-needs-url-or-entity           [:map {:closed true}]
+   :unpatchable-key                    [:map {:closed true} [:key :string] [:use-op :string]]
+   :unknown-patch-key                  [:map {:closed true} [:key :string]]
+   :tab-index-out-of-range             [:map {:closed true} [:index :any] [:tab-count :int]]
+   :cards-without-tab                  [:map {:closed true} [:dashcard-ids [:sequential :int]]]
+   :missing-parameter-id               [:map {:closed true}]
+   :unknown-parameter                  [:map {:closed true} [:parameter-id :any]]
+   :parameter-exists                   [:map {:closed true} [:parameter-id :any]]
+   :set-and-cleared                    [:map {:closed true} [:field :string]]
+   :conflicting-parameter-destinations [:map {:closed true}]
+   :missing-parameter-destination      [:map {:closed true}]
+   :parameter-index-out-of-range       [:map {:closed true} [:index :any] [:parameter-count :int]]
+   :field-not-exposed                  [:map {:closed true} [:dashcard-id :int] [:field-id :any] [:parameter-id :any]]
+   :no-card-behind-dashcard            [:map {:closed true} [:dashcard-id :int]]
+   :unknown-template-tag               [:map {:closed true} [:card-id :int] [:tag :any] [:tags [:sequential :string]]]
+   :unwireable-tag                     [:map {:closed true}
+                                        [:tag :string] [:tag-type :string] [:wireable-tags [:sequential :string]]]
+   :unknown-text-tag                   [:map {:closed true}
+                                        [:target :any] [:dashcard-id :int] [:placeholders [:sequential :string]]]
+   :unresolved-target                  [:map {:closed true} [:target :any] [:card-id :int] [:parameter-id :any]]
+   :missing-wire-target                [:map {:closed true}]})
 
 (defn- fail!
   "Throw the error `code` from [[errors]], with `data` holding the values that explain it."
@@ -731,13 +735,13 @@
 ;;; ------------------------------------------------ Entry ---------------------------------------------------------
 
 (defn- apply-op-at
-  "[[apply-op]] for `op`, the op at `idx`, adding `:op-index` and `:op` to any error it throws."
+  "[[apply-op]] for `op`, the op at `idx`, adding `:op-index` and `:op-name` to any error it throws."
   [state idx op]
   (try
     (apply-op state op)
     (catch clojure.lang.ExceptionInfo e
       (throw (if-let [data (error-data e)]
-               (ex-info (ex-message e) (assoc data :op-index idx :op (:op op)) e)
+               (ex-info (ex-message e) (assoc data :op-index idx :op-name (:op op)) e)
                e)))))
 
 (defn compile-ops

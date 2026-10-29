@@ -6,7 +6,8 @@
    [clojure.test :refer :all]
    [metabase.metabot.toolkit.dashboard-ops :as dashboard-ops]
    [metabase.parameters.mapping-targets :as mapping-targets]
-   [metabase.test.util.dynamic-redefs :as dynamic-redefs]))
+   [metabase.test.util.dynamic-redefs :as dynamic-redefs]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -70,7 +71,7 @@
 
 (defn- op-error
   "The error data `compile-ops` throws for `ops` against `current`, or nil when it compiles.
-   It also checks that the data carries the keys [[dashboard-ops/errors]] declares for its code."
+   It also checks the data against the schema [[dashboard-ops/errors]] declares for its code."
   ([current ops] (op-error current ops {}))
   ([current ops cards]
    (try
@@ -78,14 +79,13 @@
      nil
      (catch clojure.lang.ExceptionInfo e
        (let [{code ::dashboard-ops/error :as data} (dashboard-ops/error-data e)]
-         (is (= (get dashboard-ops/errors code)
-                (set (keys (dissoc data ::dashboard-ops/error :op-index :op))))
-             "the error data matches its declaration in `errors`")
+         (is (mr/validate (get dashboard-ops/errors code) (dissoc data ::dashboard-ops/error :op-index :op-name))
+             "the error data matches its schema in `errors`")
          data)))))
 
 (deftest ^:parallel autoplace-with-no-free-slot-test
   (testing "a tab with no free slot within autoplace's search is an error, not a card placed off the grid"
-    (is (=? {::dashboard-ops/error :no-free-space, :tab-id nil, :op "add_card"}
+    (is (=? {::dashboard-ops/error :no-free-space, :tab-id nil, :op-name "add_card"}
             (op-error (dash-with [{:id 7 :card_id 9 :row 0 :col 0 :size_x 24 :size_y 1100}])
                       [{:op "add_card" :id -1 :card_id 42}])))))
 
@@ -94,7 +94,7 @@
     (is (= {::dashboard-ops/error :duplicate-new-id
             :id                   -1
             :op-index             1
-            :op                   "add_card"}
+            :op-name              "add_card"}
            (op-error empty-dash
                      [{:op "add_card" :id -1 :card_id 42}
                       {:op "add_card" :id -1 :card_id 43}])))))
@@ -106,18 +106,18 @@
 
 (deftest ^:parallel unknown-op-is-rejected-test
   (testing "GHY-4147: an unrecognized op names the index and the op"
-    (is (=? {::dashboard-ops/error :unknown-op, :op "frobnicate"}
+    (is (=? {::dashboard-ops/error :unknown-op, :op-name "frobnicate"}
             (op-error empty-dash [{:op "frobnicate"}])))))
 
 (deftest ^:parallel missing-op-or-id-test
   (testing "GHY-4544: an op sent without its `op` or a referenced id has its own error"
-    (is (=? {::dashboard-ops/error :missing-op, :op nil}
+    (is (=? {::dashboard-ops/error :missing-op, :op-name nil}
             (op-error empty-dash [{:id -1}])))
-    (is (=? {::dashboard-ops/error :missing-dashcard-id, :op "remove"}
+    (is (=? {::dashboard-ops/error :missing-dashcard-id, :op-name "remove"}
             (op-error empty-dash [{:op "remove"}])))
-    (is (=? {::dashboard-ops/error :missing-tab-id, :op "remove_tab"}
+    (is (=? {::dashboard-ops/error :missing-tab-id, :op-name "remove_tab"}
             (op-error empty-dash [{:op "remove_tab"}])))
-    (is (=? {::dashboard-ops/error :missing-parameter-id, :op "remove_parameter"}
+    (is (=? {::dashboard-ops/error :missing-parameter-id, :op-name "remove_parameter"}
             (op-error empty-dash [{:op "remove_parameter"}])))))
 
 (deftest ^:parallel out-of-range-index-test
@@ -504,12 +504,12 @@
 
 (deftest virtual-dashcard-rejects-a-tab-not-on-this-dashboard-test
   (testing "GHY-4147: the virtual add ops validate `tab` the same way add_card does"
-    (is (=? {::dashboard-ops/error :unknown-tab, :tab-id 77, :op "add_text"}
+    (is (=? {::dashboard-ops/error :unknown-tab, :tab-id 77, :op-name "add_text"}
             (op-error one-tab-dash [{:op "add_text" :id -1 :markdown "hi" :tab 77}])))))
 
 (deftest duplicate-card-rejects-a-tab-not-on-this-dashboard-test
   (testing "GHY-4147: duplicate_card's optional `tab` is validated too"
-    (is (=? {::dashboard-ops/error :unknown-tab, :tab-id 77, :op "duplicate_card"}
+    (is (=? {::dashboard-ops/error :unknown-tab, :tab-id 77, :op-name "duplicate_card"}
             (op-error (assoc one-tab-dash :dashcards [{:id 7 :card_id 9 :dashboard_tab_id 5
                                                        :row 0 :col 0 :size_x 4 :size_y 4}])
                       [{:op "duplicate_card" :id -1 :dashcard_id 7 :tab 77}])))))
