@@ -369,8 +369,9 @@
 
                               :else
                               (throw (ex-info (tru "Invalid impersonated native query. Must be a single {0} statement." allowed-stmts)
-                                              {:type qp.error-type/invalid-query
-                                               :sql  (:native stage)}))))
+                                              {:type        qp.error-type/invalid-query
+                                               :status-code 400
+                                               :sql         (:native stage)}))))
                       stage))
                   stages))))
 

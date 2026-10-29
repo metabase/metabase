@@ -157,12 +157,15 @@
                            mt/native-query
                            mt/process-query
                            mt/rows)))
-                (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                                      #"permission denied"
-                                      (-> {:query "SELECT * FROM \"table_without_access\";"}
-                                          mt/native-query
-                                          mt/process-query
-                                          mt/rows)))))))))))
+                ;; the user gets a generic message; the database's denial is in the error log line
+                (mt/with-log-messages-for-level [messages [metabase.query-processor.middleware.catch-exceptions :error]]
+                  (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                        #"An error occurred while running the query"
+                                        (-> {:query "SELECT * FROM \"table_without_access\";"}
+                                            mt/native-query
+                                            mt/process-query
+                                            mt/rows)))
+                  (is (some #(re-find #"permission denied" (:message %)) (messages))))))))))))
 
 (defmulti impersonation-default-user
   "The database user that will be for the impersonation connection"
@@ -1263,7 +1266,7 @@
                           (format "SET ROLE NONE; DELETE FROM %s WHERE id = -1;" venues-table))))))))))))))
 
 (deftest impersonated-action-write-permission-denied-test
-  (testing "An impersonated custom action whose role lacks write grants surfaces the DB permission error and leaves the row unchanged"
+  (testing "An impersonated custom action whose role lacks write grants fails on the DB permission error and leaves the row unchanged"
     (mt/test-drivers (mt/normal-driver-select {:+features [:connection-impersonation :actions/custom]})
       (mt/with-premium-features #{:advanced-permissions}
         (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
@@ -1294,11 +1297,15 @@
                                                                       :parameters    []}]
                               (actions.execution/execute-action! (action/select-action :id action-id) {})))]
                       (testing "write is denied for a role with only SELECT"
-                        (is (thrown-with-msg?
-                             java.lang.Exception
-                             #"(?i)permission denied|denied to user|not authorized"
-                             (execute-action-with-sql
-                              (format "UPDATE %s SET name = 'hacked' WHERE id = 1" venues-table)))))
+                        ;; the user gets a generic message; the database's denial is in the error log line
+                        (mt/with-log-messages-for-level [messages [metabase.query-processor.middleware.catch-exceptions :error]]
+                          (is (thrown-with-msg?
+                               java.lang.Exception
+                               #"An error occurred while running the query"
+                               (execute-action-with-sql
+                                (format "UPDATE %s SET name = 'hacked' WHERE id = 1" venues-table))))
+                          (is (some #(re-find #"(?i)permission denied|denied to user|not authorized" (:message %))
+                                    (messages)))))
                       (testing "the row is unchanged"
                         (is (= original-name (read-name)))))))))))))))
 
