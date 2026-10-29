@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
+  setupCardEndpoints,
   setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
@@ -16,13 +17,21 @@ import { getNextId } from "__support__/utils";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { reinitialize } from "metabase/plugins";
 import type { EmbeddingEntityType } from "metabase/redux/store/embedding-data-picker";
+import { defer } from "metabase/utils/promise";
+import {
+  SAVED_QUESTIONS_VIRTUAL_DB_ID,
+  getQuestionVirtualTableId,
+} from "metabase-lib/v1/metadata/utils/saved-questions";
 import type {
+  Card,
   Collection,
   Database,
   SearchModel,
   Table,
+  TableId,
 } from "metabase-types/api";
 import {
+  createMockCard,
   createMockCollection,
   createMockCollectionItem,
   createMockDatabase,
@@ -150,9 +159,10 @@ type AvailableModel = Extract<
 interface SetupOpts {
   databases?: Database[];
   isJoinStep?: boolean;
+  querySourceType?: "model" | "question";
   availableModels: AvailableModel[];
   selectedTable?: {
-    id: number;
+    id: TableId;
     databaseId: number;
   };
   entityTypes?: EmbeddingEntityType[];
@@ -163,6 +173,7 @@ interface SetupOpts {
 function setup({
   databases = DATABASES,
   isJoinStep = false,
+  querySourceType,
   availableModels,
   selectedTable,
   entityTypes,
@@ -261,7 +272,7 @@ function setup({
   return renderWithProviders(
     <DataSourceSelector
       isInitiallyOpen
-      querySourceType={undefined}
+      querySourceType={querySourceType}
       canChangeDatabase={!isJoinStep}
       selectedDatabaseId={selectedTable ? selectedTable.databaseId : null}
       selectedTableId={selectedTable ? selectedTable.id : undefined}
@@ -448,6 +459,102 @@ describe("DataSourceSelector", () => {
       availableModels: ["table", "dataset"],
     };
 
+    it('should go back to the databases when reopened on a model and `entityTypes` = ["table"]', async () => {
+      const model = createMockCard({
+        id: 140,
+        name: "Orders model",
+        type: "model",
+      });
+      setupCardEndpoints(model);
+      setupTableQueryMetadataEndpoint(
+        createMockTable({
+          id: getQuestionVirtualTableId(model.id),
+          db_id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        }),
+      );
+
+      setup({
+        ...setupOpts,
+        entityTypes: ["table"],
+        selectedTable: {
+          id: getQuestionVirtualTableId(model.id),
+          databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        },
+      });
+
+      expect(await screen.findByText("Models")).toBeInTheDocument();
+      expect(screen.getByText("Our analytics")).toBeInTheDocument();
+
+      await userEvent.click(screen.getByTestId("saved-entity-back-navigation"));
+
+      expect(await screen.findByText("Sample Database")).toBeInTheDocument();
+      expect(screen.queryByText("Models")).not.toBeInTheDocument();
+    });
+
+    it("should open the models, never the saved questions, when reopened on a model that is still loading", async () => {
+      const model = createMockCard({
+        id: 140,
+        name: "Orders model",
+        type: "model",
+      });
+      const cardResponse = defer<Card>();
+      fetchMock.get(`path:/api/card/${model.id}`, () => cardResponse.promise);
+      setupTableQueryMetadataEndpoint(
+        createMockTable({
+          id: getQuestionVirtualTableId(model.id),
+          db_id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        }),
+      );
+
+      setup({
+        ...setupOpts,
+        selectedTable: {
+          id: getQuestionVirtualTableId(model.id),
+          databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        },
+      });
+
+      await waitFor(() =>
+        expect(fetchMock.callHistory.called(`path:/api/card/${model.id}`)).toBe(
+          true,
+        ),
+      );
+      try {
+        expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
+        expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
+      } finally {
+        // A response left pending hangs the cleanup after a failed assertion
+        cardResponse.resolve(model);
+      }
+      expect(await screen.findByText("Models")).toBeInTheDocument();
+      expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
+    });
+
+    it("should open the saved questions when reopened on a card whose request fails", async () => {
+      const cardId = 140;
+      fetchMock.get(
+        `path:/api/card/${cardId}`,
+        { status: 500 },
+        { delay: 500 },
+      );
+      setupTableQueryMetadataEndpoint(
+        createMockTable({
+          id: getQuestionVirtualTableId(cardId),
+          db_id: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        }),
+      );
+
+      setup({
+        ...setupOpts,
+        selectedTable: {
+          id: getQuestionVirtualTableId(cardId),
+          databaseId: SAVED_QUESTIONS_VIRTUAL_DB_ID,
+        },
+      });
+
+      expect(await screen.findByText("Saved Questions")).toBeInTheDocument();
+    });
+
     it("should only show data from the selected database when joining data", async () => {
       const sampleDatabase = createSampleDatabase();
       const DB_ID = getNextId(sampleDatabase.id);
@@ -538,6 +645,17 @@ describe("DataSourceSelector", () => {
       expect(screen.queryByPlaceholderText("Find...")).not.toBeInTheDocument();
     });
 
+    it("should open the models when joining data on a model", async () => {
+      setup({
+        ...setupOpts,
+        isJoinStep: true,
+        querySourceType: "model",
+      });
+
+      expect(await screen.findByText("Our analytics")).toBeInTheDocument();
+      expect(screen.getByText("Models")).toBeInTheDocument();
+    });
+
     it("should skip the bucket step and show the SavedEntityPicker right away if there is only models in the bucket step", async () => {
       setup({
         ...setupOpts,
@@ -564,6 +682,17 @@ describe("DataSourceSelector", () => {
       expect(await screen.findByText("Our analytics")).toBeInTheDocument();
       expect(screen.getByText("Saved Questions")).toBeInTheDocument();
       expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
+    });
+
+    it("should open the saved questions when joining data on a question", async () => {
+      setup({
+        ...setupOpts,
+        isJoinStep: true,
+        querySourceType: "question",
+      });
+
+      expect(await screen.findByText("Our analytics")).toBeInTheDocument();
+      expect(screen.getByText("Saved Questions")).toBeInTheDocument();
     });
 
     it("should return to the bucket step when closing the saved entity picker via its back button", async () => {
