@@ -18,6 +18,7 @@ type SetupOpts = {
 
 async function setup({
   database = createMockDatabase({
+    "can-manage": true,
     tables: [createMockTable({ estimated_row_count: 10 })],
   }),
   isAdmin = true,
@@ -38,8 +39,11 @@ async function setup({
 }
 
 describe("DatabaseSection", () => {
-  it("shows the sync, re-scan and edit controls to an admin", async () => {
-    await setup({ isAdmin: true });
+  it("shows the sync, re-scan and edit controls when the user can manage the database", async () => {
+    await setup({
+      database: createMockDatabase({ "can-manage": true }),
+      isAdmin: false,
+    });
 
     expect(
       screen.getByRole("button", { name: /Re-scan field values/ }),
@@ -52,23 +56,8 @@ describe("DatabaseSection", () => {
     );
   });
 
-  it("hides the sync and re-scan controls and makes the name read-only for a data-model-only user", async () => {
-    await setup({ isAdmin: false });
-
-    expect(
-      screen.queryByRole("button", { name: /Re-scan field values/ }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /Sync now/ }),
-    ).not.toBeInTheDocument();
-    expect(screen.getByDisplayValue("Database")).toHaveAttribute("readonly");
-  });
-
-  it("hides the sync and re-scan controls from an admin on an attached DWH", async () => {
-    await setup({
-      database: createMockDatabase({ is_attached_dwh: true }),
-      isAdmin: true,
-    });
+  it("hides the sync and re-scan controls and makes the name read-only when the user cannot manage the database", async () => {
+    await setup({ database: createMockDatabase(), isAdmin: true });
 
     expect(
       screen.queryByRole("button", { name: /Re-scan field values/ }),
