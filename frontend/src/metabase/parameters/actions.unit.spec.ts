@@ -1,14 +1,18 @@
 import fetchMock from "fetch-mock";
 
+import { getMainStore } from "__support__/entities-store";
+import { setupParameterValuesEndpoints } from "__support__/server-mocks";
 import type { DispatchFn } from "metabase/redux";
+import { API_UPDATE_QUESTION } from "metabase/redux/query-builder";
 import type { GetState } from "metabase/redux/store";
 import { stableStringify } from "metabase/utils/objects";
 import type { ParameterValues } from "metabase-types/api";
-import { createMockParameter } from "metabase-types/api/mocks";
+import { createMockCard, createMockParameter } from "metabase-types/api/mocks";
 
 import {
   fetchCardParameterValues,
   fetchDashboardParameterValues,
+  fetchParameterValues,
 } from "./actions";
 
 const PARAMETER = createMockParameter({ id: "param-1", name: "Category" });
@@ -109,5 +113,54 @@ describe("parameters > actions", () => {
       expect(result).toEqual(CACHED);
       expect(fetchMock.callHistory.calls()).toHaveLength(0);
     });
+  });
+});
+
+describe("parameters > actions > values cache", () => {
+  const CARD_ID = 7;
+  const CARD_VALUES_PATH = `path:/api/card/${CARD_ID}/params/${PARAMETER.id}/values`;
+  const AD_HOC_VALUES_PATH = "path:/api/dataset/parameter/values";
+
+  beforeEach(() => {
+    fetchMock.get(CARD_VALUES_PATH, CACHED);
+    setupParameterValuesEndpoints(CACHED);
+  });
+
+  it("fetches the values of an ad-hoc question once per values source", async () => {
+    const store = getMainStore();
+    const staticListParameter = createMockParameter({
+      ...PARAMETER,
+      values_source_type: "static-list",
+      values_source_config: { values: ["A", "B"] },
+    });
+
+    await store.dispatch(fetchParameterValues({ parameter: PARAMETER }));
+    await store.dispatch(fetchParameterValues({ parameter: PARAMETER }));
+    expect(fetchMock.callHistory.calls(AD_HOC_VALUES_PATH)).toHaveLength(1);
+
+    await store.dispatch(
+      fetchParameterValues({ parameter: staticListParameter }),
+    );
+    expect(fetchMock.callHistory.calls(AD_HOC_VALUES_PATH)).toHaveLength(2);
+  });
+
+  it("fetches the values of a saved question once until the question is updated", async () => {
+    const store = getMainStore();
+    const fetchValues = () =>
+      store.dispatch(
+        fetchCardParameterValues({
+          cardId: CARD_ID,
+          entityIdentifier: null,
+          parameter: PARAMETER,
+        }),
+      );
+
+    await fetchValues();
+    await fetchValues();
+    expect(fetchMock.callHistory.calls(CARD_VALUES_PATH)).toHaveLength(1);
+
+    store.dispatch({ type: API_UPDATE_QUESTION, payload: createMockCard() });
+    await fetchValues();
+    expect(fetchMock.callHistory.calls(CARD_VALUES_PATH)).toHaveLength(2);
   });
 });
