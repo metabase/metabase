@@ -102,7 +102,7 @@
        :private  true} db-id->router-db-id
   (mdb/memoize-for-application-db
    (fn [db-id]
-     (warehouses.db/router-database-id db-id))))
+     (:router_database_id (warehouses.db/database db-id)))))
 
 (defmethod mi/can-read? :model/Database
   ;; Check if user can see this database's metadata.
@@ -216,7 +216,7 @@
   regardless of the `disable-auto-sync` setting. For automatically-triggered syncs use
   [[should-auto-sync?]]."
   [database-id]
-  (nil? (warehouses.db/router-database-id database-id)))
+  (nil? (:router_database_id (warehouses.db/database database-id))))
 
 (defn should-auto-sync?
   "Should this database be synced *automatically* — scheduled sync/analyze, the post-add initial

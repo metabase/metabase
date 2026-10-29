@@ -34,6 +34,6 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (api/check-404 (impersonation.db/impersonation id))
+  (api/check-404 (impersonation.db/connection-impersonation id))
   (impersonation.db/delete-impersonation! id)
   api/generic-204-no-content)

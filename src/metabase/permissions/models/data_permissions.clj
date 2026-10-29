@@ -18,6 +18,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.schema]
    [metabase.warehouses.schema]
    [methodical.core :as methodical]
@@ -1309,7 +1310,7 @@
   (let [table-or-id (first (keys table-perms))
         db-id (if (map? table-or-id)
                 (:db_id table-or-id)
-                (permissions.db/table-database-id table-or-id))]
+                (:db_id (warehouse-schema.db/table table-or-id)))]
     (with-cluster-lock {:perm-type (u/qualified-name perm-type)
                         :db-id db-id}
       (set-table-permissions-internal! group-or-id perm-type table-perms))))

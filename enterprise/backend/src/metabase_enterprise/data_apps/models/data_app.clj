@@ -3,6 +3,7 @@
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase.api.common :as api]
+   [metabase.collections.db :as collections.db]
    [metabase.data-apps.schema :as data-apps.schema]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -77,7 +78,7 @@
   new app: a top-level collection of data apps, not archived, official, typed or the sample, that no other app has;
   remote sync may sync it."
   [collection-id app-id]
-  (let [collection (data-apps.db/resource-collection collection-id)]
+  (let [collection (some-> collection-id collections.db/collection)]
     (when-not (and collection
                    (= "data-apps" (some-> (:namespace collection) name))
                    (= "/" (:location collection))
@@ -213,7 +214,7 @@
 
 (defmethod serdes/descendants "DataApp" [_model-name id _opts]
   ;; An app's resource collection, and through it the copies it holds, travel with the app.
-  (when-let [collection-id (data-apps.db/resource-collection-id id)]
+  (when-let [collection-id (:resource_collection_id (data-apps.db/data-app id))]
     {["Collection" collection-id] {"DataApp" id}}))
 
 (defmethod serdes/storage-path "DataApp" [app _ctx]

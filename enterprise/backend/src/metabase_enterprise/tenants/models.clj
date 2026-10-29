@@ -7,6 +7,7 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.users.db :as users.db]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
@@ -88,8 +89,8 @@
   :feature :tenants
   [user-or-id]
   (into []
-        (when-let [tenant-id (tenants.db/user-tenant-id (u/the-id user-or-id))]
-          (when-let [tenant-collection-id (tenants.db/tenant-collection-id tenant-id)]
+        (when-let [tenant-id (:tenant_id (users.db/user (u/the-id user-or-id)))]
+          (when-let [tenant-collection-id (:tenant_collection_id (tenants.db/tenant tenant-id))]
             (let [descendant-ids (tenants.db/descendant-collection-ids tenant-collection-id)]
               (conj descendant-ids tenant-collection-id))))))
 

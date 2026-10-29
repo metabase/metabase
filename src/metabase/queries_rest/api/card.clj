@@ -23,6 +23,7 @@
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries-rest.db :as queries-rest.db]
    [metabase.queries.core :as queries]
+   [metabase.queries.db :as queries.db]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.api :as api.dataset]
@@ -210,7 +211,7 @@
   "Get `Card` with ID."
   [id]
   (let [with-last-edit-info #(first (revisions/with-last-edit-info [%] :card))
-        raw-card (queries-rest.db/card id)]
+        raw-card (queries.db/card id)]
     (-> raw-card
         api/read-check
         hydrate-card-details
@@ -427,7 +428,7 @@
                                                (fn [ids]
                                                  (every? pos-int? (api/parse-multi-values-param ids parse-long)))]]]]]
   (let [exclude_ids  (when exclude_ids (api/parse-multi-values-param exclude_ids parse-long))
-        card         (-> (queries-rest.db/card id) api/check-404 api/read-check)
+        card         (-> (queries.db/card id) api/check-404 api/read-check)
         card-display (:display card)]
     (when-not (supported-series-display-type card-display)
       (throw (ex-info (tru "Card with type {0} is not compatible to have series" (name card-display))
@@ -573,7 +574,7 @@
   (let [query (:dataset_query card-updates)]
     (queries/check-card-can-be-saved! query card-type)
     (check-parameter-permissions (:parameters card-updates)
-                                 (or query (queries-rest.db/card-query id)))
+                                 (or query (:dataset_query (queries.db/card id))))
     (when-some [query (:dataset_query card-updates)]
       (queries/check-no-save-cycle! id query))
     (let [card-before-update     (t2/hydrate (api/write-check :model/Card id)
@@ -751,7 +752,7 @@
           (collection/check-for-remote-sync-update card)))
       ;; what a single card's update publishes too: remote sync listens to learn what entered or left its scope
       (doseq [card cards]
-        (events/publish-event! :event/card-update {:object          (queries-rest.db/card (u/the-id card))
+        (events/publish-event! :event/card-update {:object          (queries.db/card (u/the-id card))
                                                    :previous-object (get before (u/the-id card))
                                                    :user-id         api/*current-user-id*}))))
 
@@ -801,7 +802,7 @@
   ids. 404s (rather than 403s) on an unpaired id so it doesn't confirm the snapshot exists."
   [card-id stored-result-id sort]
   (api/check-exists? :model/StoredResultUse :card_id card-id :stored_result_id stored-result-id)
-  (let [sr (api/check-404 (queries-rest.db/stored-result stored-result-id))]
+  (let [sr (api/check-404 (queries.db/stored-result stored-result-id))]
     (queries/assert-can-view-card-snapshots! card-id)
     (api/check-404 (queries/cached-dataset sr sort))))
 
@@ -825,7 +826,7 @@
    request]
   (let [resolved-card-id (eid-translation/->id-or-404 :card card-id)
         _                (some-> (data-apps/request-data-app request) (data-apps/check-card resolved-card-id))
-        card             (api/check-404 (queries-rest.db/card resolved-card-id))]
+        card             (api/check-404 (queries.db/card resolved-card-id))]
     (if stored_result_id
       (do
         (api/read-check card)
@@ -879,7 +880,7 @@
    request]
   (some-> (data-apps/request-data-app request) (data-apps/check-card card-id))
   (qp.card/process-query-for-card
-   (api/check-404 (queries-rest.db/card card-id)) export-format
+   (api/check-404 (queries.db/card card-id)) export-format
    :parameters  parameters
    :constraints nil
    :context     (api.dataset/export-format->context export-format)
@@ -909,7 +910,7 @@
   (api/check-superuser)
   (public-sharing.validation/check-public-sharing-enabled)
   (api/check-not-archived (api/read-check :model/Card card-id))
-  (let [{existing-public-uuid :public_uuid} (queries-rest.db/card-public-uuid-columns card-id)
+  (let [{existing-public-uuid :public_uuid} (queries.db/card card-id)
         uuid (or existing-public-uuid
                  (u/prog1 (str (random-uuid))
                    ;; one transaction, so a failing handler cannot leave a saved link that a retry never reports
@@ -918,7 +919,7 @@
                                                    {:public_uuid       <>
                                                     :made_public_by_id api/*current-user-id*})
                      (events/publish-event! :event/card-public-link-created
-                                            {:object    (queries-rest.db/card card-id)
+                                            {:object    (queries.db/card card-id)
                                              :object-id card-id
                                              :user-id   api/*current-user-id*}))))]
     {:uuid uuid}))
@@ -942,7 +943,7 @@
                                   {:public_uuid       nil
                                    :made_public_by_id nil})
     (events/publish-event! :event/card-public-link-deleted
-                           {:object    (queries-rest.db/card card-id)
+                           {:object    (queries.db/card card-id)
                             :object-id card-id
                             :user-id   api/*current-user-id*}))
   {:status 204, :body nil})
@@ -964,7 +965,7 @@
                                     [:parameters   {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]]
    request]
   (some-> (data-apps/request-data-app request) (data-apps/check-card card-id))
-  (let [card (api/check-404 (queries-rest.db/card card-id))]
+  (let [card (api/check-404 (queries.db/card card-id))]
     (when dashboard_id
       (api/read-check :model/Dashboard dashboard_id))
     (qp.card/process-query-for-card card :api
