@@ -191,6 +191,13 @@ function ValidTypeFixtures() {
 
   void updatedCount;
 
+  // A table action's `implicitKind` types its result.
+  const refundedCount: number | undefined = useDataAppAction(
+    defineAction({ action: TEST_SCHEMA.actions.refundOrder }),
+  ).result?.["rows-updated"];
+
+  void refundedCount;
+
   // A raw id types nothing, so the generics still stand in for a definition.
   const rawAction = useAction<{ status: string }, "create">(51);
 

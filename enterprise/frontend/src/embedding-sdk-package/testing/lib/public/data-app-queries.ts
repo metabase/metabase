@@ -1,7 +1,7 @@
 import type { RowValue } from "embedding-sdk-package/hooks/public/data-schema";
 import type {
-  DefinedQuery,
   MetabaseDynamicQuery,
+  MetabaseQueryOptions,
   MetabaseQueryRow,
   QueryEntity,
   RequireAggregationsForBreakouts,
@@ -92,7 +92,7 @@ function toDatasetColumn(column: SchemaColumn): DatasetColumn {
 }
 
 function createQueryMock<TDynamic>(
-  query: DefinedQuery,
+  query: MetabaseQueryOptions,
   dynamicQuery: TDynamic,
   respond: (columns: SchemaColumn[]) => Promise<{
     columns: DatasetColumn[];
@@ -122,12 +122,12 @@ function createQueryMock<TDynamic>(
   };
 }
 
-export function mockDataAppQuery<TQuery extends DefinedQuery>(
+export function mockDataAppQuery<TQuery extends MetabaseQueryOptions>(
   query: TQuery,
   rows: readonly Partial<MetabaseQueryRow<TQuery>>[],
 ): DataAppQueryMock<undefined>;
 export function mockDataAppQuery<
-  TQuery extends DefinedQuery,
+  TQuery extends MetabaseQueryOptions,
   const TDynamic = undefined,
 >(
   query: TQuery,
@@ -135,7 +135,7 @@ export function mockDataAppQuery<
   rows: readonly Partial<MetabaseQueryRow<TQuery, TDynamic>>[],
 ): DataAppQueryMock<TDynamic>;
 export function mockDataAppQuery(
-  query: DefinedQuery,
+  query: MetabaseQueryOptions,
   ...args: [readonly unknown[]] | [unknown, readonly unknown[]]
 ): DataAppQueryMock<unknown> {
   const [dynamicQuery, rows] = args.length === 1 ? [undefined, args[0]] : args;
@@ -146,12 +146,12 @@ export function mockDataAppQuery(
   }));
 }
 
-export function mockDataAppQueryError<TQuery extends DefinedQuery>(
+export function mockDataAppQueryError<TQuery extends MetabaseQueryOptions>(
   query: TQuery,
   error?: DataAppQueryMockError,
 ): DataAppQueryMock<undefined>;
 export function mockDataAppQueryError<
-  TQuery extends DefinedQuery,
+  TQuery extends MetabaseQueryOptions,
   const TDynamic = undefined,
 >(
   query: TQuery,
@@ -159,7 +159,7 @@ export function mockDataAppQueryError<
   error: DataAppQueryMockError,
 ): DataAppQueryMock<TDynamic>;
 export function mockDataAppQueryError(
-  query: DefinedQuery,
+  query: MetabaseQueryOptions,
   ...args: [DataAppQueryMockError?] | [unknown, DataAppQueryMockError]
 ): DataAppQueryMock<unknown> {
   const [dynamicQuery, error = {}] =
