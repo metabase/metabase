@@ -133,12 +133,12 @@
   (update state coll (partial filterv #(not= id (:id %)))))
 
 (defn- move-row
-  "Move the row with `id` so it sits at `index` among the remaining rows; nil when `index` is not an integer in
-   `[0, count-after-removal]`."
+  "Move the row with `id` so it sits at `index` among the remaining rows.
+   Nil when `index` is not an integer in `[0, count-after-removal]`."
   [state coll id index]
   (let [row   (find-row state coll id)
         rest* (filterv #(not= id (:id %)) (get state coll))]
-    (when (and (int? index) (<= 0 index (count rest*)))
+    (when (and (integer? index) (<= 0 index (count rest*)))
       (assoc state coll (vec (concat (subvec rest* 0 index) [row] (subvec rest* index)))))))
 
 (defn- map-rows
@@ -738,14 +738,14 @@
 ;;; ------------------------------------------------ Entry ---------------------------------------------------------
 
 (defn card-refs
-  "The ids of the cards `op` puts on the dashboard: its `card_id`, add_card's `series`, and set_series'
-   `card_ids`. The caller resolves these into the `cards` map for [[compile-ops]], which rejects any it left out."
+  "The ids of the cards `op` puts on the dashboard: its `card_id`, add_card's `series`, and set_series' `card_ids`.
+   The caller resolves these into the `cards` map for [[compile-ops]], which rejects any it left out."
   [op]
   (remove nil? (concat [(:card_id op)] (:series op) (:card_ids op))))
 
 (defn- check-cards-resolved!
-  "Every card `op` puts on the dashboard must be in the caller's `cards` map. The caller leaves out the cards its
-   user cannot read, so this is where an op naming one fails."
+  "Every card `op` puts on the dashboard must be in the caller's `cards` map.
+   The caller leaves out the cards its user cannot read, so this is where an op naming one fails."
   [state op]
   (doseq [card-id (card-refs op)
           :when   (not (contains? (::cards state) card-id))]
@@ -766,9 +766,12 @@
 (defn compile-ops
   "Fold `ops` over `current` (a dashboard hydrated with `[:dashcards :series :card] :tabs`) and
    return `{:dashcards :tabs :parameters}` — the full-replacement payload `update-dashboard!`
-   saves. New rows carry the caller's negative ids. `cards` maps every card id in [[card-refs]] of `ops` to its card
-   row, leaving out cards the user cannot read; this namespace does no I/O, so the caller resolves them. Throws an
-   error from [[errors]] on the first invalid op; read it with [[error-data]]."
+   saves. New rows carry the caller's negative ids.
+   The `cards` map holds the row of each card the ops may touch, keyed by id.
+   It covers the cards [[card-refs]] finds in `ops` and the cards already on the dashboard.
+   It leaves out cards the user cannot read.
+   This namespace does no I/O, so the caller resolves them.
+   Throws an error from [[errors]] on the first invalid op; read it with [[error-data]]."
   [current ops cards]
   (-> (reduce-kv apply-op-at
                  (init-state current cards)
