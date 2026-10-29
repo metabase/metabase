@@ -101,6 +101,14 @@
                                              "SELECT u.a AS b, u.a FROM (SELECT a FROM x UNION SELECT a FROM y) u"))))
           backend))))
 
+(deftest group-by-all-names-no-column-test
+  (testing "GROUP BY ALL groups by every selected expression and uses no column named ALL, as on GraalPy (QUE-1050)"
+    (doseq [dialect ["duckdb" "databricks" "snowflake"]
+            :let    [sql "SELECT a, SUM(b) FROM t GROUP BY ALL"
+                     references #(sql-parsing/field-references (sql-parsing/parser %) dialect sql)]]
+      (is (= (references :sqlglot) (references :sqlglot-java)) dialect)
+      (is (= #{"a" "b"} (into #{} (map :column) (:used-fields (references :sqlglot-java)))) dialect))))
+
 (deftest backend-dispatch-test
   (testing "every sql-tools multimethod runs its :sqlglot method for :sqlglot-java, through the backend hierarchy"
     (is (= 10 (count (interface-multimethods))))
