@@ -245,7 +245,9 @@ function setup({
       canSelectTable={entityTypes ? entityTypes.includes("table") : true}
       canSelectQuestion={entityTypes ? entityTypes.includes("question") : true}
       canSelectMetric={entityTypes ? entityTypes.includes("metric") : true}
-      canSelectLibrary={entityTypes ? entityTypes.includes("library") : true}
+      canSelectSemanticLayer={
+        entityTypes ? entityTypes.includes("semantic-layer") : true
+      }
       triggerElement={<div>Click me to open or close data picker</div>}
       setSourceTableFn={jest.fn()}
     />,
@@ -482,7 +484,7 @@ describe("DataSourceSelector", () => {
       setup({
         ...setupOpts,
         libraryCollection: LIBRARY_COLLECTION,
-        entityTypes: ["library"],
+        entityTypes: ["semantic-layer"],
       });
 
       expect(await screen.findByText("Data")).toBeInTheDocument();
@@ -491,11 +493,11 @@ describe("DataSourceSelector", () => {
       expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
     });
 
-    it('should not show a back link when `entityTypes` = ["library"]', async () => {
+    it('should not show a back link when `entityTypes` = ["semantic-layer"]', async () => {
       setup({
         ...setupOpts,
         libraryCollection: LIBRARY_COLLECTION,
-        entityTypes: ["library"],
+        entityTypes: ["semantic-layer"],
       });
 
       expect(await screen.findByText("Data")).toBeInTheDocument();
@@ -505,11 +507,11 @@ describe("DataSourceSelector", () => {
       expect(screen.queryByText("Library")).not.toBeInTheDocument();
     });
 
-    it('should show the folder title without a back link when `entityTypes` = ["library"] and the Library has one folder', async () => {
+    it('should show the folder title without a back link when `entityTypes` = ["semantic-layer"] and the Library has one folder', async () => {
       setup({
         ...setupOpts,
         libraryCollection: LIBRARY_COLLECTION_WITH_ONLY_TABLES,
-        entityTypes: ["library"],
+        entityTypes: ["semantic-layer"],
       });
 
       expect(await screen.findByText("Published Orders")).toBeInTheDocument();
@@ -715,7 +717,7 @@ describe("DataSourceSelector", () => {
           canSelectTable
           canSelectQuestion
           canSelectMetric
-          canSelectLibrary
+          canSelectSemanticLayer
           triggerElement={<div>Click me to open or close data picker</div>}
           setSourceTableFn={jest.fn()}
         />,

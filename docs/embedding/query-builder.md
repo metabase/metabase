@@ -47,9 +47,9 @@ To show fewer entity types, set the `entity-types` attribute (web component), or
 - `"table"`
 - `"model"`
 - `"metric"`
-- `"library"`
+- `"semantic-layer"`
 
-To limit the picker to the tables and metrics published in the Library, use `entity-types="['library']"`.
+To limit the picker to the tables and metrics published in the Library, use `entity-types="['semantic-layer']"`.
 
 ## Embed the SQL editor
 

@@ -123,7 +123,7 @@ Available entity types are:
 - `model`
 - `question` (only works with `data_picker=staged`)
 
-Setting `entity_types` always leaves metrics and the Library out, because `metric` and `library` aren't `entity_types` values. To keep them in the picker, don't set `entity_types`.
+Setting `entity_types` always leaves metrics and the Library out, because `metric` and `semantic-layer` aren't `entity_types` values. To keep them in the picker, don't set `entity_types`.
 
 You can separate entity types with a comma:
 

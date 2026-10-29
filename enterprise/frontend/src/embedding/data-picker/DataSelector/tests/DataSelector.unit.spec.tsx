@@ -103,7 +103,7 @@ describe("DataSelector", () => {
     canSelectTable: true,
     canSelectQuestion: true,
     canSelectMetric: true,
-    canSelectLibrary: true,
+    canSelectSemanticLayer: true,
     entityLookups: emptyLookups,
     databases: [],
     availableModels: [],

@@ -199,10 +199,10 @@ describe("SimpleDataPicker", () => {
       reinitialize();
     });
 
-    it('should only list the tables and metrics published in the Library when `entityTypes=["library"]`', async () => {
+    it('should only list the tables and metrics published in the Library when `entityTypes=["semantic-layer"]`', async () => {
       setup({
         searchResults: SEARCH_RESULTS,
-        entityTypes: ["library"],
+        entityTypes: ["semantic-layer"],
         hasLibrary: true,
       });
 
@@ -218,7 +218,7 @@ describe("SimpleDataPicker", () => {
     it("should select a Library table by its table id", async () => {
       const { onClick } = setup({
         searchResults: SEARCH_RESULTS,
-        entityTypes: ["library"],
+        entityTypes: ["semantic-layer"],
         hasLibrary: true,
       });
 
@@ -231,7 +231,7 @@ describe("SimpleDataPicker", () => {
     it("should only list tables from the current database, and no metrics, when joining", async () => {
       setup({
         searchResults: SEARCH_RESULTS,
-        entityTypes: ["library"],
+        entityTypes: ["semantic-layer"],
         hasLibrary: true,
         isJoinStep: true,
         filterByDatabaseId: 1,
@@ -251,7 +251,7 @@ describe("SimpleDataPicker", () => {
     it("should list an item once when it matches several entity types", async () => {
       setup({
         searchResults: [...SEARCH_RESULTS, LIBRARY_SEARCH_RESULTS[0]],
-        entityTypes: ["model", "table", "library"],
+        entityTypes: ["model", "table", "semantic-layer"],
         hasLibrary: true,
       });
 

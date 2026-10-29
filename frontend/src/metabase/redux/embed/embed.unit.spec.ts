@@ -119,11 +119,11 @@ describe("embed reducer", () => {
           "model",
           "table",
           "metric",
-          "library",
+          "semantic-layer",
         ]);
       });
 
-      it('should set "entity_types" option to the default value `["model", "table", "metric", "library"]` when "entity_types" are empty', () => {
+      it('should set "entity_types" option to the default value `["model", "table", "metric", "semantic-layer"]` when "entity_types" are empty', () => {
         const store = createMockStore();
 
         store.dispatch(
@@ -137,7 +137,7 @@ describe("embed reducer", () => {
           "model",
           "table",
           "metric",
-          "library",
+          "semantic-layer",
         ]);
 
         store.dispatch(
@@ -151,7 +151,7 @@ describe("embed reducer", () => {
           "model",
           "table",
           "metric",
-          "library",
+          "semantic-layer",
         ]);
       });
 
@@ -182,7 +182,7 @@ describe("embed reducer", () => {
           "model",
           "table",
           "metric",
-          "library",
+          "semantic-layer",
         ]);
       });
 

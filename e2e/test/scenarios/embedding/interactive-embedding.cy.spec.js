@@ -566,7 +566,7 @@ describe("scenarios > embedding > full app", () => {
       });
     });
 
-    describe("library", () => {
+    describe("semantic-layer", () => {
       it("should count the metrics in the Library toward the full data picker switch", () => {
         const metricDetails = {
           ...ordersCardDetails,
@@ -1158,7 +1158,7 @@ describe("scenarios > embedding > full app", () => {
       });
     });
 
-    describe("library", () => {
+    describe("semantic-layer", () => {
       beforeEach(() => {
         cy.signInAsAdmin();
         createLibraryWithTable();

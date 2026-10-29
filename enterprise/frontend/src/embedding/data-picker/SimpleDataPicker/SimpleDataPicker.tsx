@@ -102,7 +102,7 @@ export function SimpleDataPicker({
 
 /**
  * Searches the tables and metrics published in the Library when `entityTypes`
- * includes `library`, skipping those `searchModels` already finds everywhere.
+ * includes `semantic-layer`, skipping those `searchModels` already finds everywhere.
  * Returns no data without a Library the user can read.
  */
 function useLibrarySearch({
@@ -126,7 +126,8 @@ function useLibrarySearch({
   );
   const { data: libraryCollection, isLoading: isLibraryCollectionLoading } =
     PLUGIN_LIBRARY.useGetLibraryCollection({
-      skip: !entityTypes.includes("library") || libraryModels.length === 0,
+      skip:
+        !entityTypes.includes("semantic-layer") || libraryModels.length === 0,
     });
   const { data, isLoading, error } = useSearchQuery(
     libraryCollection && libraryModels.length > 0

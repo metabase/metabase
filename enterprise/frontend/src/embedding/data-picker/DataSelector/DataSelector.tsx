@@ -112,7 +112,7 @@ interface DataSelectorOwnProps {
   canSelectTable: boolean;
   canSelectQuestion: boolean;
   canSelectMetric: boolean;
-  canSelectLibrary: boolean;
+  canSelectSemanticLayer: boolean;
 
   selectedDataBucketId?: DataPickerDataType | null;
   selectedDatabaseId?: DatabaseId | null;
@@ -203,7 +203,9 @@ export function DataSourceSelector(props: DataSourceSelectorProps) {
   // `{ data: null }`), or when the user can't read it. `allLoading` makes the
   // picker wait for it.
   const { data: libraryCollection, isLoading: isLibraryLoading } =
-    PLUGIN_LIBRARY.useGetLibraryCollection({ skip: !props.canSelectLibrary });
+    PLUGIN_LIBRARY.useGetLibraryCollection({
+      skip: !props.canSelectSemanticLayer,
+    });
 
   return (
     <DataSelector
@@ -529,17 +531,18 @@ export class UnconnectedDataSelector extends Component<
   };
 
   hasLibrary = (): boolean => {
-    const { canSelectLibrary, libraryCollection } = this.props;
+    const { canSelectSemanticLayer, libraryCollection } = this.props;
     const libraryContents = libraryCollection?.below ?? [];
     return (
-      canSelectLibrary &&
+      canSelectSemanticLayer &&
       (libraryContents.includes("table") ||
-        (this.canSelectLibraryMetrics() && libraryContents.includes("metric")))
+        (this.canSelectSemanticLayerMetrics() &&
+          libraryContents.includes("metric")))
     );
   };
 
   // Library metrics follow the Metrics bucket's rules
-  canSelectLibraryMetrics = (): boolean =>
+  canSelectSemanticLayerMetrics = (): boolean =>
     !this.isJoinStep() && this.props.hasNestedQueriesEnabled;
 
   // With a single bucket, `skipSteps` opens it straight away, so there's no
@@ -1077,7 +1080,7 @@ export class UnconnectedDataSelector extends Component<
         return (
           <LibraryPicker
             libraryCollection={libraryCollection}
-            canSelectMetric={this.canSelectLibraryMetrics()}
+            canSelectMetric={this.canSelectSemanticLayerMetrics()}
             databaseId={currentDatabaseId}
             tableId={selectedTable?.id}
             onSelect={this.handleSavedEntitySelect}

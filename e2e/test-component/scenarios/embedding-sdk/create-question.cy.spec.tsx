@@ -237,7 +237,7 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     });
   });
 
-  it('should list only what is published in the Library when `entityTypes` = ["library"]', () => {
+  it('should list only what is published in the Library when `entityTypes` = ["semantic-layer"]', () => {
     // Publishes only Orders
     createLibraryWithTable();
     cy.signOut();
@@ -245,7 +245,10 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
 
     mountSdkContent(
       <div style={{ display: "flex", padding: "20px" }}>
-        <InteractiveQuestion questionId="new" entityTypes={["library"]} />
+        <InteractiveQuestion
+          questionId="new"
+          entityTypes={["semantic-layer"]}
+        />
       </div>,
     );
 
@@ -264,7 +267,7 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     });
   });
 
-  it('should list only what is published in the Library in the staged picker when `entityTypes` = ["library"]', () => {
+  it('should list only what is published in the Library in the staged picker when `entityTypes` = ["semantic-layer"]', () => {
     // Publishes only Orders
     createLibraryWithTable();
     cy.signOut();
@@ -275,7 +278,7 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
         <InteractiveQuestion
           questionId="new"
           dataPicker="staged"
-          entityTypes={["library"]}
+          entityTypes={["semantic-layer"]}
         />
       </div>,
     );
@@ -299,7 +302,7 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     });
   });
 
-  it('should list a table published in a Library subfolder when `entityTypes` = ["library"]', () => {
+  it('should list a table published in a Library subfolder when `entityTypes` = ["semantic-layer"]', () => {
     // Publishes only Orders, into Library > Data > Customer A
     H.createLibrary().then(({ body: library }) => {
       const dataCollection = library.effective_children?.find(
@@ -331,7 +334,10 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
 
     mountSdkContent(
       <div style={{ display: "flex", padding: "20px" }}>
-        <InteractiveQuestion questionId="new" entityTypes={["library"]} />
+        <InteractiveQuestion
+          questionId="new"
+          entityTypes={["semantic-layer"]}
+        />
       </div>,
     );
 

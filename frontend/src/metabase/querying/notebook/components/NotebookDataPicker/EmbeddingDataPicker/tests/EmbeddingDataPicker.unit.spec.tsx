@@ -202,11 +202,11 @@ describe("EmbeddingDataPicker", () => {
         expect(screen.queryByText("Library")).not.toBeInTheDocument();
       });
 
-      it('should ignore "library" in full-app entity_types and show the default', async () => {
+      it('should ignore "semantic-layer" in full-app entity_types and show the default', async () => {
         setup({
           embeddingType: "full-app",
           hasLibrary: true,
-          entityTypes: ["library"],
+          entityTypes: ["semantic-layer"],
         });
 
         expect(await screen.findByText("Library")).toBeInTheDocument();
@@ -214,11 +214,11 @@ describe("EmbeddingDataPicker", () => {
         expect(screen.getByText("Raw Data")).toBeInTheDocument();
       });
 
-      it('should show the Library only when modular embedding entityTypes include "library"', async () => {
+      it('should show the Library only when modular embedding entityTypes include "semantic-layer"', async () => {
         setup({
           embeddingType: "modular",
           hasLibrary: true,
-          entityTypes: ["library"],
+          entityTypes: ["semantic-layer"],
         });
 
         expect(await screen.findByText("Data")).toBeInTheDocument();
