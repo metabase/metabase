@@ -3350,6 +3350,9 @@
     (testing "one problem in several places is listed once, with a count of the others"
       (is (str/starts-with? (explain (invalid :a) (invalid :b) (invalid :c))
                             "stages[0].a (and 2 other places): should be an integer.")))
+    (testing "a problem in one other place, and one more problem, are counted in the singular"
+      (is (str/starts-with? (explain (invalid :a) (invalid :b)) "stages[0].a (and 1 other place): "))
+      (is (str/ends-with? (apply explain (map missing [:a :b :c :d])) "; and 1 more problem")))
     (testing "at most three problems are listed, and the rest are counted"
       (is (str/ends-with? (apply explain (map missing [:a :b :c :d :e])) "; and 2 more problems")))
     (testing "problems with a known cause are listed before Malli's own messages"

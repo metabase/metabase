@@ -2656,7 +2656,7 @@
                  mp import-resolver export-resolver))))
 
 ;;; ============================================================
-;;; Pass 4 -- infer base-type / effective-type on cross-stage field references
+;;; Passes 4.5 and 5 -- infer base-type / effective-type on cross-stage field references
 ;;;
 ;;; A cross-stage field reference looks like `["field" {opts} "<column-name>"]` where the
 ;;; third element is a **string** (the column's name in the previous stage's output) rather
@@ -2763,15 +2763,19 @@
            :types             (types-from-column col)})
         cols))
 
+(defn- stages-query
+  "Return `stages` as a standalone query against `database`, which may be nil."
+  [database stages]
+  (cond-> {"lib/type" "mbql/query", "stages" stages}
+    database (assoc "database" database)))
+
 (defn- resolved-columns
   "Resolve `stages` as a standalone query against `database` and return their returned columns as
   a vector of [[column-descriptors]], or nil when anything in the resolve path throws. `what`
   names the stages in the debug log."
   [mp database stages content-store what]
   (try
-    (let [query    (cond-> {"lib/type" "mbql/query" "stages" stages}
-                     database (assoc "database" database))
-          resolved (repr.resolve/resolve-query mp query content-store)]
+    (let [resolved (repr.resolve/resolve-query mp (stages-query database stages) content-store)]
       (column-descriptors (lib/returned-columns (lib/query mp resolved))))
     (catch Exception e
       (log/debugf "[repr-repair] resolve of %s failed; skipping field-type inference: %s" what (ex-message e))
@@ -2834,31 +2838,28 @@
                                    (filter #(= target (normalize-col-key (key-fn %))) cols))]
                       (when (= 1 (count hits))
                         (first hits))))]
-    (if-let [[spelling match] (or (some->> (lib-match col-name) (vector col-name))
-                                  (when (not= stripped col-name)
-                                    (some->> (lib-match stripped) (vector stripped))))]
+    (if-let [[spelling match] (some #(when-let [match (lib-match %)] [% match])
+                                    (distinct [col-name stripped]))]
       [spelling (:types match)]
       (when-let [match (or (loose-on :name stripped)
                            (loose-on :display-name stripped))]
         [(:name match) (:types match)]))))
 
 (defn- maybe-fill-cross-stage-types
-  "Given a cross-stage field clause and a name→types map, return the clause with its column name
-  canonicalised (surrounding double-quotes stripped when that is what makes it match a real
-  column) and `base-type` / `effective-type` filled in (when missing and known).
+  "Return the by-name field `clause` with the spelling [[match-cross-stage-column]] finds for it in `cols`,
+  and with `base-type` / `effective-type` filled in when missing and known.
+  Returns `clause` unchanged when no column matches.
 
-  Idempotent: once the name is canonical it matches exactly on the next pass (no rename), and
-  once `base-type` is present it is left alone."
+  Idempotent: once renamed, the ref matches exactly on the next pass, and a present `base-type` is kept."
   [clause cols]
   (let [opts     (nth clause 1)
         col-name (nth clause 2)]
-    (if-let [[canonical-name types] (match-cross-stage-column cols col-name)]
+    (if-let [[spelling types] (match-cross-stage-column cols col-name)]
       (cond-> clause
-        ;; Canonicalise the name when quote-stripping / display-name recovery was needed to
-        ;; match. A bare `base-type` stamp without this would leave the ref pointing at a
-        ;; non-existent column.
-        (not= canonical-name col-name)
-        (assoc 2 canonical-name)
+        ;; Rename the ref when it matched only after quote-stripping or loose matching.
+        ;; A `base-type` stamp alone would leave it pointing at a column that doesn't exist.
+        (not= spelling col-name)
+        (assoc 2 spelling)
         ;; Stamp inferred types only when the LLM didn't author a `base-type` already and the
         ;; matched column actually exposes one.
         (and types (not (contains? opts "base-type")))
@@ -2969,6 +2970,15 @@
          (contains? (first stages) "source-table")
          (not-any? #(contains? (first stages) %) ["aggregation" "breakout" "fields"]))))
 
+(defn- other-table-path-refs
+  "The `path-refs` into plain-table `join` whose field belongs to another table, or nil if there are
+  none. A ref is skipped when its field or the join's table can't be resolved."
+  [mp import-resolver join path-refs]
+  (when-let [table-id (try-resolve-source-table-id import-resolver (get-in join ["stages" 0 "source-table"]))]
+    (not-empty (filterv #(when-let [field-table-id (try-resolve-field-target-table-id mp import-resolver (nth % 2))]
+                           (not= field-table-id table-id))
+                        path-refs))))
+
 (defn- join-alias-refs
   "`stage`'s join-alias string refs (`:named`) and concrete-column join-alias refs (`:path`), each
   grouped by alias, outside the joins' [[hidden-join-keys]]."
@@ -3015,7 +3025,11 @@
         checks               (vec (for [join  (when (and (or (seq named) (seq path)) (sequential? joins)) joins)
                                         :let  [alias      (when (map? join) (get join "alias"))
                                                named-refs (get named alias)
-                                               path-refs  (when-not (plain-table-join? join) (get path alias))]
+                                               path-refs  (cond->> (get path alias)
+                                                            ;; a plain table join returns all its table's columns, so it
+                                                            ;; is resolved only for a ref to another table's column
+                                                            (plain-table-join? join)
+                                                            (other-table-path-refs mp @import-resolver join))]
                                         :when (or named-refs path-refs)
                                         :let  [cols (when (vector? (get join "stages"))
                                                       (resolved-columns mp (get query "database") (get join "stages") content-store
@@ -3057,8 +3071,9 @@
 (defn- repair-join-alias-refs*
   "Pass 4.7: type the join-alias string field refs of every stage from the referenced joins'
   returned columns, and raise one `:agent-error?` listing every join-alias ref, across all stages,
-  that names a column its join doesn't return. Only joins named by a string ref, or by a
-  concrete-column ref into a join that isn't a [[plain-table-join?]], are resolved."
+  that names a column its join doesn't return. Only joins named by a string ref or a
+  concrete-column ref are resolved, and a [[plain-table-join?]] only when such a ref names another
+  table's column."
   [query mp content-store]
   (if-not (and mp (map? query) (vector? (get query "stages")))
     query
@@ -3097,7 +3112,7 @@
 ;;; Pass 5.7 -- assert cross-stage / source-card string refs resolved
 ;;;
 ;;; A `["field" {} "<name>"]` ref into a previous stage or a source-card must name a real
-;;; output column. The inference passes above (5 / 5.5) stamp `base-type` onto every such ref
+;;; output column. The inference passes above (4.5 / 5) stamp `base-type` onto every such ref
 ;;; that matches; anything still missing `base-type` afterward matched nothing - the LLM
 ;;; named a column that doesn't exist (typically a UI display label like "Max of X" instead of
 ;;; the machine name "max"). lib's resolver passes a typeless string-named field ref through
@@ -3181,8 +3196,7 @@
   (if-not (and (map? join) (vector? (get join "stages")))
     join
     (try
-      (assoc join "stages" (-> (cond-> {"lib/type" "mbql/query", "stages" (get join "stages")}
-                                 database (assoc "database" database))
+      (assoc join "stages" (-> (stages-query database (get join "stages"))
                                (infer-field-types* mp content-store)
                                (get "stages")))
       (catch clojure.lang.ExceptionInfo e
@@ -3197,15 +3211,14 @@
           (throw e))))))
 
 (defn- with-alias-on-join-fields
-  "Return `join` with its alias on each by-name field ref in its `fields`, as lib's join normalization does.
-  Leaves path refs alone."
+  "Return `join` with its alias on each field ref in its `fields`.
+  Lib's join normalization later adds the alias to every clause there."
   [join]
   (let [alias (when (map? join) (get join "alias"))]
     (cond-> join
       (and (non-blank-string? alias) (sequential? (get join "fields")))
       (update "fields" (partial mapv #(cond-> %
-                                        ;; no pass mistakes a path ref for a previous-stage ref, so lib aliases those
-                                        (match/matches? % ["field" (_ :guard map?) (_ :guard string?)])
+                                        (match/matches? % ["field" (_ :guard map?) _])
                                         (assoc-in [1 "join-alias"] alias)))))))
 
 (defn- infer-join-field-types-in-stage

@@ -1535,7 +1535,7 @@
                               "source-table" ["Sample" "PUBLIC" "ORDERS"]
                               "joins"        [join]}]}
           output (repair/repair trivial-mp input)]
-      (is (= [field] (get-in output ["stages" 0 "joins" 0 "fields"])))))
+      (is (= [(assoc-in field [1 "join-alias"] "P")] (get-in output ["stages" 0 "joins" 0 "fields"])))))
   (testing "join `fields:` enum value (\"all\" / \"none\") is left alone"
     (doseq [enum-value ["all" "none"]]
       (let [stage {"lib/type"     "mbql.stage/mbql"
@@ -4175,18 +4175,26 @@
                               "In a join with no alias in stage 0: No column named \"nope\""))))))
 
 (deftest ^:parallel join-fields-ref-without-alias-test
-  (let [join-fields (fn [previous-stage]
-                      (get-in (repair* (query previous-stage
-                                              (stage {"joins" [(assoc (join "First" [first-orders-stage] :lhs user-id-by-name)
-                                                                      "fields" [["field" {} "min"]])]})))
-                              ["stages" 1 "joins" 0 "fields"]))]
+  (let [fields-query (fn [previous-stage fields]
+                       (query previous-stage
+                              (stage {"joins" [(assoc (join "First" [first-orders-stage] :lhs user-id-by-name)
+                                                      "fields" fields)]})))
+        join-fields  (fn [previous-stage fields]
+                       (get-in (repair* (fields-query previous-stage fields)) ["stages" 1 "joins" 0 "fields"]))]
     (testing "a by-name ref in a join's fields gets the join's alias and is typed from the join"
       (is (= [["field" {"join-alias" "First", "base-type" "type/Date", "effective-type" "type/Date"} "min"]]
-             (join-fields min-total-by-user-stage))))
+             (join-fields min-total-by-user-stage [["field" {} "min"]]))))
     (testing "the previous stage not having the column doesn't matter"
       (is (= "type/Date"
              (base-type (first (join-fields (orders-stage {"aggregation" [["count" {}]]
-                                                           "breakout"    [(orders-col "USER_ID")]})))))))))
+                                                           "breakout"    [(orders-col "USER_ID")]})
+                                            [["field" {} "min"]]))))))
+    (testing "a path ref in a join's fields gets the join's alias too"
+      (is (= [(assoc-in (orders-col "USER_ID") [1 "join-alias"] "First")]
+             (join-fields min-total-by-user-stage [(orders-col "USER_ID")]))))
+    (testing "a path ref there to a column the grouped join doesn't return is reported"
+      (is (= [[1 "First" ["ORDERS.TOTAL"]]]
+             (join-problems (fields-query min-total-by-user-stage [(orders-col "TOTAL")])))))))
 
 (deftest ^:parallel alias-less-join-fields-left-for-validation-test
   (let [fields-of (fn [column]
@@ -4281,6 +4289,16 @@
       (is (zero? (resolutions [(orders-stage {})]
                               (query (orders-stage {"joins"   [(join "Plain" [(orders-stage {})])]
                                                     "filters" [["not-null" {} (join-ref "Plain" (conj orders "TOTAL"))]]}))))))))
+
+(deftest ^:parallel plain-table-join-other-table-path-ref-test
+  (let [plain-filtering (fn [target]
+                          (query (orders-stage {"joins"   [(join "Plain" [(orders-stage {})])]
+                                                "filters" [["not-null" {} (join-ref "Plain" target)]]})))]
+    (testing "a path ref through a plain table join to another table's column of the same name raises"
+      (is (= [[0 "Plain" ["PEOPLE.ID"]]]
+             (join-problems (plain-filtering ["Sample" "PUBLIC" "PEOPLE" "ID"])))))
+    (testing "a path ref to the joined table's own column is accepted"
+      (is (nil? (repair-error (plain-filtering (conj orders "ID"))))))))
 
 (deftest ^:parallel join-alias-field-type-idempotent-test
   (let [once (repair* first-order-query)]
