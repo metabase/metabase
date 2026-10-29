@@ -22,8 +22,7 @@
 (deftest ^:parallel with-dynamic-fn-redefs-test
   (testing "Three threads can independently redefine a regular var"
     (let [n-threads  3
-          ;; Note that .getId is deprecated in favor of .threadId, but that method is only introduced in Java 19
-          thread-id  #(.getId (Thread/currentThread))
+          thread-id  #(.threadId (Thread/currentThread))
           latch      (CountDownLatch. (inc n-threads))
           take-latch #(do
                         (.countDown latch)
@@ -106,14 +105,15 @@
 (defn mock-me-outer []
   (mock-me-inner))
 
+(defn- z []
+  (mt/with-dynamic-fn-redefs [mock-me-outer
+                              (let [orig (mt/original-fn #'mock-me-outer)]
+                                (fn []
+                                  (mt/with-dynamic-fn-redefs [mock-me-inner (constantly :mock/redefined)]
+                                    (orig))))]
+    (mock-me-outer)))
+
 (deftest with-dynamic-fn-redefs-nested-binding-test
-  (defn z []
-    (mt/with-dynamic-fn-redefs [mock-me-outer
-                                (let [orig (mt/original-fn #'mock-me-outer)]
-                                  (fn []
-                                    (mt/with-dynamic-fn-redefs [mock-me-inner (constantly :mock/redefined)]
-                                      (orig))))]
-      (mock-me-outer)))
   (is (= :mock/redefined (z))))
 
 (defn capture-bug-target [x] (inc x))

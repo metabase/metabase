@@ -43,7 +43,7 @@
                 (every? mi/can-write? transforms)
                 true)))))
   ([_model pk]
-   (when-let [job (transforms.db/job pk)]
+   (when-let [job (transforms.db/transform-job pk)]
      (mi/can-write? job))))
 
 (defmethod mi/can-create? :model/TransformJob
@@ -98,7 +98,7 @@
   [job-id]
   (cluster-lock/with-cluster-lock (active-flip-lock-name job-id)
     (when (pos? (transforms.db/activate-job! job-id))
-      (transforms.schedule/initialize-job! (transforms.db/job job-id)))))
+      (transforms.schedule/initialize-job! (transforms.db/transform-job job-id)))))
 
 (defn deactivate-job!
   "Deactivate a transform job: set `:active` to false and remove its Quartz trigger so cron
@@ -200,9 +200,9 @@
 
 (defmethod serdes/make-spec "TransformJob"
   [_model-name opts]
-  {:copy [:entity_id :built_in_type :schedule :ui_display_type :active]
-   :skip []
-   :defaults {:active true}
+  {:copy [:entity_id :built_in_type :schedule :ui_display_type]
+   :skip [;; admin-owned state of this instance
+          :active]
    :transform {:name {:export str :import identity}
                :description {:export str :import identity}
                :job_tags (serdes/nested :model/TransformJobTransformTag :job_id (merge {:sort-by (juxt :position :entity_id)} opts))}})

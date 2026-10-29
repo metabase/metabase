@@ -19,6 +19,7 @@
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.humanization :as humanization]
    [metabase.warehouse-schema.schema]
+   [metabase.warehouses.db :as warehouses.db]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -232,7 +233,7 @@
   ;; reasserts matching DB-level defaults for non-model insert paths.
   (let [defaults {:display_name   (humanization/name->human-readable-name (:name table))
                   :field_order    (or (:field_order table)
-                                      (driver/default-field-order (warehouse-schema.db/database-engine (:db_id table))))
+                                      (driver/default-field-order (:engine (warehouses.db/database (:db_id table)))))
                   :data_layer     :internal
                   :data_authority :unconfigured}]
     (collection/check-allowed-content :table (:collection_id table))
@@ -567,7 +568,7 @@
 (defn database
   "Return the `Database` associated with this `Table`."
   [table]
-  (warehouse-schema.db/database (:db_id table)))
+  (warehouses.db/database (:db_id table)))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 (defmethod serdes/deserialization-dependencies "Table" [{:keys [collection_id transform_id]}]
@@ -591,7 +592,7 @@
     (merge fields settings field-settings dimensions segments measures)))
 
 (defmethod serdes/generate-path "Table" [_ table]
-  (let [db-name (warehouse-schema.db/database-name (:db_id table))]
+  (let [db-name (:name (warehouses.db/database (:db_id table)))]
     (filterv some? [{:model "Database" :id db-name}
                     (when (:schema table)
                       {:model "Schema" :id (:schema table)})

@@ -7,13 +7,14 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.agent.streaming :as streaming]
-   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.recoverable.common :as recoverable.common]
    [metabase.metabot.tools.shared :as shared]
+   [metabase.queries.db :as queries.db]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.xrays.core :as xrays]))
 
 (set! *warn-on-reflection* true)
@@ -63,8 +64,10 @@
   [kind id]
   (let [entity (tools/with-entity {:kind kind :id id}
                  (api/read-check (if (= :table kind)
-                                   (metabot.db/table id)
-                                   (metabot.db/card-of-type id kind))))]
+                                   (warehouse-schema.db/table id)
+                                   (let [card (queries.db/card id)]
+                                     (when (= kind (:type card))
+                                       card)))))]
     (when (or (:archived entity) (false? (:active entity)))
       (unavailable-source! {:kind kind :id id}))
     {:entity entity

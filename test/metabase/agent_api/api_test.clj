@@ -376,6 +376,112 @@
         (is (=? {:error (name error) :message expected}
                 (mt/user-http-request :rasta :post 400 "agent/v2/construct-query" {:query query})))))))
 
+(defn- recovery-uri
+  "The `metabase://` URI that a recovery hint tells the agent to read, e.g.
+  \"Call `read_resource` with `metabase://table/5/fields` to ...\" → \"metabase://table/5/fields\"."
+  [message]
+  (second (re-find #"`(metabase://[^`]+)`" message)))
+
+(defn- check-read-resource
+  "Check that `user` can read `uri` with `POST /v1/read-resource`.
+
+  The endpoint returns 200 with a per-item `:error` for a URI it cannot read, so check the item too."
+  [user uri]
+  (let [{:keys [resources]} (mt/user-http-request user :post 200 "agent/v1/read-resource" {:uris [uri]})
+        resource            (first resources)]
+    (is (= uri (:uri resource)))
+    (is (some? (:content resource)))
+    (is (nil? (:error resource)))))
+
+(defn- unknown-table-query
+  "A count query on `[db \"PUBLIC\" table]`, by default on the misspelled `ORDRS` table of the test database."
+  ([] (unknown-table-query (db-name) "ORDRS"))
+  ([db table]
+   {:lib/type "mbql/query"
+    :stages   [{:lib/type     "mbql.stage/mbql"
+                :source-table [db "PUBLIC" table]
+                :aggregation  [["count" {}]]}]}))
+
+(deftest construct-query-recovery-hints-name-the-real-ids-test
+  (let [tables-uri  (str "metabase://database/" (mt/id) "/tables")
+        orders-uri  (str "metabase://table/" (mt/id :orders) "/fields")
+        check-error (fn [endpoint query error uri]
+                      (let [response (mt/user-http-request :crowberto :post 400 endpoint {:query query})]
+                        (is (= error (:error response)))
+                        (is (= uri (recovery-uri (:message response))))))]
+    (doseq [endpoint ["agent/v2/construct-query" "agent/v2/query"]]
+      (testing endpoint
+        (testing "an unknown table names the query's database"
+          (check-error endpoint (unknown-table-query) "unknown-table" tables-uri)
+          (check-read-resource :crowberto tables-uri))
+        (testing "an ambiguous table names the query's database"
+          ;; The app DB's unique keys forbid a duplicate table, so both tables exist only in the metadata provider.
+          (let [mp (lib.tu/mock-metadata-provider
+                    (mt/metadata-provider)
+                    {:tables [{:id 99999901 :db-id (mt/id) :schema "PUBLIC" :name "SHIPMENTS"}
+                              {:id 99999902 :db-id (mt/id) :schema "PUBLIC" :name "SHIPMENTS"}]})]
+            (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (constantly mp)]
+              (check-error endpoint (unknown-table-query (db-name) "SHIPMENTS") "ambiguous-table" tables-uri))))
+        (testing "an unknown column names its table"
+          (check-error endpoint
+                       (orders-query :aggregation [["count" {}]]
+                                     :breakout    [["field" {} [(db-name) "PUBLIC" "ORDERS" "CREATD_AT"]]])
+                       "unknown-field"
+                       orders-uri)
+          (check-read-resource :crowberto orders-uri))
+        (testing "an unknown column on another table names that table"
+          (let [products-uri (str "metabase://table/" (mt/id :products) "/fields")]
+            (check-error endpoint
+                         (orders-query :aggregation [["count" {}]]
+                                       :breakout    [["field" {} [(db-name) "PUBLIC" "PRODUCTS" "CATEGRY"]]])
+                         "unknown-field"
+                         products-uri)
+            (check-read-resource :crowberto products-uri)))
+        (testing "an ambiguous foreign key names the source table"
+          (mt/with-temp-vals-in-db :model/Field (mt/id :orders :user_id) {:fk_target_field_id (mt/id :products :id)}
+            (check-error endpoint
+                         (orders-query :aggregation [["count" {}]]
+                                       :breakout    [["field" {} [(db-name) "PUBLIC" "PRODUCTS" "CATEGORY"]]])
+                         "ambiguous-fk"
+                         orders-uri)))))))
+
+(deftest construct-query-recovery-hint-names-the-database-only-when-readable-test
+  (testing "the pipeline finds the database by name before any permission check, so a user who cannot read it
+           gets the placeholder instead of its id"
+    (mt/with-no-data-perms-for-all-users!
+      (let [response (mt/user-http-request :rasta :post 400 "agent/v2/construct-query" {:query (unknown-table-query)})]
+        (is (= "unknown-table" (:error response)))
+        (is (= "metabase://database/<numeric id>/tables" (recovery-uri (:message response)))))))
+  (testing "a user who can read the database gets its id, and can read the URI"
+    (mt/with-full-data-perms-for-all-users!
+      (let [response (mt/user-http-request :rasta :post 400 "agent/v2/construct-query" {:query (unknown-table-query)})
+            uri      (recovery-uri (:message response))]
+        (is (= (str "metabase://database/" (mt/id) "/tables") uri))
+        (check-read-resource :rasta uri)))))
+
+(deftest construct-query-recovery-hint-skips-a-routing-destination-test
+  (testing "`read_resource` never opens a routing destination, so even an admin gets the placeholder"
+    (mt/with-temp [:model/Database {router-id :id}     {}
+                   :model/Database {destination :name} {:router_database_id router-id}]
+      (let [response (mt/user-http-request :crowberto :post 400 "agent/v2/construct-query"
+                                           {:query (unknown-table-query destination "ORDERS")})]
+        (is (= "unknown-table" (:error response)))
+        (is (= "metabase://database/<numeric id>/tables" (recovery-uri (:message response))))))))
+
+(deftest construct-query-unknown-field-on-an-unqueryable-table-test
+  (testing "a misspelled column on a table the user cannot query gets a 403 that does not name the table"
+    (mt/with-no-data-perms-for-all-users!
+      (perms/set-table-permission! (perms/all-users-group) (mt/id :orders) :perms/view-data :unrestricted)
+      (perms/set-table-permission! (perms/all-users-group) (mt/id :orders) :perms/create-queries :query-builder)
+      (testing "the user can query ORDERS, so a 403 below comes from PRODUCTS"
+        (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
+                              {:query (orders-query :aggregation [["count" {}]])}))
+      (let [query    (orders-query
+                      :aggregation [["count" {}]]
+                      :breakout    [["field" {} [(db-name) "PUBLIC" "PRODUCTS" "CATEGRY"]]])
+            response (mt/user-http-request :rasta :post 403 "agent/v2/construct-query" {:query query})]
+        (is (not (str/includes? (pr-str response) (str "metabase://table/" (mt/id :products)))))))))
+
 (deftest construct-query-permission-checks-test
   (testing "Rejects a first-stage source-table the current user cannot query"
     (mt/with-no-data-perms-for-all-users!

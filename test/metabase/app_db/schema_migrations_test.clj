@@ -27,6 +27,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.app-db.custom-migrations-test :as custom-migrations-test]
    [metabase.app-db.liquibase :as liquibase]
+   [metabase.app-db.liquibase.rollback :as rollback]
    [metabase.app-db.liquibase.versions :as versions]
    [metabase.app-db.query :as mdb.query]
    [metabase.app-db.schema-migrations-test.impl :as impl]
@@ -45,7 +46,10 @@
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (liquibase Scope)
+   (liquibase.changelog ChangeLogHistoryServiceFactory)))
 
 (set! *warn-on-reflection* true)
 
@@ -3352,7 +3356,7 @@
                                          :orderexecuted (+ last-order i 1)
                                          :exectype      "EXECUTED"})
                                       v59-ids))
-        (.resetAll (liquibase.changelog.ChangeLogHistoryServiceFactory/getInstance))
+        (.resetAll ^ChangeLogHistoryServiceFactory (.getSingleton (Scope/getCurrentScope) ChangeLogHistoryServiceFactory))
         (migrate!)
         (testing "the stale v59 rows are gone and the existing column is adopted"
           (is (empty? (t2/select clog :id [:in v59-ids])))
@@ -3593,7 +3597,7 @@
                                          :exectype      "EXECUTED"})
                                       suffixes))
         ;; Liquibase caches the ran-changeset list per connection; drop it so the precondition sees the rows above.
-        (.resetAll (liquibase.changelog.ChangeLogHistoryServiceFactory/getInstance))
+        (.resetAll ^ChangeLogHistoryServiceFactory (.getSingleton (Scope/getCurrentScope) ChangeLogHistoryServiceFactory))
         (migrate!)
         (is (= (repeat 4 "MARK_RAN")
                (map #(t2/select-one-fn :exectype clog :id (str "v64.2026-09-11" %)) suffixes)))
@@ -4207,3 +4211,74 @@
       (is (= [] (t2/select :data_app_group_assignment)))
       (migrate!)
       (is (thrown? Exception (t2/select :data_app_group_assignment))))))
+
+(deftest deactivate-unused-builtin-transform-jobs-test
+  (testing "pyz33j deactivates the built-in jobs that no transform uses"
+    (impl/test-migrations ["pyz33j"] [migrate!]
+      (let [job-active (fn [] (t2/select-fn->fn :built_in_type :active :transform_job
+                                                {:where [:not= :built_in_type nil]}))
+            ;; Get the boundary before pyz33j runs. On MySQL, the version-tracking marker row that the run writes can
+            ;; have the same position as pyz33j, so previous-deployment-id after the run can be pyz33j's deployment.
+            boundary   (with-open [conn (.getConnection (mdb/data-source))]
+                         (liquibase/with-liquibase [liquibase conn]
+                           (:deployment-id (first (versions/recorded-deployments conn (.getDatabase liquibase))))))]
+        (testing "with no transforms, all four built-in jobs become inactive"
+          (is (= {"hourly" true "daily" true "weekly" true "monthly" true} (job-active)))
+          (migrate!)
+          (is (= {"hourly" false "daily" false "weekly" false "monthly" false} (job-active))))
+        (testing "rollback activates the built-in jobs again"
+          (with-open [conn (.getConnection (mdb/data-source))]
+            (liquibase/with-liquibase [liquibase conn]
+              (rollback/rollback-to-deployment! conn liquibase boundary)))
+          (is (= {"hourly" true "daily" true "weekly" true "monthly" true} (job-active))))))))
+
+(deftest keep-used-builtin-transform-jobs-active-test
+  (testing "pyz33j keeps active the built-in jobs that a transform uses, and the jobs that are not built in"
+    (impl/test-migrations ["pyz33j"] [migrate!]
+      (let [user-id      (t2/insert-returning-pk! :core_user {:first_name    "Job"
+                                                              :last_name     "Owner"
+                                                              :email         "job-owner@test.com"
+                                                              :entity_id     (u/generate-nano-id)
+                                                              :date_joined   :%now
+                                                              :password      "password"
+                                                              :password_salt "salt"})
+            transform!   (fn [tag-id]
+                           (let [transform-id (t2/insert-returning-pk!
+                                               :transform {:name        (mt/random-name)
+                                                           :source      "{}"
+                                                           :target      "{}"
+                                                           :source_type "native"
+                                                           :creator_id  user-id
+                                                           :entity_id   (u/generate-nano-id)
+                                                           :created_at  :%now
+                                                           :updated_at  :%now})]
+                             (t2/insert! :transform_transform_tag {:transform_id transform-id
+                                                                   :tag_id       tag-id
+                                                                   :entity_id    (u/generate-nano-id)
+                                                                   :position     0})))
+            builtin-tag  (fn [built-in-type]
+                           (t2/select-one-pk :transform_tag :built_in_type built-in-type))
+            builtin-job  (fn [built-in-type]
+                           (t2/select-one-pk :transform_job :built_in_type built-in-type))
+            custom-tag   (t2/insert-returning-pk! :transform_tag {:name       "nightly"
+                                                                  :entity_id  (u/generate-nano-id)
+                                                                  :created_at :%now
+                                                                  :updated_at :%now})
+            job-active   (fn [] (t2/select-fn->fn :name :active :transform_job))]
+        (t2/insert! :transform_job {:name        "Custom job"
+                                    :description "A job without tags"
+                                    :schedule    "0 0 * * * ? *"
+                                    :entity_id   (u/generate-nano-id)})
+        (transform! (builtin-tag "hourly"))
+        (t2/insert! :transform_job_transform_tag {:job_id    (builtin-job "daily")
+                                                  :tag_id    custom-tag
+                                                  :entity_id (u/generate-nano-id)
+                                                  :position  1})
+        (transform! custom-tag)
+        (migrate!)
+        (is (= {"Hourly job"  true
+                "Daily job"   true
+                "Weekly job"  false
+                "Monthly job" false
+                "Custom job"  true}
+               (job-active)))))))

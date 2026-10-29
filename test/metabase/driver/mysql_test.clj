@@ -1464,6 +1464,6 @@
 
 (deftest ^:parallel query-error-evidence-test
   (mt/test-driver :mysql
-    (doseq [[state code expected] [["HY000" 4176 true] ["HY000" 1205 false] [nil 4176 false]]]
+    (doseq [[^String state code expected] [["HY000" 4176 true] ["HY000" 1205 false] [nil 4176 false]]]
       (is (= expected (sql-jdbc.execute/impl-error-in-query?
-                       :mysql (SQLTransientConnectionException. "Row read failed" state code)))))))
+                       :mysql (SQLTransientConnectionException. "Row read failed" state (int code))))))))

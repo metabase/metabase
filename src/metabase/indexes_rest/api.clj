@@ -9,6 +9,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.driver.util :as driver.u]
    [metabase.indexes-rest.db :as indexes-rest.db]
+   [metabase.indexes.db :as indexes.db]
    [metabase.indexes.models.table-index :as table-index]
    [metabase.indexes.reconcile :as reconcile]
    [metabase.indexes.schema :as schema]
@@ -90,7 +91,7 @@
 (api.macros/defendpoint :get "/request/:id" :- RequestIndex
   "Fetch a single index request (e.g. to poll its status)."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
-  (doto (api/check-404 (indexes-rest.db/table-index id))
+  (doto (api/check-404 (indexes.db/table-index id))
     (read-check-owner!)))
 
 (api.macros/defendpoint :post "/request" :- RequestIndex
@@ -138,7 +139,7 @@
     ;; toucan2 has no instance-returning update, so re-select; in a tx so we return exactly what we wrote.
     (t2/with-transaction [_conn]
       (indexes-rest.db/set-table-index-structured! id structured)
-      (indexes-rest.db/table-index id))))
+      (indexes.db/table-index id))))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/request/:id"

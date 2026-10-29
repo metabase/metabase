@@ -6,6 +6,7 @@
    [metabase.models.interface :as mi]
    [metabase.transforms-rest.db :as transforms-rest.db]
    [metabase.transforms.core :as transforms.core]
+   [metabase.transforms.db :as transforms.db]
    [metabase.util.i18n :refer [deferred-tru LocalizedString]]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
@@ -43,18 +44,18 @@
    {:keys [name]} :- [:map {:closed true}
                       [:name ms/NonBlankString]]]
   (log/info "Updating transform tag" tag-id)
-  (api/write-check (transforms-rest.db/tag tag-id))
+  (api/write-check (transforms.db/transform-tag tag-id))
   (api/check-400 (not (transforms.core/tag-name-exists-excluding? name tag-id))
                  (deferred-tru "A tag with the name ''{0}'' already exists." name))
   (transforms-rest.db/update-tag! tag-id name)
-  (transforms-rest.db/tag tag-id))
+  (transforms.db/transform-tag tag-id))
 
 (api.macros/defendpoint :delete "/:tag-id" :- :nil
   "Delete a transform tag. Removes it from all transforms and jobs."
   [{:keys [tag-id]} :- [:map {:closed true}
                         [:tag-id ms/PositiveInt]]]
   (log/info "Deleting transform tag" tag-id)
-  (api/write-check (transforms-rest.db/tag tag-id))
+  (api/write-check (transforms.db/transform-tag tag-id))
   (transforms-rest.db/delete-tag! tag-id)
   nil)
 

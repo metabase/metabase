@@ -129,22 +129,22 @@
     (mt/with-premium-features #{:dependencies}
       (with-card-and-dependent!
         :orders
-        (fn [processed! pending?]
+        (fn [processed! both-pending?]
           (processed!)
           (mt/with-temp [:model/Dimension _ {:field_id                (mt/id :orders :product_id)
                                              :type                    :external
                                              :name                    "Product"
                                              :human_readable_field_id (mt/id :products :title)}]
             (testing "adding the remap"
-              (is (pending?)))
+              (is (both-pending?)))
             (testing "changing its human-readable field"
               (processed!)
               (mt/with-temp-vals-in-db :model/Field (mt/id :products :title) {:display_name "Renamed"}
-                (is (pending?))))
+                (is (both-pending?))))
             (testing "a user setting of its human-readable field"
               (processed!)
               (mt/with-temp [:model/FieldUserSettings _ {:field_id (mt/id :products :title) :display_name "Item"}]
-                (is (pending?))))))))))
+                (is (both-pending?))))))))))
 
 (deftest internal-remap-values-mark-transitive-dependents-test
   (testing "the FieldValues of an internally remapped field mark every card carrying the remapped column when they gain
@@ -152,15 +152,15 @@
     (mt/with-premium-features #{:dependencies}
       (with-card-and-dependent!
         :venues
-        (fn [processed! pending?]
+        (fn [processed! both-pending?]
           (mt/with-temp [:model/Dimension   _ {:field_id (mt/id :venues :price) :type :internal :name "Price"}
                          :model/FieldValues fv {:field_id (mt/id :venues :price) :type :full
                                                 :values [1 2 3 4] :human_readable_values []}]
             (processed!)
             (t2/update! :model/FieldValues (:id fv) {:values [1 2 3 4 5]})
-            (is (not (pending?)))
+            (is (not (both-pending?)))
             (t2/update! :model/FieldValues (:id fv) {:human_readable_values ["$" "$$" "$$$" "$$$$" "$$$$$"]})
-            (is (pending?))))))))
+            (is (both-pending?))))))))
 
 (deftest batched-marks-test
   (testing "a batch of field writes marks the cards reading their table once per status, and triggers the jobs once"

@@ -28,7 +28,6 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
@@ -43,6 +42,7 @@
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.util :as u]
    [metabase.util.malli.registry :as mr]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -87,7 +87,7 @@
    which `lib-be/instance->metadata` carries over from the Field's `effective_type` (`base_type` when
    unset)."
   [field-id]
-  (let [{:keys [base_type effective_type]} (mcp.db/field-types field-id)]
+  (let [{:keys [base_type effective_type]} (warehouse-schema.db/field field-id)]
     (isa? (or effective_type base_type) :type/Temporal)))
 
 (defn- parses-as-date?

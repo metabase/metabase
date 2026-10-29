@@ -110,21 +110,21 @@
 
 (deftest bundle-b64-round-trip-test
   (testing "bundle bytes base64-encode on export and decode back to bytes on import"
-    (let [spec   (serdes/make-spec "CustomVizPlugin" {})
-          export (get-in spec [:transform :bundle :export])
-          import (get-in spec [:transform :bundle :import])
-          bytes  (.getBytes "pretend tgz bytes" "UTF-8")
-          out    (export bytes)]
+    (let [spec      (serdes/make-spec "CustomVizPlugin" {})
+          export-fn (get-in spec [:transform :bundle :export])
+          import-fn (get-in spec [:transform :bundle :import])
+          bytes     (.getBytes "pretend tgz bytes" "UTF-8")
+          out       (export-fn bytes)]
       (is (string? out))
       (is (not= (String. bytes "UTF-8") out)
           "exported value should be b64-encoded, not the raw string")
-      (is (= (seq bytes) (seq (import out))))))
+      (is (= (seq bytes) (seq (import-fn out))))))
   (testing "nil bundle round-trips as nil"
-    (let [spec   (serdes/make-spec "CustomVizPlugin" {})
-          export (get-in spec [:transform :bundle :export])
-          import (get-in spec [:transform :bundle :import])]
-      (is (nil? (export nil)))
-      (is (nil? (import nil))))))
+    (let [spec      (serdes/make-spec "CustomVizPlugin" {})
+          export-fn (get-in spec [:transform :bundle :export])
+          import-fn (get-in spec [:transform :bundle :import])]
+      (is (nil? (export-fn nil)))
+      (is (nil? (import-fn nil))))))
 
 (defn- ingested-plugin
   "What serdes ingests for an export of plugin `identifier` whose bundle bytes are `bundle`."

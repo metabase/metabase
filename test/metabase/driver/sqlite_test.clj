@@ -782,4 +782,4 @@
 (deftest ^:parallel query-error-evidence-test
   (mt/test-driver :sqlite
     (doseq [code [1 19 20]]
-      (is (true? (sql-jdbc.execute/impl-error-in-query? :sqlite (SQLException. "Query error" nil code)))))))
+      (is (true? (sql-jdbc.execute/impl-error-in-query? :sqlite (SQLException. "Query error" nil (int code))))))))

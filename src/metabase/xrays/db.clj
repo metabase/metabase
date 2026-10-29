@@ -6,20 +6,8 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
-
-(mu/defn database
-  "The Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database :id database-id))
-
-(mu/defn table
-  "The Table with `table-id`, or nil. `table-id` may be nil (some callers pass a Card's or Metric's possibly-absent
-  table id), in which case this returns nil."
-  [table-id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn tables
   "The Tables with `table-ids`."
@@ -77,16 +65,6 @@
                               [:= :visibility_type nil]
                               [:= :active true]]
                        schema (conj [:= :schema schema]))}))
-
-(mu/defn field
-  "The Field with `field-id`, or nil."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
-
-(mu/defn field-name
-  "The name of the Field with `field-id`, or nil."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :name :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn metadata-column
   "The `:metadata/column` with `field-id`, or nil."
@@ -148,16 +126,6 @@
              :active          true
              {:from [(warehouse-schema-overlay/field-query)]}))
 
-(mu/defn card
-  "The Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))
-
-(mu/defn model-card
-  "The model Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id :type :model))
-
 (mu/defn cards-in-collection
   "The Cards in the Collection with `collection-id`."
   [collection-id :- ::lib.schema.id/collection]
@@ -186,26 +154,11 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/delete! :model/Card :collection_id collection-id))
 
-(mu/defn segment
-  "The Segment with `segment-id`, or nil."
-  [segment-id :- ::lib.schema.id/segment]
-  (t2/select-one :model/Segment :id segment-id))
-
 (mu/defn unarchived-segments-for-table
   "The unarchived Segments of the Table with `table-id`. `table-id` may be nil (the caller's Table is
   itself sometimes absent)."
   [table-id :- [:maybe ::lib.schema.id/table]]
   (t2/select :model/Segment :table_id table-id :archived false))
-
-(mu/defn collection
-  "The Collection with `collection-id`, or nil."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one :model/Collection :id collection-id))
-
-(mu/defn collection-location-columns
-  "The location and id of the Collection with `collection-id`, or nil."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one [:model/Collection :location :id] :id collection-id))
 
 (mu/defn collection-id-by-name-and-location
   "The id of the Collection named `collection-name` at `location`, or nil."
@@ -269,8 +222,3 @@
   (apply t2/select [:model/DashboardCard :card_id :dashboard_id]
          (concat (when (seq card-ids) [:card_id [:in card-ids]])
                  (when (seq excluded-dashboard-ids) [:dashboard_id [:not-in excluded-dashboard-ids]]))))
-
-(mu/defn model-index
-  "The ModelIndex with `model-index-id`, or nil."
-  [model-index-id :- ms/PositiveInt]
-  (t2/select-one :model/ModelIndex model-index-id))

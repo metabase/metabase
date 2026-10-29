@@ -4,6 +4,7 @@
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.events.core :as events]
@@ -78,7 +79,7 @@
                                             [:id ms/PositiveInt]]
    {:keys [include archived start end]} :- [:map {:closed true}
                                             [:include  {:optional true}  ::include]
-                                            [:archived {:default :false} ms/BooleanValue]
+                                            [:archived {:default false}  ms/BooleanValue]
                                             [:start    {:optional true}  ms/TemporalString]
                                             [:end      {:optional true}  ms/TemporalString]]]
   (let [archived? archived
@@ -161,6 +162,6 @@
    {:keys [include archived]} :- [:map {:closed true}
                                   [:include  {:optional true} [:maybe [:= "events"]]]
                                   [:archived {:default false} [:maybe :boolean]]]]
-  (api/read-check (timeline.db/collection id))
+  (api/read-check (collections.db/collection id))
   (timeline/timelines-for-collection id {:timeline/events?   (= include "events")
                                          :timeline/archived? archived}))
