@@ -38,7 +38,8 @@
    Values from an op have the types [[dashboard-op-schema/op-schema]] gives them, or `:any` where it leaves them open.
    Values read from the dashboard have their types.
    Errors thrown while checking or applying an op also carry `:op-index` (0-based) and `:op-name` (as sent, or nil).
-   The `:cards-without-tab` and `:invalid-payload` checks run after the last op, so those errors carry neither."
+   The `:cards-without-tab` check runs after the last op, and `:invalid-payload` checks the whole save, sent ops or not.
+   So those two errors carry neither."
   {:invalid-op                         [:map {:closed true} [:explanation :any]]
    :invalid-payload                    [:map {:closed true} [:explanation :any]]
    :duplicate-new-id                   [:map {:closed true} [:id :int]]

@@ -6,7 +6,6 @@
    [clojure.test :refer :all]
    [metabase.metabot.toolkit.dashboard-ops :as dashboard-ops]
    [metabase.metabot.toolkit.dashboard-write :as dashboard-write]
-   [metabase.metabot.toolkit.db :as toolkit.db]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -70,7 +69,8 @@
     (mt/with-current-user (mt/user->id :crowberto)
       (mt/with-temp [:model/Card card {}]
         (let [dash-name "Created then read back by the toolkit"]
-          (mt/with-dynamic-fn-redefs [toolkit.db/dashboard (fn [_] (throw (ex-info "read back failed" {})))]
+          (mt/with-dynamic-fn-redefs [metabase.metabot.toolkit.dashboard-write/hydrated
+                                      (fn [_] (throw (ex-info "read back failed" {})))]
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"read back failed"
                                   (dashboard-write/write! {:attrs {:name dash-name}
                                                            :ops   [{:op "add_card" :id -1 :card_id (:id card)}]}))))

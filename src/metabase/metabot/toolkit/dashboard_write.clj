@@ -79,41 +79,34 @@
   (-> (merge dash attrs payload)
       (update :dashcards (partial mapv (partial attach-card-metadata cards)))))
 
+(defn- hydrated
+  "`dash`, a saved row, hydrated with `[:dashcards :series :card] :tabs`."
+  [dash]
+  (t2/hydrate dash [:dashcards :series :card] :tabs))
+
 (defn- update-dashboard!
-  "Saves `attrs` and `ops` to `dash` as one update, and returns the saved row."
+  "Saves `attrs` and `ops`, prepared, to `dash` as one update, and returns the saved row."
   [dash attrs ops]
   (if (seq ops)
     (let [{:keys [payload]} (compile-write dash attrs ops)]
       (dashboards.write/update-dashboard! (u/the-id dash) (merge attrs payload)))
     (dashboards.write/update-dashboard! (u/the-id dash) attrs)))
 
-(defn- saved-dashboard
-  "The saved dashboard `id`, read back and hydrated with `[:dashcards :series :card] :tabs`."
-  [id]
-  (t2/hydrate (toolkit.db/dashboard id) [:dashcards :series :card] :tabs))
-
 (defn- create-dashboard!
-  "Creates a dashboard from `attrs` with `ops` applied, and returns it read back and hydrated.
-   Nothing is written if an op is invalid, or if the save or the read back fails."
+  "Creates a dashboard from `attrs` with `ops`, prepared, applied, and returns it hydrated.
+   With ops, nothing is written if the ops are invalid, or if the save or the read back fails."
   [attrs ops]
   (if (seq ops)
-    (do
-      ;; Compile before creating anything, so a bad op can't leave an orphaned empty dashboard behind for a retry to
-      ;; duplicate. A new dashboard is empty by definition, so compiling against a blank checks everything the
-      ;; post-create compile would.
-      (compile-write (blank-dashboard attrs) attrs ops)
+    ;; Compile before creating anything, so a bad op can't leave an orphaned empty dashboard behind for a retry to
+    ;; duplicate. A new dashboard is empty by definition, so the payload compiled against a blank is the one to save.
+    (let [{:keys [payload]} (compile-write (blank-dashboard attrs) attrs ops)]
       ;; ...and the two writes share a transaction, because the compile above only proves the ops are good. Anything
       ;; else that throws after the row exists (a schema check, a permission check, a failing save) would otherwise
-      ;; strand an empty dashboard, and every retry would add another (GHY-4501).
-      ;; The read back runs inside the transaction too, so a failure there doesn't report an error for a dashboard
-      ;; that was in fact created.
+      ;; strand an empty dashboard, and every retry would add another (GHY-4501). The read back runs inside it too,
+      ;; so a failure there doesn't report an error for a dashboard that was in fact created.
       (t2/with-transaction [_conn]
-        (-> (dashboards.write/create-dashboard! attrs)
-            (t2/hydrate [:dashcards :series :card] :tabs)
-            (update-dashboard! {} ops)
-            :id
-            saved-dashboard)))
-    (saved-dashboard (:id (dashboards.write/create-dashboard! attrs)))))
+        (hydrated (dashboards.write/update-dashboard! (:id (dashboards.write/create-dashboard! attrs)) payload))))
+    (hydrated (dashboards.write/create-dashboard! attrs))))
 
 (defn write!
   "Creates or updates a dashboard with the attributes `attrs` and the ops `ops`, and returns it.
@@ -121,28 +114,24 @@
    With a `dashboard`, hydrated the same way and already read-checked by the caller, it updates that one.
    Without one it creates a dashboard.
    With `validate-only?` it writes nothing, and returns the dashboard the save would produce.
+   A dry run does not check write permission on the dashboard, so the save can still be refused on that.
    A nil `ops` means none were sent; anything else must be a list of ops.
    Throws an error from [[dashboard-ops/errors]] when an op is invalid or the save would be rejected."
   [{:keys [dashboard attrs validate-only?] :as opts}]
   ;; Prepared before any branch reads them, so a malformed `ops` fails as :invalid-op rather than crashing a `seq`
   ;; or passing as no ops.
-  (let [ops (some-> (:ops opts) dashboard-ops/prepare-ops)]
+  (let [ops (dashboard-ops/prepare-ops (:ops opts))]
     (cond
-      (and validate-only? (nil? dashboard))
-      (let [blank                   (blank-dashboard attrs)
-            {:keys [payload cards]} (compile-write blank attrs (or ops []))]
-        (dry-run-dashboard blank attrs payload cards))
-
-      (and validate-only? (seq ops))
-      (let [{:keys [payload cards]} (compile-write dashboard attrs ops)]
-        (dry-run-dashboard dashboard attrs payload cards))
-
       validate-only?
-      (do (validate-payload! attrs)
-          (dry-run-dashboard dashboard attrs nil nil))
+      (let [dash (or dashboard (blank-dashboard attrs))]
+        (if (or (nil? dashboard) (seq ops))
+          (let [{:keys [payload cards]} (compile-write dash attrs ops)]
+            (dry-run-dashboard dash attrs payload cards))
+          (do (validate-payload! attrs)
+              (dry-run-dashboard dash attrs nil nil))))
 
       (nil? dashboard)
       (create-dashboard! attrs ops)
 
       :else
-      (saved-dashboard (:id (update-dashboard! dashboard attrs ops))))))
+      (hydrated (update-dashboard! dashboard attrs ops)))))
