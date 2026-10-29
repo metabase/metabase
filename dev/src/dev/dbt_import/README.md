@@ -429,12 +429,16 @@ Regenerate a fixture after changing its project (or the clone, or the extra metr
 (dev.dbt-import.fixture/regenerate! :flexanalytics {:project "/path/to/dbt-business-intelligence"})
 ```
 
-`dev.dbt-import.fixture/regenerate!` copies the project to a scratch directory with a `profiles.yml` of its own, so
+`dev.dbt-import.fixture/regenerate!` checks that the REPL runs at the repo root, copies the project to a scratch
+directory (a git checkout's tracked and untracked files, or a plain directory's) with a `profiles.yml` of its own, so
 that `dbt parse` has the adapter and the warehouse database name it needs (it never connects, and the project itself
-is never modified), splices the extra metrics in for flexanalytics, runs `dbt parse` (through `uvx` unless `dbt` is on
-`PATH`) and writes the trimmed result the way Python's `json.dumps(indent=1)` would, with keys in dbt's order, so a
-regeneration's diff is only what changed, plus dbt's `created_at` and `generated_at` timestamps.
-`dev.dbt-import.marts/regenerate!`, below, reuses the same scratch copy to build the project.
+is never modified), splices the extra metrics in for flexanalytics, and runs `dbt parse` through `uvx` with `dbt-core`
+pinned to the release `dev.dbt-import.fixture/dbt-version` names (1.12.6), or as whatever `dbt` is on `PATH` when
+there is no `uvx`; a manifest another release wrote is refused, since the fixtures and the tests that pin what is in
+them would drift with it. Your own `DBT_*` environment variables stay out of the run. It writes the trimmed result the
+way Python's `json.dumps(indent=1)` would, with keys in dbt's order, so a regeneration's diff is only what changed,
+plus dbt's `created_at` and `generated_at` timestamps. `dev.dbt-import.marts/regenerate!`, below, reuses the same
+scratch copy to build the project.
 
 ### The dbt 1.12 inline spec
 
@@ -498,11 +502,12 @@ on (`fact_sales`, `dim_customer`, `dim_product`, `dim_order`; `dim_date` has no 
 `test/metabase/test/data/dataset_definitions/*.edn`, with dbt's surrogate keys as primary and foreign keys so a sync
 knows the joins. Regenerate it after the checkout changes, from a REPL at the repo root with a Postgres to build the
 project in (the connection defaults to the test suite's `MB_POSTGRESQL_TEST_*` settings; the database `dbt_bi` has
-to exist):
+to exist). The password is a separate argument, not a key of `:connection`, so that a typo in the options cannot put
+it on the screen (a failed schema check reports the value it was given):
 
 ```clojure
 (dev.dbt-import.marts/regenerate!)
-(dev.dbt-import.marts/regenerate! {:connection {:port 15432, :user "postgres", :password "password"}})
+(dev.dbt-import.marts/regenerate! {:connection {:port 15432, :user "postgres"}} "password")
 ```
 
 It builds the project in the same kind of scratch copy `dev.dbt-import.fixture/regenerate!` uses, with `dbt seed` and

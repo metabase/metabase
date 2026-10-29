@@ -1,6 +1,7 @@
 (ns dev.dbt-import.parse-test
   (:require
    [clojure.test :refer [are deftest is testing]]
+   [dev.dbt-import.fixture :as fixture]
    [dev.dbt-import.parse :as parse]
    [dev.dbt-import.schemas.ir :as ir]
    [dev.dbt-import.test-util :as tu :refer [fld]]
@@ -43,8 +44,8 @@
 (deftest ^:parallel parse-manifest-test
   (let [parsed (tu/flexanalytics-ir)]
     (is (mr/validate ::ir/manifest parsed))
-    ;; the fixture is regenerated with whatever dbt 1.x is current, so the patch version is not pinned
-    (is (=? {:tool "dbt", :version #"^1\.\d+\.\d+", :project "dbt_business_intelligence"}
+    ;; the fixtures are generated with the one dbt release [[fixture/dbt-version]] pins
+    (is (= {:tool "dbt", :version fixture/dbt-version, :project "dbt_business_intelligence"}
             (:source parsed)))
     (is (= #{"fact_sales" "dim_customer" "dim_product" "dim_order"}
            (set (keys (:semantic-models parsed)))))
