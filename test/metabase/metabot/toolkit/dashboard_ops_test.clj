@@ -18,6 +18,16 @@
   [dashcards]
   (assoc empty-dash :dashcards dashcards))
 
+(defn- resolved-cards
+  "A bare card row for each card `ops` name, as a caller that can read them all resolves them."
+  [ops]
+  (into {} (map (fn [id] [id {:id id}])) (mapcat dashboard-ops/card-refs ops)))
+
+(defn- compile-ops
+  "[[dashboard-ops/compile-ops]], with every card `ops` name resolved. `cards` adds or replaces card rows."
+  ([current ops] (compile-ops current ops {}))
+  ([current ops cards] (dashboard-ops/compile-ops current ops (merge (resolved-cards ops) cards))))
+
 (defn- inline-parameter-owners
   "`{parameter-id [dashcard-id ...]}` for every inline placement in a compiled payload. A parameter
    with more than one owner is the corruption GHY-4326 is about."
@@ -32,7 +42,7 @@
 
 (deftest add-card-autoplaces-test
   (testing "GHY-4147: add_card with no position lands at the top-left of an empty dashboard"
-    (let [{:keys [dashcards]} (dashboard-ops/compile-ops
+    (let [{:keys [dashcards]} (compile-ops
                                empty-dash
                                [{:op "add_card" :id -1 :card_id 42}])]
       (is (= 1 (count dashcards)))
@@ -43,7 +53,7 @@
 
 (deftest add-card-respects-explicit-position-and-size-test
   (testing "GHY-4147: explicit position and size are passed through untouched"
-    (let [{:keys [dashcards]} (dashboard-ops/compile-ops
+    (let [{:keys [dashcards]} (compile-ops
                                empty-dash
                                [{:op "add_card" :id -1 :card_id 42
                                  :position {:row 3 :col 4}
@@ -54,7 +64,7 @@
 (deftest existing-dashcards-are-preserved-test
   (testing "GHY-4147: the payload is a full replacement, so untouched dashcards survive verbatim"
     (let [existing {:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4 :dashboard_tab_id nil}
-          {:keys [dashcards]} (dashboard-ops/compile-ops
+          {:keys [dashcards]} (compile-ops
                                (dash-with [existing])
                                [{:op "add_card" :id -1 :card_id 42}])]
       (is (= #{7 -1} (set (map :id dashcards))))
@@ -63,17 +73,18 @@
 (deftest autoplace-avoids-existing-cards-test
   (testing "GHY-4147: autoplace does not overlap an occupied slot"
     (let [existing {:id 7 :card_id 9 :row 0 :col 0 :size_x 24 :size_y 4 :dashboard_tab_id nil}
-          {:keys [dashcards]} (dashboard-ops/compile-ops
+          {:keys [dashcards]} (compile-ops
                                (dash-with [existing])
                                [{:op "add_card" :id -1 :card_id 42}])
           added (first (filter #(= -1 (:id %)) dashcards))]
       (is (<= 4 (:row added))))))
 
 (defn- op-error
-  "The error data `compile-ops` throws for `ops` against `current`, or nil when it compiles.
+  "The error data [[dashboard-ops/compile-ops]] throws for `ops` against `current` and `cards`, or nil when it compiles.
+   It defaults `cards` to a stub row for every card `ops` name.
    It also checks the data against the schema [[dashboard-ops/errors]] declares for its code.
    It rethrows an exception that is not a compiler error, so the test reports it as it is."
-  ([current ops] (op-error current ops {}))
+  ([current ops] (op-error current ops (resolved-cards ops)))
   ([current ops cards]
    (try
      (dashboard-ops/compile-ops current ops cards)
@@ -149,7 +160,7 @@
 
 (deftest add-text-test
   (testing "GHY-4147: add_text produces a virtual text dashcard with no card_id"
-    (let [{:keys [dashcards]} (dashboard-ops/compile-ops
+    (let [{:keys [dashcards]} (compile-ops
                                empty-dash
                                [{:op "add_text" :id -1 :markdown "## Hello"}])
           dc (first dashcards)]
@@ -159,7 +170,7 @@
 
 (deftest add-heading-test
   (testing "GHY-4147: add_heading matches the editor, including the transparent background"
-    (let [{:keys [dashcards]} (dashboard-ops/compile-ops
+    (let [{:keys [dashcards]} (compile-ops
                                empty-dash
                                [{:op "add_heading" :id -1 :text "Revenue"}])
           vs (:visualization_settings (first dashcards))]
@@ -169,7 +180,7 @@
 
 (deftest add-link-url-test
   (testing "GHY-4147: add_link with an external url"
-    (let [{:keys [dashcards]} (dashboard-ops/compile-ops
+    (let [{:keys [dashcards]} (compile-ops
                                empty-dash
                                [{:op "add_link" :id -1 :url "https://example.com"}])
           vs (:visualization_settings (first dashcards))]
@@ -178,7 +189,7 @@
 
 (deftest add-link-entity-test
   (testing "GHY-4147: add_link with an entity reference stores the entity, not a url"
-    (let [{:keys [dashcards]} (dashboard-ops/compile-ops
+    (let [{:keys [dashcards]} (compile-ops
                                empty-dash
                                [{:op "add_link" :id -1 :entity {:type "dashboard" :id 12}}])
           vs (:visualization_settings (first dashcards))]
@@ -195,7 +206,7 @@
 
 (deftest add-iframe-test
   (testing "GHY-4147: add_iframe stores the src in visualization settings"
-    (let [{:keys [dashcards]} (dashboard-ops/compile-ops
+    (let [{:keys [dashcards]} (compile-ops
                                empty-dash
                                [{:op "add_iframe" :id -1 :src "https://example.com/embed"}])
           vs (:visualization_settings (first dashcards))]
@@ -204,7 +215,7 @@
 
 (deftest add-action-test
   (testing "GHY-4147: add_action produces an action dashcard with action_id and no card_id"
-    (let [{:keys [dashcards]} (dashboard-ops/compile-ops
+    (let [{:keys [dashcards]} (compile-ops
                                empty-dash
                                [{:op "add_action" :id -1 :action_id 3 :label "Run" :display "button"}])
           dc (first dashcards)]
@@ -217,7 +228,7 @@
   (testing "GHY-4147: add_action writes a :virtual_card so the dashcard reads as an action"
     ;; `isActionDashCard` (frontend/src/metabase/actions/utils.ts) keys off
     ;; visualization_settings.virtual_card.display; without it the dashcard renders empty, not as a button.
-    (let [{:keys [dashcards]} (dashboard-ops/compile-ops
+    (let [{:keys [dashcards]} (compile-ops
                                empty-dash
                                [{:op "add_action" :id -1 :action_id 3 :label "Run"}])
           vs (:visualization_settings (first dashcards))]
@@ -231,7 +242,7 @@
     (let [existing {:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4 :dashboard_tab_id nil
                     :visualization_settings {:card.title "Original"}
                     :parameter_mappings [{:parameter_id "p1" :card_id 9 :target ["dimension" ["field" 1 nil]]}]}
-          {:keys [dashcards]} (dashboard-ops/compile-ops
+          {:keys [dashcards]} (compile-ops
                                (dash-with [existing])
                                [{:op "duplicate_card" :id -1 :dashcard_id 7}])
           clone (first (filter #(= -1 (:id %)) dashcards))]
@@ -255,7 +266,7 @@
                     :visualization_settings
                     {:visualization "table"
                      :columnValuesMapping {:COLUMN_1 [{:sourceId "card:7" :originalName "NAME" :name "COLUMN_1"}]}}}
-          {:keys [dashcards]} (dashboard-ops/compile-ops
+          {:keys [dashcards]} (compile-ops
                                (dash-with [existing])
                                [{:op "duplicate_card" :id -1 :dashcard_id 7}])
           clone (first (filter #(= -1 (:id %)) dashcards))]
@@ -272,7 +283,7 @@
                     :visualization_settings {}
                     :inline_parameters ["p1"]
                     :parameter_mappings [mapping]}
-          {:keys [dashcards]} (dashboard-ops/compile-ops
+          {:keys [dashcards]} (compile-ops
                                (assoc empty-dash
                                       :dashcards [existing]
                                       :parameters [{:id "p1" :name "Cat" :slug "cat" :type "string/="}])
@@ -300,7 +311,7 @@
                                {:id 8 :card_id 9 :row 4 :col 0 :size_x 4 :size_y 4
                                 :dashboard_tab_id 5 :visualization_settings {}
                                 :inline_parameters ["p2"]}]}
-          {:keys [dashcards]} (dashboard-ops/compile-ops
+          {:keys [dashcards]} (compile-ops
                                current
                                [{:op "duplicate_tab" :id -1 :tab_id 5}])
           clones (filterv #(= -1 (:dashboard_tab_id %)) dashcards)]
@@ -318,7 +329,7 @@
 
 (deftest replace-card-resets-content-test
   (testing "GHY-4147: replace_card keeps the dashcard id and resets series, mappings, and viz settings"
-    (let [{:keys [dashcards]} (dashboard-ops/compile-ops
+    (let [{:keys [dashcards]} (compile-ops
                                (dash-with [a-dashcard])
                                [{:op "replace_card" :dashcard_id 7 :card_id 99}])
           dc (first dashcards)]
@@ -332,7 +343,7 @@
 
 (deftest move-and-resize-test
   (testing "GHY-4147: move relocates, resize resizes, neither disturbs the other"
-    (let [{:keys [dashcards]} (dashboard-ops/compile-ops
+    (let [{:keys [dashcards]} (compile-ops
                                (dash-with [a-dashcard])
                                [{:op "move" :dashcard_id 7 :position {:row 0 :col 0}}
                                 {:op "resize" :dashcard_id 7 :size {:size_x 8 :size_y 2}}])
@@ -344,7 +355,7 @@
             moved card is not its own sibling — counting it means the search can never return the
             slot it already occupies, so a card alone on a tab is displaced by its own footprint"
     (let [wide {:id 7 :card_id 9 :row 0 :col 0 :size_x 24 :size_y 4 :dashboard_tab_id nil}
-          {:keys [dashcards]} (dashboard-ops/compile-ops
+          {:keys [dashcards]} (compile-ops
                                (dash-with [wide])
                                [{:op "move" :dashcard_id 7}])
           dc (first dashcards)]
@@ -352,21 +363,21 @@
 
 (deftest remove-test
   (testing "GHY-4147: remove drops the dashcard from the payload, which deletes it on save"
-    (let [{:keys [dashcards]} (dashboard-ops/compile-ops
+    (let [{:keys [dashcards]} (compile-ops
                                (dash-with [a-dashcard])
                                [{:op "remove" :dashcard_id 7}])]
       (is (= [] dashcards)))))
 
 (deftest set-series-test
   (testing "GHY-4147: set_series is an ordered full replace"
-    (let [{:keys [dashcards]} (dashboard-ops/compile-ops
+    (let [{:keys [dashcards]} (compile-ops
                                (dash-with [a-dashcard])
                                [{:op "set_series" :dashcard_id 7 :card_ids [21 20]}])]
       (is (= [{:id 21} {:id 20}] (:series (first dashcards)))))))
 
 (deftest patch-dashcard-merges-content-test
   (testing "GHY-4147: patch_dashcard merges into visualization_settings rather than replacing them"
-    (let [{:keys [dashcards]} (dashboard-ops/compile-ops
+    (let [{:keys [dashcards]} (compile-ops
                                (dash-with [a-dashcard])
                                [{:op "patch_dashcard" :dashcard_id 7
                                  :patch {:visualization_settings {:card.description "New"}}}])
@@ -395,7 +406,7 @@
 
 (deftest ops-apply-in-order-test
   (testing "GHY-4147: a later op sees the effect of an earlier one — add then move the same new card"
-    (let [{:keys [dashcards]} (dashboard-ops/compile-ops
+    (let [{:keys [dashcards]} (compile-ops
                                empty-dash
                                [{:op "add_card" :id -1 :card_id 42}
                                 {:op "move" :dashcard_id -1 :position {:row 9 :col 1}}])]
@@ -403,7 +414,7 @@
 
 (deftest add-tab-and-place-a-card-in-it-test
   (testing "GHY-4147: a card can reference a tab created earlier in the same batch by its negative id"
-    (let [{:keys [tabs dashcards]} (dashboard-ops/compile-ops
+    (let [{:keys [tabs dashcards]} (compile-ops
                                     empty-dash
                                     [{:op "add_tab" :id -1 :name "Q3"}
                                      {:op "add_card" :id -2 :card_id 42 :tab -1}])]
@@ -412,7 +423,7 @@
 
 (deftest rename-tab-test
   (testing "GHY-4147: rename_tab changes only the name"
-    (let [{:keys [tabs]} (dashboard-ops/compile-ops
+    (let [{:keys [tabs]} (compile-ops
                           (assoc empty-dash :tabs [{:id 5 :name "Old" :position 0}])
                           [{:op "rename_tab" :tab_id 5 :name "New"}])]
       (is (= "New" (:name (first tabs))))
@@ -420,7 +431,7 @@
 
 (deftest move-tab-reorders-test
   (testing "GHY-4147: move_tab reorders the vector; update-dashboard! derives :position from the index"
-    (let [{:keys [tabs]} (dashboard-ops/compile-ops
+    (let [{:keys [tabs]} (compile-ops
                           (assoc empty-dash :tabs [{:id 5 :name "A"} {:id 6 :name "B"} {:id 7 :name "C"}])
                           [{:op "move_tab" :tab_id 7 :index 0}])]
       (is (= [7 5 6] (mapv :id tabs))))))
@@ -432,7 +443,7 @@
                    :parameters []
                    :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4
                                 :dashboard_tab_id 5 :visualization_settings {}}]}
-          {:keys [tabs dashcards]} (dashboard-ops/compile-ops
+          {:keys [tabs dashcards]} (compile-ops
                                     current
                                     [{:op "duplicate_tab" :id -1 :tab_id 5}])]
       (is (= [5 -1] (mapv :id tabs)))
@@ -452,7 +463,7 @@
                                 :dashboard_tab_id 5 :visualization_settings {}}
                                {:id 8 :card_id 9 :row 4 :col 0 :size_x 4 :size_y 4
                                 :dashboard_tab_id 5 :visualization_settings {}}]}
-          {:keys [dashcards]} (dashboard-ops/compile-ops
+          {:keys [dashcards]} (compile-ops
                                current
                                [{:op "duplicate_tab" :id -1 :tab_id 5}
                                 {:op "add_card" :id -10 :card_id 9 :tab -1}]
@@ -468,7 +479,7 @@
                    :parameters []
                    :dashcards [{:id 7 :card_id 9 :dashboard_tab_id 5 :row 0 :col 0 :size_x 4 :size_y 4}
                                {:id 8 :card_id 9 :dashboard_tab_id 6 :row 0 :col 0 :size_x 4 :size_y 4}]}
-          {:keys [tabs dashcards]} (dashboard-ops/compile-ops current [{:op "remove_tab" :tab_id 5}])]
+          {:keys [tabs dashcards]} (compile-ops current [{:op "remove_tab" :tab_id 5}])]
       (is (= [6] (mapv :id tabs)))
       (is (= [8] (mapv :id dashcards))))))
 
@@ -483,7 +494,7 @@
 (deftest single-tab-coverage-is-not-enforced-test
   (testing "GHY-4147: with exactly one tab, a tabless card is allowed — update-dashboard! back-fills
             its dashboard_tab_id itself (api.clj), so the compiler must not reject it early"
-    (is (some? (dashboard-ops/compile-ops
+    (is (some? (compile-ops
                 empty-dash
                 [{:op "add_tab" :id -1 :name "Q3"}
                  {:op "add_card" :id -2 :card_id 42}])))))
@@ -527,7 +538,7 @@
 
 (deftest add-parameter-test
   (testing "GHY-4147: add_parameter appends a parameter carrying the caller's id, REST names intact"
-    (let [{:keys [parameters]} (dashboard-ops/compile-ops
+    (let [{:keys [parameters]} (compile-ops
                                 empty-dash
                                 [{:op "add_parameter" :parameter_id "p_date" :name "Date"
                                   :type "date/all-options" :isMultiSelect false}]
@@ -538,14 +549,14 @@
 (deftest add-parameter-derives-slug-from-name-test
   (testing "GHY-4147: a created parameter gets the URL slug the editor would give it, so it is
             addressable by slug in embedding, public links, and URL param sync"
-    (let [{:keys [parameters]} (dashboard-ops/compile-ops
+    (let [{:keys [parameters]} (compile-ops
                                 empty-dash
                                 [{:op "add_parameter" :parameter_id "p1" :name "Order Total"
                                   :type "number/>="}]
                                 {})]
       (is (= "order_total" (:slug (first parameters)))))
     (testing "a nameless parameter gets no slug rather than a bogus one"
-      (let [{:keys [parameters]} (dashboard-ops/compile-ops
+      (let [{:keys [parameters]} (compile-ops
                                   empty-dash
                                   [{:op "add_parameter" :parameter_id "p1" :type "string/="}]
                                   {})]
@@ -559,7 +570,7 @@
 
 (deftest update-parameter-merges-test
   (testing "GHY-4147: update_parameter merges into the existing parameter, re-slugging on a rename"
-    (let [{:keys [parameters]} (dashboard-ops/compile-ops
+    (let [{:keys [parameters]} (compile-ops
                                 (assoc empty-dash :parameters [{:id "p1" :name "X" :type "string/="}])
                                 [{:op "update_parameter" :parameter_id "p1" :name "Y"}]
                                 {})]
@@ -568,7 +579,7 @@
 (deftest update-parameter-preserves-slug-when-not-renaming-test
   (testing "GHY-4147: an update that does not touch the name leaves the slug alone, so an edit to
             an editor-created parameter cannot silently break its existing URLs"
-    (let [{:keys [parameters]} (dashboard-ops/compile-ops
+    (let [{:keys [parameters]} (compile-ops
                                 (assoc empty-dash
                                        :parameters [{:id "p1" :name "Order-Date" :slug "order-date"
                                                      :type "date/all-options"}])
@@ -587,7 +598,7 @@
                                 :parameter_mappings [{:parameter_id "p1" :card_id 9 :target [:dimension [:field 1 nil]]}
                                                      {:parameter_id "p2" :card_id 9
                                                       :target [:dimension [:field 2 nil]]}]}]}
-          {:keys [parameters dashcards]} (dashboard-ops/compile-ops
+          {:keys [parameters dashcards]} (compile-ops
                                           current [{:op "remove_parameter" :parameter_id "p1"}] {})
           dc (first dashcards)]
       (is (= ["p2"] (mapv :id parameters)))
@@ -597,7 +608,7 @@
 
 (deftest move-parameter-reorders-header-test
   (testing "GHY-4147: move_parameter with an index reorders the header"
-    (let [{:keys [parameters]} (dashboard-ops/compile-ops
+    (let [{:keys [parameters]} (compile-ops
                                 (assoc empty-dash :parameters [{:id "a"} {:id "b"} {:id "c"}])
                                 [{:op "move_parameter" :parameter_id "c" :index 0}]
                                 {})]
@@ -616,7 +627,7 @@
   (testing "GHY-4147: move_parameter with a dashcard_id makes it an inline filter on that card"
     (let [current {:id 1 :tabs [] :parameters [{:id "p1"}]
                    :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4}]}
-          {:keys [dashcards]} (dashboard-ops/compile-ops
+          {:keys [dashcards]} (compile-ops
                                current [{:op "move_parameter" :parameter_id "p1" :dashcard_id 7}] {})]
       (is (= ["p1"] (:inline_parameters (first dashcards)))))))
 
@@ -628,7 +639,7 @@
                                 :inline_parameters ["p1"]}
                                {:id 8 :card_id 9 :row 4 :col 0 :size_x 4 :size_y 4}]}
           op {:op "move_parameter" :parameter_id "p1" :dashcard_id 8}
-          {:keys [dashcards]} (dashboard-ops/compile-ops current [op op] {})]
+          {:keys [dashcards]} (compile-ops current [op op] {})]
       (is (= [] (:inline_parameters (first dashcards))))
       (is (= ["p1"] (:inline_parameters (second dashcards)))))))
 
@@ -641,7 +652,7 @@
           current   {:id 1 :tabs [] :parameters [{:id "p1"}]
                      :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4}
                                  bystander legacy]}
-          {:keys [dashcards]} (dashboard-ops/compile-ops
+          {:keys [dashcards]} (compile-ops
                                current
                                [{:op "move_parameter" :parameter_id "p1" :dashcard_id 7}] {})]
       (is (= bystander (nth dashcards 1)))
@@ -658,7 +669,7 @@
                                   :parameter_mappings [{:parameter_id "p1" :card_id 9
                                                         :target [:dimension [:field 1 nil]]}]}
                                  bystander legacy]}
-          {:keys [dashcards]} (dashboard-ops/compile-ops
+          {:keys [dashcards]} (compile-ops
                                current
                                [{:op "unwire_parameter" :parameter_id "p1"}] {})]
       (is (= [] (:parameter_mappings (first dashcards))))
@@ -673,7 +684,7 @@
           {:keys [dashcards]} (dynamic-redefs/with-dynamic-fn-redefs [mapping-targets/target-for-field
                                                                       (fn [_card _param field-id]
                                                                         [:dimension [:field field-id nil]])]
-                                (dashboard-ops/compile-ops
+                                (compile-ops
                                  current
                                  [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}]
                                  {9 a-card}))]
@@ -689,7 +700,7 @@
           {:keys [dashcards]} (dynamic-redefs/with-dynamic-fn-redefs [mapping-targets/target-for-field
                                                                       (fn [_card _param field-id]
                                                                         [:dimension [:field field-id nil]])]
-                                (dashboard-ops/compile-ops
+                                (compile-ops
                                  current
                                  [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 55}
                                   {:op "wire_parameter" :parameter_id "p1" :dashcard_id 7 :target_field 66}]
@@ -727,7 +738,7 @@
                                                                       (fn [card _param field-id]
                                                                         (when (= 9 (:id card))
                                                                           [:dimension [:field field-id nil]]))]
-                                (dashboard-ops/compile-ops
+                                (compile-ops
                                  current
                                  [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7
                                    :target_field 55 :autowire true}]
@@ -745,12 +756,12 @@
                                 :parameter_mappings [{:parameter_id "p1" :card_id 10
                                                       :target [:dimension [:field 2 nil]]}]}]}]
       (testing "one card"
-        (let [{:keys [dashcards]} (dashboard-ops/compile-ops
+        (let [{:keys [dashcards]} (compile-ops
                                    current [{:op "unwire_parameter" :parameter_id "p1" :dashcard_id 7}] {})]
           (is (= [] (:parameter_mappings (first dashcards))))
           (is (= 1 (count (:parameter_mappings (second dashcards)))))))
       (testing "all cards"
-        (let [{:keys [dashcards]} (dashboard-ops/compile-ops
+        (let [{:keys [dashcards]} (compile-ops
                                    current [{:op "unwire_parameter" :parameter_id "p1"}] {})]
           (is (every? (comp empty? :parameter_mappings) dashcards)))))))
 
@@ -780,7 +791,7 @@
 
 (defn- wire-native
   [op]
-  (-> (dashboard-ops/compile-ops native-current [op] {9 native-card})
+  (-> (compile-ops native-current [op] {9 native-card})
       :dashcards first :parameter_mappings))
 
 (defn- wire-native-error
@@ -841,7 +852,7 @@
                                                 :text "Sales in {{region}} for {{period}}."}}
         current       (assoc native-current :dashcards [text-dashcard])]
     (testing "a text-tag target binds a {{placeholder}} in a text card's own markdown — no card needed"
-      (let [{:keys [dashcards]} (dashboard-ops/compile-ops
+      (let [{:keys [dashcards]} (compile-ops
                                  current
                                  [{:op "wire_parameter" :parameter_id "p1" :dashcard_id 7
                                    :target ["text-tag" "region"]}]
@@ -849,7 +860,7 @@
         (is (= [{:parameter_id "p1" :card_id nil :target [:text-tag "region"]}]
                (:parameter_mappings (first dashcards))))))
     (testing "an iframe card's embed carries placeholders too"
-      (let [{:keys [dashcards]} (dashboard-ops/compile-ops
+      (let [{:keys [dashcards]} (compile-ops
                                  (assoc current :dashcards
                                         [{:id 7 :row 0 :col 0 :size_x 12 :size_y 8
                                           :visualization_settings {:virtual_card {:display "iframe"}
@@ -985,4 +996,20 @@
                                           (#'dashboard-ops/drop-inline-parameter "p1")
                                           (#'dashboard-ops/drop-mapping "p1"))))]
       (is (= via-primitives
-             (dashboard-ops/compile-ops current [{:op "remove_parameter" :parameter_id "p1"}] {}))))))
+             (compile-ops current [{:op "remove_parameter" :parameter_id "p1"}] {}))))))
+
+(deftest ^:parallel unresolved-card-test
+  (testing "an op naming a card the caller did not resolve is an error naming that card, wherever the op names it"
+    (is (= {::dashboard-ops/error :unknown-card, :card-id 42, :op-index 0, :op-name "add_card"}
+           (op-error empty-dash [{:op "add_card" :id -1 :card_id 42}] {})))
+    (is (=? {::dashboard-ops/error :unknown-card, :card-id 43, :op-name "add_card"}
+            (op-error empty-dash [{:op "add_card" :id -1 :card_id 42 :series [43]}] {42 {:id 42}})))
+    (is (=? {::dashboard-ops/error :unknown-card, :card-id 43, :op-name "replace_card"}
+            (op-error (dash-with [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4}])
+                      [{:op "replace_card" :dashcard_id 7 :card_id 43}] {})))
+    (is (=? {::dashboard-ops/error :unknown-card, :card-id 44, :op-name "set_series"}
+            (op-error (dash-with [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4}])
+                      [{:op "set_series" :dashcard_id 7 :card_ids [44]}] {}))))
+  (testing "ops are checked in order, so an earlier op's error is reported first"
+    (is (=? {::dashboard-ops/error :unknown-op, :op-index 0}
+            (op-error empty-dash [{:op "frobnicate"} {:op "add_card" :id -1 :card_id 42}] {})))))

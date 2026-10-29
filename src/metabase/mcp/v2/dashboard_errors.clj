@@ -33,6 +33,9 @@
    :unknown-dashcard
    (fn [{:keys [dashcard-id]}] (message/msg ["no dashcard with id %s on this dashboard."] dashcard-id))
 
+   :unknown-card
+   (fn [{:keys [card-id]}] (message/msg ["no card with id %s that you can read."] card-id))
+
    :missing-tab-id
    (fn [_] (message/raw "missing `tab_id`."))
 
@@ -146,11 +149,6 @@
   (if (nil? op-name)
     (message/msg ["op %d: %s"] idx detail)
     (message/msg ["op %d (%s): %s"] idx op-name detail)))
-
-(defn op-error!
-  "Throw a teaching error attributing `detail`, a message, to the op at `idx` named `op-name`."
-  [idx op-name detail]
-  (common/throw-teaching-error (op-message idx op-name detail)))
 
 (defn error-message
   "The teaching message for compiler error `data`, as read by [[dashboard-ops/error-data]].

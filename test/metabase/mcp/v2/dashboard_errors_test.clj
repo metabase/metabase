@@ -16,13 +16,16 @@
   {:id 1 :dashcards [] :tabs [] :parameters []})
 
 (defn- error-text
-  "The teaching error text MCP returns for `ops` against `current`, or nil when they compile."
-  [current ops]
-  (try
-    (dashboard-errors/compile-ops current ops {})
-    nil
-    (catch clojure.lang.ExceptionInfo e
-      (ex-message e))))
+  "The teaching error text MCP returns for `ops` against `current` and `cards`, or nil when they compile.
+   `cards` defaults to a bare row for every card `ops` name."
+  ([current ops]
+   (error-text current ops (into {} (map (fn [id] [id {:id id}])) (mapcat dashboard-ops/card-refs ops))))
+  ([current ops cards]
+   (try
+     (dashboard-errors/compile-ops current ops cards)
+     nil
+     (catch clojure.lang.ExceptionInfo e
+       (ex-message e)))))
 
 (defn- rendered
   "The teaching message text for compiler error `data`."
@@ -69,6 +72,9 @@
     (is (= "op 0 (\"add_parameter\"): parameter \"p1\" already exists — use \"update_parameter\"."
            (error-text (assoc empty-dash :parameters [{:id "p1"}])
                        [{:op "add_parameter" :parameter_id "p1"}]))))
+  (testing "a card the caller could not resolve reads as one the user cannot read"
+    (is (= "op 0 (\"add_card\"): no card with id 42 that you can read."
+           (error-text empty-dash [{:op "add_card" :id -1 :card_id 42}] {}))))
   (testing "a tab with no free space names the op that ran out of room"
     (is (= "op 0 (\"add_card\"): no free space on this tab for another card — remove or resize something first."
            (error-text (assoc empty-dash :dashcards [{:id 7 :card_id 9 :row 0 :col 0 :size_x 24 :size_y 1100}])
