@@ -410,12 +410,12 @@
 (defn do-with-upload-table! [table thunk]
   (try (thunk table)
        (finally
-         ;; I'm experimenting with disabling this, it seems preposterous that this would actually cause test flakes --
-         ;; Cam
-         (when true #_(not= driver/*driver* :redshift) ; redshift tests flake when tables are dropped
-               (driver/drop-table! driver/*driver*
-                                   (:db_id table)
-                                   (#'upload/table-identifier table))))))
+         ;; This used to be skipped on Redshift, whose tests were said to flake when tables are dropped. I'm
+         ;; experimenting with disabling that skip, it seems preposterous that this would actually cause test flakes
+         ;; -- Cam
+         (driver/drop-table! driver/*driver*
+                             (:db_id table)
+                             (#'upload/table-identifier table)))))
 
 (defn- table->card [table]
   (t2/select-one :model/Card :table_id (:id table)))
@@ -607,7 +607,7 @@
                            (sort-by :database_position)
                            (map (juxt (comp u/lower-case-en :name) identity))))))
             (testing "Check that table can be written via data-editing"
-              (true? (t2/select-one-fn :is_writable [:model/Table :is_writable] :id (:id table))))
+              (is (true? (t2/select-one-fn :is_writable [:model/Table :is_writable] :id (:id table)))))
             (testing "Check the data was uploaded into the table"
               (is (= 2
                      (count (rows-for-table table)))))))))))

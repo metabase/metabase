@@ -4112,9 +4112,8 @@
       (testing "rasta cannot see the exploration"
         (let [resp (mt/user-http-request :rasta :get (str "collection/" (:id coll) "/items"))]
           ;; Either the collection itself is forbidden (403) or the items list omits the exploration.
-          (cond
-            (= 403 (:status-code resp)) (is true)
-            :else (is (not (some #(= (:id e) (:id %)) (filter #(= "exploration" (:model %)) (:data resp))))))))
+          (is (or (= 403 (:status-code resp))
+                  (not (some #(= (:id e) (:id %)) (filter #(= "exploration" (:model %)) (:data resp))))))))
       (testing "after granting read, the exploration appears"
         (perms/grant-collection-read-permissions! (perms/all-users-group) coll)
         (let [items (exploration-items-in (:id coll) :user :rasta)]

@@ -9,8 +9,7 @@
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
-   (metabase.session.task.session_cleanup SessionCleanup)
-   (org.quartz Job)))
+   (metabase.session.task.session_cleanup SessionCleanup)))
 
 (set! *warn-on-reflection* true)
 
@@ -118,7 +117,7 @@
       (session/record-session-activity-update! key-hash)
       ;; the cache only drops entries older than the throttle window, so make every entry look stale
       (mt/with-dynamic-fn-redefs [u/since-ms (constantly Long/MAX_VALUE)]
-        (.execute ^Job (SessionCleanup.) nil))
+        (.execute (SessionCleanup.) nil))
       (is (true? (session/record-session-activity-update! key-hash))
           "a pruned session is no longer throttled"))))
 

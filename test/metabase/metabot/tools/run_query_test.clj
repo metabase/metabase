@@ -11,7 +11,9 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.llm.test-util :as llm.tu]
    [metabase.metabot.agent.core :as agent]
+   [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.config :as metabot.config]
+   [metabase.metabot.query-repair-test :as query-repair-test]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.test-util :as mut]
@@ -173,6 +175,22 @@
                                                    {:status :completed, :data {:cols [], :rows []}})]
       (run-tool! {"q1" (venues-by-id)} {:query_id "q1"}))
     (is (=? {:context :metabot, :executed-by (mt/user->id :rasta)} @info))))
+
+(deftest run-query-runs-stripped-query-from-state-test
+  (testing "a query in conversation state without its :lib/* keys runs once the state is read (BOT-2410)"
+    ;; State persisted before the viewing context kept the `:lib/*` keys holds such queries. The repair happens where
+    ;; the agent reads the state, in `memory/initialize`, so the memory goes through it here as it does in the loop.
+    (let [mp       (mt/metadata-provider)
+          q        (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                       (lib/aggregate (lib/count)))
+          stripped (query-repair-test/strip-lib-keys (lib/order-by q (lib/aggregation-ref q 0) :desc))]
+      (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]
+        (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+          (let [{:keys [output structured-output]}
+                (call-tool! (assoc (memory/initialize [] {:queries {"q1" stripped}}) :conversation-id conversation-id)
+                            {:query_id "q1"})]
+            (is (=? {:query-id "q1", :returned 1} structured-output))
+            (is (= ["| Count |" "| --- |" "| 100 |"] (data-lines output)))))))))
 
 (deftest run-query-refusals-test
   (testing "nothing runs while an admin has query execution turned off"
@@ -589,10 +607,10 @@
                                    "a SQL question"                             sql-card
                                    "a notebook question over a SQL question"    over-sql-card
                                    "a SQL question Metabot saved, edited since" edited-sql-card}
-                  run!            [run-sql-off-tool! run-sql-tool!]]
+                  tool!           [run-sql-off-tool! run-sql-tool!]]
             (testing shape
               (is (=? {:structured-output {:returned 1, :truncated? false}}
-                      (run! {"q1" (card-query card-id)} {:query_id "q1"}))))))
+                      (tool! {"q1" (card-query card-id)} {:query_id "q1"}))))))
         (testing "a user without native query permission can read a saved SQL question"
           (mt/with-no-data-perms-for-all-users!
             (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
@@ -627,9 +645,9 @@
                         (run-sql-tool! {"q1" (card-query metabot-write-card)} {:query_id "q1"}))))
               (is (false? @ran?)))))
         (testing "SQL Metabot saved under a question the user can't read gets the permission refusal"
-          (doseq [run! [run-sql-off-tool! run-sql-tool!]]
+          (doseq [tool! [run-sql-off-tool! run-sql-tool!]]
             (is (= no-permission
-                   (run! {"q1" (card-query over-hidden-sql)} {:query_id "q1"})))))
+                   (tool! {"q1" (card-query over-hidden-sql)} {:query_id "q1"})))))
         (testing "SQL that references a question the user can't read is refused before it is compiled"
           (let [tag (str "#" hidden-metabot-sql)]
             (is (= no-permission
@@ -1140,29 +1158,18 @@
                :error  {:class :recoverable, :code ::run-query/query-timed-out}}
               (run-tool! {"q1" (venues-count)} {:query_id "q1"}))))))
 
-(defn- reject-app-db-lookup
-  "Throw an app DB lookup error without leaving the surrounding transaction aborted."
-  [& _]
-  (t2/with-transaction [_conn]
-    (t2/query ["SELECT no_such_column FROM metabase_field"])))
-
-(def ^:private internal-failure
-  "What the model reads when a call fails inside Metabase. The turn ends there, and the user gets the generic error."
-  {:output "This call failed and the user was shown the error (:internal). Don't retry it."
-   :error  {:class :unrecoverable, :code :internal}})
-
 (deftest run-query-failure-inside-metabase-test
   (testing "a failure inside Metabase is an internal error, not an error in the model's query"
     (testing "when an app DB lookup fails while the query runs, and the log gets the detail"
       (let [query (venues-count)]
         (mt/with-log-messages-for-level [messages [metabase.metabot.tools.runtime :error]]
-          (mt/with-dynamic-fn-redefs [lib-be.db/columns reject-app-db-lookup]
-            (is (= internal-failure (run-tool! {"q1" query} {:query_id "q1"}))))
+          (mt/with-dynamic-fn-redefs [lib-be.db/columns mut/reject-app-db-lookup]
+            (is (= mut/internal-failure (run-tool! {"q1" query} {:query_id "q1"}))))
           (is (some #(re-find #"(?i)no_such_column" (str (some-> (:e %) ex-message))) (messages))))))
     (testing "when an app DB lookup fails while its SQL compiles"
       (let [query (venues-sql)]
-        (mt/with-dynamic-fn-redefs [qp.compile/compile reject-app-db-lookup]
-          (is (= internal-failure (run-sql-tool! {"q1" query} {:query_id "q1"}))))))))
+        (mt/with-dynamic-fn-redefs [qp.compile/compile mut/reject-app-db-lookup]
+          (is (= mut/internal-failure (run-sql-tool! {"q1" query} {:query_id "q1"}))))))))
 
 (def ^:private run-query-profiles
   "The profiles that offer `run_query`."
@@ -1209,9 +1216,9 @@
     (doseq [profile run-query-profiles]
       (testing profile
         (testing "a run that fails inside Metabase ends the turn, and the user gets the generic error"
-          (binding [qp.pipeline/*execute* reject-app-db-lookup]
+          (binding [qp.pipeline/*execute* mut/reject-app-db-lookup]
             (is (= {:llm-calls 1
-                    :result    internal-failure
+                    :result    mut/internal-failure
                     :text      "Something went wrong."
                     :finish    :terminal-error}
                    (run-turn! profile sql)))))

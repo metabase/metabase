@@ -49,7 +49,7 @@
    Escape warnings are logged before the abort, so callers can still assert on the logged messages."
   [opts]
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"incomplete export"
-                        (into [] (extract/extract opts)))))
+                        (dorun (extract/extract opts)))))
 
 (deftest fundamentals-test
   (mt/with-empty-h2-app-db!
@@ -1282,15 +1282,15 @@
                        :model/FieldUserSettings _ {:field_id f2-id :description "curated"}
                        :model/TableUserSettings _ {:table_id table-id :display_name "Renamed"}]
       (testing "targeting the collection exports the Table and its Fields, each beside its user settings"
-        (let [entities (into [] (extract/extract {:targets       [["Collection" coll-id]]
-                                                  :no-data-model true}))
-              by-model (group-by (comp :model last :serdes/meta) entities)]
-          (is (some #(= "T" (:name %)) (by-model "Table")))
+        (let [entities        (into [] (extract/extract {:targets       [["Collection" coll-id]]
+                                                         :no-data-model true}))
+              model->entities (group-by (comp :model last :serdes/meta) entities)]
+          (is (some #(= "T" (:name %)) (model->entities "Table")))
           (is (= #{"F1" "F2"}
-                 (set (map :name (by-model "Field")))))
-          (is (= 1 (count (by-model "TableUserSettings"))))
+                 (set (map :name (model->entities "Field")))))
+          (is (= 1 (count (model->entities "TableUserSettings"))))
           (is (= #{"F2"}
-                 (set (map #(-> % :serdes/meta (nth 2) :id) (by-model "FieldUserSettings"))))
+                 (set (map #(-> % :serdes/meta (nth 2) :id) (model->entities "FieldUserSettings"))))
               "only the field the user edited has settings to export"))))))
 
 (deftest cards-test

@@ -541,7 +541,7 @@
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Invalid Collection location: path is invalid"
-         (with-collection-in-location [_ "/a/"]))))
+         (with-collection-in-location [_ "/a/"] nil))))
   (testing "We should be able to INSERT a Collection with a *valid* location"
     (mt/with-temp [:model/Collection parent]
       (with-collection-in-location [collection (collection/location-path parent)]
@@ -563,7 +563,7 @@
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
          #"Invalid Collection location: some or all ancestors do not exist"
-         (with-collection-in-location [_ (collection/location-path (nonexistent-collection-id))]))))
+         (with-collection-in-location [_ (collection/location-path (nonexistent-collection-id))] nil))))
   (testing "Make sure we can't UPDATE a Collection to give it a non-existent ancestors"
     (mt/with-temp [:model/Collection collection]
       (is (thrown-with-msg?
@@ -3180,10 +3180,10 @@
                      "Should throw exception when parent has dependents on child items")]
           (is (= "Used by remote synced content." (ex-message ex))
               "Exception should have correct message")
-          (let [ex-data (ex-data ex)]
-            (is (= 400 (:status-code ex-data))
+          (let [data (ex-data ex)]
+            (is (= 400 (:status-code data))
                 "Exception should have 400 status code")
-            (is (= #{{"Card" dep-card-id}} (set (ex-data :remote-synced-models)))
+            (is (= #{{"Card" dep-card-id}} (set (data :remote-synced-models)))
                 "Exception should contain remote-synced dependents"))))
       (testing "Collection is NOT archived when exception is thrown"
         (let [child-after (t2/select-one :model/Collection :id child-id)]

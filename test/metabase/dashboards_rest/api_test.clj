@@ -4905,114 +4905,115 @@
         (is (= ["A   sian" "As"]
                (mt/user-http-request :crowberto :get 200 (url list-param-id "A   sian"))))))))
 
-(deftest handle-broken-subscriptions-due-to-bad-parameters-test
-  (defn- test-handle-broken-subscription-notification!
-    [{:keys [disable-links? email-body-pattern match-email-body-pattern?]}]
-    (let [param {:name "Source"
-                 :slug "source"
-                 :id   "_SOURCE_PARAM_ID_"
-                 :type :string/=}]
-      (mt/dataset test-data
-        (mt/with-temp
-          [:model/Card {card-id :id} {:name          "Native card"
-                                      :database_id   (mt/id)
-                                      :dataset_query {:database (mt/id)
-                                                      :type     :query
-                                                      :query    {:source-table (mt/id :people)
-                                                                 :limit        5
-                                                                 :fields       [[:field (mt/id :people :id)
-                                                                                 {:base-type :type/BigInteger}]
-                                                                                [:field (mt/id :people :name)
-                                                                                 {:base-type :type/Text}]
-                                                                                [:field (mt/id :people :source)
-                                                                                 {:base-type :type/Text}]]}}
-                                      :type          :model}
-           :model/Dashboard {dash-id        :id
-                             dashboard-name :name} {:name       "My Awesome Dashboard"
-                                                    :parameters [param]}
-           :model/DashboardCard {dash-card-id :id} {:dashboard_id       dash-id
-                                                    :card_id            card-id
-                                                    :parameter_mappings [{:parameter_id "_SOURCE_PARAM_ID_"
-                                                                          :card_id      card-id
-                                                                          :target       [:dimension
-                                                                                         [:field (mt/id :people :source)
-                                                                                          {:base-type :type/Text}]]}]}
+(defn- test-handle-broken-subscription-notification!
+  [{:keys [disable-links? email-body-pattern match-email-body-pattern?]}]
+  (let [param {:name "Source"
+               :slug "source"
+               :id   "_SOURCE_PARAM_ID_"
+               :type :string/=}]
+    (mt/dataset test-data
+      (mt/with-temp
+        [:model/Card {card-id :id} {:name          "Native card"
+                                    :database_id   (mt/id)
+                                    :dataset_query {:database (mt/id)
+                                                    :type     :query
+                                                    :query    {:source-table (mt/id :people)
+                                                               :limit        5
+                                                               :fields       [[:field (mt/id :people :id)
+                                                                               {:base-type :type/BigInteger}]
+                                                                              [:field (mt/id :people :name)
+                                                                               {:base-type :type/Text}]
+                                                                              [:field (mt/id :people :source)
+                                                                               {:base-type :type/Text}]]}}
+                                    :type          :model}
+         :model/Dashboard {dash-id        :id
+                           dashboard-name :name} {:name       "My Awesome Dashboard"
+                                                  :parameters [param]}
+         :model/DashboardCard {dash-card-id :id} {:dashboard_id       dash-id
+                                                  :card_id            card-id
+                                                  :parameter_mappings [{:parameter_id "_SOURCE_PARAM_ID_"
+                                                                        :card_id      card-id
+                                                                        :target       [:dimension
+                                                                                       [:field (mt/id :people :source)
+                                                                                        {:base-type :type/Text}]]}]}
 
-           :model/Pulse {bad-pulse-id :id} {:name          "Bad Pulse"
-                                            :dashboard_id  dash-id
-                                            :creator_id    (mt/user->id :trashbird)
-                                            :parameters    [(assoc param :value ["Twitter", "Facebook"])]
-                                            :disable_links disable-links?}
-           :model/PulseCard _ {:pulse_id          bad-pulse-id
-                               :card_id           card-id
-                               :dashboard_card_id dash-card-id}
-           :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
-                                                       :pulse_id     bad-pulse-id
-                                                       :enabled      true}
-           :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
-                                           :user_id          (mt/user->id :rasta)}
-           :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
-                                           :user_id          (mt/user->id :crowberto)}
-           ;; Broken slack pulse
-           :model/Pulse {bad-slack-pulse-id :id} {:name          "Bad Slack Pulse"
-                                                  :dashboard_id  dash-id
-                                                  :creator_id    (mt/user->id :trashbird)
-                                                  :parameters    [(assoc param :value ["LinkedIn"])]
-                                                  :disable_links disable-links?}
-           :model/PulseCard _ {:pulse_id          bad-slack-pulse-id
-                               :card_id           card-id
-                               :dashboard_card_id dash-card-id}
-           :model/PulseChannel _ {:channel_type :slack
-                                  :pulse_id     bad-slack-pulse-id
-                                  :details      {:channel "#my-channel"}
-                                  :enabled      true}
-           ;; Non broken pulse
-           :model/Pulse {good-pulse-id :id} {:name         "Good Pulse"
-                                             :dashboard_id dash-id
-                                             :creator_id   (mt/user->id :trashbird)}
-           :model/PulseCard _ {:pulse_id          good-pulse-id
-                               :card_id           card-id
-                               :dashboard_card_id dash-card-id}
-           :model/PulseChannel {good-pulse-channel-id :id} {:channel_type :email
-                                                            :pulse_id     good-pulse-id
-                                                            :enabled      true}
-           :model/PulseChannelRecipient _ {:pulse_channel_id good-pulse-channel-id
-                                           :user_id          (mt/user->id :rasta)}
-           :model/PulseChannelRecipient _ {:pulse_channel_id good-pulse-channel-id
-                                           :user_id          (mt/user->id :crowberto)}]
-          (testing "The pulses are active"
-            (is (false? (t2/select-one-fn :archived :model/Pulse :id bad-pulse-id)))
-            (is (false? (t2/select-one-fn :archived :model/Pulse :id good-pulse-id))))
-          (mt/with-fake-inbox
-            (let [{:keys [parameters]} (dashboard-response (mt/user-http-request
-                                                            :rasta :put 200 (str "dashboard/" dash-id)
-                                                            {:parameters []}))
-                  title            (format "Subscription to %s removed" dashboard-name)
-                  ;; Keep only the relevant messages. If not, you might get some other side-effecting email, such
-                  ;; as "We've Noticed a New Metabase Login, Rasta".
-                  inbox            (update-vals
-                                    @mt/inbox
-                                    (fn [messages]
-                                      (filterv (comp #{title} :subject) messages)))
-                  emails-received? (fn [recipient-email]
-                                     (testing "The first email was received"
-                                       (is (true? (some-> (get-in inbox [recipient-email 0 :body 0 :content])
-                                                          (str/includes? title)))))
-                                     (testing "The second email (about the broken slack pulse) was received"
-                                       (is (= match-email-body-pattern? (some-> (get-in inbox [recipient-email 1 :body 0 :content])
-                                                                                (str/includes? email-body-pattern))))))]
-              (testing "The dashboard parameters were removed"
-                (is (empty? parameters)))
-              (testing "The broken pulse was archived"
-                (is (true? (t2/select-one-fn :archived :model/Pulse :id bad-pulse-id))))
-              (testing "The unbroken pulse is still active"
-                (is (false? (t2/select-one-fn :archived :model/Pulse :id good-pulse-id))))
-              (testing "The dashboard and pulse creators were emailed about the removed pulse"
-                (is (= #{"trashbird@metabase.com" "rasta@metabase.com"}
-                       (set (keys inbox)))))
-              (testing "Notification emails were sent to the dashboard and pulse creators"
-                (emails-received? "rasta@metabase.com")
-                (emails-received? "trashbird@metabase.com"))))))))
+         :model/Pulse {bad-pulse-id :id} {:name          "Bad Pulse"
+                                          :dashboard_id  dash-id
+                                          :creator_id    (mt/user->id :trashbird)
+                                          :parameters    [(assoc param :value ["Twitter", "Facebook"])]
+                                          :disable_links disable-links?}
+         :model/PulseCard _ {:pulse_id          bad-pulse-id
+                             :card_id           card-id
+                             :dashboard_card_id dash-card-id}
+         :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                     :pulse_id     bad-pulse-id
+                                                     :enabled      true}
+         :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                         :user_id          (mt/user->id :rasta)}
+         :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                         :user_id          (mt/user->id :crowberto)}
+         ;; Broken slack pulse
+         :model/Pulse {bad-slack-pulse-id :id} {:name          "Bad Slack Pulse"
+                                                :dashboard_id  dash-id
+                                                :creator_id    (mt/user->id :trashbird)
+                                                :parameters    [(assoc param :value ["LinkedIn"])]
+                                                :disable_links disable-links?}
+         :model/PulseCard _ {:pulse_id          bad-slack-pulse-id
+                             :card_id           card-id
+                             :dashboard_card_id dash-card-id}
+         :model/PulseChannel _ {:channel_type :slack
+                                :pulse_id     bad-slack-pulse-id
+                                :details      {:channel "#my-channel"}
+                                :enabled      true}
+         ;; Non broken pulse
+         :model/Pulse {good-pulse-id :id} {:name         "Good Pulse"
+                                           :dashboard_id dash-id
+                                           :creator_id   (mt/user->id :trashbird)}
+         :model/PulseCard _ {:pulse_id          good-pulse-id
+                             :card_id           card-id
+                             :dashboard_card_id dash-card-id}
+         :model/PulseChannel {good-pulse-channel-id :id} {:channel_type :email
+                                                          :pulse_id     good-pulse-id
+                                                          :enabled      true}
+         :model/PulseChannelRecipient _ {:pulse_channel_id good-pulse-channel-id
+                                         :user_id          (mt/user->id :rasta)}
+         :model/PulseChannelRecipient _ {:pulse_channel_id good-pulse-channel-id
+                                         :user_id          (mt/user->id :crowberto)}]
+        (testing "The pulses are active"
+          (is (false? (t2/select-one-fn :archived :model/Pulse :id bad-pulse-id)))
+          (is (false? (t2/select-one-fn :archived :model/Pulse :id good-pulse-id))))
+        (mt/with-fake-inbox
+          (let [{:keys [parameters]} (dashboard-response (mt/user-http-request
+                                                          :rasta :put 200 (str "dashboard/" dash-id)
+                                                          {:parameters []}))
+                title            (format "Subscription to %s removed" dashboard-name)
+                ;; Keep only the relevant messages. If not, you might get some other side-effecting email, such
+                ;; as "We've Noticed a New Metabase Login, Rasta".
+                inbox            (update-vals
+                                  @mt/inbox
+                                  (fn [messages]
+                                    (filterv (comp #{title} :subject) messages)))
+                emails-received? (fn [recipient-email]
+                                   (testing "The first email was received"
+                                     (is (true? (some-> (get-in inbox [recipient-email 0 :body 0 :content])
+                                                        (str/includes? title)))))
+                                   (testing "The second email (about the broken slack pulse) was received"
+                                     (is (= match-email-body-pattern? (some-> (get-in inbox [recipient-email 1 :body 0 :content])
+                                                                              (str/includes? email-body-pattern))))))]
+            (testing "The dashboard parameters were removed"
+              (is (empty? parameters)))
+            (testing "The broken pulse was archived"
+              (is (true? (t2/select-one-fn :archived :model/Pulse :id bad-pulse-id))))
+            (testing "The unbroken pulse is still active"
+              (is (false? (t2/select-one-fn :archived :model/Pulse :id good-pulse-id))))
+            (testing "The dashboard and pulse creators were emailed about the removed pulse"
+              (is (= #{"trashbird@metabase.com" "rasta@metabase.com"}
+                     (set (keys inbox)))))
+            (testing "Notification emails were sent to the dashboard and pulse creators"
+              (emails-received? "rasta@metabase.com")
+              (emails-received? "trashbird@metabase.com"))))))))
+
+(deftest handle-broken-subscriptions-due-to-bad-parameters-test
   (testing "When a subscriptions is broken, archive it and notify the dashboard and subscription creator (#30100)"
     (test-handle-broken-subscription-notification!
      {:disable-links?            false

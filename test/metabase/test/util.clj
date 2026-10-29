@@ -507,9 +507,10 @@
 
 (defn- set-with-temp-defaults! []
   (doseq [[model defaults-fn] with-temp-defaults-fns]
-    (methodical/defmethod t2.with-temp/with-temp-defaults model
-      [model]
-      (defaults-fn model))))
+    (methodical/add-primary-method! #'t2.with-temp/with-temp-defaults
+                                    model
+                                    (fn [_next-method model]
+                                      (defaults-fn model)))))
 
 (set-with-temp-defaults!)
 

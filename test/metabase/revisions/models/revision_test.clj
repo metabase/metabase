@@ -506,17 +506,17 @@
                                                          :is_reversion true
                                                          :is_creation  false}))))
          (testing "multiple changes"
-           {:description          "changed the display from table to bar and turned this into a model."
-            :has_multiple_changes true}
-           (#'revision/revision-description-info model
-                                                 {:object       {:type "question"
-                                                                 :display :table}
-                                                  :is_reversion false
-                                                  :is_creation  false}
-                                                 {:object       {:type "model"
-                                                                 :display :bar}
-                                                  :is_reversion false
-                                                  :is_creation  false}))
+           (is (= {:description          "changed the display from table to bar and turned this to a model."
+                   :has_multiple_changes true}
+                  (#'revision/revision-description-info model
+                                                        {:object       {:type "question"
+                                                                        :display :table}
+                                                         :is_reversion false
+                                                         :is_creation  false}
+                                                        {:object       {:type "model"
+                                                                        :display :bar}
+                                                         :is_reversion false
+                                                         :is_creation  false}))))
          (testing "changes contains unspecified keys will not be mentioned"
            (is (= {:description          "turned this to a model."
                    :has_multiple_changes false}

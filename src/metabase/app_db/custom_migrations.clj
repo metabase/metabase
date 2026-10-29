@@ -46,8 +46,7 @@
    (liquibase Scope)
    (liquibase.change Change)
    (liquibase.change.custom CustomTaskChange CustomTaskRollback)
-   (liquibase.exception ValidationErrors)
-   (liquibase.util BooleanUtil)))
+   (liquibase.exception ValidationErrors)))
 
 (set! *warn-on-reflection* true)
 
@@ -58,7 +57,7 @@
   The same problem has been fixed for forward changes in Liquibase
   but for rollback it has not."
   []
-  (BooleanUtil/isTrue (.get (Scope/getCurrentScope) Change/SHOULD_EXECUTE true)))
+  (.equals Boolean/TRUE (.get (Scope/getCurrentScope) Change/SHOULD_EXECUTE true)))
 
 (defmacro define-reversible-migration
   "Define a reversible custom migration. Both the forward and reverse migrations are defined using the same structure,

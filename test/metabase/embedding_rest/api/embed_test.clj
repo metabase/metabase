@@ -2394,9 +2394,9 @@
                   :latField (tiles.api-test/encoded-implicit-join-field-ref :latitude)
                   :lonField (tiles.api-test/encoded-implicit-join-field-ref :longitude)))))))))
 
+;; Regression test for metabase#29371 - Case-sensitive field filters in embedded dashboards.
+;; Embedded dashboards should apply case-insensitive default options for string operators.
 (deftest embedded-string-parameter-case-sensitivity-regression-test
-  "Regression test for metabase#29371 - Case-sensitive field filters in embedded dashboards.
-   Embedded dashboards should apply case-insensitive default options for string operators."
   (mt/dataset test-data
     (mt/with-temp
       [:model/Card card {:database_id (mt/id)

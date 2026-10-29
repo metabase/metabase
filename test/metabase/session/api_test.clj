@@ -670,6 +670,13 @@
       (mt/with-temp-env-var-value! [mb-reset-token-ttl-hours -1]
         (is (= -1 (setting/get-value-of-type :integer :reset-token-ttl-hours)))))))
 
+(defsetting test-session-api-setting
+  "test setting"
+  :encryption :no
+  :user-local :only
+  :type       :string
+  :default    "FOO")
+
 (deftest properties-test
   (testing "GET /session/properties"
     (testing "Unauthenticated"
@@ -689,12 +696,6 @@
         (is (= (set (keys (setting/user-readable-values-map #{:public :authenticated :settings-manager :admin-write-authed-read :admin})))
                (set (keys (mt/user-http-request :crowberto :get 200 "session/properties")))))))
     (testing "Includes user-local settings"
-      (defsetting test-session-api-setting
-        "test setting"
-        :encryption :no
-        :user-local :only
-        :type       :string
-        :default    "FOO")
       (mt/with-test-user :lucky
         (is (= "FOO"
                (-> (mt/user-http-request :crowberto :get 200 "session/properties")

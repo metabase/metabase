@@ -650,7 +650,7 @@
       (testing schema
         (let [pattern (:api/regex (mc/properties (mr/resolve-schema schema)))]
           (assert (instance? java.util.regex.Pattern pattern))
-          (is (re= pattern "0IjoieWVhciJ9XV19LCJkYXRhYmFzZSI6MX0=")))))))
+          (is (re-matches pattern "0IjoieWVhciJ9XV19LCJkYXRhYmFzZSI6MX0=")))))))
 
 (deftest ^:parallel cell-query-decode-strips-extra-properties-test
   (testing "the ::cell-query schema decodes a base64 JSON filter clause, validates it, and strips undeclared properties"
