@@ -399,6 +399,23 @@
                                                                :parameter_id       "p"
                                                                :values_source_type "card"}]}))))))))
 
+(deftest published-patch-mapping-schema-test
+  (testing "a strict client can send every key of a patched parameter mapping, card_id included"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [schema   (:inputSchema (first (filter #(= "dashboard_write" (:name %)) (registry/list-tools))))
+            mapping? (fn [x]
+                       (let [props (when (map? x) (:properties x))]
+                         ;; an op object (wire_parameter) has these keys too, but also `op`
+                         (and (contains? props :target) (contains? props :parameter_id) (not (contains? props :op)))))
+            mappings (filter mapping? (tree-seq coll? seq schema))]
+        (is (= [{:keys     #{:parameter_id :card_id :target}
+                 :required #{:parameter_id :card_id :target}
+                 :closed?  true}]
+               (for [m mappings]
+                 {:keys     (set (keys (:properties m)))
+                  :required (set (map keyword (:required m)))
+                  :closed?  (false? (:additionalProperties m))})))))))
+
 (deftest archived-on-create-error-text-test
   (testing "GHY-4544: `archived` on a create is a teaching error"
     (is (= "\"archived\" applies to method \"update\" only — remove it from this create call."
