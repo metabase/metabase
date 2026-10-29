@@ -70,3 +70,7 @@
   /* The body plus the footer, so the modal keeps its size once loaded */
   height: calc(50vh + 4rem);
 }
+
+.hiddenContent {
+  visibility: hidden;
+}

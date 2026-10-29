@@ -88,6 +88,11 @@ interface ModalDispatchProps {
 
 type ModalProps = ModalOwnProps & ModalQuestionProps & ModalDispatchProps;
 
+type ModalLoaderProps = ModalOwnProps & {
+  /** Hides the modal's panel but keeps it open, along with its backdrop. */
+  isContentHidden?: boolean;
+};
+
 const ValuesSourceTypeModal = ({
   parameter,
   question,
@@ -713,7 +718,10 @@ const ValuesSourceTypeModalConnected = connect(
 // Loads the source card and its virtual-table query metadata into the store (so
 // the question and its connected fields are available) before rendering,
 // replacing the former Questions.load / Tables.load HOCs.
-function ValuesSourceTypeModalLoader(props: ModalOwnProps) {
+function ValuesSourceTypeModalLoader({
+  isContentHidden = false,
+  ...props
+}: ModalLoaderProps) {
   const { card_id } = props.sourceConfig;
   const virtualTableId =
     card_id != null ? getQuestionVirtualTableId(card_id) : undefined;
@@ -734,6 +742,7 @@ function ValuesSourceTypeModalLoader(props: ModalOwnProps) {
       size="65%"
       density="relaxed"
       title={t`Selectable values for ${props.parameter.name}`}
+      classNames={{ content: isContentHidden ? S.hiddenContent : undefined }}
       onClose={props.onClose}
     >
       <ModalLoadingAndErrorWrapper
