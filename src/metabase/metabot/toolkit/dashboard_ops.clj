@@ -40,6 +40,7 @@
    :duplicate-new-id                   [:map {:closed true} [:id :int]]
    :missing-dashcard-id                [:map {:closed true}]
    :unknown-dashcard                   [:map {:closed true} [:dashcard-id :any]]
+   :unknown-card                       [:map {:closed true} [:card-id :any]]
    :missing-tab-id                     [:map {:closed true}]
    :unknown-tab                        [:map {:closed true} [:tab-id :any]]
    :no-free-space                      [:map {:closed true} [:tab-id [:maybe :int]]]
@@ -736,11 +737,26 @@
 
 ;;; ------------------------------------------------ Entry ---------------------------------------------------------
 
+(defn card-refs
+  "The ids of the cards `op` puts on the dashboard: its `card_id`, add_card's `series`, and set_series'
+   `card_ids`. The caller resolves these into the `cards` map for [[compile-ops]], which rejects any it left out."
+  [op]
+  (remove nil? (concat [(:card_id op)] (:series op) (:card_ids op))))
+
+(defn- check-cards-resolved!
+  "Every card `op` puts on the dashboard must be in the caller's `cards` map. The caller leaves out the cards its
+   user cannot read, so this is where an op naming one fails."
+  [state op]
+  (doseq [card-id (card-refs op)
+          :when   (not (contains? (::cards state) card-id))]
+    (fail! :unknown-card {:card-id card-id})))
+
 (defn- apply-op-at
-  "Runs [[apply-op]] on `op`, the op at `idx`.
+  "Runs [[apply-op]] on `op`, the op at `idx`, after checking its cards are resolved.
    Adds `:op-index` and `:op-name` to any error it throws."
   [state idx op]
   (try
+    (check-cards-resolved! state op)
     (apply-op state op)
     (catch clojure.lang.ExceptionInfo e
       (throw (if-let [data (error-data e)]
@@ -750,13 +766,12 @@
 (defn compile-ops
   "Fold `ops` over `current` (a dashboard hydrated with `[:dashcards :series :card] :tabs`) and
    return `{:dashcards :tabs :parameters}` — the full-replacement payload `update-dashboard!`
-   saves. New rows carry the caller's negative ids. `cards` maps every card id the ops may touch
-   to its card row; this namespace does no I/O, so the caller resolves that. Throws an error from
-   [[errors]] on the first invalid op; read it with [[error-data]]."
-  ([current ops] (compile-ops current ops {}))
-  ([current ops cards]
-   (-> (reduce-kv apply-op-at
-                  (init-state current cards)
-                  (vec ops))
-       check-tab-coverage!
-       (select-keys [:dashcards :tabs :parameters]))))
+   saves. New rows carry the caller's negative ids. `cards` maps every card id in [[card-refs]] of `ops` to its card
+   row, leaving out cards the user cannot read; this namespace does no I/O, so the caller resolves them. Throws an
+   error from [[errors]] on the first invalid op; read it with [[error-data]]."
+  [current ops cards]
+  (-> (reduce-kv apply-op-at
+                 (init-state current cards)
+                 (vec ops))
+      check-tab-coverage!
+      (select-keys [:dashcards :tabs :parameters])))
