@@ -744,6 +744,9 @@
                          {:description "Duration in milliseconds of each parser's call in a shadow comparison."
                           :labels [:parser :method]
                           :buckets [1 5 10 25 50 100 250 500 1000 2500 5000 10000 30000]})
+   (prometheus/gauge :metabase-sql-parsing/shadow-in-flight
+                     {:description "Shadow SQL parser comparisons running or waiting to run, by shadow parser."
+                      :labels [:parser]})
    ;; SQL tools operation metrics
    (prometheus/counter :metabase-sql-tools/operations-total
                        {:description "Total number of sql-tools operations started."

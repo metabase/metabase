@@ -2,18 +2,25 @@
   "A [[metabase.sql-parsing.protocol/SqlParser]] that answers with one parser and runs a second on the same input in
   the background, to measure how often they agree before the second one is trusted with answers.
 
-  The caller gets the primary parser's value, or its exception, unchanged, and never waits for the shadow parser. The
-  comparison produces Prometheus counts only. Nothing here logs SQL or a parser's error message, since both can hold
-  customer SQL."
+  The caller gets the primary parser's value, or its exception, unchanged, and never waits for the shadow parser:
+  everything else here, sampling and metrics included, runs on the background thread or cannot throw. The comparison
+  produces Prometheus counts only. Nothing here logs SQL or a parser's error message, since both can hold customer
+  SQL.
+
+  The parsers are compared on what callers get from [[metabase.sql-parsing.core]] (the tables, the fields, the
+  verdict, the SQL as tokens), not on the raw values a parser returns: two parsers that differ only in shape, layout
+  or the wording of a message agree."
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
    [metabase.analytics-interface.core :as analytics]
    [metabase.sql-parsing.protocol :as protocol]
+   [metabase.sql-parsing.results :as results]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
-   (java.util.concurrent ArrayBlockingQueue RejectedExecutionException ThreadFactory ThreadPoolExecutor TimeUnit)))
+   (java.util.concurrent ArrayBlockingQueue RejectedExecutionException ThreadFactory ThreadPoolExecutor TimeUnit)
+   (java.util.concurrent.atomic AtomicLong)))
 
 (set! *warn-on-reflection* true)
 
@@ -34,30 +41,47 @@
   (or (:sql-parsing/python-error-type (ex-data e))
       (.getName (class e))))
 
+(def ^:private sql-token
+  "One token of generated SQL: a quoted string or identifier, a comment, a word, or one other character."
+  #"(?s)'(?:[^'\\]|\\.|'')*'|\"(?:[^\"]|\"\")*\"|`(?:[^`]|``)*`|/\*.*?\*/|--[^\n]*|[\p{L}\p{N}_$@#]+|\S")
+
+(defn- sql-tokens
+  "`sql` as its tokens, so that layout does not count (`JOIN b\\n  ON` and `JOIN b ON`, `( a )` and `(a)`) and the
+  contents of literals, quoted identifiers and comments do."
+  [sql]
+  (some->> sql (re-seq sql-token) (mapv str/trim)))
+
 (defn- sets-of-used-fields
-  "`field-references` output with every `used_fields` list as a set: the parsers find the same fields, in different
-  orders, and [[metabase.sql-parsing.core/field-references]] makes the top-level list a set anyway."
+  "`field-references` output with every `:used-fields` as a set: the parsers find the same fields in different orders,
+  and order carries no meaning."
   [value]
   (walk/postwalk (fn [x]
                    (cond-> x
-                     (and (map? x) (contains? x :used_fields)) (update :used_fields set)))
+                     (and (map? x) (contains? x :used-fields)) (update :used-fields set)))
                  value))
 
-(defn- normalize
-  "`value` with the differences that do not change what callers do taken out."
+(defn logical-value
+  "What callers get from `method`'s `value`, without what carries no meaning for them: order where order is not
+  meaningful, the layout of SQL, and the wording of messages."
   [method value]
   (case method
-    :field-references         (-> (sets-of-used-fields value)
-                                  (update :errors set))
-    ;; the order of a column's dependencies carries no meaning
+    (:referenced-tables
+     :referenced-fields)      (set value)
     :returned-columns-lineage (mapv (fn [[alias pure? deps]] [alias pure? (set deps)]) value)
-    ;; the generators lay out the same SQL differently, e.g. `JOIN b\n  ON` and `JOIN b ON`
-    :transpile-sql            (update value :transpiled_sql #(some-> % (str/replace #"\s+" " ")))
-    value))
+    :validate-query           (select-keys value [:status :type :column :table])
+    :simple-query             (select-keys value [:is_simple])
+    (:add-into-clause
+     :replace-names)          (sql-tokens value)
+    :field-references         (sets-of-used-fields (results/field-references value))
+    :single-stmt-of-type      (update value :sql sql-tokens)
+    :transpile-sql            (if (= "success" (:status value))
+                                (update value :transpiled_sql sql-tokens)
+                                (select-keys value [:status :reason]))))
 
 (defn classify
-  "Compare the `primary` and `shadow` [[outcome]]s of `method`. Returns `:match`, `:mismatch` (different values),
-  `:error-type-mismatch` (both failed, differently), `:primary-only-error` or `:shadow-only-error`."
+  "Compare the `primary` and `shadow` [[outcome]]s of `method`. Returns `:match`, `:mismatch` (different
+  [[logical-value]]s), `:error-type-mismatch` (both failed, differently), `:primary-only-error` or
+  `:shadow-only-error`."
   [method primary shadow]
   (let [primary-failed? (contains? primary :thrown)
         shadow-failed?  (contains? shadow :thrown)]
@@ -67,8 +91,8 @@
                                              :error-type-mismatch)
       primary-failed?                      :primary-only-error
       shadow-failed?                       :shadow-only-error
-      (= (normalize method (:value primary))
-         (normalize method (:value shadow)))  :match
+      (= (logical-value method (:value primary))
+         (logical-value method (:value shadow)))  :match
       :else                                :mismatch)))
 
 (defn- record-comparison!
@@ -82,12 +106,27 @@
                       {:parser (name backend), :method (name method)}
                       ms))
 
+(defn- record-in-flight!
+  "Set the gauge of comparisons running or waiting to the count in `in-flight`. A shadow parse that never returns
+  keeps it above zero. Reading and writing under one lock means the last write carries the current count."
+  [backend ^AtomicLong in-flight]
+  (locking in-flight
+    (analytics/set-gauge! :metabase-sql-parsing/shadow-in-flight {:parser (name backend)} (.get in-flight))))
+
+(defn- quietly
+  "Call `f`, ignoring any exception: a metric that cannot be written must not change what the caller sees."
+  [f]
+  (try
+    (f)
+    (catch Throwable e
+      (log/debugf "Could not record a shadow parser metric: %s" (.getName (class e))))))
+
 (defn- executor
-  "At most two threads and 64 waiting comparisons. When both are full the comparison is dropped, so a slow or stuck
+  "Two threads and at most 64 waiting comparisons. When all are taken the comparison is dropped, so a slow or stuck
   shadow parser costs at most two threads and never delays a caller."
   ^ThreadPoolExecutor []
   (let [n (atom 0)]
-    (doto (ThreadPoolExecutor. 1 2 60 TimeUnit/SECONDS (ArrayBlockingQueue. 64)
+    (doto (ThreadPoolExecutor. 2 2 60 TimeUnit/SECONDS (ArrayBlockingQueue. 64)
                                (reify ThreadFactory
                                  (newThread [_ runnable]
                                    (doto (Thread. runnable (str "sql-parsing-shadow-" (swap! n inc)))
@@ -98,31 +137,45 @@
   "A SqlParser that answers with `primary` and, when `(sample? method)` is true, runs `shadow` on the same arguments
   in the background and compares the two. Each comparison counts one `metabase-sql-parsing/shadow-comparisons`
   outcome (see [[classify]]); one that finds no room in the background queue counts as `dropped`, and one that
-  throws as `comparison-failed`. The backend keywords label the duration metric.
+  throws as `comparison-failed`. The gauge `metabase-sql-parsing/shadow-in-flight` counts the comparisons running
+  or waiting. The backend keywords label the metrics. A `sample?` that throws means no comparison.
 
   Each call makes a thread pool, so callers keep the parser for the life of the process."
   [{:keys [primary-backend primary shadow-backend shadow sample?]}]
-  (let [executor (executor)
-        compare! (fn [method dialect call primary-outcome]
-                   (try
-                     (let [shadow-outcome (outcome #(call shadow))]
-                       (record-duration! shadow-backend method (:ms shadow-outcome))
-                       (record-comparison! method dialect (classify method primary-outcome shadow-outcome)))
-                     (catch Throwable e
-                       (record-comparison! method dialect :comparison-failed)
-                       (log/warnf "Could not compare the %s SQL parsers on %s: %s"
-                                  (name shadow-backend) (name method) (.getName (class e))))))
-        run      (fn [method dialect call]
-                   (let [primary-outcome (outcome #(call primary))]
-                     (when (sample? method)
-                       (record-duration! primary-backend method (:ms primary-outcome))
-                       (try
-                         (.execute executor ^Runnable #(compare! method dialect call primary-outcome))
-                         (catch RejectedExecutionException _
-                           (record-comparison! method dialect :dropped))))
-                     (if-let [e (:thrown primary-outcome)]
-                       (throw ^Throwable e)
-                       (:value primary-outcome))))]
+  (let [executor  (executor)
+        in-flight (AtomicLong.)
+        sampled?  (fn [method]
+                    (try
+                      (boolean (sample? method))
+                      (catch Throwable e
+                        (log/debugf "Could not decide whether to sample a shadow comparison: %s" (.getName (class e)))
+                        false)))
+        compare!  (fn [method dialect call primary-outcome]
+                    (try
+                      (record-duration! primary-backend method (:ms primary-outcome))
+                      (let [shadow-outcome (outcome #(call shadow))]
+                        (record-duration! shadow-backend method (:ms shadow-outcome))
+                        (record-comparison! method dialect (classify method primary-outcome shadow-outcome)))
+                      (catch Throwable e
+                        (quietly #(record-comparison! method dialect :comparison-failed))
+                        (log/warnf "Could not compare the %s SQL parsers on %s: %s"
+                                   (name shadow-backend) (name method) (.getName (class e))))
+                      (finally
+                        (.decrementAndGet in-flight)
+                        (quietly #(record-in-flight! shadow-backend in-flight)))))
+        run       (fn [method dialect call]
+                    (let [primary-outcome (outcome #(call primary))]
+                      (when (sampled? method)
+                        (.incrementAndGet in-flight)
+                        (try
+                          (.execute executor ^Runnable #(compare! method dialect call primary-outcome))
+                          (catch RejectedExecutionException _
+                            (.decrementAndGet in-flight)
+                            (quietly #(record-comparison! method dialect :dropped))))
+                        (quietly #(record-in-flight! shadow-backend in-flight)))
+                      (if-let [e (:thrown primary-outcome)]
+                        (throw ^Throwable e)
+                        (:value primary-outcome))))]
     (reify protocol/SqlParser
       (referenced-tables [_ dialect sql]
         (run :referenced-tables dialect #(protocol/referenced-tables % dialect sql)))
