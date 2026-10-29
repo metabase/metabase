@@ -639,7 +639,7 @@ SELECT CAST('${POSITIVE_DECIMAL_VALUE}' AS DECIMAL) AS NUMBER`,
     function testDecimalFilter({
       withDrillThru,
     }: { withDrillThru?: boolean } = {}) {
-      testFilter({ value: POSITIVE_DECIMAL_VALUE, withDrillThru });
+      testFilter({ value: NEGATIVE_DECIMAL_VALUE, withDrillThru });
     }
 
     cy.log("BIGINT");
