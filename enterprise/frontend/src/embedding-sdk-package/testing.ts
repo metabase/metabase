@@ -10,3 +10,10 @@ export {
   createMockQuestion,
   createMockUser,
 } from "./testing/lib/public/mocks";
+export {
+  mockDataAppQuery,
+  mockDataAppQueryError,
+  type DataAppQueryMock,
+  type DataAppQueryMockCall,
+  type DataAppQueryMockError,
+} from "./testing/lib/public/data-app-queries";

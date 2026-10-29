@@ -523,7 +523,7 @@ export type RequireGroupedOrderByNames<TQuery> =
     : unknown;
 
 /** Requires a dynamic stage's name-only order-bys to name its own grouped columns, or else the static query's result columns. */
-type RequireDynamicOrderByNames<TEntity, TQuery, TDynamic> =
+export type RequireDynamicOrderByNames<TEntity, TQuery, TDynamic> =
   AggregatesResultColumns<TDynamic> extends true
     ? RequireGroupedOrderByNames<TDynamic>
     : RequireOrderByNames<
@@ -697,7 +697,7 @@ type InferQueryEntity<TQuery> = TQuery extends { source: infer TTable }
   ? TTable
   : undefined;
 
-type QueryEntity<TEntity, TQuery> = [TEntity] extends [undefined]
+export type QueryEntity<TEntity, TQuery> = [TEntity] extends [undefined]
   ? InferQueryEntity<TQuery>
   : TEntity;
 
@@ -719,6 +719,14 @@ export type UseMetabaseQueryResult<
   error: unknown;
   refetch: () => Promise<void>;
 };
+
+export type MetabaseQueryRow<TQuery, TDynamic = undefined> = NonNullable<
+  UseMetabaseQueryResult<
+    QueryEntity<undefined, TQuery>,
+    TQuery,
+    TDynamic
+  >["data"]
+>["rows"][number];
 
 /**
  * Marks a query as declared through `defineQuery`. The query hooks accept only

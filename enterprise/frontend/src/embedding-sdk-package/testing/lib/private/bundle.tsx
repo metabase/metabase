@@ -16,12 +16,14 @@ import type { LoginStatus } from "embedding-sdk-bundle/types/user";
 import type { MetabaseTestOptions } from "embedding-sdk-package/testing/components/MetabaseTestProvider";
 
 import { formatDate, formatDateRange } from "./dates";
+import { type MetabaseQueryMock, createQueryHandlers } from "./queries";
 
 type ChildrenProps = { children?: ReactNode };
 
 // eslint-disable-next-line metabase/no-literal-metabase-strings -- the default name a real instance reports
 const DEFAULT_APPLICATION_NAME = "Metabase";
 const NO_FONTS: string[] = [];
+const NO_DATA_APP_QUERIES: MetabaseQueryMock[] = [];
 const SIGNED_IN_STATUS: LoginStatus = { status: "success" };
 
 const STATIC_QUESTION_SUBCOMPONENTS = {
@@ -91,6 +93,7 @@ export function createMockSdkBundle({
   loginStatus = SIGNED_IN_STATUS,
   applicationName = DEFAULT_APPLICATION_NAME,
   availableFonts = NO_FONTS,
+  dataAppQueries = NO_DATA_APP_QUERIES,
 }: MetabaseTestOptions): MetabaseEmbeddingSdkBundleExports {
   const CreateQuestionOutput = CreateQuestion ?? EmptyOutput;
   const DateRangeCalendarOutput = DateRangeCalendar ?? EmptyOutput;
@@ -134,8 +137,7 @@ export function createMockSdkBundle({
         "MetabaseTestProvider does not support MetabaseProvider. Render the component under test without it.",
       );
     },
-    resolveDatasetQuery: () => () => rejectWithNoMock("resolveDatasetQuery"),
-    queryDataset: () => () => rejectWithNoMock("queryDataset"),
+    ...createQueryHandlers(dataAppQueries),
     queryQuestion: () => () => rejectWithNoMock("queryQuestion"),
     createDashboard: () => () => rejectWithNoMock("createDashboard"),
     executeAction: () => () => rejectWithNoMock("executeAction"),

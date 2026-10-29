@@ -63,6 +63,7 @@ export type {
   MetabaseQueryObject,
   MetabaseOrderByDirection,
   UseMetabaseQueryObjectResult,
+  MetabaseQueryRow,
   UseMetabaseQueryResult,
 } from "./hooks/public/use-metabase-query";
 export type {
