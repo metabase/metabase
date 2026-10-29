@@ -101,7 +101,7 @@ podman run -d -p 3000:3000 \
    --name metabase docker.io/metabase/metabase
 ```
 
-Keep in mind that Metabase will be connecting from _within_ your Podman container. If your Postgres database is running on the same machine you can replace `my-database-host` with `host.containers.internal`. Otherwise make sure that either a) you're using a fully qualified hostname, or b) that you've set a proper entry in your container's `/etc/hosts` file.
+Keep in mind that Metabase will be connecting from _within_ your Podman container. If your Postgres database is running on the same machine, and if you have provisioned it to listen on a non-loopback IP address, you can replace `my-database-host` with `host.containers.internal`. Otherwise make sure that either a) you're using a fully qualified hostname, or b) that you've set a proper entry in your container's `/etc/hosts` file.
 
 ## Migrating to a production installation
 
