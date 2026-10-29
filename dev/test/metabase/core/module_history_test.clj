@@ -6,7 +6,8 @@
    [dev.deps-graph :as deps-graph]
    [dev.module-history :as module-history]
    [dev.module-source :as module-source]
-   [hooks.common.modules]))
+   [hooks.common.modules]
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -291,8 +292,8 @@
 
 (deftest commits-to-measure-test
   (testing "an explicit revision is measured once when the sample also picks it"
-    (let [head     (str/trim (#'module-history/git! ["rev-parse" "HEAD"]))
-          ;; A date after every commit samples only the tip of `ref`.
-          tomorrow (str (.plusDays (java.time.LocalDate/now java.time.ZoneOffset/UTC) 1))]
-      (is (= [head]
-             (#'module-history/commits-to-measure {:commits ["HEAD"], :ref "HEAD", :since tomorrow}))))))
+    ;; Stubbed, because the sample walks git history, which a shallow CI checkout does not have.
+    (mt/with-dynamic-fn-redefs [module-history/resolve-commit (fn [commit] (get {"HEAD" "abc"} commit commit))
+                                module-history/sample-commits (constantly ["abc" "def"])]
+      (is (= ["abc" "def"]
+             (#'module-history/commits-to-measure {:commits ["HEAD"], :since "2026-01-01"}))))))

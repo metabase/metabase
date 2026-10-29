@@ -559,6 +559,8 @@
   [{:keys [dir ref], :or {ref default-ref}}]
   (when (str/blank? (str dir))
     (throw (ex-info "update! needs :dir, the directory to write the files into" {})))
+  ;; Before any step that reads the history, so a shallow clone fails here and not on a missing parent.
+  (module-history/require-full-history!)
   (let [dir       (io/file (str dir))
         ;; Every step reads this one commit, so a fetch during a long run cannot mix two tips in the files.
         tip       (first (git-lines ["rev-parse" (str ref "^{commit}")]))
