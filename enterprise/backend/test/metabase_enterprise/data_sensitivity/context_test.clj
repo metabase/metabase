@@ -261,6 +261,16 @@
         (testing "cached values are unaffected by the sample failure"
           (is (= ["cached-marker"] (:cached_values (field-by-name packet "cached_f")))))))))
 
+(deftest sample-error-log-omits-warehouse-values-test
+  (testing "a failed row sample whose error quotes a row value does not write that value to the log"
+    (with-redefs [driver/table-rows-sample
+                  (fn [& _] (throw (ex-info "Cannot parse \"TIMESTAMP\" constant \"ROW-VALUE-MARKER\"" {})))]
+      (mt/with-log-messages-for-level [messages [metabase-enterprise.data-sensitivity.context :info]]
+        (is (some? (get-in (table-packet (people-table)) [:sample :error])))
+        (is (not-any? (fn [{:keys [message e]}]
+                        (str/includes? (str message (some-> e Throwable->map pr-str)) "ROW-VALUE-MARKER"))
+                      (messages)))))))
+
 (deftest nil-option-uses-default-test
   (let [sample-opts (atom nil)]
     (with-redefs [driver/table-rows-sample (fn [_ _ _ _ opts] (reset! sample-opts opts) [])]
