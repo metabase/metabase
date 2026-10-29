@@ -59,14 +59,13 @@ Pick how Metabase authenticates to Snowflake:
 
 - **RSA key pair** — key-based auth.
 - **Workload Identity Federation** — keyless auth using a token from an OIDC provider, AWS, Azure, or Google Cloud.
-- **OAuth 2.0 (client credentials)** — the Snowflake JDBC driver exchanges a client ID and client secret with your identity provider's token endpoint, and submits the resulting token to Snowflake.
 - **Username & password** — Snowflake blocks password authentication for service users by October 2026.
 
 The fields that appear below depend on which method you pick.
 
 ### Password
 
-The password for the username that you use to connect to the database. Snowflake blocks password authentication for service users by October 2026; use RSA key pair, Workload Identity Federation, or OAuth 2.0 (client credentials) instead.
+The password for the username that you use to connect to the database. Snowflake blocks password authentication for service users by October 2026; use RSA key pair or Workload Identity Federation instead.
 
 ### RSA private key (PEM)
 
@@ -94,32 +93,6 @@ A JWT you paste into Metabase. Convenient for a one-off test. Metabase does not 
 Path to a file on the Metabase server that contains the JWT (for example, a Kubernetes projected service-account token at `/var/run/secrets/tokens/oidc-token`). The Snowflake driver re-reads this file per connection, so tokens rotated in place — the standard Kubernetes pattern — flow through without any change in Metabase.
 
 If both the pasted token and the file path are set, the file path wins.
-
-### OAuth 2.0 (Client Credentials)
-
-Metabase authenticates to Snowflake using the OAuth 2.0 client-credentials grant against your identity provider. Snowflake validates the resulting access token against a security integration you provision with `CREATE SECURITY INTEGRATION ... TYPE = EXTERNAL_OAUTH`. See Snowflake's [External OAuth docs](https://docs.snowflake.com/en/user-guide/oauth-ext-overview) for the integration setup.
-
-#### OAuth client ID
-
-The client ID issued by your identity provider for the service identity Metabase authenticates as.
-
-#### OAuth client secret
-
-The client secret paired with the client ID.
-
-#### OAuth token request URL
-
-Your identity provider's OAuth 2.0 token endpoint — not Snowflake's URL. For example:
-
-- Okta: `https://<your-org>.okta.com/oauth2/<auth-server-id>/v1/token`
-- Microsoft Entra: `https://login.microsoftonline.com/<tenant>/oauth2/v2.0/token`
-- Amazon Cognito: `https://<domain>.auth.<region>.amazoncognito.com/oauth2/token`
-
-#### OAuth scope (optional)
-
-The scope the driver requests from your identity provider. Format depends on your IdP; typically the resource server scope configured for Snowflake access.
-
-If left blank and a Role is set below, the Snowflake JDBC driver derives `session:role:<role>` from the Role field. That value is specific to Snowflake's own OAuth server; when using a third-party IdP, set this field to the scope the IdP expects.
 
 ### Warehouse
 
