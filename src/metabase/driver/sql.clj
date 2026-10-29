@@ -353,8 +353,9 @@
       (do
         (log/warnf "Failed to parse native query: %s" error)
         (throw (ex-info (tru "Unable to parse native query. There might be something wrong with your query.")
-                        {:type qp.error-type/invalid-query
-                         :sql  (:native stage)})))
+                        {:type        qp.error-type/invalid-query
+                         :status-code 400
+                         :sql         (:native stage)})))
 
       ;; The SQL was not checked at all, as opposed to checked and found to be two statements. Admins run as
       ;; the full connection user and are never actually impersonated, so validating their native SQL
@@ -366,9 +367,10 @@
         (do
           (log/warnf "Refusing impersonated native query on %s: cannot validate (%s)" driver reason)
           (throw (ex-info (tru "Unable to validate this native query on an impersonated database. Reduce the size of any large VALUES, IN, or ARRAY lists.")
-                          {:type   qp.error-type/invalid-query
-                           :reason reason
-                           :sql    (:native stage)}))))
+                          {:type        qp.error-type/invalid-query
+                           :status-code 400
+                           :reason      reason
+                           :sql         (:native stage)}))))
 
       ;; Admins may also run a single statement that is not of the required type (e.g. `SHOW TIMEZONE`),
       ;; but never more than one statement.

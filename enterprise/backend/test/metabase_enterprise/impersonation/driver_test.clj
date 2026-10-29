@@ -28,6 +28,7 @@
    [metabase.query-processor.test :as qp]
    [metabase.request.core :as request]
    [metabase.secrets.core :as secrets]
+   [metabase.sql-tools.core :as sql-tools]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
@@ -1337,6 +1338,37 @@
                        (-> (lib/native-query (mt/metadata-provider) "SHOW TIMEZONE")
                            (qp/process-query)
                            (mt/rows)))))))))))))
+
+(deftest impersonated-user-sees-query-validation-errors-test
+  (testing "An impersonated non-admin sees why their native query was refused, not a generic message"
+    (mt/test-drivers (mt/normal-driver-select {:+parent :postgres})
+      (mt/with-premium-features #{:advanced-permissions}
+        (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
+              role-a       (u/lower-case-en (mt/random-name))
+              run-native   (fn [sql]
+                             (-> (lib/native-query (mt/metadata-provider) sql)
+                                 (qp/process-query)
+                                 (mt/rows)))]
+          (tx/with-temp-roles! driver/*driver*
+            (impersonation-granting-details driver/*driver* (mt/db))
+            {role-a {venues-table {}}}
+            (impersonation-default-user driver/*driver*)
+            (impersonation-default-role driver/*driver*)
+            (with-impersonation-db!
+              (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                             :attributes     {"impersonation_attr" role-a}}
+                (testing "a query that does not parse"
+                  (is (thrown-with-msg?
+                       java.lang.Exception
+                       #"Unable to parse native query"
+                       (run-native "with cte as (\n  select 1 as col\n), \nselect * from cte"))))
+                (testing "a query the validator cannot check"
+                  (with-redefs [sql-tools/validate-executable-stmt (constantly {:verdict :unknown
+                                                                                :reason  :large-literal-list})]
+                    (is (thrown-with-msg?
+                         java.lang.Exception
+                         #"Unable to validate this native query on an impersonated database"
+                         (run-native "SELECT 1")))))))))))))
 
 (deftest ^:parallel impersonated-query-parse-error-message-test
   (testing "When a native query fails to parse, the validator reports a parse error -- not a misleading 'must be a single select' message (#73593)"
