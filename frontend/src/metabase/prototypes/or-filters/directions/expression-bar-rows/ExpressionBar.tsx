@@ -403,7 +403,12 @@ export function ExpressionBar({
             />
           </span>
         ) : (
-          <span className={cx(S.typing, { [S.typingIdle]: !isOpen })}>
+          <span
+            className={cx(S.typing, {
+              [S.typingIdle]: !isOpen,
+              [S.typingText]: text.length > 0,
+            })}
+          >
             <input
               ref={inputRef}
               className={S.input}
