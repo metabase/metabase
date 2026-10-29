@@ -7,9 +7,11 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.collections.core :as collection]
+   [metabase.collections.db :as collections.db]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.users.db :as users.db]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
@@ -137,7 +139,7 @@
     (when (= topic :table-publish)
       {:published_at timestamp
        :published_by (when user-id
-                       (some-> (data-studio.db/user-name-and-email user-id)
+                       (some-> (users.db/user user-id)
                                (select-keys [:id :common_name])))})))
 
 (api.macros/defendpoint :get "/:id/publishing-info" :- [:maybe PublishingInfo]
@@ -170,7 +172,7 @@
    _query-params
    body :- ::publish-table-selectors]
   (api/check-data-studio-access)
-  (let [target-collection  (api/check-404 (data-studio.db/collection (:collection_id body)))
+  (let [target-collection  (api/check-404 (collections.db/collection (:collection_id body)))
         _                  (api/check-400 (= (:type target-collection) collection/library-data-collection-type)
                                           (tru "Tables can only be published to Semantic layer/Data collections."))
         _                  (api/write-check target-collection)
@@ -201,7 +203,7 @@
         table-ids-to-update (data-studio.db/table-ids-matching-selectors selectors downstream-ids :any)]
     (api/check-403 (can-publish-all-tables? table-ids-to-update))
     (when (seq table-ids-to-update)
-      (run! (comp api/write-check data-studio.db/collection)
+      (run! (comp api/write-check collections.db/collection)
             (into #{} (keep :collection_id) (data-studio.db/tables table-ids-to-update)))
       (data-studio.db/unpublish-tables! table-ids-to-update)
       ;; Publish events for audit log and remote sync tracking

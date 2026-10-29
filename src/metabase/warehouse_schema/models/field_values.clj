@@ -27,6 +27,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
+   [metabase.database-routing.core :as database-routing]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -249,7 +250,7 @@
   [field-or-field-id]
   (if-not (map? field-or-field-id)
     (let [field-id (u/the-id field-or-field-id)]
-      (recur (or (warehouse-schema.db/field-values-eligibility field-id)
+      (recur (or (warehouse-schema.db/field field-id)
                  (throw (ex-info (tru "Field {0} does not exist." field-id)
                                  {:field-id field-id, :status-code 404})))))
     (let [{base-type        :base_type
@@ -519,7 +520,7 @@
       ;; `distinct-values` returns nil when the warehouse scan failed, which is not the same as a
       ;; field that genuinely has no values: persisting it would read as "empty" and delete the
       ;; values we already have. Leave whatever is cached in place instead.
-      (if-let [{rows :values} (distinct-values field)]
+      (if-let [{rows :values} (database-routing/with-anonymous-router-access (distinct-values field))]
         ;; rows are 1-tuples — unwrap for storage.
         (persist-field-values! field existing-fv (seq (map first rows)))
         ::fv-fetch-failed))

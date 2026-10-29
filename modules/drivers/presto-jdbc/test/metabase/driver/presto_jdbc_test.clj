@@ -12,6 +12,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
@@ -38,7 +39,7 @@
                       {:name "test_data_checkins" :schema "default"}
                       {:name "test_data_users" :schema "default"}
                       {:name "test_data_venues" :schema "default"}}}
-           (-> (driver/describe-database :presto-jdbc (mt/db))
+           (-> (driver/describe-database :presto-jdbc (lib.metadata/database (mt/metadata-provider)))
                (update :tables #(into #{} (filter (comp #{"test_data_categories"
                                                           "test_data_venues"
                                                           "test_data_checkins"
@@ -75,7 +76,7 @@
                        :database-type "integer"
                        :base-type     :type/Integer
                        :database-position 0}}}
-           (driver/describe-table :presto-jdbc (mt/db) (t2/select-one 'Table :id (mt/id :venues)))))))
+           (driver/describe-table :presto-jdbc (lib.metadata/database (mt/metadata-provider)) (t2/select-one 'Table :id (mt/id :venues)))))))
 
 (deftest ^:parallel table-rows-sample-test
   (mt/test-driver :presto-jdbc
@@ -126,7 +127,7 @@
 (deftest ^:parallel db-default-timezone-test
   (mt/test-driver :presto-jdbc
     (is (= "UTC"
-           (driver/db-default-timezone :presto-jdbc (mt/db))))))
+           (driver/db-default-timezone :presto-jdbc (lib.metadata/database (mt/metadata-provider)))))))
 
 (deftest ^:synchronized template-tag-timezone-test
   (mt/test-driver :presto-jdbc
@@ -224,7 +225,7 @@
         (mt/with-temp [:model/Database db {:engine :presto-jdbc, :name "Temp Presto JDBC Schema DB", :details with-schema}]
           (mt/with-db db
             ;; same as test_data, but with schema, so should NOT pick up venues, users, etc.
-            (sync/sync-database! db)
+            (sync/sync-database! (:id db))
             (is (= [{:name t, :schema s, :db_id (mt/id)}]
                    (map #(select-keys % [:name :schema :db_id]) (t2/select :model/Table :db_id (mt/id)))))))
         (execute-ddl! [(format "DROP TABLE %s.%s" s t)

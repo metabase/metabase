@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]))
@@ -14,7 +15,7 @@
 (deftest db-timezone-test
   (mt/test-driver :vertica
     (is (= "UTC"
-           (driver/db-default-timezone :vertica (mt/db))))))
+           (driver/db-default-timezone :vertica (lib.metadata/database (mt/metadata-provider)))))))
 
 (deftest ^:parallel additional-connection-string-options-test
   (testing "Make sure you can add additional connection string options (#6651)"

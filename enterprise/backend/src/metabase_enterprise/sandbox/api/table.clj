@@ -2,15 +2,16 @@
   (:require
    [metabase-enterprise.sandbox.api.column-filter :as col-filter]
    [metabase-enterprise.sandbox.api.util :as sandbox.api.util]
-   [metabase-enterprise.sandbox.db :as sandbox.db]
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.data-apps.core :as data-apps]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.table :as schema.table]))
 
 (mu/defn only-sandboxed-perms? :- :boolean
@@ -30,7 +31,7 @@
   `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
   :feature :sandboxes
   [id opts]
-  (let [table (api/check-404 (sandbox.db/table id))
+  (let [table (api/check-404 (warehouse-schema.db/table id))
         thunk (fn [] (schema.table/fetch-query-metadata* table opts))]
     (if (only-sandboxed-perms? table)
       (filter-fields-for-sandboxing
@@ -85,7 +86,10 @@
    :- [:map {:closed true}
        [:include_sensitive_fields    {:default false} [:maybe ms/BooleanValue]]
        [:include_hidden_fields       {:default false} [:maybe ms/BooleanValue]]
-       [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]]
+       [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]
+   _body
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-table id))
   (fetch-table-query-metadata id {:include-sensitive-fields?    include_sensitive_fields
                                   :include-hidden-fields?       include_hidden_fields
                                   :include-editable-data-model? include_editable_data_model}))

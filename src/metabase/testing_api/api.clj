@@ -364,7 +364,11 @@
 
 ;;;; Metabot AI usage seeding
 
-(def ^:private e2e-usage-source "e2e-test")
+(defn- seed-ai-usage-conversation-id
+  "The `conversation_id` of the `ai_usage_log` rows the `seed-ai-usage` endpoint inserts for `user-id`. Fixed per
+  user, so the DELETE finds them."
+  [user-id]
+  (str (java.util.UUID/nameUUIDFromBytes (.getBytes (str "e2e-seed-ai-usage-" user-id) "UTF-8"))))
 
 (def ^:private e2e-usage-auditing-group-name "E2E Usage Auditing")
 
@@ -577,21 +581,25 @@
 
 (api.macros/defendpoint :post "/metabot/seed-ai-usage"
   :- [:map [:inserted :int]]
-  "Insert `count` rows into `ai_usage_log` for the given `user_id`, then clear the metabot limit
-  cache so limit checks re-evaluate immediately.  Intended only for E2E tests."
+  "Insert `count` messages of AI usage for the given `user_id`: one `ai_usage_log` row each, from the chat source and
+  under its own `request_id`, so a message limit counts each row as one message. Then clear the metabot limit cache
+  so limit checks re-evaluate immediately. Intended only for E2E tests."
   [_route-params
    _query-params
    {:keys [user_id count]} :- [:map {:closed true}
                                [:user_id ms/PositiveInt]
                                [:count   ms/PositiveInt]]]
-  (dotimes [_ count]
-    (testing-api.db/insert-ai-usage-log!
-     {:source            e2e-usage-source
-      :model             "test/model"
-      :prompt_tokens     0
-      :completion_tokens 0
-      :total_tokens      0
-      :user_id           user_id}))
+  (let [conversation-id (seed-ai-usage-conversation-id user_id)]
+    (dotimes [_ count]
+      (testing-api.db/insert-ai-usage-log!
+       {:source            "metabot_agent"
+        :model             "test/model"
+        :conversation_id   conversation-id
+        :request_id        (str (random-uuid))
+        :prompt_tokens     0
+        :completion_tokens 0
+        :total_tokens      0
+        :user_id           user_id})))
   (clear-metabot-limit-cache!)
   {:inserted count})
 
@@ -603,7 +611,8 @@
    _query-params
    {:keys [user_id]} :- [:map {:closed true}
                          [:user_id ms/PositiveInt]]]
-  (let [deleted (testing-api.db/delete-ai-usage-logs-for-user-and-source! user_id e2e-usage-source)]
+  (let [deleted (testing-api.db/delete-ai-usage-logs-for-user-and-conversation!
+                 user_id (seed-ai-usage-conversation-id user_id))]
     (clear-metabot-limit-cache!)
     {:deleted deleted}))
 

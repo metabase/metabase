@@ -260,7 +260,7 @@
           (is (= {:type/Currency true :type/City true}
                  (into {} (map (juxt first second)) (vals (settings)))))
           (t2/update! :model/Database (:id stub) {:engine :h2 :details (:details (mt/db)) :is_stub false})
-          (sync/sync-db-metadata! (t2/select-one :model/Database :id (:id stub)))
+          (sync/sync-db-metadata! (:id (t2/select-one :model/Database :id (:id stub))))
           (testing "sync reactivates the stub Fields and gives them their real base types"
             (is (=? [{:name "NAME" :active true :base_type :type/Text}
                      {:name "PRICE" :active true :base_type :type/Integer}]
@@ -3441,3 +3441,35 @@
           (serdes.load/load-metabase! (ts/ingestion-in-memory [(glossary-file file-eid {:entity_id file-eid})]))
           (is (=? [{:term "ARR" :entity_id file-eid}]
                   (t2/select :model/Glossary))))))))
+
+(deftest transform-job-active-is-local-test
+  (mt/with-premium-features #{:transforms-basic}
+    (mt/with-temp [:model/TransformJob {built-in-id :id} {:name          "built-in"
+                                                          :schedule      "0 0 * * * ? *"
+                                                          :built_in_type "hourly"
+                                                          :active        false}
+                   :model/TransformJob {custom-id :id}   {:name     "custom"
+                                                          :schedule "0 0 * * * ? *"
+                                                          :active   false}]
+      (testing "an export has no active"
+        (is (not (contains? (ts/extract-one "TransformJob" built-in-id) :active)))
+        (is (not (contains? (ts/extract-one "TransformJob" custom-id) :active))))
+      (let [import! (fn [job-id active]
+                      (serdes.load/load-metabase!
+                       (ts/ingestion-in-memory [(assoc (ts/extract-one "TransformJob" job-id) :active active)]))
+                      (t2/select-one [:model/TransformJob :active :built_in_type] job-id))]
+        (testing "an import keeps active on an existing built-in job"
+          (is (=? {:active false :built_in_type "hourly"} (import! built-in-id true)))
+          (t2/update! :transform_job built-in-id {:active true})
+          (is (=? {:active true :built_in_type "hourly"} (import! built-in-id false))))
+        (testing "an import keeps active on an existing custom job"
+          (is (=? {:active false :built_in_type nil} (import! custom-id true)))
+          (t2/update! :transform_job custom-id {:active true})
+          (is (=? {:active true :built_in_type nil} (import! custom-id false))))
+        (testing "an import inserts a job with the column default for active"
+          (let [extracted (assoc (ts/extract-one "TransformJob" custom-id) :active false)]
+            (t2/delete! :model/TransformJob custom-id)
+            (serdes.load/load-metabase! (ts/ingestion-in-memory [extracted]))
+            (is (=? {:active true}
+                    (t2/select-one [:model/TransformJob :active] :entity_id (:entity_id extracted))))
+            (t2/delete! :model/TransformJob :entity_id (:entity_id extracted))))))))

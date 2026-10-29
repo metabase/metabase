@@ -7,7 +7,6 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.util :as driver.u]
-   [metabase.lib-be.core :as lib-be]
    [metabase.sync.db :as sync.db]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
@@ -108,9 +107,7 @@
   (log-if-error "fk-metadata"
     (let [driver (driver.u/database->driver database)]
       (when (driver.u/supports? driver :metadata/key-constraints database)
-        (cond->> (driver/describe-fks driver
-                                      (lib-be/instance->metadata database :metadata/database)
-                                      args)
+        (cond->> (driver/describe-fks driver database args)
           ;; This is a workaround for the fact that [[mu/defn]] can't check reducible collections yet
           (mu.fn/instrument-ns? *ns*)
           (eduction (map #(mu.fn/validate-output {} i/FKMetadataEntry %))))))))

@@ -1,6 +1,5 @@
 (ns ^:instrument/always metabase.actions.args
   (:require
-   [metabase.actions.db :as actions.db]
    [metabase.actions.hierarchy :as actions.hierarchy]
    ;; legacy usage, do not use this in new code
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -8,7 +7,8 @@
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]))
 
 (defmulti action-arg-map-schema
   "Return the appropriate malli schema to use to validate the arg map passed to [[perform-action!*]].
@@ -177,7 +177,7 @@
   (when (seq row-arg)
     (log/warn ":arg is deprecated, use :row instead"))
   ;; TODO it would be nice to use cached-database-via-table-id here, but need to solve circular dependency.
-  {:database (or database (when table-id (actions.db/table-database-id table-id)))
+  {:database (or database (when table-id (:db_id (warehouse-schema.db/table table-id))))
    :table-id table-id
    :row      (update-keys (or row row-arg) u/qualified-name)})
 

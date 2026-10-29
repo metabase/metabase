@@ -679,45 +679,15 @@
    collection-ids :- [:sequential ::lib.schema.id/collection]]
   (t2/select [model :id :collection_id] :collection_id [:in collection-ids]))
 
-(mu/defn card
-  "The Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))
-
 (mu/defn card-types-by-id
   "A map of Card ID to type for `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select-fn->fn :id :type [:model/Card :id :type] :id [:in card-ids]))
 
-(mu/defn card-database-ids
-  "The `:id` and `:database_id` of the Cards with `card-ids`."
-  [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :database_id] :id [:in card-ids]))
-
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
-
-(mu/defn table-database-ids
-  "The `:id` and `:db_id` of the Tables with `table-ids`."
-  [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :db_id] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
-
-(mu/defn dashcard-dashboard-id :- [:maybe ::lib.schema.id/dashboard]
-  "The `:dashboard_id` of the DashboardCard with `dashcard-id`, or nil."
-  [dashcard-id :- ::lib.schema.id/dashcard]
-  (t2/select-one-fn :dashboard_id :model/DashboardCard :id dashcard-id))
-
-(mu/defn field-table-id :- [:maybe ::lib.schema.id/table]
-  "The `:table_id` of the Field with `field-id`, or nil."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :table_id :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
-
-(mu/defn transform-sources
-  "The `:id` and `:source` of the Transforms with `transform-ids`."
-  [transform-ids :- [:sequential ::lib.schema.id/transform]]
-  (t2/select [:model/Transform :id :source] :id [:in transform-ids]))
 
 (mu/defn source-database-transform-ids :- [:set ::lib.schema.id/transform]
   "The IDs of the Transforms reading from the Database with `db-id`."
@@ -1020,6 +990,13 @@
    max-failures :- ms/PositiveInt]
   (record-failure! :model/DependencyStatus entity-type entity-id max-failures))
 
+(mu/defn given-up-dependency-statuses :- [:sequential [:map
+                                                       [:entity_type ::deps.dependency-types/dependency-types]
+                                                       [:entity_id   ms/PositiveInt]]]
+  "The entities whose dependencies the dependency job gave up computing until a write changes them."
+  []
+  (t2/select [:model/DependencyStatus :entity_type :entity_id] :terminal true))
+
 (mu/defn clear-dependency-status! :- :boolean
   "Record that the dependency job computed the dependencies of the entity `entity-type` `entity-id` with the analysis
   of `current-version`, clearing its count of `stale` writes unless a write raised it, returning whether it cleared it."
@@ -1096,11 +1073,6 @@
   "Whether the Field with `field-id` has an internal remap, which shows its FieldValues' human-readable values."
   [field-id :- ::lib.schema.id/field]
   (t2/exists? :model/Dimension :field_id field-id :type "internal"))
-
-(mu/defn native-card-ids :- [:set ::lib.schema.id/card]
-  "The IDs of the native Cards among `card-ids`."
-  [card-ids :- [:set ::lib.schema.id/card]]
-  (or (t2/select-pks-set :model/Card :id [:in card-ids] :query_type :native) #{}))
 
 (mu/defn card-state :- [:maybe ::dependencies.schema/card-state]
   "The `updated_at` and `result_metadata` of the Card with `card-id`, locking its row until the transaction ends when

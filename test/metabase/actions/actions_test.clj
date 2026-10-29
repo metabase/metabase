@@ -782,7 +782,7 @@
               (mt/with-temp [:model/Database test-database {:engine driver/*driver*, :details test-user-details :settings {:database-enable-actions true
                                                                                                                            :database-enable-table-editing true}}]
                 ;; Sync the database to get table metadata
-                (sync/sync-database! test-database)
+                (sync/sync-database! (:id test-database))
                 (let [table-id (t2/select-one-pk :model/Table :db_id (:id test-database) :name "categories")]
                   (testing (str "INSERT permission denied for " driver/*driver*)
                     (let [result (try
@@ -841,7 +841,7 @@
                                         :write-data
                                         :default))]
           (try
-            (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
+            (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))
             (testing "write pool does not exist before action execution"
               (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
             (binding [*current-user-permissions-set* (delay #{"/"})]
@@ -851,7 +851,7 @@
             (testing "write pool is created during action execution"
               (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key)))
             (finally
-              (sql-jdbc.conn/invalidate-pool-for-db! (mt/db)))))))))
+              (sql-jdbc.conn/invalidate-pool-for-db! (mt/id)))))))))
 
 (deftest implicit-action-audit-trail-test
   (testing "an implicit action records one QueryExecution row holding an action descriptor, not SQL"

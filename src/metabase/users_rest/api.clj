@@ -10,6 +10,7 @@
    [metabase.auth-identity.core :as auth-identity]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -21,6 +22,7 @@
    [metabase.tenants.core :as tenants]
    [metabase.users-rest.db :as users-rest.db]
    [metabase.users.core :as users]
+   [metabase.users.db :as users.db]
    [metabase.users.models.user :as user]
    [metabase.users.schema :as users.schema]
    [metabase.users.settings :as users.settings]
@@ -331,7 +333,7 @@
   [user]
   (let [enabled? (appearance/custom-homepage)
         id       (appearance/custom-homepage-dashboard)
-        dash     (users-rest.db/dashboard id)
+        dash     (when (pos-int? id) (dashboards.db/dashboard id))
         valid?   (and enabled? id (some? dash) (not (:archived dash)) (mi/can-read? dash))]
     (assoc user
            :custom_homepage (when valid? {:dashboard_id id}))))
@@ -568,7 +570,7 @@
             (api/check-400 (not (and (:tenant_id changes) (:is_superuser changes)))
                            "Superusers cannot be tenant users")
             (reset-magic-group-membership! id (:tenant_id changes)))
-          (events/publish-event! :event/user-update {:object (users-rest.db/user id)
+          (events/publish-event! :event/user-update {:object (users.db/user id)
                                                      :previous-object user-before-update
                                                      :user-id api/*current-user-id*}))
         (maybe-update-user-personal-collection-name! user-before-update body)
@@ -714,7 +716,7 @@
   (check-not-internal-user id)
   (api/check-404 (users-rest.db/user-exists? id))
   (users-rest.db/update-personal-user! id {:is_active false})
-  (events/publish-event! :event/user-deactivated {:object (users-rest.db/user id) :user-id api/*current-user-id*})
+  (events/publish-event! :event/user-deactivated {:object (users.db/user id) :user-id api/*current-user-id*})
   {:success true})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

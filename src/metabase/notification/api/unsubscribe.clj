@@ -6,8 +6,10 @@
    [metabase.api.macros :as api.macros]
    [metabase.channel.email.messages :as messages]
    [metabase.config.core :as config]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.events.core :as events]
    [metabase.notification.db :as notification.db]
+   [metabase.queries.db :as queries.db]
    [metabase.request.core :as request]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.schema :as ms]
@@ -30,9 +32,9 @@
   (let [notification (t2/hydrate (notification.db/notification-for-handler notification-handler-id) :payload)]
     (case (:payload_type notification)
       ;; use the card name
-      :notification/card (->> notification :payload :card_id notification.db/card-name)
+      :notification/card (:name (queries.db/card (-> notification :payload :card_id)))
       ;; use the dashboard name
-      :notification/dashboard (->> notification :payload :dashboard_id notification.db/dashboard-name)
+      :notification/dashboard (:name (dashboards.db/dashboard (-> notification :payload :dashboard_id)))
       (name (:payload_type notification)))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to

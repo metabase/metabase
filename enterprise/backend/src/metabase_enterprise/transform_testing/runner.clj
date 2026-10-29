@@ -34,12 +34,13 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.db :as transforms.db]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
-   [metabase.warehouses.schema :as warehouses.schema]))
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -52,7 +53,7 @@
   "What [[validated-plan]] hands the run that follows it."
   [:map {:closed true}
    [:driver       :keyword]
-   [:database     ::warehouses.schema/database]
+   [:database     ::lib.schema.metadata/database]
    [:input->table [:map-of ::transform-testing.schema/input :string]]
    [:output-table :string]
    [:labels       [:map-of :string :string]]
@@ -119,7 +120,7 @@
 (defn- testable-transform
   "The transform `transform-id` names, if it is one a test can run."
   [transform-id]
-  (let [transform (api/check-404 (transform-testing.db/transform transform-id))]
+  (let [transform (api/check-404 (transforms.db/transform transform-id))]
     (when-not (transforms-base.u/query-transform? transform)
       (throw (transform-testing.errors/ex
               ::transform-testing.errors/unsupported-transform
@@ -130,8 +131,9 @@
 (defn- testable-database
   "The database `transform` reads, if its driver can run a transform test."
   [transform]
-  (let [database (api/check-404 (transform-testing.db/database
-                                 (transforms-base.u/transform-source-database transform)))
+  (let [database-id (transforms-base.u/transform-source-database transform)
+        _           (api/check-404 (some-> database-id transform-testing.db/database-exists?))
+        database    (driver.u/lib-database database-id)
         driver   (keyword (:engine database))]
     (when-not (driver.u/supports? driver :transforms/testing database)
       (throw (transform-testing.errors/ex
@@ -205,7 +207,7 @@
         source         (parsed-source driver transform transform-id)
         input->table   (into {} (map (fn [input] [input (driver/temp-table-name driver)])) inputs)
         output-table   (driver/temp-table-name driver)
-        default-schema (:default_schema database)
+        default-schema (:default-schema database)
         replacements   (transform-testing.compile/table-replacements transform input->table output-table default-schema)
         compiled       (transform-testing.compile/compile-transform driver source replacements)]
     (transform-testing.validator/validate

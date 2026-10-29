@@ -4,14 +4,38 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
-## Metabase 0.66.0
+## Metabase 0.65.3
 
 - `metabase.driver.sql-jdbc.execute/impl-error-in-query?` `[driver exception]` identifies query errors raised while
   reading rows. The default recognizes SQLState classes `21`, `22`, `23` and `42`. Override it to add vendor query
   error codes or exclude SQLStates that also cover operational failures. Unknown failures remain QP errors;
   cancellation takes precedence over query-error evidence.
 
+- `metabase.driver/validate-impersonated-query` `[driver query]` has moved from `:sql-jdbc` to `:sql`, so every
+  SQL driver -- not only the JDBC ones -- inherits the check that a connection-impersonated native query is a
+  single statement of the allowed type. It now walks native stages nested inside joins as well as the top-level
+  ones, and throws rather than returning a verdict when it cannot parse the exact string that would execute.
+  A driver that supports `:connection-impersonation` without descending from `:sql` must implement the method
+  itself; impersonated native queries on such a driver are refused outright.
+
 ## Metabase 0.65.0
+
+- `metabase.driver.sql-jdbc.execute/set-role-if-supported!` moved to
+  `metabase.driver.sql-jdbc.connection/set-role-if-supported!`. The JDBC connection pool now sets the connection
+  impersonation role on every checkout, so a driver that overrides `do-with-connection-with-options` no longer calls
+  it, and `do-with-connection-with-options` no longer sets it either.
+
+- `metabase.driver.connection/effective-details` and `metabase.driver.sql-jdbc.connection/db->pooled-connection-spec`
+  resolve a database routing router to the current user's destination. Read connection details through
+  `effective-details` and get JDBC connections through the pool, so routing applies; building a connection from raw
+  details (`sql-jdbc.conn/connection-details->spec`, `driver.u/can-connect-with-details?`) is a discouraged var
+  outside driver namespaces.
+
+- The admin connection is removed: `metabase.driver.connection/with-admin-connection`,
+  `metabase.driver.connection/database-admin-details`, the `:admin` connection type,
+  `metabase.driver.common/admin-connection-option` (and its `"admin-connection"` `visible-if` marker) and
+  `metabase.driver.util/fields-hidden-for-admin-connection` are gone, and a Database no longer has `:admin_details`.
+  A driver's `normalize-db-details` normalizes only `:details` and `:write_data_details`.
 
 - `metabase.driver/disallowed-connection-parameters` `[driver]` -- new multimethod returning the names of client
   connection parameters a user may never set, whether in `:additional-options` or as a detail key. Metabase refuses

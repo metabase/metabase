@@ -13,15 +13,15 @@
   []
   (t2/select :model/Database))
 
+(mu/defn database-exists?
+  "Whether the Database with `database-id` exists."
+  [database-id :- ::lib.schema.id/database]
+  (t2/exists? :model/Database :id database-id))
+
 (mu/defn table-field-names
   "The names of the Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
   (t2/select-fn-vec :name [:model/Field :name] :table_id table-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
-
-(mu/defn database-connection-details
-  "The engine and connection details of the Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one [:model/Database :id :engine :details :write_data_details :admin_details] :id database-id))
 
 (mu/defn json-field-names-with-unfolding-disabled
   "The names of the JSON Fields of the Table with `table-id` that have JSON unfolding disabled."

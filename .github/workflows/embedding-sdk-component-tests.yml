@@ -22,7 +22,7 @@ jobs:
     timeout-minutes: 45
     strategy:
       matrix:
-        react-version: [18, 19]
+        react-version: [19]
       fail-fast: false
     env:
       CI_CONDUCTOR_TEST_SUITE: embedding-sdk-component-react-${{ matrix.react-version }}

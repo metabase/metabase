@@ -23,7 +23,6 @@ export * from "./dataset";
 export * from "./document";
 export * from "./email";
 export * from "./embed";
-export * from "./embedding-sdk";
 export * from "./field";
 export * from "./gdrive";
 export * from "./geojson";

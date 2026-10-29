@@ -1,11 +1,16 @@
+import { t } from "ttag";
+
 import {
   skipToken,
   useDeleteTimelineEventMutation,
   useGetTimelineEventQuery,
 } from "metabase/api";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
-import DeleteEventModal from "metabase/timelines/common/components/DeleteEventModal";
+import { DeleteConfirmationFooter } from "metabase/timelines/common/components/DeleteConfirmationFooter";
+import {
+  TimelineModal,
+  TimelineModalLoadingState,
+} from "metabase/timelines/common/components/TimelineModal";
 import * as Urls from "metabase/urls";
 import type { TimelineEvent } from "metabase-types/api";
 
@@ -23,12 +28,22 @@ function DeleteEventModalContainer({ params, onClose }: ModalComponentProps) {
     onClose();
   };
 
-  if (isLoading || error || !event) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
-  }
-
   return (
-    <DeleteEventModal event={event} onSubmit={onSubmit} onClose={onClose} />
+    <TimelineModal
+      title={event ? t`Delete ${event.name}?` : undefined}
+      onClose={onClose}
+      animated={false}
+      tall={isLoading || !!error || !event}
+    >
+      {isLoading || error || !event ? (
+        <TimelineModalLoadingState loading={isLoading} error={error} />
+      ) : (
+        <DeleteConfirmationFooter
+          onDelete={() => onSubmit(event)}
+          onCancel={onClose}
+        />
+      )}
+    </TimelineModal>
   );
 }
 

@@ -33,6 +33,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
+   [metabase.queries.db :as queries.db]
    [metabase.query-processor.core :as qp]
    [metabase.util :as u]
    [metabase.util.json :as json]
@@ -616,7 +617,7 @@
 
       numeric-card
       (let [card-id  numeric-card
-            card     (metabot.db/card card-id)
+            card     (queries.db/card card-id)
             ;; Read-check here rather than let the 403 escape: an unreadable card and an absent
             ;; one must be reported identically, or the status code tells a caller whether a
             ;; hidden card exists. Same collapse the read-checked content store applies to every
@@ -1001,7 +1002,8 @@
        diagnostics over every custom column / aggregation / filter
        ([[repr.repair/assert-editor-accepts-expressions!]]), then reject a temporal bucket
        sitting on a column that is not temporal
-       ([[repr.repair/assert-temporal-buckets-on-temporal-columns!]]). Any of these
+       ([[repr.repair/assert-temporal-buckets-on-temporal-columns!]]), and reject a metric whose
+       definition can't run on the stage's source ([[incompatible-metrics]]). Any of these
        failing is a retryable `:agent-error?` - success on a query the editor rejects is
        BOT-1442.
     7. Export that final numeric MBQL 5 back to the portable form for the LLM-facing

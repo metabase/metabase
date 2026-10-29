@@ -23,6 +23,7 @@ import {
   Flex,
   Group,
   Icon,
+  Modal,
   Stack,
   TimeInput,
 } from "metabase/ui";
@@ -114,11 +115,14 @@ const EventForm = ({
     >
       {({ dirty, values, setFieldValue }) => (
         <Form disabled={!dirty} data-testid="event-form">
-          <Stack>
+          <Stack gap="xl">
             <FormTextInput
               name="name"
               label={t`Event name`}
               placeholder={t`Product launch`}
+              // The form can mount after the modal opens (while loading), when the
+              // modal no longer looks for `data-autofocus`
+              autoFocus
               data-autofocus
             />
             <Flex align="end" gap="lg">
@@ -202,23 +206,23 @@ const EventForm = ({
                 data={timelineOptions}
               />
             )}
-            <Flex gap="lg" justify="end">
-              <FormErrorMessage inline />
-              {!isNew && (
-                <FormArchiveButton onClick={onArchive}>
-                  {t`Archive event`}
-                </FormArchiveButton>
-              )}
-              <Button type="button" onClick={onCancel}>
-                {t`Cancel`}
-              </Button>
-              <FormSubmitButton
-                variant="filled"
-                disabled={!dirty}
-                label={isNew ? t`Create` : t`Update`}
-              />
-            </Flex>
           </Stack>
+          <Modal.Footer>
+            <FormErrorMessage inline flex={1} />
+            {!isNew && (
+              <FormArchiveButton onClick={onArchive}>
+                {t`Archive event`}
+              </FormArchiveButton>
+            )}
+            <Button type="button" onClick={onCancel}>
+              {t`Cancel`}
+            </Button>
+            <FormSubmitButton
+              variant="filled"
+              disabled={!dirty}
+              label={isNew ? t`Create` : t`Update`}
+            />
+          </Modal.Footer>
         </Form>
       )}
     </FormProvider>

@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.transforms.jobs :as jobs]
@@ -38,7 +39,7 @@
                  :model/TransformJobTransformTag _ {:job_id job-id :tag_id tag-id :position 0}]
                 (transforms.schedule/initialize-job! job)
                 (transforms.schedule/update-job! job-id "* * * * * ? *")
-                (is (true? (u/poll {:thunk   (fn [] (driver/table-exists? driver/*driver* (mt/db) target))
+                (is (true? (u/poll {:thunk   (fn [] (driver/table-exists? driver/*driver* (lib.metadata/database (mt/metadata-provider)) target))
                                     :done?   true?
                                     :timeout-ms 20000
                                     :interval-ms 1000})))

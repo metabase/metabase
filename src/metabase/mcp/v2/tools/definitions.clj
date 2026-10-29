@@ -12,7 +12,6 @@
    [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
-   [metabase.mcp.db :as mcp.db]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.projections :as projections]
@@ -20,7 +19,8 @@
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resolve :as v2.resolve]
    [metabase.mcp.v2.write :as v2.write]
-   [metabase.metabot.scope :as metabot.scope]))
+   [metabase.metabot.scope :as metabot.scope]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -368,7 +368,7 @@
                                            (fn [definition]
                                              (prepare-definition
                                               :segment definition
-                                              (mcp.db/table-by-id (:table_id segment)))))]
+                                              (warehouse-schema.db/table (:table_id segment)))))]
         (-> (run-domain-write #(update-segment! (:id segment) body))
             (write-result :segment)
             (as-> row (v2.write/readback token-scopes [metabot.scope/agent-content-read] row nil))
@@ -437,7 +437,7 @@
                                            (fn [definition]
                                              (prepare-definition
                                               :measure definition
-                                              (mcp.db/table-by-id (:table_id measure)))))]
+                                              (warehouse-schema.db/table (:table_id measure)))))]
         (-> (run-domain-write #(update-measure! (:id measure) body))
             (write-result :measure)
             (as-> row (v2.write/readback token-scopes [metabot.scope/agent-content-read] row nil))

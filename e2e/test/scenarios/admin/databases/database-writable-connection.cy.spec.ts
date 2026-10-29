@@ -303,24 +303,21 @@ function createModel() {
 }
 
 function createModelWithAction() {
-  return createModel()
-    .then((model) =>
-      H.createAction({
-        type: "query",
-        name: "Delete row",
-        database_id: WRITABLE_DB_ID,
-        model_id: model.id,
-        parameters: [],
-        dataset_query: {
-          database: WRITABLE_DB_ID,
-          type: "native",
-          native: {
-            query: `DELETE FROM ${ORDERS_TABLE_NAME} WHERE id = 1`,
-          },
+  return createModel().then((model) =>
+    H.createAction({
+      type: "query",
+      name: "Delete row",
+      model_id: model.id,
+      parameters: [],
+      dataset_query: {
+        database: WRITABLE_DB_ID,
+        type: "native",
+        native: {
+          query: `DELETE FROM ${ORDERS_TABLE_NAME} WHERE id = 1`,
         },
-      }),
-    )
-    .then(({ body: action }) => action);
+      },
+    }),
+  );
 }
 
 function runAction(actionId: number) {

@@ -610,7 +610,7 @@
   "Return the current persisted title for a conversation."
   [conversation-id]
   (when conversation-id
-    (metabot.db/conversation-title conversation-id)))
+    (:title (metabot.db/metabot-conversation conversation-id))))
 
 ;;; ---------------------------------------- Chat message conversion ----------------------------------------
 
@@ -838,7 +838,7 @@
   conversation participants may not be able to read; readers resolve names through
   the permission-checked card API."
   [conversation-id]
-  (when-let [conv (metabot.db/conversation conversation-id)]
+  (when-let [conv (metabot.db/metabot-conversation conversation-id)]
     (let [messages (live-messages conversation-id)]
       {:conversation_id             (:id conv)
        :created_at                  (:created_at conv)
