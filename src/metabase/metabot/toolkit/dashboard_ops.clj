@@ -735,7 +735,8 @@
 ;;; ------------------------------------------------ Entry ---------------------------------------------------------
 
 (defn- apply-op-at
-  "[[apply-op]] for `op`, the op at `idx`, adding `:op-index` and `:op-name` to any error it throws."
+  "Runs [[apply-op]] on `op`, the op at `idx`.
+   Adds `:op-index` and `:op-name` to any error it throws."
   [state idx op]
   (try
     (apply-op state op)
