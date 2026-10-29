@@ -50,13 +50,10 @@
      [(make-slack-channel schedule channel)]
      (-> dashboard
          (select-keys [:name :parameters])
-         ;; Send no collection. The Pulse model takes a subscription's collection from its dashboard
-         ;; (see `before-insert` in metabase.pulse.models.pulse). A non-nil `collection_id` makes the
-         ;; create check demand write access to that collection. View access to the dashboard is
-         ;; enough to subscribe to it: https://github.com/metabase/metabase/pull/17722
-         ;; The dashboard's pin position is not the subscription's, so send none.
-         ;; A non-nil position makes `create-pulse-with-perm-checks!` shift every pinned item in the
-         ;; collection at or after that position.
+         ;; Send no collection and no position. `create-pulse-with-perm-checks!` ignores both for a
+         ;; dashboard subscription: the subscription goes in the collection of its dashboard, and it has no
+         ;; pin position. View access to the dashboard is enough to subscribe to it:
+         ;; https://github.com/metabase/metabase/pull/17722
          (assoc :dashboard_id        dashboard-id
                 :collection_id       nil
                 :collection_position nil

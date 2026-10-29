@@ -92,20 +92,34 @@
                                                                 :full :full))) cards))))
      (t2/hydrate pulses :can_write))))
 
+(defn- without-collection-for-dashboard-subscription
+  "Drop `:collection_id` and `:collection_position` from `pulse-data` when it is a dashboard subscription.
+
+  A dashboard subscription lives in the collection of its dashboard, and it has no pin position of its own.
+  `before-insert` takes `:collection_id` from the dashboard only when the request sends none. Without this step, a
+  collection from the request would pass the permission check unread, and `maybe-reconcile-collection-position!`
+  would shift the pinned items in it."
+  [{:keys [dashboard_id] :as pulse-data}]
+  (cond-> pulse-data
+    dashboard_id (assoc :collection_id nil :collection_position nil)))
+
 (defn create-pulse-with-perm-checks!
-  "Create a new Pulse with permissions checks."
+  "Create a new Pulse with permissions checks.
+
+  A dashboard subscription ignores `:collection_id` and `:collection_position` in `pulse-data`."
   [cards channels pulse-data]
   (perms/check-has-application-permission :subscription false)
-  (api/create-check :model/Pulse (assoc pulse-data :cards cards))
-  (t2/with-transaction [_conn]
-    ;; Adding a new pulse at `collection_position` could cause other pulses in this collection to change position,
-    ;; check that and fix it if needed
-    (api/maybe-reconcile-collection-position! (select-keys pulse-data [:collection_id :collection_position]))
-    ;; ok, now create the Pulse
-    (let [pulse (api/check-500
-                 (models.pulse/create-pulse! (map models.pulse/card->ref cards) channels pulse-data))]
-      (events/publish-event! :event/pulse-create {:object pulse :user-id api/*current-user-id*})
-      pulse)))
+  (let [pulse-data (without-collection-for-dashboard-subscription pulse-data)]
+    (api/create-check :model/Pulse (assoc pulse-data :cards cards))
+    (t2/with-transaction [_conn]
+      ;; Adding a new pulse at `collection_position` could cause other pulses in this collection to change position,
+      ;; check that and fix it if needed
+      (api/maybe-reconcile-collection-position! (select-keys pulse-data [:collection_id :collection_position]))
+      ;; ok, now create the Pulse
+      (let [pulse (api/check-500
+                   (models.pulse/create-pulse! (map models.pulse/card->ref cards) channels pulse-data))]
+        (events/publish-event! :event/pulse-create {:object pulse :user-id api/*current-user-id*})
+        pulse))))
 
 (def ^:private PulseChannelType
   [:enum "email" "slack" "http"])
