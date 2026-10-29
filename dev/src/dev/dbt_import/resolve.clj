@@ -267,7 +267,7 @@
   (let [dimensions (resolve.dimensions/dimension-set context)
         query      (without-ref-types (reduce lib/filter (lib/aggregate query aggregation) filters))
         _          (check-features! query)
-        nano-id    (ids/metric-entity-id ir)
+        nano-id    (ids/metric-entity-id (metadata/database-name provider) ir)
         card-id    (metadata/add-metric! provider {:name          (:label ir)
                                                    :description   (:description ir)
                                                    :table-id      (lib.util/source-table-id query)
@@ -524,9 +524,10 @@
   stage failed on (flagged `:error?` there), under `:errors` with the converter's own. A ratio or derived metric over
   any of them, over a metric that refers to itself, or over one this stage failed on, is reported with that metric's
   reason rather than as referring to a metric that does not exist."
-  [config                                     :- ::resolved/config
-   {:keys [metrics unsupported source] :as ir} :- ::ir/manifest]
+  [config                                                     :- ::resolved/config
+   {:keys [metrics unsupported source semantic-models] :as ir} :- ::ir/manifest]
   (let [env                      (resolve.columns/env config ir)
+        database-names           (keep #(metadata/semantic-model-database config %) (vals semantic-models))
         {:keys [ordered cyclic]} (order-metrics metrics)
         cyclic-reports           (mapv (fn [{metric-name :name, :keys [unique-id]}]
                                          (unsupported/report metric-name unique-id cyclic-reason))
@@ -563,7 +564,7 @@
                                                                         (concat unsupported cyclic-reports))}}
                                          ordered)]
     {:collection  {:name      (:collection-name config "dbt metrics")
-                   :entity-id (ids/collection-entity-id (:project source))}
+                   :entity-id (ids/collection-entity-id database-names (:project source))}
      :metrics     (:metrics results)
      :unsupported (into (:unsupported results) cyclic-reports)
      :errors      (:errors results)}))

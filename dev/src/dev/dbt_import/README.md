@@ -15,8 +15,10 @@ The pipeline is three stages, each knowing only the previous stage's schema (see
    a Lib query against a metadata provider built from the manifest (`dev.dbt-import.metadata`), with a deterministic
    `entity_id` and its dimension set. SQL in a measure's `expr` or a filter goes through sqlglot
    (`dev.dbt-import.sql`). What cannot be expressed as one Metabase metric is reported here.
-3. `emit` (`dev.dbt-import.emit`): the resolved metrics become serdes entities, written as YAML with serdes' own export
-   turning the provider's ids back into names.
+3. `emit` (`dev.dbt-import.emit`): each resolved metric becomes a Card row, and the collection a Collection row, that
+   serdes' own `extract-one` turns into entities the way an export does with a row from the app DB: the Card and
+   Collection specs decide which keys are written, columns at their default value are left out, and the provider's
+   ids become names. Only the curated dimensions keep a hand-built shape (see `card-schema` in `emit.clj`).
 
 MBQL is never written or read by hand: queries are built with `metabase.lib.core`, and what the converter needs to know
 about them comes from Lib.
@@ -206,8 +208,8 @@ re-import updates what the first import created instead of duplicating it. The d
 
 | Id | Hashed from | How |
 | -- | -- | -- |
-| a metric card's `entity_id` | `dbt-import/metric/` + the dbt metric's `unique_id` (`metric.<project>.<name>`) | the first 60 bits of the string's SHA-256 hash seed Metabase's NanoID generator (`metabase.util/generate-nano-id`) |
-| the collection's `entity_id` | `dbt-import/collection/` + the manifest's `metadata.project_name` | the same |
+| a metric card's `entity_id` | `dbt-import/metric/` + the name of the Metabase Database the metric's semantic model is mapped to (its `:databases` value) + `/` + the dbt metric's `unique_id` (`metric.<project>.<name>`) | the first 60 bits of the string's SHA-256 hash seed Metabase's NanoID generator (`metabase.util/generate-nano-id`) |
+| the collection's `entity_id` | `dbt-import/collection/` + the names of the Metabase Databases the run writes cards for (the `:databases` values the manifest's semantic models map to), sorted and joined with commas + `/` + the manifest's `metadata.project_name` | the same |
 | a curated dimension's id | `dbt-import/dimension/` + the metric's `unique_id` + `/` + the dimension's dbt path (`<entity>__<dimension>`, or the bare name for the metric's own model) | a name-based (version 3) UUID |
 | a dimension group's id | the group's type (`main` or `connection`) + `/` + its name, the semantic model's `label` or its table name | the same, which is how Metabase derives a group's id from its display name |
 
@@ -218,10 +220,12 @@ The consequences, for better and worse:
 - Importing again, after a re-run, overwrites the imported cards with what the converter emits: a metric's curated
   dimensions, display name and description edited in the UI since the last import go back to what dbt says, and the
   collection, if it was moved under another one, goes back to the root. Curate in dbt, or import once.
-- Two dbt projects with the same `project_name` get the same collection, and so do two conversions of one project
-  for two Metabase databases (a `dev` and a `prod` warehouse, say): their collections and, when the metric names
-  coincide, their cards carry the same `entity_id`s, so the second import overwrites the first rather than standing
-  next to it. Whether the ids should take the database or the config into account is under review.
+- The ids carry the Metabase Database. One project converted for two Metabase databases (a `dev` and a `prod`
+  warehouse, say, each connected as its own Database) is two sets of cards in two collections, each re-importable on
+  its own; two dbt projects with the same `project_name` collide only when they are also mapped to the same Database.
+  The other side of that: renaming a Metabase Database (or changing what a warehouse database maps to in `:databases`)
+  re-keys every card and the collection, so the next import creates a second set of cards next to the first instead
+  of updating it. Rename before the first import, or delete the first set by hand.
 - A re-run replaces what the previous run wrote for the collection (`collections/main/<collection-slug>.yaml` and
   `collections/main/<collection-slug>/`, see `:collection-name` under "Running the converter"), so a metric renamed
   or removed from the project since then does not survive as a stale file in the tree: a stale card file would come
@@ -486,6 +490,15 @@ listed under "Filters and SQL expressions"; everything outside it is reported, n
 | a method other than `.grain()` chained onto a reference | `Dimension('metric_time').date_part('month')`, `Dimension('order__status').descending(True)` | `.grain('month')` is read and means what `TimeDimension('...', 'month')` does. `.date_part()` extracts a part of a date (dbt's `dow` and `doy` depend on the first day of the week, see the week caveat under "Filters and SQL expressions"), and the rest are ordering hints that mean nothing in a filter; all are reported, naming the call, rather than dropped. | Map `.date_part('year'|'quarter'|'month'|'day')` onto `get-year` and friends; `dow`/`doy` need the week-start agreement below. |
 | Jinja other than a MetricFlow reference | `{{ var('status_col') }} = 'x'`, `{{ Dimension(some_macro()) }}`, `status = '{{ var("x") }}'`, `{% if ... %}` | Only `Dimension(...)`, `TimeDimension(...)`, `Entity(...)` and `Metric(...)` with quoted names are read. Anything else, a `{{`, `{%` or `{#` anywhere in the template, inside a string literal included, is reported as Jinja the converter could not parse. | Render the filter with dbt (`dbt compile`) before importing, or evaluate the manifest's `var`s in the converter. |
 
+One construct converts with a difference in what it returns for nulls. `a || b` in a measure's `expr` or a `filter`
+becomes Metabase's `concat`, which the SQL drivers (SQLite's aside) compile to the warehouse's `CONCAT()` function. On
+Postgres, `CONCAT()` treats a null argument as an empty string where `||` yields null, so `count_distinct(status ||
+code)` counts a row whose `code` is null, under its `status` alone, where dbt's `count(distinct ...)` skips the null
+`||` gives it; a filter on `a || b` can likewise match rows the SQL would not. On warehouses whose `CONCAT()`
+propagates nulls as `||` does, Redshift, Snowflake, BigQuery and Databricks among them, the two agree. The fix belongs
+in Metabase: a `:concat` option that compiles to null-propagating concatenation; until then the converter keeps
+`concat`.
+
 ### Dimensions and joins
 
 These apply to the curated dimension set and are reported under `:unsupported-dimensions`; the metric converts without
@@ -504,12 +517,13 @@ and SQL expressions"); it is only the dimension set that cannot carry it.
 | a semantic model whose `primary_entity` names no entity of its own | `primary_entity: order` on a model with no `entities` entry named `order` (dbt's virtual primary entity, for a model with no key column) | The model is keyed by the virtual entity for filter prefixes, but there is no column to join on, so a foreign entity of the same name on another model cannot reach its dimensions. Every dimension behind it is reported. | Nothing in Metabase: a join needs a column on each side. Declare the key as an entity with an `expr`. |
 | a ratio or derived metric `time_granularity` whose inputs disagree on an `agg_time_dimension` | `type: derived`, `time_granularity: month`, over `sales` (measure `agg_time_dimension: order_date`) and `target` (measure `agg_time_dimension: target_date`) | The metric's grain becomes the default temporal unit of its default dimension, the inputs' shared `agg_time_dimension`. When the inputs disagree there is no default dimension to carry it, so the grain is reported under dbt's name for the dimension it buckets, `metric_time`; the metric and its dimensions convert at their own grains. | Metabase cannot hold a breakout to a grain; the converter would have to pick one input's time dimension, which is not what dbt means. |
 
-Dimension group ids are derived from the group's name (the semantic model's `label`, or its table name) the same way
-Metabase derives a group's id from its display name, so a re-run writes the same ids. They are not the ids the instance
-computes for the same table: the instance names the main group after the table's display name (`Fact Sales` for
-`fact_sales`) and a connection group after the foreign key field's display name (`Order Key`), not after the semantic
-model's label (`Sales Fact`, `Order`). The imported groups are stable across re-imports, but a dimension added later in
-the UI lands in a group of its own next to the imported one, rather than in it.
+Dimension groups carry dbt's labels, by design: a group is named after the semantic model's `label` (or its table name
+when it has none), and its id is derived from that name the same way Metabase derives a group's id from its display
+name, so a re-run writes the same names and ids. They are not the names or ids the instance computes for the same
+table: the instance names the main group after the table's display name (`Fact Sales` for `fact_sales`) and a
+connection group after the foreign key field's display name (`Order Key`), not after the semantic model's label
+(`Sales Fact`, `Order`). So the imported groups are stable across re-imports, and a dimension added later in the UI
+sits in a sibling group next to the imported one rather than in it.
 
 An entity's `role` (`entities: [{name: user, type: foreign, expr: buyer_id, role: buyer}]`, dbt's label for one of
 several entities that point at the same thing) is read nowhere: the join behind a dimension is made on the entity's
@@ -684,9 +698,9 @@ no assertions without one, so run it by hand as described under "The end-to-end 
 `core-test` runs the whole pipeline on the fixtures and pins the report's shape; `sql-test` tests the SQL converter on
 its own, down to the H2 SQL the converted conditions compile to; `adapter-test` covers the adapter check and
 `preflight-test` the pre-import check against an app DB; `generative-test` runs manifests generated from the
-manifest schemas through parse and resolve, checking that nothing escapes as an exception; `fixture-test` and `marts-test` cover the parts of the two
-generators that need neither dbt nor Postgres (what gets copied, what the manifest is trimmed to, the environment dbt
-gets, how the password is kept off the screen and out of the JDBC URL).
+manifest schemas through parse and resolve, checking that nothing escapes as an exception; `fixture-test` and
+`marts-test` cover the parts of the two generators that need neither dbt nor Postgres (what gets copied, what the
+manifest is trimmed to, the environment dbt gets, how the password is kept off the screen and out of the JDBC URL).
 
 All but the end-to-end test need no warehouse: they run the fixtures and small hand-built manifests through the
 pipeline and compare the clauses that come out.

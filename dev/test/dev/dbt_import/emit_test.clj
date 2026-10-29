@@ -3,11 +3,13 @@
   and takes a previous run's away."
   (:require
    [clojure.java.io :as io]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
    [dev.dbt-import.emit :as emit]
    [dev.dbt-import.test-util :as tu :refer [fld]]
    [medley.core :as m]
+   [metabase.models.serialization :as serdes]
    [metabase.queries.models.card :as card]
    [metabase.test :as mt]
    [metabase.util :as u])
@@ -231,9 +233,9 @@
 
 (deftest ^:parallel card-schema-test
   (is (= emit/card-schema card/current-card-schema-version)
-      (str "card_schema moved past " emit/card-schema ": check the hand-built card shape in"
-           " dev.dbt-import.emit/card-entity (the dimensions and dimension mappings in particular) against what"
-           " changed in the new version, then bump dev.dbt-import.emit/card-schema")))
+      (str "card_schema moved past " emit/card-schema ": check the hand-built dimensions and dimension mappings the"
+           " resolve stage puts on the card (see dev.dbt-import.emit/card-schema) against what changed in the new"
+           " version, then bump dev.dbt-import.emit/card-schema")))
 
 (deftest ^:parallel nfc-label-test
   (testing "a label with combining marks and the same label precomposed slugify the same, and are then told apart"
@@ -323,3 +325,38 @@
       (is (not (contains? card :meta)))
       (is (= {} (:visualization_settings card)))
       (is (not (str/includes? (pr-str card) "Sales Coverage Ratio"))))))
+
+(deftest ^:parallel card-envelope-test
+  (testing "a card is what the Card spec exports of a row, not a hand-written envelope"
+    (let [resolved  (tu/resolve-manifest-map (tu/build-manifest {}))
+          metric    (tu/resolved-metric-named resolved "m")
+          card      (tu/card-entity tu/default-config resolved "m")
+          spec      (serdes/make-spec "Card" nil)
+          exported  (into (set (:copy spec)) (map (fn [[k transform]] (:as transform k))) (:transform spec))]
+      (testing "every key written is one the spec exports"
+        (is (empty? (set/difference (disj (set (keys card)) :serdes/meta) exported))))
+      (testing "a column at its default value is left out, as a real export leaves it; the import puts it back"
+        (is (seq (:defaults spec)))
+        (is (not-any? #(contains? card %) (keys (:defaults spec)))))
+      (testing "the references the metadata provider does not number are written in portable form"
+        (is (= "admin@example.com" (:creator_id card)))
+        (is (= (-> resolved :collection :entity-id) (:collection_id card))))
+      (testing "the references the import derives again are not written"
+        (is (not-any? #(contains? card %) [:database_id :result_metadata :table_id :source_card_id])))
+      (is (= [{:model "Card", :id (:entity-id metric), :label "m"}] (:serdes/meta card))))))
+
+(deftest ^:parallel collection-envelope-test
+  (testing "the collection is what the Collection spec exports of a top-level row"
+    (let [resolved   (tu/resolve-manifest-map (tu/build-manifest {}))
+          collection (-> (emit/files tu/default-config resolved) first :entity)
+          exported   (let [spec (serdes/make-spec "Collection" nil)]
+                       (into (set (:copy spec)) (map (fn [[k transform]] (:as transform k))) (:transform spec)))]
+      (is (empty? (set/difference (disj (set (keys collection)) :serdes/meta) exported)))
+      (is (= {:name        "dbt metrics"
+              :entity_id   (-> resolved :collection :entity-id)
+              :slug        "dbt_metrics"
+              :description "Metrics imported from dbt."
+              :serdes/meta [{:model "Collection", :id (-> resolved :collection :entity-id), :label "dbt_metrics"}]}
+             (dissoc collection :archived_directly)))
+      (testing "no parent and no personal owner"
+        (is (not-any? #(contains? collection %) [:parent_id :personal_owner_id]))))))
