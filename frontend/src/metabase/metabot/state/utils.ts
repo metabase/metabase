@@ -15,8 +15,8 @@ import {
   type MetabotMessage,
   type MetabotMessagePart,
   type MetabotUserTextChatMessage,
-  type SlashCommand,
   RETRIABLE_METABOT_TURN_ERROR_CODES,
+  type SlashCommand,
 } from "./types";
 
 export const createMessageId = () => {
