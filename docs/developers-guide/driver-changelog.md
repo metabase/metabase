@@ -6,6 +6,14 @@ title: Driver interface changelog
 
 ## Metabase 0.66.0
 
+- `metabase.driver/url-building-detail-keys` `[driver]` -- new multimethod returning the connection-detail keys whose
+  values the driver splices into its connection URL. Metabase refuses a value of one of these that contains `?`, `&`,
+  `;` or `#`, even percent-encoded. Defaults to `[:host :port :db :dbname :catalog :account]`; override it if one of
+  those keys holds something else, such as a whole connection string (H2) or a file path (SQLite).
+
+- `metabase.driver/disallowed-connection-parameters` names now match ignoring percent-encoding, `_ . - +` and
+  whitespace as well as case.
+
 - Added an `:upper-case-unquoted-identifiers` driver feature flag: whether the warehouse stores an identifier written
   without quotes in upper case, so that sync sees `CREATE TABLE orders` as `ORDERS`. It describes the warehouse, not a
   capability, and is for tools that name tables and columns by what sync saw from identifiers written elsewhere (the
@@ -27,6 +35,7 @@ title: Driver interface changelog
   map their binary types to `:type/Binary`; a column whose base type changes from `:type/*` to `:type/Binary` on the
   first sync after upgrading keeps its semantic type (sync no longer clears it when the old base type was `:type/*`)
   but gets its effective type, coercion strategy and fingerprint reset.
+
 
 ## Metabase 0.65.3
 
