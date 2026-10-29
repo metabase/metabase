@@ -49,11 +49,12 @@ export function SegmentEditor({
   const maxSource = useDynamicGoalSource(segment.max);
 
   const handleRemove = () => {
-    [minSource, maxSource].forEach((source) => {
-      if (source != null) {
-        trackDynamicGoalUnset(display, source);
-      }
-    });
+    if (minSource != null) {
+      trackDynamicGoalUnset(display, minSource);
+    }
+    if (maxSource != null) {
+      trackDynamicGoalUnset(display, maxSource);
+    }
     onRemove();
   };
 
