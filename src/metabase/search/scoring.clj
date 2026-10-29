@@ -23,7 +23,7 @@
 (defn prefix
   "Prefer it when the given value is a completion of a specific (non-null) value"
   [column value]
-  [:coalesce [:case [:like column (str (str/replace value "%" "%%") "%")] [:inline 1] :else [:inline 0]] [:inline 0]])
+  [:coalesce [:case [:like column (h2x/like-prefix value)] [:inline 1] :else [:inline 0]] [:inline 0]])
 
 (defn normalize-text-expr
   "Wrap a string column/value SQL expr with the normalization the text scorers compare on:
@@ -74,7 +74,7 @@
          ;; Use seconds for granularity in the fraction.
          (if (= :mysql db-type)
            [:coalesce
-            [[:timestampdiff ^:allow-raw-sql [:raw "SECOND"] from-column to-column]]
+            [[:timestampdiff :second from-column to-column]]
             [:* ceiling (double seconds-in-a-day)]]
            [[::h2x/extract :epoch [:- to-column from-column]]])
          [:inline (double seconds-in-a-day)]]]

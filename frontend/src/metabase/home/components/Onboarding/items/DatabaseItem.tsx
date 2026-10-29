@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+import onboardingDataDiagramImage from "assets/img/onboarding_data_diagram.png";
+import onboardingDataDiagramImage2x from "assets/img/onboarding_data_diagram@2x.png";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import { Text } from "metabase/ui";
@@ -26,8 +28,8 @@ export const DatabaseItem = ({ value, itemRef }: OnboardingItemProps) => {
     >
       <ChecklistImage
         alt={`${applicationName} ${t`data stack`}`}
-        src="app/assets/img/onboarding_data_diagram.png"
-        srcSet="app/assets/img/onboarding_data_diagram@2x.png 2x"
+        src={onboardingDataDiagramImage}
+        srcSet={`${onboardingDataDiagramImage2x} 2x`}
       />
       <Text>
         {t`Connect one or more databases. You can query these databases directly, either with the query builder or the native SQL editor.`}

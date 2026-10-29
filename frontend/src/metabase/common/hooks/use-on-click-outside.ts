@@ -6,7 +6,7 @@ interface ValidRefTarget {
 }
 
 export function useOnClickOutside<T extends ValidRefTarget = HTMLDivElement>(
-  ref: RefObject<T>,
+  ref: RefObject<T | null>,
   callback: () => void,
 ) {
   useEffect(() => {

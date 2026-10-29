@@ -37,7 +37,7 @@ export function TransformInspectorUpsellPage() {
     <DottedBackground>
       <PageContainer>
         <TransformHeader transform={transform} readOnly={readOnly} />
-        <Stack align="center" py="lg">
+        <Stack align="center" py="xl">
           <Card p={0} withBorder maw="48rem" w="100%">
             <PythonTransformsUpsell
               shouldShowLeftColumn={shouldShowLeftColumn}

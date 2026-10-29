@@ -34,8 +34,8 @@ twitter.com,
 x.com")
 
 (defsetting allowed-iframe-hosts
-  (deferred-tru "Allowed iframe hosts")
-  :encryption :no
+  (deferred-tru "Allowed iframe hosts. Includes a list of popular hosts by default; set to '' '' to disable the default list.")
+  :encryption :when-encryption-key-set
   :default    default-allowed-iframe-hosts
   :audit      :getter
   :visibility :public
@@ -43,10 +43,10 @@ x.com")
 
 (defsetting csp-img-allowed-hosts
   (deferred-tru "Comma-separated list of hosts that images may load from (e.g. in dashboard text, entity descriptions, and custom visualizations) when `csp-img-enabled` is on. Empty by default, which restricts images to this Metabase instance and the map tile server used by map visualizations.")
-  :encryption :no
+  :encryption :when-encryption-key-set
   :default    ""
   :audit      :getter
-  :visibility :public
+  :visibility :authenticated
   :export?    true)
 
 (defsetting csp-img-enabled
@@ -84,7 +84,7 @@ x.com")
                 (setting/set-value-of-type! :boolean :redirect-all-requests-to-https new-value)))
 
 (defsetting health-check-logging-enabled
-  (deferred-tru "Whether to log health check requests from session middleware.")
+  "Whether to log health check requests from session middleware."
   :type       :boolean
   :default    true
   :visibility :internal
@@ -114,9 +114,19 @@ x.com")
   :doc "Timeout in milliseconds to wait after query cancellation before escalating to thread interruption.
         This is used to free up threads that are stuck waiting for a DB response after a query has been cancelled.")
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^Long *thread-interrupt-escalation-timeout-ms*
   "Timeout in milliseconds to wait after query cancellation before escalating to thread interruption."
   (thread-interrupt-escalation-timeout-ms))
+
+(defsetting max-unauthenticated-request-body-bytes
+  "Maximum size in bytes of an HTTP request body from a caller who is not authenticated. Larger requests are rejected with HTTP 413 before the body is read."
+  :type       :integer
+  :visibility :internal
+  :setter     :none
+  :export?    false
+  :default    (* 4 1024 1024)
+  :doc "Applies to requests without a valid session, API key or token. The body is bounded before authentication is checked, so this is the most memory an anonymous request can make the server buffer. It covers login, setup, password reset, SSO callbacks, and public or embedded queries; none of those legitimately send more than a few hundred kilobytes. Authenticated requests are not limited.")
 
 (defsetting metabot-slack-signing-secret
   (deferred-tru "Signing secret for verifying requests from the Metabot Slack app")
@@ -135,7 +145,7 @@ x.com")
   (setting/get-value-of-type :string :metabot-slack-signing-secret))
 
 (defsetting slack-connect-signing-secret-version
-  (deferred-tru "Monotonically increasing version number for the Slack signing secret. Incremented each time the signing secret is rotated. Slack-connect auth identities are stamped with this version and only valid when it matches the current value. Legacy identities without a version are treated as version 0 for backwards compatibility.")
+  "Monotonically increasing version number for the Slack signing secret. Incremented each time the signing secret is rotated. Slack-connect auth identities are stamped with this version and only valid when it matches the current value. Legacy identities without a version are treated as version 0 for backwards compatibility."
   :type       :integer
   :visibility :internal
   :default    0

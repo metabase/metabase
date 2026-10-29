@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useCallback } from "react";
+import { type JSX, useCallback } from "react";
 import { t } from "ttag";
 
 import {
@@ -53,6 +53,7 @@ export const CollectionCaption = ({
         <CollectionCaptionIcon collection={collection} />
         <EditableText
           key={collection.id}
+          as="h1"
           initialValue={collection.name}
           placeholder={t`Add title`}
           isDisabled={!isEditable}

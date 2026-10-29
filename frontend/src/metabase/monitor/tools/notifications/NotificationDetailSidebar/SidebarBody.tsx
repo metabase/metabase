@@ -1,14 +1,16 @@
 import { t } from "ttag";
 
+import {
+  DetailsTable,
+  SidebarSection,
+} from "metabase/monitor/components/DetailSidebar";
 import { summarizeChannels } from "metabase/monitor/tools/notifications/utils";
 import { Flex, Stack, Text } from "metabase/ui";
 
 import { trackAlertsManagementRunHistoryViewAllClicked } from "../analytics";
 
 import { DetailsSection } from "./DetailsSection";
-import { DetailsTable } from "./DetailsTable";
 import { NotificationRunSummaryLog } from "./NotificationRunSummaryLog";
-import { SidebarSection } from "./SidebarSection";
 import type { SidebarBodyProps } from "./types";
 import {
   getEmailRecipientLabel,
@@ -31,7 +33,7 @@ export const SidebarBody = ({
   const cardId = notification.payload?.card_id;
 
   return (
-    <Stack gap="xl">
+    <Stack gap="xxl">
       <DetailsSection
         notification={notification}
         emailRecipientCount={emailRecipientCount}
@@ -66,7 +68,7 @@ export const SidebarBody = ({
                   key={recipient.id ?? index}
                   align="center"
                   justify="space-between"
-                  px="md"
+                  px="lg"
                   py="sm"
                   gap="sm"
                 >
@@ -88,7 +90,7 @@ export const SidebarBody = ({
         <SidebarSection title={getSlackChannelLabel(slackChannelCount)}>
           <DetailsTable>
             {slackSummary.recipients.map((recipient, index) => (
-              <Flex key={recipient.id ?? index} align="center" px="md" py="sm">
+              <Flex key={recipient.id ?? index} align="center" px="lg" py="sm">
                 <Text size="md" c="text-primary">
                   {recipient.details.value}
                 </Text>

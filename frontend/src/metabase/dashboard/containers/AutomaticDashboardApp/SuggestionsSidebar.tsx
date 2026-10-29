@@ -67,7 +67,7 @@ const SuggestionsList = ({
                 className={cx(CS.hoverParent, CS.hoverVisibility, S.ItemLink)}
                 onClick={() => trackSuggestedXRayClicked(suggestionKey)}
               >
-                <Card p="md" radius="md" withBorder c="inherit">
+                <Card p="lg" radius="sm" withBorder c="inherit">
                   <Flex align="center">
                     <Icon
                       name={RELATED_CONTENT[suggestionKey].icon}
@@ -113,7 +113,7 @@ export const SuggestionsSidebar = ({
 }: {
   related: RelatedDashboardXRays;
 }) => (
-  <Flex direction="column" py="md" px="xl" role="complementary">
+  <Flex direction="column" py="lg" px="xxl" role="complementary">
     <Title py="sm" px={0} order={2}>{t`More X-rays`}</Title>
     <SuggestionsList suggestions={related} />
   </Flex>

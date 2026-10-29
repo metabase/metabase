@@ -1,4 +1,5 @@
 import cx from "classnames";
+import type { JSX } from "react";
 import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
@@ -28,8 +29,8 @@ export const HomeHelpCard = (): JSX.Element | null => {
       aria-labelledby={cardTitleId}
       withBorder
       shadow="none"
-      py="md"
-      px="lg"
+      py="lg"
+      px="xl"
       classNames={{
         root: cx(
           CS.bgBrandHover,
@@ -39,7 +40,7 @@ export const HomeHelpCard = (): JSX.Element | null => {
         ),
       }}
     >
-      <Flex align="center" h="100%" gap="md">
+      <Flex align="center" h="100%" gap="lg">
         <Icon name="reference" />
         <Text
           id={cardTitleId}

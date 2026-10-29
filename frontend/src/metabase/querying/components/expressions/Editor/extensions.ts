@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import { suggestions } from "metabase/querying/expressions";
 import { isNotNull } from "metabase/utils/types";
 import type * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
+import type { Database } from "metabase-types/api";
 
 import S from "./Editor.module.css";
 import { customExpression } from "./language";
@@ -16,7 +16,7 @@ type Options = {
   stageIndex: number;
   availableColumns: Lib.ColumnMetadata[];
   availableMetrics?: Lib.MetricMetadata[];
-  metadata: Metadata;
+  database: Pick<Database, "features"> | undefined;
   extensions?: Extension[];
 };
 
@@ -40,7 +40,7 @@ export function useExtensions(options: Options): Extension[] {
     stageIndex,
     availableColumns,
     availableMetrics,
-    metadata,
+    database,
     extensions: extra = [],
   } = options;
 
@@ -52,7 +52,7 @@ export function useExtensions(options: Options): Extension[] {
         stageIndex,
         availableColumns,
         availableMetrics,
-        metadata,
+        database,
       }),
       expander(),
       suggestions({
@@ -61,7 +61,7 @@ export function useExtensions(options: Options): Extension[] {
         expressionMode,
         availableColumns,
         availableMetrics,
-        metadata,
+        database,
       }),
       tooltips({
         position: "fixed",
@@ -77,7 +77,7 @@ export function useExtensions(options: Options): Extension[] {
     query,
     stageIndex,
     availableColumns,
-    metadata,
+    database,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     ...extra,
   ]);

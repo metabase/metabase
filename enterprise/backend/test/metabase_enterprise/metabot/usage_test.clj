@@ -1,10 +1,16 @@
 (ns metabase-enterprise.metabot.usage-test
   (:require
    [clojure.java.io :as io]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.metabot.usage :as ee.usage]
    [metabase.api.common :as api]
+   [metabase.llm.test-util :as llm.tu]
+   [metabase.metabot.conversation-title :as conversation-title]
+   [metabase.metabot.scope :as scope]
+   [metabase.metabot.self.openrouter :as openrouter]
+   [metabase.metabot.test-util :as mut]
    [metabase.metabot.usage :as usage]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -43,7 +49,9 @@
           (let [before-count (t2/count :model/AiUsageLog :user_id user-id :source "metabot_agent")]
             (usage/log-ai-usage!
              {:source            "metabot_agent"
-              :model             "anthropic/claude-test"
+              :model             "openrouter-1/anthropic/claude-test"
+              :provider          "openrouter"
+              :model-name        "anthropic/claude-test"
               :prompt-tokens     100
               :completion-tokens 50
               :ai-proxied        true})
@@ -52,7 +60,9 @@
                      (t2/count :model/AiUsageLog :user_id user-id :source "metabot_agent")))
               (let [row (t2/select-one :model/AiUsageLog :user_id user-id :source "metabot_agent"
                                        {:order-by [[:id :desc]]})]
-                (is (= "anthropic/claude-test" (:model row)))
+                (is (= "openrouter-1/anthropic/claude-test" (:model row)))
+                (is (= "openrouter" (:provider row)))
+                (is (= "anthropic/claude-test" (:model_name row)))
                 (is (= 100 (:prompt_tokens row)))
                 (is (= 50 (:completion_tokens row)))
                 (is (= 150 (:total_tokens row)))
@@ -215,6 +225,26 @@
               (is (= 0 (:cache_read_tokens row))))
             (finally
               (t2/delete! :model/AiUsageLog :source "metabot_agent" :model model))))))))
+
+(deftest conversation-title-call-logs-its-own-source-test
+  (ee.usage/clear-limit-cache!)
+  (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                     llm-metabot-provider "openrouter/anthropic/claude-haiku-4-5"]
+    (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+      (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]
+        (mt/with-dynamic-fn-redefs [openrouter/openrouter (constantly (mut/mock-llm-response
+                                                                       [{:type :tool-input :id "call-1" :function "json"
+                                                                         :arguments {:title "Orders by month"}}
+                                                                        {:type :usage :id "msg-1"
+                                                                         :usage {:promptTokens     900
+                                                                                 :completionTokens 30}}]))]
+          (try
+            (is (= "Orders by month"
+                   (#'conversation-title/generate! conversation-id "internal" "Show orders by month")))
+            (is (= ["conversation_title"]
+                   (t2/select-fn-vec :source :model/AiUsageLog :conversation_id conversation-id)))
+            (finally
+              (t2/delete! :model/AiUsageLog :conversation_id conversation-id))))))))
 
 ;;; ------------------------------------------ check-usage-limits! ------------------------------------------
 
@@ -386,36 +416,92 @@
 
 ;;; ------------------------------------------ Messages limit type ------------------------------------------
 
-(deftest messages-limit-type-counts-rows-test
-  (mt/with-premium-features #{:ai-controls}
-    (ee.usage/clear-limit-cache!)
-    (mt/with-temporary-setting-values [metabot-limit-unit "messages"
-                                       metabot-quota-reached-message "test limit reached"]
-      (testing "Instance limit with :messages type counts rows, not tokens"
-        (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 2}]
-          (let [user-id (mt/user->id :rasta)]
-            ;; Insert 3 rows each with 1 token — row count (3) exceeds limit (2)
-            (dotimes [_ 3]
-              (insert-usage! user-id 1))
-            (try
-              (mt/with-test-user :rasta
-                (is (= "test limit reached" (usage/check-usage-limits!))))
-              (finally
-                (cleanup-test-usage! user-id)))))))))
+;;; A message limit counts agent loops, not LLM calls: the calls of one loop share a `request_id`, and only the
+;;; sources of a chat or Slack turn count. See `usage-message-count` in `metabase-enterprise.metabot.db`.
 
-(deftest messages-under-limit-returns-nil-test
+(def ^:private message-test-model "test/messages")
+
+(defn- insert-llm-call!
+  "Insert the ai_usage_log row of one LLM call from `source` in the agent loop `request-id`, for `user-id`."
+  [user-id source request-id]
+  (t2/insert! :model/AiUsageLog {:source            source
+                                 :model             message-test-model
+                                 :request_id        request-id
+                                 :prompt_tokens     0
+                                 :completion_tokens 0
+                                 :total_tokens      1
+                                 :user_id           user-id}))
+
+(defn- cleanup-llm-calls! [user-id]
+  (t2/delete! :model/AiUsageLog :user_id user-id :model message-test-model))
+
+(defn- check-message-limit!
+  "The verdict of `check-usage-limits!` for rasta's call in the loop `request-id`, under an instance message limit of
+  `max-usage` with the quota message \"test limit reached\". The cache is cleared first, so the verdict is fresh."
+  [max-usage request-id]
+  (ee.usage/clear-limit-cache!)
+  (mt/with-temporary-setting-values [metabot-limit-unit            "messages"
+                                     metabot-quota-reached-message "test limit reached"]
+    (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage max-usage}]
+      (mt/with-test-user :rasta
+        (usage/check-usage-limits! request-id)))))
+
+(deftest message-sources-are-known-test
+  (is (set/subset? @#'ee.usage/message-sources @#'ee.usage/known-sources)))
+
+(deftest messages-limit-counts-agent-loops-not-llm-calls-test
   (mt/with-premium-features #{:ai-controls}
-    (ee.usage/clear-limit-cache!)
-    (mt/with-temporary-setting-values [metabot-limit-unit "messages"]
-      (testing "Instance limit with :messages type: under limit returns nil"
-        (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 100}]
-          (let [user-id (mt/user->id :rasta)]
-            (insert-usage! user-id 1)
-            (try
+    (let [user-id (mt/user->id :rasta)]
+      (try
+        (testing "three LLM calls of one chat loop count as one message"
+          (dotimes [_ 3]
+            (insert-llm-call! user-id "metabot_agent" "loop-1"))
+          (is (nil? (check-message-limit! 2 nil))))
+        (testing "a Slack loop counts as a message too, and the limit is reached at the count"
+          (insert-llm-call! user-id "slackbot" "loop-2")
+          (is (= "test limit reached" (check-message-limit! 2 nil))))
+        (testing "a document generation counts as a message"
+          (insert-llm-call! user-id "document_generate_content" "document-1")
+          (is (= "test limit reached" (check-message-limit! 3 nil))))
+        (finally
+          (cleanup-llm-calls! user-id))))))
+
+(deftest messages-limit-ignores-other-sources-test
+  (mt/with-premium-features #{:ai-controls}
+    (let [user-id (mt/user->id :rasta)]
+      (try
+        (testing "a title, an example-question and an interestingness loop add nothing to the count"
+          (insert-llm-call! user-id "conversation_title" "title-1")
+          (insert-llm-call! user-id "example_question_generation_batch" "examples-1")
+          (insert-llm-call! user-id "contextual_interestingness" "interest-1")
+          (is (nil? (check-message-limit! 1 nil))))
+        (testing "a row without a request_id adds nothing either"
+          (insert-llm-call! user-id "metabot_agent" nil)
+          (is (nil? (check-message-limit! 1 nil))))
+        (finally
+          (cleanup-llm-calls! user-id))))))
+
+(deftest messages-limit-leaves-the-calling-loop-out-test
+  (mt/with-premium-features #{:ai-controls}
+    (let [user-id (mt/user->id :rasta)]
+      (try
+        (insert-llm-call! user-id "metabot_agent" "loop-1")
+        (insert-llm-call! user-id "metabot_agent" "loop-2")
+        (testing "at the limit, a later call of a counted loop still runs"
+          (is (nil? (check-message-limit! 2 "loop-2"))))
+        (testing "a call outside any loop, and the first call of a new loop, are blocked"
+          (is (= "test limit reached" (check-message-limit! 2 nil)))
+          (is (= "test limit reached" (check-message-limit! 2 "loop-3"))))
+        (testing "the verdict of one loop is not served to another: loop-2 fits, then loop-3 is blocked, uncached"
+          (ee.usage/clear-limit-cache!)
+          (mt/with-temporary-setting-values [metabot-limit-unit            "messages"
+                                             metabot-quota-reached-message "test limit reached"]
+            (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 2}]
               (mt/with-test-user :rasta
-                (is (nil? (usage/check-usage-limits!))))
-              (finally
-                (cleanup-test-usage! user-id)))))))))
+                (is (nil? (usage/check-usage-limits! "loop-2")))
+                (is (= "test limit reached" (usage/check-usage-limits! "loop-3")))))))
+        (finally
+          (cleanup-llm-calls! user-id))))))
 
 ;;; ------------------------------------------ Custom quota message ------------------------------------------
 
@@ -475,8 +561,9 @@
           sources  (disj @#'ee.usage/known-sources "user-intent-classification")
           profiles @#'ee.usage/known-profile-ids]
       (doseq [[view expected] {"ai_usage_log"          sources
-                               ;; v_metabot_conversations maps both the source and the profile id
-                               "metabot_conversations" (into sources profiles)}
+                               ;; v_metabot_conversations maps both the source and the profile id, and never takes
+                               ;; a conversation's source from its title call
+                               "metabot_conversations" (into (disj sources "conversation_title") profiles)}
               :let [dir       (latest-view-version-dir view)
                     sql-files (filter #(str/ends-with? (.getName ^java.io.File %) ".sql")
                                       (.listFiles dir))]]

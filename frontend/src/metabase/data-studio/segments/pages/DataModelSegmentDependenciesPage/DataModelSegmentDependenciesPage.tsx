@@ -3,7 +3,7 @@ import { Outlet, useParams } from "metabase/router";
 import { Center } from "metabase/ui";
 
 import { DataModelSegmentBreadcrumbs } from "../../components/SegmentBreadcrumbs";
-import { useDataModelSegmentPage } from "../../hooks";
+import { useDataModelSegmentPage } from "../../hooks/use-data-model-segment-page";
 import { SegmentDependenciesPage } from "../SegmentDependenciesPage";
 
 type DataModelSegmentDependenciesPageParams = {

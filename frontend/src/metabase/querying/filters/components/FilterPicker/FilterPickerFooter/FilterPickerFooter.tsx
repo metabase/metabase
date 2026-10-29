@@ -29,7 +29,7 @@ export function FilterPickerFooter({
   }
 
   return (
-    <Flex className={S.FilterFooterRoot} p="md" justify="space-between">
+    <Flex className={S.FilterFooterRoot} p="lg" justify="space-between">
       {isValidElement(children) ? children : <Box />}
 
       {withSubmitButton && (

@@ -6,13 +6,13 @@ import {
   setupMfaEnrolledUsersEndpoint,
   setupMfaEnrolledUsersEndpointError,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import {
   mockGetBoundingClientRect,
   renderWithProviders,
   screen,
   waitFor,
 } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { MfaEnrolledUser } from "metabase-types/api";
 import {
   createMockMfaEnrolledUser,
@@ -20,6 +20,13 @@ import {
 } from "metabase-types/api/mocks";
 
 import { EnrolledUsersPage } from "./EnrolledUsersPage";
+
+// The search debounce is idle time in these tests: they assert what a search
+// returns, not that the input waits before it asks.
+jest.mock("metabase/utils/constants", () => ({
+  ...jest.requireActual("metabase/utils/constants"),
+  SEARCH_DEBOUNCE_DURATION: 0,
+}));
 
 const CURRENT_USER_ID = 1;
 

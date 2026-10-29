@@ -6,6 +6,7 @@ import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
+import { PAGE_SIZE } from "metabase/monitor/constants";
 import { useLocation } from "metabase/router";
 import { Flex } from "metabase/ui";
 import { useLazyListMetabotAnalyticsConversationsQuery } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/api";
@@ -15,7 +16,7 @@ import {
 } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/components/ConversationFilters";
 
 import { ConversationsTable } from "./ConversationsTable";
-import { PAGE_SIZE, urlStateConfig } from "./utils";
+import { urlStateConfig } from "./utils";
 
 export function ConversationsPage() {
   const location = useLocation();
@@ -69,17 +70,26 @@ export function ConversationsPage() {
         <ConversationFilters
           date={date}
           onDateChange={(val) => patchUrlState({ date: val, page: 0 })}
-          user={user}
-          onUserChange={(val) => patchUrlState({ user: val, page: 0 })}
-          group={group}
-          onGroupChange={(val) => patchUrlState({ group: val, page: 0 })}
-          groupNoFilterValue={groupNoFilterValue}
-          tenant={tenant}
-          onTenantChange={(val) => patchUrlState({ tenant: val, page: 0 })}
-          userOptions={userOptions}
-          groupOptions={groupOptions}
-          tenantOptions={tenantOptions}
-          hasTenants={hasTenants}
+          userFilter={{
+            value: user,
+            options: userOptions,
+            onChange: (val) => patchUrlState({ user: val, page: 0 }),
+          }}
+          groupFilter={{
+            value: group,
+            options: groupOptions,
+            noFilterValue: groupNoFilterValue,
+            onChange: (val) => patchUrlState({ group: val, page: 0 }),
+          }}
+          tenantFilter={
+            hasTenants
+              ? {
+                  value: tenant,
+                  options: tenantOptions,
+                  onChange: (val) => patchUrlState({ tenant: val, page: 0 }),
+                }
+              : undefined
+          }
         />
 
         <ConversationsTable

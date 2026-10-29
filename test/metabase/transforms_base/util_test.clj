@@ -3,12 +3,31 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.config.core :as config]
+   [metabase.driver :as driver]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.sync.sync :as sync]
    [metabase.test :as mt]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util.date-2 :as u.date]))
 
 (set! *warn-on-reflection* true)
+
+(deftest create-target-schema!-serializes-concurrent-creation-test
+  (testing "concurrent transforms targeting a missing schema create it once, one at a time"
+    (let [created (atom #{})
+          inside  (atom 0)
+          peak    (atom 0)
+          calls   (atom 0)]
+      (with-redefs [driver/schema-exists?          (fn [_driver _db-id schema] (contains? @created schema))
+                    driver/create-schema-if-needed! (fn [_driver _conn-spec schema]
+                                                      (swap! calls inc)
+                                                      (swap! peak max (swap! inside inc))
+                                                      (Thread/sleep 50)
+                                                      (swap! created conj schema)
+                                                      (swap! inside dec))]
+        (run! deref (doall (repeatedly 8 #(future (transforms-base.u/create-target-schema! :postgres 1 {} "analytics")))))
+        (is (= 1 @peak))
+        (is (= 1 @calls))))))
 
 ;;; ------------------------------------------------- Merge target helpers -------------------------------------------------
 
@@ -57,7 +76,7 @@
     (mt/with-premium-features #{}
       (is (nil? (transforms-base.u/throw-if-db-routing-enabled!
                  {:name "OSS transform"}
-                 (mt/db))))))
+                 (lib.metadata/database (mt/metadata-provider)))))))
   (when config/ee-available?
     (testing "with :database-routing premium feature enabled, the check throws on a routing-enabled database"
       (mt/with-premium-features #{:database-routing}
@@ -68,7 +87,7 @@
                #".*database routing turned on"
                (transforms-base.u/throw-if-db-routing-enabled!
                 {:name "Routing transform"}
-                (mt/db)))))))))
+                (lib.metadata/database (mt/metadata-provider))))))))))
 
 (deftest activate-table-syncs-despite-disable-auto-sync-test
   (testing "disable-auto-sync gates *automatic* syncs only; a transform finalizing its"
@@ -77,10 +96,10 @@
         (mt/with-temp [:model/Table _ {:db_id  (mt/id)
                                        :schema nil
                                        :name   "disable_auto_sync_target"}]
-          (with-redefs [sync/sync-table! (fn [_] (swap! calls inc))]
+          (mt/with-dynamic-fn-redefs [sync/sync-table! (fn [_] (swap! calls inc))]
             (mt/with-temporary-setting-values [disable-auto-sync true]
               (transforms-base.u/activate-table-and-mark-computed!
-               (mt/db)
+               (lib.metadata/database (mt/metadata-provider))
                {:type "table" :schema nil :name "disable_auto_sync_target"}))
             (is (= 1 @calls)
                 "Expected the transform path to run sync/sync-table! exactly once with disable-auto-sync on.")))))))

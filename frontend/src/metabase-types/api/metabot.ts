@@ -1,3 +1,6 @@
+import type { GroupId } from "./group";
+import type { EnterpriseSettings } from "./settings";
+
 import type {
   CardDisplayType,
   CardId,
@@ -14,6 +17,8 @@ import type {
   SuggestedTransform,
   Transform,
   UnsavedCard,
+  User,
+  UserPermissions,
 } from ".";
 
 export type MetabotFeedbackType =
@@ -156,7 +161,7 @@ export type MetabotAgentRequest = {
   parent_message_id?: string;
   retry_message_id?: string;
   user_message_id?: string; // uuid
-  assistant_message_id?: string; // uuid
+  assistant_message_id: string; // uuid
   metabot_id?: string;
   profile_id?: string;
 };
@@ -204,17 +209,14 @@ export type SuggestedMetabotPrompt = {
 };
 
 type BaseSuggestedMetabotPromptsRequest = {
-  metabot_id: MetabotId;
+  metabot_id: MetabotId | MetabotInfo["entity_id"];
   model?: string;
   model_id?: number;
 };
 
 export type SuggestedMetabotPromptsRequest =
-  BaseSuggestedMetabotPromptsRequest & {
-    metabot_id: MetabotId;
-    model?: string;
-    model_id?: number;
-  } & (
+  BaseSuggestedMetabotPromptsRequest &
+    (
       | { sample?: void; limit?: number | null; offset?: number | null }
       | { sample: true; limit?: number | null; offset?: void }
     );
@@ -246,7 +248,6 @@ export const METABOT_ISSUE_TYPE_VALUES = [
 export type MetabotIssueType = (typeof METABOT_ISSUE_TYPE_VALUES)[number];
 
 export type MetabotFeedback = {
-  metabot_id: MetabotId;
   message_id: string;
   freeform_feedback?: string;
 } & ({ positive: true } | { positive: false; issue_type?: MetabotIssueType });
@@ -254,7 +255,6 @@ export type MetabotFeedback = {
 export type MetabotSourceType = "table" | "card" | "model";
 
 export type MetabotSourceFeedback = {
-  metabot_id: MetabotId;
   message_id: string;
   source_id: number;
   source_type: MetabotSourceType;
@@ -295,6 +295,37 @@ export type McpAppsFeedback = {
 export type SubmitMcpAppsFeedbackRequest = {
   mcpSessionId: string;
   payload: McpAppsFeedback;
+};
+
+/**
+ * The current-user projection `GET /api/embed-mcp/bootstrap` returns.
+ *
+ * Deliberately much narrower than `User`: the iframe's UI credential is minted from an
+ * MCP token that may hold nothing but `agent:query:run`, so it must not be able to read
+ * the full profile. Adding a field here means adding it to `::bootstrap-user` in
+ * `metabase.mcp.callback-api`, which is where that decision belongs.
+ */
+export type McpAppsBootstrapUser = Pick<
+  User,
+  | "id"
+  | "locale"
+  | "is_superuser"
+  | "is_data_analyst"
+  | "is_qbnewb"
+  | "tenant_id"
+  | "personal_collection_id"
+> & {
+  permissions: Pick<
+    UserPermissions,
+    "can_create_queries" | "can_create_native_queries"
+  >;
+};
+
+export type McpAppsBootstrapResponse = {
+  user: McpAppsBootstrapUser;
+
+  /** The settings a non-admin authenticated user may read, whoever the credential belongs to. */
+  settings: EnterpriseSettings;
 };
 
 /* Metabot v3 - Entity Types */
@@ -384,6 +415,34 @@ export type MetabotPermissionsResponse = {
 
 export type UpdateMetabotPermissionsRequest = {
   permissions: MetabotGroupPermission[];
+};
+
+/* MCP - Group Tool Permissions */
+
+export type McpToolAccess = "yes" | "no";
+
+export type McpTool = {
+  name: string;
+  scope: string;
+  description: string;
+  default_access: "allowed" | "denied";
+};
+
+export type McpGroupPermission = {
+  group_id: GroupId;
+  mcp_enabled: boolean;
+  /** An absent tool takes its `default_access`. */
+  tool_access: Record<string, McpToolAccess>;
+};
+
+export type McpToolPermissionsResponse = {
+  advanced: boolean;
+  tools: McpTool[];
+  permissions: McpGroupPermission[];
+};
+
+export type UpdateMcpToolPermissionsRequest = {
+  permissions: McpGroupPermission[];
 };
 
 export type UserMetabotPermissions = {

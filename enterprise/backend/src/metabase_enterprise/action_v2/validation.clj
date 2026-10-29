@@ -7,8 +7,8 @@
   Though we do want to have a light validation to gives users nice error messages."
   (:require
    [java-time.api :as t]
-   [metabase.util :as u]
-   [toucan2.core :as t2])
+   [metabase-enterprise.action-v2.db :as action-v2.db]
+   [metabase.util :as u])
   (:import
    (java.time OffsetDateTime LocalDate LocalTime LocalDateTime)
    (java.time.format DateTimeParseException)))
@@ -136,7 +136,7 @@
   "Validate rows of a given table"
   [table-id-or-fields inputs]
   (let [fields (if (int? table-id-or-fields)
-                 (t2/select-fn->fn :name identity [:model/Field :name :database_required :base_type] :table_id table-id-or-fields)
+                 (action-v2.db/field-requirements-by-name table-id-or-fields)
                  (u/index-by :name table-id-or-fields))
         errors (mapv #(validate-input % fields) inputs)]
     (when (some some? errors)

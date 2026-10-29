@@ -14,6 +14,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.util.malli.registry :as mr]
    [metabase.util.number :as u.number]))
@@ -118,7 +119,7 @@
 
 (deftest ^:parallel date-interval-names-test
   (let [clause [:datetime-add
-                {}
+                {:lib/uuid (str (random-uuid))}
                 (lib.tu/field-clause :checkins :date {:base-type :type/Date})
                 -1
                 :day]]
@@ -129,7 +130,7 @@
 
 (deftest ^:parallel datetime-subtract-names-test
   (let [clause [:datetime-subtract
-                {}
+                {:lib/uuid (str (random-uuid))}
                 (lib.tu/field-clause :checkins :date {:base-type :type/Date})
                 1
                 :day]]
@@ -153,7 +154,7 @@
            (lib/column-name query -1 expr)))))
 
 (deftest ^:parallel coalesce-names-test
-  (let [clause [:coalesce {} (lib.tu/field-clause :venues :name) "<Venue>"]]
+  (let [clause [:coalesce {:lib/uuid (str (random-uuid))} (lib.tu/field-clause :venues :name) "<Venue>"]]
     (is (= "NAME"
            (lib/column-name (lib.tu/venues-query) -1 clause)))
     (is (= "Name"
@@ -540,13 +541,13 @@
         (is (= (count exprs) (count expressions)))
         (is (some? c-pos))
         (testing "no circularity problem"
-          (are [mode expr]
-               (nil? (lib.expression/diagnose-expression query 0 mode expr c-pos))
-            :expression  (get exprs "non-circular-c")
+          (are [mode expr position]
+               (nil? (lib.expression/diagnose-expression query 0 mode expr position))
+            :expression  (get exprs "non-circular-c")                c-pos
             :aggregation (-> (get exprs "circular-c")
                              (update 2 lib/sum)
-                             (assoc 4 (lib/count)))
-            :filter      (assoc (get exprs "circular-c") 0 :=)))
+                             (assoc 4 (lib/count)))                  nil
+            :filter      (assoc (get exprs "circular-c") 0 :=)      c-pos))
         (testing "circular definition"
           (is (=? {:message "Cycle detected: c → x → b → c"}
                   (lib.expression/diagnose-expression query 0 :expression
@@ -897,3 +898,70 @@
       (is (some? (lib/visible-columns query)))
       (is (= "Non-existing field"
              (:display-name (m/find-first :lib/expression-name (lib/visible-columns query))))))))
+
+(deftest ^:parallel resolve-field-ref-by-id-to-simple-expression-in-previous-stage-test
+  (testing "Propagate Field ID information in expression metadata when expression is just a plain field ref (#70233)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                    (lib/expression "my_expression" (lib/ref (meta/field-metadata :venues :name)))
+                    (as-> $query (lib/with-fields $query [(lib/expression-ref $query "my_expression")]))
+                    lib/append-stage
+                    (as-> $query (lib/with-fields $query [(lib.tu.notebook/find-col-with-spec $query
+                                                                                              (lib/visible-columns $query)
+                                                                                              {}
+                                                                                              {:display-name "my_expression"})]))
+                    lib/append-stage)]
+      (is (=? {:stages [{:expressions [[:field {:lib/expression-name "my_expression"} (meta/id :venues :name)]]
+                         :fields      [[:expression {} "my_expression"]]}
+                        {:fields [[:field {} "my_expression"]]}
+                        {}]}
+              query))
+      (testing (str ":expression ref metadata should include Field ID and its Table ID if original expression definition"
+                    " in a previous stage was just a plain :field; should propagate correct :lib/original-name")
+        (is (=? {:base-type               :type/Text
+                 :display-name            "my_expression"
+                 :effective-type          :type/Text
+                 :id                      (meta/id :venues :name)
+                 :name                    "my_expression"
+                 :table-id                (meta/id :venues)
+                 :lib/expression-name     "my_expression"
+                 :lib/source              :source/expressions
+                 :lib/source-column-alias "my_expression"
+                 :lib/type                :metadata/column}
+                (lib/metadata query 0 (lib/expression-ref query -2 "my_expression")))))
+      (testing (str ":field ID refs in subsequent stages should be able resolve correctly using ID info from expressions"
+                    " in previous stages")
+        (is (=? {:base-type                                        :type/Text,
+                 :display-name                                     "my_expression"
+                 :effective-type                                   :type/Text
+                 :id                                               (meta/id :venues :name)
+                 :name                                             "my_expression"
+                 :table-id                                         (meta/id :venues)
+                 :lib/deduplicated-name                            "my_expression"
+                 :lib/original-expression-name                     "my_expression"
+                 :lib/source                                       :source/previous-stage
+                 :lib/source-column-alias                          "my_expression"
+                 :lib/type                                         :metadata/column
+                 :metabase.lib.field.resolution/fallback-metadata? (symbol "nil #_\"key is not present.\"")}
+                (lib/metadata query -1 (lib/ref (meta/field-metadata :venues :name)))))))))
+
+(deftest ^:parallel unique-expression-name-test
+  (let [query (lib/query meta/metadata-provider (meta/table-metadata :people))]
+    (testing "a completely unrelated name"
+      (is (= "Channels" (lib.expression/unique-expression-name query 0 "Channels"))))
+    (testing "a custom column that conflicts with a source column name"
+      (is (= "Email (1)" (lib.expression/unique-expression-name query 0 "Email"))))
+    (testing "when a disambiguated custom column already exists"
+      (let [query2 (lib/expression query "Email (1)"
+                                   (lib/concat (meta/field-metadata :people :email) ".com"))]
+        (testing "and you add a new one"
+          (is (= "Email (2)" (lib.expression/unique-expression-name query2 0 "Email"))))))
+    (testing "when a column name needs escaping"
+      (let [query2 (lib/expression query "net.net"
+                                   (lib/concat (meta/field-metadata :people :email) ".net"))
+            query3 (lib/expression query "netxnet"
+                                   (lib/concat (meta/field-metadata :people :email) ".net"))
+            query4 (lib/expression query2 "netxnet (1)"
+                                   (lib/concat (meta/field-metadata :people :email) ".net"))]
+        (is (= "net.net (1)" (lib.expression/unique-expression-name query2 0 "net.net")))
+        (is (= "net.net" (lib.expression/unique-expression-name query3 0 "net.net")))
+        (is (= "net.net (1)" (lib.expression/unique-expression-name query4 0 "net.net")))))))

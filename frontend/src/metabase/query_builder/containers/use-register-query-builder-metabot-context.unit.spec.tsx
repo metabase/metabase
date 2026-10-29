@@ -4,7 +4,7 @@ import { setupUserMetabotPermissionsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderHookWithProviders } from "__support__/ui";
 import { registerVisualizations } from "metabase/visualizations/register";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+import type { ComputedVisualizationSettings } from "metabase/viz-core";
 import Question from "metabase-lib/v1/Question";
 import type {
   RawSeries,

@@ -6,9 +6,8 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import { TRANSFORMS_ROOT_ID } from "metabase-enterprise/remote_sync/utils";
 import type { Collection, RemoteSyncEntity } from "metabase-types/api";
 import {
   createMockCollection,
@@ -108,15 +107,20 @@ describe("useHasTransformDirtyChanges", () => {
     });
   });
 
-  it("returns false when remote-sync-transforms setting is disabled", async () => {
+  it("returns true for a pending removal of a transform while transforms sync is disabled", async () => {
     const { result } = setup({
       isTransformsSyncEnabled: false,
       collections: [createMockTransformsCollection()],
-      dirty: [createMockRemoteSyncEntity({ model: "transform" })],
+      dirty: [
+        createMockRemoteSyncEntity({
+          model: "transform",
+          sync_status: "removed",
+        }),
+      ],
     });
 
     await waitFor(() => {
-      expect(result.current).toBe(false);
+      expect(result.current).toBe(true);
     });
   });
 
@@ -124,6 +128,17 @@ describe("useHasTransformDirtyChanges", () => {
     const { result } = setup({
       collections: [createMockTransformsCollection()],
       dirty: [createMockRemoteSyncEntity({ model: "transform" })],
+    });
+
+    await waitFor(() => {
+      expect(result.current).toBe(true);
+    });
+  });
+
+  it("returns true when a transform test entity is dirty", async () => {
+    const { result } = setup({
+      collections: [createMockTransformsCollection()],
+      dirty: [createMockRemoteSyncEntity({ model: "transformtest" })],
     });
 
     await waitFor(() => {
@@ -190,58 +205,6 @@ describe("useHasTransformDirtyChanges", () => {
 
     await waitFor(() => {
       expect(result.current).toBe(false);
-    });
-  });
-
-  it("returns true when Transforms root collection (id=-1) is dirty with create status", async () => {
-    const transformsRootEntity = createMockRemoteSyncEntity({
-      id: TRANSFORMS_ROOT_ID,
-      name: "Transforms",
-      model: "collection",
-      sync_status: "create",
-    });
-    const { result } = setup({
-      collections: [createMockTransformsCollection()],
-      dirty: [transformsRootEntity],
-    });
-
-    await waitFor(() => {
-      expect(result.current).toBe(true);
-    });
-  });
-
-  it("returns true when Transforms root collection (id=-1) is dirty with delete status", async () => {
-    const transformsRootEntity = createMockRemoteSyncEntity({
-      id: TRANSFORMS_ROOT_ID,
-      name: "Transforms",
-      model: "collection",
-      sync_status: "delete",
-    });
-    const { result } = setup({
-      collections: [createMockTransformsCollection()],
-      dirty: [transformsRootEntity],
-    });
-
-    await waitFor(() => {
-      expect(result.current).toBe(true);
-    });
-  });
-
-  it("returns true when Transforms root collection (id=-1) is dirty even when transforms setting is disabled", async () => {
-    const transformsRootEntity = createMockRemoteSyncEntity({
-      id: TRANSFORMS_ROOT_ID,
-      name: "Transforms",
-      model: "collection",
-      sync_status: "delete",
-    });
-    const { result } = setup({
-      isTransformsSyncEnabled: false,
-      collections: [],
-      dirty: [transformsRootEntity],
-    });
-
-    await waitFor(() => {
-      expect(result.current).toBe(true);
     });
   });
 });

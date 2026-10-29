@@ -15,6 +15,7 @@
    [metabase.metabot.self.claude]
    [metabase.metabot.usage]
    [metabase.permissions.core :as perms]
+   [metabase.queries.db :as queries.db]
    [metabase.query-processor.core :as qp]
    [metabase.test :as mt]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
@@ -96,7 +97,7 @@
         (is (some? result))
         (is (some? (:stored_result_id result)))
         (is (some? sr))
-        (is (pos? (count (:result_data sr))))
+        (is (pos? (count (queries.db/stored-result-data (:id sr)))))
         (is (= 1 (:row_count sr))
             "the QP's top-level :row_count (1 row for an unbucketed count) is persisted on the snapshot")))))
 
@@ -153,7 +154,7 @@
             (is (= "done" (:status final)))
             (is (some? result))
             (is (some? sr))
-            (is (pos? (count (:result_data sr))))
+            (is (pos? (count (queries.db/stored-result-data (:id sr)))))
             (is (nil? (:interestingness_score result)))))))))
 
 (deftest run-one-iteration-writes-contextual-score-test
@@ -228,7 +229,7 @@
             (is (= "done" (:status final)))
             (is (some? result))
             (is (some? sr))
-            (is (pos? (count (:result_data sr))))
+            (is (pos? (count (queries.db/stored-result-data (:id sr)))))
             (is (nil? (:contextual_interestingness_score result)))
             (is (double? (:interestingness_score result))
                 "heuristic score still computed when contextual fails")))))))
@@ -296,7 +297,7 @@
                                    (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)) (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id)))))))
             llm-calls (atom 0)]
         (mt/with-dynamic-fn-redefs [metabase.metabot.usage/check-usage-limits!
-                                    (fn [] "you've hit your AI usage limit")
+                                    (fn [& _] "you've hit your AI usage limit")
                                     metabase.metabot.self.claude/claude
                                     (fn [& _] (swap! llm-calls inc) [])]
           (drain-until-terminal! (:id row))
@@ -314,8 +315,7 @@
                                      :dataset_query (lib/->legacy-MBQL (let [mp (mt/metadata-provider)] (-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) (lib/aggregate (lib/count)))))}]
       (let [thread (temp-thread! (:id u))
             row    (pending-query! (:id thread) (:id card)
-                                   {:database 999999 :type :query
-                                    :query {:source-table 1 :aggregation [[:count]]}})
+                                   {:database (mt/id) :type :query :query {:source-table Integer/MAX_VALUE :aggregation [[:count]]}})
             final  (drain-until-terminal! (:id row))]
         (is (= "error" (:status final)))
         (is (some? (:error_message final)))
@@ -374,9 +374,9 @@
         (with-redefs [qp.context/build-row-context (constantly {::stub true})
                       qp.variants/dataset-query    (fn [_variant _ctx]
                                                      (reset! seen api/*current-user-id*)
-                                                     (lib/->legacy-MBQL (let [mp (mt/metadata-provider)]
-                                                                          (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                                                                              (lib/aggregate (lib/count))))))
+                                                     (let [mp (mt/metadata-provider)]
+                                                       (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                           (lib/aggregate (lib/count)))))
                       qp.variants/query-name       (constantly "stub name")]
           (runner/run-query! (:id row)))
         (is (= (:id u) @seen)

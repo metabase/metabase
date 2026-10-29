@@ -2,11 +2,12 @@ import cx from "classnames";
 import type { HTMLAttributes } from "react";
 
 import Animation from "metabase/css/core/animation.module.css";
+import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
 import { useSelector } from "metabase/redux";
 import { getIsNavbarOpen } from "metabase/selectors/app";
-import { type BoxProps, Flex, Portal, Text } from "metabase/ui";
+import { type BoxProps, Card, Flex, Portal, Text } from "metabase/ui";
 
-import { BulkActionsToast, ToastCard } from "./BulkActionBar.styled";
+import S from "./BulkActionBar.module.css";
 
 type BulkActionsProps = {
   opened: boolean;
@@ -44,17 +45,31 @@ export const BulkActionBarPortal = ({
   }
   return (
     <Portal>
-      <BulkActionsToast
-        isNavbarOpen={isNavbarOpen}
-        className={cx(className, Animation.popToast)}
+      <Flex
+        className={cx(S.clickThrough, className, Animation.popToast)}
+        pos="fixed"
+        left={0}
+        right={0}
+        bottom={0}
+        justify="center"
+        mb="lg"
+        ml={isNavbarOpen ? NAV_SIDEBAR_WIDTH : 0}
       >
-        <ToastCard data-testid="toast-card" {...props}>
-          {message && <Text color="text-primary-inverse">{message}</Text>}
+        <Card
+          className={S.toastCard}
+          bg="tooltip-background"
+          c="tooltip-text"
+          py="md"
+          px="lg"
+          data-testid="toast-card"
+          {...props}
+        >
+          {message && <Text c="tooltip-text">{message}</Text>}
           <Flex gap="sm" align="center">
             {children}
           </Flex>
-        </ToastCard>
-      </BulkActionsToast>
+        </Card>
+      </Flex>
     </Portal>
   );
 };

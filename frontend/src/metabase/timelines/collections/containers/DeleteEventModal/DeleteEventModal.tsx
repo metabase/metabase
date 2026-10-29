@@ -1,53 +1,49 @@
+import { t } from "ttag";
+
 import {
   skipToken,
   useDeleteTimelineEventMutation,
   useGetTimelineEventQuery,
-  useGetTimelineQuery,
 } from "metabase/api";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
-import { useNavigate } from "metabase/router";
-import DeleteEventModal from "metabase/timelines/common/components/DeleteEventModal";
+import { DeleteConfirmationFooter } from "metabase/timelines/common/components/DeleteConfirmationFooter";
+import {
+  TimelineModal,
+  TimelineModalLoadingState,
+} from "metabase/timelines/common/components/TimelineModal";
 import * as Urls from "metabase/urls";
-import type { Timeline, TimelineEvent } from "metabase-types/api";
+import type { TimelineEvent } from "metabase-types/api";
 
 function DeleteEventModalContainer({ params, onClose }: ModalComponentProps) {
-  const navigate = useNavigate();
-  const timelineId = Urls.extractEntityId(params.timelineId);
   const eventId = Urls.extractEntityId(params.timelineEventId);
   const {
-    data: timeline,
-    isLoading: isTimelineLoading,
-    error: timelineError,
-  } = useGetTimelineQuery(
-    timelineId != null ? { id: timelineId, include: "events" } : skipToken,
-  );
-  const {
     data: event,
-    isLoading: isEventLoading,
-    error: eventError,
+    isLoading,
+    error,
   } = useGetTimelineEventQuery(eventId ?? skipToken);
   const [deleteTimelineEvent] = useDeleteTimelineEventMutation();
 
-  const onSubmit = async (event: TimelineEvent, timeline: Timeline) => {
+  const onSubmit = async (event: TimelineEvent) => {
     await deleteTimelineEvent(event.id).unwrap();
-    navigate(Urls.timelineArchiveInCollection(timeline));
+    onClose();
   };
 
-  const isLoading = isTimelineLoading || isEventLoading;
-  const error = timelineError ?? eventError;
-
-  if (isLoading || error || !event || !timeline) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
-  }
-
   return (
-    <DeleteEventModal
-      event={event}
-      timeline={timeline}
-      onSubmit={onSubmit}
+    <TimelineModal
+      title={event ? t`Delete ${event.name}?` : undefined}
       onClose={onClose}
-    />
+      animated={false}
+      tall={isLoading || !!error || !event}
+    >
+      {isLoading || error || !event ? (
+        <TimelineModalLoadingState loading={isLoading} error={error} />
+      ) : (
+        <DeleteConfirmationFooter
+          onDelete={() => onSubmit(event)}
+          onCancel={onClose}
+        />
+      )}
+    </TimelineModal>
   );
 }
 

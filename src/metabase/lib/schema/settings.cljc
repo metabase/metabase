@@ -7,7 +7,7 @@
 (mr/def ::settings
   "Options that tweak the behavior of the query processor."
   [:map
-   {:decode/normalize lib.schema.common/normalize-map}
+   {:decode/normalize lib.schema.common/normalize-map :closed true}
    [:report-timezone
     {:optional    true
      :description "The timezone the query should be ran in, overriding the default report timezone for the instance."}

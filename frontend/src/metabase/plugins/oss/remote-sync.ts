@@ -20,6 +20,8 @@ import type {
   RemoteSyncEntity,
 } from "metabase-types/api";
 
+import { definePluginSlot } from "../slot";
+
 export type CollectionsNavTreeProps = {
   collections: CollectionTreeItem[];
   selectedId?: number | string;
@@ -38,8 +40,6 @@ export interface RemoteSyncDirtyState {
   changedCollections: Record<number, boolean>;
   /** Whether any dirty changes exist globally */
   isDirty: boolean;
-  /** Whether any entities have "removed" status */
-  hasRemovedItems: boolean;
   /** Whether data is loading */
   isLoading: boolean;
   /** Check if a specific collection has dirty items */
@@ -80,7 +80,10 @@ const getDefaultPluginRemoteSync = () => ({
   }),
   useGitSyncVisible: () => ({ isVisible: false, currentBranch: null }),
   useHasLibraryDirtyChanges: () => false,
+  useHasSnippetsDirtyChanges: () => false,
+  useHasDataActionsDirtyChanges: () => false,
   useHasTransformDirtyChanges: () => false,
+  useHasGlossaryDirtyChanges: () => false,
   getIsRemoteSyncReadOnly: () => false,
   useRemoteSyncDirtyState: () =>
     // Unjustified type cast. FIXME
@@ -112,14 +115,10 @@ export const PLUGIN_REMOTE_SYNC: {
     currentBranch: string | null | undefined;
   };
   useHasLibraryDirtyChanges: () => boolean;
+  useHasSnippetsDirtyChanges: () => boolean;
+  useHasDataActionsDirtyChanges: () => boolean;
   useHasTransformDirtyChanges: () => boolean;
+  useHasGlossaryDirtyChanges: () => boolean;
   getIsRemoteSyncReadOnly: (state: State) => boolean;
   useRemoteSyncDirtyState: () => RemoteSyncDirtyState;
-} = getDefaultPluginRemoteSync();
-
-/**
- * @internal Do not call directly. Use the main reinitialize function from metabase/plugins instead.
- */
-export function reinitialize() {
-  Object.assign(PLUGIN_REMOTE_SYNC, getDefaultPluginRemoteSync());
-}
+} = definePluginSlot(getDefaultPluginRemoteSync);

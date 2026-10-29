@@ -31,6 +31,14 @@ export function setupCardEndpoints(card: Card) {
   });
 }
 
+export function setupDeleteCardEndpoint(cardId: CardId) {
+  fetchMock.delete(`path:/api/card/${cardId}`, 204);
+}
+
+export function setupUpdateCardEndpointWithError(cardId: CardId) {
+  fetchMock.put(`path:/api/card/${cardId}`, { status: 500, body: {} });
+}
+
 export function setupCardByEntityIdEndpoints(card: Card) {
   fetchMock.get(`path:/api/card/${card.entity_id}`, card, {
     name: `card-entity-${card.entity_id}-get`,

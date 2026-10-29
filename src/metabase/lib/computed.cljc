@@ -34,6 +34,7 @@
   []
   (count weak-map))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *computed-cache*
   "Dynamic var that holds an atom used for caching derived values for [[with-cache-sticky*]].
 
@@ -63,6 +64,7 @@
                (.set weak-map query m)
                m))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *cache-hit-hook*
   "A function `(f cache-key)` called whenever the sticky or ephemeral caches are hit.
 
@@ -70,6 +72,7 @@
   [cache-key]
   (log/debug (str (u/colorize :green "HIT: ") (name (first cache-key)) " " (hash (rest cache-key)))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *cache-miss-hook*
   "A function `(f cache-key)` called whenever the sticky or ephemeral caches are missed.
 

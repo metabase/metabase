@@ -174,15 +174,16 @@
       (qp.compile/compile (query-fn (mp-fn))))
     {})))
 
-#_{:clj-kondo/ignore [:unused-private-var]}
-(defn- compile-time1
-  "Times a single run rather than [[crit/quick-benchmark]]."
-  [mp-fn query-fn _mem-fn]
-  #_{:clj-kondo/ignore [:discouraged-var]}
-  (time (mu/disable-enforcement
-          (qp.compile/compile (query-fn (mp-fn))))))
-
 (comment
+  ;; Single-run timing alternative to the criterium helper above
+  (defn- compile-time1
+    "Times a single run rather than [[crit/quick-benchmark]]."
+    [mp-fn query-fn _mem-fn]
+    ;; REPL-only single-run timing helper; time's console report is the output
+    #_{:clj-kondo/ignore [:discouraged-var]}
+    (time (mu/disable-enforcement
+            (qp.compile/compile (query-fn (mp-fn))))))
+
   ;; Preprocesses and compiles a query, with the `lib.computed` cache set throughout.
   ;; Useful for testing performance impact from the REPL for the large queries above.
   ;; Returns [nanoseconds result].
@@ -292,6 +293,7 @@
       (let [q (lib.tu.huge/huge-query)
             [t result] (crit/time-body
                         (qp.compile/compile q))]
+        ;; REPL benchmark in (comment): the timing line prints to the console
         #_{:clj-kondo/ignore [:discouraged-var]}
         (println (format "%.2fms" (/ t 1000000.0)))
         result)))

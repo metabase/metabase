@@ -1,0 +1,27 @@
+## MCP v1 retirement. `/api/metabase-mcp` now serves the v2 tool surface, whose tools gate on six
+## coarse scopes. Clients connected to v0.60–v0.63 hold tokens carrying the per-entity agent scopes
+## instead; no legacy scope satisfies any v2 scope. A call short of scope gets a 403
+## `insufficient_scope` step-up, so the client re-authorizes.
+##
+## The first changeset widens every dynamically registered client's scope snapshot so that
+## re-authorization validates. The second is a no-op: legacy tokens are left alive so clients recover
+## through the step-up. Its id stays so that instances which already ran it can still roll back.
+
+databaseChangeLog:
+  - changeSet:
+      id: v64.2026-09-09T12:00:00
+      author: bryanmaass
+      comment: Widen dynamic OAuth client scope snapshots with the MCP v2 scopes
+      changes:
+        - customChange:
+            class: metabase.app_db.custom_migrations.WidenDynamicOAuthClientScopesForMcpV2
+      rollback: []
+
+  - changeSet:
+      id: v64.2026-09-09T12:00:01
+      author: bryanmaass
+      comment: No-op. Legacy-scoped OAuth tokens are left alive to recover through the 403 step-up
+      changes:
+        - customChange:
+            class: metabase.app_db.custom_migrations.RevokeLegacyMcpOAuthTokens
+      rollback: []

@@ -5,19 +5,20 @@ import {
 } from "__support__/echarts";
 import { dayjs } from "metabase/dayjs";
 import {
+  type ComputedVisualizationSettings,
+  type Datum,
+  type DimensionModel,
+  type EChartsSeriesBrushEndEvent,
+  type EChartsSeriesBrushSelectedEvent,
+  type EChartsSeriesMouseEvent,
+  type EChartsTooltipModel,
   INDEX_KEY,
+  ROW_CHART_MIN_BAR_HEIGHT,
   X_AXIS_DATA_KEY,
-} from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import { getDatasetKey } from "metabase/visualizations/echarts/cartesian/model/dataset";
-import type {
-  Datum,
-  DimensionModel,
-} from "metabase/visualizations/echarts/cartesian/model/types";
-import type {
-  EChartsSeriesBrushEndEvent,
-  EChartsSeriesMouseEvent,
-} from "metabase/visualizations/echarts/types";
-import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
+  foldRowChartModel,
+  getDatasetKey,
+} from "metabase/viz-core";
+import type { DatasetColumn } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatetimeColumn,
@@ -27,9 +28,12 @@ import {
 
 import {
   canBrush,
+  getAdjustedBrushEndEvent,
   getBrushClickObject,
   getEventDimensions,
+  getGoalLineHoverData,
   getSeriesClickData,
+  getSeriesHovered,
   getTooltipModel,
   normalizeDimensionValue,
 } from "./events";
@@ -64,6 +68,7 @@ const dimensionModel: DimensionModel = {
   column: createdAtColumn,
   columnIndex: 0,
   columnByCardId: { [CARD_ID]: createdAtColumn },
+  columns: [createdAtColumn],
 };
 
 describe("getEventDimensions", () => {
@@ -158,6 +163,7 @@ describe("getEventDimensions", () => {
       column: monthColumn,
       columnIndex: 0,
       columnByCardId: { [CARD_ID]: monthColumn },
+      columns: [monthColumn],
     };
 
     const seriesModel = createMockSeriesModel({
@@ -225,56 +231,6 @@ describe("getEventDimensions", () => {
       { column: sourceColumn, value: "Affiliate" },
     ]);
   });
-
-  it("includes the x-axis breakout when clicking a bar with only metric data (#73448)", () => {
-    const categoryColumn = createMockColumn({
-      name: "CATEGORY",
-      display_name: "Product → Category",
-      source: "breakout",
-      base_type: "type/Text",
-      effective_type: "type/Text",
-    });
-    const countColumn = createMockColumn({
-      name: "count",
-      display_name: "Count",
-      source: "aggregation",
-      base_type: "type/BigInteger",
-      effective_type: "type/BigInteger",
-    });
-    const countKey = `${CARD_ID}:count`;
-    const datum: Datum = {
-      [X_AXIS_DATA_KEY]: "Doohickey",
-      [countKey]: 3976,
-    };
-    const chartModel = createMockCartesianChartModel({
-      columnByDataKey: {
-        [countKey]: countColumn,
-      },
-    });
-    const categoryDimensionModel: DimensionModel = {
-      column: categoryColumn,
-      columnIndex: 0,
-      columnByCardId: { [CARD_ID]: categoryColumn },
-    };
-    const seriesModel = createMockSeriesModel({
-      dataKey: countKey,
-      column: countColumn,
-      columnIndex: 1,
-      cardId: CARD_ID,
-      vizSettingsKey: "count",
-    });
-
-    const dimensions = getEventDimensions(
-      chartModel,
-      datum,
-      categoryDimensionModel,
-      seriesModel,
-    );
-
-    expect(dimensions).toEqual([
-      { column: categoryColumn, value: "Doohickey" },
-    ]);
-  });
 });
 
 describe("getSeriesClickData", () => {
@@ -328,6 +284,7 @@ describe("getSeriesClickData", () => {
         column: createdAtColumn,
         columnIndex: 0,
         columnByCardId: { [CARD_ID]: createdAtColumn },
+        columns: [createdAtColumn],
       },
       cardsColumns: [
         {
@@ -370,9 +327,11 @@ describe("getSeriesClickData", () => {
       source: "breakout",
     });
     const sourceKey = getDatasetKey(sourceColumn, CARD_ID);
+    const categoryKey = getDatasetKey(categoryColumn, CARD_ID);
     const sumKey = dataKey;
     const datum: Datum = {
       [X_AXIS_DATA_KEY]: "Gadget",
+      [categoryKey]: "Gadget",
       [sourceKey]: "Affiliate",
       [sumKey]: 12,
     };
@@ -394,6 +353,7 @@ describe("getSeriesClickData", () => {
         { [X_AXIS_DATA_KEY]: "", [INDEX_KEY]: 0 },
       ] as Datum[],
       columnByDataKey: {
+        [categoryKey]: categoryColumn,
         [sourceKey]: sourceColumn,
         [sumKey]: sumColumn,
       },
@@ -401,6 +361,7 @@ describe("getSeriesClickData", () => {
         column: categoryColumn,
         columnIndex: 0,
         columnByCardId: { [CARD_ID]: categoryColumn },
+        columns: [categoryColumn],
       },
       cardsColumns: [
         {
@@ -452,6 +413,18 @@ describe("canBrush", () => {
     source: "aggregation",
     base_type: "type/Float",
     effective_type: "type/Float",
+  });
+
+  const binnedQuantityColumn = createMockColumn({
+    name: "QUANTITY",
+    display_name: "Quantity: 10 bins",
+    source: "breakout",
+    base_type: "type/Integer",
+    effective_type: "type/Integer",
+    binning_info: {
+      binning_strategy: "num-bins",
+      bin_width: 10,
+    },
   });
 
   const baseSettings: ComputedVisualizationSettings = {
@@ -511,6 +484,22 @@ describe("canBrush", () => {
       canBrush(series, baseSettings, sumSubtotalColumn, undefined, onBrush),
     ).toBe(true);
   });
+
+  // Binned dimensions default to histogram scale (already unbrushable), but
+  // users can switch to linear. Bars are centered on the bin start (0 for
+  // "0-10"), so a brush would filter the wrong range
+  it("returns false when the x-axis dimension is binned, even on a linear scale", () => {
+    const series = [
+      createMockSingleSeries(
+        {},
+        { data: { cols: [binnedQuantityColumn, sumSubtotalColumn] } },
+      ),
+    ];
+
+    expect(
+      canBrush(series, baseSettings, binnedQuantityColumn, onChangeCardAndRun),
+    ).toBe(false);
+  });
 });
 
 describe("getBrushClickObject", () => {
@@ -535,6 +524,7 @@ describe("getBrushClickObject", () => {
         column: createdAtColumn,
         columnIndex: 0,
         columnByCardId: { [CARD_ID]: createdAtColumn },
+        columns: [createdAtColumn],
       },
       xAxisModel: {
         axisType: "time",
@@ -581,6 +571,7 @@ describe("getBrushClickObject", () => {
         column: priceColumn,
         columnIndex: 0,
         columnByCardId: { [CARD_ID]: priceColumn },
+        columns: [priceColumn],
       },
       xAxisModel: {
         axisType: "value",
@@ -613,6 +604,207 @@ describe("getBrushClickObject", () => {
       end: 4,
     });
     expect(clicked?.column).toBe(priceColumn);
+  });
+});
+
+describe("getAdjustedBrushEndEvent", () => {
+  const jan = "2020-01-01T00:00:00Z";
+  const feb = "2020-02-01T00:00:00Z";
+  const mar = "2020-03-01T00:00:00Z";
+  const apr = "2020-04-01T00:00:00Z";
+  const janMs = Date.UTC(2020, 0, 1);
+  const febMs = Date.UTC(2020, 1, 1);
+  const marMs = Date.UTC(2020, 2, 1);
+  const aprMs = Date.UTC(2020, 3, 1);
+
+  const timeSeriesChartModel = createMockCartesianChartModel({
+    dimensionModel: {
+      column: createdAtColumn,
+      columnIndex: 0,
+      columnByCardId: { [CARD_ID]: createdAtColumn },
+      columns: [createdAtColumn],
+    },
+    xAxisModel: {
+      axisType: "time",
+      toEChartsAxisValue: (value) => String(value),
+      fromEChartsAxisValue: (value) => dayjs.utc(value),
+      interval: { unit: "month", count: 1 },
+      intervalsCount: 4,
+      range: [dayjs.utc(jan), dayjs.utc(apr)],
+      formatter: String,
+    },
+    transformedDataset: [jan, feb, mar, apr].map((value, index) => ({
+      [X_AXIS_DATA_KEY]: value,
+      [INDEX_KEY]: index,
+    })),
+  });
+
+  const brushEndEvent = (coordRange: [number, number]) =>
+    // getAdjustedBrushEndEvent only reads areas; mouse fields are unused
+    ({
+      areas: [
+        {
+          brushType: "lineX",
+          coordRange,
+          range: [40, 180],
+        },
+      ],
+    }) as unknown as EChartsSeriesBrushEndEvent;
+
+  const brushSelectedEvent = (
+    dataIndex: number[],
+  ): EChartsSeriesBrushSelectedEvent => ({
+    batch: [{ selected: [{ seriesIndex: 0, dataIndex }] }],
+  });
+
+  // Mid-January to mid-March: the pixel range covers parts of the Jan and Mar
+  // bars without reaching their tick values.
+  const partialCoordRange: [number, number] = [
+    Date.UTC(2020, 0, 15),
+    Date.UTC(2020, 2, 15),
+  ];
+
+  it("widens the start to include a highlighted bar whose tick is left of coordRange", () => {
+    const adjusted = getAdjustedBrushEndEvent(
+      brushEndEvent(partialCoordRange),
+      brushSelectedEvent([0, 1, 2]),
+      timeSeriesChartModel,
+    );
+
+    expect(adjusted?.areas[0].coordRange).toEqual([
+      janMs,
+      partialCoordRange[1],
+    ]);
+  });
+
+  it("widens the end to include a highlighted bar whose tick is right of coordRange", () => {
+    const adjusted = getAdjustedBrushEndEvent(
+      brushEndEvent(partialCoordRange),
+      brushSelectedEvent([1, 2, 3]),
+      timeSeriesChartModel,
+    );
+
+    expect(adjusted?.areas[0].coordRange).toEqual([
+      partialCoordRange[0],
+      aprMs,
+    ]);
+  });
+
+  it("widens both bounds when highlighted bars sit outside the pixel range", () => {
+    const adjusted = getAdjustedBrushEndEvent(
+      brushEndEvent(partialCoordRange),
+      brushSelectedEvent([0, 1, 2, 3]),
+      timeSeriesChartModel,
+    );
+
+    expect(adjusted?.areas[0].coordRange).toEqual([janMs, aprMs]);
+  });
+
+  it("takes the min and max dataIndex across series", () => {
+    const adjusted = getAdjustedBrushEndEvent(
+      brushEndEvent(partialCoordRange),
+      {
+        batch: [
+          {
+            selected: [
+              { seriesIndex: 0, dataIndex: [1, 2] },
+              { seriesIndex: 1, dataIndex: [0, 3] },
+            ],
+          },
+        ],
+      },
+      timeSeriesChartModel,
+    );
+
+    expect(adjusted?.areas[0].coordRange).toEqual([janMs, aprMs]);
+  });
+
+  it("returns the original coordRange when nothing is selected", () => {
+    const adjusted = getAdjustedBrushEndEvent(
+      brushEndEvent(partialCoordRange),
+      brushSelectedEvent([]),
+      timeSeriesChartModel,
+    );
+
+    expect(adjusted?.areas[0].coordRange).toEqual(partialCoordRange);
+  });
+
+  it("returns the original coordRange when brushSelected is missing", () => {
+    const adjusted = getAdjustedBrushEndEvent(
+      brushEndEvent(partialCoordRange),
+      null,
+      timeSeriesChartModel,
+    );
+
+    expect(adjusted?.areas[0].coordRange).toEqual(partialCoordRange);
+  });
+
+  it("returns the original coordRange for a numeric axis", () => {
+    const chartModel = createMockCartesianChartModel({
+      xAxisModel: {
+        axisType: "value",
+        toEChartsAxisValue: (value) =>
+          typeof value === "number" ? value : null,
+        fromEChartsAxisValue: (value) => value,
+        extent: [0, 10],
+        interval: 1,
+        intervalsCount: 10,
+        isPadded: false,
+        formatter: String,
+      },
+      transformedDataset: [0, 1, 2, 3].map((value, index) => ({
+        [X_AXIS_DATA_KEY]: value,
+        [INDEX_KEY]: index,
+      })),
+    });
+
+    const adjusted = getAdjustedBrushEndEvent(
+      brushEndEvent([1.5, 2.5]),
+      brushSelectedEvent([0, 1, 2, 3]),
+      chartModel,
+    );
+
+    expect(adjusted?.areas[0].coordRange).toEqual([1.5, 2.5]);
+  });
+
+  it("returns null when coordRange is not a lineX pair", () => {
+    // Missing coordRange is the case under test; mouse fields are unused
+    const event = {
+      areas: [{ brushType: "lineX", range: [40, 180] }],
+    } as unknown as EChartsSeriesBrushEndEvent;
+
+    expect(
+      getAdjustedBrushEndEvent(
+        event,
+        brushSelectedEvent([0]),
+        timeSeriesChartModel,
+      ),
+    ).toBeNull();
+  });
+
+  it("keeps a bound when the selected index is out of range", () => {
+    const adjusted = getAdjustedBrushEndEvent(
+      brushEndEvent(partialCoordRange),
+      brushSelectedEvent([0, 99]),
+      timeSeriesChartModel,
+    );
+
+    expect(adjusted?.areas[0].coordRange).toEqual([
+      janMs,
+      partialCoordRange[1],
+    ]);
+  });
+
+  it("does not shrink the range when selected ticks sit inside coordRange", () => {
+    const adjusted = getAdjustedBrushEndEvent(
+      brushEndEvent(partialCoordRange),
+      brushSelectedEvent([1, 2]),
+      timeSeriesChartModel,
+    );
+
+    expect(adjusted?.areas[0].coordRange).toEqual(partialCoordRange);
+    expect(febMs).toBeGreaterThan(partialCoordRange[0]);
+    expect(marMs).toBeLessThan(partialCoordRange[1]);
   });
 });
 
@@ -669,5 +861,302 @@ describe("getTooltipModel", () => {
       "Doohickey",
       "Gadget",
     ]);
+  });
+});
+
+describe("row chart folded Other row", () => {
+  const COUNT_KEY = "count";
+  const SUM_KEY = "sum";
+
+  const categoryColumn = createMockColumn({
+    name: "CATEGORY",
+    display_name: "Category",
+    source: "breakout",
+    base_type: "type/Text",
+    effective_type: "type/Text",
+  });
+  const countColumn = createMockColumn({
+    name: COUNT_KEY,
+    source: "aggregation",
+    base_type: "type/Integer",
+    effective_type: "type/Integer",
+  });
+  const sumColumn = createMockColumn({
+    name: SUM_KEY,
+    source: "aggregation",
+    base_type: "type/Integer",
+    effective_type: "type/Integer",
+  });
+
+  interface ExtraSeries {
+    dataKey: string;
+    values: number[];
+    visible?: boolean;
+  }
+
+  interface SetupOpts {
+    counts?: number[];
+    sums?: number[];
+    extraSeries?: ExtraSeries[];
+    dimensionColumn?: DatasetColumn;
+  }
+
+  // Categories C1, C2, … where C1 is kept and the rest fold into "Other".
+  const getFoldedChartModel = ({
+    counts = [50, 10, 30, 20, 40],
+    sums,
+    extraSeries = [],
+    dimensionColumn = categoryColumn,
+  }: SetupOpts = {}) => {
+    const dataset: Datum[] = counts.map((count, index) => ({
+      [X_AXIS_DATA_KEY]: `C${index + 1}`,
+      [COUNT_KEY]: count,
+      ...(sums && { [SUM_KEY]: sums[index] }),
+      ...Object.fromEntries(
+        extraSeries.map(({ dataKey, values }) => [dataKey, values[index]]),
+      ),
+    }));
+    const seriesModels = [
+      createMockSeriesModel({ dataKey: COUNT_KEY, column: countColumn }),
+      ...(sums
+        ? [createMockSeriesModel({ dataKey: SUM_KEY, column: sumColumn })]
+        : []),
+      ...extraSeries.map(({ dataKey, visible = true }) =>
+        createMockSeriesModel({
+          dataKey,
+          visible,
+          column: createMockColumn({
+            name: dataKey,
+            source: "aggregation",
+            base_type: "type/Integer",
+            effective_type: "type/Integer",
+          }),
+        }),
+      ),
+    ];
+    const visibleSeriesCount = seriesModels.filter(
+      (seriesModel) => seriesModel.visible,
+    ).length;
+    // Two rows fit: unstacked, each row needs a band per visible series.
+    const chartHeight = 2 * ROW_CHART_MIN_BAR_HEIGHT * visibleSeriesCount;
+    return foldRowChartModel(
+      {
+        ...createMockCartesianChartModel({
+          dimensionModel: {
+            column: dimensionColumn,
+            columnIndex: 0,
+            columnByCardId: {},
+            columns: [dimensionColumn],
+          },
+          seriesModels,
+          dataset,
+          transformedDataset: dataset.map((datum, index) => ({
+            ...datum,
+            [INDEX_KEY]: index,
+          })),
+        }),
+        stackedLabelsFormatters: {},
+        dataDensity: {
+          type: "combo",
+          seriesDataKeysWithLabels: [],
+          stackedDisplayWithLabels: [],
+          numberOfDotsBySeriesKey: {},
+          averageLabelWidth: 0,
+          totalNumberOfLabels: 0,
+        },
+      },
+      chartHeight,
+      createMockVisualizationSettings(),
+    );
+  };
+
+  const createMouseEvent = (dataIndex: number) =>
+    // A partial ECharts event: only these fields are read by the helpers under test.
+    ({
+      dataIndex,
+      seriesId: COUNT_KEY,
+      event: { event: new MouseEvent("click") },
+    }) as EChartsSeriesMouseEvent;
+
+  const OTHER_INDEX = 1;
+
+  const getFoldedRowTooltip = (
+    chartModel: ReturnType<typeof getFoldedChartModel>,
+    seriesDataKey = COUNT_KEY,
+  ) =>
+    getTooltipModel(
+      chartModel,
+      createMockVisualizationSettings(),
+      OTHER_INDEX,
+      "row",
+      seriesDataKey,
+    );
+
+  const getRowTexts = (tooltipModel: EChartsTooltipModel | null) =>
+    tooltipModel?.rows.map((row) => [row.name, ...row.values]);
+
+  it("names the Other row in its tooltip", () => {
+    const tooltipModel = getFoldedRowTooltip(getFoldedChartModel());
+
+    expect(tooltipModel?.header).toBe("Other (4)");
+  });
+
+  it("lists the folded categories in chart order, with their total", () => {
+    const tooltipModel = getFoldedRowTooltip(getFoldedChartModel());
+
+    expect(getRowTexts(tooltipModel)).toEqual([
+      ["C2", "10"],
+      ["C3", "30"],
+      ["C4", "20"],
+      ["C5", "40"],
+    ]);
+    expect(tooltipModel?.footer).toEqual({ name: "Total", values: ["100"] });
+  });
+
+  it("lists every folded category, however many there are", () => {
+    // C1 is kept; C2 (1) … C15 (14) fold.
+    const foldedCounts = Array.from({ length: 14 }, (_, i) => i + 1);
+
+    const tooltipModel = getFoldedRowTooltip(
+      getFoldedChartModel({ counts: [100, ...foldedCounts] }),
+    );
+
+    expect(getRowTexts(tooltipModel)).toEqual(
+      foldedCounts.map((count) => [`C${count + 1}`, String(count)]),
+    );
+    expect(tooltipModel?.footer).toEqual({ name: "Total", values: ["105"] });
+  });
+
+  it("lists every series' values, the hovered series first, when there are several series", () => {
+    const chartModel = getFoldedChartModel({
+      counts: [50, 10, 30, 20, 40],
+      sums: [1, 400, 100, 300, 200],
+    });
+
+    const tooltipModel = getFoldedRowTooltip(chartModel, SUM_KEY);
+
+    expect(getRowTexts(tooltipModel)).toEqual([
+      ["", "name for sum", "name for count"],
+      ["C2", "400", "10"],
+      ["C3", "100", "30"],
+      ["C4", "300", "20"],
+      ["C5", "200", "40"],
+    ]);
+    expect(tooltipModel?.footer).toEqual({
+      name: "Total",
+      values: ["1,000", "100"],
+    });
+  });
+
+  it("leaves hidden series out of the Other tooltip", () => {
+    const chartModel = getFoldedChartModel({
+      sums: [1, 400, 100, 300, 200],
+      extraSeries: [
+        { dataKey: "avg", values: [5, 4, 3, 2, 1] },
+        { dataKey: "max", values: [9, 9, 9, 9, 9], visible: false },
+      ],
+    });
+
+    const tooltipModel = getFoldedRowTooltip(chartModel);
+
+    expect(tooltipModel?.rows[0].values).toEqual([
+      "name for count",
+      "name for sum",
+      "name for avg",
+    ]);
+  });
+
+  it("lists every visible series, however many there are", () => {
+    const chartModel = getFoldedChartModel({
+      sums: [1, 400, 100, 300, 200],
+      extraSeries: [
+        { dataKey: "avg", values: [5, 4, 3, 2, 1] },
+        { dataKey: "max", values: [9, 8, 7, 6, 5] },
+      ],
+    });
+
+    const tooltipModel = getFoldedRowTooltip(chartModel);
+
+    expect(getRowTexts(tooltipModel)).toEqual([
+      ["", "name for count", "name for sum", "name for avg", "name for max"],
+      ["C2", "10", "400", "4", "8"],
+      ["C3", "30", "100", "3", "7"],
+      ["C4", "20", "300", "2", "6"],
+      ["C5", "40", "200", "1", "5"],
+    ]);
+    expect(tooltipModel?.footer).toEqual({
+      name: "Total",
+      values: ["100", "1,000", "10", "26"],
+    });
+  });
+
+  it("reports hovering the Other row, so the rest of the chart dims", () => {
+    const chartModel = getFoldedChartModel();
+
+    expect(getSeriesHovered(chartModel, createMouseEvent(OTHER_INDEX))).toEqual(
+      { index: 0, datumIndex: OTHER_INDEX },
+    );
+  });
+
+  it("drills into the Other row by filtering to its folded categories", () => {
+    const chartModel = getFoldedChartModel();
+
+    expect(
+      getSeriesClickData(chartModel, {}, createMouseEvent(OTHER_INDEX)),
+    ).toMatchObject({
+      column: countColumn,
+      value: 100,
+      dimensions: [{ column: categoryColumn, value: ["C2", "C3", "C4", "C5"] }],
+    });
+  });
+
+  it("does not drill into the Other row of a binned dimension, whose drills take one bin", () => {
+    const binnedColumn = createMockColumn({
+      ...categoryColumn,
+      base_type: "type/Float",
+      effective_type: "type/Float",
+      binning_info: { binning_strategy: "num-bins", num_bins: 100 },
+    });
+    const chartModel = getFoldedChartModel({ dimensionColumn: binnedColumn });
+
+    expect(
+      getSeriesClickData(chartModel, {}, createMouseEvent(OTHER_INDEX)),
+    ).toBeNull();
+  });
+
+  it("drills into a kept row by its own category", () => {
+    const chartModel = getFoldedChartModel();
+
+    expect(
+      getSeriesClickData(chartModel, {}, createMouseEvent(0)),
+    ).not.toBeNull();
+  });
+});
+
+describe("getGoalLineHoverData", () => {
+  const createMarkerElement = () =>
+    document.createElementNS("http://www.w3.org/2000/svg", "path");
+
+  const settings = createMockVisualizationSettings({
+    "graph.goal_value": 25000,
+    "graph.goal_label": "Goal",
+  });
+
+  it("shows the goal label and formatted value when the marker is hovered", () => {
+    const hoverData = getGoalLineHoverData(
+      settings,
+      createMarkerElement(),
+      (value) => `${value} orders`,
+    );
+
+    expect(hoverData?.data).toEqual([
+      { col: null, key: "Goal", value: "25000 orders" },
+    ]);
+  });
+
+  it("anchors the tooltip to the hovered marker element", () => {
+    const marker = createMarkerElement();
+
+    expect(getGoalLineHoverData(settings, marker)?.element).toBe(marker);
   });
 });

@@ -47,11 +47,15 @@ const ToolStepLabel = ({
   step: ToolChainStep;
   done: boolean;
   className?: string;
-}) => (
-  <Text component="span" className={className} c="inherit" lh="inherit">
-    {toolLabelContent(step, done)}
-  </Text>
-);
+}) => {
+  const isFailed = step.status === "errored";
+  return (
+    <Text component="span" className={className} c="inherit" lh="inherit">
+      {toolLabelContent(step, done && !isFailed)}
+      {isFailed && <span className={S.failed}>{t`Failed`}</span>}
+    </Text>
+  );
+};
 
 export const ResourceGroupStep = ({
   count,

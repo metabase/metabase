@@ -1,5 +1,6 @@
 import { act } from "@testing-library/react";
 
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import { sdkReducers } from "embedding-sdk-bundle/store";
 import { setPluginsReady } from "embedding-sdk-bundle/store/reducer";
@@ -8,7 +9,6 @@ import {
   createMockSdkState,
 } from "embedding-sdk-bundle/test/mocks/state";
 import type { LoginStatus } from "embedding-sdk-bundle/types/user";
-import { createMockState } from "metabase/redux/store/mocks";
 
 import { PublicComponentWrapper } from "./PublicComponentWrapper";
 

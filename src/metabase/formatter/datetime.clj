@@ -15,6 +15,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *formatting-locale*
   "Dynamic var to hold the current locale for datetime formatting.
   Defaults to the site locale from system settings."

@@ -38,7 +38,7 @@
 
   The schema name matches the reaction-name."
   [reaction-name :- ::reaction-type
-   schema]
+   schema :- [:and :any [:fn {:error/message "a malli schema"} mc/schema]]]
   (derive! reaction-name :metabot/registered-action)
   (mr/register! reaction-name schema))
 

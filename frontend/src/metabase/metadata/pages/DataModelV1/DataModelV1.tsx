@@ -9,6 +9,7 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import { Outlet, useLocation, useParams } from "metabase/router";
 import { Box, Flex, Stack, rem } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -37,7 +38,7 @@ export const DataModelV1 = () => {
   const parsedParams = parseRouteParams(params);
   const { databaseId, fieldId, schemaName, tableId } = parsedParams;
   const { data: databasesData, isLoading: isLoadingDatabases } =
-    useListDatabasesQuery({ "can-write-metadata": true });
+    useListDatabasesQuery(PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps);
   const databaseExists = databasesData?.data?.some(
     (database) => database.id === databaseId,
   );
@@ -108,7 +109,7 @@ export const DataModelV1 = () => {
           tableId={tableId}
         />
 
-        <Box className={S.footer} mx="xl" py="sm">
+        <Box className={S.footer} mx="xxl" py="sm">
           <SegmentsLink active={isSegments} to="/admin/datamodel/segments" />
         </Box>
       </Stack>
@@ -125,7 +126,7 @@ export const DataModelV1 = () => {
                 h="100%"
                 justify="center"
                 miw={rem(400)}
-                p="xl"
+                p="xxl"
               >
                 <LoadingAndErrorWrapper error={t`Not found.`} />
               </Stack>
@@ -174,7 +175,7 @@ export const DataModelV1 = () => {
             >
               <LoadingAndErrorWrapper error={error} loading={isLoading}>
                 {field && table && (
-                  <Box flex="1" h="100%" maw={COLUMN_CONFIG.field.max} p="lg">
+                  <Box flex="1" h="100%" maw={COLUMN_CONFIG.field.max} p="xl">
                     <FieldSection
                       /**
                        * Make sure internal component state is reset when changing fields.
@@ -206,7 +207,7 @@ export const DataModelV1 = () => {
               bg="accent-gray-light"
               flex={COLUMN_CONFIG.preview.flex}
               h="100%"
-              p="lg"
+              p="xl"
               maw={COLUMN_CONFIG.preview.max}
               miw={COLUMN_CONFIG.preview.min}
             >

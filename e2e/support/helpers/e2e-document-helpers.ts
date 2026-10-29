@@ -1,5 +1,7 @@
 import type { CommentId, DocumentId } from "metabase-types/api";
 
+import { closeNavigationSidebar } from "./e2e-ui-elements-helpers";
+
 export const documentContent = () => cy.findByTestId("document-content");
 
 export const documentSaveButton = () =>
@@ -96,6 +98,7 @@ function visitDocumentCommentById(
 
   const hash = commentId == null ? "" : `#comment-${commentId}`;
   cy.visit(`/document/${documentId}/comments/${nodeId}${hash}`);
+  closeNavigationSidebar();
 
   cy.wait(`@${alias}`);
 }
@@ -105,6 +108,7 @@ const visitDocumentById = (id: DocumentId) => {
   cy.intercept("GET", `/api/document/${id}`).as(alias);
 
   cy.visit(`/document/${id}`);
+  closeNavigationSidebar();
 
   cy.wait(`@${alias}`);
 };
@@ -216,23 +220,28 @@ export function documentDoDrag(
     const { x: deltaX = 0, y: deltaY = 0 } = diff;
 
     const rect = handle[0].getBoundingClientRect();
+    const { scrollX, scrollY } = handle[0].ownerDocument.defaultView ?? {
+      scrollX: 0,
+      scrollY: 0,
+    };
+    const point = (x: number, y: number) => ({
+      clientX: x,
+      clientY: y,
+      pageX: x + scrollX,
+      pageY: y + scrollY,
+    });
+    const end = point(rect.x + deltaX, rect.y + deltaY);
 
     cy.log(`x: ${rect.x}, y: ${rect.y}, diff: ${diff}`);
 
     cy.wrap(handle).trigger("mousedown", {
       button: 0,
-      clientX: rect.x,
-      clientY: rect.y,
+      ...point(rect.x, rect.y),
       force: true,
     });
     cy.get("body")
-      .trigger("mousemove", {
-        button: 0,
-        clientX: rect.x + deltaX,
-        clientY: rect.y + deltaY,
-        force: true,
-      })
-      .trigger("mouseup");
+      .trigger("mousemove", { button: 0, ...end, force: true })
+      .trigger("mouseup", { button: 0, ...end });
   });
 }
 

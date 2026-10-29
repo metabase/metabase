@@ -448,6 +448,28 @@
                            [:created_at (ms/InstanceOfClass java.time.temporal.Temporal)]]
                           (t2/select-one :model/CollectionPermissionGraphRevision {:order-by [[:id :desc]]}))))))))))
 
+(deftest admin-only-namespaces-reject-write-test
+  (testing "The data actions and data apps namespaces reject write permissions and accept read permissions"
+    (doseq [collection-namespace [:data-actions :data-apps]]
+      (testing collection-namespace
+        (mt/with-non-admin-groups-no-root-collection-perms
+          (mt/with-temp [:model/Collection      {collection-id :id} {:namespace (name collection-namespace) :location "/"}
+                         :model/PermissionsGroup {group-id :id}      {}]
+            (mt/with-test-user :crowberto
+              (doseq [target-id [collection-id :root]]
+                (testing target-id
+                  (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo
+                       #"You cannot grant write permissions on collections only admins can write"
+                       (graph/update-graph! collection-namespace
+                                            (assoc (graph/graph collection-namespace) :groups {group-id {target-id :write}})
+                                            false)))))
+              (is (= :none (get-in (graph/graph collection-namespace) [:groups group-id collection-id] :none)))
+              @(graph/update-graph! collection-namespace
+                                    (assoc (graph/graph collection-namespace) :groups {group-id {collection-id :read}})
+                                    false)
+              (is (= :read (get-in (graph/graph collection-namespace) [:groups group-id collection-id]))))))))))
+
 (deftest collection-namespace-update-root-default-test
   (testing "Should be able to update permissions for the Root Collection in the default namespace"
     (mt/with-non-admin-groups-no-root-collection-perms

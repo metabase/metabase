@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 import { getStore } from "__support__/entities-store";
 import type { SdkStore } from "embedding-sdk-bundle/store/types";
 import { Api } from "metabase/api";
+import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 
 import { executeAction } from "./execute-action";
 
@@ -29,6 +30,36 @@ describe("executeAction", () => {
     activeStore?.dispatch(Api.util.resetApiState());
     activeStore = undefined;
     fetchMock.removeRoutes().clearHistory();
+    EMBEDDING_SDK_CONFIG.isDataApp = false;
+  });
+
+  describe("an action definition", () => {
+    const ACTION_ENTITY_ID = "appActionEntity000091";
+    const definition = { action: { id: ACTION_ENTITY_ID } };
+
+    it("runs the action its definition names in a data app", async () => {
+      EMBEDDING_SDK_CONFIG.isDataApp = true;
+      fetchMock.post(`path:/api/action/${ACTION_ENTITY_ID}/execute`, {
+        status: 200,
+        body: { "rows-affected": 1 },
+      });
+
+      await executeAction(setup())({ actionId: definition });
+
+      expect(
+        fetchMock.callHistory.calls(
+          `path:/api/action/${ACTION_ENTITY_ID}/execute`,
+        ),
+      ).toHaveLength(1);
+    });
+
+    it("refuses a raw id inside a data app", async () => {
+      EMBEDDING_SDK_CONFIG.isDataApp = true;
+
+      await expect(
+        executeAction(setup())({ actionId: NUMERIC_ID }),
+      ).rejects.toThrow("passed to `useAction` as a raw id");
+    });
   });
 
   it("POSTs to /api/action/:id/execute with the given parameters", async () => {

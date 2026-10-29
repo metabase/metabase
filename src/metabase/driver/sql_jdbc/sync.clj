@@ -11,6 +11,7 @@
 
 (comment sql-jdbc.dbms-version/keep-me sql-jdbc.sync.interface/keep-me sql-jdbc.describe-database/keep-me sql-jdbc.describe-table/keep-me)
 
+;; facade ns must keep re-exporting the interface's deprecated vars until drivers migrate off them
 #_{:clj-kondo/ignore [:deprecated-var]}
 (p/import-vars
  [sql-jdbc.sync.interface

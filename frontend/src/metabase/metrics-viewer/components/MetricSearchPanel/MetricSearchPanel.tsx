@@ -85,7 +85,7 @@ export function MetricSearchPanel() {
   const toggleLabel = isFilterPillsExpanded ? t`Hide filters` : t`Show filters`;
 
   return (
-    <Stack gap="md">
+    <Stack gap="lg">
       <Flex align="center" justify="space-between" mih="1.875rem">
         <Text fw={700} size="lg" component="h1">
           {t`Explore`}
@@ -99,16 +99,13 @@ export function MetricSearchPanel() {
             <Button.Group>
               <Button
                 variant="light"
-                color="core-filter"
-                size="xs"
-                p="sm"
+                color="filter"
                 leftSection={
                   <Icon
                     name={hasFilters ? "filter_plus" : "filter"}
                     size={16}
                   />
                 }
-                className={hasFilters ? S.filterButtonWithCount : undefined}
               >
                 {t`Filter`}
               </Button>
@@ -116,16 +113,12 @@ export function MetricSearchPanel() {
                 <Tooltip label={toggleLabel}>
                   <Button
                     variant="light"
-                    color="core-filter"
-                    size="xs"
-                    py="sm"
-                    px="md"
+                    color="filter"
                     aria-label={toggleLabel}
                     onClick={(event) => {
                       event.stopPropagation();
                       setIsFilterPillsExpanded((prev) => !prev);
                     }}
-                    className={S.filterButtonAttachment}
                   >
                     {filterCount}
                   </Button>
@@ -154,7 +147,7 @@ export function MetricSearchPanel() {
           <Box
             className={S.filterPillsSection}
             px="sm"
-            py="xs"
+            py="xxs"
             bg="background_page-filter"
           >
             <MetricsFilterPills

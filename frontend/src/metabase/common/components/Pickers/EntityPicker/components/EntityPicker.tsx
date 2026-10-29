@@ -1,4 +1,4 @@
-import ErrorBoundary from "metabase/ErrorBoundary";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 
 import { EntityPickerProvider } from "../context";
 import type { EntityPickerProps } from "../types";

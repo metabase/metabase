@@ -4,7 +4,10 @@
    [metabase.channel.core :as channel]
    [metabase.driver :as driver]
    [metabase.notification.models :as models.notification]
+   [metabase.notification.payload.execute :as notification.execute]
+   [metabase.notification.send :as notification.send]
    [metabase.notification.task.send :as task.notification]
+   [metabase.notification.task.send-trigger :as notification.task.send-trigger]
    [metabase.notification.test-util :as notification.tu]
    [metabase.task.core :as task]
    [metabase.test :as mt]
@@ -52,6 +55,81 @@
                           (u/poll {:thunk #(latest-task-history-entry "notification-trigger")
                                    :done? (fn [task] (= [(:id noti)] (get-in task [:task_details :notification_ids])))}))))))))))))
 
+(deftest send-notification-job-completes-run-test
+  (testing "the job records the run of a scheduled alert as success after its `notification-trigger` row ends (GDGT-3331)"
+    ;; with the testing setup the send runs on the job's thread, so it ends while the `notification-trigger` row is
+    ;; still started, and only the job's own call can set the final status
+    (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
+      (notification.tu/with-notification-testing-setup!
+        (notification.tu/with-card-notification
+          [notification {:subscriptions [{:type          :notification-subscription/cron
+                                          :cron_schedule every-second}]
+                         :handlers      [{:channel_type :channel/email
+                                          :recipients   [{:type    :notification-recipient/user
+                                                          :user_id (mt/user->id :crowberto)}]}]}]
+          (with-redefs [channel/render-notification (fn [& _] [{:stub-message true}])
+                        channel/send!               (constantly nil)]
+            (#'task.notification/send-notification* (-> notification :subscriptions first :id)))
+          (let [run (t2/select-one :model/TaskRun :notification_id (:id notification))]
+            (is (= :success (:status run)))
+            (is (some? (:ended_at run)))
+            (is (= #{"notification-trigger" "notification-send"}
+                   (t2/select-fn-set :task :model/TaskHistory :run_id (:id run) :task [:not= "channel-send"])))))))))
+
+(deftest send-notification-job-async-run-status-test
+  (testing "a worker thread sends a scheduled alert, and the run gets the status of all of its channels (GDGT-3331)"
+    ;; no `mt/with-temp`: it keeps its rows in a transaction that the worker thread cannot see
+    (mt/with-model-cleanup [:model/Card :model/TaskRun :model/TaskHistory]
+      (notification.tu/with-notification-cleanup!
+        (doseq [[slack-fails? expected] [[false :success] [true :failed]]]
+          (testing (if slack-fails? "Slack fails" "both channels deliver")
+            (let [card         (t2/insert-returning-instance! :model/Card {:name                   "Async alert card"
+                                                                           :display                :table
+                                                                           :dataset_query          (mt/native-query {:query "SELECT 1"})
+                                                                           :visualization_settings {}
+                                                                           :creator_id             (mt/user->id :crowberto)})
+                  notification (models.notification/create-notification!
+                                {:payload_type :notification/card
+                                 :payload      {:card_id (:id card)}
+                                 :creator_id   (mt/user->id :crowberto)}
+                                ;; a schedule that never fires, so the scheduler does not start a second run
+                                [{:type          :notification-subscription/cron
+                                  :cron_schedule "0 0 0 1 1 ? 2099"}]
+                                [{:channel_type :channel/email
+                                  :recipients   [{:type    :notification-recipient/user
+                                                  :user_id (mt/user->id :crowberto)}]}
+                                 {:channel_type :channel/slack
+                                  :recipients   [{:type    :notification-recipient/raw-value
+                                                  :details {:value "#general"}}]}])
+                  release      (promise)]
+              ;; `with-redefs`, not `mt/with-dynamic-fn-redefs`: the worker thread does not get the test's bindings
+              (with-redefs [;; no card query: the query processor saves its `query` row later, on another thread, and
+                            ;; other tests insert the same query
+                            notification.execute/execute-card    (fn [_creator-id card-id]
+                                                                   {:type   :card
+                                                                    :card   (t2/select-one :model/Card card-id)
+                                                                    :result {:status :completed :row_count 1 :data {:rows [[1]]}}})
+                            channel/render-notification          (fn [& _]
+                                                                   ;; the worker waits until the test checked the run
+                                                                   (deref release 5000 nil)
+                                                                   [{:stub-message true}])
+                            channel/send!                        (fn [channel _]
+                                                                   (when (and slack-fails? (= :channel/slack (:type channel)))
+                                                                     (throw (ex-info "Slack is down" {}))))
+                            notification.send/should-skip-retry? (constantly true)]
+                (#'task.notification/send-notification* (t2/select-one-pk :model/NotificationSubscription
+                                                                          :notification_id (:id notification)))
+                (let [run-id     (t2/select-one-pk :model/TaskRun :notification_id (:id notification))
+                      run-status #(t2/select-one-fn :status :model/TaskRun run-id)]
+                  (is (= :started (run-status))
+                      "the job has ended, and the run stays started while the worker sends")
+                  (deliver release true)
+                  (is (= expected (u/poll {:thunk       run-status
+                                           :done?       #{:success :failed}
+                                           :timeout-ms  5000
+                                           :interval-ms 50})))
+                  (is (= 2 (t2/count :model/TaskHistory :run_id run-id :task "channel-send"))))))))))))
+
 (deftest init-send-notification-triggers-test
   (mt/with-model-cleanup [:model/Notification]
     (mt/with-temp-scheduler!
@@ -66,13 +144,13 @@
         (testing "sanity check that it has triggers to begin with"
           (is (not-empty notification-triggers)))
         (testing "init send notification triggers are idempotent if the subscription doesn't change"
-          (task.notification/init-send-notification-triggers!)
+          (notification.task.send-trigger/init-send-notification-triggers!)
           (is (= notification-triggers (notification.tu/send-notification-triggers subscription-id))))
         (testing "Re-create triggers if it's not existed"
           (task/delete-trigger! (TriggerKey. (-> notification-triggers first :key)))
           (testing "sanity check that the trigger is deleted"
             (is (empty? (notification.tu/send-notification-triggers subscription-id))))
-          (task.notification/init-send-notification-triggers!)
+          (notification.task.send-trigger/init-send-notification-triggers!)
           (is (= notification-triggers (notification.tu/send-notification-triggers subscription-id))))
         (testing "deletes triggers for subscriptions that no longer exist"
           (let [subscription-id (first (t2/select-pks-vec :model/NotificationSubscription
@@ -80,7 +158,7 @@
             (t2/delete! :notification_subscription subscription-id)
             (testing "sanity check that it has trigger before"
               (is (not-empty (notification.tu/send-notification-triggers subscription-id))))
-            (task.notification/init-send-notification-triggers!)
+            (notification.task.send-trigger/init-send-notification-triggers!)
             (is (empty? (notification.tu/send-notification-triggers subscription-id)))))))))
 
 (deftest init-send-notification-triggers-inactive-test
@@ -100,12 +178,12 @@
         (testing "skips triggers for inactive notifications"
           ;; Deactivate the notification
           (t2/update! :model/Notification (:id notification) {:active false})
-          (task.notification/init-send-notification-triggers!)
+          (notification.task.send-trigger/init-send-notification-triggers!)
           (is (empty? (notification.tu/send-notification-triggers subscription-id))))
         (testing "recreates triggers when notification is reactivated"
           ;; Reactivate the notification
           (t2/update! :model/Notification (:id notification) {:active true})
-          (task.notification/init-send-notification-triggers!)
+          (notification.task.send-trigger/init-send-notification-triggers!)
           (is (= notification-triggers (notification.tu/send-notification-triggers subscription-id))))))))
 
 (deftest update-send-notification-triggers-timezone-test
@@ -128,7 +206,7 @@
               ;; Change the report timezone
               (driver/report-timezone! new-timezone)
               ;; Call the function under test
-              (task.notification/update-send-notification-triggers-timezone!)
+              (notification.task.send-trigger/update-send-notification-triggers-timezone!)
               ;; Verify the timezone was updated
               (let [updated-triggers (notification.tu/send-notification-triggers subscription-id)]
                 (is (not-empty updated-triggers))

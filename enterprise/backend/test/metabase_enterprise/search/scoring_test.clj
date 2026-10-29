@@ -9,9 +9,16 @@
    [metabase-enterprise.search.scoring :as ee-scoring]
    [metabase.search.appdb.scoring-test :as appdb.scoring-test]
    [metabase.search.in-place.scoring :as scoring]
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json])
   (:import [java.time Instant]))
+
+;; Initialize before any tests run. The app DB index tests below write search-index bookkeeping before anything
+;; else accesses the app DB; a later lazy initialization, triggered by `mt/user->id` in `search-results`, would
+;; recreate the H2 test DB while a test is running.
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 (set! *warn-on-reflection* true)
 
@@ -188,29 +195,35 @@
                (appdb.scoring-test/search-results* "card")))))))
 
 (deftest transforms-user-recency-test
-  (mt/with-premium-features #{:transforms-basic :hosting}
-    (let [user-id (mt/user->id :crowberto)
-          now     (Instant/now)
-          recent-view (fn [model-id timestamp]
-                        {:model     "card"
-                         :model_id  model-id
-                         :user_id   user-id
-                         :timestamp timestamp})]
-      (mt/with-temp [:model/Card        {c1 :id} {}
-                     :model/Card        {c2 :id} {}
-                     :model/Transform   {t1 :id} {:name "test transform"
-                                                  :source {:type "query"
-                                                           :query (mt/native-query {:query "SELECT 1"})}
-                                                  :target {:type "table"
-                                                           :name (mt/random-name)}}
-                     :model/RecentViews _ (recent-view c1 now)]
-        (appdb.scoring-test/with-index-contents
-          [{:model "card"      :id c1 :name "test card recent"}
-           {:model "card"      :id c2 :name "test card unseen"}
-           {:model "transform" :id t1 :name "test transform" :source_type "mbql"}]
-          (testing "Transforms get a hardcoded 1-day recency (between recently viewed card and never viewed card)"
-            (is (= [["card"      c1 "test card recent"]
-                    ["transform" t1 "test transform"]
-                    ["card"      c2 "test card unseen"]]
-                   (appdb.scoring-test/search-results :user-recency "test" {:current-user-id user-id
-                                                                            :context :metabot})))))))))
+  ;; Create the temporary index table before `with-temp` opens its transaction. On H2 and MySQL, DDL on the
+  ;; ambient connection would implicitly commit that transaction, preventing rollback and leaking rows into later
+  ;; tests. The nested index-table scope below reuses this table. Materialize the test-data Database first as well;
+  ;; otherwise its ingestion would enter the temporary index and appear as an extra search result.
+  (mt/id)
+  (search.tu/with-temp-index-table
+    (mt/with-premium-features #{:transforms-basic :hosting}
+      (let [user-id (mt/user->id :crowberto)
+            now     (Instant/now)
+            recent-view (fn [model-id timestamp]
+                          {:model     "card"
+                           :model_id  model-id
+                           :user_id   user-id
+                           :timestamp timestamp})]
+        (mt/with-temp [:model/Card        {c1 :id} {}
+                       :model/Card        {c2 :id} {}
+                       :model/Transform   {t1 :id} {:name "test transform"
+                                                    :source {:type "query"
+                                                             :query (mt/native-query {:query "SELECT 1"})}
+                                                    :target {:type "table"
+                                                             :name (mt/random-name)}}
+                       :model/RecentViews _ (recent-view c1 now)]
+          (appdb.scoring-test/with-index-contents
+            [{:model "card"      :id c1 :name "test card recent"}
+             {:model "card"      :id c2 :name "test card unseen"}
+             {:model "transform" :id t1 :name "test transform" :source_type "mbql"}]
+            (testing "Transforms get a hardcoded 1-day recency (between recently viewed card and never viewed card)"
+              (is (= [["card"      c1 "test card recent"]
+                      ["transform" t1 "test transform"]
+                      ["card"      c2 "test card unseen"]]
+                     (appdb.scoring-test/search-results :user-recency "test" {:current-user-id user-id
+                                                                              :context :metabot}))))))))))

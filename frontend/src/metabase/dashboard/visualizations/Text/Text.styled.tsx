@@ -1,6 +1,6 @@
-// eslint-disable-next-line no-restricted-imports
+// eslint-disable-next-line eslint-js/no-restricted-imports
 import { css } from "@emotion/react";
-// eslint-disable-next-line no-restricted-imports
+// eslint-disable-next-line eslint-js/no-restricted-imports
 import styled from "@emotion/styled";
 
 import DashboardS from "metabase/css/dashboard.module.css";
@@ -264,7 +264,7 @@ export const ReactMarkdownStyleWrapper = styled.div`
     border-spacing: 0;
     margin: 1em 0;
     width: 100%;
-    font-family: Monaco, monospace;
+    font-family: var(--mb-default-monospace-font-family);
     font-size: 12.64px;
     line-height: 0.76rem;
     text-align: left;
@@ -285,7 +285,7 @@ export const ReactMarkdownStyleWrapper = styled.div`
   }
 
   .text-card-markdown code {
-    font-family: Monaco, monospace;
+    font-family: var(--mb-default-monospace-font-family);
     font-size: 12.64px;
     line-height: 20px;
     padding: 0 0.25em;

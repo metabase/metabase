@@ -19,8 +19,9 @@ type CreatePersonParameters = {
 };
 
 function CreatePersonButton() {
-  const { execute } =
-    useAction<CreatePersonParameters>(CREATE_PERSON_ACTION_ID);
+  const { execute } = useAction<CreatePersonParameters>(
+    CREATE_PERSON_ACTION_ID,
+  );
 
   const onClick = async () => {
     // [<snippet primitives-and-dates>]

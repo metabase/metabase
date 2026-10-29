@@ -19,6 +19,7 @@
    [metabase.query-processor.parameters.dates :as params.dates]
    [metabase.search.config :as search.config :refer [SearchableModel SearchContext]]
    [metabase.search.filter :as search.filter]
+   [metabase.search.in-place.search-model :as search-model]
    [metabase.search.in-place.util :as search.util]
    [metabase.search.permissions :as search.permissions]
    [metabase.search.spec :as search.spec]
@@ -31,10 +32,31 @@
 (def ^:private true-clause [:= [:inline 1] [:inline 1]])
 (def ^:private false-clause [:= [:inline 0] [:inline 1]])
 
+(def ^:private HoneySQLQuery
+  "A partially-built Honey SQL query map for the legacy (index-free) search query. Mirrors
+  `metabase.search.in-place.legacy/HoneySQLQuery` (duplicated here to avoid a circular require)."
+  [:schema
+   {:registry
+    {::expr  [:or :keyword :string number? :boolean nil?
+              [:sequential [:ref ::expr]]
+              [:set [:ref ::expr]]
+              [:ref ::query]]
+     ::query [:map {:closed true}
+              [:select    {:optional true} [:sequential [:ref ::expr]]]
+              [:from      {:optional true} [:sequential [:ref ::expr]]]
+              [:where     {:optional true} [:ref ::expr]]
+              [:with      {:optional true} [:sequential [:ref ::expr]]]
+              [:join      {:optional true} [:sequential [:ref ::expr]]]
+              [:left-join {:optional true} [:sequential [:ref ::expr]]]
+              [:union-all {:optional true} [:sequential [:ref ::expr]]]
+              [:order-by  {:optional true} [:sequential [:ref ::expr]]]
+              [:limit     {:optional true} [:ref ::expr]]]}}
+   [:ref ::query]])
+
 (def ^:private max-document-search-length
   "Cap the number of characters of a document's prose-mirror body that the legacy engine LIKE-scans.
   A leading-wildcard LIKE can't use an index, so this bounds the worst case for pathologically large
-  documents. Mirrors the appdb engine's `metabase.search.ingestion/max-searchable-value-length`."
+  documents. Mirrors the appdb engine's `metabase.search.ingestion.query/max-searchable-value-length`."
   500000)
 
 ;; ------------------------------------------------------------------------------------------------;;
@@ -50,8 +72,8 @@
   [model archived?]
   [:= (search.config/column-with-model-alias model :archived) archived?])
 
-;; Databases, transforms, and indexed-entities can't be archived
-(doseq [model ["database" "transform" "indexed-entity"]]
+;; Databases, transforms, indexed-entities, and data apps can't be archived
+(doseq [model ["database" "transform" "indexed-entity" "data-app"]]
   (defmethod archived-clause model
     [_model archived?]
     (if archived?
@@ -74,14 +96,13 @@
   (when-let [query (:search-string search-context)]
     (into
      [:or]
-     (for [column           (->> (let [search-columns-fn (requiring-resolve 'metabase.search.in-place.legacy/searchable-columns)]
-                                   (search-columns-fn model search-native-query))
+     (for [column           (->> (search-model/searchable-columns model search-native-query)
                                  (map #(search.config/column-with-model-alias model %)))
            wildcarded-token (->> (search.util/normalize query)
                                  search.util/tokenize
                                  (map search.util/wildcard-match))]
        (cond
-         (and (= model "indexed-entity") (search.permissions/sandboxed-or-impersonated-user? search-context))
+         (and (= model "indexed-entity") (search.permissions/sandboxed-impersonated-or-routed-user? search-context))
          [:= 0 1]
 
          (and (#{"card" "dataset"} model) (= column (search.config/column-with-model-alias model :dataset_query)))
@@ -127,7 +148,7 @@
     [_filter model query creator-ids]
     (sql.helpers/where query (default-created-by-filter-clause model creator-ids))))
 
-(doseq [model ["card" "dataset" "metric" "dashboard" "action"]]
+(doseq [model ["card" "dataset" "metric" "dashboard" "action" "data-app"]]
   (defmethod build-optional-filter-query [:id model]
     [_filter model query ids]
     (sql.helpers/where query [:in (search.config/column-with-model-alias model :id) ids])))
@@ -216,6 +237,18 @@
     (sql.helpers/where query (cond-> [:or authoritative]
                                published-final (conj published-final)))))
 
+(doseq [model ["measure" "segment"]]
+  (defmethod build-optional-filter-query [:curated model]
+    [_filter _model query curated?]
+    (assert (true? curated?) "filter for non-curated content is not supported")
+    ;; A measure or segment is curated when its parent table is published into the Library.
+    ;; This engine has no index row to read the table's root collection type from, so it only checks that the
+    ;; parent table is published, and only with the :library feature, like the table filter above.
+    ;; The legacy query joins the parent table as `table`; see metabase.search.in-place.legacy/search-query-for-model.
+    (sql.helpers/where query (if (premium-features/has-feature? :library)
+                               [:= :table.is_published true]
+                               false-clause))))
+
 ;; Created at filters
 
 (defn- date-range-filter-clause
@@ -243,7 +276,7 @@
       [:and [:>= dt-col start] [:< dt-col end]])))
 
 (doseq [model ["collection" "database" "table" "dashboard" "card" "dataset" "metric" "action" "document"
-               "transform" "measure" "exploration"]]
+               "transform" "measure" "exploration" "data-app"]]
   (defmethod build-optional-filter-query [:created-at model]
     [_filter model query created-at]
     (sql.helpers/where query (date-range-filter-clause
@@ -267,9 +300,6 @@
   (->> (get query join-type) (partition 2) (map first) (some #(= % table)) boolean))
 
 ;; We won't need this post-legacy as it defines the joins à la carte.
-(defn- search-model->revision-model [model]
-  ((requiring-resolve 'metabase.search.in-place.legacy/search-model->revision-model) model))
-
 (doseq [model ["dashboard" "card" "dataset" "metric"]]
   (defmethod build-optional-filter-query [:last-edited-by model]
     [_filter model query editor-ids]
@@ -278,7 +308,7 @@
       (not (joined-with-table? query :join :revision))
       (-> (sql.helpers/join :revision [:= :revision.model_id (search.config/column-with-model-alias model :id)])
           (sql.helpers/where [:= :revision.most_recent true]
-                             [:= :revision.model (search-model->revision-model model)]))
+                             [:= :revision.model (search-model/search-model->revision-model model)]))
       (= 1 (count editor-ids))
       (sql.helpers/where [:= :revision.user_id (first editor-ids)])
 
@@ -293,7 +323,7 @@
       (not (joined-with-table? query :join :revision))
       (-> (sql.helpers/join :revision [:= :revision.model_id (search.config/column-with-model-alias model :id)])
           (sql.helpers/where [:= :revision.most_recent true]
-                             [:= :revision.model (search-model->revision-model model)]))
+                             [:= :revision.model (search-model/search-model->revision-model model)]))
       true
       ;; on UI we showed the the last edit info from revision.timestamp
       ;; not the model.updated_at column
@@ -362,7 +392,7 @@
   (-> (merge
        ;; models support search-native-query if there are additional columns to search when the `search-native-query`
        ;; argument is true
-       {:search-native-query (->> (dissoc (methods @(requiring-resolve 'metabase.search.in-place.legacy/searchable-columns)) :default)
+       {:search-native-query (->> (dissoc (methods search-model/searchable-columns) :default)
                                   (filter (fn [[model f]]
                                             (seq (set/difference (set (f model true)) (set (f model false))))))
                                   (map first)
@@ -416,7 +446,7 @@
 
 (mu/defn build-filters :- :map
   "Build the search filters for a model."
-  [honeysql-query :- :map
+  [honeysql-query :- HoneySQLQuery
    model          :- SearchableModel
    search-context :- SearchContext]
   (let [{:keys [models

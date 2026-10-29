@@ -1,0 +1,16 @@
+.textarea {
+  width: 20rem;
+  padding: 0.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  outline: 1px solid var(--mb-color-border-neutral);
+  resize: none;
+}
+
+.addMorePrompt {
+  height: 1.25rem;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--mb-color-text-disabled);
+  transition: opacity 0.2s ease-in-out;
+}

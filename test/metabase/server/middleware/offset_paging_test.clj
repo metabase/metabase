@@ -2,13 +2,17 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
+   [metabase.mcp.http-handler :as mcp.http-handler]
    [metabase.request.core :as request]
    [metabase.server.handler :as handler]
+   [metabase.tiles.settings]
    [metabase.util.json :as json]
    [ring.mock.request :as ring.mock]
    [ring.util.response :as response])
   (:import
    (java.io PipedInputStream)))
+
+(comment metabase.tiles.settings/keep-me)
 
 (defn- handler [request]
   (let [handler  (fn [request respond _]
@@ -16,7 +20,7 @@
                                                 :offset (request/offset)
                                                 :paged? (request/paged?)
                                                 :params (:params request)})))
-        handler* (#'handler/apply-middleware handler)
+        handler* (#'handler/apply-middleware handler mcp.http-handler/options)
         respond  identity
         raise    (fn [e] (throw e))]
     (handler* request respond raise)))

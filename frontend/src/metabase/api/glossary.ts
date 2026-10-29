@@ -11,6 +11,12 @@ export type ListGlossaryRequest = {
   search?: string;
 };
 
+export type ListGlossaryResponse = {
+  data: GlossaryItem[];
+  /** Whether the current user may create, edit, or delete entries right now. */
+  can_write: boolean;
+};
+
 export type CreateGlossaryRequest = {
   term: string;
   definition: string;
@@ -24,16 +30,18 @@ export type UpdateGlossaryRequest = {
 
 export const glossaryApi = Api.injectEndpoints({
   endpoints: (builder) => ({
-    listGlossary: builder.query<GlossaryItem[], ListGlossaryRequest | void>({
+    listGlossary: builder.query<
+      ListGlossaryResponse,
+      ListGlossaryRequest | void
+    >({
       query: (params) => ({
         method: "GET",
         url: "/api/glossary",
         params,
       }),
-      transformResponse: (response: { data: GlossaryItem[] }) => response.data,
-      providesTags: (items = []) => [
+      providesTags: (response) => [
         listTag("glossary"),
-        ...items.map((item) => idTag("glossary", item.id)),
+        ...(response?.data ?? []).map((item) => idTag("glossary", item.id)),
       ],
     }),
     createGlossary: builder.mutation<GlossaryItem, CreateGlossaryRequest>({
@@ -51,7 +59,7 @@ export const glossaryApi = Api.injectEndpoints({
             undefined,
             (draft) => {
               // Add a temporary item to appear immediately
-              draft.unshift({
+              draft.data.unshift({
                 id: tempId,
                 term: arg.term,
                 definition: arg.definition,
@@ -68,11 +76,11 @@ export const glossaryApi = Api.injectEndpoints({
               "listGlossary",
               undefined,
               (draft) => {
-                const idx = draft.findIndex((g) => g.id === tempId);
+                const idx = draft.data.findIndex((g) => g.id === tempId);
                 if (idx !== -1) {
-                  draft[idx] = data;
+                  draft.data[idx] = data;
                 } else {
-                  draft.unshift(data);
+                  draft.data.unshift(data);
                 }
               },
             ),
@@ -98,7 +106,7 @@ export const glossaryApi = Api.injectEndpoints({
             "listGlossary",
             undefined,
             (draft) => {
-              const item = draft.find((g) => g.id === arg.id);
+              const item = draft.data.find((g) => g.id === arg.id);
               if (item) {
                 item.term = arg.term;
                 item.definition = arg.definition;
@@ -134,9 +142,9 @@ export const glossaryApi = Api.injectEndpoints({
             "listGlossary",
             undefined,
             (draft) => {
-              const idx = draft.findIndex((g) => g.id === id);
+              const idx = draft.data.findIndex((g) => g.id === id);
               if (idx !== -1) {
-                draft.splice(idx, 1);
+                draft.data.splice(idx, 1);
               }
             },
           ),

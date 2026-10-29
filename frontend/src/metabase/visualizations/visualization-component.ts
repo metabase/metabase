@@ -1,4 +1,5 @@
-import { getRegisteredComponent } from "./lib/registry";
+import { getRegisteredComponent } from "metabase/viz-core";
+
 import type { VisualizationComponent } from "./types/visualization";
 
 /** Callers must render the returned component inside a Suspense boundary. */

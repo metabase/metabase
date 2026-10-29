@@ -7,8 +7,8 @@ import {
   setupNativeQuerySnippetEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { TokenFeatures, User } from "metabase-types/api";
 import {
   createMockCollection,
@@ -20,7 +20,10 @@ import {
 
 import { SnippetSidebar } from "../SnippetSidebar";
 
-const ROOT_COLLECTION = createMockCollection({ id: "root" });
+const ROOT_COLLECTION = createMockCollection({
+  id: "root",
+  namespace: "snippets",
+});
 const MOCK_SNIPPET = createMockNativeQuerySnippet();
 
 export interface SetupOpts {
@@ -35,7 +38,10 @@ export async function setup({
   user = { is_superuser: true },
 }: SetupOpts = {}) {
   setupNativeQuerySnippetEndpoints({ snippets: [MOCK_SNIPPET] });
-  setupCollectionsEndpoints({ collections: [ROOT_COLLECTION] });
+  setupCollectionsEndpoints({
+    collections: [ROOT_COLLECTION],
+    rootCollection: ROOT_COLLECTION,
+  });
   setupCollectionItemsEndpoint({
     collection: ROOT_COLLECTION,
     collectionItems: [

@@ -4,6 +4,7 @@
    [metabase.driver :as driver]
    [metabase.lib.test-metadata :as meta]
    [metabase.query-processor.middleware.add-timezone-info :as add-timezone-info]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]))
 

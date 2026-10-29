@@ -22,6 +22,9 @@ runs:
     # `awk 'NR<=25'` rather than `head -25`: the runner ignores SIGPIPE, so `head` exiting early
     # leaves `sort` with an EPIPE write error and `pipefail` fails the step. `|| true` covers `grep`
     # finding no junit files.
+    #
+    # `-r --include` rather than a `target/junit/*.xml` glob: a multi-JVM run nests one directory
+    # per partition under `target/junit`, and a non-recursive glob matches none of it.
     - name: Summarize test wall times
       if: ${{ inputs.profiled == 'true' }}
       continue-on-error: true
@@ -30,13 +33,13 @@ runs:
         {
           echo "### Slowest test namespaces (seconds)"
           echo '```'
-          grep -h '<testsuite' target/junit/*.xml 2>/dev/null \
+          grep -rh --include='*.xml' '<testsuite' target/junit 2>/dev/null \
             | sed -E 's|.*<testsuite name="([^"]*)" time="([^"]*)".*|\2 \1|' \
             | sort -rn | awk 'NR<=25' || true
           echo '```'
           echo "### Slowest tests (seconds)"
           echo '```'
-          grep -h '<testcase' target/junit/*.xml 2>/dev/null \
+          grep -rh --include='*.xml' '<testcase' target/junit 2>/dev/null \
             | sed -E 's|.*classname="([^"]*)" name="([^"]*)" time="([^"]*)".*|\3 \1/\2|' \
             | sort -rn | awk 'NR<=25' || true
           echo '```'
@@ -53,9 +56,12 @@ runs:
       uses: actions/upload-artifact@v7
       with:
         name: ${{ inputs.artifact-name }}
+        # Globs, because a multi-JVM run nests its junit XML one directory per partition and
+        # names each log `test-log-p<index>.json`. The flamegraphs stay flat, with that same
+        # `p<index>-` prefix.
         path: |
           target/clj-async-profiler/results/*flamegraph.html
-          target/junit/*.xml
-          logs/test-log.json
+          target/junit/**/*.xml
+          logs/test-log*.json
         retention-days: 14
         if-no-files-found: warn

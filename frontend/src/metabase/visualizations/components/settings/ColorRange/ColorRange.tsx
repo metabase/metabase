@@ -5,8 +5,7 @@ import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { Box, Flex, type FlexProps } from "metabase/ui";
-
-import { getColorScale } from "../../../lib/color-scales";
+import { getColorScale } from "metabase/viz-core";
 
 export interface ColorRangeProps extends Omit<FlexProps, "onSelect"> {
   colors: string[];
@@ -53,10 +52,8 @@ export const ColorRange = forwardRef(function ColorRange(
       )}
     >
       {_.range(0, sections).map((section) => (
-        <>
-          {/* @ts-expect-error color range needs access to arbitrary color values */}
-          <Box key={section} flex="1" bg={scale(section)} />
-        </>
+        // @ts-expect-error color range needs access to arbitrary color values
+        <Box key={section} flex="1" bg={scale(section)} />
       ))}
     </Flex>
   );

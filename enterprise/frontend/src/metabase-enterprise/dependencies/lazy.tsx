@@ -7,7 +7,9 @@ import { DelayedLoadingSpinner } from "metabase/common/components/DelayedLoading
  * and dagre, which nothing else in the initial bundle needs.
  */
 export const loadDependencyGraphPage = () =>
-  import("./pages/DependencyGraphPage");
+  import(
+    /* webpackChunkName: "dependency-graph" */ "./pages/DependencyGraphPage"
+  );
 
 const DependencyGraphPage = lazy(() =>
   loadDependencyGraphPage().then(({ DependencyGraphPage }) => ({

@@ -1,25 +1,33 @@
+import { t } from "ttag";
+
 import {
   skipToken,
   useCreateTimelineMutation,
   useGetCollectionQuery,
 } from "metabase/api";
 import { useNavigate } from "metabase/router";
-import NewTimelineModal from "metabase/timelines/common/components/NewTimelineModal";
+import NewTimelineForm from "metabase/timelines/common/components/NewTimelineForm";
+import {
+  TimelineModal,
+  TimelineModalLoadingState,
+} from "metabase/timelines/common/components/TimelineModal";
 import * as Urls from "metabase/urls";
 import type { CreateTimelineRequest, Timeline } from "metabase-types/api";
 
-import LoadingAndErrorWrapper from "../../components/LoadingAndErrorWrapper";
 import type { ModalParams } from "../../types";
 
 interface NewTimelineModalContainerProps {
   params: ModalParams;
-  onClose?: () => void;
+  onClose: () => void;
 }
 
-function NewTimelineModalContainer(props: NewTimelineModalContainerProps) {
+function NewTimelineModalContainer({
+  params,
+  onClose,
+}: NewTimelineModalContainerProps) {
   const navigate = useNavigate();
   const [createTimeline] = useCreateTimelineMutation();
-  const collectionId = Urls.extractCollectionId(props.params.slug);
+  const collectionId = Urls.extractCollectionId(params.slug);
   const {
     data: collection,
     isLoading,
@@ -33,15 +41,27 @@ function NewTimelineModalContainer(props: NewTimelineModalContainerProps) {
       // Unjustified type cast. FIXME
       values as CreateTimelineRequest,
     ).unwrap();
-    navigate(Urls.timelineInCollection(timeline));
+    navigate(Urls.timelineInCollection({ ...timeline, collection }));
   };
 
-  if (isLoading || error || !collection) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
-  }
-
   return (
-    <NewTimelineModal {...props} collection={collection} onSubmit={onSubmit} />
+    <TimelineModal
+      title={t`New event timeline`}
+      onClose={onClose}
+      animated={false}
+      density="relaxed"
+      tall={isLoading || !!error || !collection}
+    >
+      {isLoading || error || !collection ? (
+        <TimelineModalLoadingState loading={isLoading} error={error} />
+      ) : (
+        <NewTimelineForm
+          collection={collection}
+          onSubmit={onSubmit}
+          onCancel={onClose}
+        />
+      )}
+    </TimelineModal>
   );
 }
 

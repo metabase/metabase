@@ -17,6 +17,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.permissions.core :as perms]
    [metabase.queries.models.query :as query]
    [metabase.query-processor.middleware.cache :as cache]
    [metabase.query-processor.middleware.cache-backend.db :as backend.db]
@@ -25,6 +26,7 @@
    [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.reducible :as qp.reducible]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.query-processor.test :as qp]
@@ -44,6 +46,7 @@
 
 (set! *warn-on-reflection* true)
 
+;; one-time DB init; a :once fixture runs before any tests, parallel or not
 #_{:clj-kondo/ignore [:metabase/validate-deftest]}
 (use-fixtures :once (fn [thunk]
                       (initialize/initialize-if-needed! :db)
@@ -154,7 +157,7 @@
   (merge {:cache-strategy (ttl-strategy)
           :lib/type       :mbql/query
           :database       1
-          :stages         [{:lib/type :mbql.stage/mbql, :source-table 2, :abc :def}]}
+          :stages         [{:lib/type :mbql.stage/mbql, :source-table 2}]}
          query-kvs))
 
 (def ^:private ^:dynamic *rows*
@@ -242,6 +245,7 @@
 
 (deftest refresh-lease-test
   (testing "try-acquire-refresh-lease! (the db backend) elects a single refresher across processes via a conditional UPDATE"
+    ;; the db cache backend reads real :model/QueryCache rows; metadata providers don't model it
     #_{:clj-kondo/ignore [:discouraged-var]}
     (mt/with-temp [:model/QueryCache {query-hash :query_hash} {:query_hash (byte-array (range 32))
                                                                :results    (byte-array [0])
@@ -258,6 +262,7 @@
                 "updated_at means 'when the results blob was last written' -- freshness, purging, and the EE refresh "
                 "scheduler all read it that way. Bumping it on lease claim makes a crashed refresh look freshly "
                 "written, so the stale row is treated as fresh for a full additional cache window.")
+    ;; the db cache backend reads real :model/QueryCache rows; metadata providers don't model it
     #_{:clj-kondo/ignore [:discouraged-var]}
     (let [original-updated-at (t/offset-date-time "2020-01-01T00:00Z")]
       (mt/with-temp [:model/QueryCache {query-hash :query_hash} {:query_hash (byte-array (range 32))
@@ -273,6 +278,7 @@
 
 (deftest delete-entry-test
   (testing "delete-entry! (the db backend) removes the cache entry, and with it any held refresh lease"
+    ;; the db cache backend reads real :model/QueryCache rows; metadata providers don't model it
     #_{:clj-kondo/ignore [:discouraged-var]}
     (mt/with-temp [:model/QueryCache {query-hash :query_hash} {:query_hash (byte-array (range 32))
                                                                :results    (byte-array [0])
@@ -1001,6 +1007,34 @@
                      #"You do not have permissions to run this query"
                      (run-forbidden-query)))))))))))
 
+(deftest cached-results-native-form-requires-native-query-perms-test
+  (testing "Cached results don't return the compiled query to a user without native query perms"
+    (mt/with-temp-copy-of-db
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
+        (with-mock-cache! [save-chan]
+          (letfn [(run-query []
+                    (qp/process-query (assoc (mt/mbql-query checkins {:aggregation [[:count]]})
+                                             :cache-strategy (ttl-strategy))))]
+            (testing "Run query as superuser to populate the cache"
+              (request/with-current-user (mt/user->id :crowberto)
+                (is (=? {:data {:native_form some?}}
+                        (run-query)))))
+            (mt/wait-for-result save-chan)
+            (testing "Cached results for the superuser still include the compiled query"
+              (request/with-current-user (mt/user->id :crowberto)
+                (is (=? {:cache/details {:cached true}
+                         :data          {:native_form some?}}
+                        (run-query)))))
+            (testing "Cached results for a user without native query perms don't include the compiled query"
+              (mt/with-test-user :rasta
+                (let [result (run-query)]
+                  (is (=? {:cache/details {:cached true}
+                           :data          {:rows [[1000]]}}
+                          result))
+                  (is (nil? (get-in result [:data :native_form]))))))))))))
+
 (deftest ^:parallel cached-results-rff-preserves-fresh-accumulator-test
   (testing "On cache hit, the rff chain's accumulator (with any modifications from middlewares
             like update-viz-settings) must not be clobbered by the replayed cached final-metadata
@@ -1010,18 +1044,18 @@
           ;; An rff that injects a sentinel `:fresh` into metadata, the same shape
           ;; `update-viz-settings` uses to inject fresh viz-settings on cache hit.
           fresh-injecting-rff (fn [metadata]
-                                (qp.reducible/default-rff (assoc metadata :fresh "fresh-value")))
+                                (qp.reducible/default-rff (assoc metadata :viz-settings {:fresh "fresh-value"})))
           rf ((cached-results-rff fresh-injecting-rff (byte-array 1))
-              {:last-ran (t/zoned-date-time) :cache-version "v1" :cols [{:name "x"}]})
+              {:last-ran (t/zoned-date-time) :cache-version 1 :cols [{:name "x"}]})
           ;; Simulate a cached replay: two actual row vectors, then the final cached
           ;; result map (which used to stomp acc).
           acc (reduce rf (rf)
                       [[1] [2]
-                       {:data {:cols [{:name "x"}] :stale "stale-value"}}])
+                       {:data {:cols [{:name "x"}] :results_timezone "stale-value"}}])
           result (rf acc)]
-      (is (= "fresh-value" (get-in result [:data :fresh]))
+      (is (= "fresh-value" (get-in result [:data :viz-settings :fresh]))
           "Fresh value injected by the rff chain must survive the cached-final-metadata replay")
-      (is (= "stale-value" (get-in result [:data :stale]))
+      (is (= "stale-value" (get-in result [:data :results_timezone]))
           "Stale-only keys from @final-metadata are still deep-merged in")
       (is (= [[1] [2]] (get-in result [:data :rows]))
           "Replayed cached rows are preserved"))))

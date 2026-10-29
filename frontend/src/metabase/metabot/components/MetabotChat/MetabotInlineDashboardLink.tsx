@@ -13,12 +13,12 @@ export function MetabotInlineDashboardLink({
     <Flex
       align="center"
       gap="sm"
-      bd="1px solid var(--mb-color-border)"
-      bdrs="md"
-      p="md"
+      bd="1px solid var(--mb-color-border-neutral)"
+      bdrs="sm"
+      p="lg"
       data-testid="metabot-inline-dashboard-link"
     >
-      <Icon name="dashboard" c="brand" />
+      <Icon name="dashboard" c="core-brand" />
       <Anchor
         component={ForwardRefLink}
         to={url}

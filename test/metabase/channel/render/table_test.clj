@@ -6,6 +6,7 @@
    [hickory.core :as hik]
    [hickory.select :as hik.s]
    [metabase.channel.render.core :as channel.render]
+   [metabase.channel.render.style :as style]
    [metabase.channel.render.table :as table]
    [metabase.formatter.core :as formatter]
    [metabase.models.visualization-settings :as mb.viz]
@@ -237,6 +238,47 @@
                    (map #(first (:content %)) td-els))
                 "Body should include row indices as first column")))))))
 
+(deftest table-striped-rows-test
+  (mt/dataset test-data
+    (let [q (str "SELECT 1 AS A, 2 AS B"
+                 " UNION ALL SELECT 3 AS A, 4 AS B"
+                 " UNION ALL SELECT 5 AS A, 6 AS B"
+                 " UNION ALL SELECT 7 AS A, 8 AS B")
+          body-row-backgrounds
+          (fn [viz]
+            (mt/with-temp [:model/Card {card-id :id} {:dataset_query          {:database (mt/id)
+                                                                               :type     :native
+                                                                               :native   {:query q}}
+                                                      :visualization_settings viz}]
+              (let [doc     (render.tu/render-card-as-hickory! card-id)
+                    tbodies (hik.s/select (hik.s/tag :tbody) doc)
+                    rows    (mapcat #(hik.s/select (hik.s/tag :tr) %) tbodies)]
+                (mapv (fn [row-el]
+                        (->> (hik.s/select (hik.s/tag :td) row-el)
+                             (mapv #(get-in % [:attrs :style]))
+                             (every? (fn [style]
+                                       (str/includes? (or style "")
+                                                      (str "background-color: " style/color-row-stripe-bg))))))
+                      rows))))]
+      (testing "Alternating rows are shaded when table.striped is enabled"
+        (is (= [false true false true]
+               (body-row-backgrounds {:table.striped true}))))
+      (testing "Row index column also gets the stripe background"
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query          {:database (mt/id)
+                                                                           :type     :native
+                                                                           :native   {:query q}}
+                                                  :visualization_settings {:table.striped   true
+                                                                           :table.row_index true}}]
+          (let [doc     (render.tu/render-card-as-hickory! card-id)
+                tbodies (hik.s/select (hik.s/tag :tbody) doc)
+                rows    (mapcat #(hik.s/select (hik.s/tag :tr) %) tbodies)
+                second-row-first-cell (first (hik.s/select (hik.s/tag :td) (second rows)))]
+            (is (str/includes? (get-in second-row-first-cell [:attrs :style])
+                               (str "background-color: " style/color-row-stripe-bg))))))
+      (testing "No rows are shaded when table.striped is disabled or absent"
+        (is (every? false? (body-row-backgrounds {:table.striped false})))
+        (is (every? false? (body-row-backgrounds {})))))))
+
 (deftest table-minibar-test
   (mt/dataset test-data
     (let [q                 (str "SELECT 5 AS A, 5 AS B"
@@ -277,7 +319,7 @@
     (let [data    {:cols             [{:name "A" :display_name "A" :base_type :type/Integer :semantic_type nil}]
                    :rows             [[5] [10]]
                    :format-rows?     true
-                   :results_metadata {:columns [{:name "A" :base_type :type/Integer
+                   :results_metadata {:columns [{:name "A" :display_name "A" :base_type :type/Integer
                                                  :fingerprint {:global {:distinct-count 2}}}]}
                    :viz-settings     {::mb.viz/column-settings
                                       {{::mb.viz/column-name "A"} {::mb.viz/show-mini-bar true}}}}
@@ -295,8 +337,10 @@
         (is (seq (hik.s/select (hik.s/find-in-text #"^5$") doc)))
         (is (seq (hik.s/select (hik.s/find-in-text #"^10$") doc)))))))
 
-(defn- render-table [dashcard results]
-  (channel.render/render-pulse-card :attachment "America/Los_Angeles" render.tu/test-card dashcard results))
+(defn- render-table [viz-settings results]
+  (channel.render/render-pulse-card :attachment "America/Los_Angeles"
+                                    (update render.tu/test-card :visualization_settings merge viz-settings)
+                                    nil results))
 
 (deftest attachment-rows-limit-test
   (doseq [[test-explanation env-var-value expected]
@@ -309,8 +353,7 @@
       (mt/with-temp-env-var-value! ["MB_ATTACHMENT_TABLE_ROW_LIMIT" env-var-value]
         (is (= expected
                (count (-> (render-table
-                           {:visualization_settings {:table.columns
-                                                     [{:name "a" :enabled true}]}}
+                           {:table.columns [{:name "a" :enabled true}]}
                            {:data {:cols [{:name         "a",
                                            :display_name "a",
                                            :base_type    :type/BigInteger
@@ -318,3 +361,57 @@
                                    :rows (repeat 200 ["I will keep default limits."])}})
                           :content
                           (render.tu/nodes-with-text "I will keep default limits.")))))))))
+
+(deftest ^:parallel text-wrapping-fallback-width-test
+  (testing "a text-wrapping column with no explicit table.column_widths (UXW-4714)"
+    (let [columns    [{:name "desc"}]
+          viz        {::mb.viz/column-settings {{::mb.viz/column-name "desc"} {::mb.viz/text-wrapping true}}}
+          styles-for #(get (table/column->viz-setting-styles columns viz) "desc")]
+      (testing "defaults to a fixed fallback width, so email/Slack clients (which don't auto-wrap) wrap"
+        (let [s (styles-for)]
+          (is (= "normal" (:white-space s)))
+          (is (= "780px" (:width s)))
+          (is (= "780px !important" (:max-width s)))))
+      (testing "binding *text-wrapping-fallback-width* to nil omits the fixed width, so an auto-wrapping renderer (the PDF) sizes the column to the table"
+        (binding [table/*text-wrapping-fallback-width* nil]
+          (let [s (styles-for)]
+            (is (= "normal" (:white-space s)))
+            (is (not (contains? s :width)))
+            (is (not (contains? s :max-width))))))))
+  (testing "an explicit table.column_widths gives min-width and ignores the fallback var entirely"
+    (let [columns [{:name "desc"}]
+          viz     {::mb.viz/column-settings {{::mb.viz/column-name "desc"} {::mb.viz/text-wrapping true}}
+                   :table.column_widths [200]}]
+      (binding [table/*text-wrapping-fallback-width* nil]
+        (let [s (get (table/column->viz-setting-styles columns viz) "desc")]
+          (is (contains? s :min-width))
+          (is (not (contains? s :width))))))))
+
+(deftest view-as-image-only-renders-http-urls-test
+  (testing "a `view_as: image` cell only becomes an <img> when it holds an http(s) URL"
+    (let [columns       [{:name "url"}]
+          query-results {:cols columns
+                         :rows [["https://example.com/a.png"]
+                                ["http://example.com/b.png"]
+                                ["file:///etc/passwd"]
+                                ["javascript:alert(1)"]
+                                ["data:text/html,<script>alert(1)</script>"]]}
+          viz-settings  {::mb.viz/column-settings {{::mb.viz/column-name "url"} {::mb.viz/view-as "image"}}}
+          rendered      (#'table/render-table (select-keys query-results [:cols :rows])
+                                              {:col-names ["url"] :cols-for-color-lookup ["url"]}
+                                              (query-results->header+rows query-results)
+                                              columns viz-settings nil)]
+      (testing "the http(s) cells, and only those, are images"
+        (is (= ["https://example.com/a.png" "http://example.com/b.png"]
+               (postwalk-collect (fn [node] (and (vector? node) (= :img (first node))))
+                                 (fn [node] (:src (second node)))
+                                 rendered))))
+      (testing "the other cells render as escaped text instead"
+        (is (= ["file:///etc/passwd"
+                "javascript:alert(1)"
+                "data:text/html,&lt;script&gt;alert(1)&lt;/script&gt;"]
+               (->> (find-table-body rendered)
+                    (postwalk-collect (fn [node] (and (vector? node) (= :td (first node))))
+                                      last)
+                    (filter string?)
+                    (remove #(str/starts-with? % "http")))))))))

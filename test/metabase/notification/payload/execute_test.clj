@@ -2,9 +2,13 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.notification.payload.execute-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.notification.payload.execute :as notification.payload.execute]
    [metabase.notification.payload.temp-storage :as temp-storage]
-   [metabase.test :as mt]))
+   [metabase.query-processor.test :as qp]
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -113,3 +117,38 @@
             "with a shared budget the cumulative cells across tabs cross the cap, so a later card spills to disk")
         ;; clean up any temp files we created
         (doseq [p parts] (temp-storage/cleanup! (-> p :result :data :rows)))))))
+
+(deftest execute-dashboard-with-stored-parameter-declarations-test
+  (testing "subscription cards run with the dashboard's full stored parameter declarations and save their last used values"
+    (mt/test-helpers-set-global-values!
+      (mt/with-temporary-setting-values [synchronous-batch-updates            true
+                                         dashboards-save-last-used-parameters true]
+        (let [mp        (mt/metadata-provider)
+              price     (lib.metadata/field mp (mt/id :venues :price))
+              query     (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                            (lib/aggregate (lib/count)))
+              parameter {:id                "_PRICE_"
+                         :name              "Price"
+                         :slug              "price"
+                         :type              :number/=
+                         :sectionId         "number"
+                         :required          false
+                         :isMultiSelect     true
+                         :values_query_type :list
+                         :value             [4]}]
+          (mt/with-temp [:model/Card          {card-id :id} {:dataset_query query}
+                         :model/Dashboard     {dash-id :id} {:parameters [(dissoc parameter :value)]}
+                         :model/DashboardCard _             {:dashboard_id       dash-id
+                                                             :card_id            card-id
+                                                             :parameter_mappings [{:parameter_id "_PRICE_"
+                                                                                   :card_id      card-id
+                                                                                   :target       [:dimension (lib/->legacy-MBQL (lib/ref price))]}]}]
+            (let [part (first (card-parts (notification.payload.execute/execute-dashboard
+                                           dash-id (mt/user->id :rasta) [parameter])))]
+              (is (= (mt/rows (qp/process-query (lib/filter query (lib/= price 4))))
+                     (-> part :result :data :rows)))
+              (is (= [4]
+                     (t2/select-one-fn :value :model/UserParameterValue
+                                       :user_id      (mt/user->id :rasta)
+                                       :dashboard_id dash-id
+                                       :parameter_id "_PRICE_"))))))))))

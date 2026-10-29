@@ -147,7 +147,7 @@
 
 .SelectItems_GroupLabel {
   color: var(--mb-color-text-primary);
-  padding: var(--mantine-spacing-xs) var(--mantine-spacing-sm);
+  padding: var(--mantine-spacing-xxs) var(--mantine-spacing-sm);
 
   &::after {
     display: none;

@@ -46,6 +46,7 @@ export function FilterOptionsPicker({
         >
           {isCompact ? (
             <ActionIcon
+              variant="subtle"
               aria-label={t`Filter`}
               disabled={isDisabled}
               onClick={toggle}
@@ -54,6 +55,7 @@ export function FilterOptionsPicker({
             </ActionIcon>
           ) : (
             <Button
+              size="lg"
               leftSection={<FixedSizeIcon name="filter" aria-hidden />}
               disabled={isDisabled}
               data-testid="dependency-filter-button"
@@ -87,7 +89,7 @@ function FilterOptionsPopover({
   onFilterOptionsChange,
 }: FilterOptionsPopoverProps) {
   return (
-    <Box w="20rem" p="md">
+    <Box w="20rem" p="lg">
       <Stack>
         {availableGroupTypes.length > 0 && (
           <TypeFilterPicker

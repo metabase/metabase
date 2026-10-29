@@ -7,11 +7,12 @@ import {
 
 import {
   joinedQuestion,
+  questionAsPinMapWithTiles,
   questionWithAggregation,
   regularQuestion,
 } from "./shared/embedding-questions";
 
-const { ORDERS, PRODUCTS } = SAMPLE_DATABASE;
+const { ORDERS, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > embedding > questions", () => {
   beforeEach(() => {
@@ -58,30 +59,44 @@ describe("scenarios > embedding > questions", () => {
 
     H.visitIframe();
 
-    cy.url().should("include", "embed");
-
     cy.findByTestId("embed-frame").within(() => {
       cy.findByText("Total Orders");
       cy.findByText("18,760");
     });
   });
 
-  it("should display the regular GUI question correctly", () => {
+  it("should display GUI questions correctly", () => {
     const { name: title, description } = regularQuestion;
 
-    H.createQuestion(regularQuestion).then(({ body: { id } }) => {
-      cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
-
-      H.visitQuestion(id);
-      H.openLegacyStaticEmbeddingModal({
-        resource: "question",
-        resourceId: id,
-        activeTab: "parameters",
-        unpublishBeforeOpen: false,
-      });
+    H.createQuestion(
+      { ...regularQuestion, enable_embedding: true },
+      { wrapId: true, idAlias: "regularQuestionId" },
+    );
+    H.createQuestion({
+      ...regularQuestion,
+      enable_embedding: false,
+    }).then(({ body: { id: sourceQuestionId } }) => {
+      H.createQuestion(
+        {
+          query: { "source-table": `card__${sourceQuestionId}`, limit: 10 },
+          enable_embedding: true,
+        },
+        { wrapId: true, idAlias: "nestedQuestionId" },
+      );
     });
+    H.createQuestion(
+      { ...questionWithAggregation, enable_embedding: true },
+      { wrapId: true, idAlias: "aggregationQuestionId" },
+    );
+    H.createQuestion(
+      { ...joinedQuestion, enable_embedding: true },
+      { wrapId: true, idAlias: "joinedQuestionId" },
+    );
 
-    H.visitIframe();
+    cy.log("Regular question");
+    cy.get("@regularQuestionId").then((questionId) => {
+      H.visitEmbeddedPage({ resource: { question: questionId }, params: {} });
+    });
 
     cy.findByTestId("embed-frame").within(() => {
       cy.findByText(title);
@@ -110,23 +125,35 @@ describe("scenarios > embedding > questions", () => {
       // Data model: Subtotal is turned off globally
       cy.findByText("Subtotal").should("not.exist");
     });
-  });
 
-  it("should display the GUI question with aggregation correctly", () => {
-    H.createQuestion(questionWithAggregation).then(({ body: { id } }) => {
-      cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
-
-      H.visitQuestion(id);
-
-      H.openLegacyStaticEmbeddingModal({
-        resource: "question",
-        resourceId: id,
-        activeTab: "parameters",
-        unpublishBeforeOpen: false,
-      });
+    cy.log("Nested question");
+    cy.get("@nestedQuestionId").then((questionId) => {
+      H.visitEmbeddedPage({ resource: { question: questionId }, params: {} });
     });
 
-    H.visitIframe();
+    cy.findByTestId("embed-frame").within(() => {
+      // Global (Data model) settings should be preserved
+      cy.findByText("Product ID as Title");
+      cy.findByText("Awesome Concrete Shoes");
+
+      // Custom column
+      cy.findByText("Math");
+
+      // Base question visualization settings should reset to the defaults (inherit global formatting)
+      cy.findByText("Total");
+      cy.findByText("39.72");
+      cy.findByText("February 11, 2028, 9:40 PM");
+
+      cy.findAllByTestId("mini-bar-container").should("not.exist");
+
+      // Data model: Subtotal is turned off globally
+      cy.findByText("Subtotal").should("not.exist");
+    });
+
+    cy.log("Question with aggregation");
+    cy.get("@aggregationQuestionId").then((questionId) => {
+      H.visitEmbeddedPage({ resource: { question: questionId }, params: {} });
+    });
 
     assertOnXYAxisLabels({ xLabel: "Created At", yLabel: "Count" });
 
@@ -145,70 +172,11 @@ describe("scenarios > embedding > questions", () => {
       header: "Aug 2025",
       rows: [{ name: "2", value: "79" }],
     });
-  });
 
-  it("should display the nested GUI question correctly", () => {
-    H.createQuestion(regularQuestion).then(({ body: { id } }) => {
-      const nestedQuestion = {
-        query: { "source-table": `card__${id}`, limit: 10 },
-      };
-
-      H.createQuestion(nestedQuestion).then(({ body: { id: nestedId } }) => {
-        cy.request("PUT", `/api/card/${nestedId}`, { enable_embedding: true });
-
-        H.visitQuestion(nestedId);
-
-        H.openLegacyStaticEmbeddingModal({
-          resource: "question",
-          resourceId: nestedId,
-          activeTab: "parameters",
-          unpublishBeforeOpen: false,
-        });
-      });
+    cy.log("Question with explicit joins");
+    cy.get("@joinedQuestionId").then((questionId) => {
+      H.visitEmbeddedPage({ resource: { question: questionId }, params: {} });
     });
-
-    H.visitIframe();
-
-    // Global (Data model) settings should be preserved
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Product ID as Title");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Awesome Concrete Shoes");
-
-    // Custom column
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Math");
-
-    // Base question visualization settings should reset to the defaults (inherit global formatting)
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Total");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("39.72");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("February 11, 2028, 9:40 PM");
-
-    cy.findAllByTestId("mini-bar-container").should("not.exist");
-
-    // Data model: Subtotal is turned off globally
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Subtotal").should("not.exist");
-  });
-
-  it("should display GUI question with explicit joins correctly", () => {
-    H.createQuestion(joinedQuestion).then(({ body: { id } }) => {
-      cy.request("PUT", `/api/card/${id}`, { enable_embedding: true });
-
-      H.visitQuestion(id);
-
-      H.openLegacyStaticEmbeddingModal({
-        resource: "question",
-        resourceId: id,
-        activeTab: "parameters",
-        unpublishBeforeOpen: false,
-      });
-    });
-
-    H.visitIframe();
 
     // Base question assertions
     cy.findByTestId("visualization-root")
@@ -237,27 +205,15 @@ describe("scenarios [EE] > embedding > questions", () => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
-
-    // Remap Product ID -> Product Title
-    cy.request("POST", `/api/field/${ORDERS.PRODUCT_ID}/dimension`, {
-      name: "Product ID as Title",
-      type: "external",
-      human_readable_field_id: PRODUCTS.TITLE,
-    });
-
-    // Do not include Subtotal anywhere
-    cy.request("PUT", `/api/field/${ORDERS.SUBTOTAL}`, {
-      visibility_type: "sensitive",
-    });
   });
 
-  it("should display according to `#locale` hash parameter (metabase#22561, metabase#50182)", () => {
+  it("should display according to `#locale` and `#font` hash parameters (metabase#22561, metabase#50182, metabase#45638)", () => {
     cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
       enable_embedding: true,
     });
 
     // We don't have a de-CH.json file, so it should fallback to de.json, see metabase#51039 for more details
-    cy.intercept("/app/locales/de.json").as("deLocale");
+    cy.intercept("GET", "**/locale-de-json*.js").as("deLocale");
 
     H.visitEmbeddedPage(
       {
@@ -267,6 +223,7 @@ describe("scenarios [EE] > embedding > questions", () => {
       {
         additionalHashOptions: {
           locale: "de-CH",
+          font: "Roboto",
         },
       },
     );
@@ -276,24 +233,6 @@ describe("scenarios [EE] > embedding > questions", () => {
     H.main().findByText("Februar 11, 2028, 9:40 PM").realHover();
     cy.findByRole("button", { name: "Ergebnis downloaden" }).should("exist");
     cy.url().should("include", "locale=de");
-  });
-
-  it("should display according to `#font` hash parameter (metabase#45638)", () => {
-    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
-      enable_embedding: true,
-    });
-
-    H.visitEmbeddedPage(
-      {
-        resource: { question: ORDERS_QUESTION_ID },
-        params: {},
-      },
-      {
-        additionalHashOptions: {
-          font: "Roboto",
-        },
-      },
-    );
 
     H.main().should(
       "have.css",
@@ -304,145 +243,77 @@ describe("scenarios [EE] > embedding > questions", () => {
 });
 
 function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {
-  H.echartsContainer().get("text").contains(xLabel);
+  H.echartsContainer().find("text").contains(xLabel);
 
-  H.echartsContainer().get("text").contains(yLabel);
+  H.echartsContainer().find("text").contains(yLabel);
 }
 
-describe("scenarios > embedding > questions > downloads", () => {
+describe("issue 30535", () => {
   const questionDetails = {
-    name: "Simple SQL Query for Embedding",
-    native: {
-      query: "select {{text}} as WYSIWYG",
-      "template-tags": {
-        text: {
-          id: "fake-uuid",
-          name: "text",
-          "display-name": "Text",
-          type: "text",
-          default: null,
-        },
-      },
+    name: "3035",
+    query: {
+      "source-table": PRODUCTS_ID,
+      limit: 10,
     },
   };
 
   beforeEach(() => {
-    cy.intercept("PUT", "/api/card/*").as("publishChanges");
-    cy.intercept("GET", "/api/embed/card/**/query").as("dl");
-
     H.restore();
     cy.signInAsAdmin();
+    H.activateToken("pro-self-hosted");
 
-    H.createNativeQuestion(questionDetails, {
-      wrapId: true,
+    cy.sandboxTable({
+      table_id: PRODUCTS_ID,
+      attribute_remappings: {
+        attr_cat: ["dimension", ["field", PRODUCTS.CATEGORY, null]],
+      },
     });
+
+    H.createQuestion(
+      { ...questionDetails, enable_embedding: true },
+      { wrapId: true },
+    );
   });
 
-  context("without token", () => {
-    it("should not be possible to disable downloads", () => {
-      cy.get("@questionId").then((questionId) => {
-        H.visitQuestion(questionId);
+  it("user session should not apply sandboxing to a signed embedded question (metabase#30535)", () => {
+    cy.get("@questionId").then((questionId) => {
+      H.getEmbeddedPageUrl({
+        resource: { question: questionId },
+        params: {},
+      }).then((urlOptions) => {
+        cy.signOut();
+        cy.signInAsSandboxedUser();
 
-        H.openLegacyStaticEmbeddingModal({
-          resource: "question",
-          resourceId: questionId,
-          activeTab: "lookAndFeel",
-        });
-
-        cy.log(
-          "Embedding settings page should not show option to disable downloads",
-        );
-        cy.findByLabelText("Customizing look and feel").should(
-          "not.contain",
-          "Download (csv, xlsx, json, png)",
-        );
-
-        cy.log('Use API to "publish" this question and to enable its filter');
-        cy.request("PUT", `/api/card/${questionId}`, {
-          enable_embedding: true,
-          embedding_params: {
-            text: "enabled",
-          },
-        });
-
-        const payload = {
-          resource: { question: questionId },
-          params: {},
-        };
-
-        cy.log(
-          "Visit embedded question and set its filter through query parameters",
-        );
-        H.visitEmbeddedPage(payload, {
-          setFilters: { text: "Foo" },
-        });
-
-        cy.findByRole("gridcell").should("have.text", "Foo");
-        H.main().realHover();
-        cy.findByRole("button", { name: "Download results" }).click();
-
-        H.popover().within(() => {
-          cy.findByText("Download");
-          cy.findByText(".csv");
-          cy.findByText(".xlsx");
-          cy.findByText(".json");
-        });
-
-        cy.log(
-          "Trying to prevent downloads via query params doesn't have any effect",
-        );
-        cy.url().then((url) => {
-          cy.visit(url + "&downloads=false");
-        });
-
-        cy.findByRole("gridcell").should("have.text", "Foo");
-        H.main().realHover();
-        cy.findByRole("button", { name: "Download results" }).should("exist");
+        cy.visit(urlOptions);
       });
     });
+
+    cy.findByRole("grid").within(() => {
+      // The sandboxed user has an attribute cat="Widget"
+      cy.findAllByText("Widget");
+      // Sandboxing shouldn't affect results so we should see other product categories as well
+      cy.findAllByText("Gizmo");
+    });
+  });
+});
+
+describe("issue 63687", () => {
+  beforeEach(() => {
+    H.restore();
+    cy.signInAsAdmin();
   });
 
-  context("premium token with paid features", () => {
-    beforeEach(() => H.activateToken("pro-self-hosted"));
+  it("should properly display pin map tiles without auth errors for a valid JWT token", () => {
+    H.createNativeQuestion(questionAsPinMapWithTiles, { wrapId: true });
 
-    it("should be possible to disable downloads", () => {
-      cy.get("@questionId").then((questionId) => {
-        H.visitQuestion(questionId);
+    cy.intercept("/api/embed/tiles/**").as("getTiles");
 
-        H.openLegacyStaticEmbeddingModal({
-          resource: "question",
-          resourceId: questionId,
-          activeTab: "lookAndFeel",
-        });
+    cy.get("@questionId").then((questionId) => {
+      H.visitEmbeddedPage({ resource: { question: questionId }, params: {} });
+    });
 
-        cy.log("Disable downloads");
-        cy.findByLabelText("Download (csv, xlsx, json, png)")
-          .as("allow-download-toggle")
-          .should("be.checked");
-
-        cy.findByLabelText("Download (csv, xlsx, json, png)").click();
-        cy.get("@allow-download-toggle").should("not.be.checked");
-
-        cy.log('Use API to "publish" this question and to enable its filter');
-        cy.request("PUT", `/api/card/${questionId}`, {
-          enable_embedding: true,
-          embedding_params: {
-            text: "enabled",
-          },
-        });
-
-        H.visitIframe();
-
-        H.filterWidget().type("Foo{enter}");
-        cy.findByRole("gridcell").should("have.text", "Foo");
-
-        cy.location("search").should("eq", "?text=Foo");
-        cy.location("hash").should("match", /&downloads=false$/);
-
-        cy.log("We don't even show the footer if it's empty");
-        cy.findByRole("contentinfo").should("not.exist");
-        cy.icon("download").should("not.exist");
-      });
+    cy.wait("@getTiles").then(({ response: tileResponse }) => {
+      expect(tileResponse?.statusCode).to.equal(200);
     });
   });
 });

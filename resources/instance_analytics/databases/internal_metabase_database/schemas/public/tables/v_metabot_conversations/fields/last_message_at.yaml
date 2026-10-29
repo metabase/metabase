@@ -12,7 +12,6 @@ base_type: type/DateTimeWithLocalTZ
 effective_type: type/DateTimeWithLocalTZ
 dimensions: []
 position: 11
-custom_position: 0
 database_position: 11
 serdes/meta:
 - id: Internal Metabase Database

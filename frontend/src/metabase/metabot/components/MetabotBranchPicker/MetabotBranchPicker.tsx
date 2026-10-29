@@ -14,7 +14,8 @@ export const MetabotBranchPicker = ({
   <Flex align="center" gap={2}>
     <Tooltip label={t`Previous version`} disabled={index === 0}>
       <ActionIcon
-        h="sm"
+        variant="subtle"
+        size="sm"
         aria-label={t`Previous version`}
         disabled={index === 0}
         onClick={() => onChange(index - 1)}
@@ -27,7 +28,8 @@ export const MetabotBranchPicker = ({
     </Text>
     <Tooltip label={t`Next version`} disabled={index === count - 1}>
       <ActionIcon
-        h="sm"
+        variant="subtle"
+        size="sm"
         aria-label={t`Next version`}
         disabled={index === count - 1}
         onClick={() => onChange(index + 1)}

@@ -12,15 +12,17 @@
   "
   (:require
    [clojure.set :as set]
+   [metabase-enterprise.permission-debug.db :as permission-debug.db]
    [metabase.api.common :as api]
    [metabase.lib.core :as lib]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.queries.db :as queries.db]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.users.db :as users.db]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
-   [metabase.util.match :as match]
-   [toucan2.core :as t2]))
+   [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
 
@@ -28,13 +30,16 @@
   "Format of the response the Debugger will return"
   [:schema {:registry
             {::group-id :int
-             ::perm-debug-info [:map
+             ::perm-debug-info [:map {:closed true}
                                 [:model-type  [:enum "card" "invalid"]]
                                 [:model-id    :string]
                                 [:decision    [:enum "allow" "denied" "limited"]]
                                 [:segment     [:set [:enum "sandboxed" "impersonated" "routed"]]]
                                 [:message     [:sequential :string]]
-                                [:data        [:map]]
+                                [:data        [:map {:closed true}
+                                               [:blocked-tables           {:optional true} [:map-of :string [:set :string]]]
+                                               [:download-limited-tables  {:optional true} [:map-of :string [:set :string]]]
+                                               [:download-no-tables       {:optional true} [:map-of :string [:set :string]]]]]
                                 [:suggestions [:map-of ::group-id :string]]]}}
    ::perm-debug-info])
 
@@ -46,7 +51,7 @@
   "Arguments for the Debugger function. The model type being operated on is inferred by the requested action type"
   [:map
    [:user-id pos-int?]
-   [:model-id :string]
+   [:model-id pos-int?]
    [:action-type ActionType]])
 
 (defmulti debug-permissions
@@ -62,7 +67,7 @@
    Returns a map conforming to the DebuggerSchema defined in the API."
   {:arglists '([debug-info-map])}
   (fn [{:keys [action-type user-id]}]
-    (let [user-is-superuser? (t2/select-one-fn :is_superuser :model/User :id user-id)]
+    (let [user-is-superuser? (:is_superuser (users.db/user user-id))]
       (if user-is-superuser?
         ::is-superuser
         action-type))))
@@ -83,7 +88,7 @@
   {:decision    "allow"
    :model-type  (case (namespace action-type)
                   "card" "card")
-   :model-id    model-id
+   :model-id    (str model-id)
    :segment     #{}
    :message     [(tru "Superuser is allowed full access")]
    :data        {}
@@ -140,10 +145,10 @@
 
 (mu/defmethod debug-permissions :card/read :- DebuggerSchema
   [{:keys [user-id model-id] :as _debug-info} :- DebuggerArguments]
-  (let [can-read? (user-can-read? :model/Card (Integer/parseInt model-id) user-id)]
+  (let [can-read? (user-can-read? :model/Card model-id user-id)]
     {:decision    (if can-read? "allow" "denied")
      :model-type  "card"
-     :model-id    model-id
+     :model-id    (str model-id)
      :segment     #{}
      :message     [(if can-read?
                      (tru "User has permission to read this card")
@@ -181,38 +186,12 @@
      (cond
        native?
        ;; native queries are blocked if _any_ table in the database is blocked (or limited for download perms)
-       (t2/query {:select [[:db.name :db_name] :blocked.schema [:blocked.name :table_name] [:pg.name :group_name]]
-                  :from [[:metabase_table :blocked]]
-                  :join [[(perms/select-tables-and-groups-granting-perm
-                           {:user-id user-id
-                            :is-superuser? false}
-                           permissions-blocking) :perm_grant] [:= :blocked.id :perm_grant.id]
-                         [:metabase_database :db] [:= :blocked.db_id :db.id]
-                         [:permissions_group :pg] [:= :perm_grant.group_id :pg.id]]
-                  :where [:and [:= :blocked.db_id (:database_id card)]
-                          [:not
-                           [:in :blocked.id (perms/visible-table-filter-select
-                                             :id
-                                             {:user-id user-id
-                                              :is-superuser? false}
-                                             permissions-granting)]]]})
+       (permission-debug.db/blocked-tables-in-database user-id (:database_id card)
+                                                       permissions-blocking permissions-granting)
 
        (seq query-tables)
-       (t2/query {:select [[:db.name :db_name] :blocked.schema [:blocked.name :table_name] [:pg.name :group_name]]
-                  :from [[:metabase_table :blocked]]
-                  :join [[(perms/select-tables-and-groups-granting-perm
-                           {:user-id user-id
-                            :is-superuser? false}
-                           permissions-blocking) :perm_grant] [:= :blocked.id :perm_grant.id]
-                         [:metabase_database :db] [:= :blocked.db_id :db.id]
-                         [:permissions_group :pg] [:= :perm_grant.group_id :pg.id]]
-                  :where [:and [:in :blocked.id query-tables]
-                          [:not
-                           [:in :blocked.id (perms/visible-table-filter-select
-                                             :id
-                                             {:user-id user-id
-                                              :is-superuser? false}
-                                             permissions-granting)]]]})
+       (permission-debug.db/blocked-tables-among user-id query-tables permissions-blocking permissions-granting)
+
        :else
        nil)
      (map (juxt (juxt :db_name :schema :table_name) :group_name))
@@ -222,15 +201,14 @@
   [{:keys [user-id model-id] :as debug-info} :- DebuggerArguments]
   (merge-permission-check
    (debug-permissions (assoc debug-info :action-type :card/read))
-   (let [card-id (Integer/parseInt model-id)
-         card (t2/select-one :model/Card :id card-id)
+   (let [card (queries.db/card model-id)
          blocked-by-group (check-table-permissions user-id card
                                                    {:perms/view-data :blocked}
                                                    {:perms/view-data :legacy-no-self-service})]
      {:decision    (if (seq blocked-by-group) "denied" "allow")
       :segment     #{}
       :model-type  "card"
-      :model-id    model-id
+      :model-id    (str model-id)
       :message     [(if (seq blocked-by-group)
                       (tru "User does not have permission to query this card")
                       (tru "User has permission to query this card"))]
@@ -242,8 +220,7 @@
   [{:keys [user-id model-id] :as debug-info} :- DebuggerArguments]
   (merge-permission-check
    (debug-permissions (assoc debug-info :action-type :card/query))
-   (let [card-id (Integer/parseInt model-id)
-         card (t2/select-one :model/Card :id card-id)
+   (let [card (queries.db/card model-id)
          limited-by-group (check-table-permissions user-id card
                                                    {:perms/download-results :ten-thousand-rows}
                                                    {:perms/download-results :one-million-rows})
@@ -255,7 +232,7 @@
                      (seq limited-by-group) "limited"
                      :else "allow")
       :model-type  "card"
-      :model-id    model-id
+      :model-id    (str model-id)
       :segment     #{}
       :message     [(cond
                       (seq blocked-by-group) (tru "User does not have permission to download data from this card")

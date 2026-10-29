@@ -71,10 +71,10 @@ export const EditWebhookModal = ({
 
   return (
     <Modal
+      density="relaxed"
       opened={isOpen}
       onClose={onClose}
       size="36rem"
-      padding="2.5rem"
       title={t`Edit this webhook`}
     >
       <WebhookForm

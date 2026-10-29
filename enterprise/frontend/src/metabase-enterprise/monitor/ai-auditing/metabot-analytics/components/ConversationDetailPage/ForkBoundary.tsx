@@ -5,9 +5,9 @@ import { Anchor, Divider, Text } from "metabase/ui";
 
 export const ForkBoundary = ({ href }: { href?: string | null }) => (
   <Divider
-    my="md"
+    my="lg"
     label={
-      <Text span fz="sm" px="md">
+      <Text span fz="sm" px="lg">
         {href
           ? jt`Forked from ${(
               <Anchor

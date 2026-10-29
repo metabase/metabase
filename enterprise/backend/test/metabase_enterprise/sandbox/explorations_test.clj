@@ -232,7 +232,7 @@
           {:creator-id (mt/user->id :rasta) :data-access-token token}
           (fn [{:keys [query]}]
             (testing "lucky is a non-admin with full data access and no sandbox"
-              (is (=? {:message #"Cannot show cached results: your data access differs.*"}
+              (is (=? #"Cannot show cached results: your data access differs.*"
                       (mt/user-http-request :lucky :get 403 (format "exploration/query/%d" (:id query))))
                   "the denial is the lens refusing, not a missing data perm"))
             (testing "while a superuser streams it (bypass)"
@@ -363,7 +363,7 @@
   (testing "when the enforcement guard says the user IS sandboxed but the attribute lookup returns nil,
             the token must NOT collapse to nil (the compatibility gate reads nil as 'unrestricted')"
     (met/with-gtaps-for-user! :rasta (price-sandbox)
-      (with-redefs [sandbox.field-values/field->sandbox-attributes-for-current-user (constantly nil)]
+      (mt/with-dynamic-fn-redefs [sandbox.field-values/field->sandbox-attributes-for-current-user (constantly nil)]
         (let [token (perms/data-access-token {:database-id (mt/id) :table-ids #{(mt/id :venues)}})]
           (testing "the sandbox dimension is present and scoped to the user (fail closed)"
             (is (= (venues-token-for-lens
@@ -425,7 +425,7 @@
                                :model/PermissionsGroupMembership _ {:user_id  (mt/user->id :rasta)
                                                                     :group_id (:id escape-group)}]
                   (perms/set-database-permission! escape-group (mt/id) :perms/view-data :unrestricted)
-                  (is (=? {:message #"Cannot show cached results: your data access differs.*"}
+                  (is (=? #"Cannot show cached results: your data access differs.*"
                           (mt/user-http-request :rasta :get 403 (format "exploration/query/%d" (:id query))))
                       "the denial is the lens refusing, not a missing data perm")))
               (testing "a superuser streams the cached result (bypass — superusers see every exploration)"

@@ -7,6 +7,8 @@
   height: 3rem;
 
   .HeaderButton[data-variant="subtle"] {
+    --mb-button-padding-x: 0px;
+
     color: var(--mb-color-text-disabled);
 
     &:not(:disabled):hover {

@@ -1,10 +1,10 @@
 import fetchMock from "fetch-mock";
 
 import { getMainStore } from "__support__/entities-store";
+import { createMockMetadataFromState } from "__support__/metadata";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
 import type {
   Card,
@@ -41,7 +41,7 @@ function createMockMetadata(card?: Card) {
       questions: card ? [card] : [],
     }),
   });
-  return getMetadata(state);
+  return createMockMetadataFromState(state);
 }
 
 type DashboardAwareCard = Card & {

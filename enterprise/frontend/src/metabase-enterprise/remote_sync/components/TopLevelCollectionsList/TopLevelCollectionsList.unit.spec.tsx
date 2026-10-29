@@ -4,9 +4,9 @@ import fetchMock from "fetch-mock";
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { Form, FormProvider, FormSubmitButton } from "metabase/forms";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { CollectionSyncPreferences } from "metabase-types/api";
 import {
   createMockCollectionItem,

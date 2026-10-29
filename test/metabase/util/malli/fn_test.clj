@@ -303,8 +303,8 @@
 
 (mu/defn- foo :- keyword? [_x :- string?] "bad output")
 (mu/defn- bar :- keyword?
-  ([_x :- string? _y] "bad output")
-  ([_x :- string? _y & _xs] "bad output"))
+  ([_x :- string? _y :- :int] "bad output")
+  ([_x :- string? _y :- :int & _xs :- [:* :int]] "bad output"))
 
 (mu/defn- works? :- keyword? [_x :- string?] :yes)
 

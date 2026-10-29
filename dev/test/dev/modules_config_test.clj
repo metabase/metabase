@@ -104,6 +104,17 @@
                                        :uses #{other}
                                        :model-imports #{:model/X}}}))))))
 
+(deftest ^:parallel nested-module-metadata-is-preserved-test
+  (let [input (str "{:metabase/modules {parent {:team \"T\" :api #{}} "
+                   "parent.child {:ns-prefix \"metabase.special-child\" "
+                   ":module-exports #{parent.grandchild} :api #{}}}}")
+        output (rewrite input '{parent       {:api #{}}
+                                parent.child {:api #{metabase.special-child.core}}})
+        modules (parse-modules output)]
+    (is (= "T" (get-in modules ['parent :team])))
+    (is (= "metabase.special-child" (get-in modules ['parent.child :ns-prefix])))
+    (is (= '#{parent.grandchild} (get-in modules ['parent.child :module-exports])))))
+
 (deftest ^:parallel missing-key-is-appended-test
   (let [input  "{:metabase/modules {m {:team \"T\"}}}"
         output (rewrite input '{m {:api #{metabase.m.core}}})]

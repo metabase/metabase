@@ -1,5 +1,5 @@
 import type { MetabotProfileId } from "metabase/metabot/constants";
-import type { ParentedChatMessage } from "metabase/metabot/utils/message-tree";
+import type { ParentedMessage } from "metabase/metabot/utils/message-tree";
 import type {
   DatasetQuery,
   MetabotFeedback,
@@ -97,7 +97,7 @@ export type ConversationDetail = {
   total_tokens: number;
   profile_id: MetabotProfileId | null;
   slack_permalink: string | null;
-  messages: ParentedChatMessage[];
+  messages: ParentedMessage[];
   queries: GeneratedQuery[];
   search_count: number;
   query_count: number;

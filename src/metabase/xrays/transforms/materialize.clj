@@ -1,6 +1,7 @@
 (ns metabase.xrays.transforms.materialize
   (:require
    [metabase.api.common :as api]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -8,36 +9,32 @@
    [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.util.malli :as mu]
-   [metabase.xrays.transforms.specs :as transforms.specs]
-   [toucan2.core :as t2]))
+   [metabase.xrays.db :as xrays.db]
+   [metabase.xrays.transforms.specs :as transforms.specs]))
 
 (declare get-or-create-root-container-collection!)
 
 (defn- root-container-location
   []
   (collection/children-location
-   (t2/select-one [:model/Collection :location :id]
-                  :id (get-or-create-root-container-collection!))))
+   (collections.db/collection (get-or-create-root-container-collection!))))
 
 (mu/defn get-collection :- [:maybe ::lib.schema.id/collection]
   "Get collection named `collection-name`. If no location is given root collection for automatically
    generated transforms is assumed (see `get-or-create-root-container-collection!`)."
-  ([collection-name]
+  ([collection-name :- :string]
    (get-collection collection-name (root-container-location)))
   ([collection-name :- :string
     location        :- :string]
-   (t2/select-one-pk :model/Collection
-                     :name     collection-name
-                     :location location)))
+   (xrays.db/collection-id-by-name-and-location collection-name location)))
 
 (defn- create-collection!
   ([collection-name description]
    (create-collection! collection-name description (root-container-location)))
   ([collection-name description location]
-   (first (t2/insert-returning-pks! :model/Collection
-                                    {:name        collection-name
-                                     :description description
-                                     :location    location}))))
+   (xrays.db/insert-collection-returning-pk! {:name        collection-name
+                                              :description description
+                                              :location    location})))
 
 (defn- get-or-create-root-container-collection!
   "Get or create container collection for transforms in the root collection."
@@ -52,7 +49,7 @@
    exists."
   [{:keys [name description]}]
   (if-let [collection-id (get-collection name)]
-    (t2/delete! :model/Card :collection_id collection-id)
+    (xrays.db/delete-cards-in-collection! collection-id)
     (create-collection! name description)))
 
 (mu/defn make-card-for-step! :- ::queries.schema/card
@@ -69,5 +66,4 @@
           :visualization_settings {}
           :display                :table}
          queries/populate-card-query-fields
-         (t2/insert-returning-instances! :model/Card)
-         first)))
+         xrays.db/insert-card!)))

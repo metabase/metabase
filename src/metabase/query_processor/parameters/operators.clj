@@ -12,17 +12,20 @@
   for [[qp.error-type]], which maybe belongs in Lib too!"
   (:refer-clojure :exclude [get-in])
   (:require
+   [malli.core :as mc]
+   [malli.util :as mut]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
    [metabase.util.performance :refer [get-in]]))
 
 (mu/defn- operator-arity :- [:maybe [:enum :unary :binary :variadic]]
-  [param-type]
+  [param-type :- ::lib.schema.parameter/type]
   (get-in lib.schema.parameter/types [param-type :operator]))
 
 (defn operator?
@@ -32,8 +35,8 @@
 
 (mu/defn- verify-type-and-arity
   [field       :- [:or :mbql.clause/field :mbql.clause/expression]
-   param-type
-   param-value]
+   param-type  :- ::lib.schema.parameter/type
+   param-value :- [:sequential :metabase.lib.schema.common/field-value]]
   (letfn [(maybe-arity-error [n]
             (when (not= n (count param-value))
               (throw (ex-info (format "Operations Invalid arity: expected %s but received %s"
@@ -75,10 +78,16 @@
         (nil? l) (assoc :type :number/<=, :value [u])))
     param))
 
+(mr/def ::field-filter-operator-param
+  "A parameter built during field filter substitution, whose `:target` already wraps an MBQL 5 ref."
+  (mut/assoc (first (mc/children (mr/resolve-schema ::lib.schema.parameter/parameter)))
+             :target
+             [:tuple [:= :dimension] [:or :mbql.clause/field :mbql.clause/expression]]))
+
 (mu/defn to-clause :- ::lib.schema.expression/boolean
   "Convert an operator style parameter into an mbql clause. Will also do arity checks and throws an ex-info with
   `:type qp.error-type/invalid-parameter` if arity is incorrect."
-  [param]
+  [param :- [:or ::lib.schema.parameter/parameter ::field-filter-operator-param]]
   (let [{param-type :type, [a b :as param-value] :value, target :target, options :options} (normalize-param param)
         field-ref (or (match/match-one target
                         [#{:field :expression} & _]

@@ -47,6 +47,7 @@ export const LicenseInput = ({
           }
         />
         <Button
+          size="lg"
           disabled={isDisabled}
           data-testid="activate-button"
           onClick={handleActivate}

@@ -19,10 +19,10 @@ export function ProviderConnectionModal({
 }) {
   return (
     <Modal
+      density="relaxed"
       opened
       onClose={() => onClose()}
       title={connection ? t`Edit provider` : t`Add a provider`}
-      padding="xl"
       size="lg"
     >
       <ProviderConnectionForm

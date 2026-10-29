@@ -53,6 +53,10 @@
                     "http://[::]"                              false
                     "http://100.64.0.1"                        false
                     "http://[fc00::1]"                         false
+                    ;; Special-purpose addresses that are not globally reachable
+                    "http://192.0.2.0"                         false
+                    "http://198.18.0.1"                        false
+                    "http://[2001:db8::1]"                     false
                     ;; alternate IPv4 encodings (hex, octal, integer)
                     "http://0xa9fea9fe"                        false
                     "https://0xa9fea9fe"                       false
@@ -71,7 +75,7 @@
                     "http://example.com/"                      true
                     "https://example.com/"                     true
                     "http://example.com/rivendell.json"        true
-                    "http://192.0.2.0"                         true
+                    "http://8.8.8.8"                           true
                     ;; this following test flakes in CI for unknown reasons
                     ;;"http://0xc0000200"                        true
                     ;; Classpath resources are NOT valid when env var is not set

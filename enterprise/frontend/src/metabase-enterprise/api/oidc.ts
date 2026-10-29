@@ -1,4 +1,5 @@
 import { invalidateTags, tag } from "metabase/api/tags";
+import type { GroupMappings } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
 
@@ -7,6 +8,7 @@ export interface OidcCheckRequest {
   "client-id": string;
   "client-secret"?: string | null;
   key?: string | null;
+  scopes?: string[];
 }
 
 export interface OidcCheckStepResult {
@@ -35,7 +37,7 @@ export interface CustomOidcConfig {
   "group-sync"?: {
     enabled?: boolean;
     "group-attribute"?: string;
-    "group-mappings"?: Record<string, number[]>;
+    "group-mappings"?: GroupMappings;
   };
 }
 

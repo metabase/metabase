@@ -133,7 +133,6 @@
       {:include-current true}  true
       {}                       true
       {:case-sensitive "yes"}  false
-      ;; An unrecognized option is not a validation error: the map stays open so a new frontend option does not 400
-      ;; against an older backend. Such a key never reaches the clause either way, because request decoding strips
+      ;; the options map is closed: an option this version does not know is not valid, and request decoding strips
       ;; it -- see `decode-strips-undeclared-keys-test` in [[metabase.api.macros-test]].
-      {:lib/uuid "not-yours"}  true)))
+      {:lib/uuid "not-yours"}  false)))

@@ -1,19 +1,22 @@
 import type { ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { assocIn } from "icepick";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import { createMockMetadataFromState } from "__support__/metadata";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   aiStreamingQuery,
   findMatchingInflightAiStreamingRequests,
 } from "metabase/api/ai-streaming";
+import { Messages } from "metabase/metabot/components/MetabotChat/MetabotChatMessage";
 import { useInlineSQLPrompt } from "metabase/metabot/components/MetabotInlineSQLPrompt";
+import { useMetabotAgent } from "metabase/metabot/hooks";
 import type { State } from "metabase/redux/store";
-import { createMockState } from "metabase/redux/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -23,9 +26,13 @@ import {
   createMockUser,
   createMockUserMetabotPermissions,
 } from "metabase-types/api/mocks";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import {
+  createOrdersTable,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 
 import { MetabotProvider } from "../context";
+import { getMetabotState } from "../state";
 import { sendAgentRequest } from "../state/actions";
 
 import {
@@ -42,6 +49,7 @@ jest.mock("metabase/api/ai-streaming", () => ({
 const mockedAiStreamingQuery = jest.mocked(aiStreamingQuery);
 
 const TEST_DB = createSampleDatabase();
+const ORDERS_TABLE = createOrdersTable();
 const INITIAL_SQL = "SELECT 1";
 const SUGGESTED_SQL = "SELECT * FROM ORDERS";
 
@@ -64,6 +72,20 @@ const QuerySuggestionProbe = ({ question }: { question: Question }) => {
   return <div data-testid="qb-proposed-sql">{proposedSql}</div>;
 };
 
+const ChatMessagesProbe = () => {
+  const { conversationId, messages } = useMetabotAgent("omnibot");
+
+  return (
+    <Messages
+      size="md"
+      messages={messages}
+      isDoingScience={false}
+      debug={false}
+      conversationId={conversationId}
+    />
+  );
+};
+
 describe("query builder code edits from omnibot", () => {
   beforeEach(() => {
     setupEnterprisePlugins();
@@ -73,6 +95,21 @@ describe("query builder code edits from omnibot", () => {
       "path:/api/metabot/permissions/user-permissions",
       createMockUserMetabotPermissions(),
     );
+    fetchMock.post("path:/api/llm/extract-sources", {
+      tables: [
+        {
+          id: ORDERS_TABLE.id,
+          name: ORDERS_TABLE.name,
+          schema: ORDERS_TABLE.schema,
+          display_name: ORDERS_TABLE.display_name,
+          description: null,
+          columns: [],
+        },
+      ],
+      card_ids: [],
+    });
+    fetchMock.get(`path:/api/table/${ORDERS_TABLE.id}`, ORDERS_TABLE);
+    fetchMock.get(`path:/api/database/${TEST_DB.id}`, TEST_DB);
   });
 
   afterEach(() => {
@@ -120,12 +157,13 @@ describe("query builder code edits from omnibot", () => {
       ),
     } as any);
 
-    const metadata = getMetadata(storeInitialState);
+    const metadata = createMockMetadataFromState(storeInitialState);
     const question = checkNotNull(metadata.question(TEST_NATIVE_CARD.id));
 
     const { store } = renderWithProviders(
       <MetabotProvider>
         <QuerySuggestionProbe question={question} />
+        <ChatMessagesProbe />
       </MetabotProvider>,
       {
         storeInitialState: storeInitialState,
@@ -145,6 +183,7 @@ describe("query builder code edits from omnibot", () => {
         sendAgentRequest({
           message: "Please rewrite this query",
           conversation_id: convo.conversationId,
+          assistant_message_id: "msg_test_code_edit",
           isFullPageMetabot: false,
           context: {
             user_is_viewing: [
@@ -179,20 +218,30 @@ describe("query builder code edits from omnibot", () => {
     });
 
     expect(
-      typedStore.getState().metabot.conversations[conversationId]?.messages,
-    ).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          type: "text",
-          externalId: "msg_test_code_edit",
-        }),
+      getMetabotState(typedStore.getState()).conversations[
+        conversationId
+      ]?.messages.at(-1),
+    ).toMatchObject({
+      role: "agent",
+      externalId: "msg_test_code_edit",
+      parts: expect.arrayContaining([
+        expect.objectContaining({ type: "text" }),
         expect.objectContaining({
           type: "data_part",
-          externalId: "msg_test_code_edit",
           part: expect.objectContaining({ type: "data-code_edit" }),
         }),
       ]),
+    });
+    fetchMock.post("path:/api/metabot/source-feedback", 200);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Source is correct" }),
     );
+    const feedbackRequest = fetchMock.callHistory.lastCall(
+      "path:/api/metabot/source-feedback",
+    )?.options;
+    expect(JSON.parse(String(feedbackRequest?.body))).toMatchObject({
+      message_id: "msg_test_code_edit",
+    });
 
     expect(requestBody?.context).toEqual(
       expect.objectContaining({

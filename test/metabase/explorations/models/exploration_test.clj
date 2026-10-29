@@ -13,7 +13,10 @@
    [metabase.search.spec :as search.spec]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]))
+
+(use-fixtures :once (fixtures/initialize :db :test-users))
 
 (defn- venues-count-query
   "A `:metric` card's `:dataset_query`: count over the venues table, built with Lib."
@@ -155,11 +158,13 @@
                                             :card_id (:id metric)
                                             :dimension_id "d1"
                                             :page_id (:id p)
-                                            :dataset_query {:database 1 :type :query}}]
+                                            :dataset_query (let [mp (mt/metadata-provider)]
+                                                             (lib/query mp (lib.metadata/table mp (mt/id :venues))))}]
     (testing "ExplorationQuery transforms"
       (let [reread (t2/select-one :model/ExplorationQuery :id (:id q))]
         (is (= "d1" (:dimension_id reread)))
-        (is (= 1 (-> reread :dataset_query :database)))))))
+        (is (= (mt/id) (-> reread :dataset_query :database)))
+        (is (= (mt/id :venues) (lib/primary-source-table-id (:dataset_query reread))))))))
 
 (deftest exploration-is-searchable-test
   ;; The wiring assertions run unconditionally so this test can never silently pass

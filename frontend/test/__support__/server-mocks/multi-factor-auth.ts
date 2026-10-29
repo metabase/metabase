@@ -91,6 +91,17 @@ export function setupMfaVerifyEndpointError() {
   fetchMock.post("path:/api/session/mfa/verify", 500);
 }
 
+export function setupMfaEnrollOnLoginEndpoint(recoveryCodes: string[]) {
+  fetchMock.post("path:/api/session/mfa/enroll", {
+    id: "session-id",
+    recovery_codes: recoveryCodes,
+  });
+}
+
+export function setupMfaEnrollOnLoginEndpointError() {
+  fetchMock.post("path:/api/session/mfa/enroll", 401);
+}
+
 export function setupMfaSendEmailOtpEndpoint() {
   fetchMock.post("path:/api/session/mfa/send-email-otp", { success: true });
 }

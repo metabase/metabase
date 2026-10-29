@@ -342,6 +342,20 @@
                   qp.add-remaps/add-remapped-columns
                   fix-bad-field-id-refs/fix-bad-field-id-refs))))))
 
+(deftest ^:parallel preserve-lib-uuid-when-fixing-field-id-ref-test
+  (testing "rewriting bad ID refs preserves :lib/uuid so other clauses that reference the ref by uuid stay resolvable"
+    (let [mp       (-> meta/metadata-provider
+                       (lib.tu/metadata-provider-with-cards-for-queries
+                        [(lib/query meta/metadata-provider (meta/table-metadata :venues))]))
+          card1    (lib.metadata/card mp 1)
+          fk-id    (meta/id :venues :category-id)
+          pre-uuid (str (random-uuid))
+          bad-ref  [:field {:lib/uuid pre-uuid :base-type :type/Integer} fk-id]
+          query    (-> (lib/query mp card1)
+                       (assoc-in [:stages 0 :fields] [bad-ref]))]
+      (is (=? {:stages [{:fields [[:field {:lib/uuid pre-uuid} "CATEGORY_ID"]]}]}
+              (fix-bad-field-id-refs/fix-bad-field-id-refs query))))))
+
 (deftest ^:parallel resolve-join-conditions-test
   (testing "Resolve fields in join :conditions"
     (let [mp           (lib.tu/mock-metadata-provider

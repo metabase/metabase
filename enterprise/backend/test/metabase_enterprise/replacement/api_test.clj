@@ -1,7 +1,7 @@
 (ns ^:mb/driver-tests metabase-enterprise.replacement.api-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.dependencies.events]
+   [metabase-enterprise.dependencies.hooks]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.replacement.execute :as replacement.execute]
    [metabase-enterprise.replacement.models.replacement-run :as replacement-run]
@@ -129,7 +129,7 @@
                        {:source {:type  "query"
                                  :query (lib/query mp (lib.metadata/card mp old-id))}
                         :name   "acceptance_transform"
-                        :target {:database (mt/id) :table "acceptance_transform"}}
+                        :target {:database (mt/id) :type "table" :name "acceptance_transform"}}
 
                        :model/Dashboard     {dashboard-id :id}
                        {:name "Acceptance Dashboard"}
@@ -143,7 +143,7 @@
             ;; Populate dependencies via events
             (doseq [card [old-model mbql-child-1 mbql-child-2 native-child grandchild grandchild-native]]
               (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :crowberto)}))
-            (deps.test/synchronously-run-backfill!)
+            (deps.test/synchronously-run-dependency-job!)
             (let [response (mt/user-http-request :crowberto :post 202 "ee/replacement/replace-source"
                                                  {:source_entity_id   old-id
                                                   :source_entity_type :card
@@ -173,7 +173,7 @@
                 (let [src (t2/select-one-fn :source :model/Transform :id transform-id)]
                   (is (= new-id (lib/primary-source-card-id (:query src))))))
               (testing "Dependencies point to new model"
-                (deps.test/synchronously-run-backfill!)
+                (deps.test/synchronously-run-dependency-job!)
                 (let [edges-to (fn [card-id]
                                  (t2/select-fn-set (juxt :from_entity_type :from_entity_id)
                                                    :model/Dependency
@@ -207,7 +207,7 @@
                                              :name          "Child card"}]
         (mt/with-model-cleanup [:model/ReplacementRun :model/Dependency]
           (events/publish-event! :event/card-create {:object child-card :user-id (mt/user->id :crowberto)})
-          (deps.test/synchronously-run-backfill!)
+          (deps.test/synchronously-run-dependency-job!)
           ;; Insert a fake active run to simulate one already running
           (let [run (replacement-run/create-run! :card old-id :card new-id (mt/user->id :crowberto))]
             (replacement-run/start-run! (:id run)))
@@ -239,7 +239,7 @@
                                              :name          "Child Card"}]
         (mt/with-model-cleanup [:model/ReplacementRun :model/Dependency]
           (events/publish-event! :event/card-create {:object child-card :user-id (mt/user->id :crowberto)})
-          (deps.test/synchronously-run-backfill!)
+          (deps.test/synchronously-run-dependency-job!)
           (let [response (mt/user-http-request :crowberto :post 202 "ee/replacement/replace-source"
                                                {:source_entity_id   old-id
                                                 :source_entity_type :card
@@ -272,7 +272,7 @@
                                              :name          "Child card"}]
         (mt/with-model-cleanup [:model/ReplacementRun :model/Dependency]
           (events/publish-event! :event/card-create {:object child-card :user-id (mt/user->id :crowberto)})
-          (deps.test/synchronously-run-backfill!)
+          (deps.test/synchronously-run-dependency-job!)
           (snowplow-test/with-fake-snowplow-collector
             (let [response  (mt/user-http-request :crowberto :post 202 "ee/replacement/replace-source"
                                                   {:source_entity_id   old-id
@@ -388,7 +388,7 @@
                 ;; Populate dependencies via events
                 (doseq [card [model-card question-card]]
                   (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :crowberto)}))
-                (deps.test/synchronously-run-backfill!)
+                (deps.test/synchronously-run-dependency-job!)
                 (snowplow-test/with-fake-snowplow-collector
                   (let [response (mt/user-http-request :crowberto :post 202
                                                        "ee/replacement/replace-model-with-transform"
@@ -428,7 +428,7 @@
                         :type          :model
                         :name          "Model"}]
           (mt/with-model-cleanup [:model/ReplacementRun :model/Transform]
-            (with-redefs [transforms/execute! (fn [_ _] (throw (ex-info "Simulated transform failure" {})))]
+            (mt/with-dynamic-fn-redefs [transforms/execute! (fn [_ _] (throw (ex-info "Simulated transform failure" {})))]
               (snowplow-test/with-fake-snowplow-collector
                 (let [response (mt/user-http-request :crowberto :post 202
                                                      "ee/replacement/replace-model-with-transform"
@@ -509,7 +509,7 @@
               (mt/with-model-cleanup [:model/ReplacementRun]
                 (doseq [card [model-card direct-card nested-card metric-card join-card]]
                   (events/publish-event! :event/card-create {:object card :user-id (mt/user->id :crowberto)}))
-                (deps.test/synchronously-run-backfill!)
+                (deps.test/synchronously-run-dependency-job!)
                 (let [response (mt/user-http-request :crowberto :post 202
                                                      "ee/replacement/replace-model-with-transform"
                                                      {:card_id              model-id

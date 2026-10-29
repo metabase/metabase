@@ -202,7 +202,7 @@ export function EntityItemMenu({
               ? { "aria-disabled": true, "data-disabled": true }
               : {};
             const dangerColor: ColorName | undefined = action.danger
-              ? "danger"
+              ? "feedback-negative"
               : undefined;
             const menuItemProps = {
               ...disabledProps,

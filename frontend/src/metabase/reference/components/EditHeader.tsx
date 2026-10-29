@@ -39,7 +39,6 @@ export const EditHeader = memo(function EditHeader({
       <div className={cx(CS.wrapper, CS.px3, S.editHeader)}>
         <div className={S.editHeaderButtons}>
           <Button
-            variant="outline"
             onClick={() => {
               endEditing();
               reinitializeForm();

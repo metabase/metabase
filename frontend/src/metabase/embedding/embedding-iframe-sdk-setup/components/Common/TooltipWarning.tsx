@@ -76,7 +76,7 @@ export const TooltipWarning = ({
   }
 
   return (
-    <Flex align="center" gap="xs" data-testid="tooltip-warning">
+    <Flex align="center" gap="xxs" data-testid="tooltip-warning">
       {children({
         disabled,
         hoverCard: null,

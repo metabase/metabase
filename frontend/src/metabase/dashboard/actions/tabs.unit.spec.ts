@@ -1,12 +1,15 @@
 import _ from "underscore";
 
 import { getMainStore } from "__support__/entities-store";
-import type { StoreDashcard } from "metabase/redux/store";
 import {
   createMockDashboardState,
   createMockState,
   createMockStoreDashboard,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { waitFor } from "__support__/ui";
+import type { StoreDashcard } from "metabase/redux/store";
+import { performUndo } from "metabase/redux/undo";
+import { checkNotNull } from "metabase/utils/types";
 import type {
   DashCardDataMap,
   Parameter,
@@ -26,10 +29,11 @@ import {
 import { ORDERS, ORDERS_ID, PRODUCTS } from "metabase-types/api/mocks/presets";
 
 import { TEST_DASHBOARD_STATE } from "../components/DashboardTabs/test-utils";
-import { getDashboard, getDashcards } from "../selectors";
+import { getDashboard, getDashcards, getTabs } from "../selectors";
 
+import { setDashboardAttributes } from "./core";
 import { getIdFromSlug, moveTab, resetTempTabId, tabsReducer } from "./tabs";
-import { duplicateTab } from "./tabs-thunks";
+import { deleteTab, duplicateTab } from "./tabs-thunks";
 
 const ORDERS_CARD = createMockCard({
   id: 1,
@@ -335,6 +339,146 @@ describe("duplicateTab", () => {
   });
 });
 
+describe("deleteTab", () => {
+  const TAB_1_CARD_PARAMETER = createMockParameter({
+    id: "tab-1-card-filter",
+    name: "Tab 1 Card Filter",
+    type: "string/=",
+    sectionId: "string",
+  });
+  const FILTERED_DASHBOARD_PARAMETER = {
+    ...DASHBOARD_LEVEL_PARAMETER,
+    filteringParameters: [CARD_PARAMETER.id],
+  };
+  const PARAMETERS = [
+    FILTERED_DASHBOARD_PARAMETER,
+    TAB_1_CARD_PARAMETER,
+    CARD_PARAMETER,
+  ];
+
+  const TAB_3_CARD_PARAMETER = createMockParameter({
+    id: "tab-3-card-filter",
+    name: "Tab 3 Card Filter",
+    type: "string/=",
+    sectionId: "string",
+  });
+
+  function setupTabsWithCardFilters({ tabCount = 2 } = {}) {
+    const hasTab3 = tabCount === 3;
+    return setup({
+      parameters: hasTab3 ? [...PARAMETERS, TAB_3_CARD_PARAMETER] : PARAMETERS,
+      tabCount,
+      dashcards: [
+        createMockDashboardCard({
+          id: 1,
+          dashboard_tab_id: 1,
+          card_id: ORDERS_CARD.id,
+          card: ORDERS_CARD,
+          inline_parameters: [TAB_1_CARD_PARAMETER.id],
+        }),
+        createMockDashboardCard({
+          id: 2,
+          dashboard_tab_id: 2,
+          card_id: ORDERS_CARD.id,
+          card: ORDERS_CARD,
+          inline_parameters: [CARD_PARAMETER.id],
+        }),
+        ...(hasTab3
+          ? [
+              createMockDashboardCard({
+                id: 3,
+                dashboard_tab_id: 3,
+                card_id: ORDERS_CARD.id,
+                card: ORDERS_CARD,
+                inline_parameters: [TAB_3_CARD_PARAMETER.id],
+              }),
+            ]
+          : []),
+      ],
+    });
+  }
+
+  it("should remove card filters on the deleted tab and references to them (#78567)", () => {
+    const { store } = setupTabsWithCardFilters();
+
+    deleteTab(2)(store.dispatch, store.getState);
+
+    expect(getTabs(store.getState()).map(({ id }) => id)).toEqual([1]);
+    expect(getDashboard(store.getState())?.parameters).toEqual([
+      { ...DASHBOARD_LEVEL_PARAMETER, filteringParameters: [] },
+      TAB_1_CARD_PARAMETER,
+    ]);
+  });
+
+  it("should restore the tab and its card filters on undo", async () => {
+    const { store } = setupTabsWithCardFilters();
+
+    deleteTab(2)(store.dispatch, store.getState);
+    await waitFor(() => expect(store.getState().undo).toHaveLength(1));
+    const [undo] = store.getState().undo;
+    expect(undo.message).toBe('Deleted "Tab 2"');
+    store.dispatch(performUndo(undo.id));
+
+    expect(getTabs(store.getState()).map(({ id }) => id)).toEqual([1, 2]);
+    expect(getDashboard(store.getState())?.parameters).toEqual(PARAMETERS);
+    expect(getDashcards(store.getState())[2]).toMatchObject({
+      isRemoved: false,
+      inline_parameters: [CARD_PARAMETER.id],
+    });
+  });
+
+  it("should keep filter changes made between deleting and undoing", async () => {
+    const { store } = setupTabsWithCardFilters();
+    const addedParameter = createMockParameter({ id: "added-filter" });
+    const renamedParameter = { ...TAB_1_CARD_PARAMETER, name: "Renamed" };
+
+    deleteTab(2)(store.dispatch, store.getState);
+    store.dispatch(
+      setDashboardAttributes({
+        id: 1,
+        attributes: {
+          parameters: [
+            renamedParameter,
+            { ...DASHBOARD_LEVEL_PARAMETER, filteringParameters: [] },
+            addedParameter,
+          ],
+        },
+      }),
+    );
+    await waitFor(() => expect(store.getState().undo).toHaveLength(1));
+    store.dispatch(performUndo(store.getState().undo[0].id));
+
+    expect(getDashboard(store.getState())?.parameters).toEqual([
+      renamedParameter,
+      CARD_PARAMETER,
+      FILTERED_DASHBOARD_PARAMETER,
+      addedParameter,
+    ]);
+  });
+
+  it("should only restore the filters of the tab being undone", async () => {
+    const { store } = setupTabsWithCardFilters({ tabCount: 3 });
+
+    deleteTab(2)(store.dispatch, store.getState);
+    deleteTab(3)(store.dispatch, store.getState);
+    await waitFor(() => expect(store.getState().undo).toHaveLength(2));
+    const tab2Undo = store
+      .getState()
+      .undo.find(({ message }) => message === 'Deleted "Tab 2"');
+    store.dispatch(performUndo(checkNotNull(tab2Undo).id));
+
+    expect(getTabs(store.getState()).map(({ id }) => id)).toEqual([1, 2]);
+    expect(getDashboard(store.getState())?.parameters).toEqual(PARAMETERS);
+  });
+});
+
+type SetupOpts = {
+  parameters: Parameter[];
+  dashcards: StoreDashcard[];
+  dashcardData?: DashCardDataMap;
+  tabCount?: number;
+};
+
 function createDashboardState({
   parameters,
   dashcards,
@@ -343,11 +487,8 @@ function createDashboardState({
       .filter((dc) => dc.card_id != null)
       .map((dc) => [dc.id, { [dc.card_id!]: null }]),
   ),
-}: {
-  parameters: Parameter[];
-  dashcards: StoreDashcard[];
-  dashcardData?: DashCardDataMap;
-}) {
+  tabCount = 2,
+}: SetupOpts) {
   return createMockDashboardState({
     dashboardId: 1,
     selectedTabId: 1,
@@ -356,10 +497,9 @@ function createDashboardState({
         id: 1,
         dashcards: dashcards.map((dc) => dc.id),
         parameters,
-        tabs: [
-          createMockDashboardTab({ id: 1, name: "Tab 1" }),
-          createMockDashboardTab({ id: 2, name: "Tab 2" }),
-        ],
+        tabs: _.range(1, tabCount + 1).map((id) =>
+          createMockDashboardTab({ id, name: `Tab ${id}` }),
+        ),
       }),
     },
     dashcards: _.indexBy(dashcards, "id"),
@@ -367,18 +507,10 @@ function createDashboardState({
   });
 }
 
-function setup({
-  parameters,
-  dashcards,
-  dashcardData,
-}: {
-  parameters: Parameter[];
-  dashcards: StoreDashcard[];
-  dashcardData?: DashCardDataMap;
-}) {
+function setup(opts: SetupOpts) {
   const store = getMainStore(
     createMockState({
-      dashboard: createDashboardState({ parameters, dashcards, dashcardData }),
+      dashboard: createDashboardState(opts),
     }),
   );
 

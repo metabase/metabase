@@ -1,5 +1,6 @@
 (ns metabase.analyze.classifiers.name
   "Classifier that infers the semantic type of a Field based on its name and base type."
+  (:refer-clojure :exclude [some])
   (:require
    [clojure.string :as str]
    [metabase.analyze.schema :as analyze.schema]
@@ -9,7 +10,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.performance :refer [some]]))
 
 (def ^:private float-type       #{:type/Float})
 (def ^:private int-type         #{:type/Integer})
@@ -129,15 +131,21 @@
               semantic-type))
           pattern+base-types+semantic-type)))
 
+(def ^:private MinimalFieldOrColumn
+  "The subset of a Field/column map this classifier actually reads: name, base type, and (when already
+  known) semantic type."
+  [:map {:closed true}
+   [:name          {:optional true} [:maybe :string]]
+   [:base_type     {:optional true} [:maybe ms/FieldType]]
+   [:semantic_type {:optional true} [:maybe ms/FieldSemanticOrRelationType]]])
+
 (def ^:private FieldOrColumn
-  "Schema that allows a `:model/Field` or a column from a query resultset"
-  [:and
-   [:map
-    ;; Some DBs such as MSSQL can return columns with blank name
-    [:name      :string]
-    [:base_type :keyword]
-    [:semantic_type {:optional true} [:maybe :keyword]]]
-   ::analyze.schema/qp-results-cased-map])
+  "Schema that allows a `:model/Field`, a column from a query resultset, or a minimal name/type map (as
+  hand-built test fixtures pass)."
+  [:or
+   ::analyze.schema/Field
+   :metabase.legacy-mbql.schema/legacy-column-metadata
+   MinimalFieldOrColumn])
 
 (mu/defn infer-semantic-type-by-name :- [:maybe :keyword]
   "Classifier that infers the semantic type of a `field` based on its name and base type."

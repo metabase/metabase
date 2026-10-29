@@ -1,11 +1,58 @@
 (ns mage.kondo-ratchet-test
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [dev.kondo-ratchet :as dev-ratchet]
    [mage.kondo-ratchet :as kondo-ratchet]))
 
 ;; Referenced by core_test.clj to ensure namespace is loaded
 (def keep-me :loaded)
+
+(defn- with-ratchets-files!
+  "Run `f` with [[dev.kondo-ratchet/*ratchets-file*]] and [[dev.kondo-ratchet/*test-ratchets-file*]]
+  bound to temp files carrying `prod-exempt`/`test-exempt` as their only budgets."
+  [prod-exempt test-exempt f]
+  (let [dir  (.toFile (java.nio.file.Files/createTempDirectory
+                       "kondo-ratchet-test" (make-array java.nio.file.attribute.FileAttribute 0)))
+        prod (doto (io/file dir "ratchets.edn")
+               (spit (dev-ratchet/render {:ignore-counts {}, :config-counts {}, :comment-exempt prod-exempt})))
+        test (doto (io/file dir "ratchets-test.edn")
+               (spit (dev-ratchet/render-test {:ignore-counts {}, :comment-exempt test-exempt})))]
+    (binding [dev-ratchet/*ratchets-file*      (.getPath prod)
+              dev-ratchet/*test-ratchets-file* (.getPath test)]
+      (f))))
+
+(deftest exemption-suggestion-test
+  (let [prod-occ {:file "src/f.clj", :line 1, :linters [:new], :justified? false}
+        test-occ {:file "test/g.clj", :line 1, :linters [:new], :justified? false}]
+    (testing "an unjustified occurrence only in prod code names only the prod file"
+      (with-ratchets-files! #{} #{}
+        #(is (= (format "Also add :new to :comment-exempt in %s -- the inserted ignores have no comments."
+                        dev-ratchet/*ratchets-file*)
+                (#'kondo-ratchet/exemption-suggestion :new [prod-occ])))))
+    (testing "an unjustified occurrence only in test code names only the test file"
+      (with-ratchets-files! #{} #{}
+        #(is (= (format "Also add :new to :comment-exempt in %s -- the inserted ignores have no comments."
+                        dev-ratchet/*test-ratchets-file*)
+                (#'kondo-ratchet/exemption-suggestion :new [test-occ])))))
+    (testing "unjustified occurrences in both name both files"
+      (with-ratchets-files! #{} #{}
+        #(is (= (format "Also add :new to :comment-exempt in both %s and %s -- the inserted ignores have no comments."
+                        dev-ratchet/*ratchets-file* dev-ratchet/*test-ratchets-file*)
+                (#'kondo-ratchet/exemption-suggestion :new [prod-occ test-occ])))))
+    (testing "a file whose own :comment-exempt already covers the linter is not named, even if the other needs it"
+      (with-ratchets-files! #{:new} #{}
+        #(is (= (format "Also add :new to :comment-exempt in %s -- the inserted ignores have no comments."
+                        dev-ratchet/*test-ratchets-file*)
+                (#'kondo-ratchet/exemption-suggestion :new [prod-occ test-occ])))))
+    (testing "no suggestion once every occurrence is justified"
+      (with-ratchets-files! #{} #{}
+        #(is (nil? (#'kondo-ratchet/exemption-suggestion
+                    :new [(assoc prod-occ :justified? true) (assoc test-occ :justified? true)])))))
+    (testing "no suggestion when there are no occurrences at all"
+      (with-ratchets-files! #{} #{}
+        #(is (nil? (#'kondo-ratchet/exemption-suggestion :new [])))))))
 
 (deftest insert-ignore-lines-test
   (testing "inserts at the flagged line's indentation"
@@ -265,6 +312,14 @@
   (update (#'kondo-ratchet/remove-ignores-at text rows)
           :sites (partial mapv #(dissoc % :original :removed-line))))
 
+(deftest ignored-linters-at-test
+  (testing "reads the complete file when an ignore vector spans more than three lines"
+    (is (= [:a :b :c :d]
+           (#'kondo-ratchet/ignored-linters-at
+            (vec (str/split-lines
+                  "#_{:clj-kondo/ignore [:a\n                      :b\n                      :c\n                      :d]}\n(foo)"))
+            1)))))
+
 (deftest remove-ignores-at-originals-test
   (testing "each site captures its removed form verbatim, so a restore puts back exactly what was cut"
     (is (= [{:whole-line? true, :text "  #_{:clj-kondo/ignore [:equals-true]}"}]
@@ -279,7 +334,16 @@
            (map :original
                 (:sites (#'kondo-ratchet/remove-ignores-at
                          "(a)\n#_{:clj-kondo/ignore [:x\n                      :y]}\n(b)\n"
-                         [2])))))))
+                         [2]))))))
+  (testing "a `#` before the form is left for a human -- `#^` metadata and a gensym's `#` need a reader to tell apart"
+    (doseq [[description text] [["legacy #^ metadata"        "(def #^{:clj-kondo/ignore [:x]} y 1)\n"]
+                                ["a syntax-quote gensym"     "`(m x#^{:clj-kondo/ignore [:x]} y)\n"]
+                                ["a quote macro before it"   "(def x '#^{:clj-kondo/ignore [:z]} y)\n"]]]
+      (testing description
+        (let [{removed :text, :keys [sites skipped]} (#'kondo-ratchet/remove-ignores-at text [1])]
+          (is (= text removed) "the source is left exactly as it was")
+          (is (= [] sites) "nothing is excised")
+          (is (= [1] skipped) "the row is reported instead"))))))
 
 (deftest inline-ignore-separator-round-trip-test
   (doseq [[description separator text]
@@ -321,6 +385,10 @@
            (remove-ignores-at'
             "#_{:clj-kondo/ignore [:x] :reason {:ticket \"ABC-1\"}}\n(a)\n"
             [1]))))
+  (testing "a prefixless match is left for manual removal rather than risking a dangling reader discard"
+    (let [text "#_ ;; rationale\n{:clj-kondo/ignore [:x]}\n(a)\n"]
+      (is (= {:text text, :sites [], :skipped [2]}
+             (remove-ignores-at' text [2])))))
   (testing "a skipped row is reported in post-removal coordinates when removals above it delete lines"
     (is (= {:text      "(a)\n#_{:clj-kondo/ignore [:y] :reason {:nested 1}}\n(b)\n"
             :sites     [{:row 1, :linters [:x]}]
@@ -353,3 +421,159 @@
            (remove-ignores-at'
             "#_{:clj-kondo/ignore [:x]}\n(a)\n#_{:clj-kondo/ignore [:y]}\n(b)\n"
             [1 2 3])))))
+
+;;;; ---------------------------------------------------------------------------
+;;;; Per-symbol attribution
+;;;; ---------------------------------------------------------------------------
+
+(deftest disable-ignores-test
+  (let [content  (str "(ns a)\n"
+                      "#_ ;; why\n"
+                      "{:clj-kondo/ignore [:discouraged-var]}\n"
+                      "(eval 1)\n"
+                      "(defn f #^{:clj-kondo/ignore [:discouraged-var], :a {:b 1}} [] (eval 2))\n")
+        disabled (kondo-ratchet/disable-ignores content (dev-ratchet/ignore-matches content))]
+    (testing "only the ignore key changes, so every other character keeps its offset"
+      (is (= (str "(ns a)\n"
+                  "#_ ;; why\n"
+                  "{:ratchet/unignore [:discouraged-var]}\n"
+                  "(eval 1)\n"
+                  "(defn f #^{:ratchet/unignore [:discouraged-var], :a {:b 1}} [] (eval 2))\n")
+             disabled)))
+    (testing "the result no longer contains any ignore"
+      (is (empty? (dev-ratchet/ignore-matches disabled))))))
+
+(def ^:private eval-and-println
+  "Kondo's JSON output, as [[kondo-ratchet/attribute-discouraged]] takes it, for `a.clj` below with its ignores
+  disabled: `println` and `eval` flagged on line 3, and `eval` again on line 5."
+  {:findings [{:filename "a.clj", :row 3, :col 1, :type "discouraged-var"}
+              {:filename "a.clj", :row 3, :col 10, :type "discouraged-var"}
+              {:filename "a.clj", :row 5, :col 1, :type "discouraged-var"}
+              {:filename "a.clj", :row 5, :col 1, :type "unused-binding"}]
+   :analysis {:var-usages       [{:filename "a.clj", :row 3, :col 1, :to "clojure.core", :name "println"}
+                                 {:filename "a.clj", :row 3, :col 10, :to "clojure.core", :name "eval"}
+                                 {:filename "a.clj", :row 5, :col 1, :to "clojure.core", :name "eval"}]
+              :namespace-usages []}})
+
+(def ^:private a-clj
+  (str "(ns a)\n"
+       "#_{:clj-kondo/ignore [:discouraged-var]}\n"
+       "(println (eval 1))\n"
+       "#_{:clj-kondo/ignore [:discouraged-var :unused-binding]}\n"
+       "(eval 2)\n"
+       "#_{:clj-kondo/ignore [:discouraged-var]}\n"
+       "(inc 3)\n"))
+
+(defn- var-hits
+  "Kondo's JSON output, as [[kondo-ratchet/attribute-discouraged]] takes it, for a discouraged-var finding at each
+  `[file row col sym]` of `hits`, with the var usage it reports on."
+  [& hits]
+  {:findings (for [[file row col] hits]
+               {:filename file, :row row, :col col, :type "discouraged-var"})
+   :analysis {:var-usages (for [[file row col sym] hits]
+                            {:filename file, :row row, :col col, :to (namespace sym), :name (name sym)})}})
+
+(def ^:private known
+  {:discouraged-var       #{'clojure.core/eval 'clojure.core/println}
+   :discouraged-namespace #{'clojure.tools.logging}})
+
+(deftest attribute-discouraged-counting-test
+  (testing "each ignore counts once per distinct symbol it covers; one covering nothing is unattributed"
+    (is (= {:actual       {:discouraged-var       {:clojure.core/eval 2, :clojure.core/println 1}
+                           :discouraged-namespace {}}
+            :unattributed [{:file "a.clj", :line 6, :linters [:discouraged-var]}]
+            :unresolved   []}
+           (kondo-ratchet/attribute-discouraged {"a.clj" a-clj} eval-and-println [] known))))
+  (testing "two findings of one symbol under one ignore count once"
+    (is (= {:clojure.core/eval 1}
+           (-> (kondo-ratchet/attribute-discouraged
+                {"b.clj" "#_{:clj-kondo/ignore [:discouraged-var]}\n(do (eval 1) (eval 2))\n"}
+                (var-hits ["b.clj" 2 5 'clojure.core/eval]
+                          ["b.clj" 2 14 'clojure.core/eval])
+                []
+                known)
+               (get-in [:actual :discouraged-var])))))
+  (testing "the same ignore at the same place in two files counts once in each"
+    (is (= {:clojure.core/eval 2}
+           (-> (kondo-ratchet/attribute-discouraged
+                {"b.clj" "#_{:clj-kondo/ignore [:discouraged-var]}\n(eval 1)\n"
+                 "c.clj" "#_{:clj-kondo/ignore [:discouraged-var]}\n(eval 1)\n"}
+                (var-hits ["b.clj" 2 1 'clojure.core/eval]
+                          ["c.clj" 2 1 'clojure.core/eval])
+                []
+                known)
+               (get-in [:actual :discouraged-var]))))))
+
+(deftest attribute-discouraged-suppression-test
+  (testing "a finding kondo also reports with the ignores in place isn't charged to the ignore before it"
+    (is (= {:actual       {:discouraged-var       {:clojure.core/eval 1, :clojure.core/println 1}
+                           :discouraged-namespace {}}
+            :unattributed [{:file "a.clj", :line 4, :linters [:discouraged-var]}
+                           {:file "a.clj", :line 6, :linters [:discouraged-var]}]
+            :unresolved   []}
+           (kondo-ratchet/attribute-discouraged {"a.clj" a-clj}
+                                                eval-and-println
+                                                [{:filename "a.clj", :row 5, :col 1, :type "discouraged-var"}]
+                                                known))))
+  (testing "findings in files outside `contents` are ignored"
+    (is (= {}
+           (get-in (kondo-ratchet/attribute-discouraged {} eval-and-println [] known) [:actual :discouraged-var])))))
+
+(deftest attribute-discouraged-symbol-test
+  (testing "a namespace finding resolves through its namespace usage"
+    (is (= {:clojure.tools.logging 1}
+           (-> (kondo-ratchet/attribute-discouraged
+                {"c.clj" "(ns c\n  (:require\n   #_{:clj-kondo/ignore [:discouraged-namespace]}\n   [clojure.tools.logging]))\n"}
+                {:findings [{:filename "c.clj", :row 4, :col 5, :type "discouraged-namespace"}]
+                 :analysis {:namespace-usages [{:filename "c.clj", :row 4, :col 5, :to "clojure.tools.logging"}]}}
+                []
+                known)
+               (get-in [:actual :discouraged-namespace])))))
+  (testing "a var used through an alias is keyed by the namespace the file requires, not where kondo resolved it"
+    (is (= {:lib.core/->legacy-MBQL 1}
+           (-> (kondo-ratchet/attribute-discouraged
+                {"d.clj" "#_{:clj-kondo/ignore [:discouraged-var]}\n(lib/->legacy-MBQL q)\n"}
+                {:findings [{:filename "d.clj", :row 2, :col 2, :type "discouraged-var"}]
+                 :analysis {:var-usages       [{:filename "d.clj"
+                                                :row      2
+                                                :col      2
+                                                :to       "metabase.lib.convert"
+                                                :alias    "lib"
+                                                :name     "->legacy-MBQL"}]
+                            :namespace-usages [{:filename "d.clj", :row 1, :col 1, :to "metabase.lib.core", :alias "lib"}]}}
+                []
+                {:discouraged-var #{'metabase.lib.convert/->legacy-MBQL 'metabase.lib.core/->legacy-MBQL}})
+               (get-in [:actual :discouraged-var])))))
+  (testing "in a .cljc file, each language's usage takes the alias that language requires"
+    (is (= {:clojure.pprint/print-table 1}
+           (-> (kondo-ratchet/attribute-discouraged
+                {"e.cljc" "#_{:clj-kondo/ignore [:discouraged-var]}\n(pprint/print-table [])\n"}
+                {:findings [{:filename "e.cljc", :row 2, :col 2, :type "discouraged-var"}]
+                 :analysis {:var-usages       [{:filename "e.cljc", :row 2, :col 2, :lang "clj", :to "clojure.pprint", :alias "pprint", :name "print-table"}
+                                               {:filename "e.cljc", :row 2, :col 2, :lang "cljs", :to "cljs.pprint", :alias "pprint", :name "print-table"}]
+                            :namespace-usages [{:filename "e.cljc", :lang "clj", :to "clojure.pprint", :alias "pprint"}
+                                               {:filename "e.cljc", :lang "cljs", :to "cljs.pprint", :alias "pprint"}]}}
+                []
+                {:discouraged-var #{'clojure.pprint/print-table}})
+               (get-in [:actual :discouraged-var])))))
+  (testing "a finding whose usage isn't a configured symbol is unresolved"
+    (is (= [{:file "a.clj", :line 3, :linters [:discouraged-var]}]
+           (:unresolved
+            (kondo-ratchet/attribute-discouraged {"a.clj" a-clj}
+                                                 eval-and-println
+                                                 []
+                                                 (assoc known :discouraged-var #{'clojure.core/eval})))))))
+
+(deftest parse-kondo-output-test
+  (testing "a run that reported findings still parses"
+    (is (= {:findings [{:type :x}]}
+           (kondo-ratchet/parse-kondo-output :edn {:exit 2, :out ["{:findings [{:type :x}]}"], :err []})))
+    (is (= {:findings [{:type "x"}]}
+           (kondo-ratchet/parse-kondo-output :json {:exit 3, :out ["{\"findings\": [{\"type\": \"x\"}]}"], :err []}))))
+  (testing "a failed run throws with its stderr rather than reading as no findings"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"(?s)clj-kondo run failed or printed no findings list \(exit 1\):.*boom"
+                          (kondo-ratchet/parse-kondo-output :edn {:exit 1, :out ["{}"], :err ["boom"]}))))
+  (testing "output that isn't a map with a findings list throws"
+    (doseq [out [["not json"] [""] ["[]"] ["{}"] ["{\"summary\": {}}"]]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"printed no findings list \(exit 0\)"
+                            (kondo-ratchet/parse-kondo-output :json {:exit 0, :out out, :err []}))))))

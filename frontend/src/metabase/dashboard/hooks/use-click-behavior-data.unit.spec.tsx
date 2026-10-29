@@ -1,8 +1,5 @@
+import { createMockDashboardState, createMockState } from "__support__/state";
 import { renderHookWithProviders } from "__support__/ui";
-import {
-  createMockDashboardState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import type { ClickObject } from "metabase/visualizations/types";
 import {
   createMockCard,

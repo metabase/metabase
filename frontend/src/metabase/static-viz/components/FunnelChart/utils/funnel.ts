@@ -5,12 +5,12 @@ import { measureTextWidth } from "metabase/static-viz/lib/text";
 import { formatPercent } from "metabase/utils/formatting";
 import type { TextWidthMeasurer } from "metabase/utils/measure-text";
 import { isNotNull } from "metabase/utils/types";
-import type {
-  FunnelDatum,
-  FunnelStep,
-  Step,
-} from "metabase/visualizations/lib/funnel/types";
-import { truncateText } from "metabase/visualizations/lib/text";
+import {
+  type FunnelDatum,
+  type FunnelStep,
+  type Step,
+  truncateText,
+} from "metabase/viz-core";
 
 import { formatNumber } from "../../../lib/numbers";
 import type { FunnelSettings } from "../types";

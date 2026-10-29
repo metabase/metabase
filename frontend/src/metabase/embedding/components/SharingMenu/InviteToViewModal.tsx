@@ -20,16 +20,7 @@ import { useToast } from "metabase/common/hooks";
 import { useSelector } from "metabase/redux";
 import { isSsoEnabled } from "metabase/selectors/settings";
 import { getSetting, useSetting } from "metabase/settings";
-import {
-  Button,
-  Center,
-  Group,
-  Icon,
-  Loader,
-  Modal,
-  Stack,
-  Text,
-} from "metabase/ui";
+import { Button, Center, Icon, Loader, Modal, Stack, Text } from "metabase/ui";
 import { generatePassword } from "metabase/utils/password";
 import type { InviteTarget, User } from "metabase-types/api";
 
@@ -150,14 +141,14 @@ export const InviteToViewModal = ({
     );
   } else if (isLoadingGroups || isFetchingAccessGroupIds) {
     body = (
-      <Center py="xl">
+      <Center py="xxl">
         <Loader />
       </Center>
     );
   } else if (isGroupsError || isAccessGroupIdsError) {
     // Without the access data the picker loses its "can view" safety net, so fail loudly instead.
     body = (
-      <Stack gap="lg" align="center" py="xl">
+      <Stack gap="xl" align="center" py="xxl">
         <Text>{t`Couldn't load groups. Please try again.`}</Text>
         <Button
           onClick={() => {
@@ -206,7 +197,7 @@ export const InviteToViewModal = ({
   }
 
   return (
-    <Modal opened title={title} padding="xl" onClose={onClose}>
+    <Modal density="relaxed" opened title={title} onClose={onClose}>
       {body}
     </Modal>
   );
@@ -219,10 +210,12 @@ const EmailSetupPrompt = ({
   shareUrl: string;
   onClose: () => void;
 }) => (
-  <Stack gap="lg">
-    <Text>{t`To invite people by email, set up email first. Or share this link, they'll land on it after signing in:`}</Text>
-    <CopyTextInput label={t`Link to share`} value={shareUrl} />
-    <Group justify="flex-end">
+  <>
+    <Stack gap="xl">
+      <Text>{t`To invite people by email, set up email first. Or share this link, they'll land on it after signing in:`}</Text>
+      <CopyTextInput label={t`Link to share`} value={shareUrl} />
+    </Stack>
+    <Modal.Footer>
       <Button onClick={onClose}>{t`Cancel`}</Button>
       <Button
         component={Link}
@@ -232,8 +225,8 @@ const EmailSetupPrompt = ({
       >
         {t`Set up email`}
       </Button>
-    </Group>
-  </Stack>
+    </Modal.Footer>
+  </>
 );
 
 const TemporaryPasswordSuccess = ({
@@ -247,16 +240,18 @@ const TemporaryPasswordSuccess = ({
   shareUrl: string;
   onClose: () => void;
 }) => (
-  <Stack gap="lg">
-    <Text>
-      {jt`We couldn't send an email invitation. Share this temporary password with ${(
-        <strong key="email">{email}</strong>
-      )} so they can sign in.`}
-    </Text>
-    <PasswordReveal password={password} />
-    <CopyTextInput label={t`Link to share`} value={shareUrl} />
-    <Group justify="flex-end">
+  <>
+    <Stack gap="xl">
+      <Text>
+        {jt`We couldn't send an email invitation. Share this temporary password with ${(
+          <strong key="email">{email}</strong>
+        )} so they can sign in.`}
+      </Text>
+      <PasswordReveal password={password} />
+      <CopyTextInput label={t`Link to share`} value={shareUrl} />
+    </Stack>
+    <Modal.Footer>
       <Button variant="filled" onClick={onClose}>{t`Done`}</Button>
-    </Group>
-  </Stack>
+    </Modal.Footer>
+  </>
 );

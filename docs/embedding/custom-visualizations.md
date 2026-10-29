@@ -12,6 +12,7 @@ Authenticated [modular embeds](./modular-embedding.md) can render [custom visual
 - [An admin has to turn on custom visualizations first](#an-admin-has-to-turn-on-custom-visualizations-first)
 - [Add custom visualizations to your allowlist](#add-custom-visualizations-to-your-allowlist)
 - [Set a Content Security Policy in your app](#set-a-content-security-policy-in-your-app)
+- [Use a sandbox page if your app's CSP blocks eval (React SDK only)](#use-a-sandbox-page-if-your-apps-csp-blocks-eval-react-sdk-only)
 - [Custom visualizations don't work in guest embeds](#custom-visualizations-dont-work-in-guest-embeds)
 
 ## An admin has to turn on custom visualizations first
@@ -35,7 +36,7 @@ Where the allowlist goes depends on how you're embedding:
 
 ### Web components allowlist for custom visualizations
 
-`allowedCustomVisualizations` is a [page-level config](./modular-embedding.md#page-level-config), not an attribute on `<metabase-dashboard>` or `<metabase-question>`. The allowlist applies to every component on the page.
+`allowedCustomVisualizations` is a [page-level config](./config.md#configure-web-components), not an attribute on `<metabase-dashboard>` or `<metabase-question>`. The allowlist applies to every component on the page.
 
 Add `allowedCustomVisualizations` to `defineMetabaseConfig()`:
 
@@ -77,7 +78,41 @@ Pass the `allowedCustomVisualizations` prop to `MetabaseProvider`. Like the page
 
 A custom visualization runs third-party JavaScript in your app. Metabase runs that code in an isolated sandbox, so a visualization can't reach the rest of your app or make network requests. The sandbox doesn't block passive image loads, though: a visualization can still trigger outbound requests through `<img>` tags or CSS `url()`.
 
-To limit where custom visualizations can load images from, set a [Content Security Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP) with an `img-src` allowlist in your app. The core Metabase app sets this CSP with [Restrict image domains](../configuring-metabase/settings.md#restrict-image-domains), but you should also set a CSP in your app.
+To limit where custom visualizations can load images from, set a [Content Security Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CSP) with an `img-src` allowlist in your app. The core Metabase app sets this CSP with [Restrict image domains](../configuring-metabase/domains.md#restrict-where-images-can-load-from), but you should also set a CSP in your app.
+
+## Use a sandbox page if your app's CSP blocks eval (React SDK only)
+
+With the [React SDK](./sdk/introduction.md), the sandbox needs `eval` to run a custom visualization's code. By default, the SDK creates the sandbox in an `about:blank` iframe, which inherits your app's CSP. If that CSP blocks `eval`, every custom visualization falls back to the default visualization, and the browser console shows an `EvalError`.
+
+If you don't want to change the CSP for the whole app, you can serve an empty page that allows `eval` and point the `customVisualizationsSandboxUrl` prop on `MetabaseProvider` to it.
+
+The sandbox page must be on the same origin as your app.
+
+To set up the sandbox page:
+
+1. Serve an empty HTML page from your app, for example at `/metabase-sandbox.html`:
+
+   ```html
+   <!doctype html>
+   <html>
+     <head>
+       <meta charset="utf-8" />
+     </head>
+     <body></body>
+   </html>
+   ```
+
+2. Serve that page with its own CSP:
+
+   ```
+   Content-Security-Policy: default-src 'none'; script-src 'unsafe-eval'
+   ```
+
+Then pass the page's URL to `customVisualizationsSandboxUrl` on `MetabaseProvider`:
+
+```typescript
+{% include_file "{{ dirname }}/sdk/snippets/config/config-with-custom-visualizations-sandbox-url.tsx" snippet="example" %}
+```
 
 ## Custom visualizations don't work in guest embeds
 

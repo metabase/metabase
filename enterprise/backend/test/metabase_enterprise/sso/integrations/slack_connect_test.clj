@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.app-db.encryption-test-util :as encryption-tu]
    [metabase.sso.integrations.slack-connect-test :as slack-connect-test]
    [metabase.sso.test-helpers :as sso.test-helpers]
    [metabase.test :as mt]
@@ -11,10 +12,12 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :test-users))
+(use-fixtures :once
+  (fixtures/initialize :test-users)
+  (encryption-tu/with-encrypted-app-db-fixture slack-connect-test/test-secret))
 (use-fixtures :each slack-connect-test/do-with-url-prefix-disabled)
 
-(deftest multiple-sso-methods-test
+(deftest ^:synchronized multiple-sso-methods-test
   (testing "with SAML and Slack Connect configured, a GET request to /auth/sso/slack-connect should redirect to Slack"
     (slack-connect-test/with-test-encryption!
       (sso.test-helpers/with-slack-default-setup!

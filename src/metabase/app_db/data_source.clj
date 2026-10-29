@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [metabase.app-db.spec :as mdb.spec]
    [metabase.app-db.update-h2 :as update-h2]
+   [metabase.auth-provider.core :as auth-provider]
    [metabase.config.core :as config]
    [metabase.connection-pool :as connection-pool]
    [metabase.util.log :as log]
@@ -17,6 +18,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *current-millis*
   "Returns the current time millis, but can be overridden for testing."
   []
@@ -25,10 +27,10 @@
 (defn- renew-azure-managed-identity-password
   [client-id]
   (let [{:keys [access_token expires_in]}
-        ((requiring-resolve 'metabase.auth-provider.core/fetch-auth) :azure-managed-identity nil {:azure-managed-identity-client-id client-id})]
+        (auth-provider/fetch-auth :azure-managed-identity nil {:azure-managed-identity-client-id client-id})]
     {:password access_token
      :expiry (+ (*current-millis*) (* (- (parse-long expires_in)
-                                         @(requiring-resolve 'metabase.auth-provider.core/azure-auth-token-renew-slack-seconds))
+                                         auth-provider/azure-auth-token-renew-slack-seconds)
                                       1000))}))
 
 (defn- ensure-azure-managed-identity-password

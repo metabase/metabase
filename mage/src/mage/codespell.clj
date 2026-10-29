@@ -51,5 +51,5 @@
                    "frontend/src/cljs"
                    "frontend/src/metabase/querying/expressions/tokenizer/lezer.js"
                    "frontend/src/metabase/static-viz/constants/char-sizes.ts"
-                   "frontend/src/metabase/visualizations/lib/mapping_codes.ts"
+                   "frontend/src/metabase/viz-core/lib/mapping_codes.ts"
                    "modules/drivers/mongo/src/metabase/driver/mongo/operators.clj"])))

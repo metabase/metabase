@@ -58,12 +58,17 @@ export function PanelHeader({
   );
 
   return (
-    <Stack className={S.root} p="lg" gap="lg">
+    <Stack className={S.root} p="xl" gap="xl">
       <Group wrap="nowrap">
         <Title flex={1} order={4} lh="1rem">
           {getHeaderLabel(node, groupType)}
         </Title>
-        <ActionIcon m="-sm" aria-label={t`Close`} onClick={onClose}>
+        <ActionIcon
+          variant="subtle"
+          m="-sm"
+          aria-label={t`Close`}
+          onClick={onClose}
+        >
           <FixedSizeIcon name="close" />
         </ActionIcon>
       </Group>

@@ -1,10 +1,17 @@
 (ns metabase-enterprise.action-v2.execute-form
   (:require
+   [metabase-enterprise.action-v2.db :as action-v2.db]
+   [metabase-enterprise.action-v2.schema :as action-v2.schema]
    [metabase.actions.core :as actions]
+   [metabase.actions.types :as actions.types]
    [metabase.api.common :as api]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouses.db :as warehouses.db]
    [toucan2.core :as t2]))
 
 (def ^:private strip-namespace-hack (comp keyword name))
@@ -52,6 +59,15 @@
    [:title :string]
    [:parameters [:sequential ::describe-param]]])
 
+(mr/def ::partial-input
+  "A single input row after `apply-mapping-nested`: either mapped to the target table, or, absent a mapping, the raw
+  parameter values it was given."
+  [:or
+   [:map {:closed true}
+    [:table-id {:optional true} ::lib.schema.id/table]
+    [:row      {:optional true} [:maybe [:map-of :string [:ref ::lib.schema.parameter/parameter.value]]]]]
+   [:map-of :string [:ref ::lib.schema.parameter/parameter.value]]])
+
 (defn- field-input-type-ignoring-semantics [create? field field-values]
   (condp #(isa? %2 %1) (:base_type field)
     :type/Boolean    :input/boolean
@@ -89,13 +105,13 @@
            row-data]}]
   (when-not table-id
     (throw (ex-info "Must provide table-id" {:status-code 400})))
-  (let [table                       (api/read-check (t2/select-one :model/Table :id table-id :active true))
-        database                    (t2/select-one :model/Database :id (:db_id table))
-        _                           (actions/check-data-editing-enabled-for-database! database)
-        fields                      (-> (t2/select :model/Field :table_id table-id :active true {:order-by [[:position]]})
-                                        (t2/hydrate :dimensions
-                                                    :has_field_values
-                                                    :values))
+  (let [table                       (api/read-check (let [table (warehouse-schema.db/table table-id)]
+                                                      (when (:active table)
+                                                        table)))
+        database                    (warehouses.db/database (:db_id table))
+        _                           (actions/check-data-editing-enabled-for-database database)
+        fields                      (-> (action-v2.db/active-fields-in-position-order table-id)
+                                        (t2/hydrate :dimensions :has_field_values :values))
         ;; TODO get this from action configuration, when we add it, or inherit from table configuration
         column-editable?            (constantly true)
         ;; TODO get this from action configuration, when we add it, or inherit from table configuration
@@ -152,7 +168,9 @@
 
 (mu/defn describe-form :- ::action-description
   "Describe parameters of an unified action."
-  [action-def scope partial-input]
+  [action-def     :- ::action-v2.schema/action-expression
+   scope          :- ::actions.types/scope.hydrated
+   partial-input  :- ::partial-input]
   (cond
     (:action-id action-def)
     (throw (ex-info "We do not currently support execution of Model Actions" {:status-code 400}))

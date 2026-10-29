@@ -1,9 +1,9 @@
-import React from "react";
 import {
   InteractiveQuestion,
   MetabaseProvider,
   defineMetabaseAuthConfig,
 } from "@metabase/embedding-sdk-react";
+import React from "react";
 
 const authConfig = defineMetabaseAuthConfig({
   metabaseInstanceUrl: "https://your-metabase.example.com",

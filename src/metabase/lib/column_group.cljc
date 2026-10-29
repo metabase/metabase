@@ -10,10 +10,12 @@
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.util :as lib.util]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [select-keys some]]))
 
 (def ^:private GroupType
@@ -30,13 +32,19 @@
    :group-type/join.explicit 2
    :group-type/join.implicit 3})
 
-(def ^:private ColumnGroup
+(mr/def ::column-group
   "Schema for the metadata returned by [[group-columns]], and accepted by [[columns-group-columns]]."
   [:and
-   [:map
-    [:lib/type    [:= :metadata/column-group]]
-    [::group-type GroupType]
-    [::columns    [:sequential [:ref ::lib.schema.metadata/column]]]]
+   [:map {:closed true}
+    [:lib/type      [:= :metadata/column-group]]
+    [::group-type   GroupType]
+    [::columns      [:sequential [:ref ::lib.schema.metadata/column]]]
+    [:join-alias    {:optional true} [:ref ::lib.schema.common/non-blank-string]]
+    [:table-id      {:optional true} [:ref ::lib.schema.id/table]]
+    [:card-id       {:optional true} [:ref ::lib.schema.id/card]]
+    [:fk-field-id   {:optional true} [:ref ::lib.schema.id/field]]
+    [:fk-field-name {:optional true} [:maybe :string]]
+    [:fk-join-alias {:optional true} [:maybe ::lib.schema.join/alias]]]
    [:multi
     {:dispatch ::group-type}
     [:group-type/main
@@ -45,18 +53,15 @@
     ;; with [[metabase.lib.join/join-condition-rhs-columns]], the alias won't be present yet, so group things by the
     ;; joinable -- either the Card we're joining, or the Table we're joining. See #32493
     [:group-type/join.explicit
-     [:and
-      [:map
-       [:join-alias {:optional true} [:ref ::lib.schema.common/non-blank-string]]
-       [:table-id   {:optional true} [:ref ::lib.schema.id/table]]
-       [:card-id    {:optional true} [:ref ::lib.schema.id/card]]]
-      [:fn
-       {:error/message ":group-type/join.explicit should only have at most one of :join-alias, :table-id, or :card-id"}
-       (fn [m]
-         (>= (count (keys (select-keys m [:join-alias :table-id :card-id]))) 1))]]]
+     [:fn
+      {:error/message ":group-type/join.explicit should only have at most one of :join-alias, :table-id, or :card-id"}
+      (fn [m]
+        (>= (count (keys (select-keys m [:join-alias :table-id :card-id]))) 1))]]
     [:group-type/join.implicit
-     [:map
-      [:fk-field-id [:ref ::lib.schema.id/field]]]]]])
+     [:fn
+      {:error/message ":group-type/join.implicit requires :fk-field-id"}
+      (fn [m]
+        (contains? m :fk-field-id))]]]])
 
 (defmethod lib.metadata.calculation/metadata-method :metadata/column-group
   [_query _stage-number column-group]
@@ -192,7 +197,7 @@
           :group-type/join.implicit [(or (:fk-join-alias column-group) "")
                                      (fk-field-names (:fk-field-id column-group) "")])))
 
-(mu/defn group-columns :- [:sequential ColumnGroup]
+(mu/defn group-columns :- [:sequential ::column-group]
   "Given a group of columns returned by a function like [[metabase.lib.order-by/orderable-columns]], group the columns
   by Table or equivalent (e.g. Saved Question) so that they're in an appropriate shape for showing in the Query
   Builder. e.g a sequence of columns like
@@ -232,7 +237,7 @@
 
 (mu/defn columns-group-columns :- [:sequential ::lib.schema.metadata/column]
   "Get the columns associated with a column group"
-  [column-group :- ColumnGroup]
+  [column-group :- ::column-group]
   (::columns column-group))
 
 (defmethod lib.metadata.calculation/display-name-method :metadata/column-group

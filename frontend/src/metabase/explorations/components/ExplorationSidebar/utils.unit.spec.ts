@@ -12,31 +12,45 @@ import { createMockComment } from "metabase-types/api/mocks/comment";
 
 import type { ExplorationTreeNode, ExplorationTreePage } from "./utils";
 import {
+  EXPLORATION_SUMMARY_TREE_ID,
   getCompactRelativeTime,
   getExplorationSidebarModel,
   getExplorationSidebarTabsInfo,
-  getExplorationSidebarTree,
   getShimmerDelayStyle,
   isHiddenTreeItem,
+  pickInitialSidebarEntity,
   pickInitialSidebarPage,
 } from "./utils";
 
-const allTreeFilter = getExplorationSidebarTabsInfo().all.treeItemFilter;
-
-function getAllTabExplorationSidebarTree(
-  opts: Parameters<typeof createExploration>[0],
-) {
-  return getExplorationSidebarTree(
-    createExploration(opts),
-    allTreeFilter,
-    undefined,
-    {
-      keepEmptyRestartableThreads: true,
-    },
-  );
+function sidebarModel({
+  exploration,
+  tab = "all",
+  comments,
+  showHidden = false,
+  sortOrder,
+  ...createOpts
+}: {
+  exploration?: ReturnType<typeof createExploration>;
+  tab?: keyof ReturnType<typeof getExplorationSidebarTabsInfo>;
+  comments?: Parameters<typeof getExplorationSidebarTabsInfo>[1];
+  showHidden?: boolean;
+  sortOrder?: Parameters<typeof getExplorationSidebarModel>[0]["sortOrder"];
+} & Parameters<typeof createExploration>[0] = {}) {
+  const resolvedExploration = exploration ?? createExploration(createOpts);
+  return getExplorationSidebarModel({
+    exploration: resolvedExploration,
+    selectedSidebarTab: tab,
+    tabsInfo: getExplorationSidebarTabsInfo(resolvedExploration, comments),
+    showHidden,
+    sortOrder,
+  });
 }
 
-function getMetricHeadings(tree: ReturnType<typeof getExplorationSidebarTree>) {
+function sidebarTree(opts: Parameters<typeof sidebarModel>[0] = {}) {
+  return sidebarModel(opts).tree;
+}
+
+function getMetricHeadings(tree: ReturnType<typeof sidebarTree>) {
   return tree[0]?.children ?? [];
 }
 
@@ -56,9 +70,7 @@ function getPageData(
   return leaf?.data?.type === "page" ? leaf.data : undefined;
 }
 
-function getAllPageIds(
-  tree: ReturnType<typeof getExplorationSidebarTree>,
-): string[] {
+function getAllPageIds(tree: ReturnType<typeof sidebarTree>): string[] {
   const ids: string[] = [];
   function walk(nodes: ITreeNodeItem<ExplorationTreeNode>[]) {
     for (const node of nodes) {
@@ -74,13 +86,11 @@ function getAllPageIds(
   return ids;
 }
 
-function getFilteredSidebarTree(
-  exploration: ReturnType<typeof createExploration>,
-  tab: keyof ReturnType<typeof getExplorationSidebarTabsInfo>,
-  comments?: Parameters<typeof getExplorationSidebarTabsInfo>[1],
-) {
-  const tabsInfo = getExplorationSidebarTabsInfo(exploration, comments);
-  return getExplorationSidebarTree(exploration, tabsInfo[tab].treeItemFilter);
+function hasSummaryNode(tree: ReturnType<typeof sidebarTree>): boolean {
+  return tree.some(
+    (node) =>
+      node.id === EXPLORATION_SUMMARY_TREE_ID || node.data?.type === "document",
+  );
 }
 
 describe("getExplorationSidebarTree sorting", () => {
@@ -101,7 +111,7 @@ describe("getExplorationSidebarTree sorting", () => {
       interestingness_score: 0.9,
     });
 
-    const tree = getAllTabExplorationSidebarTree({
+    const tree = sidebarTree({
       queries: [low, high],
       blocks: [
         createBlock({
@@ -159,11 +169,7 @@ describe("getExplorationSidebarTree sorting", () => {
       ],
     });
 
-    const tree = getExplorationSidebarTree(
-      exploration,
-      allTreeFilter,
-      "alphabetical",
-    );
+    const tree = sidebarTree({ exploration, sortOrder: "alphabetical" });
 
     // Apple (id 2, lower score) sorts before Banana (id 1) by name.
     expect(getLeafIds(getMetricHeadings(tree)[0])).toEqual(["2", "1"]);
@@ -188,7 +194,7 @@ describe("getExplorationSidebarTree sorting", () => {
       interestingness_score: 0.2,
     });
 
-    const tree = getAllTabExplorationSidebarTree({
+    const tree = sidebarTree({
       queries: [doneSegment, pendingSegment, doneSingleton],
       blocks: [
         createBlock({
@@ -236,7 +242,7 @@ describe("getExplorationSidebarTree sorting", () => {
       error_message: "boom",
     });
 
-    const tree = getAllTabExplorationSidebarTree({
+    const tree = sidebarTree({
       queries: [error, running, done],
       blocks: [
         createBlock({
@@ -284,7 +290,7 @@ describe("getExplorationSidebarTree sorting", () => {
       row_count: 0,
     });
 
-    const tree = getAllTabExplorationSidebarTree({
+    const tree = sidebarTree({
       queries: [empty, running, done],
       blocks: [
         createBlock({
@@ -334,7 +340,7 @@ describe("getExplorationSidebarTree sorting", () => {
       interestingness_score: 0.3,
     });
 
-    const tree = getAllTabExplorationSidebarTree({
+    const tree = sidebarTree({
       queries: [metricBLeaf, metricALeaf],
       blocks: [
         createBlock({
@@ -386,7 +392,7 @@ describe("getExplorationSidebarTree sorting", () => {
       interestingness_score: 0.5,
     });
 
-    const tree = getAllTabExplorationSidebarTree({
+    const tree = sidebarTree({
       queries: [first, second],
       blocks: [
         createBlock({
@@ -514,7 +520,7 @@ describe("getExplorationSidebarTree sorting", () => {
       ],
     });
 
-    const tree = getExplorationSidebarTree(exploration, allTreeFilter);
+    const tree = sidebarTree({ exploration });
     const followUpNode = tree.find((node) => node.id === 2);
     const followUpPageIds = (followUpNode?.children ?? [])
       .filter((child) => child.data?.type === "page")
@@ -555,7 +561,7 @@ describe("getExplorationSidebarTree sorting", () => {
       contextual_interestingness_score: 0.85,
     });
 
-    const tree = getAllTabExplorationSidebarTree({
+    const tree = sidebarTree({
       queries: [groupedLowContextual, groupedHighContextual],
       blocks: [
         createBlock({
@@ -582,42 +588,41 @@ describe("getExplorationSidebarTree sorting", () => {
 });
 
 describe("getExplorationSidebarTree passes BE-computed names through", () => {
-  const DIM_BLOCK_ID = 30;
+  const BLOCK_ID = 30;
 
   it("uses the block's name for the heading and each page's name for sub-items", () => {
-    const signups = createQuery({
+    const country = createQuery({
       id: 1,
-      name: "Signups",
+      name: "Country",
       status: "done",
       interestingness_score: 0.9,
     });
-    const revenue = createQuery({
+    const plan = createQuery({
       id: 2,
-      name: "Revenue",
+      name: "Plan",
       status: "done",
       interestingness_score: 0.8,
     });
 
-    const tree = getAllTabExplorationSidebarTree({
-      queries: [signups, revenue],
+    const tree = sidebarTree({
+      queries: [country, plan],
       blocks: [
         createBlock({
-          id: DIM_BLOCK_ID,
-          type: "dimension",
-          name: "By Country",
+          id: BLOCK_ID,
+          name: "Revenue",
           position: 0,
           pages: [
             createPage({
               id: 10,
-              name: "Signups",
+              name: "Country",
               position: 0,
-              query_ids: [signups.id],
+              query_ids: [country.id],
             }),
             createPage({
               id: 11,
-              name: "Revenue",
+              name: "Plan",
               position: 1,
-              query_ids: [revenue.id],
+              query_ids: [plan.id],
             }),
           ],
         }),
@@ -625,10 +630,10 @@ describe("getExplorationSidebarTree passes BE-computed names through", () => {
     });
 
     const heading = getMetricHeadings(tree)[0];
-    expect(heading?.name).toBe("By Country");
+    expect(heading?.name).toBe("Revenue");
     expect((heading?.children ?? []).map((child) => child.name)).toEqual([
-      "Signups",
-      "Revenue",
+      "Country",
+      "Plan",
     ]);
   });
 });
@@ -655,7 +660,7 @@ describe("pickInitialSidebarPage", () => {
       interestingness_score: 0.2,
     });
 
-    const tree = getAllTabExplorationSidebarTree({
+    const tree = sidebarTree({
       queries: [doneSegment, pendingSegment, doneSingleton],
       blocks: [
         createBlock({
@@ -684,6 +689,73 @@ describe("pickInitialSidebarPage", () => {
   });
 });
 
+describe("pickInitialSidebarEntity", () => {
+  const METRIC_A_BLOCK_ID = 10;
+
+  function treeWithSummary(isPlaceholder: boolean) {
+    const done = createQuery({
+      id: 3,
+      name: "Done page",
+      status: "done",
+      interestingness_score: 0.2,
+    });
+    const exploration = createExploration({
+      queries: [done],
+      blocks: [
+        createBlock({
+          id: METRIC_A_BLOCK_ID,
+          name: "Metric A",
+          position: 0,
+          pages: [
+            createPage({
+              id: 3,
+              name: "Done page",
+              position: 0,
+              query_ids: [done.id],
+            }),
+          ],
+        }),
+      ],
+    });
+    exploration.document = {
+      id: 99,
+      name: "Summary",
+      exploration_id: exploration.id,
+      creator_id: 1,
+      content_type: "application/json+vnd.prose-mirror",
+      is_placeholder: isPlaceholder,
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    };
+    return {
+      tree: sidebarTree({ exploration }),
+      document: exploration.document,
+    };
+  }
+
+  it("prefers Summary when is_placeholder is false", () => {
+    const { tree, document } = treeWithSummary(false);
+    expect(pickInitialSidebarEntity(tree, document)).toEqual({
+      type: "summary",
+    });
+  });
+
+  it("falls back to the first page while Summary is still a placeholder", () => {
+    const { tree, document } = treeWithSummary(true);
+    expect(pickInitialSidebarEntity(tree, document)).toEqual({
+      type: "page",
+      id: "3",
+    });
+  });
+
+  it("prepends Summary as the first tree node", () => {
+    const { tree } = treeWithSummary(true);
+    expect(tree[0]?.data?.type).toBe("document");
+    expect(tree[0]?.id).toBe(EXPLORATION_SUMMARY_TREE_ID);
+    expect(tree[0]?.name).toBe("Summary");
+  });
+});
+
 describe("getExplorationSidebarTree inherits a heading status from its pages", () => {
   const METRIC_BLOCK_ID = 10;
 
@@ -691,7 +763,7 @@ describe("getExplorationSidebarTree inherits a heading status from its pages", (
     const queries = statuses.map((status, i) =>
       createQuery({ id: i + 1, name: `Q${i + 1}`, status }),
     );
-    return getAllTabExplorationSidebarTree({
+    return sidebarTree({
       queries,
       blocks: [
         createBlock({
@@ -739,12 +811,158 @@ describe("getExplorationSidebarTree inherits a heading status from its pages", (
   });
 
   it("uses the terminal server thread status instead of shimmering 'running' when the thread has no queries", () => {
-    const tree = getAllTabExplorationSidebarTree({
+    const tree = sidebarTree({
       queries: [createQuery({ id: 1, name: "Q1", status: "done" })],
       thread: { status: "failed", completed_at: "2026-04-30T00:01:00Z" },
     });
     // A finished thread must never read as "running" (which shimmers), even with zero queries.
     expect(threadStatus(tree)).toBe("error");
+  });
+});
+
+describe("getExplorationSidebarTree omits failed variant pages", () => {
+  const BLOCK_ID = 10;
+  const DEFAULT_PAGE_ID = 1;
+  const VARIANT_PAGE_ID = 2;
+
+  function treeWithDefaultAndVariant(
+    defaultQuery: ReturnType<typeof createQuery>,
+    variantQuery: ReturnType<typeof createQuery>,
+  ) {
+    return sidebarTree({
+      queries: [defaultQuery, variantQuery],
+      blocks: [
+        createBlock({
+          id: BLOCK_ID,
+          name: "Revenue",
+          position: 0,
+          pages: [
+            createPage({
+              id: DEFAULT_PAGE_ID,
+              name: "Created At",
+              position: 0,
+              query_ids: [defaultQuery.id],
+            }),
+            createPage({
+              id: VARIANT_PAGE_ID,
+              name: "Created At (Hour of day)",
+              position: 1,
+              query_ids: [variantQuery.id],
+            }),
+          ],
+        }),
+      ],
+    });
+  }
+
+  it("omits an errored variant when a default query exists for the same metric and dimension", () => {
+    const tree = treeWithDefaultAndVariant(
+      createQuery({
+        id: 1,
+        name: "Created At",
+        status: "done",
+        card_id: 10,
+        dimension_id: "created_at",
+      }),
+      createQuery({
+        id: 2,
+        name: "Created At (Hour of day)",
+        status: "error",
+        error_message: "boom",
+        card_id: 10,
+        dimension_id: "created_at",
+        query_type: "temporal-pattern-hour",
+      }),
+    );
+
+    expect(getLeafIds(getMetricHeadings(tree)[0])).toEqual(["1"]);
+  });
+
+  it("omits a zero-row variant when a default query exists for the same combo", () => {
+    const tree = treeWithDefaultAndVariant(
+      createQuery({
+        id: 1,
+        name: "Created At",
+        status: "done",
+        card_id: 10,
+        dimension_id: "created_at",
+        row_count: 5,
+      }),
+      createQuery({
+        id: 2,
+        name: "Created At (Hour of day)",
+        status: "done",
+        card_id: 10,
+        dimension_id: "created_at",
+        query_type: "temporal-pattern-hour",
+        row_count: 0,
+      }),
+    );
+
+    expect(getLeafIds(getMetricHeadings(tree)[0])).toEqual(["1"]);
+  });
+
+  it("keeps an errored top-n-other page when there is no default for that combo", () => {
+    const variant = createQuery({
+      id: 2,
+      name: "User ID (Top values + Other)",
+      status: "error",
+      error_message: "boom",
+      card_id: 10,
+      dimension_id: "user_id",
+      query_type: "top-n-other",
+    });
+    const tree = sidebarTree({
+      queries: [variant],
+      blocks: [
+        createBlock({
+          id: BLOCK_ID,
+          name: "Revenue",
+          position: 0,
+          pages: [
+            createPage({
+              id: VARIANT_PAGE_ID,
+              name: "User ID (Top values + Other)",
+              position: 0,
+              query_ids: [variant.id],
+            }),
+          ],
+        }),
+      ],
+    });
+
+    expect(getLeafIds(getMetricHeadings(tree)[0])).toEqual(["2"]);
+  });
+
+  it("keeps an errored default page", () => {
+    const erroredDefault = createQuery({
+      id: 1,
+      name: "Created At",
+      status: "error",
+      error_message: "boom",
+      card_id: 10,
+      dimension_id: "created_at",
+    });
+    const tree = sidebarTree({
+      queries: [erroredDefault],
+      blocks: [
+        createBlock({
+          id: BLOCK_ID,
+          name: "Revenue",
+          position: 0,
+          pages: [
+            createPage({
+              id: DEFAULT_PAGE_ID,
+              name: "Created At",
+              position: 0,
+              query_ids: [erroredDefault.id],
+            }),
+          ],
+        }),
+      ],
+    });
+
+    expect(getLeafIds(getMetricHeadings(tree)[0])).toEqual(["1"]);
   });
 });
 
@@ -754,7 +972,7 @@ describe("getExplorationSidebarTree last-activity timestamps", () => {
   }
 
   it("derives the thread heading's last activity from the newest query finished_at", () => {
-    const tree = getAllTabExplorationSidebarTree({
+    const tree = sidebarTree({
       queries: [
         createQuery({
           id: 1,
@@ -776,7 +994,7 @@ describe("getExplorationSidebarTree last-activity timestamps", () => {
   });
 
   it("leaves last activity undefined when no query has finished", () => {
-    const tree = getAllTabExplorationSidebarTree({
+    const tree = sidebarTree({
       queries: [createQuery({ id: 1, name: "Q1", status: "pending" })],
     });
 
@@ -884,7 +1102,10 @@ describe("getExplorationSidebarTabsInfo", () => {
 
   describe("stars filter", () => {
     it("includes only pages marked starred on the backend", () => {
-      const tree = getFilteredSidebarTree(mixedPagesExploration, "stars");
+      const tree = sidebarTree({
+        exploration: mixedPagesExploration,
+        tab: "stars",
+      });
 
       expect(getAllPageIds(tree)).toEqual([String(STARRED_PAGE_ID)]);
     });
@@ -911,9 +1132,9 @@ describe("getExplorationSidebarTabsInfo", () => {
       });
 
       // The initial thread heading is always retained, but it carries no pages.
-      expect(
-        getAllPageIds(getFilteredSidebarTree(exploration, "stars")),
-      ).toEqual([]);
+      expect(getAllPageIds(sidebarTree({ exploration, tab: "stars" }))).toEqual(
+        [],
+      );
     });
   });
 
@@ -927,11 +1148,11 @@ describe("getExplorationSidebarTabsInfo", () => {
         }),
       ];
 
-      const tree = getFilteredSidebarTree(
-        mixedPagesExploration,
-        "discussions",
+      const tree = sidebarTree({
+        exploration: mixedPagesExploration,
+        tab: "discussions",
         comments,
-      );
+      });
 
       expect(getAllPageIds(tree)).toEqual([String(DISCUSSED_PAGE_ID)]);
     });
@@ -940,9 +1161,89 @@ describe("getExplorationSidebarTabsInfo", () => {
       // The initial thread heading is always retained, but it carries no pages.
       expect(
         getAllPageIds(
-          getFilteredSidebarTree(mixedPagesExploration, "discussions"),
+          sidebarTree({
+            exploration: mixedPagesExploration,
+            tab: "discussions",
+          }),
         ),
       ).toEqual([]);
+    });
+  });
+
+  describe("summary document visibility", () => {
+    function explorationWithSummary() {
+      const exploration = createExploration({
+        queries: [starredQuery, discussedQuery],
+        blocks: [
+          createBlock({
+            id: BLOCK_ID,
+            name: "Revenue",
+            position: 0,
+            pages: [
+              createPage({
+                id: STARRED_PAGE_ID,
+                name: "Starred",
+                position: 0,
+                query_ids: [starredQuery.id],
+                starred: true,
+              }),
+              createPage({
+                id: DISCUSSED_PAGE_ID,
+                name: "Discussed",
+                position: 1,
+                query_ids: [discussedQuery.id],
+              }),
+            ],
+          }),
+        ],
+      });
+      exploration.document = {
+        id: 99,
+        name: "Summary",
+        exploration_id: exploration.id,
+        creator_id: 1,
+        content_type: "application/json+vnd.prose-mirror",
+        is_placeholder: false,
+        created_at: "2026-01-01T00:00:00Z",
+        updated_at: "2026-01-01T00:00:00Z",
+      };
+      return exploration;
+    }
+
+    it("includes Summary on the All tab", () => {
+      const tree = sidebarTree({
+        exploration: explorationWithSummary(),
+        tab: "all",
+      });
+      expect(hasSummaryNode(tree)).toBe(true);
+      expect(tree[0]?.id).toBe(EXPLORATION_SUMMARY_TREE_ID);
+    });
+
+    it("excludes Summary from the Stars tab", () => {
+      const tree = sidebarTree({
+        exploration: explorationWithSummary(),
+        tab: "stars",
+      });
+      expect(hasSummaryNode(tree)).toBe(false);
+      expect(getAllPageIds(tree)).toEqual([String(STARRED_PAGE_ID)]);
+    });
+
+    it("excludes Summary from the Discussions tab", () => {
+      const exploration = explorationWithSummary();
+      const comments = [
+        createMockComment({
+          target_type: "exploration",
+          target_id: exploration.id,
+          child_target_id: String(DISCUSSED_PAGE_ID),
+        }),
+      ];
+      const tree = sidebarTree({
+        exploration,
+        tab: "discussions",
+        comments,
+      });
+      expect(hasSummaryNode(tree)).toBe(false);
+      expect(getAllPageIds(tree)).toEqual([String(DISCUSSED_PAGE_ID)]);
     });
   });
 });
@@ -985,12 +1286,12 @@ describe("hidden pages", () => {
     ],
   });
 
-  const dropHidden = (node: ITreeNodeItem<ExplorationTreeNode>) =>
-    allTreeFilter(node) && !isHiddenTreeItem(node);
-
   it("threads the hidden flag onto page tree data", () => {
     const heading = getMetricHeadings(
-      getExplorationSidebarTree(explorationWithHiddenPage, allTreeFilter),
+      sidebarTree({
+        exploration: explorationWithHiddenPage,
+        showHidden: true,
+      }),
     )[0];
     expect(getPageData(heading, String(HIDDEN_PAGE_ID))?.hidden).toBe(true);
     expect(getPageData(heading, String(VISIBLE_PAGE_ID))?.hidden).toBe(false);
@@ -998,7 +1299,10 @@ describe("hidden pages", () => {
 
   it("isHiddenTreeItem is true only for hidden pages, never headings", () => {
     const heading = getMetricHeadings(
-      getExplorationSidebarTree(explorationWithHiddenPage, allTreeFilter),
+      sidebarTree({
+        exploration: explorationWithHiddenPage,
+        showHidden: true,
+      }),
     )[0];
     const hiddenNode = heading?.children?.find(
       (child) => child.id === String(HIDDEN_PAGE_ID),
@@ -1013,14 +1317,15 @@ describe("hidden pages", () => {
 
   it("excludes hidden pages when the filter drops them, keeps them otherwise", () => {
     expect(
-      getAllPageIds(
-        getExplorationSidebarTree(explorationWithHiddenPage, dropHidden),
-      ),
+      getAllPageIds(sidebarTree({ exploration: explorationWithHiddenPage })),
     ).toEqual([String(VISIBLE_PAGE_ID)]);
 
     expect(
       getAllPageIds(
-        getExplorationSidebarTree(explorationWithHiddenPage, allTreeFilter),
+        sidebarTree({
+          exploration: explorationWithHiddenPage,
+          showHidden: true,
+        }),
       ).sort(),
     ).toEqual([String(HIDDEN_PAGE_ID), String(VISIBLE_PAGE_ID)].sort());
   });
@@ -1045,9 +1350,9 @@ describe("hidden pages", () => {
     });
     // The block heading is pruned; the initial thread heading is retained but
     // carries no block headings.
-    expect(
-      getMetricHeadings(getExplorationSidebarTree(onlyHidden, dropHidden)),
-    ).toEqual([]);
+    expect(getMetricHeadings(sidebarTree({ exploration: onlyHidden }))).toEqual(
+      [],
+    );
   });
 });
 
@@ -1083,7 +1388,7 @@ describe("group pageIds", () => {
       ...createExploration(),
       threads: [thread1, thread2],
     };
-    const tree = getExplorationSidebarTree(exploration, allTreeFilter);
+    const tree = sidebarTree({ exploration });
 
     expect(tree[0]?.data?.type).toBe("heading");
     // Unjustified type cast. FIXME
@@ -1102,7 +1407,7 @@ describe("group pageIds", () => {
   it("collects every descendant page id onto the thread heading", () => {
     const q1 = createQuery({ id: 1, name: "Q1", status: "done" });
     const q2 = createQuery({ id: 2, name: "Q2", status: "done" });
-    const tree = getAllTabExplorationSidebarTree({
+    const tree = sidebarTree({
       queries: [q1, q2],
       blocks: [
         createBlock({
@@ -1129,8 +1434,9 @@ describe("group pageIds", () => {
   it("flags a heading allHidden only when every page beneath it is hidden", () => {
     const q1 = createQuery({ id: 1, name: "Q1", status: "done" });
     const q2 = createQuery({ id: 2, name: "Q2", status: "done" });
-    const tree = getAllTabExplorationSidebarTree({
+    const tree = sidebarTree({
       queries: [q1, q2],
+      showHidden: true,
       blocks: [
         createBlock({
           id: 10,
@@ -1216,7 +1522,7 @@ describe("getExplorationSidebarTree sub-exploration nesting", () => {
       threads: [initialThread(), followUpThread()],
     });
 
-    const tree = getExplorationSidebarTree(exploration, allTreeFilter);
+    const tree = sidebarTree({ exploration });
 
     const followUpNode = tree.find((node) => node.id === 2);
     // The redundant "Revenue" metric-group row is folded away; its page is
@@ -1255,7 +1561,7 @@ describe("getExplorationSidebarTree sub-exploration nesting", () => {
       threads: [initialThread(), followUpThread(), nestedThread],
     });
 
-    const tree = getExplorationSidebarTree(exploration, allTreeFilter);
+    const tree = sidebarTree({ exploration });
 
     // The nested drill is not a top-level node...
     expect(tree.map((node) => node.id)).toEqual([1, 2]);
@@ -1293,7 +1599,7 @@ describe("getExplorationSidebarTree sub-exploration nesting", () => {
       threads: [initialThread(), orphanThread],
     });
 
-    const tree = getExplorationSidebarTree(exploration, allTreeFilter);
+    const tree = sidebarTree({ exploration });
 
     expect(tree.map((node) => node.id)).toEqual([1, 4]);
     // No parent to derive a metric prefix from — and no folding trigger, so
@@ -1329,38 +1635,13 @@ describe("getShimmerDelayStyle", () => {
 });
 
 describe("getExplorationSidebarModel", () => {
-  function modelFor(
-    opts: Parameters<typeof createExploration>[0] = {},
-    {
-      tab = "all" as const,
-      showHidden = false,
-    }: { tab?: "all" | "stars" | "discussions"; showHidden?: boolean } = {},
-  ) {
-    const exploration = createExploration(opts);
-    return getExplorationSidebarModel({
-      exploration,
-      selectedSidebarTab: tab,
-      tabsInfo: getExplorationSidebarTabsInfo(exploration),
-      showHidden,
-    });
-  }
-
-  it("detects initial-thread loading on the All tab", () => {
-    expect(
-      modelFor({
-        queries: [],
-        thread: { status: "running", started_at: "2026-04-30T00:00:00Z" },
-      }).contentMode,
-    ).toBe("loading");
-  });
-
-  it("does not treat explore-further planning as a full-sidebar loading state", () => {
+  function explorationWithEmptyFollowUp(followUpStatus: "pending" | "running") {
     const existingQuery = createQuery({
       id: 1,
       name: "Existing chart",
       status: "done",
     });
-    const exploration = createExploration({
+    return createExploration({
       threads: [
         createThread({
           id: 1,
@@ -1376,6 +1657,7 @@ describe("getExplorationSidebarModel", () => {
                   id: 1,
                   name: "Existing chart",
                   query_ids: [1],
+                  starred: true,
                 }),
               ],
             }),
@@ -1383,7 +1665,7 @@ describe("getExplorationSidebarModel", () => {
         }),
         createThread({
           id: 2,
-          status: "running",
+          status: followUpStatus,
           started_at: "2026-04-30T00:00:00Z",
           position: 1,
           queries: [],
@@ -1391,20 +1673,50 @@ describe("getExplorationSidebarModel", () => {
         }),
       ],
     });
-    const model = getExplorationSidebarModel({
-      exploration,
-      selectedSidebarTab: "all",
-      tabsInfo: getExplorationSidebarTabsInfo(exploration),
-      showHidden: false,
-    });
+  }
 
-    expect(model.contentMode).toBe("tree");
-    expect(model.tree.length).toBeGreaterThan(0);
-  });
+  it.each(["pending", "running"] as const)(
+    "treats an empty %s initial thread as a full-sidebar loading state on the All tab",
+    (status) => {
+      expect(
+        sidebarModel({
+          queries: [],
+          thread: { status, started_at: "2026-04-30T00:00:00Z" },
+        }).contentMode,
+      ).toBe("loading");
+    },
+  );
+
+  it.each(["pending", "running"] as const)(
+    "keeps an empty %s follow-up thread on the All tab so its loading row is visible",
+    (status) => {
+      const exploration = explorationWithEmptyFollowUp(status);
+      const model = sidebarModel({ exploration });
+
+      expect(model.contentMode).toBe("tree");
+      expect(model.tree.map((node) => node.id)).toEqual([1, 2]);
+      expect(model.tree[1]?.data).toMatchObject({
+        type: "heading",
+        headingKind: "sub-exploration",
+      });
+      expect(model.tree[1]?.children ?? []).toHaveLength(0);
+    },
+  );
+
+  it.each(["pending", "running"] as const)(
+    "does not keep an empty %s follow-up thread on the Stars tab",
+    (status) => {
+      const exploration = explorationWithEmptyFollowUp(status);
+      const model = sidebarModel({ exploration, tab: "stars" });
+
+      expect(model.contentMode).toBe("tree");
+      expect(model.tree.map((node) => node.id)).toEqual([1]);
+    },
+  );
 
   it("detects permission denial from forbidden thread status", () => {
     expect(
-      modelFor({
+      sidebarModel({
         queries: [],
         thread: {
           status: "forbidden",
@@ -1417,7 +1729,7 @@ describe("getExplorationSidebarModel", () => {
   it.each(["failed", "canceled"] as const)(
     "keeps an empty %s initial thread on the All tab so Restart stays reachable",
     (status) => {
-      const model = modelFor({
+      const model = sidebarModel({
         queries: [],
         thread: {
           status,
@@ -1440,7 +1752,7 @@ describe("getExplorationSidebarModel", () => {
   );
 
   it("still prunes an empty planner-empty thread on the All tab", () => {
-    const model = modelFor({
+    const model = sidebarModel({
       queries: [],
       thread: {
         status: "empty",
@@ -1453,16 +1765,14 @@ describe("getExplorationSidebarModel", () => {
   });
 
   it("does not keep an empty failed thread on the Stars tab", () => {
-    const model = modelFor(
-      {
-        queries: [],
-        thread: {
-          status: "failed",
-          completed_at: "2026-04-30T00:01:00Z",
-        },
+    const model = sidebarModel({
+      queries: [],
+      thread: {
+        status: "failed",
+        completed_at: "2026-04-30T00:01:00Z",
       },
-      { tab: "stars" },
-    );
+      tab: "stars",
+    });
 
     expect(model.contentMode).toBe("empty");
     expect(model.tree).toHaveLength(0);
@@ -1474,31 +1784,29 @@ describe("getExplorationSidebarModel", () => {
       name: "Hidden chart",
       status: "done",
     });
-    const model = modelFor(
-      {
-        queries: [hiddenQuery],
-        blocks: [
-          createBlock({
-            id: 1,
-            name: "Revenue",
-            pages: [
-              createPage({
-                id: 900,
-                name: "Hidden chart",
-                query_ids: [9],
-                hidden: true,
-                starred: true,
-              }),
-            ],
-          }),
-        ],
-        thread: {
-          status: "completed",
-          completed_at: "2026-04-30T00:01:00Z",
-        },
+    const model = sidebarModel({
+      queries: [hiddenQuery],
+      blocks: [
+        createBlock({
+          id: 1,
+          name: "Revenue",
+          pages: [
+            createPage({
+              id: 900,
+              name: "Hidden chart",
+              query_ids: [9],
+              hidden: true,
+              starred: true,
+            }),
+          ],
+        }),
+      ],
+      thread: {
+        status: "completed",
+        completed_at: "2026-04-30T00:01:00Z",
       },
-      { tab: "stars" },
-    );
+      tab: "stars",
+    });
 
     expect(model.contentMode).toBe("all-hidden");
   });

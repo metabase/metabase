@@ -228,9 +228,13 @@
                     [:+ {:lib/uuid (str (random-uuid))} field 1]
                     [:- {:lib/uuid (str (random-uuid))} field 1]
                     [:* {:lib/uuid (str (random-uuid))} field 1]])
-            :let [clause [tag
-                          {:lib/uuid (str (random-uuid))}
-                          arg]]]
+            :let [clause (cond-> [tag
+                                  {:lib/uuid (str (random-uuid))}
+                                  arg]
+                           (= tag :percentile) (conj 0.5)
+                           (= tag :sum-where)  (conj [:> {:lib/uuid (str (random-uuid))}
+                                                      [:field {:lib/uuid (str (random-uuid))} (meta/id :venues :price)]
+                                                      1]))]]
       (testing (str \newline (pr-str clause))
         (is (= :type/Number
                (lib.schema.expression/type-of clause)))
@@ -439,7 +443,7 @@
                   :name           "count"
                   :display-name   "Count"
                   :lib/source     :source/aggregations}
-                 {:settings       {:is_priceless true}
+                 {:settings       {:decimals 2}
                   :lib/type       :metadata/column
                   :effective-type :type/Integer
                   :name           "sum"
@@ -619,10 +623,10 @@
                      (filterv :selected?))))))))
 
 (deftest ^:parallel preserve-field-settings-metadata-test
-  (testing "Aggregation metadata should return the `:settings` for the field being aggregated, for some reason."
+  (testing "Aggregation metadata should inherit value-formatting `:settings` from the field being aggregated."
     (let [query (-> (lib.tu/venues-query)
                     (lib/aggregate (lib/sum (meta/field-metadata :venues :price))))]
-      (is (=? {:settings       {:is_priceless true}
+      (is (=? {:settings       {:decimals 2}
                :lib/type       :metadata/column
                :effective-type :type/Integer
                :name           "sum"
@@ -1109,3 +1113,29 @@
       (testing "the joined card's aggregation column is offered as an aggregation input"
         (is (some? maxcol)))
       (is (= 1 (count (lib/aggregations (lib/aggregate joined (lib/sum maxcol)))))))))
+
+(deftest ^:parallel aggregation-column-test
+  (testing "column each aggregation produces, named before the stage deduplicates its column names"
+    (let [measure-mp (lib.tu/mock-metadata-provider
+                      meta/metadata-provider
+                      {:measures [{:id         1
+                                   :name       "Revenue"
+                                   :table-id   (meta/id :venues)
+                                   :definition (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                                                   (lib/aggregate (lib/sum (meta/field-metadata :venues :price))))}]})
+          query      (lib/test-query measure-mp
+                                     {:stages [{:source       {:type :table :id (meta/id :venues)}
+                                                :breakouts    [{:type :column :name "NAME"}]
+                                                :aggregations [{:type :operator :operator :sum :args [{:type :column :name "PRICE"}]}
+                                                               {:type :operator :operator :sum :args [{:type :column :name "LATITUDE"}]}
+                                                               {:type :operator :operator :count}
+                                                               {:type :operator :operator :distinct :args [{:type :column :name "CATEGORY_ID"}]}
+                                                               {:type :operator :operator :count :name "NAME"}
+                                                               {:type :measure :id 1}
+                                                               {:name "revenue" :value {:type :measure :id 1}}]}]})]
+      (is (= ["sum" "sum" "count" "count" "NAME" "sum" "revenue"]
+             (map #(:name (lib/aggregation-column query -1 %)) (lib/aggregations query))))
+      (is (=? [{:display-name "Sum of Price" :lib/source :source/aggregations}]
+              [(lib/aggregation-column query -1 (first (lib/aggregations query)))]))
+      (is (= ["NAME" "sum" "sum_2" "count" "count_2" "NAME_2" "sum_3" "revenue"]
+             (map :name (lib/returned-columns query)))))))

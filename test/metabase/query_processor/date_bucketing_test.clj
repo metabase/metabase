@@ -33,6 +33,7 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.format-rows :as format-rows]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   ;; reads the provider that mt/with-metadata-provider binds in the ambient store
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
@@ -1458,7 +1459,8 @@
               [int]
               (mt/run-mbql-query checkins
                 {:aggregation [[:count]]
-                 :filter [:= [:field $timestamp nil] (t/format "yyyy-MM-dd" (u.date/truncate :day))]})))))))
+                 :filter [:= [:field $timestamp nil]
+                          (t/format "yyyy-MM-dd" (t/zoned-date-time))]})))))))
 
 (deftest ^:parallel default-bucketing-test-2
   ;; this is basically the same test as above, but using the office-checkins dataset instead of the dynamically
@@ -1505,7 +1507,7 @@
                 [int]
                 (mt/run-mbql-query checkins
                   {:aggregation [[:count]]
-                   :filter [:= [:field $timestamp nil] (str (t/format "yyyy-MM-dd" (u.date/truncate :day))
+                   :filter [:= [:field $timestamp nil] (str (t/format "yyyy-MM-dd" (t/zoned-date-time))
                                                             "T14:16:00Z")]}))))))))
 
 (def ^:private addition-unit-filtering-vals

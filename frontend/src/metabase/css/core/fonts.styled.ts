@@ -1,4 +1,4 @@
-// eslint-disable-next-line no-restricted-imports
+// eslint-disable-next-line eslint-js/no-restricted-imports
 import { css } from "@emotion/react";
 
 export const defaultFontFiles = ({ baseUrl = "./" } = {}) => {
@@ -485,6 +485,30 @@ export const defaultFontFiles = ({ baseUrl = "./" } = {}) => {
         local("PT Sans Bold"),
         local("PTSans-Bold"),
         url("${basePath}/PT_Sans/PTSans-Bold.woff2") format("woff2");
+      font-weight: bold;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: "JetBrains Mono";
+      src:
+        local("JetBrains Mono"),
+        local("JetBrainsMono-Regular"),
+        url("${basePath}/JetBrains_Mono/JetBrainsMono-Regular.woff2")
+          format("woff2");
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: "JetBrains Mono";
+      src:
+        local("JetBrains Mono Bold"),
+        local("JetBrainsMono-Bold"),
+        url("${basePath}/JetBrains_Mono/JetBrainsMono-Bold.woff2")
+          format("woff2");
       font-weight: bold;
       font-style: normal;
       font-display: swap;

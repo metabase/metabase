@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import type { AnySchema } from "yup";
 import * as Yup from "yup";
 
-import { getIcon, queryIcon, render, screen, waitFor } from "__support__/ui";
+import { render, screen, waitFor } from "__support__/ui";
 import {
   Form,
   FormProvider,
@@ -66,7 +66,7 @@ describe("FormTextInput", () => {
     });
 
     expect(screen.getByDisplayValue("Test")).toBeInTheDocument();
-    expect(getIcon("copy")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Copy" })).toBeInTheDocument();
   });
 
   it("should not show copy button when disabled", () => {
@@ -76,7 +76,9 @@ describe("FormTextInput", () => {
     });
 
     expect(screen.getByDisplayValue("Test")).toBeInTheDocument();
-    expect(queryIcon("copy")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Copy" }),
+    ).not.toBeInTheDocument();
   });
 
   it("should submit a non-empty value", async () => {

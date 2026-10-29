@@ -32,6 +32,12 @@ Then you can run `bun run storybook-embedding-sdk` to start storybook.
 
 Storybook will use the source files and not the built package.
 
+By default the stories connect to a Metabase instance at `http://localhost:3000`. To point them at a different instance, set `STORYBOOK_METABASE_INSTANCE_URL` when starting storybook:
+
+```bash
+STORYBOOK_METABASE_INSTANCE_URL=http://localhost:3010 bun run storybook-embedding-sdk
+```
+
 ## E2E tests
 
 ### Component e2e tests
@@ -76,16 +82,6 @@ For example for the `metabase-nodejs-react-sdk-embedding-sample`, run:
 ```
 SDK_TEST_SUITE=metabase-nodejs-react-sdk-embedding-sample-e2e bun run test-cypress-host-sample-apps
 ```
-
-##### :warning: Obtaining the Shoppy's Metabase App DB Dump locally
-
-For the Shoppy's Sample App Tests (`SDK_TEST_SUITE=shoppy-e2e`) locally, a proper App DB dump of the Shoppy's Metabase instance must be placed to the `./e2e/tmp/db_dumps/shoppy_metabase_app_db_dump.sql`
-
-You can get it by:
-
-- Enabling the `Tailscale` and logging in using your work email address.
-- Running `pg_dump "postgres://{{ username }}:{{ password }}@{{ host }}:{{ port }}/{{ database }}" > ./e2e/tmp/db_dumps/shoppy_metabase_app_db_dump.sql` command.
-  - See the `Shoppy Coredev Appdb` record in `1password` for credentials.
 
 #### CI runs
 

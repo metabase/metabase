@@ -39,8 +39,10 @@
   * In general the methods in these namespaces return the number of rows updated; these numbers are summed and used
     for logging purposes by higher-level sync logic."
   (:require
+   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
+   [metabase.sync.db :as sync.db]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.fields.our-metadata :as fields.our-metadata]
@@ -50,8 +52,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.models.table :as table]
-   [toucan2.core :as t2]
    [toucan2.util :as t2.util]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -94,11 +94,12 @@
    table       :- i/TableInstance
    db-metadata :- [:set i/TableMetadataField]]
   (let [db-metadata (limit-fields-to-sync table db-metadata)]
-    (+ (sync-instances/sync-instances! table db-metadata (fields.our-metadata/our-metadata table))
-       ;; Now that tables are synced and fields created as needed make sure field properties are in sync.
-       ;; Re-fetch our metadata because there might be some things that have changed after calling
-       ;; `sync-instances`
-       (sync-metadata/update-metadata! database table db-metadata (fields.our-metadata/our-metadata table)))))
+    (dependencies.hooks/with-batched-marks
+      (+ (sync-instances/sync-instances! table db-metadata (fields.our-metadata/our-metadata table))
+         ;; Now that tables are synced and fields created as needed make sure field properties are in sync.
+         ;; Re-fetch our metadata because there might be some things that have changed after calling
+         ;; `sync-instances`
+         (sync-metadata/update-metadata! database table db-metadata (fields.our-metadata/our-metadata table))))))
 
 (defn- select-best-matching-name
   "Returns a key function for use with [[sort-by]] that ranks items based on how closely their `:schema` and `:name` match the given target values.
@@ -108,9 +109,11 @@
     [(not= (:schema item) target-schema)
      (not= (:name item) target-name)]))
 
-(mu/defn sync-fields! :- [:map
-                          [:updated-fields ms/IntGreaterThanOrEqualToZero]
-                          [:total-fields   ms/IntGreaterThanOrEqualToZero]]
+(mu/defn sync-fields! :- [:or
+                          [:map
+                           [:updated-fields ms/IntGreaterThanOrEqualToZero]
+                           [:total-fields   ms/IntGreaterThanOrEqualToZero]]
+                          (ms/InstanceOfClass Throwable)]
   "Sync the Fields in the Metabase application database for all the Tables in a `database`.
 
   `fields-metadata` is a *reducible* of per-column metadata, ordered so a table's columns are contiguous. It is passed
@@ -121,19 +124,23 @@
   [database :- i/DatabaseInstance]
   (sync-util/with-error-handling (format "Error syncing Fields for Database ''%s''" (sync-util/name-for-logging database))
     (let [driver          (driver.u/database->driver database)
-          schemas?        (driver.u/supports? driver :schemas database)]
+          schemas?        (driver.u/supports? driver :schemas database)
+          sync-table-id?  (set (sync.db/sync-table-ids (:id database)))]
       (letfn [(sync! [fields-metadata]
                 (transduce (comp
                             (partition-by (juxt :table-name :table-schema))
                             (map (fn [table-metadata]
                                    (let [{:keys [table-name table-schema]} (first table-metadata)
-                                         table   (->> (t2/select :model/Table
-                                                                 :db_id (:id database)
-                                                                 :%lower.name (t2.util/lower-case-en table-name)
-                                                                 :%lower.schema (some-> table-schema t2.util/lower-case-en)
-                                                                 {:where sync-util/sync-tables-clause})
-                                                      (sort-by (select-best-matching-name table-schema table-name))
-                                                      first)
+                                         ;; match over hidden Tables too, so a hidden Table's columns are never
+                                         ;; given to a visible Table whose name differs only in case
+                                         table   (let [best (->> (sync.db/active-tables-by-lower-name-and-schema
+                                                                  (:id database)
+                                                                  (t2.util/lower-case-en table-name)
+                                                                  (some-> table-schema t2.util/lower-case-en))
+                                                                 (sort-by (select-best-matching-name table-schema table-name))
+                                                                 first)]
+                                                   (when (sync-table-id? (:id best))
+                                                     best))
                                          updated (if table
                                                    (try
                                                      ;; TODO: decouple nested field columns sync from field sync. This will allow
@@ -145,7 +152,16 @@
                                                                          table)]
                                                        (sync-and-update! database table all-metadata))
                                                      (catch Exception e
-                                                       (log/error (ex-message e))
+                                                       ;; an unreachable warehouse fails every table: abort the step
+                                                       (when (sync-util/transient-exception? e)
+                                                         (throw e))
+                                                       ;; a missing grant or FDW user mapping is for the customer to
+                                                       ;; fix, not a Metabase bug
+                                                       (if (sync-util/customer-environment-exception? e)
+                                                         (log/warnf "Error syncing Fields for %s: %s"
+                                                                    (sync-util/name-for-logging table) (ex-message e))
+                                                         (log/errorf e "Error syncing Fields for %s: %s"
+                                                                     (sync-util/name-for-logging table) (ex-message e)))
                                                        0))
                                                    0)]
                                      {:total-fields   (count table-metadata)
@@ -169,7 +185,7 @@
 (mu/defn sync-fields-for-table!
   "Sync the Fields in the Metabase application database for a specific `table`."
   ([table :- i/TableInstance]
-   (sync-fields-for-table! (table/database table) table))
+   (sync-fields-for-table! (driver.u/lib-database (:db_id table)) table))
 
   ([database :- i/DatabaseInstance
     table    :- i/TableInstance]

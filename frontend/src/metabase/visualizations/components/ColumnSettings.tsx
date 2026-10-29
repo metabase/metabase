@@ -5,13 +5,13 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import ChartSettingsWidget, {
   type ChartSettingsWidgetVariant,
 } from "metabase/visualizations/components/ChartSettingsWidget";
-import { getComputedSettings } from "metabase/visualizations/lib/settings";
-import { getSettingDefinitionsForColumn } from "metabase/visualizations/lib/settings/column";
-import { getSettingsWidgets } from "metabase/visualizations/lib/widgets";
-import type {
-  FormattableColumn,
-  SettingsExtra,
-} from "metabase/visualizations/types";
+import {
+  type FormattableColumn,
+  type SettingsExtra,
+  getComputedSettings,
+  getSettingDefinitionsForColumn,
+  getSettingsWidgets,
+} from "metabase/viz-core";
 import type {
   ColumnSettings as ApiColumnSettings,
   Series,
@@ -26,6 +26,7 @@ type CommonProps = {
   allowlist?: ReadonlySet<string>;
   denylist?: ReadonlySet<string>;
   extraData?: Omit<SettingsExtra, "series">;
+  disabled?: boolean;
 };
 
 type GetWidgetsProps = CommonProps & {
@@ -50,6 +51,7 @@ function getWidgets({
   allowlist,
   denylist,
   extraData,
+  disabled,
 }: GetWidgetsProps) {
   // fake series
   const series: Series = [];
@@ -83,11 +85,15 @@ function getWidgets({
     { series, ...extraData },
   );
 
-  return widgets.filter(
-    (widget) =>
-      (!allowlist || allowlist.has(widget.id)) &&
-      (!denylist || !denylist.has(widget.id)),
-  );
+  return widgets
+    .filter(
+      (widget) =>
+        (!allowlist || allowlist.has(widget.id)) &&
+        (!denylist || !denylist.has(widget.id)),
+    )
+    .map((widget) =>
+      disabled ? { ...widget, props: { ...widget.props, disabled } } : widget,
+    );
 }
 
 export function hasColumnSettingsWidgets({

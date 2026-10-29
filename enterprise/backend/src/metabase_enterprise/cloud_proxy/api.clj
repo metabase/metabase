@@ -28,7 +28,7 @@
   schema cannot dispatch on the `:operation-id` route param, and each is therefore optional -- the operation
   itself rejects parameters that don't belong to it, or are missing. Adding an operation to the allowlists
   above means adding its parameters here."
-  [:map {:decode/normalize lib.schema.common/normalize-map}
+  [:map {:closed true :decode/normalize lib.schema.common/normalize-map}
    [:plan-alias      {:optional true} ms/NonBlankString]
    [:new-plan-alias  {:optional true} ms/NonBlankString]
    [:force-end-trial {:optional true} :boolean]])
@@ -44,7 +44,7 @@
    This endpoint is used only for hosted instances, and calls Harbormaster Store using a OpenAPI client.
    :operation-id is the operation-id of the Harbormaster Store endpoint.
    All parameters for the operation are taken in the POST body."
-  [{:keys [operation-id]} :- [:map
+  [{:keys [operation-id]} :- [:map {:closed true}
                               [:operation-id ms/NonBlankString]]
    _query-params
    body :- [:maybe OperationParams]]

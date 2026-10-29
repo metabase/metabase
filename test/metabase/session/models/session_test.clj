@@ -195,3 +195,29 @@
           (is (not= (codecs/bytes->hex (buddy-hash/sha512 key-bytes))
                     (session/hash-session-key session-key))
               "keyed hash must differ from the unsalted SHA-512 an attacker can compute"))))))
+
+(deftest before-update-only-allows-an-ending-test
+  (mt/with-temp [:model/User {user-id :id}]
+    (mt/with-model-cleanup [:model/Session]
+      (let [session-id (session/generate-session-id)]
+        (t2/insert! :model/Session {:id session-id :user_id user-id :session_key (session/generate-session-key)})
+        (testing "no column outside the four an ending writes can be updated"
+          (doseq [changes [{:expires_at (t/instant)}
+                           {:user_id (mt/user->id :rasta)}
+                           {:last_active_at (t/instant)}
+                           {:ended_at (t/instant), :expires_at (t/instant)}]]
+            (is (thrown-with-msg? RuntimeException #"You cannot update a Session"
+                                  (t2/update! :model/Session session-id changes)))))
+        (testing "recording an ending is allowed"
+          (is (= 1 (t2/update! :model/Session session-id {:ended_at         (t/instant)
+                                                          :end_reason       "admin"
+                                                          :ended_by_user_id (mt/user->id :crowberto)
+                                                          :key_hashed       nil}))))
+        (testing "an ending is final: nothing an ending writes can be changed once it is recorded"
+          (doseq [changes [{:ended_at nil}
+                           {:ended_at (t/instant)}
+                           {:end_reason "timed-out"}
+                           {:ended_by_user_id (mt/user->id :rasta)}
+                           {:key_hashed (session/hash-session-key (session/generate-session-key))}]]
+            (is (thrown-with-msg? RuntimeException #"You cannot change a Session that has ended"
+                                  (t2/update! :model/Session session-id changes)))))))))

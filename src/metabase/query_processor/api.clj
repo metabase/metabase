@@ -2,8 +2,11 @@
   "/api/dataset endpoints."
   (:refer-clojure :exclude [get-in select-keys])
   (:require
+   [malli.core :as mc]
+   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.data-apps.core :as data-apps]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
@@ -13,6 +16,7 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.model-persistence.core :as model-persistence]
    [metabase.models.interface :as mi]
    [metabase.models.visualization-settings :as mb.viz]
@@ -36,10 +40,11 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   ;; defendpoint param schemas (ms/PositiveInt etc.); lib.schema has no API-param coercion schemas
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.util.malli.schema :as ms]
    [metabase.util.performance :refer [get-in select-keys]]
-   [steffan-westcott.clj-otel.api.trace.span :as span]
-   ^{:clj-kondo/ignore [:discouraged-namespace]} [toucan2.core :as t2]))
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [steffan-westcott.clj-otel.api.trace.span :as span]))
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
 
@@ -58,20 +63,24 @@
   [query :- [:or ::lib.schema/query ::lib-be.schema/internal-query]
    & {:keys [context export-format was-pivot]
       :or   {context       :ad-hoc
-             export-format :api}}]
+             export-format :api}}
+   :- [:maybe [:map {:closed true}
+               [:context       {:optional true} ::lib.schema.info/context]
+               [:export-format {:optional true} ::qp.schema/export-format]
+               [:was-pivot     {:optional true} [:maybe :boolean]]]]]
   (span/with-span!
     {:name "run-query-async"}
     ;; store table id trivially iff we get a query with simple source-table
     (let [table-id (when (= (lib/normalized-query-type query) :mbql/query)
                      (lib/primary-source-table-id query))]
       (when (int? table-id)
-        (events/publish-event! :event/table-read {:object  (t2/select-one :model/Table :id table-id)
+        (events/publish-event! :event/table-read {:object  (warehouse-schema.db/table table-id)
                                                   :user-id api/*current-user-id*})))
     ;; add sensible constraints for results limits on our query
     (let [source-card-id (when (= (lib/normalized-query-type query) :mbql/query)
                            (query->source-card-id query))
           source-card    (when source-card-id
-                           (t2/select-one [:model/Card :entity_id :result_metadata :type :card_schema] :id source-card-id))
+                           (queries/card-query-info source-card-id))
           info           (cond-> {:executed-by api/*current-user-id*
                                   :context     context
                                   :card-id     source-card-id}
@@ -95,11 +104,15 @@
 (api.macros/defendpoint :post "/"
   :- (server/streaming-response-schema ::qp.schema/query-result)
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
+  {:scope api-scope/data-app}
   [_route-params
    _query-params
-   query :- ::lib-be.schema/maybe-legacy-or-internal-query]
+   query :- ::lib-be.schema/maybe-legacy-or-internal-query
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-query query))
   (run-streaming-query
    (-> query
+       (dissoc :cache-strategy)
        (update-in [:middleware :js-int-to-string?] (fnil identity true))
        qp/userland-query-with-default-constraints)))
 
@@ -110,7 +123,7 @@
   in `export-format`.
 
     (export-format->context :json) ;-> :json-download"
-  [export-format]
+  [export-format :- ::qp.schema/export-format]
   (keyword (str (u/qualified-name export-format) "-download")))
 
 (def ^:private column-ref-regex #"^\[.+\]$")
@@ -126,7 +139,8 @@
 (api.macros/defendpoint :post ["/:export-format", :export-format qp.schema/export-formats-regex]
   :- (server/streaming-response-schema ::qp.schema/query-result)
   "Execute a query and download the result data as a file in the specified format."
-  [{:keys [export-format]} :- [:map
+  {:scope api-scope/data-app}
+  [{:keys [export-format]} :- [:map {:closed true}
                                [:export-format ::qp.schema/export-format]]
    _query-params
    {{:keys [was-pivot] :as query} :query
@@ -136,25 +150,26 @@
     visualization-settings        :visualization_settings}
    ;; Support JSON-encoded query and viz settings for backwards compatibility for when downloads used to be triggered by
    ;; `<form>` submissions... see https://metaboat.slack.com/archives/C010L1Z4F9S/p1738003606875659
-   :- [:map
+   :- [:map {:closed true}
        [:query                  [:schema
                                  {:decode/api (fn [x]
                                                 (cond-> x
                                                   (string? x) json/decode))}
                                  ::lib-be.schema/maybe-legacy-or-internal-query]]
-       [:visualization_settings {:default {}} [:map
-                                               {:closed     false
-                                                :decode/api (fn [x]
-                                                              (cond-> x
-                                                                (string? x) (json/decode viz-setting-key-fn)))}]]
+       [:visualization_settings {:default {}} (mu/with ms/VisualizationSettings
+                                                       {:decode/api (fn [x]
+                                                                      (cond-> x
+                                                                        (string? x) (json/decode viz-setting-key-fn)))})]
        [:format_rows            {:default false} ms/BooleanValue]
        [:pivot_results          {:default false} ms/BooleanValue]
-       [:csv_include_bom         {:default false} ms/BooleanValue]]]
+       [:csv_include_bom         {:default false} ms/BooleanValue]]
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-query query))
   (let [viz-settings                  (-> visualization-settings
                                           mi/normalize-visualization-settings
                                           mb.viz/norm->db)
         query                         (-> query
-                                          (dissoc :constraints)
+                                          (dissoc :constraints :cache-strategy)
                                           (assoc :viz-settings viz-settings)
                                           (update :middleware #(-> %
                                                                    (select-keys [:ignore-cached-results?])
@@ -183,9 +198,12 @@
 
   You can pass `{:settings {:include-sensitive-fields true}}` in the query to include fields with
   visibility_type :sensitive in the response."
+  {:scope api-scope/data-app}
   [_route-params
    _query-params
-   query :- ::lib-be.schema/maybe-legacy-query]
+   query :- ::lib-be.schema/maybe-legacy-query
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-query query))
   (queries/batch-fetch-query-metadata
    [query]
    (when-some [include-sensitive-fields (get-in query [:settings :include-sensitive-fields])]
@@ -197,11 +215,14 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/native"
   "Fetch a native version of an MBQL query."
+  {:scope api-scope/data-app}
   [_route-params
    _query-params
-   {:keys [database pretty] :as query} :- [:map {:closed false}
-                                           [:database ms/PositiveInt]
-                                           [:pretty   {:default true} [:maybe :boolean]]]]
+   {:keys [database pretty] :as query} :- [:map {:closed true}
+                                           [:pretty {:default true} [:maybe :boolean]]
+                                           [::mc/default ::lib-be.schema/maybe-legacy-query]]
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-query (dissoc query :pretty)))
   (model-persistence/with-persisted-substituion-disabled
     (let [query (-> (lib-be/normalize-query (dissoc query :pretty))
                     (dissoc :constraints :middleware)
@@ -223,25 +244,30 @@
             (let [compiled (qp.compile/compile-preprocessed preprocessed)
                   driver (driver.u/database->driver database)]
               ;; Return only the compiled query and its params, not the internal keys the compiler carries
-              ;; through (e.g. :lib/type, :query-permissions/referenced-card-ids).
-              (-> (select-keys compiled [:query :params])
+              ;; through (e.g. :lib/type, :query-permissions/referenced-card-ids). `:collection` is kept so
+              ;; the frontend can pre-select the source table when converting a MongoDB question to native.
+              (-> (select-keys compiled [:query :params :collection])
                   (cond-> pretty (update :query #(driver/prettify-native-form driver %)))))))))))
 
 (api.macros/defendpoint :post "/pivot"
   :- (server/streaming-response-schema ::qp.schema/query-result)
   "Generate a pivoted dataset for an ad-hoc query"
+  {:scope api-scope/data-app}
   [_route-params
    _query-params
-   {:keys [database] :as query} :- ::lib-be.schema/maybe-legacy-query]
+   {:keys [database] :as query} :- ::lib-be.schema/maybe-legacy-query
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-query query))
   (api/read-check :model/Database database)
   (let [info {:executed-by api/*current-user-id*
               :context     :ad-hoc}]
     (qp.streaming/streaming-response [rff :api]
-      (qp.pivot/run-pivot-query (assoc (update query :middleware select-keys [:js-int-to-string? :ignore-cached-results?])
+      (qp.pivot/run-pivot-query (assoc (-> query
+                                           (dissoc :cache-strategy)
+                                           (update :middleware select-keys [:js-int-to-string? :ignore-cached-results?]))
                                        :constraints (qp.constraints/default-query-constraints)
                                        :info        info)
-                                rff)
-      query)))
+                                rff))))
 
 (defn- parameter-field-values
   [field-ids query]
@@ -273,12 +299,15 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/parameter/values"
   "Return parameter values for cards or dashboards that are being edited."
+  {:scope api-scope/data-app}
   [_route-params
    _query-params
    {:keys     [parameter]
-    field-ids :field_ids} :- [:map
+    field-ids :field_ids} :- [:map {:closed true}
                               [:parameter ::parameters.schema/parameter]
-                              [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]]
+                              [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-parameter parameter field-ids))
   (parameter-values parameter field-ids nil))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -287,13 +316,16 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/parameter/search/:query"
   "Return parameter values for cards or dashboards that are being edited. Expects a query string at `?query=foo`."
-  [{:keys [query]} :- [:map
+  {:scope api-scope/data-app}
+  [{:keys [query]} :- [:map {:closed true}
                        [:query ms/NonBlankString]]
    _query-params
    {:keys     [parameter]
-    field-ids :field_ids} :- [:map
+    field-ids :field_ids} :- [:map {:closed true}
                               [:parameter ::parameters.schema/parameter]
-                              [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]]
+                              [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-parameter parameter field-ids))
   (parameter-values parameter field-ids query))
 
 (defn param-remapped-value
@@ -316,10 +348,13 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :post "/parameter/remapping"
   "Return the remapped parameter values for cards or dashboards that are being edited."
+  {:scope api-scope/data-app}
   [_route-params
    _query-params
-   {:keys [parameter value field_ids]} :- [:map
+   {:keys [parameter value field_ids]} :- [:map {:closed true}
                                            [:parameter ::parameters.schema/parameter]
-                                           [:value :any]
-                                           [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]]
+                                           [:value [:ref ::lib.schema.parameter/parameter.value]]
+                                           [:field_ids {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]]
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-parameter parameter field_ids))
   (param-remapped-value field_ids parameter value))

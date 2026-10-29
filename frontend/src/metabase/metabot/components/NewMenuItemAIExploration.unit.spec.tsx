@@ -1,7 +1,7 @@
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import { metabotReducer } from "metabase/metabot/state";
 import { getMetabotInitialState } from "metabase/metabot/state/reducer-utils";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import { Menu } from "metabase/ui";
 

@@ -6,16 +6,13 @@ import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import { setupUserRecipientsEndpoint } from "__support__/server-mocks";
 import { setupNotificationChannelsEndpoints } from "__support__/server-mocks/pulse";
 import { mockSettings } from "__support__/settings";
+import { createMockDashboardState, createMockState } from "__support__/state";
 import type { Screen } from "__support__/ui";
 import { renderWithProviders, screen } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { isEmbeddingSdk as mockIsEmbeddingSdk } from "metabase/embedding-sdk/config";
 import type { SelectedTabId } from "metabase/redux/store";
-import {
-  createMockDashboardState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
   Dashboard,
@@ -62,14 +59,30 @@ const defaultParameters = [
   },
 ];
 
-function createDashboardState(
-  dashboard: Dashboard,
-  dashcards: DashboardCard[],
-  selectedTabId: SelectedTabId = null,
-) {
+type DashboardStateOpts = {
+  dashboard: Dashboard;
+  dashcards: DashboardCard[];
+  selectedTabId: SelectedTabId;
+  requestedSubscriptionId?: DashboardSubscription["id"];
+};
+
+function createDashboardState({
+  dashboard,
+  dashcards,
+  selectedTabId,
+  requestedSubscriptionId,
+}: DashboardStateOpts) {
   return createMockDashboardState({
     dashboardId: dashboard.id,
     selectedTabId,
+    ...(requestedSubscriptionId != null
+      ? {
+          sidebar: {
+            name: "sharing",
+            props: { subscriptionId: requestedSubscriptionId },
+          },
+        }
+      : {}),
     dashcards: dashcards.reduce(
       (acc, card) => {
         acc[card.id] = card;
@@ -89,6 +102,7 @@ function createDashboardState(
 
 type SetupOpts = {
   email?: boolean;
+  emailConfigured?: boolean;
   slack?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
@@ -105,10 +119,12 @@ type SetupOpts = {
     lastName: string;
   };
   pulseListDelay?: number;
+  requestedSubscriptionId?: DashboardSubscription["id"];
 };
 
 export function setup({
   email = true,
+  emailConfigured = true,
   slack = true,
   tokenFeatures = {},
   enterprisePlugins,
@@ -122,6 +138,7 @@ export function setup({
   pulses = [],
   currentUser,
   pulseListDelay = 0,
+  requestedSubscriptionId,
 }: SetupOpts = {}) {
   const dashboard = createMockDashboard({
     dashcards,
@@ -143,7 +160,7 @@ export function setup({
       allows_recipients: true,
       recipients: ["user", "email"],
       schedules: ["hourly", "daily", "weekly", "monthly"],
-      configured: true,
+      configured: emailConfigured,
     };
   }
 
@@ -220,7 +237,12 @@ export function setup({
           last_name: currentUser?.lastName,
           is_superuser: isAdmin,
         }),
-        dashboard: createDashboardState(dashboard, dashcards, selectedTabId),
+        dashboard: createDashboardState({
+          dashboard,
+          dashcards,
+          selectedTabId,
+          requestedSubscriptionId,
+        }),
       }),
     },
   );

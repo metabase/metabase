@@ -108,3 +108,36 @@
   [& body]
   `(binding [qp.pivot/*check-pivot-parity?* false]
      ~@body))
+
+(defmacro with-metadata-only-parity
+  "Compare pivot flows on column metadata (name/field_ref/source/base_type) only inside `body`, skipping the
+  row-frequency check. Use for tests whose query intentionally diverges on rows between the multi-query
+  and native paths (e.g. `:limit N` applied per-subquery) but should still agree on the FE-visible column
+  shape."
+  [& body]
+  `(mt/with-dynamic-fn-redefs [qp.pivot/pivot-outcome-comparator qp.pivot/pivot-cols-equivalent?]
+     ~@body))
+
+(defn do-with-pivot-flow-pinned!
+  "Pin `run-pivot-query` to one flow by toggling `use-native-pivot-tables` to `single?`."
+  [single? thunk]
+  (mt/with-temporary-setting-values [use-native-pivot-tables single?]
+    ;; disable parity checking so the other flows does't run alongside for comparison
+    (binding [qp.pivot/*check-pivot-parity?* false]
+      (thunk))))
+
+(defmacro with-multi-query-pivot!
+  "Force `run-pivot-query` to use the multi-query path inside `body`.
+
+  Use for tests that assert multi-query-specific behavior (per-subquery row cap, subquery skipping, etc.) whose
+  semantics don't translate to the single-query paths."
+  [& body]
+  `(do-with-pivot-flow-pinned! false (fn [] ~@body)))
+
+(defmacro with-single-query-pivot!
+  "Force `run-pivot-query` to use the single-query (native) path inside `body`.
+
+  Use for tests that assert single-query-specific behavior (`:max-results` cap, rollups-first ordering, etc.) whose
+  semantics don't translate to the multi-query path."
+  [& body]
+  `(do-with-pivot-flow-pinned! true (fn [] ~@body)))

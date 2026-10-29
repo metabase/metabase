@@ -9,7 +9,7 @@
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.util.malli :as mu]
-   [toucan2.core :as t2]))
+   [metabase.warehouse-schema.db :as warehouse-schema.db]))
 
 (mu/defn- partition-field->filter-form :- :mbql.clause/>
   "Given a partition field, returns the default value can be used to query."
@@ -51,10 +51,5 @@
   "Get the human readable (internally mapped) values of the field specified by `field-id`."
   [field-id :- pos-int?]
   (let [{orig :values, remapped :human_readable_values}
-        (t2/select-one [:model/FieldValues :values :human_readable_values]
-                       {:where [:and
-                                [:= :type "full"]
-                                [:= :field_id field-id]
-                                [:not= :human_readable_values nil]
-                                [:not= :human_readable_values "{}"]]})]
+        (warehouse-schema.db/full-field-values-with-human-readable-values field-id)]
     (some->> (seq remapped) (zipmap orig))))

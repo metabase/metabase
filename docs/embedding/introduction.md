@@ -16,9 +16,25 @@ There are two ways to embed Metabase.
 
 Most people go with modular embedding, so you can integrate Metabase components into your app.
 
-Whichever way you embed, you'll also pick how Metabase authenticates the people looking at it. Authentication is a setting on what you embed, not a different kind of embedding.
+Whichever way you embed, you'll also pick how Metabase authenticates the people viewing your embed. Authentication is a setting on what you embed, not a different kind of embedding.
 
 If you just want to share a chart or dashboard with anyone who has the link, and you don't need any authentication, take a look at [public links and embeds](#public-links-and-embeds).
+
+## Embedding hub
+
+![Embedding hub](./images/embedding-hub-getting-started.png)
+
+Admins set up embedding in the Embedding hub. To get there, click the **grid** icon in the upper right and select **Embedding hub**.
+
+The hub opens to **Get started**, a checklist for your first embed. The sidebar has the rest of the embedding settings:
+
+- **Security**: turn on [modular embedding](./modular-embedding.md#enable-modular-embedding), [guest embeds](./guest-embedding.md#turning-on-guest-embedding-in-metabase), or [full app embedding](./full-app-embedding.md#enabling-full-app-embedding-in-metabase), and set CORS and cookie settings.
+- **Authentication**: set up [JWT SSO](./authentication.md). SAML settings stay in Admin.
+- **Permissions**: control what data people can see in your embeds. If you use tenants, see [data permissions for tenants](./tenants.md#data-permissions-for-tenants).
+- **Tenancy**: [turn on multi-tenant strategy](./tenants.md#enable-multi-tenant-strategy) and manage tenants, tenant groups, and tenant users.
+- **Appearance**: create and manage [embedding themes](./appearance.md#embedding-themes).
+- **Localization**: [add a translation dictionary](./translations.md#add-a-translation-dictionary).
+- **New embed**: open the [embed wizard](./modular-embedding.md#create-a-new-embed).
 
 ## Modular embedding
 
@@ -48,18 +64,18 @@ All SSO options require a Pro or Enterprise plan.
 | [Drill-through menus](../questions/visualizations/drill-through.md)                       | ✅  | ❌    |
 | [Query builder](../questions/query-builder/editor.md)                                     | ✅  | ❌    |
 | [SQL editor](../questions/native-editor/writing-sql.md)                                   | ✅  | ❌    |
-| [AI chat](./sdk/ai-chat.md)                                                               | ✅  | ❌    |
+| [AI chat](./ai-chat.md)                                                                   | ✅  | ❌    |
 | [Collection browser](./browser.md)                                                        | ✅  | ❌    |
 | Advanced [Tenant](./tenants.md) and [permissions](../permissions/embedding.md) management | ✅  | ❌    |
 | [Advanced theming](./appearance.md)                                                       | ✅  | ❌    |
 | [Custom visualizations](./custom-visualizations.md)                                       | ✅  | ❌    |
 | [Usage analytics](../usage-and-performance-tools/usage-analytics.md)                      | ✅  | ❌    |
 | Customize layouts and behavior with [plugins](./sdk/plugins.md)                           | ✅  | ❌    |
-| [Locked filters](./guest-embedding.md#locked-parameters)\*\*\*                            | ❌  | ✅    |
+| [Locked filters](./parameters.md#restrict-data-on-guest-embeds)\*\*\*                     | ❌  | ✅    |
 
-\* Each authentication method allows data downloads by default, but only [Pro and Enterprise](https://www.metabase.com/pricing/) plans can disable data downloads.
+\* Each authentication method allows data downloads by default, but only [Pro and Enterprise](https://www.metabase.com/pricing) plans can disable data downloads.
 
-\*\* Requires a [Pro and Enterprise](https://www.metabase.com/pricing/) plan with either authentication method.
+\*\* Requires a [Pro and Enterprise](https://www.metabase.com/pricing) plan with either authentication method.
 
 \*\*\* Components that use SSO don't need locked filters. Since Metabase knows who's viewing, you can segregate data with [permissions](../permissions/embedding.md) instead. There's a little more set up, but much less long-term overhead.
 
@@ -81,7 +97,7 @@ With [guest authentication](./guest-embedding.md), Metabase doesn't create a ses
 
 Guest doesn't mean unsecured. Metabase only loads the component if the request carries a JWT signed with a secret shared between your app and your Metabase. What Metabase doesn't have is an identity: with no account to check permissions against, Metabase can't tell whether a new query is one that person should be allowed to run. That's why components with guest authentication are view-only.
 
-**When to use guest**: embedding charts and dashboards where you don't want to offer ad-hoc querying or chart drill-through. To filter data down to what's relevant to the person viewing, use [locked parameters](./guest-embedding.md#locked-parameters), where your app sets the filter value in the signed token.
+**When to use guest**: embedding charts and dashboards where you don't want to offer ad-hoc querying or chart drill-through. To filter data down to what's relevant to the person viewing, use [locked parameters](./parameters.md#restrict-data-on-guest-embeds), where your app sets the filter value in the signed token.
 
 ## Set up modular embeds with web components or React
 
@@ -102,6 +118,18 @@ If you'd like to share your data with the good people of the internet, admins ca
 
 **When to use public links and embeds**: one-off charts and dashboards. Admins can use public links when you just need to show someone a chart or dashboard without giving people access to your Metabase. And you don't care who sees the data; you want to make the item available to everyone.
 
+## Static embedding is deprecated
+
+Static embeds (also called signed embeds) put a signed JWT in an iframe URL, like `/embed/dashboard/YOUR_JWT_TOKEN`. Static embedding is deprecated in favor of [guest embeds](./guest-embedding.md), which use the same secret key and the same signed token, but render a web component instead of an iframe.
+
+Existing static embeds keep working. For items published with static embedding, the embed modal still offers **Use static embedding instead**. Their hash parameters are the same as the ones for public embeds, which are listed in [Appearance parameters](./public-links.md#appearance-parameters). To put filter values in the URL, see [Parameters in iframe embeds](./parameters.md#parameters-in-iframe-embeds).
+
+To migrate a static embed to a guest embed:
+
+- Keep your server-side signing code. The token payload (`resource`, `params`, and `exp`) is the same.
+- Replace the iframe with a `<metabase-dashboard>` or `<metabase-question>` element, and pass the token in its `token` attribute, as shown in [Creating a guest embed](./guest-embedding.md#creating-a-guest-embed).
+- If you use an AI coding agent, give it the [Static → guest embeds skill](https://skillsmp.com/creators/metabase/agent-skills/skills-metabase-static-embedding-to-guest-embedding-upgrade), which walks through the migration. See also [AI agent resources](./ai-agent-resources.md).
+
 ## Resources for AI agents
 
 If you're using an AI agent to help you embed Metabase in your app, check out [AI agent resources](./ai-agent-resources.md).
@@ -121,8 +149,6 @@ For information about the anonymous usage data Metabase collects from embedded c
 
 ## Further reading
 
-- [Strategies for delivering customer-facing analytics](https://www.metabase.com/learn/metabase-basics/embedding/overview).
-- [Publishing data visualizations to the web](https://www.metabase.com/learn/metabase-basics/embedding/charts-and-dashboards).
-- [Multi-tenant self-service analytics](https://www.metabase.com/learn/metabase-basics/embedding/multi-tenant-self-service-analytics).
+- [Tenants](./tenants.md).
 - [Customizing Metabase's appearance](../configuring-metabase/appearance.md).
 - [Securing embedded Metabase](./securing-embeds.md).

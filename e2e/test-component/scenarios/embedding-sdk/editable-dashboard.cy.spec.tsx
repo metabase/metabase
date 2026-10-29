@@ -303,6 +303,12 @@ describe("scenarios > embedding-sdk > editable-dashboard", () => {
           H.popover().findByRole("link", { name: "Orders" }).click();
           cy.button("Visualize").click();
 
+          cy.log("the preview renders instead of collapsing (metabase#79893)");
+          cy.findByTestId("visualization-root")
+            .should("be.visible")
+            .invoke("outerHeight")
+            .should("be.greaterThan", 0);
+
           cy.log("test going back to the dashboard from the visualization");
           cy.button(`Back to ${DASHBOARD_NAME}`).should("be.visible").click();
 

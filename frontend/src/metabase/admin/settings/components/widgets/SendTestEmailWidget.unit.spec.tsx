@@ -7,9 +7,9 @@ import {
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
+import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
 import type { SettingKey } from "metabase-types/api";
 import {
   createMockSettingDefinition,
@@ -90,6 +90,10 @@ describe("SendTestEmailWidget", () => {
       const toasts = screen.getAllByLabelText("warning icon");
       expect(toasts).toHaveLength(1);
     });
+    expect(screen.getByTestId("toast-undo")).toHaveAttribute(
+      "data-variant",
+      "negative",
+    );
 
     expect(
       screen.getByRole("alert", { name: "Error sending test email" }),

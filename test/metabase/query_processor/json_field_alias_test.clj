@@ -22,7 +22,7 @@
         ;; force the driver namespace to load so its hierarchy derivations and `database-supports?`
         ;; defmethods are registered.
         :let   [_       (driver/the-driver driver)
-                stub-db {:lib/type :metadata/database, :engine driver, :id -1, :details {}}]
+                stub-db {:lib/type :metadata/database, :engine driver, :id 1, :details {}}]
         :when  (and (isa? driver/hierarchy driver :sql)
                     (or (driver/database-supports? driver :nested-field-columns stub-db)
                         (driver/database-supports? driver :nested-fields stub-db)))]

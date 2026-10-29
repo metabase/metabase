@@ -49,11 +49,11 @@ export function PanelHeader({
   );
 
   return (
-    <Group className={S.root} p="lg" gap="0.75rem" wrap="nowrap">
+    <Group className={S.root} p="xl" gap="0.75rem" wrap="nowrap">
       <Center w="2.75rem" h="2.75rem" bdrs="50%" bg="background_page-secondary">
         <FixedSizeIcon name="table" c="core-brand" size={20} />
       </Center>
-      <Stack gap="xs" flex={1}>
+      <Stack gap="xxs" flex={1}>
         {onTitleClick != null ? (
           <UnstyledButton className={S.titleButton} onClick={onTitleClick}>
             {title}
@@ -63,7 +63,7 @@ export function PanelHeader({
         )}
         {breadcrumbs.length > 0 && (
           <Group c="text-secondary" gap="sm" wrap="nowrap">
-            <Group fz="sm" gap="xs">
+            <Group fz="sm" gap="xxs">
               {breadcrumbs.map((link, index) => (
                 <Fragment key={index}>
                   {index > 0 && <Box>/</Box>}
@@ -82,9 +82,10 @@ export function PanelHeader({
           </Group>
         )}
       </Stack>
-      <Group m="-sm" gap="xs" wrap="nowrap">
+      <Group m="-sm" gap="xxs" wrap="nowrap">
         <Tooltip label={t`View metadata`}>
           <ActionIcon
+            variant="subtle"
             component={ForwardRefLink}
             to={metadataUrl}
             target="_blank"
@@ -93,7 +94,7 @@ export function PanelHeader({
             <FixedSizeIcon name="external" />
           </ActionIcon>
         </Tooltip>
-        <ActionIcon aria-label={t`Close`} onClick={onClose}>
+        <ActionIcon variant="subtle" aria-label={t`Close`} onClick={onClose}>
           <FixedSizeIcon name="close" />
         </ActionIcon>
       </Group>

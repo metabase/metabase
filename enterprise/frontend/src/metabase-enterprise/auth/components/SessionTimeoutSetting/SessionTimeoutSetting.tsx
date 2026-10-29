@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { BasicAdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { useAdminSetting } from "metabase/settings";
+import {
+  BasicAdminSettingInput,
+  SettingHeader,
+} from "metabase/settings-components";
 import { Flex, Select, Stack, Text, TextInput } from "metabase/ui";
 import type { TimeoutValue } from "metabase-types/api";
 
@@ -14,7 +16,7 @@ const getUnits = () => [
   { value: "hours", label: t`hours` },
 ];
 
-const DEFAULT_VALUE = { amount: 30, unit: getUnits()[0].value };
+const DEFAULT_VALUE: TimeoutValue = { amount: 30, unit: "minutes" };
 
 // This should mirror the BE validation of the session-timeout setting.
 const validate = (value: TimeoutValue | null) => {
@@ -121,7 +123,7 @@ export const SessionTimeoutSetting = () => {
         inputType="boolean"
       />
       {!!settingValue && (
-        <Flex gap="sm" mt="md">
+        <Flex gap="sm" mt="lg">
           <TextInput
             type="number"
             data-testid="session-timeout-input"

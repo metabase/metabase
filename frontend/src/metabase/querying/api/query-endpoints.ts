@@ -1,9 +1,8 @@
 import { cardApi, dashboardApi, embedApi, publicApi } from "metabase/api";
 import { isNative } from "metabase/common/utils/card";
 import type { Dispatch } from "metabase/redux/store";
-import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
-import type { Card, Dataset } from "metabase-types/api";
+import type Question from "metabase-lib/v1/Question";
+import type { Dataset } from "metabase-types/api";
 
 // Minimal structural view of an RTK Query endpoint. We only ever dispatch
 // `.initiate(...)`, so this is all the runner and pivot map need. Declared as a
@@ -47,16 +46,12 @@ const PIVOT_ENDPOINTS = new Map<unknown, unknown>([
  * need subtotal data the regular query endpoints don't return, so they use
  * dedicated mirror endpoints that take `pivot_rows`/`pivot_cols`.
  */
-export function shouldUsePivotEndpoint(
-  card: Card,
-  metadata: Metadata,
-): boolean {
-  const question = new Question(card, metadata);
+export function shouldUsePivotEndpoint(question: Question): boolean {
   // Short-circuit on the cheap, always-safe checks first. `question.database()`
   // resolves the database via Lib, which throws for query types Lib doesn't
   // support (e.g. the `internal` queries the audit pages run), so it must not
   // be evaluated for non-pivot/native cards.
-  if (question.display() !== "pivot" || isNative(card)) {
+  if (question.display() !== "pivot" || isNative(question.card())) {
     return false;
   }
   const database = question.database();
@@ -71,10 +66,9 @@ export function shouldUsePivotEndpoint(
  */
 export function maybeUsePivotEndpoint<Arg>(
   endpoint: QueryEndpoint<Arg>,
-  card: Card,
-  metadata: Metadata,
+  question: Question,
 ): QueryEndpoint<Arg> {
-  if (!shouldUsePivotEndpoint(card, metadata)) {
+  if (!shouldUsePivotEndpoint(question)) {
     return endpoint;
   }
   // Unjustified type cast. FIXME
@@ -128,13 +122,12 @@ export function makePivotAwareQueryRunner(
 ) {
   return <Endpoint extends QueryEndpoint<unknown>>(
     endpoint: Endpoint,
-    card: Card,
-    metadata: Metadata,
+    question: Question,
     args: ArgOf<Endpoint>,
   ): Promise<Dataset> =>
     dispatchQueryEndpoint(
       dispatch,
-      maybeUsePivotEndpoint(endpoint, card, metadata),
+      maybeUsePivotEndpoint(endpoint, question),
       args,
       signal,
     );

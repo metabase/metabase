@@ -1,15 +1,28 @@
-(function() {
-  window.MetabaseBootstrap        = JSON.parse(document.getElementById("_metabaseBootstrap").textContent);
-  window.MetabaseUserLocalization = JSON.parse(document.getElementById("_metabaseUserLocalization").textContent);
-  window.MetabaseSiteLocalization = JSON.parse(document.getElementById("_metabaseSiteLocalization").textContent);
-  window.MetabaseUserColorScheme = JSON.parse(document.getElementById("_metabaseUserColorScheme").textContent);
-  window.MetabaseNonce            = JSON.parse(document.getElementById("_metabaseNonce").textContent);
+(function () {
+  window.MetabaseBootstrap = JSON.parse(
+    document.getElementById("_metabaseBootstrap").textContent,
+  );
+  // Which catalogues the script tags below carry. The app applies them before
+  // its first render.
+  window.MetabaseLocales = JSON.parse(
+    document.getElementById("_metabaseLocales").textContent,
+  );
+  window.MetabaseUserColorScheme = JSON.parse(
+    document.getElementById("_metabaseUserColorScheme").textContent,
+  );
+  // Read from the script element, not from a JSON block: the browser blanks a nonce content attribute
+  // after parsing, so the value never stays readable in the DOM.
+  window.MetabaseNonce = document.currentScript.nonce || "";
 
-  var configuredRoot = document.head.querySelector("meta[name='base-href']").content;
+  var configuredRoot = document.head.querySelector(
+    "meta[name='base-href']",
+  ).content;
   var actualRoot = "/";
 
   // Add trailing slashes
-  var backendPathname = document.head.querySelector("meta[name='uri']").content.replace(/\/*$/, "/");
+  var backendPathname = document.head
+    .querySelector("meta[name='uri']")
+    .content.replace(/\/*$/, "/");
   // e.x. "/questions/"
   var frontendPathname = window.location.pathname.replace(/\/*$/, "/");
   // e.x. "/metabase/questions/"
@@ -20,8 +33,19 @@
   }
 
   if (actualRoot !== configuredRoot) {
-    console.warn("Warning: the Metabase site URL basename \"" + configuredRoot + "\" does not match the actual basename \"" + actualRoot + "\".");
-    console.warn("You probably want to update the Site URL setting to \"" + window.location.origin + actualRoot + "\"");
+    console.warn(
+      'Warning: the Metabase site URL basename "' +
+        configuredRoot +
+        '" does not match the actual basename "' +
+        actualRoot +
+        '".',
+    );
+    console.warn(
+      'You probably want to update the Site URL setting to "' +
+        window.location.origin +
+        actualRoot +
+        '"',
+    );
     document.getElementsByTagName("base")[0].href = actualRoot;
   }
 

@@ -63,6 +63,7 @@
    [metabase.analytics-interface.core :as analytics.interface]
    [metabase.analytics.experiment]
    [metabase.analytics.impl]
+   ;; the FE still hands this entry point legacy MBQL; it must normalize before converting to MBQL 5
    ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
@@ -957,6 +958,14 @@
   [a-query stage-number]
   (to-array (lib.core/aggregations a-query stage-number)))
 
+(defn ^:export aggregation-column
+  "Given an `aggregation-clause` from [[aggregations]], returns the column it produces, named as its result column is
+  before the stage deduplicates its column names.
+
+  > **Code health:** Healthy"
+  [a-query stage-number aggregation-clause]
+  (lib.core/aggregation-column a-query stage-number aggregation-clause))
+
 (defn ^:export aggregation-clause
   "Returns a standalone aggregation clause for an `aggregation-operator` and a `column`.
 
@@ -1575,6 +1584,7 @@
   (-> a-legacy-ref
       (js->clj :keywordize-keys true)
       (update 0 keyword)
+      ;; input is a legacy ref from the FE; must be normalized as legacy MBQL before converting to MBQL 5
       #_{:clj-kondo/ignore [:deprecated-var]}
       mbql.normalize/normalize-field-ref
       lib.convert/->mbql5
@@ -1650,6 +1660,7 @@
                              legacy-refs)]
       (if (every? #(and % (>= % 0)) exact-matches)
         (to-array exact-matches)
+        ;; the exported JS contract is a parallel list of indexes; only this fn yields positions
         #_{:clj-kondo/ignore [:discouraged-var]}
         (to-array (lib.equality/find-column-indexes-for-refs a-query stage-number needles haystack))))))
 
@@ -2457,12 +2468,14 @@
   code. It does not need to be wrapped or included here. Just merge these extra keyword conversions into that code and
   remove this."
   [n unit offset-n offset-unit options]
-  (u.time/format-relative-date-range
-   n
-   (keyword unit)
-   offset-n
-   (some-> offset-unit keyword)
-   (js->clj options :keywordize-keys true)))
+  (let [{:keys [start-of-week] :as options} (js->clj options :keywordize-keys true)]
+    (u.time/format-relative-date-range
+     {:start-of-week (keyword (or start-of-week :sunday))}
+     n
+     (keyword unit)
+     offset-n
+     (some-> offset-unit keyword)
+     (dissoc options :start-of-week))))
 
 (defn ^:export find-matching-column
   "Given `a-ref-or-column` and a list of `columns`, finds the column that best matches this ref or column.
@@ -2806,3 +2819,8 @@
   (-> js-native-query-spec
       (js->clj :keywordize-keys true)
       (->> (lib.query.test-spec/test-native-query metadata-providerable))))
+
+(defn ^:export unique-expression-name
+  "Generates an expression name that's unique in the query."
+  [the-query stage-number suggested-name]
+  (lib.expression/unique-expression-name the-query stage-number suggested-name))

@@ -105,7 +105,7 @@
   Pass `force-recalculation=true` to recompute, persist, and return a fresh score.
   Superuser-only."
   [_route
-   {force-recalculation? :force-recalculation} :- [:map
+   {force-recalculation? :force-recalculation} :- [:map {:closed true}
                                                    [:force-recalculation {:default false} ms/BooleanValue]]
    _body]
   (api/check-superuser)

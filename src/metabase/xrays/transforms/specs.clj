@@ -72,7 +72,7 @@
 
 (def ^:private Joins
   [:sequential
-   [:map
+   [:map {:closed true}
     [:source    Source]
     [:condition MBQL]
     [:strategy {:optional true} JoinStrategy]]])
@@ -81,7 +81,7 @@
 
 (def Step
   "Transform step"
-  [:map
+  [:map {:closed true}
    [:source    Source]
    [:name      Source]
    [:transform TransformName]
@@ -117,7 +117,7 @@
 
 (def TransformSpec
   "Transform spec"
-  [:map
+  [:map {:closed true}
    [:name     TransformName]
    [:requires Requires]
    [:provides Provides]
@@ -148,6 +148,7 @@
 
 (def ^:private transforms-dir "transforms/")
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *transform-specs*
   "Delay for all transform specs, loaded from YAML and coerced to the [[TransformSpec]] schema."
   (delay (yaml/load-dir transforms-dir (comp coerce-to-transform-spec add-metadata-to-steps))))

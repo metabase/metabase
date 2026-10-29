@@ -1,12 +1,15 @@
 import type { StoryFn } from "@storybook/react";
+import { updateIn } from "icepick";
 
 import {
   measureTextHeight,
   measureTextWidth,
 } from "metabase/static-viz/lib/text";
 import { color } from "metabase/ui/colors";
-import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
-import type { RenderingContext } from "metabase/visualizations/types";
+import {
+  DEFAULT_VISUALIZATION_THEME,
+  type RenderingContext,
+} from "metabase/viz-core";
 
 import type { StaticChartProps } from "../StaticVisualization";
 import { StaticVisualization } from "../StaticVisualization";
@@ -32,6 +35,7 @@ const renderingContext: RenderingContext = {
     measureTextWidth(text, Number(style.size), Number(style.weight)),
   measureTextHeight: (_, style) => measureTextHeight(Number(style.size)),
   fontFamily: "Lato",
+  isStatic: true,
   theme: DEFAULT_VISUALIZATION_THEME,
 };
 
@@ -220,6 +224,24 @@ export const MultiSeriesTwoMetricsWithAxisSplitFormatting = {
   args: {
     // Unjustified type cast. FIXME
     rawSeries: data.multiSeriesTwoMetricsWithAxisSplitFormatting as any,
+    renderingContext,
+  },
+};
+
+export const CustomYAxisRangeOffScreen = {
+  render: Template,
+  args: {
+    // Unjustified type cast. FIXME
+    rawSeries: updateIn(
+      data.distributionShapes,
+      [0, "card", "visualization_settings"],
+      (val) => ({
+        ...val,
+        "graph.y_axis.auto_range": false,
+        "graph.y_axis.min": 200,
+        "graph.y_axis.max": 300,
+      }),
+    ) as any,
     renderingContext,
   },
 };

@@ -1,5 +1,5 @@
 import { type UnknownAction, createReducer } from "@reduxjs/toolkit";
-import { assoc, chain, merge, updateIn } from "icepick";
+import { chain, merge, updateIn } from "icepick";
 
 import { actionApi } from "metabase/api";
 import { combineReducers } from "metabase/redux";
@@ -22,6 +22,7 @@ import {
   UNDO_REMOVE_CARD_FROM_DASH,
   addCardToDash,
   addManyCardsToDash,
+  dashboardLayoutFetched,
   fetchDashboardFulfilled,
   markNewCardSeen,
   onReplaceAllDashCardVisualizationSettings,
@@ -47,6 +48,7 @@ import {
   parameterValues,
   sidebar,
   slowCards,
+  timelineEvents,
 } from "./reducers-typed";
 import { calculateDashCardRowAfterUndo } from "./utils";
 
@@ -67,6 +69,10 @@ const dashcards = createReducer(
       .addCase(fetchDashboardFulfilled, (state, action) => ({
         ...state,
         ...action.payload.entities.dashcard,
+      }))
+      .addCase(dashboardLayoutFetched, (state, { payload }) => ({
+        ...state,
+        ...payload.dashcard,
       }))
       .addCase(
         setDashCardAttributes,
@@ -229,9 +235,13 @@ const draftParameterValues = createReducer(
           type: string;
           payload: PayloadFromThunkActionCreator<typeof setParameterValue>;
         }
-      >(SET_PARAMETER_VALUE, (state, { payload: { id, value } }) =>
-        assoc(state ?? {}, id, value),
-      )
+      >(SET_PARAMETER_VALUE, (state, { payload: { id, value } }) => {
+        // Like icepick `assoc`: skip equal values, so `undefined` for a missing filter
+        // doesn't add a key and show a fake unapplied change
+        if (state[id] !== value) {
+          state[id] = value;
+        }
+      })
       .addCase<string, { type: string; payload: DraftParameterValuesState }>(
         SET_PARAMETER_VALUES,
         (_state, { payload }) => payload,
@@ -269,6 +279,7 @@ const combinedDashboardReducer = combineReducers({
   editingDashboard,
   loadingControls,
   sidebar,
+  timelineEvents,
   parameterValues,
   dashboards,
   loadingDashCards,

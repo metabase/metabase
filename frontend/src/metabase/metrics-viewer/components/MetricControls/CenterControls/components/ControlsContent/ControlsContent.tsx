@@ -122,10 +122,9 @@ export function ControlsContent(props: ControlsContentProps) {
                     <Button
                       className={S.controlButton}
                       justify="space-between"
-                      fw="bold"
                       aria-label={t`Change column`}
                       variant="subtle"
-                      color="text-primary"
+                      color="neutral"
                       leftSection={
                         columnPickerIcon ? (
                           <Icon

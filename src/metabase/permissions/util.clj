@@ -4,14 +4,14 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.permissions.db :as permissions.db]
    [metabase.permissions.models.collection-permission-graph-revision :as collection-permission-graph-revision]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.regex :as u.regex]
-   [toucan2.core :as t2]))
+   [metabase.util.regex :as u.regex]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         API-level helpers                                                      |
@@ -45,13 +45,15 @@
   *  `changes` -- set of changes applied in this revision."
   [model current-revision before changes]
   (when api/*current-user-id*
-    (first (t2/insert-returning-instances! model
-                                           ;; manually specify ID here so if one was somehow inserted in the meantime in the fraction of a second since we
-                                           ;; called `check-revision-numbers` the PK constraint will fail and the transaction will abort
-                                           :id      (inc current-revision)
-                                           :before  before
-                                           :after   changes
-                                           :user_id api/*current-user-id*))))
+    ;; manually specify ID here so if one was somehow inserted in the meantime in the fraction of a second since we
+    ;; called `check-revision-numbers` the PK constraint will fail and the transaction will abort
+    (let [revision {:id      (inc current-revision)
+                    :before  before
+                    :after   changes
+                    :user_id api/*current-user-id*}]
+      (case model
+        :model/PermissionsRevision            (permissions.db/insert-permissions-revision-returning-instance! revision)
+        :model/ApplicationPermissionsRevision (permissions.db/insert-application-permissions-revision-returning-instance! revision)))))
 
 (mu/defn increment-implicit-perms-revision!
   "Save changes made to permissions that are NOT due to an explicit update to the permissions graph, but rather due to
@@ -62,11 +64,14 @@
   [model :- [:enum :model/CollectionPermissionGraphRevision]
    remark :- :string]
   (when api/*current-user-id*
-    (t2/insert! model {:id (inc (collection-permission-graph-revision/latest-id))
-                       :before {}
-                       :after {}
-                       :user_id api/*current-user-id*
-                       :remark remark})))
+    (case model
+      :model/CollectionPermissionGraphRevision
+      (permissions.db/insert-collection-permission-graph-revision!
+       {:id      (inc (collection-permission-graph-revision/latest-id))
+        :before  {}
+        :after   {}
+        :user_id api/*current-user-id*
+        :remark  remark}))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                    PATH CLASSIFICATION + VALIDATION                                            |
@@ -358,6 +363,20 @@
   (when-not api/*current-user-id*
     (throw (ex-info (str (tru "No current user found"))
                     {:status-code 403})))
+  false)
+
+(defenterprise routed-user?
+  "Returns a boolean if the current user is routed to a destination database for any router database they can view
+  data from. In OSS this is always false. Will throw an error if [[api/*current-user-id*]] is not bound."
+  metabase-enterprise.database-routing.common
+  []
+  (when-not api/*current-user-id*
+    ;; If no *current-user-id* is bound we can't check for routing, so we should throw in this case to avoid returning
+    ;; `false` for users who should actually be routed.
+    (throw (ex-info (str (tru "No current user found"))
+                    {:status-code 403})))
+  ;; oss doesn't have database routing. But we throw if no current-user-id so the behavior doesn't change when the ee
+  ;; version becomes available
   false)
 
 (defn sandboxed-or-impersonated-user?

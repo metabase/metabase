@@ -4,6 +4,7 @@
   (:refer-clojure :exclude [get-in mapv])
   (:require
    [better-cond.core :as b]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
@@ -48,7 +49,7 @@
     [:relative-datetime _opts #{0 :current}]
     true
 
-    [(_tag :guard #{:absolute-datetime :relative-datetime}) _opts _n _unit]
+    [#{:absolute-datetime :relative-datetime} _opts _n _unit]
     (let [unit (or (lib/raw-temporal-bucket &match) :default)]
       (or (= unit :default)
           (contains? optimizable-units unit)))))
@@ -139,16 +140,20 @@
 (mu/defn- temporal-literal-lower-bound :- ::temporal
   [unit :- (into [:enum] u.date/add-units)
    t    :- ::temporal]
-  (:start (u.date/range t unit)))
+  ;; TODO (Chris 2026-09-30) -- thread time-config through from optimize-temporal-clauses instead of
+  ;; re-fetching it per clause, the way lib.filter.desugar does.
+  (:start (u.date/range (lib-be/time-config) t unit)))
 
 (mu/defn- temporal-literal-upper-bound :- ::temporal
   [unit :- (into [:enum] u.date/add-units)
    t    :- ::temporal]
-  (:end (u.date/range t unit)))
+  ;; TODO (Chris 2026-09-30) -- thread time-config through from optimize-temporal-clauses instead of
+  ;; re-fetching it per clause, the way lib.filter.desugar does.
+  (:end (u.date/range (lib-be/time-config) t unit)))
 
 (defn- change-temporal-unit-to-default [field]
   (match/replace field
-    [#{:field :expression} {:temporal-unit (_ :guard optimizable-units)} _id-or-name]
+    [#{:field :expression} {:temporal-unit #'optimizable-units} _id-or-name]
     (lib/update-options &match assoc :temporal-unit :default)
 
     [:absolute-datetime _opts t _unit]
@@ -212,7 +217,9 @@
       (lib/relative-datetime (inc (if (= n :current) 0 n)) target-unit))))
 
 (mu/defn- date-field-with-day-bucketing?
-  [query path expr :- [:maybe ::lib.schema.expression/expression]]
+  [query :- ::lib.schema/query
+   path  :- ::lib.walk/stage-path
+   expr  :- [:maybe ::lib.schema.expression/expression]]
   (and (isa? (lib.walk/apply-f-for-stage-at-path lib/type-of query path expr) :type/Date)
        (= (lib/raw-temporal-bucket expr) :day)))
 
@@ -241,10 +248,16 @@
   (if (date-field-with-day-bucketing? query path field)
     (lib/!= (change-temporal-unit-to-default field) (change-temporal-unit-to-default temporal-value))
     (when-let [optimized ((get-method optimize-clause :=) query path clause)]
-      (lib/negate-boolean-expression optimized))))
+      ;; TODO (Chris 2026-09-30) -- thread time-config through from optimize-temporal-clauses instead of
+      ;; re-fetching it per clause, the way lib.filter.desugar does.
+      (lib/negate-boolean-expression (lib-be/time-config) optimized))))
 
 (mu/defn- optimize-comparison-clause :- [:maybe ::lib.schema.mbql-clause/clause]
-  [query path optimize-temporal-value-fn [tag opts field temporal-value] new-clause-type :- [:enum :< :>=]]
+  [query                       :- ::lib.schema/query
+   path                        :- ::lib.walk/stage-path
+   optimize-temporal-value-fn  :- ifn?
+   [tag opts field temporal-value] :- [:or :mbql.clause/< :mbql.clause/<= :mbql.clause/> :mbql.clause/>=]
+   new-clause-type             :- [:enum :< :>=]]
   (b/cond
     (date-field-with-day-bucketing? query path field)
     [tag opts (change-temporal-unit-to-default field) (change-temporal-unit-to-default temporal-value)]

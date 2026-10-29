@@ -20,7 +20,7 @@ export const CardDrills = ({ drillLenses }: CardDrillsProps) => {
   }
 
   return (
-    <Flex gap="xs" wrap="wrap">
+    <Flex gap="xxs" wrap="wrap">
       {drillLenses.map((drillLens) => {
         const title = drillLens.reason ?? drillLens.lens_id;
         const lensHandle = toLensHandle(drillLens);

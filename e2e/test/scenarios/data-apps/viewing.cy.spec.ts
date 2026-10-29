@@ -1,12 +1,25 @@
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import {
   DATA_APP_DISPLAY_NAME as APP_DISPLAY_NAME,
   DATA_APP_NAME as APP_NAME,
   visitDataAppRoute as visitAppRoute,
 } from "e2e/support/helpers";
+import {
+  DataPermission,
+  DataPermissionValue,
+  type GroupPermissions,
+} from "metabase-types/api";
 
-import { DATA_APP_TEST_ENV as TEST_ENV } from "./helpers";
+import { createKitchenSinkDataApp } from "./helpers";
 
 const { H } = cy;
+
+const BLOCKED_PERMISSION: GroupPermissions = {
+  [SAMPLE_DB_ID]: {
+    [DataPermission.VIEW_DATA]: DataPermissionValue.BLOCKED,
+    [DataPermission.CREATE_QUERIES]: DataPermissionValue.NO,
+  },
+};
 
 describe("scenarios > data apps > viewing & routing", () => {
   beforeEach(() => {
@@ -18,10 +31,7 @@ describe("scenarios > data apps > viewing & routing", () => {
 
   describe("viewing permissions", () => {
     it("lets a non-admin open a data app by direct URL", () => {
-      H.mockDataApp(APP_NAME, {
-        displayName: APP_DISPLAY_NAME,
-        testEnv: TEST_ENV,
-      });
+      createKitchenSinkDataApp();
 
       // A normal (non-admin) user has data access, so the app opens and renders
       // its data — the admin gate is only on *managing* apps, not viewing them.
@@ -38,20 +48,23 @@ describe("scenarios > data apps > viewing & routing", () => {
     });
 
     it("opens the app shell for a user without data access, but shows no data", () => {
-      H.mockDataApp(APP_NAME, {
-        displayName: APP_DISPLAY_NAME,
-        testEnv: TEST_ENV,
+      cy.updatePermissionsGraph({
+        [USER_GROUPS.ALL_USERS_GROUP]: BLOCKED_PERMISSION,
+        [USER_GROUPS.COLLECTION_GROUP]: BLOCKED_PERMISSION,
       });
 
-      // The `nodata` user can open the app (viewing isn't gated), but the query
-      // the app runs goes through the QP with the user's own permissions — with
-      // no data access it resolves to no data (the fixture renders "—").
+      createKitchenSinkDataApp();
+
       cy.signIn("nodata");
       H.openDataApp(APP_NAME);
       H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+        // Group access lets users view the app shell.
         cy.findByRole("heading", { name: "Orders overview" }).should(
           "be.visible",
         );
+
+        // The user's incomplete data permissions still blocks its query,
+        // so the orders-count renders "—".
         cy.findByTestId("orders-count", { timeout: 30000 }).should(
           "have.text",
           "—",
@@ -60,8 +73,8 @@ describe("scenarios > data apps > viewing & routing", () => {
     });
 
     it("shows a not-found state for a disabled or missing app", () => {
-      // No app with this slug exists, so the metadata endpoint really 404s and the
-      // host renders a not-found state rather than a broken iframe — no mock needed.
+      // No app with this slug exists, so the metadata endpoint 404s and the host
+      // renders a not-found state rather than a broken iframe.
       H.openDataApp("does-not-exist");
       H.main().findByText("Data app not found").should("be.visible");
     });
@@ -69,11 +82,15 @@ describe("scenarios > data apps > viewing & routing", () => {
 
   describe("loading state", () => {
     it("keeps the loader up until the app's bundle has actually rendered", () => {
-      H.mockDataApp(APP_NAME, {
-        displayName: APP_DISPLAY_NAME,
-        testEnv: TEST_ENV,
-        bundleDelay: 2000,
-      });
+      createKitchenSinkDataApp();
+      cy.intercept(
+        { method: "GET", pathname: `/api/ee/apps/${APP_NAME}/bundle` },
+        (req) => {
+          req.on("response", (res) => {
+            res.setDelay(2000);
+          });
+        },
+      );
 
       H.openDataApp(APP_NAME);
 
@@ -91,12 +108,19 @@ describe("scenarios > data apps > viewing & routing", () => {
   });
 
   describe("internal routing", () => {
-    it("mirrors internal route changes into the parent URL", () => {
-      H.mockDataApp(APP_NAME, {
-        displayName: APP_DISPLAY_NAME,
-        testEnv: TEST_ENV,
+    it("starts on a deep-linked sub-route, and mirrors link and imperative route changes into the parent URL", () => {
+      createKitchenSinkDataApp();
+
+      cy.log("deep-link directly to a sub-route");
+      visitAppRoute("details");
+      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+        cy.findByRole("heading", { name: "Order details" }).should(
+          "be.visible",
+        );
+        cy.findByTestId("current-pathname").should("have.text", "/details");
       });
 
+      cy.log("navigate with a DataAppLink");
       H.openDataApp(APP_NAME);
       H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
         cy.findByRole("heading", { name: "Orders overview" }).should(
@@ -114,29 +138,8 @@ describe("scenarios > data apps > viewing & routing", () => {
       // The iframe's client-side navigation is mirrored to the parent's URL bar
       // (via replaceState), so the top-level path reflects the nested route.
       cy.location("pathname").should("eq", `/apps/${APP_NAME}/details`);
-    });
 
-    it("starts on the target page when deep-linked directly to a sub-route", () => {
-      H.mockDataApp(APP_NAME, {
-        displayName: APP_DISPLAY_NAME,
-        testEnv: TEST_ENV,
-      });
-
-      visitAppRoute("details");
-      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
-        cy.findByRole("heading", { name: "Order details" }).should(
-          "be.visible",
-        );
-        cy.findByTestId("current-pathname").should("have.text", "/details");
-      });
-    });
-
-    it("navigates imperatively via useDataAppLocation().navigate", () => {
-      H.mockDataApp(APP_NAME, {
-        displayName: APP_DISPLAY_NAME,
-        testEnv: TEST_ENV,
-      });
-
+      cy.log("navigate imperatively via useDataAppLocation().navigate");
       H.openDataApp(APP_NAME);
       H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
         cy.findByRole("heading", { name: "Orders overview" }).should(
@@ -154,10 +157,7 @@ describe("scenarios > data apps > viewing & routing", () => {
 
   describe("host error / not-ready screens", () => {
     it("shows a themed host error screen when the bundle throws while rendering", () => {
-      H.mockDataApp(APP_NAME, {
-        displayName: APP_DISPLAY_NAME,
-        testEnv: TEST_ENV,
-      });
+      createKitchenSinkDataApp();
 
       visitAppRoute("throw");
       // The throw is caught in the iframe and reported to the parent, which

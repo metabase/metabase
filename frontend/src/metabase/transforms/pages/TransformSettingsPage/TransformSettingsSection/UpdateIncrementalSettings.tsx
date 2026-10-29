@@ -5,8 +5,8 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { Form, FormInlineUpdater, FormProvider } from "metabase/forms";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import type { IncrementalSettingsFormValues } from "metabase/transforms/components/IncrementalTransform";
 import {
   IncrementalTransformSettings,

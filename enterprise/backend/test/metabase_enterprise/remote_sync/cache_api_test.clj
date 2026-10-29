@@ -2,7 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.remote-sync.settings :as rs-settings]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.test :as mt]))
+
+(use-fixtures :each remote-sync.tu/allow-remote-synced-collections)
 
 (deftest cache-policy-on-read-only-remote-synced-dashboard-test
   (testing "Setting a cache policy on a dashboard in a remote-synced collection should succeed even when remote-sync-type is read-only"

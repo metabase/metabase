@@ -15,11 +15,8 @@ export const SaveEditButton = () => {
   // The SDK renders the dashboard header outside the app router, and has no URL
   // hash to strip, so leaving edit mode there simply skips the navigation.
   const location = useMaybeLocation() ?? undefined;
-  const {
-    setEditingDashboard,
-    updateDashboardAndCards,
-    onRefreshPeriodChange,
-  } = useDashboardContext();
+  const { updateDashboardAndCards, onRefreshPeriodChange } =
+    useDashboardContext();
 
   const missingRequiredParameters = useSelector(getMissingRequiredParameters);
 
@@ -28,18 +25,12 @@ export const SaveEditButton = () => {
   );
   const isSaveDisabled = missingRequiredParameters.length > 0;
 
-  const handleDoneEditing = () => {
-    onRefreshPeriodChange(null);
-    setEditingDashboard(null, location);
-  };
-
   const onSave = async () => {
     // optimistically dismissing all the undos before the saving has finished
     // clicking on them wouldn't do anything at this moment anyway
     dispatch(dismissAllUndo());
     await updateDashboardAndCards(location);
-
-    handleDoneEditing();
+    onRefreshPeriodChange(null);
   };
 
   useRegisterShortcut([
@@ -54,8 +45,7 @@ export const SaveEditButton = () => {
       <span>
         <ActionButton
           actionFn={onSave}
-          variant="filled"
-          size="sm"
+          variant="on-dark-primary"
           normalText={t`Save`}
           activeText={t`Saving…`}
           failedText={t`Save failed`}

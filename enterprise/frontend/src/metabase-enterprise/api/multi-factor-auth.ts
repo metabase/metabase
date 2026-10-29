@@ -65,6 +65,8 @@ export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
           idTag("user", user_id),
         ]),
     }),
+    // `/api/session/*` 401s mean "wrong code", not "session gone". `noEvent` stops app-main
+    // redirecting to /auth/login, which would remount the page and lose the retry.
     verifyMfa: builder.mutation<
       { id: string },
       { challenge_token: string; code: string; remember?: boolean }
@@ -73,6 +75,18 @@ export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
         method: "POST",
         url: "/api/session/mfa/verify",
         body,
+        noEvent: true,
+      }),
+    }),
+    enrollMfaOnLogin: builder.mutation<
+      { id: string; recovery_codes: string[] },
+      { enrollment_token: string; code: string; remember?: boolean }
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/session/mfa/enroll",
+        body,
+        noEvent: true,
       }),
     }),
     getMfaStatus: builder.query<MfaStatus, void>({
@@ -116,6 +130,7 @@ export const multiFactorAuthApi = EnterpriseApi.injectEndpoints({
         method: "POST",
         url: "/api/session/mfa/send-email-otp",
         body,
+        noEvent: true,
       }),
     }),
     regenerateRecoveryCodes: builder.mutation<
@@ -138,6 +153,7 @@ export const {
   useListUnenrolledMfaUsersQuery,
   useRemoveUserMfaMutation,
   useVerifyMfaMutation,
+  useEnrollMfaOnLoginMutation,
   useGetMfaStatusQuery,
   useEnrollMfaMutation,
   useConfirmMfaEnrollmentMutation,

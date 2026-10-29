@@ -2,7 +2,6 @@ import { t } from "ttag";
 
 import { useUnresolvedCommentsCount } from "metabase/comments/hooks/use-unresolved-comments-count";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
-import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
 import { type Path, useLocation, useNavigate } from "metabase/router";
 import { Ellipsified, Group, Indicator, Stack } from "metabase/ui";
 import type {
@@ -10,6 +9,8 @@ import type {
   ExplorationPageNodeId,
   HydratedExplorationExploreFilter,
 } from "metabase-types/api";
+
+import { ExploreFilterPills } from "../ExploreFilterPills";
 
 interface ExplorationVisualizationHeaderProps {
   name: string;
@@ -30,7 +31,7 @@ export function ExplorationVisualizationHeader({
 }: ExplorationVisualizationHeaderProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const nextCommentsUrl = getNextCommentsUrl(location);
+  const nextCommentsUrl = getNextCommentsUrl(location, pageId);
   const { allCommentsCount } = useUnresolvedCommentsCount({
     target:
       explorationId != null
@@ -50,26 +51,21 @@ export function ExplorationVisualizationHeader({
       }
       iconProps={{ size: "1.125rem" }}
       isActive={isCommentsSidebarOpen}
-      bg={isCommentsSidebarOpen ? "background-brand" : "background-secondary"}
+      bg={
+        isCommentsSidebarOpen
+          ? "background_surface-brand-subtle"
+          : "background_page-secondary"
+      }
       bd={
-        isCommentsSidebarOpen ? "1px solid border-strong" : "1px solid border"
+        isCommentsSidebarOpen
+          ? "1px solid border-neutral-strong"
+          : "1px solid border-neutral"
       }
       onClick={() => {
         navigate(nextCommentsUrl);
       }}
     />
   ) : null;
-
-  const filterPills =
-    exploreFilters != null && exploreFilters.length > 0 ? (
-      <Group gap="sm" wrap="wrap">
-        {exploreFilters.map((filter, index) => (
-          <FilterPill key={index} readOnly>
-            {getExploreFilterPillLabel(filter)}
-          </FilterPill>
-        ))}
-      </Group>
-    ) : null;
 
   return (
     <Stack gap="sm" style={{ flexShrink: 0 }}>
@@ -79,7 +75,16 @@ export function ExplorationVisualizationHeader({
         </Ellipsified>
         <Group align="center" gap="sm" style={{ flexShrink: 0 }}>
           {allCommentsCount > 0 ? (
-            <Indicator label={allCommentsCount} size={16} color="core-info">
+            <Indicator
+              label={allCommentsCount}
+              size={16}
+              color="core-info"
+              styles={{
+                indicator: {
+                  paddingInline: "calc(var(--mantine-spacing-xxs) / 2)",
+                },
+              }}
+            >
               {commentsButton}
             </Indicator>
           ) : (
@@ -87,24 +92,20 @@ export function ExplorationVisualizationHeader({
           )}
         </Group>
       </Group>
-      {filterPills}
+      <ExploreFilterPills filters={exploreFilters ?? []} />
     </Stack>
   );
 }
 
-function getExploreFilterPillLabel(
-  filter: HydratedExplorationExploreFilter,
-): string {
-  if (filter.dimension_name) {
-    return `${filter.dimension_name}: ${filter.display_value}`;
-  }
-  return filter.display_value;
-}
-
-function getNextCommentsUrl(location: Pick<Path, "pathname" | "search">) {
+function getNextCommentsUrl(
+  location: Pick<Path, "pathname" | "search">,
+  pageId?: ExplorationPageNodeId,
+) {
   const search = new URLSearchParams(location.search);
-  if (search.get("comments") === "true") {
+  if (search.get("comments") != null) {
     search.delete("comments");
+  } else if (pageId != null) {
+    search.set("comments", String(pageId));
   } else {
     search.set("comments", "true");
   }

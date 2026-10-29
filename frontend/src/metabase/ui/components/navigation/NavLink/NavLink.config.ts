@@ -7,6 +7,7 @@ export const navLinkOverrides = {
     defaultProps: {
       //@ts-expect-error - this does work, and we want to ensure that the role is set
       role: "link",
+      childrenOffset: "xl",
     },
     classNames: {
       root: S.NavLink,

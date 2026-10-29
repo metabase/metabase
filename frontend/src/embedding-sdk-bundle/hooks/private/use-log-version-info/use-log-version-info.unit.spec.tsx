@@ -1,6 +1,6 @@
 import { renderHook } from "@testing-library/react";
-import "embedding-sdk-bundle";
 
+import "embedding-sdk-bundle";
 import { EMBEDDING_SDK_BUNDLE_UNKNOWN_VERSION } from "build-configs/embedding-sdk/constants/versions";
 import { useLogVersionInfo } from "embedding-sdk-bundle/hooks/private/use-log-version-info";
 import { getBuildInfo } from "embedding-sdk-shared/lib/get-build-info";

@@ -26,7 +26,7 @@ export function GuidePage() {
         }
       />
       <Box className={S.content}>
-        <Title mb="xl" order={2}>
+        <Title mb="xxl" order={2}>
           {t`Build your semantic layer in Data Studio`}
         </Title>
 
@@ -148,7 +148,7 @@ function GuideSection({
         <Icon name={icon} size={20} c="core-brand" />
         <Title order={3}>{title}</Title>
       </Group>
-      <Stack gap="md">
+      <Stack gap="lg">
         <Text c="text-secondary">{children}</Text>
       </Stack>
     </Box>

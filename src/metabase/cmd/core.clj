@@ -44,6 +44,8 @@
   "Resolves enterprise command by symbol and calls with args, or else throws error if not EE"
   [symb & args]
   (let [f (try
+            ;; Enterprise command symbols are fixed at the call sites below.
+            #_{:clj-kondo/ignore [:metabase/modules]}
             (classloader/require (symbol (namespace symb)))
             (or (resolve symb)
                 (throw (ex-info (trs "{0} does not exist" symb) {})))
@@ -90,7 +92,7 @@
       (println "Dump complete")
       (system-exit! 0))
     (catch Throwable e
-      (log/errorf "Failed to dump application database to H2 file: %s" (ex-message e))
+      (log/error e "Failed to dump application database to H2 file")
       (system-exit! 1))))
 
 (defn ^:command reset-password
@@ -165,12 +167,42 @@
   (classloader/require 'metabase.cmd.config-file-gen)
   ((resolve 'metabase.cmd.config-file-gen/generate-config-file-doc!)))
 
+(defn ^:command ai-providers-documentation
+  "Generates a markdown file listing the AI providers Metabase can connect to, the credentials each one needs, and the
+  models each one offers. This is written to a file called `docs/ai/providers.md`."
+  []
+  (classloader/require 'metabase.cmd.ai-provider-dox)
+  ((resolve 'metabase.cmd.ai-provider-dox/generate-dox!)))
+
+(defn ^:command mcp-tools-documentation
+  "Generates `docs/ai/mcp-tools.md`, the reference for the tools Metabase's MCP server exposes to AI clients."
+  []
+  (classloader/require 'metabase.cmd.mcp-tools-dox)
+  ((resolve 'metabase.cmd.mcp-tools-dox/generate-dox!)))
+
 (defn ^:command command-documentation
   "Generates a markdown file containing documentation for all CLI commands. This is written to a file called
   `docs/installation-and-operation/commands.md`."
   []
   (classloader/require 'metabase.cmd.command-dox)
   ((resolve 'metabase.cmd.command-dox/generate-dox!)))
+
+(def ^:private doc-generators
+  "The commands that `all-documentation` runs, in order.
+  Commands that load only their own namespaces run first. The two settings generators load every Metabase namespace,
+  so they run last and cannot change the output of the others."
+  [#'mcp-tools-documentation
+   #'ai-providers-documentation
+   #'api-documentation
+   #'command-documentation
+   #'config-template
+   #'environment-variables-documentation])
+
+(defn ^:command all-documentation
+  "Runs every documentation command in one process."
+  []
+  (doseq [generator doc-generators]
+    (generator)))
 
 (defn ^:command driver-methods
   "Print a list of all multimethods available for a driver to implement, optionally with their docstrings."
@@ -217,7 +249,24 @@
     (log/info "Encryption key rotation OK.")
     (system-exit! 0)
     (catch Throwable e
-      (log/errorf "ERROR ROTATING KEY: %s" (ex-message e))
+      (log/error e "ERROR ROTATING KEY.")
+      (system-exit! 1))))
+
+(defn ^:command enable-encryption
+  "Encrypts data in the metabase database with the key in the MB_ENCRYPTION_SECRET_KEY environment variable. Run this
+  once, with Metabase stopped, after adding the key to an existing instance: Metabase refuses to start while the key is
+  set but the database is not encrypted with it."
+  []
+  (classloader/require 'metabase.cmd.enable-encryption)
+  (when-not (encryption/default-encryption-enabled?)
+    (log/error "MB_ENCRYPTION_SECRET_KEY environment variable has not been set")
+    (system-exit! 1))
+  (try
+    ((resolve 'metabase.cmd.enable-encryption/enable-encryption!))
+    (log/info "Encryption enabled OK.")
+    (system-exit! 0)
+    (catch Throwable e
+      (log/errorf "ERROR ENABLING ENCRYPTION: %s" (ex-message e))
       (system-exit! 1))))
 
 (defn ^:command remove-encryption
@@ -233,7 +282,7 @@
     (log/info "Encryption removed OK.")
     (system-exit! 0)
     (catch Throwable e
-      (log/errorf "ERROR REMOVING ENCRYPTION: %s" (ex-message e))
+      (log/error e "ERROR REMOVING ENCRYPTION.")
       (system-exit! 1))))
 
 ;;; ------------------------------------------------ Validate Commands ----------------------------------------------

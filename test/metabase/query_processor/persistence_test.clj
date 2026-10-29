@@ -46,7 +46,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
       (testing (str driver/*driver* " can persist")
         (mt/dataset test-data
-          (let [[success? error] (ddl.i/check-can-persist (mt/db))]
+          (let [[success? error] (ddl.i/check-can-persist (lib.metadata/database (mt/metadata-provider)))]
             (is success? (str "Not able to persist on " driver/*driver*))
             (is (= :persist.check/valid error)))
           (testing "Populates the `cache_info` table with v1 information"
@@ -102,6 +102,7 @@
 (defn- populate-metadata [{query :dataset_query, id :id, :as _model}]
   (let [updater (a/thread
                   (let [metadata (-> query
+                                     ;; card result_metadata is persisted in legacy shape
                                      #_{:clj-kondo/ignore [:deprecated-var]}
                                      (qp.metadata/legacy-result-metadata nil))]
                     (t2/update! :model/Card id {:result_metadata metadata})))]

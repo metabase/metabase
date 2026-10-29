@@ -2,7 +2,7 @@
   transition: all 0.2s ease-in-out;
   border: 1px solid var(--mb-color-border-neutral);
   background: var(--mb-color-background_page-primary);
-  border-radius: var(--mantine-radius-sm);
+  border-radius: var(--mantine-radius-xs);
   cursor: pointer;
   height: 32px;
   margin: 0 0.5rem 0 0;

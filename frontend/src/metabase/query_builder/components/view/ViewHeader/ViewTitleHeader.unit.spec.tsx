@@ -3,16 +3,16 @@ import fetchMock from "fetch-mock";
 import type { ComponentProps } from "react";
 import _ from "underscore";
 
+import { createMockMetadataFromState } from "__support__/metadata";
 import {
   setupListDatabaseSchemasEndpoint,
   setupTableEndpoints,
 } from "__support__/server-mocks";
 import { setupGetUserKeyValueEndpoint } from "__support__/server-mocks/user-key-value";
+import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
-import { getMetadata } from "metabase/selectors/metadata";
 import MetabaseSettings from "metabase/utils/settings";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
@@ -184,7 +184,7 @@ function setup({
     }),
   });
 
-  const metadata = getMetadata(storeInitialState);
+  const metadata = createMockMetadataFromState(storeInitialState);
   const question =
     "id" in card
       ? checkNotNull(metadata.question(card.id))

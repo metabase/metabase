@@ -21,6 +21,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *analyze-query*
   "When bound to true, EXPLAIN ANALYZE will be run for each query executed by Toucan 2."
   false)

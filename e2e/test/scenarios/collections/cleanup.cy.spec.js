@@ -41,8 +41,21 @@ describe("scenarios > collections > clean up", () => {
           cy.findByText("Usage analytics").click();
           cy.findByText("Custom reports").click();
         });
+        cy.location("pathname")
+          .should("match", /^\/collection\/\d+-custom-reports/)
+          .then((pathname) => {
+            const customReportsId = parseInt(pathname.split("/")[2], 10);
+            H.createQuestion({
+              name: "Custom report question",
+              query: { "source-table": STATIC_ORDERS_ID },
+              collection_id: customReportsId,
+            });
+            H.visitCollection(customReportsId);
+          });
+        H.main().findByText("Custom report question").should("be.visible");
         collectionMenu().click();
         H.popover().within(() => {
+          cy.findByText("Edit permissions").should("be.visible");
           cy.findByText("Clear out unused items").should("not.exist");
         });
 
@@ -55,7 +68,7 @@ describe("scenarios > collections > clean up", () => {
           cy.findByText("Clear out unused items").should("exist");
         });
 
-        cy.log("should not show in custom analytics collections");
+        cy.log("should not show collection actions in a trashed collection");
         H.popover().within(() => {
           cy.findByText("Move to trash").click();
         });
@@ -67,15 +80,22 @@ describe("scenarios > collections > clean up", () => {
 
         cy.log("should not show in empty collections");
         H.createCollection({ name: "Empty" }).then(({ body: { id } }) => {
+          cy.intercept({
+            method: "GET",
+            pathname: `/api/collection/${id}/items`,
+            query: { limit: "0" },
+          }).as("emptyCollectionItemCount");
           H.visitCollection(id);
+          cy.wait("@emptyCollectionItemCount");
           collectionMenu().click();
           H.popover().within(() => {
+            cy.findByText("Edit permissions").should("be.visible");
             cy.findByText("Clear out unused items").should("not.exist");
           });
         });
 
         cy.log(
-          "should not recommend the option when there are stale items int he collection",
+          "should recommend the option when there are stale items in the collection",
         );
         H.createCollection({ name: "collection with stale items" }).then(
           ({ body: { id } }) => {
@@ -90,7 +110,6 @@ describe("scenarios > collections > clean up", () => {
                   .format("YYYY-MM-DD"),
               );
 
-              // assert we don't show clean up option
               H.visitCollection(id);
               collectionMenu().click();
               H.popover().within(() => {
@@ -121,12 +140,15 @@ describe("scenarios > collections > clean up", () => {
                 req.on("response", (res) => {
                   res.send(assocIn(res.body, ["is_sample"], true));
                 });
-              });
+              }).as("sampleCollection");
 
               // assert we don't show clean up option
               H.visitCollection(id);
+              cy.wait("@sampleCollection");
+              H.main().findByText("Bulk question 1").should("be.visible");
               collectionMenu().click();
               H.popover().within(() => {
+                cy.findByText("Edit permissions").should("be.visible");
                 cy.findByText("Clear out unused items").should("not.exist");
               });
             });
@@ -134,9 +156,12 @@ describe("scenarios > collections > clean up", () => {
         );
       });
 
-      it("should not show to users who do not have write permissions to a collection", () => {
+      it("should not show the collection menu to users without write permissions to a collection", () => {
+        cy.signInAsAdmin();
+        H.activateToken("pro-self-hosted");
         cy.signIn("readonly");
         H.visitCollection(FIRST_COLLECTION_ID);
+        H.getCollectionActions().should("be.visible");
         collectionMenu().should("not.exist");
       });
     });
@@ -240,7 +265,9 @@ describe("scenarios > collections > clean up", () => {
               isMatching(
                 {
                   event: "moved-to-trash",
-                  event_detail: P.union("dashboard", "question"),
+                  // "dataset" because `bulkCreateQuestions` seeds `type: "model"` cards, and the
+                  // stale listing labels those `model: "dataset"`.
+                  event_detail: P.union("dashboard", "question", "dataset"),
                   target_id: P.number,
                   triggered_from: "cleanup_modal",
                   duration_ms: P.number,
@@ -299,12 +326,9 @@ describe("scenarios > collections > clean up", () => {
           selectAllItems();
           moveToTrash();
 
-          cy.log(
-            "should not longer show alert if user has used the clean up feature",
-          );
           closeCleanUpModal();
 
-          // Ensure that stale items in Our Analytics are maked with a null collection id
+          // Ensure that stale items in Our Analytics are marked with a null collection id
           H.expectUnstructuredSnowplowEvent(
             (event) =>
               event &&
@@ -313,46 +337,27 @@ describe("scenarios > collections > clean up", () => {
               event.total_items_archived === 1 &&
               typeof event.cutoff_date === "string",
           );
-        });
-      });
 
-      it("show empty and error states correctly", () => {
-        cy.log("should handle empty state");
-        cy.intercept("GET", "/api/ee/stale/**?**").as("stale-items");
-
-        // visit collection w/ items but no stale items
-        H.createCollection({ name: "Not empty w/ not stale items" })
-          .then(({ body: { id } }) => id)
-          .as("collectionId");
-
-        cy.get("@collectionId").then((id) => {
-          return bulkCreateQuestions(2, { collection_id: id }).then(() => {
-            H.visitCollection(id);
+          cy.log("should handle empty state in a collection w/ no stale items");
+          H.main().within(() => {
+            cy.findByText("Type").should("be.visible");
+            cy.findByText("Name").should("be.visible");
           });
+          cy.intercept("GET", "/api/ee/stale/**?**").as("stale-items");
+          selectCleanThingsUpCollectionAction();
+          cy.wait("@stale-items");
+          cleanUpModal().within(() => {
+            emptyState().should("exist");
+          });
+
+          cy.log("should handle error state");
+          cy.intercept("GET", "/api/ee/stale/**?**", {
+            statusCode: 500,
+          }).as("stale-items");
+          setDateFilter("1 year");
+          cy.wait("@stale-items");
+          errorState().should("exist");
         });
-
-        cy.log("should render a table w/ contents");
-        H.main().within(() => {
-          cy.findByText("Type");
-          cy.findByText("Name");
-        });
-
-        selectCleanThingsUpCollectionAction();
-
-        cy.wait("@stale-items");
-
-        cleanUpModal().within(() => {
-          emptyState().should("exist");
-        });
-
-        cy.log("should handle error state");
-        cy.intercept("GET", "/api/ee/stale/**?**", {
-          statusCode: 500,
-        }).as("stale-items");
-
-        setDateFilter("1 year");
-        cy.wait("@stale-items");
-        errorState().should("exist");
       });
     });
   });

@@ -53,32 +53,32 @@
 (deftest recovery-code-single-use-test
   (with-confirmed-enrollment! [user-id _secret]
     (let [[code & _] (enrollment/reset-recovery-codes! user-id)]
-      (is (true? (verification/verify-attempt! user-id code (fresh-jti))))
+      (is (true? (boolean (verification/verify-attempt! user-id code (fresh-jti)))))
       (is (= (dec recovery-codes/num-codes) (enrollment/recovery-codes-remaining user-id)))
       (testing "consumed — never accepted again"
-        (is (false? (verification/verify-attempt! user-id code (fresh-jti))))))))
+        (is (false? (boolean (verification/verify-attempt! user-id code (fresh-jti)))))))))
 
 (deftest regenerate-invalidates-old-set-test
   (with-confirmed-enrollment! [user-id _secret]
     (let [[old-code & _] (enrollment/reset-recovery-codes! user-id)
           new-codes      (enrollment/reset-recovery-codes! user-id)]
       (testing "old set is dead in its entirety"
-        (is (false? (verification/verify-attempt! user-id old-code (fresh-jti)))))
+        (is (false? (boolean (verification/verify-attempt! user-id old-code (fresh-jti))))))
       (testing "new set works"
-        (is (true? (verification/verify-attempt! user-id (first new-codes) (fresh-jti))))))))
+        (is (true? (boolean (verification/verify-attempt! user-id (first new-codes) (fresh-jti)))))))))
 
 (deftest recovery-path-consumes-jti-test
   (with-confirmed-enrollment! [user-id secret]
     (let [[code-a code-b & _] (enrollment/reset-recovery-codes! user-id)
           jti                 (fresh-jti)]
-      (is (true? (verification/verify-attempt! user-id code-a jti)))
+      (is (true? (boolean (verification/verify-attempt! user-id code-a jti))))
       (testing "the jti is burned across factor kinds — a second unused recovery code can't reuse it"
-        (is (false? (verification/verify-attempt! user-id code-b jti))))
+        (is (false? (boolean (verification/verify-attempt! user-id code-b jti)))))
       (testing "nor can a fresh TOTP code"
-        (is (false? (verification/verify-attempt! user-id (totp/generate-code secret) jti)))))))
+        (is (false? (boolean (verification/verify-attempt! user-id (totp/generate-code secret) jti))))))))
 
 (deftest wrong-recovery-code-rejected-test
   (with-confirmed-enrollment! [user-id _secret]
     (enrollment/reset-recovery-codes! user-id)
-    (is (false? (verification/verify-attempt! user-id "aaaaa-aaaaa" (fresh-jti))))
+    (is (false? (boolean (verification/verify-attempt! user-id "aaaaa-aaaaa" (fresh-jti)))))
     (is (= recovery-codes/num-codes (enrollment/recovery-codes-remaining user-id)))))

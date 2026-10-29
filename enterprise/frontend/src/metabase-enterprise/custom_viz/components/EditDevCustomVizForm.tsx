@@ -2,7 +2,6 @@ import { useCallback, useMemo } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import {
   Form,
   FormErrorMessage,
@@ -10,6 +9,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
+import { SettingsSection } from "metabase/settings-components";
 import { Button, Group, Icon, Stack, Text } from "metabase/ui";
 import {
   useDeleteCustomVizPluginMutation,
@@ -61,7 +61,7 @@ export function EditDevCustomVizForm({ plugin }: Props) {
       >
         {({ dirty }) => (
           <Form>
-            <Stack gap="lg">
+            <Stack gap="xl">
               <Group align="center">
                 <CustomVizIcon plugin={plugin} />
 
@@ -72,21 +72,13 @@ export function EditDevCustomVizForm({ plugin }: Props) {
 
                   {match(plugin.status)
                     .with("active", () => (
-                      <Group align="center" flex="0 0 auto" gap="xs">
+                      <Group align="center" flex="0 0 auto" gap="xxs">
                         <Icon c="feedback-positive" name="check" />
                         <Text c="feedback-positive" fw={700}>{t`Enabled`}</Text>
                       </Group>
                     ))
                     .with("error", () => (
                       <Text c="feedback-negative" fw={700}>{t`Error`}</Text>
-                    ))
-                    .with("pending", () => (
-                      <Text
-                        c="text-secondary"
-                        fw={plugin.enabled ? 700 : undefined}
-                      >
-                        {t`Pending`}
-                      </Text>
                     ))
                     .exhaustive()}
                 </Group>
@@ -100,7 +92,7 @@ export function EditDevCustomVizForm({ plugin }: Props) {
               <Group justify="flex-end">
                 <Button
                   variant="subtle"
-                  color="feedback-negative"
+                  color="negative"
                   onClick={handleRemove}
                 >
                   {t`Disable`}

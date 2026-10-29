@@ -10,17 +10,23 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { renderWithProviders } from "__support__/ui";
-import { useCommandPalette } from "metabase/palette/hooks/useCommandPalette";
-import { useCommandPaletteBasicActions } from "metabase/palette/hooks/useCommandPaletteBasicActions";
 import {
   createMockAdminAppState,
   createMockAdminState,
   createMockState,
-} from "metabase/redux/store/mocks";
+} from "__support__/state";
+import { renderWithProviders } from "__support__/ui";
+import { useCommandPalette } from "metabase/palette/hooks/useCommandPalette";
+import { useCommandPaletteBasicActions } from "metabase/palette/hooks/useCommandPaletteBasicActions";
 import { Route, useLocation, useParams } from "metabase/router";
 import { parseSearchQuery } from "metabase/utils/browser";
-import type { RecentItem, Settings } from "metabase-types/api";
+import type {
+  CollectionItem,
+  Database,
+  RecentItem,
+  SearchResult,
+  Settings,
+} from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -131,19 +137,23 @@ export interface CommonSetupProps {
   query?: string;
   settings?: Partial<Settings>;
   recents?: RecentItem[];
+  searchItems?: (CollectionItem | SearchResult)[];
   isEE?: boolean;
   isAdmin?: boolean;
+  databases?: Database[];
 }
 
 export const commonSetup = ({
   query,
   settings = {},
   recents = [recents_1, recents_2],
+  searchItems = [model_1, model_2, dashboard],
   isEE,
   isAdmin = false,
+  databases = [DATABASE],
 }: CommonSetupProps = {}) => {
-  setupDatabasesEndpoints([DATABASE]);
-  setupSearchEndpoints([model_1, model_2, dashboard]);
+  setupDatabasesEndpoints(databases);
+  setupSearchEndpoints(searchItems);
   setupRecentViewsEndpoints(recents);
   setupCollectionByIdEndpoint({
     collections: [createMockCollection({ id: "root", can_write: true })],
@@ -153,11 +163,15 @@ export const commonSetup = ({
         app: createMockAdminAppState({
           paths: [
             {
-              name: "Permissions",
+              getName: () => "Permissions",
               path: "/admin/permissions",
               key: "permissions",
             },
-            { name: "Settings", path: "/admin/settings", key: "settings" },
+            {
+              getName: () => "Settings",
+              path: "/admin/settings",
+              key: "settings",
+            },
           ],
         }),
       })
@@ -179,8 +193,8 @@ export const commonSetup = ({
     setupEnterprisePlugins();
   }
 
-  renderWithProviders(
-    <Route path="/" element={<TestComponent q={query} isLoggedIn />} />,
+  return renderWithProviders(
+    <Route path="*" element={<TestComponent q={query} isLoggedIn />} />,
     {
       withKBar: true,
       withRouter: true,

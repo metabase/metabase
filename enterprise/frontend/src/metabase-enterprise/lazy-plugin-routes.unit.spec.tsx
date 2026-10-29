@@ -4,9 +4,10 @@ import { type RouteObject, toRouteObjects } from "metabase/router";
 import {
   getAiControlsRoutes,
   getAiControlsUpsellRoutes,
+  getMcpToolsAccessRoutes,
 } from "metabase-enterprise/ai-controls/routes";
 import getApplicationPermissionsRoutes from "metabase-enterprise/application_permissions/routes";
-import { getRoutes as getDataAppRoutes } from "metabase-enterprise/data_apps/routes";
+import { getRoutes as getDataAppRoutes } from "metabase-enterprise/data-apps/host/routes";
 import { getDataStudioDependencyRoutes } from "metabase-enterprise/dependencies/routes";
 import { getTransformToolsRoutes } from "metabase-enterprise/replacement/routes";
 import { getDataStudioSchemaViewerRoutes } from "metabase-enterprise/schema_viewer/routes";
@@ -42,6 +43,7 @@ function lazyLoaders(tree: ReactNode) {
 const FACTORIES: [string, ReactNode, number][] = [
   ["ai-controls", getAiControlsRoutes(), 6],
   ["ai-controls upsell", getAiControlsUpsellRoutes(), 3],
+  ["mcp tools access", getMcpToolsAccessRoutes(), 1],
   ["schema viewer", getDataStudioSchemaViewerRoutes(), 1],
   ["transforms inspector", getInspectorRoutes(), 2],
   ["transforms inspector upsell", getInspectorUpsellRoutes(), 2],

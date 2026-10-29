@@ -10,6 +10,7 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.common.table-rows-sample :as table-rows-sample]
    [metabase.driver.connection :as driver.conn]
+   [metabase.driver.db :as driver.db]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -25,9 +26,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :refer [some select-keys every? mapv empty? not-empty]]
-   [potemkin :as p]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2])
+   [potemkin :as p])
   (:import
    (com.fasterxml.jackson.core
     JsonFactory
@@ -467,7 +466,7 @@
                 [:cat
                  (lib.schema.common/instance-of-class Connection)
                  [:map
-                  {:description "Table"}
+                  {:closed true, :description "Table"}
                   [:schema {:optional true} [:maybe :string]]
                   [:name   :string]]]
                 ::driver/describe-fks.result]]
@@ -747,14 +746,31 @@
             :nfc-path          field-path}))
        (into #{})))
 
+(defn- table-fields-for-json-unfolding
+  "Columns of `table` to consider for JSON unfolding. For drivers with `:describe-fields`, runs [[describe-fields-sql]],
+  which can list only the columns the connection user is allowed to read (e.g. Postgres reads
+  `information_schema.columns`, which hides columns without a column-level grant), whereas JDBC `getColumns` lists them
+  all. Sampling an unreadable column fails the whole query (#83790)."
+  [driver ^Connection conn database table]
+  (if (driver/database-supports? driver :describe-fields database)
+    ;; on `conn` rather than through `driver/describe-fields`, which checks out more pooled connections and runs
+    ;; pre-processing JSON detection doesn't need (e.g. Postgres's enum lookup)
+    (let [sql-args (m/mapply describe-fields-sql driver (cond-> {:table-names [(:name table)]
+                                                                 :details     (driver.conn/effective-details database)}
+                                                          (:schema table) (assoc :schema-names [(:schema table)])))]
+      (into []
+            (comp
+             ;; `:table-names` can match more than this table, e.g. MySQL compares names without case
+             (filter #(= (:name table) (:table-name %)))
+             (describe-fields-xf driver database))
+            (jdbc/reducible-query {:connection conn} sql-args {:identifiers identity})))
+    (describe-table-fields driver conn table nil)))
+
 (defn- table->unfold-json-fields
   "Given a table return a list of json fields that need to unfold."
-  [driver conn table]
+  [driver conn database table]
   (let [fields-with-json-unfolding-disabled
-        (->> (t2/select-fn-set :name [:model/Field :name]
-                               :table_id (u/the-id table)
-                               :base_type :type/JSON
-                               :json_unfolding false)
+        (->> (driver.db/json-field-names-with-unfolding-disabled (u/the-id table))
              ;; in a delay so we'll query only if there's at least one json field
              (delay))]
     (into #{}
@@ -762,7 +778,7 @@
            (filter #(isa? (:base-type %) :type/JSON))
            (remove #(contains? @fields-with-json-unfolding-disabled (:name %)))
            (describe-table-fields-xf driver table))
-          (describe-table-fields driver conn table nil))))
+          (table-fields-for-json-unfolding driver conn database table))))
 
 (defn- sample-json-row-honey-sql
   "Return a honeysql query used to get row sample to describe json columns.
@@ -841,7 +857,7 @@
                                   jdbc-spec
                                   nil
                                   (fn [^Connection conn]
-                                    (let [unfold-json-fields (table->unfold-json-fields driver conn table)
+                                    (let [unfold-json-fields (table->unfold-json-fields driver conn database table)
                                           ;; Just pass in `nil` here, that's what we do in the normal sync process and it seems to work correctly.
                                           ;; We don't currently have a driver-agnostic way to get the physical database name. `(:name database)` is
                                           ;; wrong, because it's a human-friendly name rather than a physical name. `(get-in

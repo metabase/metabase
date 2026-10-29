@@ -1,8 +1,7 @@
 import _ from "underscore";
 
 import { isNotNull } from "metabase/utils/types";
-import { isCartesianChart } from "metabase/visualizations";
-import { getVisualizerSeriesCardId } from "metabase/visualizations/lib/series";
+import { getVisualizerSeriesCardId, isCartesianChart } from "metabase/viz-core";
 import type {
   RawSeries,
   VisualizerColumnValueSource,

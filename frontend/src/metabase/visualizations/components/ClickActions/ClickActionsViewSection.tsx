@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { Flex, Stack, Text, rem } from "metabase/ui";
 
 import type { ContentDirectionType } from "./utils";
@@ -34,7 +36,7 @@ export const ClickActionsViewSection = ({
 
   if (title) {
     return (
-      <Stack gap={isRow ? rem(12) : "md"} mt="sm" mb={isRow ? "sm" : undefined}>
+      <Stack gap={isRow ? rem(12) : "lg"} mt="sm" mb={isRow ? "sm" : undefined}>
         <Text size="sm" c="text-secondary">
           {title}
         </Text>

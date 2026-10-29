@@ -67,8 +67,7 @@ const updateDataWrapper = (
     try {
       const editedFields = filterUntouchedFields(fields, props.entity);
       if (!isEmptyObject(editedFields)) {
-        const newEntity = { ...props.entity, ...editedFields };
-        await fn(newEntity);
+        await fn({ id: props.entity.id, ...editedFields });
       }
     } finally {
       resetForm(props);
@@ -127,7 +126,7 @@ export const rUpdateFields = (
           ),
         }))
         .filter(({ formField }) => !isEmptyObject(formField))
-        .map(({ field, formField }) => ({ ...field, ...formField }));
+        .map(({ field, formField }) => ({ id: field.id, ...formField }));
 
       await Promise.all(updatedFields.map(props.updateField));
     } finally {

@@ -48,7 +48,7 @@ export const LinkEditor = ({
   };
 
   return (
-    <Flex align="center" gap="xs">
+    <Flex align="center" gap="xxs">
       <Box style={{ flexGrow: 1 }}>
         <TextInput
           ref={inputRef}
@@ -70,17 +70,17 @@ export const LinkEditor = ({
       </Box>
       <Box c="text-secondary">
         <Tooltip label={t`Save`}>
-          <ActionIcon c="inherit" onClick={handleSubmit}>
+          <ActionIcon variant="subtle" onClick={handleSubmit}>
             <FixedSizeIcon name="check" />
           </ActionIcon>
         </Tooltip>
         <Tooltip label={t`Remove link`}>
-          <ActionIcon c="inherit" onClick={() => onSubmit("")}>
+          <ActionIcon variant="subtle" onClick={() => onSubmit("")}>
             <FixedSizeIcon name="trash" />
           </ActionIcon>
         </Tooltip>
         <Tooltip label={t`Formatting`}>
-          <ActionIcon c="inherit" onClick={handleCancel}>
+          <ActionIcon variant="subtle" onClick={handleCancel}>
             <FixedSizeIcon name="ellipsis" />
           </ActionIcon>
         </Tooltip>

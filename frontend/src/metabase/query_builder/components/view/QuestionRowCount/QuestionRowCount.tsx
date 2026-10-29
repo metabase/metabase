@@ -11,21 +11,22 @@ import {
 import { formatRowCount } from "metabase/common/utils/format-row-count";
 import { getRowCountMessage } from "metabase/common/utils/get-row-count-message";
 import CS from "metabase/css/core/index.css";
-import { setLimit } from "metabase/query_builder/actions";
-import { LimitPopover } from "metabase/query_builder/components/LimitPopover";
-import {
-  getFirstQueryResult,
-  getIsResultDirty,
-  getQuestion,
-} from "metabase/query_builder/selectors";
 import { connect } from "metabase/redux";
-import type { State } from "metabase/redux/store";
 import { Box, Popover, UnstyledButton } from "metabase/ui";
 import type { Limit } from "metabase-lib";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 import type { Dataset } from "metabase-types/api";
+
+import { setLimit } from "../../../actions";
+import {
+  getFirstQueryResult,
+  getIsResultDirty,
+  getQuestion,
+} from "../../../store/selectors";
+import type { QueryBuilderStoreState } from "../../../store/state";
+import { LimitPopover } from "../../LimitPopover";
 
 import QuestionRowCountS from "./QuestionRowCount.module.css";
 
@@ -47,7 +48,7 @@ interface DispatchProps {
 
 type QuestionRowCountProps = OwnProps & StateProps & DispatchProps;
 
-function mapStateToProps(state: State) {
+function mapStateToProps(state: QueryBuilderStoreState) {
   // Not expected to render before question is loaded
   const question = getQuestion(state) as Question;
 

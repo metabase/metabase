@@ -27,7 +27,7 @@ export const DrillLensesCell = ({
   }
 
   return (
-    <Flex direction="column" gap="xs">
+    <Flex direction="column" gap="xxs">
       {drillLenses.map((drillLens) => {
         const lensHandle = toLensHandle(drillLens);
         return (

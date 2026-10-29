@@ -1,0 +1,82 @@
+import { createSelector } from "@reduxjs/toolkit";
+
+import { selectQuestionFromCardBuilder } from "metabase/metadata-store";
+import { isSavedQuestionChanged } from "metabase/querying/common/utils/question";
+import * as Lib from "metabase-lib";
+
+import type { QueryBuilderStoreState } from "./state";
+
+/**
+ * The question on screen, and the slice reads it is built from.
+ *
+ * Separate from `./selectors` because the app shell reads these on every page,
+ * and that module reaches the visualization and querying stacks. Its
+ * dependencies here are only metabase-lib and the metadata selector, so an
+ * always-mounted component can import it without pulling the query builder into
+ * the initial bundle. `./selectors` re-exports all of it.
+ */
+
+// This selector can be called from public questions / dashboards, which do not have state.qb
+export const getUiControls = (state: QueryBuilderStoreState) =>
+  state.qb?.uiControls;
+
+export const getCard = (state: QueryBuilderStoreState) => state.qb.card;
+export const getOriginalCard = (state: QueryBuilderStoreState) =>
+  state.qb.originalCard;
+export const getParameterValues = (state: QueryBuilderStoreState) =>
+  state.qb.parameterValues;
+
+// Typed against this store's state so every input to the selectors below takes
+// the same argument. A wider `State` here makes reselect merge the parameter
+// lists into a signature that needs two arguments.
+const getQuestionBuilder = (state: QueryBuilderStoreState) =>
+  selectQuestionFromCardBuilder(state);
+
+export const getQueryBuilderMode = createSelector(
+  [getUiControls],
+  (uiControls) => uiControls.queryBuilderMode,
+);
+
+export const getOriginalQuestion = createSelector(
+  [getQuestionBuilder, getOriginalCard],
+  (buildQuestion, card) => (card && buildQuestion(card)) ?? undefined,
+);
+
+export const getQuestionWithoutComposing = createSelector(
+  [getCard, getQuestionBuilder, getParameterValues],
+  (card, buildQuestion, parameterValues) => {
+    if (!card) {
+      return;
+    }
+    return buildQuestion(card, parameterValues);
+  },
+);
+
+export const getQuestion = createSelector(
+  [getQuestionWithoutComposing, getQueryBuilderMode],
+  (question, queryBuilderMode) => {
+    if (!question) {
+      return;
+    }
+
+    const isModel = question.type() === "model";
+    const isMetric = question.type() === "metric";
+    if ((isModel || isMetric) && queryBuilderMode === "dataset") {
+      return isModel ? question.lockDisplay() : question;
+    }
+
+    // When opening a model or a metric, we construct a question
+    // with a clean, ad-hoc, query.
+    // This has to be skipped for users without data permissions.
+    // See https://github.com/metabase/metabase/issues/20042
+    const composedQuestion =
+      isModel || isMetric ? question.composeQuestion() : question;
+    const { isEditable } = Lib.queryDisplayInfo(composedQuestion.query());
+    return isEditable ? composedQuestion : question;
+  },
+);
+
+export const getIsSavedQuestionChanged = createSelector(
+  [getQuestion, getOriginalQuestion],
+  isSavedQuestionChanged,
+);

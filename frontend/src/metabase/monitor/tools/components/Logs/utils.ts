@@ -1,4 +1,3 @@
-import orderBy from "lodash.orderby";
 import _ from "underscore";
 
 import {
@@ -41,13 +40,20 @@ function logEventKey(ev: Log) {
   return `${ev.timestamp}, ${ev.process_uuid}, ${ev.fqns}, ${ev.msg}`;
 }
 
+function compareAsc(a: string, b: string) {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
 export function mergeLogs(logArrays: Log[][]) {
   let prevLogKey = "";
-  return orderBy(
-    logArrays.flat(),
-    ["timestamp", "process_uuid", "msg"],
-    ["asc", "asc", "asc"],
-  )
+  return logArrays
+    .flat()
+    .toSorted(
+      (a, b) =>
+        compareAsc(a.timestamp, b.timestamp) ||
+        compareAsc(a.process_uuid, b.process_uuid) ||
+        compareAsc(a.msg, b.msg),
+    )
     .filter((log) => {
       const key = logEventKey(log);
       const keep = prevLogKey !== key;

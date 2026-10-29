@@ -1,10 +1,22 @@
-import { waitFor } from "@testing-library/react";
+import { act, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
-import { setupCurrentUserEndpoint } from "__support__/server-mocks";
+import {
+  setupCurrentUserEndpoint,
+  setupDashboardQuestionCandidatesEndpoint,
+  setupUserKeyValueEndpoints,
+} from "__support__/server-mocks";
+import { setupEntityIdEndpoint } from "__support__/server-mocks/entity-id";
 import { renderRoutes, renderWithProviders, screen } from "__support__/ui";
+import { setup as setupAccountPassword } from "metabase/account/password/containers/UserPasswordApp/tests/setup";
+import { getUser } from "metabase/current-user";
 import { PLUGIN_AUDIT, reinitialize } from "metabase/plugins";
 import { Route } from "metabase/router";
+import { defer } from "metabase/utils/promise";
+import type { User } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
+import { createMockEntityId } from "metabase-types/api/mocks/entity-id";
 
 import { LegacyBrowseRedirect, getRoutes } from "./routes";
 
@@ -59,6 +71,15 @@ jest.mock("metabase/monitor/components/MonitorLayout", () => {
     MonitorLayout: () => (mockRenderMonitorOutlet ? <Outlet /> : null),
   };
 });
+
+jest.mock("metabase/collections/components/CollectionLanding", () => {
+  const { Outlet } = jest.requireActual("metabase/router");
+  return { __esModule: true, default: () => <Outlet /> };
+});
+
+jest.mock("metabase/dashboard/containers/DashboardApp/DashboardApp", () => ({
+  DashboardApp: () => <div>dashboard app</div>,
+}));
 
 function setupAppRoutes({
   initialRoute,
@@ -150,5 +171,233 @@ describe("application routes", () => {
         expect(router?.location.pathname).toBe("/unauthorized");
       });
     });
+  });
+});
+
+describe("disconnecting Slack with application routes", () => {
+  afterEach(reinitialize);
+
+  it.each([200, 401])(
+    "should confirm Disconnect after leaving the page when the refresh returns %s",
+    async (currentUserStatus) => {
+      const user = createMockUser({
+        sso_source: "slack",
+        slack_account_status: "active",
+      });
+      const expectedPathname =
+        currentUserStatus === 401 ? "/auth/login" : "/account/profile";
+      const expectedUser =
+        currentUserStatus === 401
+          ? null
+          : { ...user, slack_account_status: null };
+      const response = defer<{ status: number }>();
+      fetchMock.delete(
+        `path:/api/user/${user.id}/slack`,
+        () => response.promise,
+      );
+      const { router, store, disconnect } = setupAccountPassword({
+        user,
+        currentUserStatus,
+        routes: getRoutes,
+      });
+
+      await disconnect();
+      await userEvent.click(
+        await screen.findByRole("tab", { name: "Profile" }),
+      );
+      await waitFor(() =>
+        expect(router?.location.pathname).toBe("/account/profile"),
+      );
+
+      await act(async () => response.resolve({ status: 204 }));
+
+      expect(
+        await screen.findByText("Your Slack account has been disconnected."),
+      ).toBeInTheDocument();
+      await waitFor(() =>
+        expect(router?.location.pathname).toBe(expectedPathname),
+      );
+      expect(getUser(store.getState())).toEqual(expectedUser);
+    },
+  );
+
+  it("should stay on the chosen page when the refresh finishes after leaving Authentication", async () => {
+    const user = createMockUser({
+      sso_source: "google",
+      slack_account_status: "active",
+    });
+    const response = defer<User>();
+    fetchMock.get("path:/api/user/current", () => response.promise, {
+      name: "current-user-refresh",
+    });
+    fetchMock.get("path:/api/pulse", []);
+    fetchMock.get("path:/api/notification", []);
+    const { router, disconnect } = setupAccountPassword({
+      user,
+      hasAuthPlugin: true,
+      tokenFeatures: { disable_password_login: true },
+      routes: getRoutes,
+    });
+
+    await disconnect();
+    await waitFor(() =>
+      expect(fetchMock.callHistory.called("current-user-refresh")).toBe(true),
+    );
+    await userEvent.click(
+      await screen.findByRole("tab", { name: "Notifications" }),
+    );
+    await waitFor(() =>
+      expect(router?.location.pathname).toBe("/account/notifications"),
+    );
+
+    await act(async () =>
+      response.resolve({ ...user, slack_account_status: null }),
+    );
+
+    expect(
+      await screen.findByText("Your Slack account has been disconnected."),
+    ).toBeInTheDocument();
+    expect(router?.location.pathname).toBe("/account/notifications");
+  });
+
+  it("should clear the cached user and render sign in when the Slack session ends", async () => {
+    const { router, store, disconnect } = setupAccountPassword({
+      user: createMockUser({
+        sso_source: "slack",
+        slack_account_status: "active",
+      }),
+      currentUserStatus: 401,
+      routes: getRoutes,
+    });
+    const visited: string[] = [];
+    router?.onLocationChange((location) => visited.push(location.pathname));
+
+    await disconnect();
+
+    expect(await screen.findByText(/Sign in to/)).toBeInTheDocument();
+    expect(router?.location.pathname).toBe("/auth/login");
+    expect(getUser(store.getState())).toBeNull();
+    expect(visited).not.toContain("/");
+    expect(screen.queryByText("Slack")).not.toBeInTheDocument();
+  });
+
+  it("should replace the empty Authentication page in browser history", async () => {
+    const { router, disconnect } = setupAccountPassword({
+      user: createMockUser({
+        sso_source: "google",
+        slack_account_status: "active",
+      }),
+      hasAuthPlugin: true,
+      tokenFeatures: { disable_password_login: true },
+      routes: getRoutes,
+    });
+
+    await disconnect();
+    await waitFor(() =>
+      expect(router?.location.pathname).toBe("/account/profile"),
+    );
+    expect(await screen.findByTestId("user-locale-select")).toBeInTheDocument();
+
+    act(() => router?.back());
+
+    expect(router?.location.pathname).toBe("/account/profile");
+    expect(screen.getByTestId("user-locale-select")).toBeInTheDocument();
+  });
+});
+
+describe("collection modal routes", () => {
+  it("renders the move-questions-into-dashboards modal with a single dialog", async () => {
+    setupUserKeyValueEndpoints({
+      namespace: "user_acknowledgement",
+      key: "dashboard_question_migration_info_modal",
+      value: false,
+    });
+    setupDashboardQuestionCandidatesEndpoint([]);
+
+    setupAppRoutes({ initialRoute: "/collection/1/move-questions-dashboard" });
+
+    expect(
+      await screen.findByText("Move questions into their dashboards?"),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+  });
+});
+
+describe("dashboard entity-id deep links", () => {
+  const DASHBOARD_EID = createMockEntityId("xBLdW9FsgRuB2HGhWiBa_");
+  const TAB_EID = createMockEntityId("N-o1tJ9swdO4YJycqMA8P");
+  const DASHCARD_EID = createMockEntityId("19JbScZRjz5mSQ7chtjuY");
+  const UNKNOWN_DASHCARD_EID = "unknownDashcardEid___";
+  const DASHBOARD_ID = 1;
+  const TAB_ID = 2;
+  const DASHCARD_ID = 25;
+
+  type SetupOpts = {
+    initialRoute: string;
+  };
+
+  function setup({ initialRoute }: SetupOpts) {
+    setupEntityIdEndpoint({
+      dashboard: { [DASHBOARD_EID]: DASHBOARD_ID },
+      "dashboard-tab": { [TAB_EID]: TAB_ID },
+      "dashboard-card": { [DASHCARD_EID]: DASHCARD_ID },
+    });
+
+    const { router } = setupAppRoutes({ initialRoute });
+    return router;
+  }
+
+  it("resolves the dashboard entity_id in the path to its numeric id", async () => {
+    const router = setup({
+      initialRoute: `/dashboard/entity/${DASHBOARD_EID}`,
+    });
+
+    await waitFor(() =>
+      expect(router?.location.pathname).toBe(`/dashboard/${DASHBOARD_ID}`),
+    );
+    expect(await screen.findByText("dashboard app")).toBeInTheDocument();
+  });
+
+  it("translates the tab and the scrollTo dashcard entity_ids", async () => {
+    const router = setup({
+      initialRoute: `/dashboard/entity/${DASHBOARD_EID}?tab=${TAB_EID}#scrollTo=${DASHCARD_EID}`,
+    });
+
+    await waitFor(() =>
+      expect(router?.location.pathname).toBe(`/dashboard/${DASHBOARD_ID}`),
+    );
+    expect(router?.location.search).toBe(`?tab=${TAB_ID}`);
+    expect(router?.location.hash).toBe(`#scrollTo=${DASHCARD_ID}`);
+  });
+
+  it("drops a scrollTo entity_id that doesn't exist and keeps the rest of the hash", async () => {
+    const router = setup({
+      initialRoute: `/dashboard/entity/${DASHBOARD_EID}#scrollTo=${UNKNOWN_DASHCARD_EID}&fullscreen`,
+    });
+
+    expect(await screen.findByText("dashboard app")).toBeInTheDocument();
+    expect(router?.location.pathname).toBe(`/dashboard/${DASHBOARD_ID}`);
+    expect(router?.location.hash).toBe("#fullscreen");
+  });
+
+  it("keeps a hash without entity_ids as it is", async () => {
+    const router = setup({
+      initialRoute: `/dashboard/entity/${DASHBOARD_EID}#scrollTo=${DASHCARD_ID}&refresh=60`,
+    });
+
+    await waitFor(() =>
+      expect(router?.location.pathname).toBe(`/dashboard/${DASHBOARD_ID}`),
+    );
+    expect(router?.location.hash).toBe(`#scrollTo=${DASHCARD_ID}&refresh=60`);
+  });
+
+  it("shows a 404 for a tab entity_id that doesn't exist, even when it starts with a number", async () => {
+    setup({
+      initialRoute: `/dashboard/entity/${DASHBOARD_EID}?tab=${"12".padEnd(21, "x")}`,
+    });
+
+    expect(
+      await screen.findByText("We're a little lost..."),
+    ).toBeInTheDocument();
   });
 });

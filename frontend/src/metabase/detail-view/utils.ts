@@ -1,14 +1,17 @@
+import { createSelector } from "@reduxjs/toolkit";
+
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
+import { selectMetadataProvider } from "metabase/metadata-store";
+import type { State } from "metabase/redux/store";
 import { formatValue } from "metabase/value-formatting";
-import { getComputedSettings } from "metabase/visualizations/lib/settings";
 import {
+  getComputedSettings,
+  getComputedSettingsForSeries,
   getGlobalSettingsForColumn,
   getSettingDefinitionsForColumn,
   getTitleForColumn,
-} from "metabase/visualizations/lib/settings/column";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+} from "metabase/viz-core";
 import * as Lib from "metabase-lib";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import {
   isAvatarURL,
   isEntityName,
@@ -194,22 +197,25 @@ export const getEntityIcon = (entityType?: Table["entity_type"]) => {
   }
 };
 
-export function getTableQuery(
-  metadata: Metadata,
-  table: Table | undefined,
-): Lib.Query | undefined {
-  if (!table) {
-    return undefined;
-  }
+export const getTableQuery = createSelector(
+  [
+    (state: State, table: Table | undefined) =>
+      selectMetadataProvider(state, table?.db_id ?? null),
+    (_state: State, table: Table | undefined) => table,
+  ],
+  (metadataProvider, table): Lib.Query | undefined => {
+    if (!table) {
+      return undefined;
+    }
 
-  const metadataProvider = Lib.metadataProvider(table.db_id, metadata);
-  const tableMetadata = Lib.tableOrCardMetadata(metadataProvider, table.id);
-  if (tableMetadata == null) {
-    return undefined;
-  }
+    const tableMetadata = Lib.tableOrCardMetadata(metadataProvider, table.id);
+    if (tableMetadata == null) {
+      return undefined;
+    }
 
-  return Lib.queryFromTableOrCardMetadata(metadataProvider, tableMetadata);
-}
+    return Lib.queryFromTableOrCardMetadata(metadataProvider, tableMetadata);
+  },
+);
 
 export function filterByPk(
   query: Lib.Query,

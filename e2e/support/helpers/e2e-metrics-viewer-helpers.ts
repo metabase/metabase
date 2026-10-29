@@ -1,5 +1,10 @@
+import { closeNavigationSidebar } from "./e2e-ui-elements-helpers";
+
 export const MetricsViewer = {
-  goToViewer: () => cy.visit("/explore"),
+  goToViewer: () => {
+    cy.visit("/explore");
+    closeNavigationSidebar();
+  },
   formulaInput: () => cy.findByTestId("metrics-formula-input"),
   searchInput: () => {
     // Click the right edge of the container to focus the CodeMirror input
@@ -51,7 +56,7 @@ export const MetricsViewer = {
   getMetricControls: () => cy.findByTestId("metrics-viewer-controls"),
   changeVizType: (display: string) =>
     MetricsViewer.getMetricControls()
-      .findByRole("button", { name: display })
-      .click(),
+      .findByRole("radio", { name: display })
+      .click({ force: true }),
   runButton: () => cy.findByTestId("run-expression-button"),
 };

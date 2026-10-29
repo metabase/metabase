@@ -34,7 +34,7 @@ export function TemporalUnitSettings({
     <Popover width="target">
       <Popover.Target>
         <Button
-          fw="normal"
+          size="lg"
           rightSection={<Icon name="chevrondown" />}
           fullWidth
           px={rem(11)} // needs to be the same as default input paddingLeft in Input.styled.tsx

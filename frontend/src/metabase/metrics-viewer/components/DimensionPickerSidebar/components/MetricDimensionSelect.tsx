@@ -19,7 +19,7 @@ export function MetricDimensionSelect({
   return (
     <Select
       label={
-        <Flex align="center" gap="xs" miw={0} pt="0.5rem">
+        <Flex align="center" gap="xxs" miw={0} pt="0.5rem">
           <Text fz="md" lh="md" component="span">
             {row.metricName}
           </Text>

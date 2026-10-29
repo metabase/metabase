@@ -21,7 +21,7 @@
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
-   [toucan2.core :as t2]))
+   [metabase.warehouses.db :as warehouses.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -216,7 +216,7 @@
                            qp.preprocess/preprocess)
           sql (lib/raw-native-query native-query)
           db-id (transforms-base.u/transform-source-database transform)
-          driver (t2/select-one-fn (comp keyword :engine) :model/Database :id db-id)
+          driver (keyword (:engine (warehouses.db/database db-id)))
           parsed (macaw-parsed-query sql driver)
           ast (macaw.ast/->ast parsed {:with-instance? false})]
       (when (and ast (= (:type ast) :macaw.ast/select))

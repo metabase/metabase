@@ -47,8 +47,8 @@ export function AdvisoryCard({
     : null;
 
   return (
-    <Card p="xl" withBorder data-testid="advisory-card">
-      <Stack gap="md">
+    <Card p="xxl" withBorder data-testid="advisory-card">
+      <Stack gap="lg">
         <Group gap="sm" justify="space-between" align="flex-start">
           <Badge
             color={getSeverityColor({
@@ -65,7 +65,7 @@ export function AdvisoryCard({
             {getSeverityLabel(advisory.severity)}
           </Badge>
           {!isAffecting && (
-            <Group gap="xs" align="center">
+            <Group gap="xxs" align="center">
               <Text size="sm" c="feedback-positive" fw={500}>
                 {t`Your instance is not affected`}
               </Text>
@@ -86,7 +86,7 @@ export function AdvisoryCard({
 
         {advisory.affected_versions.length > 0 && (
           <Box>
-            <Text fw={700} mb="xs">{t`Affected versions`}</Text>
+            <Text fw={700} mb="xxs">{t`Affected versions`}</Text>
             <List size="sm">
               {advisory.affected_versions.map((v) => (
                 <List.Item
@@ -98,7 +98,7 @@ export function AdvisoryCard({
         )}
 
         <Box>
-          <Text fw={700} mb="xs">{t`Remediation`}</Text>
+          <Text fw={700} mb="xxs">{t`Remediation`}</Text>
           <Markdown
             c="text-secondary"
             disallowHeading
@@ -108,10 +108,9 @@ export function AdvisoryCard({
           </Markdown>
         </Box>
 
-        <Group gap="md" mt="sm">
+        <Group gap="lg" mt="sm">
           {downloadJar && (
             <Button
-              variant="outline"
               component="a"
               href={downloadJar.url}
               target="_blank"
@@ -127,8 +126,6 @@ export function AdvisoryCard({
               label={t`Clicking on Dismiss just hides the notification and you can view this later by toggling 'Show dismissed'`}
             >
               <Button
-                variant="outline"
-                color="text-secondary"
                 onClick={() => onAcknowledge(advisory.advisory_id)}
                 data-testid="acknowledge-button"
               >
@@ -137,12 +134,7 @@ export function AdvisoryCard({
             </Tooltip>
           )}
           {acknowledged && (
-            <Button
-              variant="outline"
-              color="text-secondary"
-              disabled
-              data-testid="acknowledge-button"
-            >
+            <Button disabled data-testid="acknowledge-button">
               {t`Dismissed`}
             </Button>
           )}

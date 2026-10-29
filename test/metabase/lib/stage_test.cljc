@@ -24,7 +24,6 @@
   (testing "make sure columns are coming back the way we'd expect for :field clauses"
     (let [query {:lib/type     :mbql/query
                  :stages       [{:lib/type     :mbql.stage/mbql
-                                 :lib/options  {:lib/uuid "0311c049-4973-4c2a-8153-1e2c887767f9"}
                                  :source-table (meta/id :venues)
                                  :fields       [(lib.tu/field-clause :venues :price)]}]
                  :database     (meta/id)
@@ -238,9 +237,8 @@
     (is (=? [[:field
               (fn expected-opts? [opts]
                 (and
-                 ;; should retain the effective type of `:type/Integer` since `:year` is an extraction operation.
                  (= (:base-type opts) :type/Date)
-                 (= (:effective-type opts) :type/Integer)
+                 (= (:effective-type opts) :type/Date)
                  (not (:temporal-unit opts))))
               "DATE"]]
             (map lib/ref cols)))))
@@ -738,16 +736,18 @@
             base-type               [nil :type/Date]
             effective-type          [nil :type/Date]
             inherited-temporal-unit [nil :default]
-            ;; make sure random keys don't affect this either
-            nonsense-key            [nil 1337]
-            lib-key                 [nil "PRODUCTS"]
+            ;; make sure options that have nothing to do with bucketing don't affect this either. They have to be
+            ;; options the schema actually declares -- a made-up key is dropped before the ref is ever resolved, so it
+            ;; could not tell us anything.
+            irrelevant-option       [nil :type/Category]
+            irrelevant-lib-option   [nil "PRODUCTS"]
             :let                    [opts (cond-> {:join-alias "People"}
                                             temporal-unit           (assoc :temporal-unit temporal-unit)
                                             base-type               (assoc :base-type base-type)
                                             effective-type          (assoc :effective-type effective-type)
                                             inherited-temporal-unit (assoc :inherited-temporal-unit inherited-temporal-unit)
-                                            nonsense-key            (assoc :nonsense-key nonsense-key)
-                                            lib-key                 (assoc :lib/nonsense-key lib-key))
+                                            irrelevant-option       (assoc :semantic-type irrelevant-option)
+                                            irrelevant-lib-option   (assoc :lib/source-name irrelevant-lib-option))
                                      clause [:field (meta/id :people :birth-date) opts]]]
       (testing (pr-str (lib/->mbql5 clause))
         (testing `lib/returned-columns
@@ -807,8 +807,30 @@
                 "Q1 → Count"]
                (map :display-name (lib/returned-columns query))))))))
 
+(deftest ^:parallel aggregating-stage-returned-columns-ignore-fields-test
+  (testing "a stage with :aggregation/:breakout should not advertise :fields columns as returned columns. (#62539)"
+    (are [stage expected]
+         (= expected
+            (mapv :display-name
+                  (lib/returned-columns
+                   (lib/query meta/metadata-provider
+                              (lib.tu.macros/mbql-query orders stage)))))
+
+      {:aggregation [[:count]]
+       :fields      [$orders.id $orders.total]}
+      ["Count"]
+
+      {:breakout [$orders.user-id]
+       :fields   [$orders.id $orders.total]}
+      ["User ID"]
+
+      {:aggregation [[:count]]
+       :breakout    [$orders.user-id]
+       :fields      [$orders.id $orders.total]}
+      ["User ID" "Count"])))
+
 (deftest ^:parallel expressions-with-aggregations-and-breakouts-returned-columns-test
-  (testing "expressions in :fields should be returned AFTER breakouts and aggregations"
+  (testing "expression refs in :fields on an aggregating stage are stripped from returned columns (#62539)"
     (let [query (lib/query
                  meta/metadata-provider
                  (lib.tu.macros/mbql-query orders
@@ -818,12 +840,11 @@
                                   $orders.product-id->products.category]
                     :expressions {:test-expr [:ltrim "wheeee"]}
                     :fields      [[:expression "test-expr"]]}))]
-      (is (= ["User → State"              ; from breakouts
-              "User → Source"             ; from breakouts
-              "Product → Category"        ; from breakouts
-              "Count"                     ; from aggregations
-              "Sum of Quantity"           ; from aggregations
-              "test-expr"]                ; from expressions/fields ???
+      (is (= ["User → State"
+              "User → Source"
+              "Product → Category"
+              "Count"
+              "Sum of Quantity"]
              (binding [lib.metadata.calculation/*display-name-style* :long]
                (mapv :display-name (lib/returned-columns query))))))))
 

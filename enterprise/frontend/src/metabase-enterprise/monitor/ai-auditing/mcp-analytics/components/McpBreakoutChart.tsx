@@ -143,8 +143,17 @@ function McpBreakoutChartInner({
       maxCategories,
       otherLabel: t`Other`,
       getColor: themeColor,
+      errorsOnly,
     });
-  }, [data, jsQuery, labelMapper, display, maxCategories, themeColor]);
+  }, [
+    data,
+    jsQuery,
+    labelMapper,
+    display,
+    maxCategories,
+    themeColor,
+    errorsOnly,
+  ]);
 
   return (
     <BreakoutChartCard

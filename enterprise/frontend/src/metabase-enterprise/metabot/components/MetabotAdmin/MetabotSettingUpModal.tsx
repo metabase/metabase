@@ -1,7 +1,10 @@
 import { t } from "ttag";
 
-import { useTokenRefreshUntil } from "metabase/api/utils/use-token-refresh";
 import { MetabotLogo } from "metabase/common/components/MetabotLogo";
+import {
+  WAITING_REFRESH_INTERVAL,
+  useTokenRefreshUntil,
+} from "metabase/settings";
 import {
   Box,
   Button,
@@ -9,9 +12,7 @@ import {
   Loader,
   Modal,
   type ModalProps,
-  Stack,
   Text,
-  Title,
 } from "metabase/ui";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
@@ -28,7 +29,7 @@ export function MetabotSettingUpModal({
     isSavingConfiguration || !hasPremiumFeature(METABASE_MANAGED_AI_FEATURE);
 
   useTokenRefreshUntil(METABASE_MANAGED_AI_FEATURE, {
-    intervalMs: 1000,
+    intervalMs: WAITING_REFRESH_INTERVAL,
     skip: !opened || !isSettingUp,
   });
 
@@ -40,10 +41,9 @@ export function MetabotSettingUpModal({
       closeOnEscape={false}
       withCloseButton={false}
       size="30rem"
-      padding="2.5rem"
       mah="80%"
-    >
-      <Stack align="center" gap="lg" my="4.5rem">
+      layout="centered"
+      illustration={
         <Box h={96} pos="relative" w={96}>
           <MetabotLogo variant="cloud" alt={t`Metabot Cloud`} />
 
@@ -70,33 +70,25 @@ export function MetabotSettingUpModal({
             </Flex>
           )}
         </Box>
-
-        {isSettingUp ? (
-          <Box ta="center">
-            <Title c="text-primary" fz="lg">
-              {t`Setting up Metabot AI, please wait`}
-            </Title>
-            <Text c="text-secondary" fz="md" lh={1.43}>
-              {t`This will take just a minute or so`}
-            </Text>
-          </Box>
-        ) : (
-          <>
-            <Box ta="center">
-              <Title c="text-primary" fz="lg">
-                {t`Metabot AI is ready`}
-              </Title>
-              <Text c="text-secondary" fz="md" lh={1.43}>
-                {t`Happy exploring!`}
-              </Text>
-            </Box>
-
-            <Button variant="filled" size="md" onClick={onClose}>
-              {t`Done`}
-            </Button>
-          </>
-        )}
-      </Stack>
+      }
+      title={
+        isSettingUp
+          ? t`Setting up Metabot AI, please wait`
+          : t`Metabot AI is ready`
+      }
+    >
+      <Text c="text-secondary">
+        {isSettingUp
+          ? t`This will take just a minute or so`
+          : t`Happy exploring!`}
+      </Text>
+      {!isSettingUp && (
+        <Modal.Footer>
+          <Button variant="filled" onClick={onClose}>
+            {t`Done`}
+          </Button>
+        </Modal.Footer>
+      )}
     </Modal>
   );
 }

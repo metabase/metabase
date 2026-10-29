@@ -46,7 +46,7 @@ describe("formatDateTimeRangeWithUnit", () => {
             );
 
             if (verboseOutput) {
-              // eslint-disable-next-line jest/no-conditional-expect
+              // eslint-disable-next-line jest-js/no-conditional-expect
               expect(formatDateTimeRangeWithUnit(input, unit)).toBe(
                 verboseOutput,
               );
@@ -277,6 +277,18 @@ describe("formatDateTimeForParameter", () => {
           options,
         ),
       ).toEqual("6 AM");
+    });
+
+    test.each([
+      ["minute-of-hour", 7, "7"],
+      ["day-of-month", 5, "5"],
+      ["day-of-week", 1, "Sunday"],
+      ["month-of-year", 1, "January"],
+      ["month-of-year", 12, "December"],
+      ["quarter-of-year", 1, "Q1"],
+      ["quarter-of-year", 4, "Q4"],
+    ] as const)("should format %s %s as %s", (unit, value, formatted) => {
+      expect(formatDateTimeWithUnit(value, unit)).toEqual(formatted);
     });
 
     test.each([

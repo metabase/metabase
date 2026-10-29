@@ -247,7 +247,7 @@ result_metadata:
   visibility_type: normal
 - base_type: type/Text
   coercion_strategy: null
-  description: Surface that originated the conversation (e.g. web, slack, embed); taken from the first ai_usage_log entry.
+  description: Surface that originated the conversation (e.g. web, slack, embed); taken from the earliest ai_usage_log entry that is not a conversation title call.
   display_name: Source
   effective_type: type/Text
   field_ref:
@@ -322,7 +322,7 @@ result_metadata:
   visibility_type: normal
 - base_type: type/Text
   coercion_strategy: null
-  description: LLM model used for the conversation; taken from the first ai_usage_log entry.
+  description: LLM model used for the conversation; taken from the earliest ai_usage_log entry that is not a conversation title call.
   display_name: Model
   effective_type: type/Text
   field_ref:

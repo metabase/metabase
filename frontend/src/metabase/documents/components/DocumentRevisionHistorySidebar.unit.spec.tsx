@@ -1,15 +1,15 @@
 import userEvent from "@testing-library/user-event";
 
 import {
-  setupDocumentRevisionsEndpoint,
+  setupEntityRevisionsEndpoint,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { Document, Revision } from "metabase-types/api";
 import {
   createMockDocument,
@@ -64,7 +64,7 @@ function setup({
   const onClose = jest.fn();
   const currentUser = mockUser;
 
-  setupDocumentRevisionsEndpoint(document.id, revisions);
+  setupEntityRevisionsEndpoint("document", document.id, revisions);
   setupUsersEndpoints([currentUser]);
 
   const state = createMockState({

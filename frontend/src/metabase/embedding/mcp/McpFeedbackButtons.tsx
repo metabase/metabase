@@ -57,10 +57,11 @@ const FeedbackButton = forwardRef<HTMLButtonElement, FeedbackButtonProps>(
   ) {
     return (
       <ActionIcon
+        variant="subtle"
         data-testid={dataTestId}
         onClick={onClick}
         disabled={disabled}
-        h="sm"
+        size="sm"
         ref={ref}
       >
         <Icon

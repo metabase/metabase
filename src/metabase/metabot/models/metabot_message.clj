@@ -1,6 +1,7 @@
 (ns metabase.metabot.models.metabot-message
   (:require
    [metabase.config.core :as config]
+   [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.schema.migrate-v1-to-v2 :as migrate]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.models.interface :as mi]
@@ -16,9 +17,11 @@
   (derive :metabase/model))
 
 (t2/deftransforms :model/MetabotMessage
-  {:usage mi/transform-json
+  {:usage {:in  mi/json-in
+           :out (comp metabot.schema/normalize-usage mi/json-out-with-keywordization)}
    :data  mi/transform-json
-   :state mi/transform-json
+   :state {:in  mi/json-in
+           :out (comp metabot.schema/normalize-state mi/json-out-with-keywordization)}
    :role  mi/transform-keyword})
 
 (defn- migrate-v1->v2-on-read

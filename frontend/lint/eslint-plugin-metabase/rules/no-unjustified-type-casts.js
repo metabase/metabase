@@ -24,7 +24,7 @@ module.exports = {
   },
 
   create(context) {
-    const sourceCode = context.sourceCode || context.getSourceCode();
+    const { sourceCode } = context;
 
     function checkCast(node) {
       if (isConstAssertion(node)) {

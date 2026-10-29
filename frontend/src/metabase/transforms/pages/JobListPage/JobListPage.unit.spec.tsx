@@ -8,8 +8,8 @@ import {
   setupUpdateTransformJobEndpoint,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks/state";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type { TransformJob } from "metabase-types/api";
@@ -189,6 +189,23 @@ describe("JobListPage", () => {
       ).toBeDefined();
     });
     expect(visited.some((path) => path.includes("/jobs/1"))).toBe(false);
+  });
+
+  it("does not open the job when clicking inside its delete modal", async () => {
+    const { router } = await setup({
+      jobs: [createMockTransformJob({ id: 1, name: "Job", active: true })],
+      isAdmin: true,
+    });
+
+    const row = await findRow(1);
+    await userEvent.click(within(row).getByLabelText("ellipsis icon"));
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Delete/ }),
+    );
+    await userEvent.click(await screen.findByText("Delete this job?"));
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(router?.location.pathname).toBe(Urls.transformJobList());
   });
 
   it("hides the row action menu for non-admin users", async () => {

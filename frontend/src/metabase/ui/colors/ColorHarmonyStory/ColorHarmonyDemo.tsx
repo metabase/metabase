@@ -33,8 +33,8 @@ export function ColorHarmonyDemo() {
 
   return (
     <Box p={48} style={{ background: "#fafafa", minHeight: "100vh" }}>
-      <Stack gap="xl" maw={1180} mx="auto">
-        <Stack gap="md">
+      <Stack gap="xxl" maw={1180} mx="auto">
+        <Stack gap="lg">
           <Text fz={28} fw={700}>
             Color Harmony
           </Text>
@@ -48,7 +48,7 @@ export function ColorHarmonyDemo() {
         <Group align="flex-start" gap={48} wrap="wrap">
           <HarmonyWheel brand={brand} onBrandChange={setBrand} />
 
-          <Stack gap="xl" miw={260} style={{ flex: 1 }}>
+          <Stack gap="xxl" miw={260} style={{ flex: 1 }}>
             <BrandSummary brand={brand} onBrandChange={setBrand} />
 
             <HslSlider
@@ -83,14 +83,14 @@ export function ColorHarmonyDemo() {
               <Text size="xs" fw={600} c="text-secondary">
                 Resolved palette
               </Text>
-              <Group gap="md" wrap="wrap">
+              <Group gap="lg" wrap="wrap">
                 <Swatch label="Filter" hex={harmony.filter} size={20} />
                 <Swatch label="Summarize" hex={harmony.summarize} size={20} />
                 <Swatch label="Positive" hex={harmony.positive} size={20} />
                 <Swatch label="Negative" hex={harmony.negative} size={20} />
               </Group>
               <Box style={{ height: 1, background: "rgba(0,0,0,0.08)" }} />
-              <Group gap="md" wrap="wrap">
+              <Group gap="lg" wrap="wrap">
                 {harmony.charts.map((chart, i) => (
                   <Swatch
                     key={i}
@@ -102,7 +102,7 @@ export function ColorHarmonyDemo() {
               </Group>
             </Stack>
 
-            <Stack gap="xs">
+            <Stack gap="xxs">
               <Text size="xs" fw={600} c="text-secondary">
                 Where this is used
               </Text>
@@ -196,8 +196,8 @@ function HslSlider({
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }) {
   return (
-    <Stack gap="xs">
-      <Group gap="xs" justify="space-between">
+    <Stack gap="xxs">
+      <Group gap="xxs" justify="space-between">
         <Text size="xs" fw={600} c="text-secondary">
           {label}
         </Text>

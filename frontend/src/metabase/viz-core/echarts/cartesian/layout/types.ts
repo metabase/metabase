@@ -1,0 +1,37 @@
+import type { ComputedVisualizationSettings, Padding } from "../../../types";
+
+export interface TicksDimensions {
+  yTicksWidthLeft: number;
+  yTicksWidthRight: number;
+  xTicksHeight: number;
+  xTickWidthCap: number;
+  firstXTickWidth: number;
+  lastXTickWidth: number;
+  getXTickWidth: (text: string) => number;
+}
+
+export interface ChartBoundsCoords {
+  top: number;
+  left: number;
+  bottom: number;
+  right: number;
+}
+
+export type TicksRotation = "horizontal" | "vertical";
+
+export interface ChartLayout {
+  negativeDataLabelsWidth?: number;
+  negativeDataLabelsInset?: number;
+  padding: Padding;
+  /** Empty space at the chart container's left and right edges, not `padding`. */
+  internalInset: Pick<Padding, "left" | "right">;
+  ticksDimensions: TicksDimensions;
+  bounds: ChartBoundsCoords;
+  boundaryWidth: number;
+  outerHeight: number;
+  outerWidth: number;
+  axisEnabledSetting: ComputedVisualizationSettings["graph.x_axis.axis_enabled"];
+  stackedBarTicksRotation?: TicksRotation;
+  panelHeight?: number;
+  panelGap: number;
+}

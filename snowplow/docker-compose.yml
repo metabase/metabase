@@ -2,7 +2,7 @@ services:
   snowplow-micro:
     image: snowplow/snowplow-micro:2.3.0
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"
     volumes:
       - .:/config
     command: "--collector-config /config/micro.conf --iglu /config/iglu.json"

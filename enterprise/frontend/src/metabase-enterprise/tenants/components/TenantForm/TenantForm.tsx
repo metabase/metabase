@@ -1,7 +1,6 @@
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { FormFooter } from "metabase/common/components/FormFooter";
 import {
   Form,
   FormErrorMessage,
@@ -9,26 +8,27 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { Button } from "metabase/ui";
+import { Button, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import { LoginAttributesWidget } from "metabase-enterprise/sandboxes/components/LoginAttributesWidget/LoginAttributesWidget";
 import type { Tenant } from "metabase-types/api";
 
 const MAX_SLUG_LENGTH = 255;
 
-const localTenantSchema = Yup.object({
-  name: Yup.string().default("").required().max(254, Errors.maxLength),
-  slug: Yup.string()
-    .default("")
-    .required()
-    .matches(/^[-_a-z0-9]+$/, {
-      excludeEmptyString: true,
-      get message() {
-        return t`Only lowercase letters, numbers, hyphens (-), and underscores (_) are allowed`;
-      },
-    })
-    .max(MAX_SLUG_LENGTH, Errors.maxLength),
-});
+const getLocalTenantSchema = () =>
+  Yup.object({
+    name: Yup.string().default("").required().max(254, Errors.maxLength),
+    slug: Yup.string()
+      .default("")
+      .required()
+      .matches(/^[-_a-z0-9]+$/, {
+        excludeEmptyString: true,
+        get message() {
+          return t`Only lowercase letters, numbers, hyphens (-), and underscores (_) are allowed`;
+        },
+      })
+      .max(MAX_SLUG_LENGTH, Errors.maxLength),
+  });
 
 interface TenantFormProps {
   initialValues?: Partial<Tenant>;
@@ -55,54 +55,55 @@ export const TenantForm = ({
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={localTenantSchema}
+      validationSchema={getLocalTenantSchema()}
       enableReinitialize
       onSubmit={onSubmit}
     >
       {({ values, setFieldValue, dirty }) => (
-        <Form disabled={!dirty} mt="sm">
-          <FormTextInput
-            name="name"
-            title={t`Give this tenant a name`}
-            label={t`Give this tenant a name`}
-            description={t`This will be visible to users assigned to this tenant.`}
-            mb="md"
-            placeholder="A wonderful tenant"
-            onChange={(e) => {
-              const value = e.target.value;
-              setFieldValue("name", value);
+        <Form disabled={!dirty}>
+          <Stack gap="xl">
+            <FormTextInput
+              name="name"
+              title={t`Give this tenant a name`}
+              label={t`Give this tenant a name`}
+              description={t`This will be visible to users assigned to this tenant.`}
+              placeholder="A wonderful tenant"
+              onChange={(e) => {
+                const value = e.target.value;
+                setFieldValue("name", value);
 
-              const isSlugModified =
-                slugify(values.name ?? "") !== (values.slug ?? "");
-              const shouldAutoSetSlug = !initialValues.slug && !isSlugModified;
-              if (shouldAutoSetSlug) {
-                setFieldValue("slug", slugify(value));
-              }
-            }}
-          />
-          <FormTextInput
-            name="slug"
-            title={t`Slug for this tenant`}
-            label={t`Slug for this tenant`}
-            description={t`This can’t be changed later, so choose wisely.`}
-            placeholder="permanent-tenant-identifier"
-            disabled={!!initialValues.slug}
-            mb="xl"
-          />
-          <LoginAttributesWidget
-            name="attributes"
-            title={t`Default attributes`}
-            description={t`Attributes to be applied to all users in this tenant.`}
-          />
-          <FormFooter>
-            <FormErrorMessage inline />
+                const isSlugModified =
+                  slugify(values.name ?? "") !== (values.slug ?? "");
+                const shouldAutoSetSlug =
+                  !initialValues.slug && !isSlugModified;
+                if (shouldAutoSetSlug) {
+                  setFieldValue("slug", slugify(value));
+                }
+              }}
+            />
+            <FormTextInput
+              name="slug"
+              title={t`Slug for this tenant`}
+              label={t`Slug for this tenant`}
+              description={t`This can’t be changed later, so choose wisely.`}
+              placeholder="permanent-tenant-identifier"
+              disabled={!!initialValues.slug}
+            />
+            <LoginAttributesWidget
+              name="attributes"
+              title={t`Default attributes`}
+              description={t`Attributes to be applied to all users in this tenant.`}
+            />
+          </Stack>
+          <Modal.Footer>
+            <FormErrorMessage flex={1} />
             <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
             <FormSubmitButton
               label={submitText}
               disabled={!dirty}
               variant="filled"
             />
-          </FormFooter>
+          </Modal.Footer>
         </Form>
       )}
     </FormProvider>

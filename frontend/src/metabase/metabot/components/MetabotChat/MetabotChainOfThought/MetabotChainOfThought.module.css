@@ -96,7 +96,7 @@
 
 .toolRow a:hover,
 .headerLabel a:hover {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
   text-decoration: none;
 }
 
@@ -125,7 +125,12 @@
 .resultCount {
   margin-left: 0.375rem;
   font-variant-numeric: tabular-nums;
-  color: var(--mb-color-text-tertiary);
+  color: var(--mb-color-text-disabled);
+}
+
+.failed {
+  margin-left: 0.375rem;
+  color: var(--mb-color-feedback-negative);
 }
 
 .resultsList {
@@ -147,7 +152,7 @@
 }
 
 .resultRow:hover {
-  color: var(--mb-color-brand);
+  color: var(--mb-color-core-brand);
 }
 
 .resultIcon {

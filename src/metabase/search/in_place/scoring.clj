@@ -109,12 +109,26 @@
   Get the score for a result with `score-and-result`, and efficiently get the most relevant results with
   `top-results`.
 
-  Some of the scorers can be tweaked with configuration in [[metabase.search.config]]."
+  Some of the scorers can be tweaked with configuration in [[metabase.search.config]].
+
+  ## Divergence from the appdb engine
+
+  This engine ranks every search the same way, so it ignores the per-context weights in
+  [[metabase.search.config/static-context-weights]].
+  In particular, the `:metabot` and `:data-picker` contexts get none of their ranking behavior here:
+  - Entity types are ordered by [[metabase.search.config/models-search-order]], not by `:model/*` weights,
+    so dashboards outrank metrics and models outrank tables.
+  - Library membership is not scored.
+  - A table's `data_layer` is not scored.
+  - Official-collection and verified scores use their default weights, not the context's boosts.
+
+  Results also omit `curated`."
   (:require
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.search.config :as search.config]
+   [metabase.search.in-place.search-model :as search-model]
    [metabase.search.in-place.util :as search.util]
    [metabase.util :as u]))
 
@@ -153,19 +167,12 @@
                 {:is_match is-match
                  :text     (tokens->string text-tokens (not is-match))})))))
 
-(let [resolved-fn (delay (requiring-resolve 'metabase.search.in-place.legacy/searchable-columns))]
-  (defn- searchable-columns-fn
-    "Get searchable columns for a model.
-    Lazily resolves the function from the legacy namespace to avoid circular dependencies."
-    [model search-native-query]
-    (@resolved-fn model search-native-query)))
-
 (defn- text-scores-with
   "Scores a search result. Returns a vector of score maps, each containing `:weight`, `:score`, and other info about
   the text match, if there is one. If there is no match, the score is 0."
   [search-native-query weighted-scorers query-tokens search-result]
   ;; TODO is pmap over search-result worth it?
-  (let [scores (for [column (searchable-columns-fn (:model search-result) search-native-query)
+  (let [scores (for [column (search-model/searchable-columns (:model search-result) search-native-query)
                      {:keys [scorer name weight]
                       :as   _ws} weighted-scorers
                      :let [matched-text (-> search-result

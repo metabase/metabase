@@ -41,16 +41,16 @@
   justify-content: center;
   width: var(--tree-chevron-gutter);
   height: var(--tree-chevron-gutter);
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
 }
 
 .treeRow:hover .treeChevron {
   background:
     linear-gradient(
-      var(--mb-color-background-hover),
-      var(--mb-color-background-hover)
+      var(--mb-color-background_surface-hover),
+      var(--mb-color-background_surface-hover)
     ),
-    var(--mb-color-background-secondary);
+    var(--mb-color-background_page-secondary);
 }
 
 .treeRowNested .treeChevron {
@@ -58,11 +58,15 @@
 }
 
 .treeRow:hover {
-  background: var(--mb-color-background-hover);
+  background: var(--mb-color-background_surface-hover);
 }
 
 .treeRowThreadSeparated {
   margin-top: 0.75rem;
+}
+
+li:first-child > .treeRowThreadSeparated {
+  margin-top: 0;
 }
 
 /* Group headings stick while their group is scrolled through, and the whole
@@ -77,16 +81,16 @@
   position: sticky;
   top: calc(var(--tree-depth, 0) * var(--tree-row-height));
   z-index: calc(10 - var(--tree-depth, 0));
-  background: var(--mb-color-background-secondary);
+  background: var(--mb-color-background_page-secondary);
 }
 
 .treeRowHeading:hover {
   background:
     linear-gradient(
-      var(--mb-color-background-hover),
-      var(--mb-color-background-hover)
+      var(--mb-color-background_surface-hover),
+      var(--mb-color-background_surface-hover)
     ),
-    var(--mb-color-background-secondary);
+    var(--mb-color-background_page-secondary);
 }
 
 .treeRowNested::before {
@@ -118,8 +122,8 @@
 }
 
 .treeRowSelected {
-  background: var(--mb-color-background-brand);
-  color: var(--mb-color-brand);
+  background: var(--mb-color-background_surface-brand-subtle);
+  color: var(--mb-color-core-brand);
 }
 
 .shimmerText {
@@ -135,7 +139,7 @@
     linear-gradient(
       90deg,
       transparent calc(50% - var(--shimmer-spread)),
-      var(--mb-color-background-primary),
+      var(--mb-color-background_page-primary),
       transparent calc(50% + var(--shimmer-spread))
     ),
     linear-gradient(
@@ -159,12 +163,12 @@
     linear-gradient(
       90deg,
       transparent calc(50% - var(--shimmer-spread)),
-      var(--mb-color-background-primary),
+      var(--mb-color-background_page-primary),
       transparent calc(50% + var(--shimmer-spread))
     ),
     linear-gradient(
-      var(--mb-color-background-tertiary),
-      var(--mb-color-background-tertiary)
+      var(--mb-color-background_page-tertiary),
+      var(--mb-color-background_page-tertiary)
     );
   background-position: 50%;
   animation: exploration-shimmer 2500ms ease infinite;

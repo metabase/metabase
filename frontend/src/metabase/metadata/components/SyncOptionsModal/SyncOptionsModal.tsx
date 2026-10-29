@@ -20,15 +20,15 @@ export const SyncOptionsModal = ({
 }: SyncOptionsModalProps) => {
   return (
     <Modal
+      density="relaxed"
       opened={isOpen}
-      padding="xl"
       size={rem(512)}
       title={t`Syncing and scanning`}
       onClose={onClose}
     >
-      <Stack gap="xl" pt="lg">
-        <Stack gap="md">
-          <Stack gap="xs">
+      <Stack gap="xl">
+        <Stack gap="lg">
+          <Stack gap="xxs">
             <Text fw="bold">{t`Re-sync schema`}</Text>
 
             <Text c="text-secondary" size="sm">
@@ -40,8 +40,8 @@ export const SyncOptionsModal = ({
           <SyncTableSchemaButton tableId={tableId} />
         </Stack>
 
-        <Stack gap="md">
-          <Stack gap="xs">
+        <Stack gap="lg">
+          <Stack gap="xxs">
             <Text fw="bold">{t`Scan field values`}</Text>
 
             <Text c="text-secondary" size="sm">

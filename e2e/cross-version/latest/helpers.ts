@@ -8,6 +8,18 @@ export function saveQuestion(name: string) {
   cy.findByTestId("qb-header").button("Save").click();
   cy.findByTestId("save-question-modal").within(() => {
     cy.findByLabelText("Name").clear().type(name);
+    cy.findByLabelText(/Where do you want to save this/).click();
+  });
+  H.entityPickerModal().within(() => {
+    H.entityPickerModalLevel(0).findByText("Our analytics").click();
+    cy.findByTestId("entity-picker-select-button").click();
+  });
+  H.entityPickerModal().should("not.exist");
+  cy.findByTestId("save-question-modal").within(() => {
+    cy.findByLabelText(/Where do you want to save this/).should(
+      "contain.text",
+      "Our analytics",
+    );
     cy.button("Save").click();
     cy.wait("@saveQuestion");
   });

@@ -20,6 +20,7 @@
    [metabase.util :as u]
    [metabase.util.compress :as u.compress]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -30,6 +31,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *additive-logging*
   "If custom loggers should pass logs to parent loggers (to system Metabase logs), used to clean up test output."
   true)
@@ -220,10 +222,14 @@
     continue-on-error?        :continue_on_error
     full-stacktrace?          :full_stacktrace
     :as                       _query-params}
-   :- [:map
+   :- [:map {:closed true}
        [:dirname           {:optional true} [:maybe
-                                             {:description "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`)"}
-                                             string?]]
+                                             {:description (deferred-tru "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`): 1-255 characters from A-Z a-z 0-9 _ - . %, not starting with . or -")}
+                                             (mu/with-api-error-message
+                                              ;; `%`: the default name is a slug, which percent-encodes non-ASCII
+                                              [:re #"^[A-Za-z0-9_%][A-Za-z0-9._%-]{0,254}$"]
+                                              (deferred-tru "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`): 1-255 characters from A-Z a-z 0-9 _ - . %, not starting with . or -")
+                                              (deferred-tru "1-255 characters from A-Z a-z 0-9 _ - . %, not starting with . or -"))]]
        [:collection        {:optional true} [:maybe
                                              {:description "collections' db ids/entity-ids to serialize"}
                                              (ms/QueryVectorOf
@@ -251,16 +257,18 @@
                             :full-stacktrace          full-stacktrace?}
         export-dirname (or dirname
                            (format "%s-%s"
-                                   (u/slugify (appearance/site-name))
+                                   ;; + 17 for the timestamp = 255, so the default passes the `dirname` schema
+                                   (u/slugify (appearance/site-name) {:max-length 238})
                                    (u.date/format "YYYY-MM-dd_HH-mm" (t/local-date-time))))
         ;; Eager setup (target resolution, escape analysis) must run before the streaming response opens
         ;; so a failure can still set a non-200 status. extract-entities! captures its logs into log-output
         ;; (so escape-analysis warnings land in export.log) and honors full_stacktrace for genuine failures.
         log-output (ByteArrayOutputStream.)
         entities   (extract-entities! opts log-output full-stacktrace?)]
-    (sr/streaming-response {:content-type "application/gzip" :status 200} [output _cancel-chan]
-      (sr/set-header! "Content-Disposition"
-                      (format "attachment; filename=\"%s.tar.gz\"" export-dirname))
+    (sr/streaming-response {:content-type "application/gzip"
+                            :status       200
+                            :headers      {"Content-Disposition" (format "attachment; filename=\"%s.tar.gz\""
+                                                                         export-dirname)}} [output _cancel-chan]
       (let [start  (System/nanoTime)
             result (serialize-to-stream! output export-dirname entities log-output opts)]
         (track-export-event! collection opts start result)))))
@@ -286,14 +294,14 @@
     full-stacktrace?   :full_stacktrace
     reindex-search?    :reindex
     :as                _query-params}
-   :- [:map
+   :- [:map {:closed true}
        [:continue_on_error {:default false} (mu/with ms/BooleanValue {:description "Do not break execution on errors"})]
        [:full_stacktrace   {:default false} (mu/with ms/BooleanValue {:description "Show full stacktraces in the logs"})]
        ;; TODO this parameter is a kludge to fix https://linear.app/metabase/issue/GDGT-573
        ;;      ideally we'd fix the underlying issue (by delaying realtime indexing updates until the tx closes)
        ;;      for now, we let users opt out, in case they're indexing a lot, so they can only reindex on the last step
        [:reindex           {:default true}  (mu/with ms/BooleanValue {:description "Rebuild the search index afterwards"})]]
-   {:keys [file]} :- [:map
+   {:keys [file]} :- [:map {:closed true}
                       [:file (mu/with ms/File {:description ".tgz with serialization data"})]]]
   (api/check-superuser)
   (try

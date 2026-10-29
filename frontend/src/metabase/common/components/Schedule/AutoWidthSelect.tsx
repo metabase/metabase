@@ -18,11 +18,11 @@ export const AutoWidthSelect = <Value extends string | null>({
     getSetting(state, "application-font"),
   );
   const width = useMemo(() => {
-    const fontStyle = { family: fontFamily, ...style };
-    const longestLabel = getLongestSelectLabel(props.data, fontFamily);
-    const labelWidth = measureTextWidthSafely(longestLabel, 50, fontStyle);
+    const family = style?.family ?? fontFamily;
+    const longestLabel = getLongestSelectLabel(props.data, family);
+    const labelWidth = measureTextWidthSafely(longestLabel, 50, family);
     const placeholderWidth = props.placeholder
-      ? measureTextWidthSafely(props.placeholder, 50, fontStyle)
+      ? measureTextWidthSafely(props.placeholder, 50, family)
       : 0;
 
     return Math.max(labelWidth, placeholderWidth) + 60;

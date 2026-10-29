@@ -5,7 +5,8 @@ import { useDispatch } from "metabase/redux";
 import type { CardEmbedRef } from "metabase/redux/store/documents";
 import type { DocumentContent } from "metabase-types/api";
 
-import { setCardEmbeds, setIsCommentSidebarOpen } from "../documents.slice";
+import { setCardEmbeds } from "../documents.slice";
+import { doesDocumentNeedMigration } from "../utils/editorNodeUtils";
 
 export function useDocumentState(documentData?: {
   name: string;
@@ -16,14 +17,19 @@ export function useDocumentState(documentData?: {
   const [documentContent, setDocumentContent] = useState<JSONContent | null>(
     null,
   );
+  const [documentNeedsMigration, setDocumentNeedsMigration] = useState(false);
   const previousEmbedsRef = useRef<CardEmbedRef[]>([]);
 
   useEffect(() => {
     if (documentData) {
       setDocumentTitle(documentData.name);
       setDocumentContent(documentData.document);
+      setDocumentNeedsMigration(
+        doesDocumentNeedMigration(documentData.document),
+      );
     } else {
       setDocumentContent(null);
+      setDocumentNeedsMigration(false);
     }
   }, [documentData]);
 
@@ -36,7 +42,9 @@ export function useDocumentState(documentData?: {
           (embed, index) =>
             !prevEmbeds[index] ||
             embed.id !== prevEmbeds[index].id ||
-            embed.name !== prevEmbeds[index].name,
+            embed.name !== prevEmbeds[index].name ||
+            embed.stored_result_id !== prevEmbeds[index].stored_result_id ||
+            embed.sort !== prevEmbeds[index].sort,
         );
 
       if (hasChanged) {
@@ -47,21 +55,12 @@ export function useDocumentState(documentData?: {
     [dispatch],
   );
 
-  const openCommentSidebar = useCallback(() => {
-    dispatch(setIsCommentSidebarOpen(true));
-  }, [dispatch]);
-
-  const closeCommentSidebar = useCallback(() => {
-    dispatch(setIsCommentSidebarOpen(false));
-  }, [dispatch]);
-
   return {
     documentTitle,
     setDocumentTitle,
     documentContent,
     setDocumentContent,
+    documentNeedsMigration,
     updateCardEmbeds,
-    openCommentSidebar,
-    closeCommentSidebar,
   };
 }

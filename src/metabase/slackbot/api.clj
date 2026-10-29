@@ -15,11 +15,13 @@
    [metabase.settings.core :as setting]
    [metabase.slackbot.client :as slackbot.client]
    [metabase.slackbot.config :as slackbot.config]
+   [metabase.slackbot.db :as slackbot.db]
    [metabase.slackbot.events :as slackbot.events]
    [metabase.slackbot.persistence :as slackbot.persistence]
    [metabase.slackbot.settings :as slackbot.settings]
    [metabase.slackbot.streaming :as slackbot.streaming]
    [metabase.slackbot.uploads :as slackbot.uploads]
+   [metabase.sso.core :as sso]
    [metabase.sso.settings :as sso-settings]
    [metabase.system.core :as system]
    [metabase.util :as u]
@@ -29,8 +31,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [ring.util.codec :as codec]
-   [toucan2.core :as t2])
+   [ring.util.codec :as codec])
   (:import
    (java.util.concurrent ExecutorService Executors ThreadFactory)))
 
@@ -89,27 +90,12 @@
 
 ;; ------------------------- AUTHENTICATION ------------------------------
 
-(defn- current-signing-secret-version
-  []
-  (or (server.settings/slack-connect-signing-secret-version) 0))
-
-(defn- auth-identity-signing-secret-version
-  [identity]
-  (or (get-in identity [:metadata :signing_secret_version]) 0))
-
 (defn- slack-id->user-id
-  "Look up a Metabase user ID from Slack user ID. Only returns a match if the identity was created under the current
-  signing secret version, so that rotating the secret automatically invalidates existing identity links. Legacy
-  identities without an explicit version are treated as version 0."
+  "Return the user ID of the newest Slack link if the link is active and so is its user, or nil.
+  Turning off Slack Connect or rotating the signing secret makes existing links inactive."
   [slack-user-id]
-  (let [identity (t2/select-one [:model/AuthIdentity :user_id :metadata]
-                                :provider "slack-connect"
-                                :provider_id slack-user-id
-                                {:join     [[:core_user :user] [:= :user.id :auth_identity.user_id]]
-                                 :where    [:= :user.is_active true]
-                                 :order-by [[:created_at :desc]]})]
-    (when (= (auth-identity-signing-secret-version identity)
-             (current-signing-secret-version))
+  (let [identity (slackbot.db/active-slack-connect-identity slack-user-id)]
+    (when (sso/slack-connect-identity-active? identity)
       (:user_id identity))))
 
 (defn- slack-user-authorize-link
@@ -168,43 +154,17 @@
    :headers {"Content-Type" "text/plain"}
    :body    "ok"})
 
-(defn- all-files-skipped?
-  "Returns true if all files were skipped (none were CSV/TSV)."
-  [{:keys [upload-result]}]
-  (let [{:keys [results skipped]} upload-result]
-    (and (seq skipped)
-         (empty? results))))
-
 (mu/defn- handle-message-file-share
-  "Process a file_share message - handles CSV uploads"
+  "Handle a Slack message with file attachments."
   [client :- slackbot.client/SlackClient
    event  :- slackbot.events/SlackMessageFileShareEvent]
-  (let [files         (:files event)
-        text          (:text event)
-        has-text?     (not (str/blank? text))
-        file-handling (when (seq files)
-                        (slackbot.uploads/handle-file-uploads files))
-        extra-history (cond
-                        ;; Pre-flight error (uploads disabled, no permission)
-                        (:error file-handling)
-                        [{:role :assistant
-                          :content (:error file-handling)}]
-
-                        ;; Upload results to communicate to AI
-                        (:system-messages file-handling)
-                        (:system-messages file-handling))
-        all-skipped?    (all-files-skipped? file-handling)
-        should-skip-ai? (and (not has-text?)
-                             (not (:error file-handling))
-                             all-skipped?)]
-    ;; If all files were skipped (non-CSV) and there's no text, respond directly
-    ;; without calling the AI to avoid sending an empty prompt
-    (if should-skip-ai?
-      (let [skipped-files (get-in file-handling [:upload-result :skipped])]
+  (let [extra-history (slackbot.uploads/handle-file-uploads! client (:files event))]
+    ;; When a message contains only attachments, reply directly instead of sending an empty prompt to the AI.
+    ;; A message carrying neither text nor a file leaves nothing to reply with, so say nothing at all.
+    (if (str/blank? (:text event))
+      (when-let [text (not-empty (str/join "\n\n" (map :content extra-history)))]
         (slackbot.client/post-message client
-                                      (merge (slackbot.events/event->reply-context event)
-                                             {:text (format "I can only process CSV and TSV files. The following files were skipped: %s"
-                                                            (str/join ", " skipped-files))})))
+                                      (assoc (slackbot.events/event->reply-context event) :text text)))
       (slackbot.streaming/send-response client event extra-history))))
 
 (defmethod analytics.core/known-labels :metabase-slackbot/responses-generated [_]
@@ -214,7 +174,12 @@
    {:source "channel" :result "error"}])
 
 (defmethod analytics.core/known-labels :metabase-slackbot/file-uploads [_]
-  [{:result "success"} {:result "error"}])
+  [{:result "success"}
+   {:result "error"}
+   {:result "too-large"}
+   {:result "unsupported"}
+   {:result "remote"}
+   {:result "unavailable"}])
 
 (defn- event-source
   "Return the source label for a Slack event: \"dm\" or \"channel\"."
@@ -436,7 +401,7 @@
                     :dispatch         :type}
             ["url_verification" slackbot.events/SlackUrlVerificationEvent]
             ["event_callback"   slackbot.events/SlackEventCallbackEvent]
-            [::mc/default       [:map [:type :string]]]]
+            [::mc/default       [:map {:closed true} [:type :string]]]]
    request]
   (log/debugf "[slackbot] Incoming Slack request type=%s slack_event_type=%s request_ts=%s"
               (:type body)
@@ -453,7 +418,7 @@
 (def SlackBotSettingsRequest
   "Malli schema for the request body of PUT /api/metabot/slack/settings.
    All credential fields must be provided together (either all set or all nil)."
-  [:map
+  [:map {:closed true}
    [:slack-connect-client-id      [:maybe ms/NonBlankString]]
    [:slack-connect-client-secret  [:maybe ms/NonBlankString]]
    [:metabot-slack-signing-secret [:maybe ms/NonBlankString]]])
@@ -493,7 +458,7 @@
                         :slack-connect-enabled        (boolean all-set?)})
     (when signing-secret-changed?
       (server.settings/slack-connect-signing-secret-version!
-       (inc (current-signing-secret-version))))
+       (inc (server.settings/slack-connect-signing-secret-version))))
     {:ok true}))
 
 ;; ------------------------- FEEDBACK BUTTONS ------------------------------
@@ -591,9 +556,7 @@
   [{:keys [message_external_id channel_id message_ts]}]
   (or message_external_id
       (when (and channel_id message_ts)
-        (t2/select-one-fn :external_id :model/MetabotMessage
-                          :channel_id   channel_id
-                          :slack_msg_id message_ts))))
+        (slackbot.db/metabot-message-external-id channel_id message_ts))))
 
 (defn- handle-feedback-modal-submission
   "Handle submission of the feedback details modal.
@@ -628,7 +591,7 @@
   "Handle interactive payloads from Slack (button clicks, modal submissions)."
   [_route-params
    _query-params
-   {:keys [payload]} :- [:map
+   {:keys [payload]} :- [:map {:closed true}
                          [:payload ms/NonBlankString]]
    request]
   (assert-valid-slack-req request)

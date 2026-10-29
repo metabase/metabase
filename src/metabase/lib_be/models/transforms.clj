@@ -18,7 +18,7 @@
 
 (defn- normalize-mbql
   [query]
-  (case (lib/normalized-query-type query)
+  (case (when (map? query) (lib/normalized-query-type query))
     :mbql/query      (lib.schema.common/normalize-map-no-kebab-case query)
     (:query :native) (mbql.normalize/normalize query)
     (lib.schema.common/normalize-map-no-kebab-case query)))
@@ -28,14 +28,15 @@
                               [true  [:= {:description "empty map"} {}]]
                               [false ::lib.schema/query]]]
   "Normalize an MBQL `query` to MBQL 5 and attach a metadata provider."
-  ([query]
+  ([query :- [:maybe :metabase.lib.util/query-like]]
    (normalize-query nil query))
 
-  ([metadata-providerable query]
+  ([metadata-providerable :- [:maybe ::lib.metadata.protocols/metadata-providerable]
+    query                 :- [:maybe :metabase.lib.util/query-like]]
    (normalize-query metadata-providerable query nil))
 
   ([metadata-providerable :- [:maybe ::lib.metadata.protocols/metadata-providerable]
-    query                 :- [:maybe :map]
+    query                 :- [:maybe :metabase.lib.util/query-like]
     {:keys [strict?]}     :- [:maybe
                               [:map
                                {:closed true}

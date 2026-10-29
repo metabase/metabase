@@ -67,7 +67,7 @@
     (is (= "<h2>Title</h2>"
            (render/content->html {:type    "doc"
                                   :content [{:type    "heading"
-                                             :attrs   {:level 2}
+                                             :attrs   {"level" 2}
                                              :content [{:type "text" :text "Title"}]}]}))))
   (testing "bullet list"
     (is (= "<ul><li><p>one</p></li><li><p>two</p></li></ul>"
@@ -115,25 +115,25 @@
       (is (= "<a href=\"http://localhost:3000/question/42\">My Question</a>"
              (render/content->html {:type    "doc"
                                     :content [{:type  "smartLink"
-                                               :attrs {:entityId 42
-                                                       :model    "card"
-                                                       :label    "My Question"
-                                                       :href     "/question/42"}}]})))))
+                                               :attrs {"entityId" 42
+                                                       "model"    "card"
+                                                       "label"    "My Question"
+                                                       "href"     "/question/42"}}]})))))
   (testing "smartLink user mention renders as plain text (no link)"
     (is (= "@42"
            (render/content->html {:type    "doc"
                                   :content [{:type  "smartLink"
-                                             :attrs {:entityId 42
-                                                     :model    "user"}}]}))))
+                                             :attrs {"entityId" 42
+                                                     "model"    "user"}}]}))))
   (testing "smartLink ignores href — phishing URL cannot be injected"
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (is (= "<a href=\"http://localhost:3000/question/1\">Phishing</a>"
              (render/content->html {:type    "doc"
                                     :content [{:type  "smartLink"
-                                               :attrs {:entityId 1
-                                                       :model    "card"
-                                                       :label    "Phishing"
-                                                       :href     "https://evil.example"}}]}))))))
+                                               :attrs {"entityId" 1
+                                                       "model"    "card"
+                                                       "label"    "Phishing"
+                                                       "href"     "https://evil.example"}}]}))))))
 
 (deftest content->html-xss-test
   (testing "HTML in text content is escaped"
@@ -162,16 +162,16 @@
       (is (= "<a href=\"http://localhost:3000/question/1\">&lt;img src=x&gt;</a>"
              (render/content->html {:type    "doc"
                                     :content [{:type  "smartLink"
-                                               :attrs {:entityId 1
-                                                       :model    "card"
-                                                       :label    "<img src=x>"}}]})))))
+                                               :attrs {"entityId" 1
+                                                       "model"    "card"
+                                                       "label"    "<img src=x>"}}]})))))
   (testing "smartLink with unknown model renders as plain text"
     (is (= "My Thing"
            (render/content->html {:type    "doc"
                                   :content [{:type  "smartLink"
-                                             :attrs {:entityId 1
-                                                     :model    "unknown"
-                                                     :label    "My Thing"}}]}))))
+                                             :attrs {"entityId" 1
+                                                     "model"    "unknown"
+                                                     "label"    "My Thing"}}]}))))
   (testing "non-string text values are coerced and rendered as plain text"
     (is (= "<p>42</p>"
            (render/content->html {:type    "doc"

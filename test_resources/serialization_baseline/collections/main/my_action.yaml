@@ -1,0 +1,12 @@
+creator_id: admin@example.com
+entity_id: aCtiOn00ExAmPlEx00001
+implicit:
+- kind: row/update
+model_id: sRcMoDeL00ExAmPlEx001
+name: My Action
+parameter_mappings: []
+parameters: []
+query: []
+type: implicit
+serdes/meta:
+- model: Action

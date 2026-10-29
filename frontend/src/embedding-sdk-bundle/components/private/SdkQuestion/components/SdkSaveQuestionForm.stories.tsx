@@ -39,7 +39,7 @@ export const Default = {
         }}
         {...args}
       >
-        <Box p="lg">
+        <Box p="xl">
           <Button onClick={toggle}>Save</Button>
         </Box>
 
@@ -51,7 +51,7 @@ export const Default = {
 
         {!isSaveModalOpen && <SdkQuestion.QuestionVisualization />}
 
-        <Stack p="lg">
+        <Stack p="xl">
           {isBeforeSaveCalled && <Box>onBeforeSave is called</Box>}
           {newQuestionTitle && <Box>question saved as {newQuestionTitle}</Box>}
         </Stack>

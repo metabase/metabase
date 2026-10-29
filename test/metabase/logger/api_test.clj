@@ -153,15 +153,14 @@
                                  {:duration 1, :duration_unit :hours, :log_levels {"my.namespace" :ok
                                                                                    "my.other.namespace" :catastophic}}))))
   (testing "invalid log_levels type"
-    (are [value json-type] (= {:specific-errors {:log_levels [(str "invalid type, received: " json-type)]}
-                               :errors {:_error (format "Log levels should be an object, %s received" json-type)}}
-                              (mt/user-http-request :crowberto :post 400 "logger/adjustment"
-                                                    {:duration 1, :duration_unit :hours, :log_levels value}))
-      []    "array"
-      4.2   "number"
-      false "boolean"
-      "ll"  "string"
-      nil   "null")))
+    (are [value] (= "Value must be a map."
+                    (:log_levels (:errors (mt/user-http-request :crowberto :post 400 "logger/adjustment"
+                                                                {:duration 1, :duration_unit :hours, :log_levels value}))))
+      []
+      4.2
+      false
+      "ll"
+      nil)))
 
 (deftest ^:synchronized analytic-events-test
   (snowplow-test/with-fake-snowplow-collector

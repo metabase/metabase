@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { type JSX, useCallback, useState } from "react";
 import { t } from "ttag";
 
 import { ModalContent } from "metabase/common/components/ModalContent";
@@ -55,7 +55,7 @@ function UnsubscribeModal({
         <Button
           key="submit"
           variant="filled"
-          color="feedback-negative"
+          color="negative"
           onClick={handleUnsubscribeClick}
         >
           {t`Unsubscribe`}

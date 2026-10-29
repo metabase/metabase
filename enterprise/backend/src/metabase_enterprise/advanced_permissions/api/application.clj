@@ -38,6 +38,23 @@
   [graph]
   (update graph :groups dejsonify-groups))
 
+(def ^:private RequestGroupId
+  "A PermissionsGroup ID as it arrives as a JSON object key in a `PUT /graph` request body: the request middleware
+  keywordizes it, so it is turned back into the string it was and has to spell the integer [[dejsonify-groups]] parses
+  -- a key that doesn't is rejected here rather than throwing down there."
+  [:and
+   [:string {:decode/api #(cond-> % (keyword? %) name)}]
+   [:re {:error/message "group ID"} #"\d+"]])
+
+(def ^:private RequestGroups
+  "The `:groups` half of an application permissions graph as it arrives in a `PUT /graph` request body: group ID ->
+  permission type -> permission. [[dejsonify-graph]] turns the values into keywords right after this schema runs."
+  [:map-of
+   RequestGroupId
+   [:map-of
+    [:enum :setting :monitoring :subscription]
+    (ms/enum-keywords-and-strings :yes :no)]])
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -46,16 +63,19 @@
   "Do a batch update of Application Permissions by passing a modified graph."
   [_route-params
    {skip-graph? :skip-graph
-    force? :force} :- [:map
+    force? :force} :- [:map {:closed true}
                        [:skip-graph {:default false} [:maybe ms/BooleanValue]]
                        [:force      {:default false} [:maybe ms/BooleanValue]]]
-   body :- [:map
+   body :- [:map {:closed true}
             [:revision {:optional true} [:maybe ms/Int]]
             [:force    {:optional true} [:maybe :boolean]]
-            ;; keyed by group id, then by application permission type -- `dejsonify-graph` below turns both back
-            ;; into the int and keyword the graph is stored under
-            [:groups   [:map-of :keyword [:map-of :keyword ms/NonBlankString]]]]]
+            [:groups   RequestGroups]]
+   request]
   (api/check-superuser)
+  (let [raw-groups (get-in request [:body :groups])]
+    (api/check-no-dropped-entries raw-groups (:groups body))
+    (doseq [[group-id perm-type->perm] (:groups body)]
+      (api/check-no-dropped-entries (get raw-groups (keyword group-id)) perm-type->perm)))
   (-> body
       dejsonify-graph
       (a-perms/update-graph! force?))

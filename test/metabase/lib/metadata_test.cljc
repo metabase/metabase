@@ -20,8 +20,9 @@
 (deftest ^:parallel display-name-from-name-test
   (testing "Use the 'simple humanization' logic to calculate a display name for a Field that doesn't have one"
     (is (= "Venue ID"
-           (lib/display-name (lib.tu/venues-query) -1 {:lib/type :metadata/column
-                                                       :name     "venue_id"})))))
+           (lib/display-name (lib.tu/venues-query) -1 {:lib/type  :metadata/column
+                                                       :name      "venue_id"
+                                                       :base-type :type/Integer})))))
 
 (deftest ^:parallel table-or-card-test
   (are [id expected] (=? expected

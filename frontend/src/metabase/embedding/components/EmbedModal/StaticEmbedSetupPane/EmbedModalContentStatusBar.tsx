@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type JSX, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -86,7 +86,7 @@ export const EmbedModalContentStatusBar = ({
               <Box component="span" display="inline-flex">
                 <Button
                   variant="subtle"
-                  color="feedback-negative"
+                  color="negative"
                   disabled={isReadOnly}
                   loading={isUnpublishing || isFetching}
                   onClick={() => {

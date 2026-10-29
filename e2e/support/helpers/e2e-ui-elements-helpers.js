@@ -151,37 +151,39 @@ export function appBar() {
 }
 
 export function openNavigationSidebar() {
-  // Opening the sidebar is racy. The toggle flips the sidebar, so blindly
-  // clicking it closes an already-open one. But a single non-retrying read of
-  // its open state isn't safe either: navigating to a dashboard/question
-  // collapses the navbar, and that collapse can land a beat after the page
-  // content renders. The old code could read a lingering-open navbar, skip the
-  // toggle click, then watch it collapse out from under the assertion below.
-  // Re-check after acting and re-open if it collapsed, so the helper self-heals
-  // regardless of a pending collapse.
-  ensureNavigationSidebarOpen();
+  setNavigationSidebarOpen(true);
   navigationSidebar().should("be.visible");
 }
 
-function ensureNavigationSidebarOpen(attempt = 0) {
-  const MAX_ATTEMPTS = 5;
-  navigationSidebar().then(($nav) => {
-    if (!$nav.is(":visible")) {
-      appBar().findByTestId("sidebar-toggle").click();
-    }
-  });
-  // Each Cypress command yields a tick, giving a pending collapse time to
-  // flush; if the navbar closed after our first read, try again.
-  navigationSidebar().then(($nav) => {
-    if (!$nav.is(":visible") && attempt < MAX_ATTEMPTS) {
-      ensureNavigationSidebarOpen(attempt + 1);
-    }
-  });
+/**
+ * Close the main navigation sidebar by clicking the app bar toggle, if it's open.
+ *
+ * The navbar stays open until the user closes it, but most specs were written
+ * for the full-width layout of questions, dashboards and documents, so the
+ * shared `visit*` helpers call this after loading those pages.
+ */
+export function closeNavigationSidebar() {
+  setNavigationSidebarOpen(false);
+  navigationSidebar().should("not.be.visible");
 }
 
-export function closeNavigationSidebar() {
-  appBar().findByTestId("sidebar-toggle").click();
-  navigationSidebar().should("not.be.visible");
+// The toggle flips the navbar, so only click it when the navbar is in the
+// wrong state. Re-check after acting in case the state changed under us (small
+// screens collapse the navbar on navigation) and try again if it did.
+function setNavigationSidebarOpen(isOpen, attempt = 0) {
+  const MAX_ATTEMPTS = 5;
+  navigationSidebar().then(($nav) => {
+    if ($nav.is(":visible") !== isOpen) {
+      // Not `appBar()`: its "Navigation bar" label is translated, and the
+      // visit helpers call this in specs that run in other locales.
+      cy.findByTestId("app-bar").findByTestId("sidebar-toggle").click();
+    }
+  });
+  navigationSidebar().then(($nav) => {
+    if ($nav.is(":visible") !== isOpen && attempt < MAX_ATTEMPTS) {
+      setNavigationSidebarOpen(isOpen, attempt + 1);
+    }
+  });
 }
 
 export function browseDatabases() {
@@ -326,14 +328,6 @@ export const undo = () => {
 
 export const getDraggableElements = () => {
   return cy.findAllByTestId(/draggable-item/);
-};
-
-export const moveColumnDown = (column, distance) => {
-  column
-    .trigger("mousedown", 0, 0, { force: true })
-    .trigger("mousemove", 5, 5, { force: true })
-    .trigger("mousemove", 0, distance * 50, { force: true })
-    .trigger("mouseup", 0, distance * 50, { force: true });
 };
 
 /**

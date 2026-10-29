@@ -1,6 +1,7 @@
-import { match } from "ts-pattern";
-
-import type { MetabotChatMessage } from "metabase/metabot/state/types";
+import type {
+  MetabotMessage,
+  MetabotMessagePart,
+} from "metabase/metabot/state/types";
 
 const URL_WITH_LABEL = /<((?:https?|mailto|tel):[^|>\s]+)\|([^>]+)>/g;
 const BARE_URL = /<((?:https?|mailto|tel):[^|>\s]+)>/g;
@@ -21,24 +22,17 @@ export function slackMrkdwnToMarkdown(text: string): string {
     .replace(SPECIAL_MENTION, "@$1");
 }
 
-export function convertSlackChatMessage(
-  message: MetabotChatMessage,
-): MetabotChatMessage {
-  return match(message)
-    .with({ role: "user", type: "text" }, (m) => ({
-      ...m,
-      message: slackMrkdwnToMarkdown(m.message),
-    }))
-    .with({ role: "agent", type: "text" }, (m) => ({
-      ...m,
-      message: slackMrkdwnToMarkdown(m.message),
-    }))
-    .with({ role: "agent", type: "data_part" }, (m) => m)
-    .with({ role: "agent", type: "tool_call" }, (m) => m)
-    .with({ role: "agent", type: "chain_of_thought" }, (m) => m)
-    .with({ role: "agent", type: "turn_aborted" }, (m) => m)
-    .with({ role: "agent", type: "turn_incomplete" }, (m) => m)
-    .with({ role: "agent", type: "turn_errored" }, (m) => m)
-    .with({ role: "agent", type: "turn_in_progress" }, (m) => m)
-    .exhaustive();
+function convertSlackMessagePart(part: MetabotMessagePart): MetabotMessagePart {
+  if (part.type !== "text") {
+    return part;
+  }
+  const message = slackMrkdwnToMarkdown(part.message);
+  return message === part.message ? part : { ...part, message };
+}
+
+export function convertSlackMessage(message: MetabotMessage): MetabotMessage {
+  const parts = message.parts.map(convertSlackMessagePart);
+  return parts.some((part, index) => part !== message.parts[index])
+    ? { ...message, parts }
+    : message;
 }

@@ -40,10 +40,7 @@ const pluginFunc: PluginFunc = (_option, _dayjsClass, dayjsFactory) => {
     }
     const match = parseOffset(date);
     if (match === null) {
-      return dayjsFactory(date, {
-        // @ts-expect-error $offset is not defined in type definition, we'll keep it for guaranteed compatibility after migrating to ts
-        $offset: 0,
-      });
+      return dayjsFactory(date, { utc: true }, locale, strict);
     }
     if (match[0] === "Z") {
       return dayjsFactory(

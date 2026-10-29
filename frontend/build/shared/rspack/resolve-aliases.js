@@ -1,5 +1,4 @@
 // @ts-check
-/* eslint-env node */
 
 const path = require("path");
 
@@ -7,8 +6,8 @@ const { IS_DEV_MODE } = require("../constants");
 
 const ROOT_PATH = path.resolve(__dirname, "../../../..");
 const ASSETS_PATH = ROOT_PATH + "/resources/frontend_client/app/assets";
+const LOCALES_PATH = ROOT_PATH + "/resources/frontend_client/app/locales";
 const FONTS_PATH = ROOT_PATH + "/resources/frontend_client/app/fonts";
-const IMAGES_PATH = ROOT_PATH + "/resources/frontend_client/app/img";
 const DOCS_PATH = ROOT_PATH + "/docs";
 const FRONTEND_BUILD_CONFIGS_PATH = ROOT_PATH + "/frontend/build";
 const SRC_PATH = ROOT_PATH + "/frontend/src/metabase";
@@ -40,7 +39,8 @@ const resolveEnterprisePathOrNoop = (/** @type {string} */ subpath) =>
 const RESOLVE_ALIASES = {
   "build-configs": FRONTEND_BUILD_CONFIGS_PATH,
   assets: ASSETS_PATH,
-  img: IMAGES_PATH,
+  // Written by the `:translations` build step, which runs before the frontend one.
+  locales: LOCALES_PATH,
   fonts: FONTS_PATH,
   docs: DOCS_PATH,
   metabase: SRC_PATH,
@@ -78,4 +78,4 @@ const RESOLVE_ALIASES = {
       : SRC_PATH + "/plugins/noop",
 };
 
-module.exports = { RESOLVE_ALIASES };
+module.exports = { ENTERPRISE_SRC_PATH, RESOLVE_ALIASES };

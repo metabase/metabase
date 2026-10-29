@@ -46,7 +46,7 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
       onSuccess();
     } catch (error) {
       const message = getActionErrorMessage(error);
-      sendToast({ icon: "warning", toastColor: "feedback-negative", message });
+      sendToast({ variant: "negative", message });
     }
   };
 
@@ -59,7 +59,7 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
         <Button
           key="delete"
           variant="filled"
-          color="feedback-negative"
+          color="negative"
           disabled={
             typeof actionId === "undefined" ||
             typeof objectId === "undefined" ||

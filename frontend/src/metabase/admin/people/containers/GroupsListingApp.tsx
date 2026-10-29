@@ -3,20 +3,21 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import {
-  SettingsPageWrapper,
-  SettingsSection,
-} from "metabase/admin/components/SettingsSection";
-import {
   useCreatePermissionsGroupMutation,
   useDeletePermissionsGroupMutation,
   useListPermissionsGroupsQuery,
   useUpdatePermissionsGroupMutation,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { isEmbeddingHubTenancy } from "metabase/common/tenants";
 import { getUserIsAdmin } from "metabase/current-user";
 import { PLUGIN_GROUP_MANAGERS, PLUGIN_TENANTS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useSetting } from "metabase/settings";
+import {
+  SettingsPageWrapper,
+  SettingsSection,
+} from "metabase/settings-components";
 import type { Group } from "metabase-types/api";
 
 import { GroupsListing } from "../components/GroupsListing";
@@ -75,8 +76,10 @@ export const GroupsListingApp = ({
     return external ? t`Tenant groups` : t`Internal groups`;
   }, [external, isUsingTenants]);
 
+  const isEmbeddingHub = isEmbeddingHubTenancy();
+
   return (
-    <SettingsPageWrapper title={pageTitle}>
+    <SettingsPageWrapper title={isEmbeddingHub ? undefined : pageTitle}>
       <SettingsSection>
         <LoadingAndErrorWrapper error={error} loading={isLoading}>
           <GroupsListing

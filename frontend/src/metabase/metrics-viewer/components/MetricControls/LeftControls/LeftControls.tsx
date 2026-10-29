@@ -67,7 +67,7 @@ export function LeftControls({ showStackSeries }: LeftControlsProps) {
       <Flex
         className={cx(S.leftControls, S.leftControlsFull)}
         align="center"
-        gap="md"
+        gap="lg"
       >
         <ChartTypePicker
           chartTypes={chartTypes}
@@ -85,9 +85,8 @@ export function LeftControls({ showStackSeries }: LeftControlsProps) {
         <Menu position="top-start" withinPortal>
           <Menu.Target>
             <ActionIcon
-              className={S.compactChartTypeButton}
+              size="lg"
               aria-label={t`Change visualization type`}
-              variant="subtle"
               data-testid="metrics-viewer-compact-chart-controls"
             >
               {selectedChartType && (
@@ -96,7 +95,7 @@ export function LeftControls({ showStackSeries }: LeftControlsProps) {
             </ActionIcon>
           </Menu.Target>
           <Menu.Dropdown className={S.compactChartMenuDropdown} p="sm">
-            <Menu.Label c="text-secondary" pt="sm" mb="xs">
+            <Menu.Label c="text-secondary" pt="sm" mb="xxs">
               {t`Visualization`}
             </Menu.Label>
             {chartTypes.map(({ type, icon }) => (
@@ -120,7 +119,7 @@ export function LeftControls({ showStackSeries }: LeftControlsProps) {
             {showStackSeries && (
               <>
                 <Menu.Divider mx={0} />
-                <Menu.Label c="text-secondary" pt="sm" mb="xs">
+                <Menu.Label c="text-secondary" pt="sm" mb="xxs">
                   {t`Layout`}
                 </Menu.Label>
                 <Menu.Item

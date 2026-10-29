@@ -3,9 +3,9 @@ import {
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
-import { loadVisualizationComponents } from "metabase/visualizations";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
+import { loadVisualizationComponents } from "metabase/viz-core";
 import type { FieldVisibilityType } from "metabase-types/api";
 import {
   createMockColumn,
@@ -57,12 +57,12 @@ function setup({
 }
 
 describe("visualization - object", () => {
-  it("render fields with 'visibility_type' set as 'details-only'", () => {
+  it("render fields with 'visibility_type' set as 'details-only'", async () => {
     const rows = [["John", "John Smith Jr"]];
 
     setup({ rows, longNameVisibility: "details-only" });
 
-    expect(screen.getByText("Long name")).toBeInTheDocument();
+    expect(await screen.findByText("Long name")).toBeInTheDocument();
     expect(screen.getByText("John Smith Jr")).toBeInTheDocument();
   });
 });

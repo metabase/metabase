@@ -9,6 +9,21 @@
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
+(def ^:private InternalRemap
+  "Hardcoded remap values: a sequence of human-readable values keyed positionally to the original Field's values, or a
+  map of original value to human-readable value."
+  [:or
+   [:sequential :string]
+   [:map-of :metabase.lib.schema.literal/literal :string]])
+
+(def ^:private Remap
+  "Something [[remapped-column]] can remap `original` to: a remapped Field (metadata or ID) for an external remap, or
+  hardcoded values for an internal remap."
+  [:or
+   ::lib.schema.metadata/column
+   ::lib.schema.id/field
+   InternalRemap])
+
 (mu/defn- external-remapped-column :- ::lib.schema.metadata/column
   "Add an 'external' 'Human Readable Values' remap from values of `original` Field to values of `remapped` Field."
   [metadata-provider :- ::lib.schema.metadata/metadata-provider
@@ -26,9 +41,7 @@
 (mu/defn- internal-remapped-column :- ::lib.schema.metadata/column
   "Add an 'internal' 'FieldValues' remap from values of `original` Field to hardcoded `remap` values."
   [original :- ::lib.schema.metadata/column
-   remap    :- [:or
-                [:sequential :any]
-                :map]]
+   remap    :- InternalRemap]
   (let [original-values (if (sequential? remap)
                           (range 1 (inc (count remap)))
                           (keys remap))
@@ -51,11 +64,7 @@
     * Map of original value => remapped value: internal remap with values replaced with corresponding value in map"
   [metadata-provider :- ::lib.schema.metadata/metadata-provider
    original          :- [:or ::lib.schema.metadata/column ::lib.schema.id/field]
-   remap             :- [:or
-                         ::lib.schema.metadata/column
-                         ::lib.schema.id/field
-                         [:sequential :any]
-                         :map]]
+   remap             :- Remap]
   (let [original (if (integer? original)
                    (lib.metadata/field metadata-provider original)
                    original)]
@@ -70,15 +79,14 @@
   create an internal remap."
   ([metadata-provider :- ::lib.schema.metadata/metadata-provider
     original          :- [:or ::lib.schema.metadata/column ::lib.schema.id/field]
-    remap             :- [:or
-                          ::lib.schema.metadata/column
-                          ::lib.schema.id/field
-                          [:sequential :any]
-                          :map]]
+    remap             :- Remap]
    (let [original' (remapped-column metadata-provider original remap)]
      (lib.tu.metadata-providers.mock/mock-metadata-provider
       metadata-provider
       {:fields [original']})))
 
-  ([metadata-provider original remap & more]
+  ([metadata-provider :- ::lib.schema.metadata/metadata-provider
+    original          :- [:or ::lib.schema.metadata/column ::lib.schema.id/field]
+    remap             :- Remap
+    & more            :- [:* Remap]]
    (apply remap-metadata-provider (remap-metadata-provider metadata-provider original remap) more)))

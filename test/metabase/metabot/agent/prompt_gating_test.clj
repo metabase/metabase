@@ -6,16 +6,18 @@
    [metabase.test :as mt]))
 
 (def ^:private active-sql-tool-names
-  "Active-tool names including a SQL write tool, so SQL guidance gates on permissions rather than on
-  the SQL tools being absent."
-  ["create_sql_query"])
+  "Active-tool names including the notebook builder and a SQL write tool, so guidance gates on permissions rather
+  than on those tools being absent."
+  ["construct_notebook_query" "create_sql_query"])
 
 (defn- render-internal-template
-  "Render internal.selmer for `perms` and `active-tool-names` (default [[active-sql-tool-names]]).
-  The prompt builder reads only tool names, so a name->nil map stands in for the real name->var one."
+  "Render internal.selmer for `perms`, the scopes they grant, and `active-tool-names` (default
+  [[active-sql-tool-names]]). The prompt builder reads only tool names, so a name->nil map stands in for the real
+  name->var one."
   ([perms] (render-internal-template perms active-sql-tool-names))
   ([perms active-tool-names]
-   (binding [scope/*current-user-metabot-permissions* perms]
+   (binding [scope/*current-user-metabot-permissions* perms
+             scope/*current-user-scope*               (scope/user-metabot-perms->scopes perms)]
      (prompts/build-system-message-content
       {:prompt-template "internal.selmer"}
       {:current_time "2026-03-25T12:00:00Z"}
@@ -77,8 +79,8 @@
       (is (not (re-find #"Natural-language querying is your default" without-nql))))
     (testing "explicit denial for NLQ is included when not permitted"
       (is (re-find #"You cannot use natural language querying" without-nql)))
-    (testing "denial suggests SQL as alternative"
-      (is (re-find #"offer to write SQL" without-nql)))))
+    (testing "denial points to SQL instead"
+      (is (re-find #"offer to write SQL for them instead" without-nql)))))
 
 (deftest ^:parallel prompt-gates-other-tools-section-test
   (let [with-other    (render-internal-template all-yes-perms)
@@ -111,7 +113,7 @@
       (is (re-find #"Communicating with the user" without-queries))
       (is (re-find #"Finding data" without-queries)))
     (testing "explicit denial for query tools is included"
-      (is (re-find #"You cannot build queries or create charts" without-queries)))
+      (is (re-find #"You cannot build queries" without-queries)))
     (testing "no individual SQL/NLQ denials when both are off"
       (is (not (re-find #"You cannot write SQL" without-queries)))
       (is (not (re-find #"You cannot use natural language querying" without-queries))))))
@@ -127,7 +129,7 @@
       (is (not (re-find #"X-ray auto-generated dashboards" rendered)))
       (is (not (re-find #"# Writing SQL" rendered))))
     (testing "denial messages are present"
-      (is (re-find #"You cannot build queries or create charts" rendered))
+      (is (re-find #"You cannot build queries" rendered))
       (is (re-find #"You cannot create dashboards or documents" rendered)))))
 
 (deftest ^:parallel defaults-to-no-permissions-when-unbound-test
@@ -136,7 +138,7 @@
       (is (not (re-find #"MBQL shape rules" rendered)))
       (is (not (re-find #"Natural-language querying is your default" rendered)))
       (is (not (re-find #"X-ray auto-generated dashboards" rendered)))
-      (is (re-find #"You cannot build queries or create charts" rendered))
+      (is (re-find #"You cannot build queries" rendered))
       (is (re-find #"You cannot create dashboards or documents" rendered)))))
 
 (deftest ^:parallel prompt-no-denials-when-all-enabled-test
@@ -186,12 +188,15 @@
                                                  :permission/metabot-other-tools    :no})]
     (testing "other-tools sections included when permitted"
       (is (re-find #"static_viz" with-other))
-      (is (re-find #"Visualization Titles" with-other))
+      (is (re-find #"Saved questions and metrics" with-other))
       (is (re-find #"Visual Previews" with-other)))
     (testing "other-tools sections excluded when not permitted"
       (is (not (re-find #"static_viz" without-other)))
-      (is (not (re-find #"Visualization Titles" without-other)))
+      (is (not (re-find #"Saved questions and metrics" without-other)))
       (is (not (re-find #"Visual Previews" without-other))))
+    (testing "visualization titles heading still covers nlq ad-hoc queries when other-tools is off"
+      (is (re-find #"Visualization Titles" without-other))
+      (is (re-find #"Ad-hoc queries" without-other)))
     (testing "other-tools denial message present when not permitted"
       (is (re-find #"You cannot create inline visualizations" without-other)))))
 
@@ -246,9 +251,11 @@
 (deftest custom-chat-instructions-injected-when-set-test
   (mt/with-premium-features #{:ai-controls}
     (mt/with-temporary-setting-values [metabot-chat-system-prompt "Always respond in French."]
-      (let [rendered (render-template "internal.selmer" all-yes-perms)]
-        (is (re-find #"Custom Instructions" rendered))
-        (is (re-find #"Always respond in French" rendered))))))
+      (doseq [template ["internal.selmer" "slackbot.selmer"]]
+        (testing template
+          (let [rendered (render-template template all-yes-perms)]
+            (is (re-find #"Custom Instructions" rendered))
+            (is (re-find #"Always respond in French" rendered))))))))
 
 (deftest custom-sql-instructions-injected-when-set-test
   (mt/with-premium-features #{:ai-controls}
@@ -306,3 +313,110 @@
   (testing "the embedding SDK template (loader only) keeps the narration guidance"
     (let [rendered (render-template "embedding-next.selmer" all-yes-perms)]
       (is (re-find #"silent between tool calls" rendered)))))
+
+(deftest ^:parallel prompt-gates-query-results-grounding-test
+  (testing "without run_query the model is told it cannot see query results"
+    (let [rendered (render-internal-template all-yes-perms ["construct_notebook_query"])]
+      (is (re-find #"# Hard constraint: you cannot see query results" rendered))
+      (is (not (re-find #"run_query" rendered)))))
+  (testing "with run_query the model is told how to read results"
+    (let [rendered (render-internal-template all-yes-perms ["construct_notebook_query" "run_query"])]
+      (is (re-find #"# You can see results only by running a query" rendered))
+      (is (re-find #"To read a saved question or model, run it with `run_query`" rendered))
+      (is (re-find #"pass `show_chart: false` to `construct_notebook_query`" rendered))
+      (is (not (re-find #"you cannot see query results" rendered))))))
+
+(deftest prompt-gates-sql-execution-guidance-test
+  (let [tools ["construct_notebook_query" "create_sql_query" "run_query"]]
+    (testing "with SQL execution off the model is told run_query runs notebook queries only"
+      (mt/with-temporary-setting-values [metabot-sql-execution-enabled? false]
+        (let [rendered (render-internal-template all-yes-perms tools)]
+          (is (re-find #"`run_query` runs notebook queries only" rendered))
+          (is (not (re-find #"write SQL with `create_sql_query` and run it" rendered))))))
+    (testing "with SQL execution on the model is told to prefer the notebook and run SQL for shapes it can't express"
+      (mt/with-temporary-setting-values [metabot-sql-execution-enabled? true]
+        (let [rendered (render-internal-template all-yes-perms tools)]
+          (is (re-find #"Prefer a notebook query" rendered))
+          (is (re-find #"write SQL with `create_sql_query` and run it with `run_query`" rendered))
+          (is (not (re-find #"notebook queries only" rendered)))
+          (is (re-find #"A count or total of 0 is a real answer" rendered)))))
+    (testing "without the SQL tools the setting does not tell the model to write SQL"
+      (mt/with-temporary-setting-values [metabot-sql-execution-enabled? true]
+        (let [rendered (render-internal-template all-yes-perms ["construct_notebook_query" "run_query"])]
+          (is (re-find #"`run_query` runs notebook queries only" rendered))
+          (is (not (re-find #"write SQL with `create_sql_query`" rendered))))))
+    (testing "without Metabot's SQL generation permission the setting does not tell the model to run SQL"
+      (mt/with-temporary-setting-values [metabot-sql-execution-enabled? true]
+        (let [rendered (render-internal-template no-sql-perms tools)]
+          (is (re-find #"`run_query` runs notebook queries only" rendered))
+          (is (not (re-find #"write SQL with `create_sql_query`" rendered))))))
+    (testing "without the agent:sql:run scope the setting does not tell the model to run SQL"
+      (mt/with-temporary-setting-values [metabot-sql-execution-enabled? true]
+        (binding [scope/*current-user-metabot-permissions* all-yes-perms
+                  scope/*current-user-scope*               #{"agent:query:*" "agent:sql:create"}]
+          (let [rendered (prompts/build-system-message-content
+                          {:prompt-template "internal.selmer"} {} (zipmap tools (repeat nil)) [])]
+            (is (re-find #"`run_query` runs notebook queries only" rendered))
+            (is (not (re-find #"write SQL with `create_sql_query`" rendered)))))))))
+
+(deftest every-results-template-follows-sql-execution-test
+  (doseq [template ["embedding-next.selmer"
+                    "internal.selmer"
+                    "natural-language-querying-fallback.selmer"
+                    "natural-language-querying-only.selmer"
+                    "slackbot.selmer"
+                    "sql-querying-only.selmer"]
+          [sql-on? expected] [[true #"write SQL with `create_sql_query` and run it"]
+                              [false #"`run_query` runs notebook queries only"]]]
+    (testing (str template ", SQL execution " (if sql-on? "on" "off"))
+      (mt/with-temporary-setting-values [metabot-sql-execution-enabled? sql-on?]
+        (binding [scope/*current-user-metabot-permissions* all-yes-perms
+                  scope/*current-user-scope*               (scope/user-metabot-perms->scopes all-yes-perms)]
+          (is (re-find expected (prompts/build-system-message-content
+                                 {:prompt-template template}
+                                 {}
+                                 (zipmap ["construct_notebook_query" "create_sql_query" "run_query"] (repeat nil))
+                                 []))))))))
+
+(deftest no-template-says-results-are-hidden-when-run-query-is-active-test
+  (doseq [template ["embedding-next.selmer"
+                    "internal.selmer"
+                    "natural-language-querying-fallback.selmer"
+                    "natural-language-querying-only.selmer"
+                    "slackbot.selmer"
+                    "sql-querying-only.selmer"]
+          [tools hidden?] [[["construct_notebook_query" "create_sql_query" "run_query"] false]
+                           [["construct_notebook_query" "create_sql_query"] true]]]
+    (testing (str template (if hidden? " without run_query" " with run_query"))
+      (binding [scope/*current-user-metabot-permissions* all-yes-perms
+                scope/*current-user-scope*               (scope/user-metabot-perms->scopes all-yes-perms)]
+        (is (= hidden?
+               (some? (re-find #"(?i)cannot (see (the actual |query )?results|execute queries)"
+                               (prompts/build-system-message-content {:prompt-template template}
+                                                                     {}
+                                                                     (zipmap tools (repeat nil))
+                                                                     [])))))))))
+
+(deftest prompt-without-notebook-builder-test
+  (testing "with NLQ permitted but no construct_notebook_query, as in :internal-sql, nothing names the builder"
+    (let [tools ["create_sql_query" "run_query"]]
+      (testing "and with SQL execution on, the model is told to get values by writing SQL and running it"
+        (mt/with-temporary-setting-values [metabot-sql-execution-enabled? true]
+          (let [rendered (render-internal-template all-yes-perms tools)]
+            (is (re-find #"# You can see results only by running a query" rendered))
+            (is (re-find #"When the answer needs a value, write SQL with `create_sql_query` and run it with `run_query`"
+                         rendered))
+            (is (re-find #"# Writing SQL" rendered))
+            (is (re-find #"You cannot use natural language querying" rendered))
+            (is (not (re-find #"construct_notebook_query" rendered)))
+            (is (not (re-find #"source-card" rendered)))
+            (is (not (re-find #"Prefer a notebook query" rendered)))
+            (is (not (re-find #"notebook queries only" rendered)))
+            (is (not (re-find #"MBQL shape rules" rendered)))
+            (is (not (re-find #"Natural-language querying is your default" rendered))))))
+      (testing "and with SQL execution off, run_query can read nothing, so the model is told it can't see results"
+        (mt/with-temporary-setting-values [metabot-sql-execution-enabled? false]
+          (let [rendered (render-internal-template all-yes-perms tools)]
+            (is (re-find #"# Hard constraint: you cannot see query results" rendered))
+            (is (not (re-find #"construct_notebook_query" rendered)))
+            (is (not (re-find #"run_query" rendered)))))))))

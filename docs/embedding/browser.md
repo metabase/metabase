@@ -82,7 +82,7 @@ So a default `<metabase-browser>` gives people **New question** and nothing else
 
 Because **New question** ignores `read-only`, people on a read-only browser can open the query builder and explore, but they won't be able to save what they build, or overwrite an existing question.
 
-The new question button opens the query builder with every table, model, and saved question people have access to. To narrow down the list of entity types people can choose, list the entity types you want in `data-picker-entity-types`. Limiting people to [models](../data-modeling/models.md), for example, means they build on your curated data rather than on raw tables:
+The new question button opens the query builder with every table, model, and saved question people have access to. To narrow down the list of entity types people can choose, list the entity types you want in `data-picker-entity-types`. Limiting people to [models](../data-modeling/models/models.md), for example, means they build on your curated data rather than on raw tables:
 
 ```html
 <metabase-browser
@@ -142,3 +142,4 @@ One quirk: when someone clicks on a collection, `CollectionBrowser` navigates in
 - [Collection permissions](../permissions/collections.md)
 - [Authentication](./authentication.md)
 - [Modular embedding SDK](./sdk/introduction.md)
+- [Modular embedding components](./components.md)

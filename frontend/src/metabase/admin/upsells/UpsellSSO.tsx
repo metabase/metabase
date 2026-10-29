@@ -38,7 +38,8 @@ export const UpsellSSO = ({ location }: { location: string }) => {
         {t`Metabase Pro and Enterprise plans include:`}
         <List size="sm">
           <List.Item>{t`SSO with SAML and JWT`}</List.Item>
-          <List.Item>{t`Metabase group sync with SAML, JWT, and LDAP`}</List.Item>
+          <List.Item>{t`Metabase group sync with SAML and JWT`}</List.Item>
+          <List.Item>{t`Metabase user attribute sync with LDAP`}</List.Item>
           <List.Item>{t`User provisioning with SCIM`}</List.Item>
         </List>
       </Box>

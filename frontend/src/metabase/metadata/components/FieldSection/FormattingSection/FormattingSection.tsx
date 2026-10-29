@@ -2,11 +2,11 @@ import { memo, useMemo } from "react";
 import { t } from "ttag";
 
 import { useUpdateFieldMutation } from "metabase/api";
-import { useMetadataToasts } from "metabase/metadata/hooks";
+import { useMetadataToasts } from "metabase/common/hooks";
 import type { MetadataEditEventDetail } from "metabase/metadata/pages/shared/analytics";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { ColumnSettings } from "metabase/visualizations/components/ColumnSettings";
-import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
+import { getGlobalSettingsForColumn } from "metabase/viz-core";
 import { isCurrency } from "metabase-lib/v1/types/utils/isa";
 import type {
   Field,
@@ -17,10 +17,15 @@ import { TitledSection } from "../../TitledSection";
 
 interface Props {
   field: Field;
+  disabled?: boolean;
   onTrackMetadataChange: (detail: MetadataEditEventDetail) => void;
 }
 
-const FormattingSectionBase = ({ field, onTrackMetadataChange }: Props) => {
+const FormattingSectionBase = ({
+  field,
+  disabled,
+  onTrackMetadataChange,
+}: Props) => {
   const id = getRawTableFieldId(field);
   const [updateField] = useUpdateFieldMutation();
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
@@ -60,6 +65,7 @@ const FormattingSectionBase = ({ field, onTrackMetadataChange }: Props) => {
         denylist={denyList}
         extraData={{ forAdminSettings: true }}
         inheritedSettings={inheritedSettings}
+        disabled={disabled}
         style={{ maxWidth: undefined }}
         value={field.settings ?? {}}
         onChange={handleChange}

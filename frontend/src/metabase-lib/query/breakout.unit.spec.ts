@@ -1,5 +1,6 @@
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
+import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 import {
   DEFAULT_TEST_QUERY,
@@ -167,5 +168,36 @@ describe("breakout", () => {
       const nextQuery = Lib.removeClause(breakoutQuery, 0, breakouts[0]);
       expect(Lib.breakouts(nextQuery, 0)).toHaveLength(0);
     });
+  });
+});
+
+describe("named breakouts", () => {
+  it("names a breakout's result column with a test spec of type breakout", () => {
+    const query = Lib.createTestQuery(SAMPLE_PROVIDER, {
+      stages: [
+        {
+          source: { type: "table", id: ORDERS_ID },
+          breakouts: [
+            {
+              type: "breakout",
+              name: "created_month",
+              column: { type: "column", name: "CREATED_AT", unit: "month" },
+            },
+            {
+              type: "breakout",
+              name: "created_year",
+              column: { type: "column", name: "CREATED_AT", unit: "year" },
+            },
+          ],
+          aggregations: [{ type: "operator", operator: "count", args: [] }],
+        },
+      ],
+    });
+
+    expect(
+      Lib.returnedColumns(query, 0).map(
+        (column) => Lib.displayInfo(query, 0, column).name,
+      ),
+    ).toEqual(["created_month", "created_year", "count"]);
   });
 });

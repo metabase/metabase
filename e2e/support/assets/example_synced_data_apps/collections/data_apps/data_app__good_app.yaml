@@ -1,0 +1,7 @@
+name: 'Data App: Good App'
+namespace: data-apps
+entity_id: goodAppCollection0000
+serdes/meta:
+- id: goodAppCollection0000
+  label: data_app__good_app
+  model: Collection

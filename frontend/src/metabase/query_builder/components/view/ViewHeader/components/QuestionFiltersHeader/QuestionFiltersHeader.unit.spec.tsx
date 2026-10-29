@@ -13,6 +13,7 @@ import { SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type { GetFieldValuesResponse } from "metabase-types/api";
 import {
+  ORDERS,
   ORDERS_ID,
   PEOPLE_SOURCE_VALUES,
   createSampleDatabase,
@@ -221,12 +222,14 @@ const TEST_MULTISTAGE_QUERY = Lib.createTestQuery(SAMPLE_PROVIDER, {
           type: "operator",
           operator: ">",
           args: [
-            { type: "column", sourceName: "ORDERS", name: "QUANTITY" },
+            { type: "column", name: "QUANTITY" },
             { type: "literal", value: 4 },
           ],
         },
       ],
-      breakouts: [{ type: "column", sourceName: "PEOPLE", name: "SOURCE" }],
+      breakouts: [
+        { type: "column", sourceFieldId: ORDERS.USER_ID, name: "SOURCE" },
+      ],
     },
     {
       breakouts: [{ type: "column", name: "SOURCE" }],

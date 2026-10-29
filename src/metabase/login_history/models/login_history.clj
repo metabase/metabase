@@ -1,11 +1,10 @@
 (ns metabase.login-history.models.login-history
   (:require
    [java-time.api :as t]
-   [metabase.app-db.core :as mdb]
+   [metabase.login-history.db :as login-history.db]
    [metabase.login-history.settings :as login-history.settings]
    [metabase.request.core :as request]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -54,27 +53,29 @@
   (let [login-history (merge {:user_id    user-id
                               :session_id session-id}
                              (dissoc device-info :embedded :token_exchange))]
-    (t2/insert! :model/LoginHistory login-history)
+    (login-history.db/insert-login-history! login-history)
     login-history))
 
 (t2/define-after-select :model/LoginHistory
-  [{session-id :session_id, :as login-history}]
-  ;; session ID is sensitive, so it's better if we don't even return it. Replace it with a more generic `active` key.
+  [{active :active, :as login-history}]
+  ;; session ID is sensitive, so it's better if we don't even return it. What callers get instead is `active`, which
+  ;; `login-history.db/login-history-for-user` computes in SQL as 1/0: whether the session the login created is
+  ;; still live.
   (cond-> (t2.realize/realize login-history)
-    (contains? login-history :session_id) (assoc :active (boolean session-id))
-    true                                  (dissoc :session_id)))
+    (some? active) (assoc :active (= 1 (long active)))
+    true           (dissoc :session_id)))
 
 (defn first-login-ever?
   "Return true if this is the first login ever for the given user-id."
   [{user-id :user_id}]
-  (some-> (t2/select [:model/LoginHistory :id] :user_id user-id {:limit 2})
+  (some-> (login-history.db/login-history-ids-for-user user-id 2)
           count
           (= 1)))
 
 (defn first-login-on-this-device?
   "Return true if this is the first login for the given user-id on the device"
   [{user-id :user_id, device-id :device_id}]
-  (some-> (t2/select [:model/LoginHistory :id] :user_id user-id, :device_id device-id, {:limit 2})
+  (some-> (login-history.db/login-history-ids-for-user-device user-id device-id 2)
           count
           (= 1)))
 
@@ -86,21 +87,8 @@
    window. Over-counts first-login-ever rows (those never email) — safe direction for a
    breaker."
   [user-id]
-  (let [cutoff (h2x/add-interval-honeysql-form
-                (mdb/db-type) :%now (- new-device-email-rate-limit-window-hours) :hour)]
-    (> (t2/count :model/LoginHistory
-                 {:where [:and
-                          [:= :user_id user-id]
-                          [:> :timestamp cutoff]
-                          [:not [:exists
-                                 ^:allow-subquery
-                                 {:select [1]
-                                  :from   [[:login_history :lh2]]
-                                  :where  [:and
-                                           [:= :lh2.user_id   :login_history.user_id]
-                                           [:= :lh2.device_id :login_history.device_id]
-                                           [:< :lh2.id        :login_history.id]]}]]]})
-       (login-history.settings/new-device-email-rate-limit-cap))))
+  (> (login-history.db/first-device-login-count-since user-id new-device-email-rate-limit-window-hours)
+     (login-history.settings/new-device-email-rate-limit-cap)))
 
 (t2/define-before-update :model/LoginHistory [_login-history]
   (throw (RuntimeException. (tru "You can''t update a LoginHistory after it has been created."))))

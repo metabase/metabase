@@ -2,8 +2,8 @@ import { useMemo } from "react";
 
 import type { IconData, IconModel } from "metabase/common/utils/icon";
 import { useGetIcon } from "metabase/hooks/use-icon";
-import { Anchor, Group, Icon } from "metabase/ui";
-import { modelToUrl } from "metabase/urls";
+import { Anchor, Group, Icon, Text } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import type { RemoteSyncEntity } from "metabase-types/api";
 
 import { getSyncStatusColor, getSyncStatusIcon } from "../../utils";
@@ -14,10 +14,37 @@ interface EntityLinkProps {
   entity: RemoteSyncEntity;
 }
 
+function getEntityUrl(entity: RemoteSyncEntity): string | null {
+  // Transform test URLs need the parent transform id, which dirty entries do not carry.
+  if (entity.model === "transformtest") {
+    return null;
+  }
+  if (entity.model === "tableusersettings") {
+    return Urls.dataStudioTable(entity.id);
+  }
+  if (entity.model === "fieldusersettings" || entity.model === "dimension") {
+    return entity.table_id != null
+      ? Urls.dataStudioTableFields(entity.table_id, entity.id)
+      : null;
+  }
+  if (entity.model === "action") {
+    if (entity.card_id === undefined) {
+      return null;
+    }
+    return entity.card_id === null
+      ? Urls.dataStudioAction(entity.id)
+      : Urls.action({ id: entity.card_id }, entity.id);
+  }
+  return Urls.modelToUrl(entity);
+}
+
 export const EntityLink = ({ entity }: EntityLinkProps) => {
   const getIcon = useGetIcon();
   const entityIcon = useMemo((): IconData => {
-    if (entity.model === "field") {
+    if (entity.model === "tableusersettings") {
+      return { name: "table" };
+    }
+    if (entity.model === "fieldusersettings" || entity.model === "dimension") {
       return { name: "field" };
     }
 
@@ -29,34 +56,38 @@ export const EntityLink = ({ entity }: EntityLinkProps) => {
     });
   }, [entity, getIcon]);
 
-  const url = useMemo(() => modelToUrl(entity), [entity]);
-  if (url == null) {
-    return null;
-  }
+  const url = useMemo(() => getEntityUrl(entity), [entity]);
 
   const statusIcon = getSyncStatusIcon(entity.sync_status);
   const statusColor = getSyncStatusColor(entity.sync_status);
 
   return (
     <Group gap="sm" wrap="nowrap" px="sm" className={S.entityLink}>
-      <Anchor
-        href={url}
-        target="_blank"
-        size="sm"
-        c="text-secondary"
-        td="none"
-        classNames={{ root: S.anchor }}
-        display="flex"
-      >
-        <Icon
-          name={entityIcon.name}
-          size={16}
-          mr="sm"
+      {url != null ? (
+        <Anchor
+          href={url}
+          target="_blank"
+          size="sm"
           c="text-secondary"
-          className={S.icon}
-        />
-        {entity.name}
-      </Anchor>
+          td="none"
+          classNames={{ root: S.anchor }}
+          display="flex"
+        >
+          <Icon
+            name={entityIcon.name}
+            size={16}
+            mr="sm"
+            c="text-secondary"
+            className={S.icon}
+          />
+          {entity.name}
+        </Anchor>
+      ) : (
+        <Text size="sm" c="text-secondary" display="flex">
+          <Icon name={entityIcon.name} size={16} mr="sm" c="text-secondary" />
+          {entity.name}
+        </Text>
+      )}
       <Icon name={statusIcon} size={16} c={statusColor} ml="auto" />
     </Group>
   );

@@ -17,7 +17,8 @@ export const getIssueTypeLabel = (value: MetabotIssueType): string =>
     .with("other", () => t`Other`)
     .exhaustive();
 
-export const issueTypeOptions = METABOT_ISSUE_TYPE_VALUES.map((value) => ({
-  value,
-  label: getIssueTypeLabel(value),
-}));
+export const getIssueTypeOptions = () =>
+  METABOT_ISSUE_TYPE_VALUES.map((value) => ({
+    value,
+    label: getIssueTypeLabel(value),
+  }));

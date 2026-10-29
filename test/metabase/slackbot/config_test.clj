@@ -1,6 +1,7 @@
 (ns metabase.slackbot.config-test
   (:require
    [clojure.test :refer :all]
+   [metabase.app-db.encryption-test-util :as encryption-tu]
    [metabase.channel.settings :as channel.settings]
    [metabase.slackbot.test-util :as tu]
    [metabase.sso.settings :as sso-settings]
@@ -10,9 +11,11 @@
 
 (set! *warn-on-reflection* true)
 
-(use-fixtures :once (fixtures/initialize :test-users))
+(use-fixtures :once
+  (fixtures/initialize :test-users)
+  (encryption-tu/with-encrypted-app-db-fixture tu/test-encryption-key))
 
-(deftest setup-complete-test
+(deftest ^:synchronized setup-complete-test
   (tu/with-slackbot-setup
     (let [request-body (assoc-in tu/base-dm-event [:event :text] "test")
           post-events  #(mt/client :post %1 "metabot/slack/events"

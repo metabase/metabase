@@ -3,14 +3,13 @@ import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import { useTranslateContent } from "metabase/content-translation/hooks";
-import { getParentEntity } from "metabase/query_builder/selectors";
 import { useDispatch, useSelector } from "metabase/redux";
-import { navigateBackToDashboard } from "metabase/redux/query-builder";
 import { ActionIcon, type ActionIconProps, Icon, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { CollectionItemModel, DashboardId } from "metabase-types/api";
 
-import S from "./QueryBuilderBackButton.module.css";
+import { navigateBackToDashboard } from "../../../../../store/actions";
+import { getParentEntity } from "../../../../../store/selectors";
 
 export type QueryBuilderBackButtonProps = {
   noLink?: boolean;
@@ -56,18 +55,15 @@ export function QueryBuilderBackButton({
   return (
     <Tooltip label={label}>
       <ActionIcon
-        className={S.QueryBuilderBackButton}
-        variant="outline"
+        size="lg"
         radius="xl"
-        size="2.625rem"
-        color="border-neutral"
         aria-label={label}
         onClick={handleClick}
         component={noLink ? undefined : Link}
         to={url}
         {...actionIconProps}
       >
-        <Icon c="core-brand" name="arrow_left" />
+        <Icon name="arrow_left" />
       </ActionIcon>
     </Tooltip>
   );

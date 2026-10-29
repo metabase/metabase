@@ -2,12 +2,12 @@ import { renderHook } from "@testing-library/react";
 import type { EChartsType } from "echarts/core";
 import type { MutableRefObject } from "react";
 
-import { OTHER_SLICE_KEY } from "metabase/visualizations/echarts/pie/constants";
-import type {
-  PieChartModel,
-  SliceTreeNode,
-} from "metabase/visualizations/echarts/pie/model/types";
 import type { VisualizationProps } from "metabase/visualizations/types";
+import {
+  OTHER_SLICE_KEY,
+  type PieChartModel,
+  type SliceTreeNode,
+} from "metabase/viz-core";
 import type { ClickObject } from "metabase-lib";
 import {
   createMockCard,

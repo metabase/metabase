@@ -1,21 +1,23 @@
 import { Fragment } from "react";
 
 import { Anchor, Group, Text } from "metabase/ui";
-import { collection as collectionUrl, transformList } from "metabase/urls";
+import { collection as collectionUrl } from "metabase/urls";
 
-import { type CollectionPathSegment, TRANSFORMS_ROOT_ID } from "../../utils";
+import { getVirtualRoot } from "../../displayGroups";
+import type { CollectionPathSegment } from "../../utils";
 
 interface CollectionPathProps {
   segments: CollectionPathSegment[];
 }
 
-const segmentUrl = (segment: CollectionPathSegment): string =>
-  // The Transforms root is a virtual collection (sentinel id -1) with no real
-  // collection page, so link it to the transforms list instead of building a
-  // dead /collection/-1-... URL.
-  segment.id === TRANSFORMS_ROOT_ID
-    ? transformList()
+const segmentUrl = (segment: CollectionPathSegment): string => {
+  // Virtual roots (sentinel ids) have no real collection page, so link them to
+  // their list pages instead of building a dead /collection/-1-... URL.
+  const virtualRoot = getVirtualRoot(segment.id);
+  return virtualRoot
+    ? virtualRoot.url()
     : collectionUrl({ id: segment.id, name: segment.name });
+};
 
 // TODO: see if we can use the CollectionBreadcrumb component here
 export const CollectionPath = ({ segments }: CollectionPathProps) => {

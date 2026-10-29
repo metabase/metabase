@@ -46,7 +46,7 @@
    with the given `type` label."
   [_route-params
    _query-params
-   {:keys [type]} :- [:map [:type ::frontend-error-type]]
+   {:keys [type]} :- [:map {:closed true} [:type ::frontend-error-type]]
    _req]
   (analytics/inc! :metabase-frontend/errors {:type type})
   api/generic-204-no-content)

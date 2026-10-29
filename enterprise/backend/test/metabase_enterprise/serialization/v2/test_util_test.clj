@@ -15,19 +15,19 @@
                                                            :table_id crm-id}
                        :model/Field      {nps-id     :id} {:name "nps"
                                                            :table_id crm-id}]
-      (is (= {:database db-id
-              :type     "query"
-              :query    {:source-table crm-id
-                         :aggregation  [["cum-count"]]
-                         :breakout     [[:field created-id {"temporal-unit" "week"}]]
-                         :filter       ["<" [:field nps-id nil] 9]}}
-             (#'serdes/import-mbql
-              {:database "Metabase Store",
-               :type     "query",
-               :query    {:source-table ["Metabase Store" "public" "crm_survey_response"],
-                          :aggregation  [["cum-count"]],
-                          :breakout     [["field"
-                                          ["Metabase Store" "public"
-                                           "crm_survey_response" "created_at"]
-                                          {"temporal-unit" "week"}]]
-                          :filter       ["<" ["field" ["Metabase Store" "public" "crm_survey_response" "nps"] nil] 9]}}))))))
+      (is (=? {:lib/type :mbql/query
+               :database db-id
+               :stages   [{:source-table crm-id
+                           :aggregation  [[:cum-count {}]]
+                           :breakout     [[:field {:temporal-unit :week} created-id]]
+                           :filters      [[:< {} [:field {} nps-id] 9]]}]}
+              (#'serdes/import-mbql
+               {:database "Metabase Store",
+                :type     "query",
+                :query    {:source-table ["Metabase Store" "public" "crm_survey_response"],
+                           :aggregation  [["cum-count"]],
+                           :breakout     [["field"
+                                           ["Metabase Store" "public"
+                                            "crm_survey_response" "created_at"]
+                                           {"temporal-unit" "week"}]]
+                           :filter       ["<" ["field" ["Metabase Store" "public" "crm_survey_response" "nps"] nil] 9]}}))))))

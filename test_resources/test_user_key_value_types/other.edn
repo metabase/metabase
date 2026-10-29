@@ -1,2 +1,2 @@
-[:map
+[:map {:closed true}
  [:value :string]]

@@ -1,7 +1,6 @@
 import { canAccessDataStudio } from "metabase/common/data-studio/selectors";
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import { canAccessDataModel } from "metabase/current-user";
 import {
-  AvailableInEmbedding,
   MetabaseIsSetup,
   UserIsAuthenticated,
   createRedirectGuard,
@@ -14,18 +13,15 @@ const UserCanAccessDataStudio = createRedirectGuard(
 );
 
 const UserCanAccessDataModel = createRedirectGuard(
-  (state) => PLUGIN_FEATURE_LEVEL_PERMISSIONS.canAccessDataModel(state),
+  (state) => canAccessDataModel(state),
   "/unauthorized",
 );
 
-// Must be in sync with canAccessDataStudio in frontend/src/metabase/data-studio/selectors.ts
 export const CanAccessDataStudio = () => (
   <MetabaseIsSetup>
     <UserIsAuthenticated>
       <UserCanAccessDataStudio>
-        <AvailableInEmbedding>
-          <Outlet />
-        </AvailableInEmbedding>
+        <Outlet />
       </UserCanAccessDataStudio>
     </UserIsAuthenticated>
   </MetabaseIsSetup>

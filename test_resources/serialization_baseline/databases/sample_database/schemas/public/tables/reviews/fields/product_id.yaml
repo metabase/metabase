@@ -1,6 +1,5 @@
 name: PRODUCT_ID
 display_name: Product ID
-created_at: '2024-08-28T14:38:42.774331Z'
 visibility_type: normal
 table_id:
 - Sample Database
@@ -15,17 +14,8 @@ fk_target_field_id:
 - PUBLIC
 - PRODUCTS
 - ID
-dimensions: []
 position: 1
-custom_position: 0
 database_position: 1
 serdes/meta:
-- id: Sample Database
-  model: Database
-- id: PUBLIC
-  model: Schema
-- id: REVIEWS
-  model: Table
-- id: PRODUCT_ID
-  model: Field
+- model: Field
 database_indexed: true

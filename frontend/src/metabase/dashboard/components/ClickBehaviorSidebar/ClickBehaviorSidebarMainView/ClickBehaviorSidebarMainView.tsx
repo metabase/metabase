@@ -10,7 +10,6 @@ import S from "../ClickBehaviorSidebar.module.css";
 import { SidebarContent } from "../ClickBehaviorSidebarComponents";
 import { CrossfilterOptions } from "../CrossfilterOptions";
 import { LinkOptions } from "../LinkOptions/LinkOptions";
-import LinkOptionsS from "../LinkOptions/LinkOptions.module.css";
 import { SidebarItem } from "../SidebarItem";
 import { useClickBehaviorOptionName } from "../hooks";
 import { clickBehaviorOptions } from "../utils";
@@ -88,9 +87,7 @@ export function ClickBehaviorSidebarMainView({
             size="lg"
             variant="filled"
             justify="flex-start"
-            classNames={{
-              root: LinkOptionsS.ButtonRoot,
-            }}
+            flex="1 1 auto"
           >
             <SidebarItem.Name>{clickBehaviorOptionName}</SidebarItem.Name>
           </Button>

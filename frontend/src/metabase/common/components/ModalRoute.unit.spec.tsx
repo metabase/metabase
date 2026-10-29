@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { renderRoutes, renderWithProviders, screen } from "__support__/ui";
+import { act, renderRoutes, renderWithProviders, screen } from "__support__/ui";
 import { Outlet, Route } from "metabase/router";
 
 import {
@@ -105,6 +105,30 @@ describe("modalRoute", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
+  it("closes to a custom relative route when closeTo is set", async () => {
+    const { pathname } = setup(
+      <Route path="collection/:slug" element={<CollectionPage />}>
+        <Route path="timelines">
+          <Route path="archive" element={<span>Archive list</span>} />
+          <Route path=":timelineId">
+            {modalRoute("delete", TestModal, {
+              modalProps,
+              closeTo: "../../archive",
+            })}
+          </Route>
+        </Route>
+      </Route>,
+      "/collection/5/timelines/9/delete",
+    );
+
+    expect(screen.getByText("Modal for 5")).toBeInTheDocument();
+
+    await close();
+
+    expect(pathname()).toBe("/collection/5/timelines/archive");
+    expect(screen.getByText("Archive list")).toBeInTheDocument();
+  });
+
   it("wraps the modal component in a dialog by default", () => {
     setup(
       <Route path="collection/:slug" element={<CollectionPage />}>
@@ -182,7 +206,9 @@ describe("lazyModalRoute", () => {
       { initialRoute: "/collection/5" },
     );
 
-    router?.navigate("/collection/5/archive");
+    act(() => {
+      router?.navigate("/collection/5/archive");
+    });
 
     expect(screen.getByText("Collection page")).toBeInTheDocument();
     expect(screen.queryByText("Modal for 5")).not.toBeInTheDocument();

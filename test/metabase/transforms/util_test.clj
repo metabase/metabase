@@ -13,6 +13,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -25,6 +26,7 @@
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.instrumentation :as transforms.instrumentation]
    [metabase.transforms.models.transform-run :as transform-run]
+   [metabase.transforms.test-dataset :as transforms-dataset]
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [toucan2.core :as t2]))
@@ -49,28 +51,29 @@
 (deftest temp-table-name-creates-table-test
   (testing "temp-table-name produces names that can actually create tables"
     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/python)
-      (let [driver driver/*driver*
-            db-id (mt/id)
+      (mt/dataset transforms-dataset/transforms-test
+        (let [driver driver/*driver*
+              db-id (mt/id)
 
-            table-name (driver.u/temp-table-name driver :test_table)
-            schema-name (when (get-method sql.tx/session-schema driver)
-                          (sql.tx/session-schema driver))
-            qualified-table-name (if schema-name
-                                   (keyword schema-name (name table-name))
-                                   table-name)
-            column-definitions {"id" (driver/type->database-type driver :type/Integer)}]
-        (mt/as-admin
-          (try
-            (testing "Can create table with generated temp name"
-              (driver/create-table! driver db-id qualified-table-name column-definitions {})
-              (when-not (= driver :mongo) ;; mongo doesn't actually create tables
-                (is (driver/table-exists? driver (mt/db) {:schema schema-name :name (name table-name)}))))
-            (finally
-              (try
-                (driver/drop-table! driver db-id qualified-table-name)
-                (catch Exception _e
-                  ;; Ignore cleanup errors
-                  nil)))))))))
+              table-name (driver.u/temp-table-name driver :test_table)
+              schema-name (when (get-method sql.tx/session-schema driver)
+                            (sql.tx/session-schema driver))
+              qualified-table-name (if schema-name
+                                     (keyword schema-name (name table-name))
+                                     table-name)
+              column-definitions {"id" (driver/type->database-type driver :type/Integer)}]
+          (mt/as-admin
+            (try
+              (testing "Can create table with generated temp name"
+                (driver/create-table! driver db-id qualified-table-name column-definitions {})
+                (when-not (= driver :mongo) ;; mongo doesn't actually create tables
+                  (is (driver/table-exists? driver (lib.metadata/database (mt/metadata-provider)) {:schema schema-name :name (name table-name)}))))
+              (finally
+                (try
+                  (driver/drop-table! driver db-id qualified-table-name)
+                  (catch Exception _e
+                    ;; Ignore cleanup errors
+                    nil))))))))))
 
 (deftest is-temp-transform-tables-test
   (mt/with-premium-features #{:hosting :transforms-basic}
@@ -100,11 +103,11 @@
           (try
             (testing "Creating table with ordered columns"
               (transforms-base.u/create-table-from-schema! driver db-id table-schema)
-              (is (driver/table-exists? driver (mt/db) {:schema schema-name :name (name table-name)})))
+              (is (driver/table-exists? driver (lib.metadata/database (mt/metadata-provider)) {:schema schema-name :name (name table-name)})))
             (when (get-method driver/describe-table driver)
               (testing "Column order matches schema definition order (not alphabetical)"
                 (let [table-metadata {:schema schema-name :name (name table-name)}
-                      described-fields (:fields (driver/describe-table driver (mt/db) table-metadata))
+                      described-fields (:fields (driver/describe-table driver (lib.metadata/database (mt/metadata-provider)) table-metadata))
                       sorted-fields (sort-by :database-position described-fields)
                       column-names (mapv :name sorted-fields)
                       expected-names ["zebra_col" "apple_col" "mango_col"]]
@@ -442,7 +445,7 @@
                                              created))
                       sync/sync-table!     (constantly nil)
                       driver/table-exists? (constantly false)]
-          (transforms-base.u/activate-table-and-mark-computed! db target)
+          (transforms-base.u/activate-table-and-mark-computed! (driver.u/lib-database (:id db)) target)
           (is (some? @synced-table))
           (let [table (t2/select-one :model/Table (:id @synced-table))]
             (is (= :computed (:data_authority table)))
@@ -581,7 +584,7 @@
             excluded; we just verify the Statement was created."
     (mt/test-drivers (into #{} (filter #(isa? driver/hierarchy % :sql-jdbc)) (mt/normal-drivers))
       (sql-jdbc.execute/do-with-connection-with-options
-       driver/*driver* (mt/db) {:write? false}
+       driver/*driver* (mt/id) {:write? false}
        (fn [^java.sql.Connection conn]
          (doseq [minutes [3 90]]
            (binding [driver.settings/*query-timeout-ms* (u/minutes->ms minutes)]
@@ -777,7 +780,7 @@
   (testing "activate-table-and-mark-computed! resolves nil schema when physical table exists in default schema"
     (let [target {:type "table" :schema nil :name "test_nil_schema_fix"}
           synced-table (atom nil)]
-      (mt/with-temp [:model/Database db {:engine :h2}]
+      (mt/with-temp [:model/Database db {:engine :h2, :default_schema "PUBLIC"}]
         (with-redefs [sync/create-table! (fn [database table-map]
                                            (let [created (t2/insert-returning-instance!
                                                           :model/Table
@@ -794,7 +797,7 @@
                       ;; Simulate: physical table exists in "PUBLIC" (H2's default schema)
                       driver/table-exists? (fn [_driver _db table]
                                              (= "PUBLIC" (:schema table)))]
-          (transforms-base.u/activate-table-and-mark-computed! db target)
+          (transforms-base.u/activate-table-and-mark-computed! (driver.u/lib-database (:id db)) target)
           (is (some? @synced-table))
           (let [table (t2/select-one :model/Table (:id @synced-table))]
             (is (= "PUBLIC" (:schema table))
@@ -818,7 +821,7 @@
                       sync/sync-table!   (constantly nil)
                       ;; Simulate: physical table does NOT exist under default schema
                       driver/table-exists? (constantly false)]
-          (transforms-base.u/activate-table-and-mark-computed! db target)
+          (transforms-base.u/activate-table-and-mark-computed! (driver.u/lib-database (:id db)) target)
           (is (some? @synced-table))
           (let [table (t2/select-one :model/Table (:id @synced-table))]
             (is (nil? (:schema table))

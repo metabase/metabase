@@ -41,6 +41,10 @@
 
 (defmethod sql.qp/quote-style :clickhouse [_] ::clickhouse)
 
+(defmethod sql.qp/use-ctes-for-stages? :clickhouse
+  [_driver]
+  true)
+
 ;; without try, there might be test failures when QP is not yet initialized
 ;; e.g., when a test is preparing the dataset
 (defn- get-report-timezone-id-safely
@@ -584,7 +588,7 @@
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/BIGINT]
   [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
   (fn []
-    (with-null-check rs (.getBigDecimal rs i))))
+    (with-null-check rs (.getLong rs i))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:clickhouse Types/INTEGER]
   [_ ^ResultSet rs ^ResultSetMetaData _ ^Integer i]
@@ -674,6 +678,10 @@
         (.getString rs i)
         ;; _
         :else (.getObject rs i)))))
+
+(defmethod sql.qp/inline-value [:clickhouse String]
+  [_driver ^String s]
+  (sql.u/quote-literal s :backslashes))
 
 (defmethod sql.qp/inline-value [:clickhouse LocalDate]
   [_ t]

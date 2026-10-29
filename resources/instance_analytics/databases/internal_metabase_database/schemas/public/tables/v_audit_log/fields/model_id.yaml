@@ -11,7 +11,6 @@ semantic_type: type/FK
 fk_target_field_id: [Internal Metabase Database, public, v_content, id]
 dimensions: []
 position: 6
-custom_position: 0
 database_position: 6
 serdes/meta:
 - {id: Internal Metabase Database, model: Database}

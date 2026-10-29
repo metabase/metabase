@@ -1,13 +1,11 @@
 import { t } from "ttag";
 
-import {
-  getNextRunParameters,
-  getQuestion,
-} from "metabase/query_builder/selectors";
 import { NativeQueryPreview } from "metabase/querying/notebook/components/NativeQueryPreview";
 import { useSelector } from "metabase/redux";
 import { Modal } from "metabase/ui";
 import { checkNotNull } from "metabase/utils/types";
+
+import { getNextRunParameters, getQuestion } from "../../../store/selectors";
 
 export const PreviewQueryModal = ({
   onClose = () => undefined,

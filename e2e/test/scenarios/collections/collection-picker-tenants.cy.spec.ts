@@ -14,7 +14,7 @@ function createSharedCollection(name: string, parentId?: number) {
   });
 }
 
-describe("scenarios > collections > collection picker with tenants", () => {
+describe("scenarios > collections > official and collection type controls in shared collections", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
@@ -39,6 +39,9 @@ describe("scenarios > collections > collection picker with tenants", () => {
       H.openCollectionMenu();
 
       H.popover().within(() => {
+        cy.findByText("Move").should("be.visible");
+        cy.findByText("Move to trash").should("be.visible");
+
         cy.log("Should not have 'Make collection official' option");
         cy.findByText("Make collection official").should("not.exist");
         cy.findByText("Remove Official badge").should("not.exist");
@@ -53,16 +56,16 @@ describe("scenarios > collections > collection picker with tenants", () => {
         .click();
 
       cy.findByTestId("new-collection-modal").within(() => {
-        cy.log("Should not see 'Collection type' picker");
-        cy.findByText(/Collection type/i).should("not.exist");
-        cy.findByText("Regular").should("not.exist");
-        cy.findByText("Official").should("not.exist");
-
         cy.log("Verify we're creating inside the shared collection");
         cy.findByTestId("collection-picker-button").should(
           "contain",
           "Test Shared Collection",
         );
+
+        cy.log("Should not see 'Collection type' picker");
+        cy.findByText(/Collection type/i).should("not.exist");
+        cy.findByText("Regular").should("not.exist");
+        cy.findByText("Official").should("not.exist");
 
         cy.log("Edge case: Change target collection to a normal collection");
         cy.findByTestId("collection-picker-button").click();
@@ -89,14 +92,8 @@ describe("scenarios > collections > collection picker with tenants", () => {
         cy.log("Close modal without creating");
         cy.findByLabelText("Close").click();
       });
-    });
-  });
 
-  it("should block official collections in sub-collections of shared collections", () => {
-    createSharedCollection("Shared Parent Collection").then((response) => {
-      const sharedParentId = response.body.id;
-
-      createSharedCollection("Shared Sub Collection", sharedParentId).then(
+      createSharedCollection("Shared Sub Collection", sharedCollectionId).then(
         (subResponse) => {
           const sharedSubCollectionId = subResponse.body.id;
 
@@ -113,6 +110,9 @@ describe("scenarios > collections > collection picker with tenants", () => {
           H.openCollectionMenu();
 
           H.popover().within(() => {
+            cy.findByText("Move").should("be.visible");
+            cy.findByText("Move to trash").should("be.visible");
+
             cy.log("Should not have 'Make collection official' option");
             cy.findByText("Make collection official").should("not.exist");
             cy.findByText("Remove Official badge").should("not.exist");
@@ -127,6 +127,12 @@ describe("scenarios > collections > collection picker with tenants", () => {
             .click();
 
           cy.findByTestId("new-collection-modal").within(() => {
+            cy.log("Verify we're creating inside the shared sub-collection");
+            cy.findByTestId("collection-picker-button").should(
+              "contain",
+              "Shared Sub Collection",
+            );
+
             cy.log("Should not see 'Collection type' picker");
             cy.findByText(/Collection type/i).should("not.exist");
             cy.findByText("Regular").should("not.exist");
@@ -165,48 +171,5 @@ describe("scenarios > collections > collection picker with tenants", () => {
       cy.findByText("Regular").should("not.exist");
       cy.findByText("Official").should("not.exist");
     });
-  });
-
-  it("should show collection type picker when switching from shared to normal collection in create modal", () => {
-    createSharedCollection("Shared Collection for Switching").then(
-      (response) => {
-        const sharedCollectionId = response.body.id;
-
-        cy.log("Navigate inside shared collection");
-        H.visitCollection(sharedCollectionId);
-
-        cy.log("Start creating a sub-collection");
-        cy.findByTestId("collection-menu")
-          .findByLabelText("Create a new collection")
-          .click();
-
-        cy.findByTestId("new-collection-modal").within(() => {
-          cy.log("Should not see collection type picker initially");
-          cy.findByText(/Collection type/i).should("not.exist");
-
-          cy.log("Click collection picker to change target");
-          cy.findByTestId("collection-picker-button").click();
-        });
-
-        H.entityPickerModal().within(() => {
-          cy.log("Select 'Our analytics' (normal collection)");
-          cy.findByText("Our analytics").click();
-          cy.button("Select").click();
-        });
-
-        cy.findByTestId("new-collection-modal").within(() => {
-          cy.log("Wait for collection picker to update to 'Our analytics'");
-          cy.findByTestId("collection-picker-button").should(
-            "contain",
-            "Our analytics",
-          );
-
-          cy.log("Should now see collection type picker");
-          cy.findByText(/Collection type/i).should("exist");
-          cy.findByText("Regular").should("exist");
-          cy.findByText("Official").should("exist");
-        });
-      },
-    );
   });
 });

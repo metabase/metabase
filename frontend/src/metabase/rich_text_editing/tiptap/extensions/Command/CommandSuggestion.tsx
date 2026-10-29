@@ -129,9 +129,11 @@ export const CommandSuggestion = forwardRef<
 
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
+  const { capabilities } = host;
+
   const allCommandSections: CommandSection[] = useMemo(
-    () => getAllCommandSections(metabotCommand),
-    [metabotCommand],
+    () => getAllCommandSections(metabotCommand, capabilities),
+    [metabotCommand, capabilities],
   );
 
   const allCommandOptions = useMemo(
@@ -169,7 +171,8 @@ export const CommandSuggestion = forwardRef<
     [newQuestionOptions],
   );
 
-  const areChartsAllowed = !editor.isActive("supportingText");
+  const areChartsAllowed =
+    !editor.isActive("supportingText") && capabilities.canEmbedCharts;
   const canBrowseAll = areChartsAllowed || viewMode === "linkTo";
 
   const canCreateNewQuestion =
@@ -457,7 +460,9 @@ export const CommandSuggestion = forwardRef<
                     return (
                       <CommandMenuItem
                         key={`cmd-${cmdIndex}`}
-                        ref={(el) => (itemRefs.current[index] = el)}
+                        ref={(el) => {
+                          itemRefs.current[index] = el;
+                        }}
                         option={option}
                         isSelected={selectedIndex === index}
                         onClick={() => selectItem(index)}
@@ -485,8 +490,8 @@ export const CommandSuggestion = forwardRef<
                             size="sm"
                             c="text-primary"
                             px="sm"
-                            pt="xs"
-                            pb="xs"
+                            pt="xxs"
+                            pb="xxs"
                           >
                             {section.title}
                           </Text>
@@ -497,7 +502,9 @@ export const CommandSuggestion = forwardRef<
                         return (
                           <CommandMenuItem
                             key={index}
-                            ref={(el) => (itemRefs.current[index] = el)}
+                            ref={(el) => {
+                              itemRefs.current[index] = el;
+                            }}
                             option={option}
                             isSelected={selectedIndex === index}
                             onClick={() => selectItem(index)}

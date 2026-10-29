@@ -26,7 +26,7 @@ Try out the SDK in the [Modular embedding SDK playground](https://sdk-playground
 
 ## Modular embedding SDK prerequisites
 
-- React application using React 18 or React 19.
+- React application using React 18 or React 19. Metabase 66 will drop support for React 18. If you need to stay on React 18 for longer, use [Metabase 64 LTS](https://www.metabase.com/version-support).
 - Nodejs 20.x or higher.
 - Metabase version 1.52 or higher.
 
@@ -44,8 +44,8 @@ To use the SDK, you'll need to enable the SDK in Metabase, and install the SDK i
 
 ### Enable the SDK in Metabase
 
-1. Enable the Modular embedding SDK by going to **Admin > Embedding**.
-2. Toggle on **Modular embedding SDK**.
+1. Go to **Embedding hub > Security**.
+2. Toggle on **Modular embedding React SDK**.
 3. In **Cross-Origin Resource Sharing (CORS)**, enter the origins for your website or app where you want to allow SDK embedding, separated by a space. Localhost is automatically included.
 
 ### Install the SDK in your React application
@@ -105,20 +105,21 @@ Start with one of the quickstarts, then see these pages for more info on compone
 
 - [Authentication](../authentication.md)
 - [Embed a chart](../chart.md)
-- [AI chat](./ai-chat.md)
+- [Embed an AI chat](../ai-chat.md)
 - [Embed a dashboard](../dashboard.md)
 - [Actions](./actions.md)
 - [Appearance](../appearance.md)
 - [Embed a collection browser](../browser.md)
 - [Custom visualizations](../custom-visualizations.md)
 - [Plugins](./plugins.md)
-- [Config](./config.md)
+- [Configure your embeds](../config.md)
+- [Customize loading, error, and empty states](./loading-and-errors.md)
 - [Versioning](./version.md)
 - [Notes on Next.js](./next-js.md)
 
 ## Modular embedding SDK source code
 
-You can find the [Modular embedding SDK source code in the Metabase repo](https://github.com/metabase/metabase/tree/master/enterprise/frontend/src/embedding-sdk).
+You can find the [Modular embedding SDK source code in the Metabase repo](https://github.com/metabase/metabase/tree/master/enterprise/frontend/src/embedding-sdk-package).
 
 ## Modular embedding SDK on npm
 

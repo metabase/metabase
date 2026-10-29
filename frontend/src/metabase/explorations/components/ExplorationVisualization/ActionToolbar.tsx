@@ -6,15 +6,17 @@ import {
   useMemo,
   useState,
 } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { useCreateCommentMutation } from "metabase/api/comment";
 import {
+  useAppendChartToSummaryMutation,
   useSetPageStarredMutation,
   useSetPagesHiddenMutation,
 } from "metabase/api/exploration";
 import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { useToast } from "metabase/common/hooks";
+import { trackDocumentUpdated } from "metabase/documents/analytics";
 import {
   trackExplorationCommentCreated,
   trackExplorationPageHiddenToggled,
@@ -35,6 +37,7 @@ import {
   Popover,
   Tooltip,
 } from "metabase/ui";
+import { showTimelines } from "metabase/visualizations/lib/timeline-events-visibility";
 import type {
   DocumentContent,
   ExplorationId,
@@ -48,12 +51,16 @@ import type { CommentDrafts } from "../../types";
 
 import S from "./ActionToolbar.module.css";
 import { ExplorationCommentEditor } from "./ExplorationCommentEditor";
+import type { ExplorationChartForDocumentEmbed } from "./utils";
 
 const TRIAGE_TOOLTIP_OPEN_DELAY = 500;
 
 interface ActionToolbarProps {
   explorationId: ExplorationId;
   page: ExplorationPageNode;
+  charts: ExplorationChartForDocumentEmbed[];
+  canAddToSummary: boolean;
+  setSelectedSummary: (options?: { scrollIntoView?: boolean }) => void;
   commentDrafts: CommentDrafts;
   setCommentDrafts: Dispatch<SetStateAction<CommentDrafts>>;
   showTimelineDropdown: boolean;
@@ -67,6 +74,9 @@ interface ActionToolbarProps {
 export function ActionToolbar({
   explorationId,
   page,
+  charts,
+  canAddToSummary,
+  setSelectedSummary,
   commentDrafts,
   setCommentDrafts,
   showTimelineDropdown,
@@ -78,8 +88,10 @@ export function ActionToolbar({
 }: ActionToolbarProps) {
   const [setPageStarred] = useSetPageStarredMutation();
   const [setPagesHidden] = useSetPagesHiddenMutation();
+  const [appendChartToSummary] = useAppendChartToSummaryMutation();
 
   const [isCommentEditorOpen, setCommentEditorOpen] = useState(false);
+  const [isAddToSummaryMenuOpen, setAddToSummaryMenuOpen] = useState(false);
   const [isMoreActionsOpen, setMoreActionsOpen] = useState(false);
   const [createComment] = useCreateCommentMutation();
 
@@ -113,8 +125,7 @@ export function ActionToolbar({
       );
     } catch (error) {
       sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "warning",
+        variant: "negative",
         message: t`Failed to update star`,
       });
     }
@@ -136,8 +147,7 @@ export function ActionToolbar({
         return true;
       } catch (error) {
         sendToast({
-          icon: "warning_triangle_filled",
-          iconColor: "warning",
+          variant: "negative",
           message: t`Failed to update visibility`,
         });
         return false;
@@ -159,6 +169,48 @@ export function ActionToolbar({
       onNextPage?.();
     }
   }, [page.hidden, page.name, setHidden, sendToast, onNextPage]);
+
+  const showAddToSummary = canAddToSummary && charts.length > 0;
+
+  const handleAddToSummary = useCallback(
+    async (chart: ExplorationChartForDocumentEmbed) => {
+      const timelineSettings =
+        selectedTimelineId != null
+          ? showTimelines({}, [selectedTimelineId], availableTimelines)
+          : {};
+      const { data: document, error } = await appendChartToSummary({
+        explorationId,
+        exploration_query_ids: chart.queryIds,
+        display: chart.display,
+        visualization_settings: {
+          ...chart.visualization_settings,
+          ...timelineSettings,
+        },
+      });
+      if (error || !document) {
+        sendToast({
+          message: t`Failed to add to Summary`,
+          variant: "negative",
+        });
+        return;
+      }
+      trackDocumentUpdated(document, "exploration");
+      sendToast({
+        message: c("{0} is the document name").t`Added to ${document.name}`,
+        icon: "document",
+        actionLabel: t`View`,
+        action: () => setSelectedSummary({ scrollIntoView: true }),
+      });
+    },
+    [
+      appendChartToSummary,
+      availableTimelines,
+      explorationId,
+      selectedTimelineId,
+      sendToast,
+      setSelectedSummary,
+    ],
+  );
 
   const copyLink = useCopyLink();
 
@@ -199,6 +251,15 @@ export function ActionToolbar({
         event.preventDefault();
       }
 
+      if (event.key === "a" && showAddToSummary) {
+        if (charts.length === 1) {
+          handleAddToSummary(charts[0]);
+        } else {
+          setAddToSummaryMenuOpen(true);
+        }
+        event.preventDefault();
+      }
+
       if (event.key === "l") {
         copyLink(window.location.href);
         event.preventDefault();
@@ -214,6 +275,10 @@ export function ActionToolbar({
     handleToggleStarred,
     handleToggleHidden,
     setCommentEditorOpen,
+    showAddToSummary,
+    charts,
+    handleAddToSummary,
+    setAddToSummaryMenuOpen,
     copyLink,
   ]);
 
@@ -233,8 +298,7 @@ export function ActionToolbar({
 
     if (error) {
       sendToast({
-        icon: "warning_triangle_filled",
-        iconColor: "warning",
+        variant: "negative",
         message: t`Failed to send comment`,
       });
     } else {
@@ -244,7 +308,7 @@ export function ActionToolbar({
   };
 
   return (
-    <Group gap="md" align="center" wrap="nowrap" className={S.toolbarRow}>
+    <Group gap="lg" align="center" wrap="nowrap" className={S.toolbarRow}>
       <TriageNavButton
         label={t`Previous`}
         icon="chevronleft"
@@ -259,12 +323,12 @@ export function ActionToolbar({
       />
 
       <Group
-        gap="xs"
-        bg="background-primary"
-        bd="1px solid border"
+        gap="xxs"
+        bg="background_page-primary"
+        bd="1px solid border-neutral"
         bdrs="lg"
         px="sm"
-        py="xs"
+        py="xxs"
         className={S.toolbar}
       >
         {showTimelineDropdown && (
@@ -273,15 +337,16 @@ export function ActionToolbar({
               {selectedTimeline ? (
                 <Group
                   aria-label={t`Change selected timeline`}
-                  bd="0.5px solid border"
+                  bd="0.5px solid border-neutral"
                   bdrs="lg"
-                  py="xs"
+                  py="xxs"
                   px="sm"
                   gap={2}
                   className={S.timelineMenuTarget}
                 >
                   {selectedTimeline.name}
                   <ActionIcon
+                    variant="subtle"
                     aria-label={t`Remove timeline`}
                     onClick={(e) => {
                       handleSelectTimelineId(null, "click");
@@ -338,7 +403,7 @@ export function ActionToolbar({
               iconProps={{ size: "1.125rem" }}
             />
           </Popover.Target>
-          <Popover.Dropdown className={S.commentDropdown}>
+          <Popover.Dropdown>
             <ExplorationCommentEditor
               commentDrafts={commentDrafts}
               setCommentDrafts={setCommentDrafts}
@@ -347,6 +412,43 @@ export function ActionToolbar({
             />
           </Popover.Dropdown>
         </Popover>
+        {showAddToSummary &&
+          (charts.length === 1 ? (
+            <ToolbarButton
+              icon="document"
+              tooltipLabel={t`Add to Summary`}
+              iconProps={{
+                size: "1.125rem",
+              }}
+              onClick={() => handleAddToSummary(charts[0])}
+            />
+          ) : (
+            <Menu
+              position="top"
+              opened={isAddToSummaryMenuOpen}
+              onChange={setAddToSummaryMenuOpen}
+            >
+              <Menu.Target>
+                <ToolbarButton
+                  icon="document"
+                  tooltipLabel={t`Add to Summary`}
+                  iconProps={{
+                    size: "1.125rem",
+                  }}
+                />
+              </Menu.Target>
+              <Menu.Dropdown>
+                {charts.map((chart) => (
+                  <Menu.Item
+                    key={chart.queryIds.join(",")}
+                    onClick={() => handleAddToSummary(chart)}
+                  >
+                    {chart.label}
+                  </Menu.Item>
+                ))}
+              </Menu.Dropdown>
+            </Menu>
+          ))}
         <Menu
           position="top-end"
           offset={8}
@@ -355,11 +457,7 @@ export function ActionToolbar({
         >
           <Menu.Target>
             <Tooltip label={t`More actions`} disabled={isMoreActionsOpen}>
-              <ActionIcon
-                size="2rem"
-                variant="viewHeader"
-                aria-label={t`More actions`}
-              >
+              <ActionIcon variant="subtle" aria-label={t`More actions`}>
                 <Icon name="ellipsis" size="1.125rem" />
               </ActionIcon>
             </Tooltip>
@@ -411,10 +509,8 @@ function TriageNavButton({
   return (
     <Tooltip label={label} openDelay={TRIAGE_TOOLTIP_OPEN_DELAY}>
       <ActionIcon
-        className={S.triageButton}
         aria-label={label}
         radius="xl"
-        size="2rem"
         disabled={!onClick}
         onClick={onClick}
       >

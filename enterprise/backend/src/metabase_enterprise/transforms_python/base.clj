@@ -15,6 +15,7 @@
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.schema :as transforms-base.schema]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -23,8 +24,7 @@
    [metabase.util.format :as u.format]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [toucan2.core :as t2])
+   [metabase.util.malli :as mu])
   (:import
    (java.io File)
    (java.nio.file Files)
@@ -261,7 +261,13 @@
 
    Options:
    - `with-stage-timing-fn` - optional, (fn [run-id stage thunk] result) for instrumentation"
-  [{:keys [source] :as transform} db run-id cancel-chan message-log {:keys [with-stage-timing-fn source-range-params]}]
+  [{:keys [source] :as transform} :- ::transforms-base.schema/transform
+   db :- ::lib.schema.metadata/database
+   run-id :- pos-int?
+   cancel-chan :- ::transforms-base.schema/chan
+   message-log :- ::transforms-base.schema/atom
+   {:keys [with-stage-timing-fn source-range-params]}
+   :- ::transforms-base.schema/execute-base-options]
   ;; Resolve name-based source table refs to table IDs (throws if any not found)
   (let [resolved-source-tables (transforms-base.u/resolve-source-tables (:source-tables source))]
     (with-open [shared-storage-ref (s3/open-shared-storage! resolved-source-tables)]
@@ -360,7 +366,7 @@
       (when (and cancelled? (cancelled?))
         (throw (ex-info "Transform cancelled before start" {:status :cancelled})))
       (let [{:keys [target] transform-id :id} transform
-            db (t2/select-one :model/Database (:database target))
+            db (driver.u/lib-database (:database target))
             ;; Use run-id if provided, otherwise generate a temp one for python runner
             effective-run-id (or run-id (rand-int Integer/MAX_VALUE))
             cancel-chan (or cancel-chan
@@ -410,7 +416,8 @@
 
             :else
             (do
-              (log/errorf "Error executing Python transform: %s" (ex-message e))
+              ;; the caller owns the failure (and logs it); this returns it in the result map
+              (log/debugf "Error executing Python transform: %s" (ex-message e))
               {:status :failed
                :error e
                :logs (str logs "\n" error-message)})))))))

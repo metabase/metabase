@@ -16,13 +16,15 @@ First, create and save a question or model that returns the result set you'd lik
 
 To reference that question or model in a SQL query, use typeahead search in a variable prefixed with `#`.
 
-Type `{% raw %}{{#your search term }} {% endraw %}` and Metabase will display a list of models and questions relevant to your search term.
+Type `{% raw %}{{#your search term }}{% endraw %}` and Metabase will display a list of models and questions relevant to your search term.
 
 ![Typeahead search dropdown for referencing questions and models in SQL queries](../images/search-dropdown.png)
 
+If you're not seeing the results you expect, make sure you've selected the correct database. Search will only show items relevant to the selected database.
+
 You can also find the question or model ID by navigating in Metabase to the model or question you'd like to reference in your query. The ID is in the URL in your browser's address bar. The ID will be the number after `/model/` or `/question/`. E.g., for `https://metabase.example.com/model/12345-example-name`, the model's ID would be `12345`.
 
-Only the `#` and `ID` is required. Metabase just displays the model or question name to make the query more readable.
+Only the `#` and `ID` are required. Metabase just displays the model or question name to make the query more readable.
 
 ## Model, table, or saved question as a Common Table Expression (CTE)
 
@@ -62,10 +64,10 @@ FROM
 
 ## Further reading
 
-- [Models](../../data-modeling/models.md)
-- [Snippets](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/sql-snippets)
+- [Models](../../data-modeling/models/models.md)
+- [Snippets](./snippets.md)
 - [Snippets vs Saved Questions vs. Views](https://www.metabase.com/learn/metabase-basics/querying-and-dashboards/sql-in-metabase/organizing-sql)
 - [SQL troubleshooting guide](../../troubleshooting-guide/sql.md).
 
 [cte]: https://www.metabase.com/learn/sql/working-with-sql/sql-cte
-[model]: ../../data-modeling/models.md
+[model]: ../../data-modeling/models/models.md

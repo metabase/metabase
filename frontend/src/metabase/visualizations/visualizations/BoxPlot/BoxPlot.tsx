@@ -1,32 +1,33 @@
 import type { EChartsType } from "echarts/core";
 import { type MouseEvent, useCallback, useMemo, useRef, useState } from "react";
-import { useSet } from "react-use";
 
 import { isReducedMotionPreferred } from "metabase/utils/dom";
-import { extractRemappings } from "metabase/visualizations";
+import { assignLazily } from "metabase/utils/merge-lazily";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
+import { DataPointsVisiblePopover } from "metabase/visualizations/components/DataPointsVisiblePopover/DataPointsVisiblePopover";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { LegendCaption } from "metabase/visualizations/components/legend/LegendCaption";
-import {
-  getBoxPlotLayoutModel,
-  getBoxPlotModel,
-  getBoxPlotOption,
-  getBoxPlotTooltipOption,
-} from "metabase/visualizations/echarts/boxplot";
-import { getChartLayout } from "metabase/visualizations/echarts/cartesian/layout";
-import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
-import {
-  useClickedStateTooltipSync,
-  useCloseTooltipOnScroll,
-} from "metabase/visualizations/echarts/tooltip";
+import type { LegendChart } from "metabase/visualizations/components/legend/plots";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
-import { getDashboardAdjustedSettings } from "metabase/visualizations/shared/settings-adjustments";
+import { useLegendHiddenSeries } from "metabase/visualizations/hooks/use-legend-hidden-series";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   CartesianChartLegendLayout,
   CartesianChartRoot,
 } from "metabase/visualizations/visualizations/CartesianChart/CartesianChart.styled";
 import { useTooltipMouseLeave } from "metabase/visualizations/visualizations/CartesianChart/use-tooltip-mouse-leave";
+import {
+  extractRemappings,
+  getBoxPlotLayoutModel,
+  getBoxPlotModel,
+  getBoxPlotOption,
+  getBoxPlotTooltipOption,
+  getChartLayout,
+  getLegendItems,
+  getSizeAdjustedSettings,
+  useClickedStateTooltipSync,
+  useCloseTooltipOnScroll,
+} from "metabase/viz-core";
 
 import { BOXPLOT_CHART_DEFINITION } from "./definition";
 import { useBoxPlotEvents } from "./events";
@@ -34,7 +35,7 @@ import { useBoxPlotEvents } from "./events";
 function BoxPlotInner({
   rawSeries,
   settings: originalSettings,
-  autoAdjustSettings,
+  isVisualizer,
   fontFamily,
   card,
   width,
@@ -43,6 +44,8 @@ function BoxPlotInner({
   isEditing,
   isQueryBuilder,
   isFullscreen,
+  isMobile,
+  gridSize,
   hovered,
   clicked,
   showTitle,
@@ -58,9 +61,9 @@ function BoxPlotInner({
   titleMenuItems,
 }: VisualizationProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<EChartsType>();
+  const chartRef = useRef<EChartsType>(undefined);
+  const [chartInstance, setChartInstance] = useState<EChartsType>();
   const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
-  const [hiddenSeries, { toggle: toggleSeriesVisibility }] = useSet<string>();
 
   const rawSeriesWithRemappings = useMemo(
     () => extractRemappings(rawSeries),
@@ -69,17 +72,24 @@ function BoxPlotInner({
 
   const settings = useMemo(
     () =>
-      autoAdjustSettings
-        ? getDashboardAdjustedSettings({
-            settings: originalSettings,
-            height,
-            width,
-          })
-        : originalSettings,
-    [originalSettings, height, width, autoAdjustSettings],
+      getSizeAdjustedSettings({
+        settings: originalSettings,
+        height,
+        width,
+        gridSize: isMobile ? undefined : gridSize, // mobile doesn't use the grid layout
+      }),
+    [originalSettings, height, width, isMobile, gridSize],
   );
 
-  const renderingContext = useBrowserRenderingContext({ fontFamily });
+  const [hiddenSeries, toggleSeriesVisibility] = useLegendHiddenSeries<string>(
+    settings["legend.position"],
+  );
+
+  const renderingContext = useBrowserRenderingContext({
+    fontFamily,
+    isDashboard,
+    containerSize: { width, height },
+  });
 
   const showWarning = useCallback(
     (warning: string) => onRender?.({ warnings: [warning] }),
@@ -93,8 +103,15 @@ function BoxPlotInner({
         settings,
         Array.from(hiddenSeries),
         showWarning,
+        renderingContext.cartesianSize,
       ),
-    [rawSeriesWithRemappings, settings, hiddenSeries, showWarning],
+    [
+      rawSeriesWithRemappings,
+      settings,
+      hiddenSeries,
+      showWarning,
+      renderingContext.cartesianSize,
+    ],
   );
 
   const description = settings["card.description"];
@@ -120,17 +137,38 @@ function BoxPlotInner({
     [chartModel, hiddenSeries, toggleSeriesVisibility],
   );
 
+  const layoutInput = useMemo(
+    () => ({ ...chartModel, dataset: chartModel.boxDataset }),
+    [chartModel],
+  );
+
   const cartesianLayout = useMemo(
     () =>
       getChartLayout(
-        { ...chartModel, dataset: chartModel.boxDataset },
+        layoutInput,
         settings,
         false,
         chartSize.width,
         chartSize.height,
         renderingContext,
       ),
-    [chartModel, settings, chartSize.width, chartSize.height, renderingContext],
+    [
+      layoutInput,
+      settings,
+      chartSize.width,
+      chartSize.height,
+      renderingContext,
+    ],
+  );
+
+  const legendChart: LegendChart = useMemo(
+    () => ({
+      layoutInput,
+      settings,
+      hasTimelineEvents: false,
+      renderingContext,
+    }),
+    [layoutInput, settings, renderingContext],
   );
 
   const layoutModel = useMemo(
@@ -176,8 +214,11 @@ function BoxPlotInner({
     onChangeCardAndRun,
   });
 
+  // The popover subscribes to the instance in an effect, and a ref mutation
+  // would not re-run it, so the instance is held in state as well.
   const handleInit = useCallback((chart: EChartsType) => {
     chartRef.current = chart;
+    setChartInstance(chart);
   }, []);
 
   const handleResize = useCallback((width: number, height: number) => {
@@ -212,15 +253,20 @@ function BoxPlotInner({
       <CartesianChartLegendLayout
         isReversed={settings["legend.is_reversed"]}
         hasLegend={hasLegend}
+        legendPosition={settings["legend.position"]}
+        alwaysVisible={isVisualizer}
         items={legendItems}
         actionButtons={!showTitle ? actionButtons : undefined}
         hovered={hovered}
         isFullscreen={isFullscreen}
         isQueryBuilder={isQueryBuilder}
+        fontFamily={renderingContext.fontFamily}
+        measureText={renderingContext.measureText}
         onToggleSeriesVisibility={handleToggleSeriesVisibility}
         onHoverChange={onHoverChange}
         width={width}
         height={height}
+        chart={legendChart}
       >
         <ResponsiveEChartsRenderer
           key={hasValidOption ? "chart" : "measuring"}
@@ -229,7 +275,13 @@ function BoxPlotInner({
           eventHandlers={hasValidOption ? eventHandlers : undefined}
           onInit={handleInit}
           onResize={handleResize}
-        />
+        >
+          <DataPointsVisiblePopover
+            isDashboard={isDashboard}
+            isVisualizer={isVisualizer}
+            chartInstance={chartInstance}
+          />
+        </ResponsiveEChartsRenderer>
       </CartesianChartLegendLayout>
     </CartesianChartRoot>
   );
@@ -243,7 +295,4 @@ function BoxPlotComponent(props: VisualizationProps) {
   );
 }
 
-export const BoxPlot = Object.assign(
-  BoxPlotComponent,
-  BOXPLOT_CHART_DEFINITION,
-);
+export const BoxPlot = assignLazily(BoxPlotComponent, BOXPLOT_CHART_DEFINITION);

@@ -8,9 +8,37 @@ import {
   REPO_ROOT,
 } from "./data-app-fixture-paths.mjs";
 
-/**
- * Cypress task: build a data-app fixture and return its bundle code.
- */
+function run(script: string, args: string[], env: NodeJS.ProcessEnv = {}) {
+  return new Promise<void>((resolve, reject) => {
+    const child = spawn(process.execPath, [script, ...args], {
+      cwd: REPO_ROOT,
+      env: { ...process.env, ...env },
+      stdio: ["ignore", "inherit", "pipe"],
+    });
+
+    // Mirrored to the runner as it arrives, and kept so a rejection carries the
+    // script's own message rather than a bare exit code.
+    let stderr = "";
+    child.stderr.setEncoding("utf8");
+    child.stderr.on("data", (chunk: string) => {
+      stderr += chunk;
+      process.stderr.write(chunk);
+    });
+
+    child.on("error", reject);
+    child.on("exit", (code) =>
+      code === 0
+        ? resolve()
+        : reject(
+            new Error(
+              stderr.trim() ||
+                `${path.basename(script)} ${args.join(" ")} exited with code ${code}`,
+            ),
+          ),
+    );
+  });
+}
+
 export async function buildDataApp({
   appName,
 }: {
@@ -22,23 +50,7 @@ export async function buildDataApp({
     throw new Error(`data-app fixture "${appName}" has no src/ at ${appDir}`);
   }
 
-  await new Promise<void>((resolve, reject) => {
-    const child = spawn(process.execPath, [DATA_APP_BUILD_SCRIPT, appName], {
-      cwd: REPO_ROOT,
-      stdio: ["ignore", "inherit", "inherit"],
-    });
-
-    child.on("error", reject);
-    child.on("exit", (code) =>
-      code === 0
-        ? resolve()
-        : reject(
-            new Error(
-              `data-app build for "${appName}" exited with code ${code}`,
-            ),
-          ),
-    );
-  });
+  await run(DATA_APP_BUILD_SCRIPT, [appName]);
 
   const bundlePath = path.join(DATA_APP_FIXTURES_DIR, appName, "dist/index.js");
 
@@ -49,4 +61,41 @@ export async function buildDataApp({
   }
 
   return fs.readFileSync(bundlePath, "utf8");
+}
+
+/** Cypress resolves a relative path against the project root; match that. */
+function inRepo(target: string) {
+  return path.isAbsolute(target) ? target : path.join(REPO_ROOT, target);
+}
+
+/**
+ * The fixture filesystem lives behind tasks rather than `cy.exec`/`cy.writeFile`
+ * so a spec changes an app in one round trip, and so nothing is composed into a
+ * shell string.
+ */
+export async function writeDataAppFiles({
+  files,
+}: {
+  files: Record<string, string>;
+}): Promise<null> {
+  for (const [filePath, contents] of Object.entries(files)) {
+    const target = inRepo(filePath);
+
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, contents);
+  }
+
+  return null;
+}
+
+export async function removeDataAppPaths({
+  paths,
+}: {
+  paths: string[];
+}): Promise<null> {
+  for (const target of paths) {
+    fs.rmSync(inRepo(target), { recursive: true, force: true });
+  }
+
+  return null;
 }

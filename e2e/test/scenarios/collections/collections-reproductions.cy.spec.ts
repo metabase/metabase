@@ -1,4 +1,5 @@
 const { H } = cy;
+import { USER_GROUPS } from "e2e/support/cypress_data";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
   FIRST_COLLECTION_ID,
@@ -6,6 +7,8 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import type { CollectionId } from "metabase-types/api";
+
+const { ALL_USERS_GROUP } = USER_GROUPS;
 
 describe("issue 20911", () => {
   const COLLECTION_ACCESS_PERMISSION_INDEX = 0;
@@ -209,8 +212,49 @@ describe("issue 56567", () => {
     ["readonly", "View"],
   ];
 
-  it("should propagate permission to sub-collections when 'Also change sub-collections' is checked (metabase#56567)", () => {
+  it("should propagate permission to sub-collections only when 'Also change sub-collections' is checked (metabase#56567)", () => {
     withTestCollections((collectionAId, collectionBId) => {
+      cy.intercept("PUT", "/api/collection/graph?skip-graph=true").as(
+        "savePermissions",
+      );
+
+      cy.log(
+        "should NOT propagate when 'Also change sub-collections' is unchecked",
+      );
+      cy.visit(`/admin/permissions/collections/${collectionBId}`);
+
+      H.assertPermissionTable(getTestPermissionsTable("No access"));
+
+      cy.visit(`/collection/${collectionAId}-a/permissions`);
+
+      // opens up the permissions select
+      H.getPermissionRowPermissions("All Users").click();
+
+      // selected desired permission without checking 'Also change sub-collections'
+      H.popover().findByText("View").click();
+
+      // opens up the permissions select again
+      H.getPermissionRowPermissions("All Users").click();
+
+      // ensures the toggle is not checked
+      H.popover().findByRole("switch").should("not.be.checked");
+
+      cy.button("Save").click();
+      cy.wait("@savePermissions");
+
+      // Checks permissions for collection A is set to "View" as expected
+      cy.visit(`/admin/permissions/collections/${collectionAId}`);
+      H.assertPermissionTable(getTestPermissionsTable("View"));
+
+      // Check the permission set to collection A was NOT propagated to collection B
+      cy.visit(`/admin/permissions/collections/${collectionBId}`);
+      H.assertPermissionTable(getTestPermissionsTable("No access"));
+
+      cy.log("should propagate when 'Also change sub-collections' is checked");
+      cy.updateCollectionGraph({
+        [ALL_USERS_GROUP]: { [collectionAId]: "none" },
+      });
+
       cy.visit(`/admin/permissions/collections/${collectionAId}`);
 
       H.assertPermissionTable(getTestPermissionsTable("No access"));
@@ -237,45 +281,6 @@ describe("issue 56567", () => {
       // ensures the toggle is still checked
       H.popover().findByRole("switch").should("be.checked");
 
-      cy.intercept("PUT", "/api/collection/graph?skip-graph=true").as(
-        "savePermissions",
-      );
-      cy.button("Save").click();
-      cy.wait("@savePermissions");
-
-      // Checks permissions for collection A is set to "View" as expected
-      cy.visit(`/admin/permissions/collections/${collectionBId}`);
-      H.assertPermissionTable(getTestPermissionsTable("View"));
-
-      // Check the permission set to collection A was propagated to collection B
-      cy.visit(`/admin/permissions/collections/${collectionBId}`);
-      H.assertPermissionTable(getTestPermissionsTable("View"));
-    });
-  });
-
-  it("should NOT propagate permission to sub-collections when 'Also change sub-collections' is unchecked", () => {
-    withTestCollections((collectionAId, collectionBId) => {
-      cy.visit(`/admin/permissions/collections/${collectionBId}`);
-
-      H.assertPermissionTable(getTestPermissionsTable("No access"));
-
-      cy.visit(`/collection/${collectionAId}-a/permissions`);
-
-      // opens up the permissions select
-      H.getPermissionRowPermissions("All Users").click();
-
-      // selected desired permission without checking 'Also change sub-collections'
-      H.popover().findByText("View").click();
-
-      // opens up the permissions select again
-      H.getPermissionRowPermissions("All Users").click();
-
-      // ensures the toggle is not checked
-      H.popover().findByRole("switch").should("not.be.checked");
-
-      cy.intercept("PUT", "/api/collection/graph?skip-graph=true").as(
-        "savePermissions",
-      );
       cy.button("Save").click();
       cy.wait("@savePermissions");
 
@@ -283,9 +288,9 @@ describe("issue 56567", () => {
       cy.visit(`/admin/permissions/collections/${collectionAId}`);
       H.assertPermissionTable(getTestPermissionsTable("View"));
 
-      // Check the permission set to collection A was NOT propagated to collection B
+      // Check the permission set to collection A was propagated to collection B
       cy.visit(`/admin/permissions/collections/${collectionBId}`);
-      H.assertPermissionTable(getTestPermissionsTable("No access"));
+      H.assertPermissionTable(getTestPermissionsTable("View"));
     });
   });
 });

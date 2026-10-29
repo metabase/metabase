@@ -1,18 +1,19 @@
 import _ from "underscore";
 
 import * as Pivot from "cljs/metabase.pivot.js";
+import { memoize } from "metabase/utils/memoize";
 import { checkNotNull } from "metabase/utils/types";
 import { formatValue } from "metabase/value-formatting";
-import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
-import type {
-  ComputedVisualizationSettings,
-  PivotedDatasetColumn,
-  PivotedRowValues,
-} from "metabase/visualizations/types";
 import type {
   BodyItem,
   HeaderItem,
 } from "metabase/visualizations/visualizations/PivotTable/types";
+import {
+  type ComputedVisualizationSettings,
+  type PivotedDatasetColumn,
+  type PivotedRowValues,
+  makeCellBackgroundGetter,
+} from "metabase/viz-core";
 import { migratePivotColumnSplitSetting } from "metabase-lib/v1/queries/utils/pivot";
 import type {
   DatasetColumn,
@@ -97,10 +98,8 @@ export function multiLevelPivot(
     rowIndexes,
   ].map((indexes) =>
     indexes.map((index) =>
-      _.memoize(
-        (value: RowValue) => formatValue(value, columnSettings[index]),
-        (value: RowValue) => JSON.stringify(value) + String(index),
-      ),
+      // `index` is closed over, so the value is the whole key.
+      memoize((value: RowValue) => formatValue(value, columnSettings[index])),
     ),
   );
 

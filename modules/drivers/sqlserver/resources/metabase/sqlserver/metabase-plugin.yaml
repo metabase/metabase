@@ -22,8 +22,72 @@ driver:
     - name: instance
       display-name: Database instance name
       placeholder: N/A
-    - user
-    - password
+    - name: auth-mode
+      display-name: Authentication method
+      type: select
+      default: sql
+      required: true
+      options:
+        - {name: "SQL Server login",                           value: "sql"}
+        - {name: "Azure AD - Service principal",               value: "ad-service-principal"}
+        - {name: "Azure AD - Service principal (certificate)", value: "ad-service-principal-certificate"}
+        - {name: "Azure AD - Managed identity",                value: "ad-managed-identity"}
+    - merge:
+        - user
+        - visible-if:
+            auth-mode: sql
+    - merge:
+        - password
+        - visible-if:
+            auth-mode: sql
+    - name: ad-client-id
+      display-name: Client ID
+      helper-text: The Entra application (client) ID of the service principal.
+      placeholder: 00000000-0000-0000-0000-000000000000
+      required: true
+      visible-if:
+        auth-mode: [ad-service-principal, ad-service-principal-certificate]
+    - name: ad-client-secret
+      display-name: Client secret
+      type: password
+      required: true
+      visible-if:
+        auth-mode: ad-service-principal
+    - name: ad-client-certificate
+      display-name: Client certificate
+      helper-text: The Microsoft Entra service principal certificate.
+      type: secret
+      secret-kind: keystore
+      required: true
+      visible-if:
+        auth-mode: ad-service-principal-certificate
+    - name: ad-client-certificate-password
+      display-name: Certificate password
+      helper-text: If the certificate needs a password, provide it here.
+      type: secret
+      secret-kind: password
+      visible-if:
+        auth-mode: ad-service-principal-certificate
+    - name: ad-client-key
+      display-name: Client key
+      helper-text: Only needed if the private key is in a separate file from the certificate.
+      type: secret
+      secret-kind: pem-cert
+      visible-if:
+        auth-mode: ad-service-principal-certificate
+    - name: ad-client-key-password
+      display-name: Client key password
+      helper-text: Only needed if the separate private key file is encrypted.
+      type: secret
+      secret-kind: password
+      visible-if:
+        auth-mode: ad-service-principal-certificate
+    - name: ad-managed-identity-client-id
+      display-name: Managed identity client ID
+      helper-text: Optional. Fill in for a user-assigned managed identity; leave blank to use the default identity attached to the Metabase host.
+      placeholder: 00000000-0000-0000-0000-000000000000
+      visible-if:
+        auth-mode: ad-managed-identity
     - name: role
       display-name: Default impersonation user (required for impersonation if the connection's user cannot be impersonated)
       helper-text: User used to run system queries, required if the connection's user cannot be impersonated, such as the 'sa' user.

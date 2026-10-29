@@ -1,89 +1,85 @@
 import { t } from "ttag";
 
-import { useTokenRefreshUntil } from "metabase/api/utils";
-import { useGetSettingsQuery } from "metabase/settings";
-import { Button, Flex, Icon, Loader, Stack, Text, Title } from "metabase/ui";
+import {
+  Button,
+  Center,
+  Flex,
+  Icon,
+  Loader,
+  Modal,
+  type ModalStepProps,
+  Text,
+} from "metabase/ui";
 
 import type { UpgradeFlow } from "./types";
 
-interface UpgradeModalLoadingProps {
-  flow: UpgradeFlow;
-  onDone: () => void;
-}
-
-export function UpgradeModalLoading({
+export function getUpgradeLoadingModalProps({
   flow,
-  onDone,
-}: UpgradeModalLoadingProps) {
-  // Poll every second until no-upsell feature appears
-  useTokenRefreshUntil("no-upsell", { intervalMs: 1000 });
-
-  const { data: settings } = useGetSettingsQuery();
-  const tokenFeatures = settings?.["token-status"]?.features ?? [];
-  const isSettingUp = !tokenFeatures.includes("no-upsell");
-
+  isSettingUp,
+}: {
+  flow: UpgradeFlow;
+  isSettingUp: boolean;
+}): ModalStepProps {
   const isTrial = flow === "trial";
 
   if (isSettingUp) {
-    const title = isTrial
-      ? t`Setting up your free trial, please wait`
-      : // eslint-disable-next-line metabase/no-literal-metabase-strings -- Upsell for Metabase Pro, only visible to admins
-        t`Setting up Metabase Pro, please wait`;
-
-    return (
-      <Stack align="center" gap="lg" py="xl">
-        <Loader size="xl" />
-
-        <Stack align="center" gap="xs">
-          <Title order={3} ta="center">
-            {title}
-          </Title>
-          <Text c="text-secondary" ta="center">
-            {t`This will take just a minute or so`}
-          </Text>
-        </Stack>
-
-        <Flex justify="center" w="100%">
-          <Button variant="filled" color="core-brand" disabled>
-            {t`Done`}
-          </Button>
-        </Flex>
-      </Stack>
-    );
+    return {
+      layout: "centered",
+      title: isTrial
+        ? t`Setting up your free trial, please wait`
+        : // eslint-disable-next-line metabase/no-literal-metabase-strings -- Upsell for Metabase Pro, only visible to admins
+          t`Setting up Metabase Pro, please wait`,
+      // Same size as the ready and error badges, so the modal keeps its height
+      illustration: (
+        <Center w={64} h={64}>
+          <Loader size="xl" />
+        </Center>
+      ),
+    };
   }
 
-  // Success state - feature has arrived
-  const successTitle = isTrial
-    ? t`Your free trial is ready`
-    : // eslint-disable-next-line metabase/no-literal-metabase-strings -- Upsell for Metabase Pro, only visible to admins
-      t`Metabase Pro is ready to use`;
-
-  return (
-    <Stack align="center" gap="lg" py="xl">
+  return {
+    layout: "centered",
+    title: isTrial
+      ? t`Your free trial is ready`
+      : // eslint-disable-next-line metabase/no-literal-metabase-strings -- Upsell for Metabase Pro, only visible to admins
+        t`Metabase Pro is ready to use`,
+    illustration: (
       <Flex
         align="center"
         justify="center"
         w={64}
         h={64}
         bg="feedback-positive"
-        style={{ borderRadius: "50%" }}
+        bdrs="50%"
       >
         <Icon name="check" c="core-white" size={32} />
       </Flex>
+    ),
+  };
+}
 
-      <Stack align="center" gap="xs">
-        <Title order={3} ta="center">
-          {successTitle}
-        </Title>
-        <Text c="text-secondary" ta="center">
-          {t`Happy exploring!`}
-        </Text>
-      </Stack>
+interface UpgradeModalLoadingProps {
+  isSettingUp: boolean;
+  onDone: () => void;
+}
 
-      <Flex justify="center" w="100%">
+export function UpgradeModalLoading({
+  isSettingUp,
+  onDone,
+}: UpgradeModalLoadingProps) {
+  return (
+    <>
+      <Text c="text-secondary">
+        {isSettingUp
+          ? t`This will take just a minute or so`
+          : t`Happy exploring!`}
+      </Text>
+      <Modal.Footer>
         <Button
           variant="filled"
-          color="core-brand"
+          color="brand"
+          disabled={isSettingUp}
           onClick={() => {
             onDone();
             window.location.reload();
@@ -91,7 +87,7 @@ export function UpgradeModalLoading({
         >
           {t`Done`}
         </Button>
-      </Flex>
-    </Stack>
+      </Modal.Footer>
+    </>
   );
 }

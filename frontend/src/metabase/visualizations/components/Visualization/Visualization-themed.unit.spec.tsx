@@ -2,8 +2,8 @@ import { renderWithProviders, screen } from "__support__/ui";
 import { delay } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { getColorShades } from "metabase/ui/utils/colors";
-import { loadVisualizationComponents } from "metabase/visualizations";
 import { registerVisualizations } from "metabase/visualizations/register";
+import { loadVisualizationComponents } from "metabase/viz-core";
 import type { Series } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 

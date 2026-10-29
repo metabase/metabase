@@ -27,7 +27,11 @@ import {
 } from "metabase-types/api";
 
 import { JobHeader } from "../../components/JobHeader";
-import { JobMoreMenu } from "../../components/JobMoreMenu";
+import {
+  JobModal,
+  type JobModalState,
+  JobMoreMenu,
+} from "../../components/JobMoreMenu";
 import { JobTabs } from "../../components/JobTabs";
 
 import S from "./JobRunListPage.module.css";
@@ -53,6 +57,7 @@ export function JobRunListPage() {
     TransformJobRunId | undefined
   >();
   const [isPolling, setIsPolling] = useState(false);
+  const [jobModal, setJobModal] = useState<JobModalState>();
   const navigate = useNavigate();
 
   const { data: job } = useGetTransformJobQuery(jobId ?? skipToken);
@@ -157,14 +162,15 @@ export function JobRunListPage() {
       wrap="nowrap"
       data-testid="job-run-list"
     >
-      <Stack className={S.main} flex={1} px="3.5rem" pb="md" gap={0}>
+      <Stack className={S.main} flex={1} px="3.5rem" pb="lg" gap={0}>
         {job !== undefined && (
           <JobHeader
             job={job}
-            menu={!readOnly && <JobMoreMenu job={job} />}
+            menu={
+              !readOnly && <JobMoreMenu job={job} onOpenModal={setJobModal} />
+            }
             tabs={<JobTabs jobId={job.id} />}
             readOnly={readOnly}
-            showMetabotButton
             onNameChange={onNameChange}
           />
         )}
@@ -173,7 +179,7 @@ export function JobRunListPage() {
             <LoadingAndErrorWrapper loading={isLoading} error={error} />
           </Center>
         ) : (
-          <Stack flex="0 1 auto" mih={0} gap="lg" pt="2.5rem">
+          <Stack flex="0 1 auto" mih={0} gap="xl" pt="2.5rem">
             <Group>
               <Select
                 data={getStatusOptions()}
@@ -248,6 +254,7 @@ export function JobRunListPage() {
           onClose={() => setSelectedRunId(undefined)}
         />
       )}
+      <JobModal modal={jobModal} onClose={() => setJobModal(undefined)} />
     </Flex>
   );
 }

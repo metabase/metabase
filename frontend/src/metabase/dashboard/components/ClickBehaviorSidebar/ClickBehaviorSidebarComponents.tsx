@@ -13,5 +13,5 @@ export const Heading = (props: TitleProps) => {
 export const SidebarContent = (
   props: BoxProps & { children?: React.ReactNode },
 ) => {
-  return <Box px="xl" {...props} />;
+  return <Box px="xxl" {...props} />;
 };

@@ -202,7 +202,7 @@ export function computeSdkDistTag({
   switch (releaseType) {
     case "alpha":
     case "preminor":
-      return "alpha";
+      return `${major}-alpha`;
     case "beta":
       return `${major}-beta`;
     case "patch":

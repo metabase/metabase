@@ -8,12 +8,16 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
 import { parseSearchQuery } from "metabase/utils/browser";
-import { AUDIT_DB_ID } from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/constants";
+import {
+  AUDIT_DB_ID,
+  VIEW_CONVERSATIONS,
+  VIEW_USAGE_LOG,
+} from "metabase-enterprise/monitor/ai-auditing/metabot-analytics/constants";
 import {
   ADMIN_GROUP,
   ALL_USERS_GROUP,
@@ -79,10 +83,16 @@ jest.mock("metabase/visualizations/components/Visualization", () => {
   return { __esModule: true, default: StubVisualization };
 });
 
-const STATS_PATH = Urls.monitorAiAuditingUsage();
+const STATS_PATH = Urls.monitorAiAuditingUsageMetric("conversations");
 const CONVERSATIONS_PATH = Urls.monitorAiAuditingConversations();
 
 const { database: auditDatabase } = buildAuditViewsFixture();
+
+const TABLE_NAME_BY_ID = new Map(
+  (auditDatabase.tables ?? []).map(
+    (table) => [Number(table.id), table.name] as const,
+  ),
+);
 
 const FIELD_NAME_BY_ID = new Map(
   (auditDatabase.tables ?? []).flatMap((table) =>
@@ -126,6 +136,7 @@ const BREAKOUT_VALUES: Record<string, RowValue[]> = {
 type FieldRef = [string, { "temporal-unit"?: string }, number];
 type FilterClause = [string, object, FieldRef, ...unknown[]];
 type RequestStage = {
+  "source-table": number;
   aggregation?: unknown[];
   breakout?: FieldRef[];
   filters?: FilterClause[];
@@ -159,8 +170,26 @@ function getBreakoutValues(stage: RequestStage): RowValue[] {
   return values;
 }
 
-function buildDatasetResponse(body: unknown): Dataset {
+function buildCountResponse(count: number): Dataset {
+  return createMockDataset({
+    data: createMockDatasetData({
+      cols: [createMockColumn({ source: "aggregation", name: "count" })],
+      rows: [[count]],
+    }),
+    database_id: AUDIT_DB_ID,
+    row_count: 1,
+  });
+}
+
+function getViewName(stage: RequestStage): string {
+  return TABLE_NAME_BY_ID.get(stage["source-table"]) ?? "";
+}
+
+function buildDatasetResponse(body: unknown, emptyViews: string[]): Dataset {
   const stage = parseStage(body);
+  if (stage && !stage.breakout) {
+    return buildCountResponse(emptyViews.includes(getViewName(stage)) ? 0 : 2);
+  }
   const values = stage ? getBreakoutValues(stage) : [];
   const aggregationNames =
     (stage?.aggregation ?? []).length > 1 ? ["sum", "sum_2"] : ["count"];
@@ -199,33 +228,57 @@ function getFilteredFieldIds(): number[] {
 type SetupOpts = {
   initialRoute?: string;
   hasTenants?: boolean;
+  emptyViews?: string[];
+  heldView?: string;
 };
 
 function setup({
   initialRoute = STATS_PATH,
   hasTenants = false,
+  emptyViews = [],
+  heldView,
 }: SetupOpts = {}) {
   setupEnterprisePlugins();
 
+  const heldMetadata = Promise.withResolvers<void>();
+  const heldCount = Promise.withResolvers<void>();
+
   fetchMock.get(`path:/api/database/${AUDIT_DB_ID}/metadata`, auditDatabase);
   // useAuditTable pulls the table's fields (and its FK targets') from here.
-  fetchMock.post("path:/api/dataset/query_metadata", {
-    databases: [auditDatabase],
-    tables: auditDatabase.tables ?? [],
-    fields: (auditDatabase.tables ?? []).flatMap((table) => table.fields ?? []),
+  fetchMock.post("path:/api/dataset/query_metadata", async (call) => {
+    const stage = parseStage(call.options.body);
+    if (stage && getViewName(stage) === heldView) {
+      await heldMetadata.promise;
+    }
+    return {
+      databases: [auditDatabase],
+      tables: auditDatabase.tables ?? [],
+      fields: (auditDatabase.tables ?? []).flatMap(
+        (table) => table.fields ?? [],
+      ),
+    };
   });
   fetchMock.post(
     "path:/api/dataset",
-    (call) => buildDatasetResponse(call?.options.body),
+    async (call) => {
+      const stage = parseStage(call.options.body);
+      if (stage && !stage.breakout && getViewName(stage) === heldView) {
+        await heldCount.promise;
+      }
+      return buildDatasetResponse(call.options.body, emptyViews);
+    },
     { name: "dataset" },
   );
   setupUsersEndpoints([BOBBY, ROBERT]);
   setupGroupsEndpoint([ALL_USERS_GROUP, ADMIN_GROUP, DATA_GROUP]);
   setupTenantEntpoints([BOBBY_TENANT, ROBERT_TENANT]);
 
-  return renderWithProviders(
+  const view = renderWithProviders(
     <>
-      <Route path={STATS_PATH} element={<ConversationStatsPage />} />
+      <Route
+        path={`${Urls.monitorAiAuditingUsage()}/:metric`}
+        element={<ConversationStatsPage />}
+      />
       <Route
         path={CONVERSATIONS_PATH}
         element={<div data-testid="conversations-page" />}
@@ -245,6 +298,12 @@ function setup({
       }),
     },
   );
+
+  return {
+    ...view,
+    releaseHeldMetadata: heldMetadata.resolve,
+    releaseHeldCount: heldCount.resolve,
+  };
 }
 
 async function findChartCard(title: string): Promise<HTMLElement> {
@@ -295,9 +354,11 @@ describe("ConversationStatsPage", () => {
       { tab: "Tokens", metric: "tokens" },
       { tab: "Messages", metric: "messages" },
     ])(
-      "switches to the $metric charts and records the metric in the url",
+      "switches to the $metric charts at the $metric route, keeping the filters",
       async ({ tab, metric }) => {
-        const { router } = setup();
+        const { router } = setup({
+          initialRoute: `${STATS_PATH}?date=past6days~`,
+        });
 
         await screen.findByText("Conversations by day");
         await userEvent.click(screen.getByRole("tab", { name: tab }));
@@ -310,14 +371,29 @@ describe("ConversationStatsPage", () => {
           expect(await screen.findByText(title)).toBeInTheDocument();
         }
         await waitFor(() => {
-          expect(parseSearchQuery(router?.location.search ?? "")).toMatchObject(
-            {
-              metric,
-            },
-          );
+          expect(router?.location).toMatchObject({
+            pathname: Urls.monitorAiAuditingUsageMetric(metric),
+            search: "?date=past6days~",
+          });
         });
       },
     );
+
+    it("redirects an unknown metric to the Conversations tab, keeping the filters", async () => {
+      const { router } = setup({
+        initialRoute: `${Urls.monitorAiAuditingUsage()}/unknown?date=past6days~`,
+      });
+
+      await waitFor(() => {
+        expect(router?.location).toMatchObject({
+          pathname: STATS_PATH,
+          search: "?date=past6days~",
+        });
+      });
+      expect(
+        await screen.findByRole("tab", { name: "Conversations" }),
+      ).toHaveAttribute("aria-selected", "true");
+    });
 
     it("buckets the timeseries by hour for a single-day date filter", async () => {
       setup({ initialRoute: `${STATS_PATH}?date=${SINGLE_DAY}` });
@@ -356,6 +432,60 @@ describe("ConversationStatsPage", () => {
       expect(
         await screen.findByText("Conversations by day"),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("empty state", () => {
+    it("shows one empty state instead of the charts when nothing matches the filters", async () => {
+      setup({ emptyViews: [VIEW_CONVERSATIONS] });
+
+      expect(await screen.findByText("No conversations")).toBeInTheDocument();
+      expect(
+        screen.getByRole("tab", { name: "Conversations" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId("conversation-filters-date-select"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("Conversations by day"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows the token charts when there is token usage but no conversations", async () => {
+      setup({
+        initialRoute: Urls.monitorAiAuditingUsageMetric("tokens"),
+        emptyViews: [VIEW_CONVERSATIONS],
+      });
+
+      expect(await screen.findByText("Tokens by day")).toBeInTheDocument();
+    });
+
+    it("keeps the loader up until the Tokens count comes back", async () => {
+      const { releaseHeldMetadata, releaseHeldCount } = setup({
+        emptyViews: [VIEW_CONVERSATIONS, VIEW_USAGE_LOG],
+        heldView: VIEW_USAGE_LOG,
+      });
+
+      await screen.findByText("No conversations");
+      await userEvent.click(screen.getByRole("tab", { name: "Tokens" }));
+
+      expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+      expect(screen.queryByText("No token usage")).not.toBeInTheDocument();
+
+      releaseHeldMetadata();
+      await waitFor(() =>
+        expect(
+          getDatasetStages().some(
+            (stage) => !stage.breakout && getViewName(stage) === VIEW_USAGE_LOG,
+          ),
+        ).toBe(true),
+      );
+
+      expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+
+      releaseHeldCount();
+
+      expect(await screen.findByText("No token usage")).toBeInTheDocument();
     });
   });
 

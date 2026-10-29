@@ -12,16 +12,18 @@ import DeepSeekMark from "./logos/deepseek.svg?component";
 import GoogleMark from "./logos/google.svg?component";
 import MistralMark from "./logos/mistral.svg?component";
 import MoonshotMark from "./logos/moonshot.svg?component";
+import OllamaMark from "./logos/ollama.svg?component";
 import OpenAiMark from "./logos/openai.svg?component";
 import OpenRouterMark from "./logos/openrouter.svg?component";
+import XaiMark from "./logos/xai.svg?component";
 import ZaiMark from "./logos/zai.svg?component";
 
 const GENERIC_PROVIDER_ICON = "ai";
 
 // Every mark is inlined rather than loaded by URL: it lets the single-colour ones take the theme's text
 // colour the way their brands publish them, and it keeps them out of the emitted-asset pipeline. Metabase
-// is null because it is drawn from its own logo component, and vLLM because it falls back to the generic
-// AI icon.
+// is null because it is drawn from its own logo component, and vLLM and OpenAI-compatible servers because
+// they fall back to the generic AI icon.
 const PROVIDER_LOGOS: Record<
   LlmProviderTypeName,
   ComponentType<SVGProps<SVGSVGElement>> | null
@@ -34,9 +36,12 @@ const PROVIDER_LOGOS: Record<
   zai: ZaiMark,
   moonshot: MoonshotMark,
   deepseek: DeepSeekMark,
+  xai: XaiMark,
   google: GoogleMark,
   azure: AzureMark,
   vllm: null,
+  ollama: OllamaMark,
+  "openai-compatible": null,
   metabase: null,
 };
 

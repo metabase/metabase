@@ -203,6 +203,60 @@
             (is (some #(= (:id %) (:id active-table)) results))
             (is (not (some #(= (:id %) (:id inactive-table)) results)))))))))
 
+(deftest visible-table-filter-subquery-clause-test
+  (testing "visible-table-filter-subquery-clause selects the same tables as visible-table-filter-with-cte"
+    (mt/with-temp [:model/Database db {}
+                   :model/Table granted-table {:db_id (:id db) :active true}
+                   :model/Table inactive-table {:db_id (:id db) :active false}
+                   :model/Table ungranted-table {:db_id (:id db) :active true}
+                   :model/PermissionsGroup group {}
+                   :model/User user {}
+                   :model/PermissionsGroupMembership _ {:user_id (:id user) :group_id (:id group)}]
+      ;; drop the default grants every group, All Users included, gets on a new database: only `group` grants anything
+      (t2/delete! :model/DataPermissions :db_id (:id db))
+      (perms/set-database-permission! (:id group) (:id db) :perms/view-data :unrestricted)
+      (perms/set-database-permission! (:id group) (:id db) :perms/create-queries :no)
+      (perms/set-table-permission! (:id group) granted-table :perms/create-queries :query-builder)
+      (perms/set-table-permission! (:id group) inactive-table :perms/create-queries :query-builder)
+      (let [user-info          {:user-id (:id user) :is-superuser? false}
+            permission-mapping {:perms/view-data      :unrestricted
+                                :perms/create-queries :query-builder}
+            db-tables          (fn [query]
+                                 (t2/select-pks-set :model/Table
+                                                    (update query :where (fn [w] [:and [:= :db_id (:id db)] w]))))
+            cte-tables         (fn [& opts]
+                                 (let [{:keys [with clause]} (apply sql/visible-table-filter-with-cte
+                                                                    :id user-info permission-mapping opts)]
+                                   (db-tables {:with with :where clause})))
+            subquery-tables    (fn [& opts]
+                                 (db-tables {:where (apply sql/visible-table-filter-subquery-clause
+                                                           :id user-info permission-mapping opts)}))]
+        (testing "with the default options"
+          (is (= #{(:id granted-table) (:id inactive-table)}
+                 (cte-tables)
+                 (subquery-tables))))
+        (testing "with active-only?"
+          (is (= #{(:id granted-table)}
+                 (cte-tables {:active-only? true})
+                 (subquery-tables {:active-only? true}))))
+        (testing "from inside a derived table, where a CTE cannot go"
+          (is (= #{(:id granted-table)}
+                 (t2/select-pks-set :model/Table
+                                    {:select [:x.id]
+                                     :from   [[^:allow-subquery
+                                               {:select [:id]
+                                                :from   [:metabase_table]
+                                                :where  [:and
+                                                         [:= :db_id (:id db)]
+                                                         [:= :active true]
+                                                         (sql/visible-table-filter-subquery-clause
+                                                          :id user-info permission-mapping)]}
+                                               :x]]}))))
+        (testing "a superuser gets a clause that keeps every table"
+          (is (= #{(:id granted-table) (:id inactive-table) (:id ungranted-table)}
+                 (db-tables {:where (sql/visible-table-filter-subquery-clause
+                                     :id (assoc user-info :is-superuser? true) permission-mapping)}))))))))
+
 (deftest visible-table-filter-select-include-inactive-test
   (testing "visible-table-filter-select respects active-only? option"
     (mt/with-temp [:model/Database db {}

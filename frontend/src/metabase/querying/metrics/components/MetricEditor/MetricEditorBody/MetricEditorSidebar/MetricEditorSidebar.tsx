@@ -10,13 +10,13 @@ export function MetricEditorSidebar() {
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
   const docsUrl = useSelector((state) =>
     getDocsUrl(state, {
-      page: "data-modeling/metrics",
-      anchor: "creating-a-metric",
+      page: "data-modeling/semantic-layer/metrics",
+      anchor: "create-a-metric",
     }),
   );
 
   return (
-    <Box pt="md" pr={{ sm: "sm", lg: "md" }}>
+    <Box pt="lg" pr={{ sm: "sm", lg: "lg" }}>
       {showMetabaseLinks && (
         <Button
           component={ExternalLink}

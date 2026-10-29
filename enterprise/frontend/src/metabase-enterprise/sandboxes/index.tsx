@@ -1,12 +1,12 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { isTableEntityId } from "metabase/admin/permissions/utils/data-entity-id";
+import { modalRoute } from "metabase/common/components/ModalRoute";
 import {
   getDatabaseFocusPermissionsUrl,
   getGroupFocusPermissionsUrl,
-} from "metabase/admin/permissions/utils/urls";
-import { modalRoute } from "metabase/common/components/ModalRoute";
+  isTableEntityId,
+} from "metabase/permissions";
 import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS,
@@ -35,11 +35,12 @@ import EditSandboxingModal from "./containers/EditSandboxingModal";
 import { getDraftPolicies, hasPolicyChanges } from "./selectors";
 
 const OPTION_SEGMENTED = {
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  label: t`Row and column security`,
+  get label() {
+    return t`Row and column security`;
+  },
   value: DataPermissionValue.SANDBOXED,
   icon: "permissions_limited",
-  iconColor: "brand",
+  iconColor: "core-brand",
 } satisfies PermissionOption;
 
 const getDatabaseViewSandboxModalUrl = (
@@ -96,8 +97,10 @@ export function initializePlugin() {
     );
     PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS.push(OPTION_SEGMENTED);
     PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS[OPTION_SEGMENTED.value].push({
-      label: t`Edit row and column security`,
-      iconColor: "brand",
+      get label() {
+        return t`Edit row and column security`;
+      },
+      iconColor: "core-brand",
       icon: "pencil",
       onSelect: (entityId, groupId, view) =>
         navigate(getEditSegementedAccessUrl(entityId, groupId, view)),

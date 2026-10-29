@@ -1,3 +1,4 @@
+import Color from "color";
 import { type MouseEvent, useMemo } from "react";
 
 import {
@@ -10,6 +11,7 @@ import {
 } from "__support__/ui";
 import {
   type ColumnOptions,
+  type DataGridTheme,
   type RowIdColumnOptions,
   useDataGridInstance,
 } from "metabase/data-grid";
@@ -54,6 +56,8 @@ interface TestDataGridProps {
   sortableColumns?: boolean;
   wrapableColumns?: string[];
   enableSelection?: boolean;
+  striped?: boolean;
+  theme?: DataGridTheme;
   pinnedTopRowsCount?: number;
   pinnedLeftColumnsCount?: number;
 }
@@ -70,6 +74,8 @@ const TestDataGrid = ({
   sortableColumns = false,
   wrapableColumns = [],
   enableSelection = false,
+  striped = false,
+  theme,
   pinnedTopRowsCount,
   pinnedLeftColumnsCount,
 }: TestDataGridProps) => {
@@ -149,6 +155,8 @@ const TestDataGrid = ({
   return (
     <DataGrid
       {...tableProps}
+      striped={striped}
+      theme={theme}
       onHeaderCellClick={onHeaderCellClick}
       onBodyCellClick={onBodyCellClick}
       onAddColumnClick={onAddColumnClick}
@@ -453,6 +461,83 @@ describe("DataGrid", () => {
     bodyRows.forEach((row) => {
       const cells = within(row).getAllByRole("gridcell");
       expect(cells.length).toBeGreaterThan(0);
+    });
+  });
+
+  it("applies striped class to alternating rows when enabled", () => {
+    renderWithProviders(<TestDataGrid striped={true} />);
+
+    const bodyRows = screen
+      .getByTestId("table-body")
+      .querySelectorAll('[role="row"]');
+
+    expect(bodyRows[0]).not.toHaveAttribute("data-row-striped", "true");
+    expect(bodyRows[1]).toHaveAttribute("data-row-striped", "true");
+    expect(bodyRows[2]).not.toHaveAttribute("data-row-striped", "true");
+  });
+
+  it("does not apply striped class when disabled", () => {
+    renderWithProviders(<TestDataGrid striped={false} />);
+
+    const bodyRows = screen
+      .getByTestId("table-body")
+      .querySelectorAll('[role="row"]');
+
+    bodyRows.forEach((row) => {
+      expect(row).not.toHaveAttribute("data-row-striped", "true");
+    });
+  });
+
+  describe("striped rows with a theme", () => {
+    const theme: DataGridTheme = {
+      stripedBackgroundColor: "rgb(10, 20, 30)",
+      cell: { backgroundColor: "rgb(40, 50, 60)" },
+    };
+
+    function getCellBackgroundColor(rowIndex: number, columnId: string) {
+      const row = screen
+        .getByTestId("table-body")
+        .querySelectorAll('[role="row"]')[rowIndex];
+      const cell = row.querySelector<HTMLElement>(
+        `[data-column-id="${columnId}"] [data-testid="body-cell-container"]`,
+      );
+      return cell?.style.getPropertyValue("--cell-bg-color");
+    }
+
+    it("paints striped cells with the theme stripe color", () => {
+      renderWithProviders(<TestDataGrid striped theme={theme} />);
+
+      expect(getCellBackgroundColor(0, "name")).toBe("rgb(40, 50, 60)");
+      expect(getCellBackgroundColor(1, "name")).toBe("rgb(10, 20, 30)");
+      expect(getCellBackgroundColor(2, "name")).toBe("rgb(40, 50, 60)");
+    });
+
+    it("keeps column background colors on striped rows", () => {
+      renderWithProviders(<TestDataGrid striped theme={theme} />);
+
+      expect(getCellBackgroundColor(1, "category")).toBe("rgb(246, 255, 237)");
+    });
+
+    it("derives a stripe color from the cell background when none is set", () => {
+      const cellBackgroundColor = "rgb(40, 50, 60)";
+      renderWithProviders(
+        <TestDataGrid
+          striped
+          theme={{ cell: { backgroundColor: cellBackgroundColor } }}
+        />,
+      );
+
+      const stripe = getCellBackgroundColor(1, "name") ?? "";
+      expect(stripe).not.toBe(cellBackgroundColor);
+      expect(Color(stripe).lightness()).toBeGreaterThan(
+        Color(cellBackgroundColor).lightness(),
+      );
+    });
+
+    it("ignores the stripe color when striping is disabled", () => {
+      renderWithProviders(<TestDataGrid striped={false} theme={theme} />);
+
+      expect(getCellBackgroundColor(1, "name")).toBe("rgb(40, 50, 60)");
     });
   });
 });

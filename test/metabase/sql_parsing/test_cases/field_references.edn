@@ -1,0 +1,48 @@
+{:cases
+ [{:name      "a query whose columns all resolve reports no errors"
+   :dialect   "postgres"
+   :sql       "SELECT id, name FROM people"
+   :errors    []
+   :returned  ["id" "name"]}
+
+  {:name      "a column qualified by a table the query does not read is a dangling qualifier"
+   :dialect   "postgres"
+   :sql       "SELECT people.id FROM tmp_people"
+   :errors    [{:type :missing-table-alias :name "people"}]
+   :returned  []}
+
+  {:name      "a column qualified by an alias is not dangling"
+   :dialect   "postgres"
+   :sql       "SELECT p.id FROM people p"
+   :errors    []
+   :returned  ["id"]}
+
+  {:name      "a column qualified by the table's own name is not dangling"
+   :dialect   "postgres"
+   :sql       "SELECT people.id FROM people"
+   :errors    []
+   :returned  ["id"]}
+
+  {:name      "a star is a star, not a column"
+   :dialect   "postgres"
+   :sql       "SELECT * FROM people"
+   :errors    []
+   :returned  []}
+
+  {:name      "a qualifier left behind by a rewrite is what Guard B looks for"
+   :dialect   "postgres"
+   :sql       "SELECT people.id, tmp_people.name FROM tmp_people"
+   :errors    [{:type :missing-table-alias :name "people"}]
+   :returned  ["name"]}
+
+  {:name       "a column qualified through a CTE name resolves"
+   :dialect    "postgres"
+   :sql        "WITH c AS (SELECT id FROM people) SELECT c.id FROM c"
+   :errors     []
+   :returned   ["id"]}
+
+  {:name       "a syntax error is reported as one, with no fields"
+   :dialect    "postgres"
+   :sql        "SELECT * FROM WHERE ("
+   :errors     [{:type :syntax-error}]
+   :returned   []}]}

@@ -30,7 +30,7 @@ const AppPaletteActions = () => {
 
     return [...adminPaths, ...adminSubpaths].map((adminPath) => ({
       id: `admin-page-${adminPath.key}`,
-      name: adminPath.name,
+      name: adminPath.getName(),
       icon: "gear",
       perform: () => {},
       section: "admin",

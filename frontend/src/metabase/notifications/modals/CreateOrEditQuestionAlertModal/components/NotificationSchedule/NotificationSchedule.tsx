@@ -10,15 +10,15 @@ import {
 import type {
   CronString,
   ScheduleBuilderValue,
-  ScheduleChangeEvent,
   ScheduleValue,
   ScheduleValueType,
-} from "metabase/common/components/Schedule/types";
-import { isScheduleCronValue } from "metabase/common/components/Schedule/types";
-import { getScheduleDefaultsWithoutHour } from "metabase/common/components/Schedule/utils";
+} from "metabase/common/components/Schedule/domain";
+import { isScheduleCronValue } from "metabase/common/components/Schedule/domain";
+import type { ScheduleChangeEvent } from "metabase/common/components/Schedule/types";
 import {
   DEFAULT_ALERT_SCHEDULE,
   formatNotificationScheduleDescription,
+  getScheduleDefaultsWithoutHour,
 } from "metabase/notifications/utils";
 import { useSelector } from "metabase/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
@@ -116,7 +116,7 @@ export const NotificationSchedule = ({
 
   return (
     <Box {...boxProps}>
-      <Flex className={styles.scheduleContainer} direction="column" gap="md">
+      <Flex className={styles.scheduleContainer} direction="column" gap="lg">
         <Schedule
           verb={c("A verb in the imperative mood").t`Check`}
           value={value}

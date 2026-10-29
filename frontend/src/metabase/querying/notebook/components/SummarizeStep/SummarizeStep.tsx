@@ -23,7 +23,7 @@ export function SummarizeStep({
     <Flex
       align={{ md: "center" }}
       direction={{ base: "column", md: "row" }}
-      gap={{ base: "sm", md: isMetric ? "md" : "sm" }}
+      gap={{ base: "sm", md: isMetric ? "lg" : "sm" }}
     >
       <Box w={{ base: "100%", md: isMetric ? "100%" : "50%" }} flex="1 1 auto">
         <AggregateStep

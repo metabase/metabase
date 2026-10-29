@@ -6,7 +6,7 @@
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (defsetting store-use-staging
-  (deferred-tru "If staging store should be used instead of prod. True on dev.")
+  "If staging store should be used instead of prod. True on dev."
   :type       :boolean
   :visibility :internal
   :default    config/is-dev?
@@ -35,7 +35,7 @@
 (defsetting store-url
   (deferred-tru "Store URL.")
   :type       :string
-  :encryption :no
+  :encryption :when-encryption-key-set
   ;; should be :internal, but FE doesn't get internal settings. -- Someone else
   ;;
   ;; OK, then no it shouldn't be internal at all, internal is literally for Settings that are only visible to backend
@@ -46,8 +46,8 @@
   :export?    false)
 
 (defsetting migration-dump-file
-  (deferred-tru "Dump file for migrations.")
-  :encryption :no
+  "Dump file for migrations."
+  :encryption :when-encryption-key-set
   :visibility :internal
   :default    nil
   :doc        false
@@ -60,7 +60,7 @@
   (or (= version "vLOCAL_DEV") (= version "vUNKNOWN") (str/ends-with? version "-SNAPSHOT")))
 
 (defsetting migration-dump-version
-  (deferred-tru "Custom dump version for migrations.")
+  "Custom dump version for migrations."
   :encryption :no
   :visibility :internal
   ;; Use a known version on staging when there's no real version.

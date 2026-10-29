@@ -1,4 +1,4 @@
-(ns test.dev.deps-graph-test
+(ns dev.deps-graph-test
   (:require
    [clojure.test :refer :all]
    [dev.deps-graph]
@@ -14,7 +14,7 @@
     "(require '[malli.generator :as mg])"     #{malli.generator}
     "(require '[malli.generator])"            #{malli.generator}
     "(-> 'malli.generator requiring-resolve)" #{malli.generator}))
-    ;; TODO: reader conditionals don't work properly
+;; TODO: reader conditionals don't work properly
     ; "(#?(:clj requiring-resolve :cljs resolve) 'malli.generator)" #{malli.generator}))
 
 (deftest ^:parallel find-requires-test

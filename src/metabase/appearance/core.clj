@@ -17,9 +17,11 @@
   custom-formatting
   custom-homepage
   custom-homepage-dashboard
+  custom-illustration-settings
   example-dashboard-id
   help-link
   help-link-custom-destination
+  illustration-image
   landing-page
   landing-page-illustration
   landing-page-illustration-custom

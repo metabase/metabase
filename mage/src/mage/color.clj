@@ -4,6 +4,7 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *disable-colors*
   "If set to true, all color functions will return the input string as is."
   (if (System/getenv "NO_COLOR") true false))

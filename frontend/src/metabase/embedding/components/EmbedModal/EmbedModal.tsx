@@ -40,9 +40,10 @@ export const EmbedModal = ({
     size="auto"
     withCloseButton={false}
     padding={0}
+    classNames={{ content: S.content, body: S.body }}
   >
     <ModalHeader
-      py="lg"
+      py="xl"
       className={S.embedModalHeader}
       onClose={onClose}
       onBack={onBack}

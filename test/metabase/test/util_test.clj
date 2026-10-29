@@ -6,11 +6,7 @@
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [toucan2.core :as t2])
-  (:import
-   (clojure.lang Agent)
-   (java.util.concurrent CountDownLatch ThreadPoolExecutor TimeUnit)))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -46,128 +42,6 @@
       (test-util-test-setting))
     (is (= ["A" "B" "C"]
            (test-util-test-setting)))))
-
-(defn- clump [x y] (str x y))
-
-(deftest ^:parallel with-dynamic-fn-redefs-test
-  (testing "Three threads can independently redefine a regular var"
-    (let [n-threads  3
-          ;; Note that .getId is deprecated in favor of .threadId, but that method is only introduced in Java 19
-          thread-id  #(.getId (Thread/currentThread))
-          latch      (CountDownLatch. (inc n-threads))
-          take-latch #(do
-                        (.countDown latch)
-                        ;; We give a generous timeout here in case there is heavy contention for the thread pool in CI
-                        (when-not (.await latch 30 TimeUnit/SECONDS)
-                          (throw (ex-info "Timeout waiting on all threads to pull their latch"
-                                          {:latch      latch
-                                           :thread-id  (thread-id)
-                                           :agent-pool (let [^ThreadPoolExecutor executor Agent/pooledExecutor]
-                                                         {:active-count (.getActiveCount executor)
-                                                          :pool-size    (.getPoolSize executor)
-                                                          :task-count   (.getTaskCount executor)})}))))]
-      (testing "The original definition"
-        (is (= "original" (clump "o" "riginal"))))
-      (future
-        (testing "A thread that minds its own business"
-          (log/debug "Starting no-op thread, thread-id:" (thread-id))
-          (is (= "123" (clump 12 3)))
-          (take-latch)
-          (is (= "321" (clump 3 21)))))
-      (future
-        (testing "A thread that redefines it in reverse"
-          (log/debug "Starting reverse thread, thread-id:" (thread-id))
-          (mt/with-dynamic-fn-redefs [clump #(str %2 %1)]
-            (is (= "ok" (clump "k" "o")))
-            (take-latch)
-            (is (= "ko" (clump "o" "k"))))))
-      (future
-        (testing "A thread that redefines it twice"
-          (log/debug "Starting double-redefining thread, thread-id:" (thread-id))
-          (mt/with-dynamic-fn-redefs [clump (fn [_ y] (str y y))]
-            (is (= "zz" (clump "a" "z")))
-            (mt/with-dynamic-fn-redefs [clump (fn [x _] (str x x))]
-              (is (= "aa" (clump "a" "z")))
-              (take-latch)
-              (is (= "mm" (clump "m" "l"))))
-            (is (= "bb" (clump "a" "b"))))))
-      (log/debug "Taking latch on main thread, thread-id:" (thread-id))
-      (take-latch)
-      (testing "The original definition survives"
-        (is (= "original" (clump "orig" "inal")))))))
-
-(def not-a-function 23)
-
-(def accidentally-a-function :wut-up)
-
-(def also-accidentally-a-function [:wut-up])
-
-(deftest ^:parallel with-dynamic-fn-redefs-non-ifn-test
-  (testing "Redefining a non-IFn value (e.g. a number) is an error — the proxy can't apply it"
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"Cannot proxy non-IFn values"
-         (mt/with-dynamic-fn-redefs [not-a-function 5]
-           (is (= 5 not-a-function)))))))
-
-(deftest ^:parallel with-dynamic-fn-redefs-keyword-and-coll-test
-  (testing "Keyword-valued vars are IFn and can be redefined"
-    (mt/with-dynamic-fn-redefs [accidentally-a-function :other]
-      (is (= 2 (accidentally-a-function {:other 2})))))
-  (testing "Collection-valued vars are IFn and can be redefined"
-    (mt/with-dynamic-fn-redefs [also-accidentally-a-function [:other]]
-      (is (= :other (also-accidentally-a-function 0))))))
-
-(defmulti a-multimethod {:arglists '([x])} class)
-(defmethod a-multimethod String [_] :string)
-(defmethod a-multimethod Long [_] :long)
-
-(deftest ^:parallel with-dynamic-fn-redefs-multimethod-test
-  (testing "Cannot proxy a multimethod — patching its root would pollute dispatch for other threads"
-    (is (thrown-with-msg?
-         clojure.lang.ExceptionInfo
-         #"Cannot proxy multimethods"
-         (mt/with-dynamic-fn-redefs [a-multimethod (constantly :redefined)]
-           (a-multimethod "hi"))))))
-
-(defn mock-me-inner []
-  :mock/original)
-
-(defn mock-me-outer []
-  (mock-me-inner))
-
-(deftest with-dynamic-fn-redefs-nested-binding-test
-  (defn z []
-    (mt/with-dynamic-fn-redefs [mock-me-outer
-                                (let [orig (mt/dynamic-value mock-me-outer)]
-                                  (fn []
-                                    (mt/with-dynamic-fn-redefs [mock-me-inner (constantly :mock/redefined)]
-                                      (orig))))]
-      (mock-me-outer)))
-  (is (= :mock/redefined (z))))
-
-(defn capture-bug-target [x] (inc x))
-
-(defn counting-target [x]
-  (if (pos? x) (counting-target (dec x)) :done))
-
-(deftest ^:parallel with-dynamic-fn-redefs-capture-bug-test
-  (testing "A replacement that delegates through the var itself is caught as runaway recursion"
-    (is (thrown-with-msg?
-         AssertionError
-         #"runaway recursion through proxy"
-         (mt/with-dynamic-fn-redefs [capture-bug-target (fn [x] (capture-bug-target (inc x)))]
-           (capture-bug-target 0)))))
-  (testing "The suggested fix — capture via original-fn — works"
-    (let [orig (mt/original-fn #'capture-bug-target)]
-      (mt/with-dynamic-fn-redefs [capture-bug-target (fn [x] (orig (inc x)))]
-        (is (= 3 (capture-bug-target 1)))))))
-
-(deftest ^:parallel with-dynamic-fn-redefs-deliberate-recursion-test
-  (testing "Deliberate recursion through the redefined var works up to the depth threshold"
-    (mt/with-dynamic-fn-redefs [counting-target (fn [x]
-                                                  (if (pos? x) (counting-target (dec x)) :recursed))]
-      (is (= :recursed (counting-target 50))))))
 
 (deftest ^:parallel ordered-subset?-test
   (is (mt/ordered-subset? [1 2 3] [1 2 3]))

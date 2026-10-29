@@ -41,7 +41,7 @@
 ;;; ---------------------------------------------- compute-trend tests -----------------------------------------------
 
 (deftest ^:parallel compute-trend-strongly-increasing-test
-  (testing "strongly increasing series detected as :strongly-increasing"
+  (testing "strongly increasing series detected as strongly-increasing"
     ;; slope=5, mean=20, pct=100*20/20=100% > 50 → :strongly-increasing
     (is (=? {:direction          :strongly-increasing
              :overall-change-pct pos?
@@ -50,19 +50,19 @@
             (#'time-series/compute-trend [10.0 15.0 20.0 25.0 30.0])))))
 
 (deftest ^:parallel compute-trend-strongly-decreasing-test
-  (testing "strongly decreasing series detected as :strongly-decreasing"
+  (testing "strongly decreasing series detected as strongly-decreasing"
     (is (=? {:direction          :strongly-decreasing
              :overall-change-pct neg?}
             (#'time-series/compute-trend [100.0 80.0 60.0 40.0 20.0])))))
 
 (deftest ^:parallel compute-trend-flat-test
-  (testing "roughly flat series detected as :flat"
+  (testing "roughly flat series detected as flat"
     (is (=? {:direction :flat}
             (#'time-series/compute-trend [50.0 51.0 50.0 50.5 50.0])))))
 
 (deftest ^:parallel compute-trend-increasing-moderate-test
-  (testing "moderate increase (10-50% range) detected as :increasing"
-    ;; slope=10, mean=120, total_change=40, pct=33.3% → :increasing
+  (testing "moderate increase (10-50% range) detected as increasing"
+    ;; slope=10, mean=120, total_change=40, pct=33.3% → "increasing"
     (is (=? {:direction :increasing}
             (#'time-series/compute-trend [100.0 110.0 120.0 130.0 140.0])))))
 
@@ -100,28 +100,28 @@
 ;;; --------------------------------------------- compute-volatility tests -------------------------------------------
 
 (deftest ^:parallel compute-volatility-low-test
-  (testing "tightly clustered values produce :low volatility (cv < 0.1)"
+  (testing "tightly clustered values produce low volatility (cv < 0.1)"
     ;; mean≈101.6, std≈1.1, cv≈0.011
     (is (=? {:level                    :low
              :coefficient-of-variation #(< % 0.1)}
             (#'time-series/compute-volatility [100.0 102.0 101.0 103.0 102.0])))))
 
 (deftest ^:parallel compute-volatility-moderate-test
-  (testing "moderately variable data produces :moderate volatility (0.1 ≤ cv < 0.3)"
+  (testing "moderately variable data produces moderate volatility (0.1 ≤ cv < 0.3)"
     ;; mean=100, std≈17.3, cv≈0.173
     (is (=? {:level                    :moderate
              :coefficient-of-variation #(and (<= 0.1 %) (< % 0.3))}
             (#'time-series/compute-volatility [80.0 100.0 120.0 90.0 110.0])))))
 
 (deftest ^:parallel compute-volatility-high-test
-  (testing "fairly variable data produces :high volatility (0.3 ≤ cv < 0.5)"
+  (testing "fairly variable data produces high volatility (0.3 ≤ cv < 0.5)"
     ;; mean=100, std≈34.6, cv≈0.346
     (is (=? {:level                    :high
              :coefficient-of-variation #(and (<= 0.3 %) (< % 0.5))}
             (#'time-series/compute-volatility [60.0 100.0 140.0 70.0 130.0])))))
 
 (deftest ^:parallel compute-volatility-extreme-test
-  (testing "very variable data produces :extreme volatility (cv ≥ 0.5)"
+  (testing "very variable data produces extreme volatility (cv ≥ 0.5)"
     ;; mean≈102, std≈75, cv≈0.73
     (is (=? {:level                    :extreme
              :coefficient-of-variation #(>= % 0.5)}
@@ -398,10 +398,10 @@
                              :display_name "S2"}}]
       (is (=? {:chart-type    :time-series
                :series-count  2
-               :series        {"S1" {:data-points 5
-                                     :trend {:direction :strongly-increasing}}
-                               "S2" {:data-points 5
-                                     :trend {:direction :strongly-decreasing}}}
+               :series        [{:name "S1" :data-points 5
+                                :trend {:direction :strongly-increasing}}
+                               {:name "S2" :data-points 5
+                                :trend {:direction :strongly-decreasing}}]
                :correlations  (symbol "nil #_\"key is not present.\"")}
               (time-series/compute-time-series-stats series-data {}))))))
 

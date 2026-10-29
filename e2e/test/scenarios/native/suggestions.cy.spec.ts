@@ -6,63 +6,47 @@ describe("scenarios > question > native > suggestions", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should show suggestions for tables", () => {
+  it("should suggest tables, keywords and locals without duplicates", () => {
     H.startNewNativeQuestion();
-    H.NativeEditor.type("se");
 
+    cy.log("tables and syntax keywords");
+    H.NativeEditor.type("se");
     H.NativeEditor.completions().within(() => {
       H.NativeEditor.completion("SEATS")
         .should("be.visible")
         .should("contain.text", "ACCOUNTS :type/Integer");
-    });
-  });
-
-  it("should show suggestions for syntax keywords", () => {
-    H.startNewNativeQuestion();
-    H.NativeEditor.type("se");
-
-    H.NativeEditor.completions().within(() => {
       H.NativeEditor.completion("SELECT")
         .should("be.visible")
         .should("contain.text", "keyword");
     });
-  });
 
-  it("should suggest locals", () => {
-    H.startNewNativeQuestion({
-      query:
-        "SELECT date_trunc('month', CREATED_AT) as order_month FROM ORDERS GROUP BY ",
-    });
-    H.NativeEditor.type("order_mo");
-
+    cy.log("locals");
+    H.NativeEditor.clear();
+    H.NativeEditor.type(
+      "SELECT date_trunc('month', CREATED_AT) as order_month FROM ORDERS GROUP BY order_mo",
+    );
     H.NativeEditor.completions().within(() => {
       H.NativeEditor.completion("order_month")
         .should("be.visible")
         .should("contain.text", "local");
     });
-  });
 
-  it("should suggest quoted locals", () => {
-    H.startNewNativeQuestion({
-      query: 'SELECT foo as "QUOTED_local" FROM ORDERS GROUP BY ',
-    });
-    H.NativeEditor.type("QU");
-
+    cy.log("quoted locals");
+    H.NativeEditor.clear();
+    H.NativeEditor.type('SELECT foo as "QUOTED_local" FROM ORDERS GROUP BY QU');
     H.NativeEditor.completions().within(() => {
       H.NativeEditor.completion("QUOTED_local")
         .should("be.visible")
         .should("contain.text", "local");
     });
-  });
 
-  it("should not show duplicate suggestions", () => {
-    H.startNewNativeQuestion();
+    cy.log("no duplicate suggestions");
+    H.NativeEditor.clear();
     H.NativeEditor.type("acc");
-
     H.NativeEditor.completions().within(() => {
-      H.NativeEditor.completion("ACCOUNT_ID")
-        .should("be.visible")
-        .should("have.length", 1);
+      H.NativeEditor.completionLabels("ACCOUNT_ID")
+        .should("have.length", 1)
+        .and("be.visible");
     });
   });
 });
@@ -76,22 +60,19 @@ describe(
       cy.signInAsAdmin();
     });
 
-    it("should suggest keywords", () => {
+    it("should suggest keywords, tables and fields from the schema", () => {
       H.startNewNativeQuestion({ database: 2, query: "" });
 
       H.NativeEditor.type('[{ "$grou');
       H.NativeEditor.completions().within(() => {
-        H.NativeEditor.completion("$group")
-          .should("be.visible")
+        H.NativeEditor.completionLabels("$group")
           .should("have.length", 1)
-          .should("contain.text", "keyword");
+          .and("be.visible");
+        H.NativeEditor.completion("$group").should("contain.text", "keyword");
       });
-    });
 
-    it("should suggest tables and fields from the schema", () => {
-      H.startNewNativeQuestion({ database: 2, query: "" });
-
-      H.NativeEditor.type('[{ "$group": { "pr');
+      H.NativeEditor.type('p": { "pr', { focus: false });
+      H.NativeEditor.value().should("contain", '[{ "$group": { "pr');
       H.NativeEditor.completions().within(() => {
         H.NativeEditor.completion("price")
           .should("be.visible")

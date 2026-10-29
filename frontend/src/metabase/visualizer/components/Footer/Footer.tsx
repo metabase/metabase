@@ -35,7 +35,7 @@ export function Footer({ className }: { className?: string }) {
     [dispatch],
   );
   return (
-    <Flex className={`${S.footer} ${className}`} px="xl" py="md">
+    <Flex className={`${S.footer} ${className}`} px="xxl" py="lg">
       {display && !isLoading && (
         <VisualizationPicker value={display} onChange={handleChangeDisplay} />
       )}

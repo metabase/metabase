@@ -1,48 +1,41 @@
-import { Canvas, Story, Meta } from "@storybook/blocks";
-import { Box, Flex } from "metabase/ui";
+import { Meta } from "@storybook/blocks";
 import * as SidesheetStories from "./Sidesheet.stories";
-
-import { Sidesheet } from "./Sidesheet";
-import { SidesheetCard } from "./SidesheetCard";
-import { SidesheetCardSection } from "./SidesheetCardSection";
-import { SidesheetButton, SidesheetButtonWithChevron } from "./SidesheetButton";
-
-import { TestTabbedSidesheet, TestPagedSidesheet } from "./Sidesheet.samples";
 
 <Meta of={SidesheetStories} />
 
 # Sidesheet
 
-## When to use a Sidesheet
+A Sidesheet keeps details and settings close to the item you're viewing. It
+opens from the right side of the screen, so you can stay in context as you work.
 
-## Docs
+Explore the individual stories in the sidebar to see each layout and theme.
 
-## Caveats
+## Show details and settings in context
 
-## Usage guidelines
+Use a Sidesheet for information about the current item, such as its description,
+history, and relationships. It also works for settings you can change while
+viewing the item.
 
-## Examples
+## Choose a width for the content
 
-// TODO: figure out how to get CSS modules working with storybook 🔥
+The default size is `sm` (30rem / 480px). Use `md` for wider content, such as
+info panels with tabs. Other available sizes are `xs`, `lg`, `xl`, and `auto`.
 
-<Canvas of={SidesheetStories.Default} />
+## Use the inset layout for a floating panel
 
-### With cards
+Set `offset` to add 16px of space above, below, and to the right of the
+Sidesheet, with rounded corners. The inset uses the `lg` spacing token.
 
-<Canvas of={SidesheetStories.WithCards} />
+## Organize content with cards, pages, and tabs
 
-### With sectioned cards
+- Use `SidesheetCard` to group related information and `SidesheetCardSection` to
+  divide a card into sections. Card borders separate them from the Sidesheet
+  surface.
+- Use `SidesheetSubPage` for a second level of settings with back navigation.
+- Use `SidesheetTabPanelContainer` with `removeBodyPadding` to scroll tab
+  content while keeping the tabs visible.
 
-<Canvas of={SidesheetStories.WithSectionedCards} />
+## Keep Escape focused on the topmost dialog
 
-### With pages
-
-<Canvas of={SidesheetStories.WithSubPages} />
-
-### With tabs
-
-<Canvas of={SidesheetStories.WithTabs} />
-
-### Sidesheet Buttons
-
-<Canvas of={SidesheetStories.SidesheetButtons} />
+Set `closeOnEscape={false}` on the Sidesheet while a dialog is open above it. One
+press of Escape then closes the topmost dialog.

@@ -11,6 +11,9 @@
    [clojure.set :as set]
    [java-time.api :as t]
    [medley.core :as m]
+   [metabase.dashboards.schema]
+   [metabase.revisions.db :as revisions.db]
+   [metabase.revisions.schema :as revisions.schema]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [steffan-westcott.clj-otel.api.trace.span :as span]
@@ -18,27 +21,13 @@
 
 (def ^:private model->db-model {:card "Card" :dashboard "Dashboard"})
 
-;; these are all maybes as sometimes revisions don't exist, or users might be missing the names, etc
-(def ^:private LastEditInfo
-  "Schema of the `:last-edit-info` map. A subset of a user with a timestamp indicating when the last edit was."
-  [:map
-   [:timestamp  [:maybe :any]]
-   [:id         [:maybe ms/PositiveInt]]
-   [:first_name [:maybe :string]]
-   [:last_name  [:maybe :string]]
-   [:email      [:maybe :string]]])
-
-(def MaybeAnnotated
-  "Spec for an item annotated with last-edit-info. Items are cards or dashboards. Optional because we may not always
-  have revision history for all cards/dashboards."
-  [:map
-   [:last-edit-info {:optional true} LastEditInfo]])
-
-(mu/defn with-last-edit-info :- [:maybe [:sequential MaybeAnnotated]]
+(mu/defn with-last-edit-info :- [:maybe [:sequential ::revisions.schema/maybe-annotated]]
   "Add the last edited information to a card. Will add a key `:last-edit-info`. Model should be one of `:dashboard` or
   `:card`. Gets the last edited information from the revisions table. If you need this information from a put route,
   use `@api/*current-user*` and a current timestamp since revisions are events and asynchronous."
-  [items
+  [items :- [:sequential [:multi {:dispatch t2/model}
+                          [:model/Card      :metabase.queries.schema/card]
+                          [:model/Dashboard :metabase.dashboards.schema/dashboard]]]
    model :- [:enum :dashboard :card]]
   (let [ids (into #{} (map :id) items)]
     (span/with-span!
@@ -51,33 +40,31 @@
                                (:model_id card-updated-info)
                                (select-keys card-updated-info [:id :email :first_name :last_name :timestamp])))
                       {}
-                      (t2/reducible-query
-                       {:select    [:r.model_id :u.id :u.email :u.first_name :u.last_name :r.timestamp]
-                        :from      [[:revision :r]]
-                        :left-join [[:core_user :u] [:= :u.id :r.user_id]]
-                        :where     [:and
-                                    [:= :r.most_recent true]
-                                    [:= :r.model (model->db-model model)]
-                                    [:in :r.model_id ids]]}))]
+                      (revisions.db/latest-editors-reducible (model->db-model model) ids))]
           (map (fn [item]
                  (m/assoc-some item :last-edit-info (-> item :id id->updated-info)))
                items))))))
 
-(mu/defn edit-information-for-user :- LastEditInfo
+(mu/defn edit-information-for-user :- ::revisions.schema/last-edit-info
   "Construct the `:last-edit-info` map given a user. Useful for editing routes. Most edit info information comes from
   the revisions table. But this table is populated from events asynchronously so when editing and wanting
   last-edit-info, you must construct it from `@api/*current-user*` and the current timestamp rather than checking the
   revisions table as those revisions may not be present yet."
-  [user]
+  [user :- [:maybe :metabase.users.schema/user]]
   (merge {:timestamp (t/instant)}
          (select-keys user [:id :first_name :last_name :email])))
 
 (def ^:private CollectionLastEditInfo
   "Schema for the map of bulk last-item-info. A map of two keys, `:card` and `:dashboard`, each of which is a map from
-  id to a LastEditInfo.:Schema"
+  id to a `::revisions.schema/last-edit-info`."
   [:map
-   [:card      {:optional true} [:map-of :int LastEditInfo]]
-   [:dashboard {:optional true} [:map-of :int LastEditInfo]]])
+   [:card      {:optional true} [:map-of :int ::revisions.schema/last-edit-info]]
+   [:dashboard {:optional true} [:map-of :int ::revisions.schema/last-edit-info]]])
+
+(def ^:private FetchLastEditedInfoArgs
+  [:map {:closed true}
+   [:card-ids      {:optional true} [:maybe [:sequential ms/PositiveInt]]]
+   [:dashboard-ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]])
 
 (mu/defn fetch-last-edited-info :- [:maybe CollectionLastEditInfo]
   "Fetch edited info from the revisions table. Revision information is timestamp, user id, email, first and last
@@ -85,19 +72,9 @@
 
   {:card      {card_id      {:id :email :first_name :last_name :timestamp}}
    :dashboard {dashboard_id {:id :email :first_name :last_name :timestamp}}}"
-  [{:keys [card-ids dashboard-ids]}]
+  [{:keys [card-ids dashboard-ids]} :- FetchLastEditedInfoArgs]
   (when (seq (concat card-ids dashboard-ids))
-    (let [latest-changes (t2/query {:select    [:u.id :u.email :u.first_name :u.last_name
-                                                :r.model :r.model_id :r.timestamp]
-                                    :from      [[:revision :r]]
-                                    :left-join [[:core_user :u] [:= :u.id :r.user_id]]
-                                    :where     [:and [:= :r.most_recent true]
-                                                (into [:or]
-                                                      (keep (fn [[model-name ids]]
-                                                              (when (seq ids)
-                                                                [:and [:= :model model-name] [:in :model_id ids]])))
-                                                      [["Card" card-ids]
-                                                       ["Dashboard" dashboard-ids]])]})]
+    (let [latest-changes (revisions.db/latest-changes card-ids dashboard-ids)]
       (->> latest-changes
            (group-by :model)
            (m/map-vals (fn [model-changes]

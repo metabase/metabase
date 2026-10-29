@@ -12,9 +12,7 @@ export const CheckHostAndPortButton = () => {
 
   return (
     <Button
-      fw={700}
-      fz="md"
-      leftSection={<Icon name="gear" size={12} />}
+      leftSection={<Icon name="gear" />}
       onClick={onCheckHostAndPortClick}
       variant="subtle"
     >

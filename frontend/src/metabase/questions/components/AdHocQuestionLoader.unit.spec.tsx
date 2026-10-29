@@ -8,6 +8,7 @@ import {
   SAMPLE_PROVIDER,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
+import type { UnsavedCard } from "metabase-types/api";
 
 import { AdHocQuestionLoaderView } from "./AdHocQuestionLoader";
 
@@ -16,6 +17,9 @@ const getQuestionHash = (question: Question) => {
     includeDisplayIsLocked: true,
   });
 };
+
+const buildQuestion = (card: UnsavedCard) =>
+  new Question(card, SAMPLE_METADATA);
 
 describe("AdHocQuestionLoader", () => {
   let loadMetadataSpy: jest.Mock;
@@ -35,6 +39,7 @@ describe("AdHocQuestionLoader", () => {
     render(
       <AdHocQuestionLoaderView
         questionHash={getQuestionHash(q)}
+        buildQuestion={buildQuestion}
         loadMetadataForCard={loadMetadataSpy}
       >
         {mockChild}
@@ -71,6 +76,7 @@ describe("AdHocQuestionLoader", () => {
     const { rerender } = render(
       <AdHocQuestionLoaderView
         questionHash={questionHash}
+        buildQuestion={buildQuestion}
         loadMetadataForCard={loadMetadataSpy}
       >
         {mockChild}
@@ -86,6 +92,7 @@ describe("AdHocQuestionLoader", () => {
     rerender(
       <AdHocQuestionLoaderView
         questionHash={newQuestionHash}
+        buildQuestion={buildQuestion}
         loadMetadataForCard={loadMetadataSpy}
       >
         {mockChild}
@@ -117,6 +124,7 @@ describe("AdHocQuestionLoader", () => {
     render(
       <AdHocQuestionLoaderView
         questionHash={questionHash}
+        buildQuestion={buildQuestion}
         loadMetadataForCard={loadMetadataSpy}
       >
         {mockChild}

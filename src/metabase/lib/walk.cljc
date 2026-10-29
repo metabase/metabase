@@ -7,6 +7,7 @@
    [metabase.lib.hierarchy :as lib.hierarchy]
    [metabase.lib.join :as lib.join]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.join :as lib.schema.join]
    [metabase.lib.schema.mbql-clause :as lib.schema.mbql-clause]
    [metabase.lib.util :as lib.util]
@@ -151,7 +152,11 @@
               (fn [_query _path-type _path stage-or-join]
                 (when (:source-card stage-or-join)
                   (reduced true))))))"
-  ([query f] (walk query f nil))
+  ([query :- ::lib.schema/query
+    f     :- [:=>
+              [:cat :map ::path-type ::path ::stage-or-join]
+              ::walk-fn-result]]
+   (walk query f nil))
   ([query :- ::lib.schema/query
     f     :- [:=>
               [:cat :map ::path-type ::path ::stage-or-join]
@@ -177,7 +182,9 @@
   "Like [[walk]], but only walks the stages in a query. `f` is invoked like
 
     (f query path stage) => updated-stage-or-nil"
-  ([query f] (walk-stages query f nil))
+  ([query :- ::lib.schema/query
+    f     :- [:=> [:cat :map ::path ::lib.schema/stage] ::walk-stages-fn-result]]
+   (walk-stages query f nil))
   ([query :- ::lib.schema/query
     f     :- [:=> [:cat :map ::path ::lib.schema/stage] ::walk-stages-fn-result]
     opts  :- [:maybe ::walk-opts]]
@@ -235,6 +242,13 @@
             query'                      (assoc query :stages (:stages join))]
         (recur query' (if (empty? more) [:stages 0] more))))))
 
+(mr/def ::walked-clause
+  "An MBQL clause, or a literal or keyword (e.g. a temporal unit) argument of one, as [[walk-clause]] visits it."
+  [:or
+   [:ref ::lib.schema.mbql-clause/clause]
+   ::lib.schema.expression/expression
+   :keyword])
+
 (mu/defn apply-f-for-stage-at-path
   "Use a function that takes top-level `query` and `stage-number` with a `query` and `path`,
   via [[query-for-stage-at-path]]. Lets you use stuff like [[metabase.lib.aggregation/resolve-aggregation]] in
@@ -248,7 +262,7 @@
   [f          :- fn?
    query      :- ::lib.schema/query
    stage-path :- ::path
-   & args]
+   & args     :- [:* [:or ::walked-clause [:ref ::lib.schema.join/join] [:ref :metabase.lib.metadata.calculation/visible-columns.options]]]]
   (let [{:keys [query stage-number]} (query-for-path query stage-path)]
     (apply f query stage-number args)))
 
@@ -274,8 +288,7 @@
 (mu/defn join-last-stage-path :- ::path
   "Given a `join-path`, return the path to the last stage within the join."
   [join-path :- ::path
-   join      :- [:map
-                 [:lib/type [:= :mbql/join]]]]
+   join      :- [:ref ::lib.schema.join/join]]
   (into (vec join-path) [:stages (dec (count (:stages join)))]))
 
 (declare walk-clause* walk-clauses*)
@@ -357,8 +370,8 @@
 
   on every MBQL subclause of `clause`, then on `clause` itself. (Also includes non-clause arguments like the `1` and
   `2` in `[:= {} [:field {} 1] 2]`.)"
-  [clause :- :any
-   f      :- [:=> [:cat :any] :any]]
+  [clause :- ::walked-clause
+   f      :- [:=> [:cat ::walked-clause] [:maybe ::walked-clause]]]
   (walk-clause* clause (walk-clause-wrap-f f)))
 
 (mu/defn walk-clauses*
@@ -369,8 +382,8 @@
     (f clause)
 
   on every clause in the normal places clauses live in a query."
-  [clauses :- [:maybe [:sequential :any]]
-   f       :- [:=> [:cat :any] :any]]
+  [clauses :- [:maybe [:sequential ::walked-clause]]
+   f       :- [:=> [:cat ::walked-clause] [:maybe ::walked-clause]]]
   ;; we're doing this the hard way instead of using `mapv` to avoid allocating new objects/creating a new query map
   ;; if we don't actually change anything
   (when clauses
@@ -391,7 +404,7 @@
 
   for every clause in the stage."
   [stage :- ::lib.schema/stage
-   f     :- [:=> [:cat :any] :any]]
+   f     :- [:=> [:cat ::walked-clause] [:maybe ::walked-clause]]]
   (when (lib.util/mbql-stage? stage)
     (reduce
      (fn [stage k]
@@ -418,7 +431,7 @@
   Avoids creating new objects except for when `f` actually returns something different."
   [query :- ::lib.schema/query
    f     :- [:=>
-             [:cat :map ::path-type ::path ::lib.schema.mbql-clause/clause]
+             [:cat ::lib.schema/query ::path-type ::path ::lib.schema.mbql-clause/clause]
              [:maybe ::lib.schema.mbql-clause/clause]]]
   (walk
    query

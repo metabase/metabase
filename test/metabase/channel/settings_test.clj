@@ -3,6 +3,9 @@
   (:require
    [clojure.test :refer :all]
    [metabase.channel.settings :as channel.settings]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.settings.core :as setting]
+   [metabase.startup.core :as startup]
    [metabase.test :as mt])
   (:import (clojure.lang ExceptionInfo)))
 
@@ -81,6 +84,25 @@
                                          email-smtp-host-override "localhost"]
         (is (= "true" (channel.settings/smtp-override-enabled! true)))))))
 
+(deftest email-configured?-test
+  (mt/with-premium-features [:cloud-custom-smtp]
+    (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)]
+      (mt/with-temporary-setting-values [email-smtp-host          nil
+                                         email-smtp-host-override "cloud.metabase.com"
+                                         smtp-override-enabled    true]
+        (testing "the custom SMTP server alone counts as configured on a hosted instance"
+          (is (true? (channel.settings/email-configured?))))
+        (testing "a disabled custom SMTP server does not count"
+          (mt/with-temporary-setting-values [smtp-override-enabled false]
+            (is (false? (channel.settings/email-configured?)))))
+        (testing "the custom SMTP server does not count on a self-hosted instance"
+          (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly false)]
+            (is (false? (channel.settings/email-configured?)))))
+        (testing "the primary SMTP server counts when the custom one is disabled"
+          (mt/with-temporary-setting-values [email-smtp-host       "smtp.example.com"
+                                             smtp-override-enabled false]
+            (is (true? (channel.settings/email-configured?)))))))))
+
 (deftest find-cached-slack-channel-or-username-test
   (let [channels [{:display-name "#general"   :name "general"   :id "C001"}
                   {:display-name "#data-team" :name "data-team" :id "C002"}
@@ -100,3 +122,43 @@
                (channel.settings/find-cached-slack-channel-or-username "U001"))))
       (testing "returns nil when not found"
         (is (nil? (channel.settings/find-cached-slack-channel-or-username "no-such-channel")))))))
+
+(deftest http-channel-allowed-networks-is-environment-only-test
+  (testing "the policy is read from the environment only: a value that reached the setting table -- an older
+           version's admin API, a serialization import, a direct write -- is ignored, not trusted"
+    (mt/with-temp-env-var-value! [mb-http-channel-allowed-networks nil]
+      (mt/with-temporary-raw-setting-values [http-channel-allowed-networks "allow-all"]
+        (is (= :external-only (channel.settings/http-channel-allowed-networks))))))
+  (testing "and the environment still wins over a stored value"
+    (mt/with-temp-env-var-value! [mb-http-channel-allowed-networks "allow-private"]
+      (mt/with-temporary-raw-setting-values [http-channel-allowed-networks "allow-all"]
+        (is (= :allow-private (channel.settings/http-channel-allowed-networks))))))
+  (testing "the deprecated env var name still configures it"
+    (mt/with-temp-env-var-value! [mb-http-channel-host-strategy "allow-all"]
+      (is (= :allow-all (channel.settings/http-channel-allowed-networks)))))
+  (testing "an unrecognized policy is refused outright"
+    (mt/with-temp-env-var-value! [mb-http-channel-allowed-networks "allow-everything"]
+      (is (thrown-with-msg? ExceptionInfo
+                            #"Invalid MB_HTTP_CHANNEL_ALLOWED_NETWORKS: \"allow-everything\"\. Expected one of external-only, allow-private, allow-all\."
+                            (channel.settings/http-channel-allowed-networks)))))
+  (testing "a bad value in the deprecated variable names that variable, not the one the operator did not set"
+    (mt/with-temp-env-var-value! [mb-http-channel-host-strategy "allow-everything"]
+      (is (thrown-with-msg? ExceptionInfo
+                            #"Invalid MB_HTTP_CHANNEL_HOST_STRATEGY"
+                            (channel.settings/http-channel-allowed-networks)))))
+  (testing "nothing can write it: it is a read-only Setting"
+    (is (thrown-with-msg? UnsupportedOperationException
+                          #"read-only setting"
+                          (setting/set! :http-channel-allowed-networks :allow-all)))))
+
+(deftest http-channel-allowed-networks-startup-validation-test
+  (testing "a policy the environment names but Metabase does not recognize stops the boot, rather than waiting
+           for the first webhook to discover it"
+    (mt/with-temp-env-var-value! [mb-http-channel-allowed-networks "allow-everything"]
+      (is (thrown-with-msg? ExceptionInfo
+                            #"Invalid MB_HTTP_CHANNEL_ALLOWED_NETWORKS"
+                            (startup/def-startup-validation! ::channel.settings/http-channel-allowed-networks)))))
+  (testing "a policy it does recognize lets the boot continue"
+    (mt/with-temp-env-var-value! [mb-http-channel-allowed-networks "allow-private"]
+      (is (= :allow-private
+             (startup/def-startup-validation! ::channel.settings/http-channel-allowed-networks))))))

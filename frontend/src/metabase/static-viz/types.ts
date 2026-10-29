@@ -1,5 +1,6 @@
-import type { ColorPalette } from "metabase/ui/colors/types";
+import type { VisualizationGridSize } from "metabase/viz-core";
 import type {
+  Card,
   ColumnFormattingSetting,
   DashCardVisualizationSettings,
   DatasetColumn,
@@ -11,10 +12,11 @@ import type {
   TokenFeatures,
   VisualizerVizDefinition,
 } from "metabase-types/api";
+import type { ColorSettings } from "metabase-types/api/settings";
 
 export type RenderChartOptions = {
   tokenFeatures: TokenFeatures;
-  applicationColors: ColorPalette;
+  applicationColors: ColorSettings;
   customFormatting: FormattingSettings;
   startOfWeek: DayOfWeekId | null | undefined;
   // Explicit pixel dimensions for the chart. Use fitWithinBounds to have height include
@@ -23,6 +25,7 @@ export type RenderChartOptions = {
   height?: number;
   // When true, width/height are treated as the exact output box
   fitWithinBounds?: boolean;
+  gridSize?: VisualizationGridSize;
 };
 
 export type RenderChartDashcardSettings = DashCardVisualizationSettings & {
@@ -32,7 +35,7 @@ export type RenderChartDashcardSettings = DashCardVisualizationSettings & {
 // The default (isomorphic) path — anything StaticVisualization can render.
 export type IsomorphicChartInput = {
   kind?: undefined;
-  rawSeries: RawSeries;
+  rawSeries: RawSeries<Card>;
   dashcardSettings: RenderChartDashcardSettings;
   options: RenderChartOptions;
 };

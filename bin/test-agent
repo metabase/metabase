@@ -2,6 +2,8 @@
 # Agent-friendly test runner for Metabase backend (Clojure) tests.
 #
 # Differences from a normal `clj -X:dev:test` run:
+#   - Puts dev/test on the test path (:dev/test), so the project-level checks under
+#     dev/test/metabase/core are runnable with :only.
 #   - Uses HAWK_MODE=cli/ci so eftest.report.pretty is used instead of the
 #     progress-bar reporter.  Failures print inline as they happen.
 #   - Strips ANSI escape codes from output so results are plain text.
@@ -43,9 +45,9 @@ for arg in "$@"; do
 done
 
 if $INCLUDE_OSS; then
-  ALIASES=":dev:ci:test:oss:oss-dev"
+  ALIASES=":dev:dev/test:ci:test:oss:oss-dev"
 else
-  ALIASES=":dev:ee:ee-dev:test"
+  ALIASES=":dev:dev/test:ee:ee-dev:test"
 fi
 
 if $INCLUDE_DRIVERS; then

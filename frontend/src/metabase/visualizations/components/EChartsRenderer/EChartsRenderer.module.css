@@ -1,0 +1,16 @@
+.chart {
+  /* zrender puts user-select: none on its root svg, which would stop users selecting chart text */
+  @media (hover: hover) {
+    svg {
+      user-select: auto !important;
+    }
+  }
+
+  /* zrender puts touch-action: none on the svg, which blocks native scrolling on touch devices;
+     brush selection reclaims the gesture with a long press that calls preventDefault (see useBrush) */
+  @media (hover: none) and (pointer: coarse) {
+    svg {
+      touch-action: auto !important;
+    }
+  }
+}

@@ -1,4 +1,11 @@
+version: 1
 name: Vite 6 Data App
+slug: vite-6-data-app-host-app
 path: ./dist/index.js
 allowed_hosts:
   - https://allowed.data-app.test
+entity_id: qxpaPkU_WRE2ZQu0cmpqD
+serdes/meta:
+- model: DataApp
+  id: qxpaPkU_WRE2ZQu0cmpqD
+  label: vite-6-data-app-host-app

@@ -7,7 +7,7 @@ SELECT
     t.tool_name,
     t.status,
     -- NOTE: keep these CASE branches in sync with the error-code-* constants in
-    -- src/metabase/mcp/tools.clj (the enum-<->-CASE sync footgun).
+    -- src/metabase/mcp/v2/common.clj (the enum-<->-CASE sync footgun).
     CASE t.error_code
         WHEN -32600 THEN 'Invalid request'
         WHEN -32601 THEN 'Method not found'

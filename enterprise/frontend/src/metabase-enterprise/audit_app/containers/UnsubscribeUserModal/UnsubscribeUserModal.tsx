@@ -64,7 +64,7 @@ export const UnsubscribeUserModal = ({
       onConfirm={() => handleConfirmClick(user)}
       title={t`Unsubscribe ${user.common_name} from all subscriptions and alerts?`}
       message={
-        <Stack gap="md">
+        <Stack gap="lg">
           <Text>
             {t`This will delete any dashboard subscriptions or alerts ${user.common_name} has created, and remove them as a recipient from any other subscriptions or alerts.`}
           </Text>

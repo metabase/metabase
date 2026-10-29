@@ -1,22 +1,18 @@
 import { t } from "ttag";
 
-import { getSankeyChartColumns } from "metabase/visualizations/echarts/graph/sankey/model/dataset";
-import { ChartSettingsError } from "metabase/visualizations/lib/errors";
-import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import {
+  ChartSettingsError,
+  type ComputedVisualizationSettings,
+  type VisualizationDefinition,
+  type VisualizationSettingsDefinitions,
+  columnSettings,
   dimensionSetting,
-  metricSetting,
-} from "metabase/visualizations/lib/settings/utils";
-import { findSensibleSankeyColumns } from "metabase/visualizations/lib/utils";
-import {
+  findSensibleSankeyColumns,
   getDefaultSize,
   getMinSize,
-} from "metabase/visualizations/shared/utils/sizes";
-import type {
-  ComputedVisualizationSettings,
-  VisualizationDefinition,
-  VisualizationSettingsDefinitions,
-} from "metabase/visualizations/types";
+  getSankeyChartColumns,
+  metricSetting,
+} from "metabase/viz-core";
 import { isDate, isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetData, RawSeries } from "metabase-types/api";
 
@@ -28,8 +24,9 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
   ...columnSettings({ getHidden: () => true }),
   ...dimensionSetting("sankey.source", {
     getSection: () => t`Data`,
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    title: t`Source`,
+    get title() {
+      return t`Source`;
+    },
     showColumnSetting: true,
     persistDefault: true,
     dashboard: false,
@@ -39,8 +36,9 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
   }),
   ...dimensionSetting("sankey.target", {
     getSection: () => t`Data`,
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    title: t`Target`,
+    get title() {
+      return t`Target`;
+    },
     showColumnSetting: true,
     persistDefault: true,
     dashboard: false,
@@ -50,8 +48,9 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
   }),
   ...metricSetting("sankey.value", {
     getSection: () => t`Data`,
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    title: t`Value`,
+    get title() {
+      return t`Value`;
+    },
     showColumnSetting: true,
     persistDefault: true,
     dashboard: false,
@@ -61,8 +60,9 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
   }),
   "sankey.node_align": {
     getSection: () => t`Display`,
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    title: t`Align`,
+    get title() {
+      return t`Align`;
+    },
     widget: "select",
     getDefault: () => "left",
     getProps: () => ({
@@ -84,16 +84,18 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
   },
   "sankey.show_edge_labels": {
     getSection: () => t`Display`,
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    title: t`Show edge labels`,
+    get title() {
+      return t`Show edge labels`;
+    },
     widget: "toggle",
     getDefault: () => false,
     inline: true,
   },
   "sankey.label_value_formatting": {
     getSection: () => t`Display`,
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    title: t`Auto formatting`,
+    get title() {
+      return t`Auto formatting`;
+    },
     widget: "segmentedControl",
     getProps: () => ({
       options: [
@@ -109,8 +111,9 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
   },
   "sankey.edge_color": {
     getSection: () => t`Display`,
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    title: t`Edge color`,
+    get title() {
+      return t`Edge color`;
+    },
     widget: "segmentedControl",
     getDefault: () => "source",
     getProps: () => ({
@@ -127,8 +130,9 @@ export const SANKEY_CHART_DEFINITION: VisualizationDefinition = {
   getUiName: () => t`Sankey`,
   identifier: "sankey",
   iconName: "sankey",
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  noun: t`sankey chart`,
+  get noun() {
+    return t`sankey chart`;
+  },
   minSize: getMinSize("sankey"),
   disableVisualizer: true,
   defaultSize: getDefaultSize("sankey"),

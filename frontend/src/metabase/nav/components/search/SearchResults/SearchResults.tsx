@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
@@ -57,7 +57,7 @@ export const EmptyStateContainer = ({
   children: ReactNode;
   "data-testid"?: string;
 }) => (
-  <Box mt={rem(64)} mb="xl" data-testid={dataTestId}>
+  <Box mt={rem(64)} mb="xxl" data-testid={dataTestId}>
     {children}
   </Box>
 );

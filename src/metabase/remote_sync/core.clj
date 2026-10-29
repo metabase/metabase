@@ -1,7 +1,7 @@
 (ns metabase.remote-sync.core
   (:require
    [metabase.premium-features.core :refer [defenterprise]]
-   [toucan2.core :as t2]))
+   [metabase.remote-sync.db :as remote-sync.db]))
 
 (defenterprise collection-editable?
   "Returns if remote-synced collections are editable. Takes a collection to check for eligibility.
@@ -71,11 +71,15 @@
     ;; For other models, check if they're in a remote-synced collection
     (let [collection-ids (into #{} (keep :collection_id) instances)
           remote-synced-coll-ids (when (seq collection-ids)
-                                   (t2/select-pks-set :model/Collection
-                                                      :id [:in collection-ids]
-                                                      :is_remote_synced true))]
+                                   (remote-sync.db/remote-synced-collection-ids collection-ids))]
       (into {}
             (map (fn [inst]
                    [(:id inst)
                     (boolean (contains? remote-synced-coll-ids (:collection_id inst)))]))
             instances))))
+
+(defenterprise collection-syncable?
+  "Whether `collection` can be remote-synced, never on OSS."
+  metabase-enterprise.remote-sync.core
+  [_collection]
+  false)

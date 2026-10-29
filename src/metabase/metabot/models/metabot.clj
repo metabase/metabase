@@ -1,5 +1,7 @@
 (ns metabase.metabot.models.metabot
   (:require
+   [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.schema]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [methodical.core :as methodical]
@@ -31,7 +33,7 @@
   (mi/instances-with-hydrated-data
    metabots k
    #(group-by :metabot_id
-              (t2/select :model/MetabotPrompt {:where [:in :metabot_id (map :id metabots)]}))
+              (metabot.db/prompts-for-metabots (map :id metabots)))
    :id
    {:default []}))
 
@@ -50,8 +52,6 @@
 
 (defmethod serdes/make-spec "Metabot" [_model-name opts]
   {:copy      [:name :description :entity_id :use_verified_content]
-   :transform {:created_at    (serdes/date)
-               :updated_at    (serdes/date)
-               :collection_id (serdes/fk :model/Collection)
-               :prompts       (serdes/nested :model/MetabotPrompt :metabot_id (merge {:sort-by (juxt :prompt :created_at)} opts))}
+   :transform {:collection_id (serdes/fk :model/Collection)
+               :prompts       (serdes/nested :model/MetabotPrompt :metabot_id (merge {:sort-by (juxt :prompt :entity_id)} opts))}
    :defaults  {:use_verified_content false}})

@@ -4,6 +4,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.models.interface :as mi]
    [metabase.queries-rest.api.card :as api.card]
+   [metabase.queries-rest.db :as queries-rest.db]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -25,9 +26,9 @@
   present."
   [_route-params
    _query-params
-   {:keys [card_ids]} :- [:map
+   {:keys [card_ids]} :- [:map {:closed true}
                           [:card_ids [:sequential ms/PositiveInt]]]]
-  (let [id->card (t2/select-fn->fn :id identity :model/Card :id [:in card_ids])]
+  (let [id->card (queries-rest.db/cards-by-id card_ids)]
     (as-> card_ids $
       (mapv id->card $)
       (t2/hydrate $ :in_dashboards)
@@ -45,7 +46,7 @@
   For now, just either succeed or fail as a batch - we can think more about error handling later down the road."
   [_route-params
    _query-params
-   {:keys [card_ids], :as body} :- [:map
+   {:keys [card_ids], :as body} :- [:map {:closed true}
                                     [:card_ids      [:sequential ms/PositiveInt]]
                                     [:collection_id {:optional true} [:maybe ms/PositiveInt]]
                                     [:dashboard_id  {:optional true} [:maybe ms/PositiveInt]]]]

@@ -9,6 +9,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.test-util :as driver.tu]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync.core]
@@ -166,7 +167,7 @@
                                                              "insert_quorum" "2"})
         (ctd/exec-statements grant-statements  cluster-port {"wait_end_of_query" "1"})
         (t2.with-temp/with-temp [:model/Database db cluster-details]
-          (mt/with-db db (sync.core/sync-database! db)
+          (mt/with-db db (sync.core/sync-database! (:id db))
             (letfn [(check-impersonation! [roles expected]
                       (impersonation.tu/with-impersonations!
                         {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]

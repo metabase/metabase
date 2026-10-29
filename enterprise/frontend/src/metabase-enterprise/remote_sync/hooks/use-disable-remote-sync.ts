@@ -22,7 +22,7 @@ export const useDisableRemoteSync = () => {
       confirmButtonText: t`Disable`,
       confirmButtonProps: {
         variant: "filled",
-        color: "feedback-negative",
+        color: "negative",
       },
       onConfirm: async () => {
         try {
@@ -33,7 +33,7 @@ export const useDisableRemoteSync = () => {
           console.error(error);
           sendToast({
             message: t`Failed to disable Remote Sync`,
-            icon: "warning",
+            variant: "negative",
           });
         }
       },

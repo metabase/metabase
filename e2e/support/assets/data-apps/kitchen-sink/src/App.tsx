@@ -1,24 +1,20 @@
 import {
   InteractiveQuestion,
   StaticQuestion,
-  useAction,
 } from "@metabase/embedding-sdk-react";
-import type { MetabaseQueryOptions } from "@metabase/embedding-sdk-react/data-app";
 import {
-  aggregations,
-  breakout,
   copy,
   DataAppLink,
   DataAppRouter,
-  filter,
-  orderBy,
+  defineQuery,
+  useAction,
   useDataAppLocation,
   useMetabaseQuery,
   useMetabaseQueryObject,
 } from "@metabase/embedding-sdk-react/data-app";
 import { type ComponentType, useEffect, useState } from "react";
 
-import { getTestEnv } from "./test-env";
+import { actions, queries } from "./metabase";
 
 // The sandbox throws host-realm errors, whose `instanceof Error` can be false in
 // the guest; read `.message` defensively.
@@ -27,11 +23,17 @@ const describeError = (err: unknown): string =>
 
 const PROBE_COLOR = "rgb(0, 128, 0)";
 
+const MISSING_QUERY = defineQuery({
+  source: { type: "card", entityId: "missingQuestionEntity" },
+});
+
+const SANDBOX_ALLOWED_URL = "https://allowed.data-app.test/ping";
+const SANDBOX_BLOCKED_URL = "https://blocked.data-app.test/ping";
+
 function Overview() {
-  const { scalarQuery, questionQuery } = getTestEnv();
-  const ordersCount = useMetabaseQuery(scalarQuery);
+  const ordersCount = useMetabaseQuery(queries.ordersCount);
   const totalOrders = ordersCount.data?.rawRows?.[0]?.[0];
-  const ordersQuery = useMetabaseQueryObject(questionQuery);
+  const ordersQuery = useMetabaseQueryObject(queries.orders);
 
   return (
     <div data-testid="data-app-content" style={{ padding: 24 }}>
@@ -67,7 +69,10 @@ function Overview() {
       <h2 style={{ margin: "0 0 8px" }}>All orders</h2>
       <div style={{ height: 400 }}>
         {ordersQuery.query ? (
-          <InteractiveQuestion card={{ query: ordersQuery.query }} />
+          <InteractiveQuestion
+            card={{ query: ordersQuery.query }}
+            withDownloads
+          />
         ) : (
           <div>…</div>
         )}
@@ -86,9 +91,8 @@ function Details() {
 }
 
 function QueryStates() {
-  const { scalarQuery, errorQuery } = getTestEnv();
-  const broken = useMetabaseQuery(errorQuery!);
-  const working = useMetabaseQuery(scalarQuery);
+  const broken = useMetabaseQuery(MISSING_QUERY);
+  const working = useMetabaseQuery(queries.ordersCount);
   const count = working.data?.rawRows?.[0]?.[0];
 
   return (
@@ -115,17 +119,14 @@ function QueryStates() {
 }
 
 function DownloadQuestionPage() {
-  const { downloadQuestionId } = getTestEnv();
-
   return (
     <div data-testid="data-app-download-question" style={{ padding: 24 }}>
       <h1>Download question</h1>
       <div style={{ height: 360 }}>
-        {downloadQuestionId != null ? (
-          <StaticQuestion questionId={downloadQuestionId} withDownloads />
-        ) : (
-          <div data-testid="download-question-loading">…</div>
-        )}
+        <StaticQuestion
+          questionId={queries.ordersByYear.source.entityId}
+          withDownloads
+        />
       </div>
     </div>
   );
@@ -134,8 +135,7 @@ function DownloadQuestionPage() {
 // An InteractiveQuestion on a single-column (count) query, so a spec can switch it
 // to a custom viz — the example `demo-viz` requires exactly one result column.
 function CustomVizPage() {
-  const { scalarQuery } = getTestEnv();
-  const q = useMetabaseQueryObject(scalarQuery);
+  const q = useMetabaseQueryObject(queries.ordersCount);
 
   return (
     <div data-testid="data-app-custom-viz" style={{ padding: 24 }}>
@@ -152,8 +152,7 @@ function CustomVizPage() {
 }
 
 function StaticQuestionPage() {
-  const { questionQuery } = getTestEnv();
-  const q = useMetabaseQueryObject(questionQuery);
+  const q = useMetabaseQueryObject(queries.orders);
 
   return (
     <div data-testid="data-app-static-question" style={{ padding: 24 }}>
@@ -169,194 +168,15 @@ function StaticQuestionPage() {
   );
 }
 
-// Data apps may not run native SQL: the backend rejects native queries from the
-// `data-app` client. The `card` prop takes a raw query with no native/structured
-// check, so this page hand-builds a native query to prove the backend refuses it.
-function NativeQueryPage() {
-  const { nativeQuery } = getTestEnv();
+type AddTeamParams = { team_name: string; score: number };
 
-  if (!nativeQuery) {
-    return <div data-testid="data-app-native-query">no-native-query-env</div>;
-  }
-
-  return (
-    <div data-testid="data-app-native-query" style={{ padding: 24 }}>
-      <h1>Native query</h1>
-      <div style={{ height: 360 }}>
-        <StaticQuestion
-          card={{
-            query: {
-              type: "native",
-              database: nativeQuery.database,
-              native: { query: nativeQuery.query },
-            },
-          }}
-        />
-      </div>
-    </div>
-  );
-}
-
-function Combinators() {
-  const combinators = getTestEnv().combinators!;
-  const countAgg = aggregations.count();
-
-  const q = useMetabaseQuery({
-    source: combinators.source,
-    filters: [filter(combinators.filterField, ">", combinators.filterValue)],
-    aggregations: [countAgg],
-    breakouts: [breakout(combinators.breakoutField)],
-    orderBys: [orderBy(countAgg, "desc")],
-  });
-
-  return (
-    <div data-testid="data-app-combinators" style={{ padding: 24 }}>
-      <h1>Combinators</h1>
-      <div data-testid="combinators-loading">
-        {q.isLoading ? "loading" : "done"}
-      </div>
-      <div data-testid="combinators-error">
-        {q.error ? "error" : "no-error"}
-      </div>
-      <div data-testid="combinators-rowcount">
-        {String(q.data?.rows?.length ?? 0)}
-      </div>
-    </div>
-  );
-}
-
-/**
- * A saved question used as a query source, with clauses applied on top of it.
- * Each case runs the same clauses against the table and against a question that
- * copies it; agreeing results are the assertion, so the spec never has to encode
- * sample-database numbers.
- */
-function CardSource() {
-  const {
-    source,
-    tableSource,
-    filterField,
-    filterColumn,
-    filterValue,
-    breakoutField,
-    breakoutColumn,
-  } = getTestEnv().cardSource!;
-
-  const countAgg = aggregations.count();
-
-  return (
-    <div data-testid="data-app-card-source" style={{ padding: 24 }}>
-      <h1>Card source</h1>
-
-      <CardSourceCase
-        caseKey="source"
-        tableQuery={{ source: tableSource, aggregations: [countAgg] }}
-        cardQuery={{ source, aggregations: [countAgg] }}
-        totalTestId="card-source-total"
-      />
-
-      <CardSourceCase
-        caseKey="filters"
-        tableQuery={{
-          source: tableSource,
-          filters: [filter(filterField, ">", filterValue)],
-          aggregations: [countAgg],
-        }}
-        cardQuery={{
-          source,
-          filters: [filter(filterColumn, ">", filterValue)],
-          aggregations: [countAgg],
-        }}
-      />
-
-      <CardSourceCase
-        caseKey="aggregations"
-        tableQuery={{
-          source: tableSource,
-          filters: [filter(filterField, ">", filterValue)],
-          aggregations: [countAgg, aggregations.sum(filterField)],
-        }}
-        cardQuery={{
-          source,
-          filters: [filter(filterColumn, ">", filterValue)],
-          aggregations: [countAgg, aggregations.sum(filterColumn)],
-        }}
-      />
-
-      <CardSourceCase
-        caseKey="breakouts"
-        tableQuery={{
-          source: tableSource,
-          filters: [filter(filterField, ">", filterValue)],
-          aggregations: [countAgg],
-          breakouts: [breakout(breakoutField)],
-          orderBys: [orderBy(breakoutField, "asc")],
-        }}
-        cardQuery={{
-          source,
-          filters: [filter(filterColumn, ">", filterValue)],
-          aggregations: [countAgg],
-          breakouts: [breakout(breakoutColumn)],
-          orderBys: [orderBy(breakoutColumn, "asc")],
-        }}
-      />
-    </div>
-  );
-}
-
-function CardSourceCase({
-  caseKey,
-  tableQuery,
-  cardQuery,
-  totalTestId,
-}: {
-  caseKey: string;
-  tableQuery: MetabaseQueryOptions<undefined>;
-  cardQuery: MetabaseQueryOptions<undefined>;
-  totalTestId?: string;
-}) {
-  const fromTable = useMetabaseQuery(tableQuery);
-  const fromCard = useMetabaseQuery(cardQuery);
-
-  const failure = fromTable.error ?? fromCard.error;
-  const tableResult = describeResult(fromTable.data);
-  const cardResult = describeResult(fromCard.data);
-
-  const status = failure
-    ? `error: ${describeError(failure)}`
-    : tableResult === null || cardResult === null
-      ? "loading"
-      : tableResult === cardResult
-        ? "match"
-        : `mismatch: table=${tableResult} card=${cardResult}`;
-
-  return (
-    <div>
-      <div data-testid={`card-source-case-${caseKey}`}>{status}</div>
-      {totalTestId && (
-        <div data-testid={totalTestId}>
-          {String(fromCard.data?.rawRows?.[0]?.[0] ?? "")}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** Column names plus every row value, by position — comparable across sources. */
-const describeResult = (
-  data: { columns: { name: string }[]; rawRows: unknown[][] } | null,
-): string | null =>
-  data &&
-  `[${data.columns.map((column) => column.name).join(",")}] ${JSON.stringify(data.rawRows)}`;
-
-function Actions() {
-  const { actionId, actionParams } = getTestEnv();
-  const action = useAction(actionId ?? null);
+function Actions({ params }: { params: AddTeamParams }) {
+  const action = useAction(actions.addTeam);
   const [output, setOutput] = useState("idle");
 
   const onExecute = async () => {
     try {
-      const res = await action.execute(actionParams ?? {});
+      const res = await action.execute(params);
       setOutput(res ? "returned-result" : "returned-null");
     } catch {
       setOutput("threw");
@@ -388,6 +208,14 @@ function Actions() {
       <div data-testid="action-output">{output}</div>
     </div>
   );
+}
+
+function NewTeamActions() {
+  return <Actions params={{ team_name: "Data App FC", score: 7 }} />;
+}
+
+function ExistingTeamActions() {
+  return <Actions params={{ team_name: "Amorous Aardvarks", score: 1 }} />;
 }
 
 function Clipboard() {
@@ -451,7 +279,6 @@ const BLOCKED_PROBES: Probe[] = [
 ];
 
 function Sandbox() {
-  const { sandbox } = getTestEnv();
   const [probeResults, setProbeResults] = useState<Record<string, string>>({});
   const [innerHtml, setInnerHtml] = useState("pending");
   const [blockedFetch, setBlockedFetch] = useState("pending");
@@ -480,38 +307,32 @@ function Sandbox() {
       setInnerHtml(`threw: ${describeError(err)}`);
     }
 
-    if (sandbox) {
-      fetch(sandbox.blockedUrl)
-        .then((res) => setBlockedFetch(`ok: ${res.status}`))
-        .catch((err) => setBlockedFetch(`blocked: ${describeError(err)}`));
+    fetch(SANDBOX_BLOCKED_URL)
+      .then((res) => setBlockedFetch(`ok: ${res.status}`))
+      .catch((err) => setBlockedFetch(`blocked: ${describeError(err)}`));
 
-      fetch(sandbox.allowedUrl)
-        .then((res) => setAllowedFetch(`ok: ${res.status}`))
-        .catch((err) => setAllowedFetch(`blocked: ${describeError(err)}`));
+    fetch(SANDBOX_ALLOWED_URL)
+      .then((res) => setAllowedFetch(`ok: ${res.status}`))
+      .catch((err) => setAllowedFetch(`blocked: ${describeError(err)}`));
 
-      if (sandbox.xhrBlockedUrl) {
-        try {
-          const xhr = new XMLHttpRequest();
-          xhr.open("GET", sandbox.xhrBlockedUrl);
-          setBlockedXhr("not blocked");
-        } catch (err) {
-          setBlockedXhr(`blocked: ${describeError(err)}`);
-        }
-      }
-
-      if (sandbox.xhrAllowedUrl) {
-        const xhr = new XMLHttpRequest();
-        xhr.addEventListener("load", () => setAllowedXhr(`ok: ${xhr.status}`));
-        xhr.addEventListener("error", () => setAllowedXhr("blocked: error"));
-        try {
-          xhr.open("GET", sandbox.xhrAllowedUrl);
-          xhr.send();
-        } catch (err) {
-          setAllowedXhr(`blocked: ${describeError(err)}`);
-        }
-      }
+    try {
+      const xhr = new XMLHttpRequest();
+      xhr.open("GET", SANDBOX_BLOCKED_URL);
+      setBlockedXhr("not blocked");
+    } catch (err) {
+      setBlockedXhr(`blocked: ${describeError(err)}`);
     }
-  }, [sandbox]);
+
+    const xhr = new XMLHttpRequest();
+    xhr.addEventListener("load", () => setAllowedXhr(`ok: ${xhr.status}`));
+    xhr.addEventListener("error", () => setAllowedXhr("blocked: error"));
+    try {
+      xhr.open("GET", SANDBOX_ALLOWED_URL);
+      xhr.send();
+    } catch (err) {
+      setAllowedXhr(`blocked: ${describeError(err)}`);
+    }
+  }, []);
 
   return (
     <div data-testid="data-app-sandbox" style={{ padding: 24 }}>
@@ -573,12 +394,10 @@ const ROUTES: Record<string, ComponentType> = {
   "/isolation": Isolation,
   "/query-states": QueryStates,
   "/static-question": StaticQuestionPage,
-  "/native-query": NativeQueryPage,
   "/download-question": DownloadQuestionPage,
   "/custom-viz": CustomVizPage,
-  "/combinators": Combinators,
-  "/card-source": CardSource,
-  "/actions": Actions,
+  "/actions": NewTeamActions,
+  "/actions-existing-team": ExistingTeamActions,
   "/clipboard": Clipboard,
   "/missing-question": MissingQuestion,
   "/throw": ThrowingPage,

@@ -45,8 +45,6 @@ describe("scenarios > public > question", () => {
 
     H.restore();
     cy.signInAsAdmin();
-
-    H.updateSetting("enable-public-sharing", true);
   });
 
   it("adds filters to url as get params and renders the results correctly (metabase#7120, metabase#17033, metabase#21993)", () => {
@@ -71,6 +69,8 @@ describe("scenarios > public > question", () => {
       H.filterWidget().contains("Affiliate");
 
       cy.wait("@publicQuery");
+
+      cy.findAllByTestId("cell-data").should("contain.text", "Affiliate");
 
       // Make sure we can download the public question (metabase#21993)
       cy.get("@uuid").then((publicUuid) => {
@@ -104,52 +104,29 @@ describe("scenarios > public > question", () => {
     }),
   );
 
-  it("should be able to view public questions with snippets", () => {
-    H.startNewNativeQuestion({ display: "table" });
-
-    // Create a snippet
-    cy.icon("snippet").click();
-    cy.findByTestId("sidebar-content").findByText("Create snippet").click();
-
-    H.modal().within(() => {
-      cy.findByLabelText("Enter some SQL here so you can reuse it later").type(
-        "'test'",
-      );
-      cy.findByLabelText("Give your snippet a name").type("string 'test'");
-      cy.findByText("Save").click();
-    });
-
-    H.NativeEditor.type("{moveToStart}select ");
-
-    H.saveQuestion(
-      "test question",
-      { wrapId: true },
-      {
-        path: ["Our analytics"],
-      },
-    );
-
-    cy.get("@questionId").then((id) => {
-      H.createPublicQuestionLink(id).then(({ body: { uuid } }) => {
-        cy.signOut();
-        cy.signInAsNormalUser().then(() => {
-          cy.visit(`/public/question/${uuid}`);
-          cy.get("[data-testid=cell-data]").contains("test");
-        });
-      });
-    });
-  });
-
-  it("should be able to view public questions with card template tags", () => {
+  it("should be able to view public questions with snippets and card template tags", () => {
     H.createNativeQuestion({
       name: "Nested Question",
       native: {
         query: "SELECT * FROM PEOPLE LIMIT 5",
       },
-    }).then(({ body: { id } }) => {
+    }).then(({ body: { id: nestedQuestionId } }) => {
       H.startNewNativeQuestion({ display: "table" });
 
-      H.NativeEditor.type(`select * from {{#${id}`);
+      // Create a snippet
+      cy.icon("snippet").click();
+      cy.findByTestId("sidebar-content").findByText("Create snippet").click();
+
+      H.modal().within(() => {
+        cy.findByLabelText(
+          "Enter some SQL here so you can reuse it later",
+        ).type("'test'");
+        cy.findByLabelText("Give your snippet a name").type("string 'test'");
+        cy.findByText("Save").click();
+      });
+
+      H.NativeEditor.type("{moveToStart}select ");
+      H.NativeEditor.type(`{moveToEnd}, * from {{#${nestedQuestionId}`);
 
       H.saveQuestion(
         "test question",
@@ -158,14 +135,16 @@ describe("scenarios > public > question", () => {
           path: ["Our analytics"],
         },
       );
-      cy.get("@questionId").then((id) => {
-        H.createPublicQuestionLink(id).then(({ body: { uuid } }) => {
-          cy.signOut();
-          cy.signInAsNormalUser().then(() => {
-            cy.visit(`/public/question/${uuid}`);
-            // Check the name of the first person in the PEOPLE table
-            cy.get("[data-testid=cell-data]").contains("Hudson Borer");
-          });
+    });
+
+    cy.get("@questionId").then((id) => {
+      H.createPublicQuestionLink(id).then(({ body: { uuid } }) => {
+        cy.signOut();
+        cy.signInAsNormalUser().then(() => {
+          cy.visit(`/public/question/${uuid}`);
+          cy.get("[data-testid=cell-data]").contains("test");
+          // Check the name of the first person in the PEOPLE table
+          cy.get("[data-testid=cell-data]").contains("Hudson Borer");
         });
       });
     });
@@ -193,26 +172,6 @@ describe("scenarios > public > question", () => {
   });
 });
 
-describe("scenarios > question > public link with extension", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-
-    H.createNativeQuestion(
-      {
-        name: "Question A",
-        native: {
-          query: "SELECT ID from (SELECT * FROM ORDERS LIMIT 1) as order_row",
-        },
-      },
-      {
-        visitQuestion: true,
-        wrapId: true,
-      },
-    ).as("questionId");
-  });
-});
-
 describe("scenarios [EE] > public > question", () => {
   beforeEach(() => {
     cy.intercept("GET", "/api/public/card/*/query?*").as("publicQuery");
@@ -220,8 +179,6 @@ describe("scenarios [EE] > public > question", () => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
-
-    H.updateSetting("enable-public-sharing", true);
   });
 
   it("should allow to set locale from the `#locale` hash parameter (metabase#50182)", () => {
@@ -246,7 +203,7 @@ describe("scenarios [EE] > public > question", () => {
     );
 
     // We don't have a de-CH.json file, so it should fallback to de.json, see metabase#51039 for more details
-    cy.intercept("/app/locales/de.json").as("deLocale");
+    cy.intercept("GET", "**/locale-de-json*.js").as("deLocale");
 
     cy.get("@questionId").then((id) => {
       H.visitPublicQuestion(id, {

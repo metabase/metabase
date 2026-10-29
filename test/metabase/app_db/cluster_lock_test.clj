@@ -17,6 +17,18 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
+(deftest lock-wait-timed-out?-test
+  (testing "MySQL's ER_LOCK_WAIT_TIMEOUT decides whether we fall back to an in-band insert"
+    (let [timed-out (SQLException. "Lock wait timeout exceeded; try restarting transaction" "HY000" 1205)
+          other     (SQLException. "You have an error in your SQL syntax" "42000" 1064)]
+      (testing "recognised on its own"
+        (is (#'sut/lock-wait-timed-out? timed-out)))
+      (testing "and through a cause chain, which is how it usually arrives"
+        (is (#'sut/lock-wait-timed-out? (ex-info "wrapped" {} timed-out))))
+      (testing "any other error still propagates"
+        (is (not (#'sut/lock-wait-timed-out? other)))
+        (is (not (#'sut/lock-wait-timed-out? (ex-info "wrapped" {} other))))))))
+
 (defn- deadlock-exception
   "Build a deadlock SQLException for the current appdb type. Mirrors the codes in
   [[metabase.app-db.transient-error]] so the test exercises the real db-type path."
@@ -234,6 +246,55 @@
         (is (= [[:a :failed :timeout]
                 [:b :done]]
                @results))))))
+
+(deftest fall-back-in-band?-test
+  (testing "the out-of-band insert retries on the caller's connection when"
+    (testing "the pool cannot provide a second connection"
+      (is (#'sut/fall-back-in-band? (ex-info "checkout timed out" {::sut/checkout-failed true}))))
+    (testing "the dedicated connection timed out on a row lock"
+      (is (#'sut/fall-back-in-band?
+           (SQLException. "Lock wait timeout exceeded; try restarting transaction" "HY000" 1205)))))
+  (testing "other errors still propagate"
+    (is (not (#'sut/fall-back-in-band?
+              (SQLException. "You have an error in your SQL syntax" "42000" 1064))))))
+
+(deftest checkout-connection!-tags-pool-failures-test
+  (testing "a failed checkout produces an error that triggers the fallback"
+    (let [exhausted-pool (reify javax.sql.DataSource
+                           (getConnection [_]
+                             (throw (SQLException. "An attempt by a client to checkout a Connection has timed out."))))]
+      (mdb/with-application-db exhausted-pool
+        (is (#'sut/fall-back-in-band? (try
+                                        (#'sut/checkout-connection!)
+                                        (catch Exception e e))))))))
+
+(deftest checkout-failure-still-acquires-a-first-time-lock-test
+  (testing "a first-time lock is acquired even when the pool cannot provide a second connection"
+    ;; H2 takes an in-process lock and never writes a row.
+    (when (not= (mdb/db-type) :h2)
+      (let [lock-name (u/qualified-name ::checkout-failure-lock)]
+        (t2/delete! :metabase_cluster_lock :lock_name lock-name)
+        (mt/with-dynamic-fn-redefs [sut/checkout-connection!
+                                    (fn [] (throw (ex-info "checkout timed out" {::sut/checkout-failed true})))]
+          ;; An ambient transaction is what sends the insert out of band in the first place.
+          (t2/with-transaction [_conn]
+            (is (= :ok (sut/with-cluster-lock ::checkout-failure-lock :ok)))
+            (is (t2/exists? :metabase_cluster_lock :lock_name lock-name))))))))
+
+(deftest out-of-band-insert-commits-without-help-from-the-pool-test
+  (testing "the lock row outlives the caller's rollback even when the dedicated connection arrives in a transaction"
+    ;; H2 takes an in-process lock and never writes a row.
+    (when (not= (mdb/db-type) :h2)
+      (let [lock-name (u/qualified-name ::autocommit-off-lock)]
+        (t2/delete! :metabase_cluster_lock :lock_name lock-name)
+        (mt/with-dynamic-fn-redefs [sut/checkout-connection!
+                                    (fn []
+                                      (doto (.getConnection (mdb/data-source))
+                                        (.setAutoCommit false)))]
+          (t2/with-transaction [_conn nil {:rollback-only true}]
+            (is (= :ok (sut/with-cluster-lock ::autocommit-off-lock :ok)))))
+        (is (t2/exists? :metabase_cluster_lock :lock_name lock-name)
+            "the dedicated connection committed it, so the caller's rollback cannot take it away")))))
 
 (deftest detached-lock-basic-test
   (testing "returns the body's value and works non-concurrently"

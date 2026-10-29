@@ -22,6 +22,7 @@
    [metabase.collections.test-utils :as collections.tu]
    [metabase.events.core :as events]
    [metabase.models.serialization :as serdes]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -39,16 +40,17 @@
     (finally
       (t2/delete! :model/RemoteSyncObject))))
 
-(use-fixtures :each (fn [f]
-                      (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
-                        (clean-remote-sync-state f))))
+(use-fixtures :each
+  remote-sync.tu/allow-remote-synced-collections (fn [f]
+                                                   (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
+                                                     (clean-remote-sync-state f))))
 
 ;;; ------------------------------------------- Event Handler Tests -------------------------------------------
 
 (deftest snippet-event-creates-sync-object-when-library-synced-test
   (testing "Creating a snippet creates a RemoteSyncObject entry when Library is remote-synced"
     (collections.tu/with-library-synced
-      (mt/with-temporary-setting-values [remote-sync-enabled true]
+      (mt/with-temporary-setting-values [remote-sync-enabled true remote-sync-type :read-write]
         (mt/with-temp [:model/NativeQuerySnippet snippet {:name "Test Snippet" :content "SELECT 1"}]
           (events/publish-event! :event/snippet-create {:object snippet :user-id (mt/user->id :rasta)})
           (is (t2/exists? :model/RemoteSyncObject
@@ -70,7 +72,7 @@
 (deftest snippet-event-updates-sync-object-test
   (testing "Updating a snippet updates the RemoteSyncObject entry when Library is synced"
     (collections.tu/with-library-synced
-      (mt/with-temporary-setting-values [remote-sync-enabled true]
+      (mt/with-temporary-setting-values [remote-sync-enabled true remote-sync-type :read-write]
         (mt/with-temp [:model/NativeQuerySnippet snippet {:name "Test Snippet" :content "SELECT 1"}]
           ;; Delete auto-created entry from snippet creation event and set up test state
           (t2/delete! :model/RemoteSyncObject :model_type "NativeQuerySnippet" :model_id (:id snippet))
@@ -89,7 +91,7 @@
 (deftest archived-snippet-marked-for-deletion-test
   (testing "Archiving a snippet marks it for deletion when Library is synced"
     (collections.tu/with-library-synced
-      (mt/with-temporary-setting-values [remote-sync-enabled true]
+      (mt/with-temporary-setting-values [remote-sync-enabled true remote-sync-type :read-write]
         (mt/with-temp [:model/NativeQuerySnippet snippet {:name "Test Snippet" :content "SELECT 1"}]
           ;; Delete auto-created entry from snippet creation event and set up test state
           (t2/delete! :model/RemoteSyncObject :model_type "NativeQuerySnippet" :model_id (:id snippet))
@@ -140,7 +142,7 @@
                        :model/NativeQuerySnippet snippet {:name "Existing Snippet" :content "SELECT 1" :collection_id coll-id}]
           (is (zero? (t2/count :model/RemoteSyncObject :model_type "NativeQuerySnippet"))
               "Should have no snippet tracking entries initially")
-          (rs-events/enable-snippet-tracking!)
+          (rs-events/enable-library-tracking!)
           ;; Verify tracking entries created
           (is (t2/exists? :model/RemoteSyncObject
                           :model_type "Collection"
@@ -173,7 +175,7 @@
           (is (= 2 (t2/count :model/RemoteSyncObject :model_type [:in ["Collection" "NativeQuerySnippet"]]
                              :model_id [:in [coll-id (:id snippet)]]))
               "Should have 2 tracking entries")
-          (rs-events/disable-snippet-tracking!)
+          (rs-events/disable-library-tracking!)
           ;; Verify tracking entries removed
           (is (zero? (t2/count :model/RemoteSyncObject :model_type "NativeQuerySnippet"))
               "Snippet tracking entries should be removed")
@@ -262,7 +264,6 @@
 description: null
 entity_id: %s
 slug: %s
-created_at: '2024-08-28T09:46:18.671622Z'
 archived: false
 type: null
 parent_id: null

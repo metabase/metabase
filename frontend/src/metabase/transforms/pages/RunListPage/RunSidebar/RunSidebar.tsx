@@ -1,7 +1,7 @@
 import { memo } from "react";
 
+import { SidebarResizableBox } from "metabase/common/components/SidebarResizableBox";
 import { ErrorSection } from "metabase/transforms/components/ErrorSection";
-import { SidebarResizableBox } from "metabase/transforms/components/SidebarResizableBox";
 import { Stack } from "metabase/ui";
 import type { TransformRun } from "metabase-types/api";
 
@@ -34,12 +34,12 @@ export const RunSidebar = memo(function RunSidebar({
     >
       <Stack
         className={S.sidebar}
-        p="lg"
-        gap="xl"
+        p="xl"
+        gap="xxl"
         bg="background_page-primary"
         data-testid="run-list-sidebar"
       >
-        <Stack gap="lg">
+        <Stack gap="xl">
           <SidebarHeader run={run} onClose={onClose} />
           <LocationSection run={run} />
           <InfoSection run={run} />

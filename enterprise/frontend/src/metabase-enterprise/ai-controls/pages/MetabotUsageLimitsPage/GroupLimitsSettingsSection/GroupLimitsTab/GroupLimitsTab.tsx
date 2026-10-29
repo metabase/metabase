@@ -4,8 +4,8 @@ import { t } from "ttag";
 import { isEmpty } from "underscore";
 
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useMetadataToasts } from "metabase/common/hooks";
 import { isDefaultGroup } from "metabase/common/utils/groups";
-import { useMetadataToasts } from "metabase/metadata/hooks";
 import { Box, Group, NumberInput, Stack, Text } from "metabase/ui";
 import { useUpdateAIControlsGroupLimitMutation } from "metabase-enterprise/api";
 import type { GroupInfo } from "metabase-types/api";
@@ -119,7 +119,7 @@ export function GroupLimitsTab(props: GroupLimitsTabProps) {
   };
 
   return (
-    <Stack gap="xl" data-testid="group-limits-tab">
+    <Stack gap="xxl" data-testid="group-limits-tab">
       <Text c="text-secondary">{getDescription(variant, limitPeriod)}</Text>
       <LoadingAndErrorWrapper
         loading={isLoading}
@@ -177,7 +177,7 @@ export function GroupLimitsTab(props: GroupLimitsTabProps) {
                           rightSectionWidth="auto"
                           rightSectionPointerEvents="none"
                           rightSection={
-                            <Group gap="xs" wrap="nowrap" align="center">
+                            <Group gap="xxs" wrap="nowrap" align="center">
                               {showAllUsersOverrideTooltip && (
                                 <AllUsersHigherAccessTooltipIcon
                                   groupName={allUsersGroup.name}

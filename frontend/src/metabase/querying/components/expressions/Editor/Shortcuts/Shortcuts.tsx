@@ -21,8 +21,6 @@ export function Shortcuts({
         <Button
           key={index}
           variant="light"
-          radius="5rem"
-          size="xs"
           onClick={shortcut.action}
           leftSection={<Icon name={shortcut.icon} />}
         >

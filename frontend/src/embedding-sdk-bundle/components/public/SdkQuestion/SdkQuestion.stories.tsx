@@ -235,13 +235,13 @@ const ControlledSqlParametersPlayground = (args: SdkQuestionComponentProps) => {
         </>
       }
       dashboard={
-        <Box bg="background_page-primary" mih="100vh" p="md">
+        <Box bg="background_page-primary" mih="100vh" p="lg">
           <SdkQuestion
             {...args}
             sqlParameters={playground.parameters}
             onSqlParametersChange={playground.handleParametersChange}
           >
-            <Stack gap="md">
+            <Stack gap="lg">
               <SdkQuestion.SqlParametersList />
               <SdkQuestion.QuestionVisualization />
             </Stack>

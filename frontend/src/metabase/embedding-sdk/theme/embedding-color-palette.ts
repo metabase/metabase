@@ -5,7 +5,9 @@ import type {
 } from "metabase/embedding-sdk/theme";
 import { colors } from "metabase/ui/colors";
 import { mapChartColorsToAccents } from "metabase/ui/colors/accents";
+import { mapWhitelabelColorsToTokens } from "metabase/ui/colors/constants/whitelabel-colors";
 import type { ColorName, ColorPalette } from "metabase/ui/colors/types";
+import type { ColorSettings } from "metabase-types/api";
 
 /**
  * Define SDK colors that can be mapped 1:1 to the main app colors.
@@ -26,33 +28,41 @@ export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   MappableSdkColor,
   ColorName[]
 > = {
-  brand: ["brand", "core-brand"],
-  "brand-hover": ["background-hover", "background_surface-hover"],
-  "brand-hover-light": ["background-hover", "background_surface-hover"],
-  border: ["border", "border-neutral"],
-  filter: ["filter", "core-filter"],
-  summarize: ["summarize", "core-summarize"],
-  "text-primary": ["text-primary"],
+  brand: ["core-brand"],
+  "brand-hover": ["background_surface-hover", "button-default-neutral-hover"],
+  "brand-hover-light": ["background_surface-hover"],
+  border: ["border-neutral"],
+  filter: ["core-filter"],
+  summarize: ["core-summarize"],
+  "text-primary": [
+    "text-primary",
+    "button_label-default-neutral-default",
+    "button_label-light-neutral-default",
+    "button_label-subtle-neutral-default",
+    "icon-primary",
+  ],
   "text-secondary": ["text-secondary"],
-  "text-tertiary": ["text-tertiary", "text-disabled"],
-  background: ["background-primary", "background_page-primary"],
+  "text-tertiary": ["text-disabled"],
+  background: [
+    "background_page-primary",
+    "background_surface-primary",
+    "button-default-neutral-default",
+  ],
   "background-secondary": [
-    "background-secondary",
-    "background-tertiary",
     "background_page-secondary",
     "background_page-tertiary",
   ],
   "background-hover": [],
-  "background-disabled": ["background-disabled", "background_surface-disabled"],
-  "background-light": ["background-secondary", "background_page-secondary"],
-  shadow: ["shadow", "shadow-default"],
-  positive: ["success", "feedback-positive"],
-  negative: ["danger", "feedback-negative"],
-  "text-white": ["text-primary-inverse", "white", "core-white"],
-  error: ["error", "feedback-negative"],
-  "background-error": ["background-error", "background_surface-error"],
-  "text-hover": ["text-hover", "text-brand-hover"],
-  focus: ["focus", "input-focus"],
+  "background-disabled": ["background_surface-disabled"],
+  "background-light": ["background_page-secondary"],
+  shadow: ["shadow-default"],
+  positive: ["feedback-positive", "feedback-positive-strong"],
+  negative: ["feedback-negative", "feedback-negative-strong"],
+  "text-white": ["text-primary-inverse", "core-white"],
+  error: ["feedback-negative"],
+  "background-error": ["background_surface-error"],
+  "text-hover": ["text-brand-hover"],
+  focus: ["input-focus"],
 };
 
 /**
@@ -69,10 +79,7 @@ export const SDK_MISSING_COLORS_FALLBACK: Partial<
  * These colors must never be changed.
  * For example, the blue Metabase brand color.
  **/
-export const SDK_UNCHANGEABLE_COLORS: ColorName[] = [
-  "metabase-brand",
-  "core-metabase_brand",
-];
+export const SDK_UNCHANGEABLE_COLORS: ColorName[] = ["core-metabase_brand"];
 
 export const SDK_TO_MAIN_APP_TOOLTIP_COLORS_MAPPING: Record<
   keyof NonNullable<MetabaseComponentTheme["tooltip"]>,
@@ -88,11 +95,11 @@ const originalColors = { ...colors };
 
 /**
  * @param sdkColors color overrides from the SDK theme
- * @param appPalette color palette from the admin appearance settings
+ * @param appColors the `application-colors` setting
  */
 export function getEmbeddingColorPalette(
   sdkColors: MetabaseColors = {},
-  appPalette?: ColorPalette,
+  appColors?: ColorSettings,
 ): ColorPalette {
   const mappedSdkColors = Object.fromEntries(
     Object.entries(sdkColors)
@@ -114,7 +121,7 @@ export function getEmbeddingColorPalette(
 
   const merged: ColorPalette = {
     ...originalColors,
-    ...appPalette,
+    ...mapWhitelabelColorsToTokens(appColors),
     ...mappedSdkColors,
     ...chartColors,
   };
@@ -126,13 +133,13 @@ export function getEmbeddingColorPalette(
  * !! Mutate the global colors object to apply the new colors.
  *
  * @param sdkColors color overrides from the SDK theme
- * @param appPalette color palette from the admin appearance settings
+ * @param appColors the `application-colors` setting
  */
 export function setGlobalEmbeddingColors(
   sdkColors?: MetabaseColors,
-  appPalette?: ColorPalette,
+  appColors?: ColorSettings,
 ) {
-  const combinedThemeColors = getEmbeddingColorPalette(sdkColors, appPalette);
+  const combinedThemeColors = getEmbeddingColorPalette(sdkColors, appColors);
 
   Object.entries(combinedThemeColors).forEach(([key, value]) => {
     // Unjustified type cast. FIXME

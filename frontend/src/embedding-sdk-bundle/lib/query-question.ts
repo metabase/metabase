@@ -10,7 +10,7 @@ import type {
   SqlParameterValues,
 } from "embedding-sdk-bundle/types/question";
 import { transformSdkQuestion } from "metabase/embedding-sdk/lib/transform-question";
-import { createRawSeries } from "metabase/visualizations/lib/series";
+import { createRawSeries } from "metabase/viz-core";
 import type { DatasetColumn, RowValues } from "metabase-types/api";
 
 export type QueryQuestionParams = {

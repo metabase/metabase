@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import { Icon, Tabs, type TabsProps } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
 
@@ -72,6 +74,42 @@ const IconsTemplate = (args: TabsProps) => (
   </Tabs>
 );
 
+const ClosableTemplate = (args: TabsProps) => {
+  const [openTabs, setOpenTabs] = useState(tabs);
+  const [selected, setSelected] = useState<string | null>(tabs[0].value);
+
+  const handleClose = (value: string) => {
+    const remaining = openTabs.filter((tab) => tab.value !== value);
+    setOpenTabs(remaining);
+    if (selected === value) {
+      setSelected(remaining[0]?.value ?? null);
+    }
+  };
+
+  return (
+    <Tabs {...args} value={selected} onChange={setSelected}>
+      <Tabs.List>
+        {openTabs.map((tab) => (
+          <Tabs.Tab
+            key={tab.value}
+            value={tab.value}
+            disabled={tab.disabled}
+            closable
+            onClose={handleClose}
+          >
+            {tab.label}
+          </Tabs.Tab>
+        ))}
+      </Tabs.List>
+      {openTabs.map((tab) => (
+        <Tabs.Panel key={tab.value} value={tab.value}>
+          {tab.label}
+        </Tabs.Panel>
+      ))}
+    </Tabs>
+  );
+};
+
 export default {
   title: "Components/Navigation/Tabs",
   component: Tabs,
@@ -121,6 +159,18 @@ export const Pills = {
 export const PillsIcons = {
   render: IconsTemplate,
   name: "Pills, icons",
+  args: {
+    variant: "pills",
+  },
+};
+
+export const Closable = {
+  render: ClosableTemplate,
+};
+
+export const ClosablePills = {
+  render: ClosableTemplate,
+  name: "Closable, pills",
   args: {
     variant: "pills",
   },

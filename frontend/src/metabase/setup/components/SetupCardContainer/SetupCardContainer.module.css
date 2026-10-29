@@ -1,0 +1,25 @@
+.root {
+  display: none;
+  margin-bottom: var(--mantine-spacing-xl);
+}
+
+.visible {
+  display: block;
+}
+
+@media (--breakpoint-min-lg) {
+  .root {
+    display: block;
+    position: fixed;
+    right: 2em;
+    bottom: 2em;
+    max-width: 20%;
+    margin-bottom: 0;
+    transform: translateY(200%);
+    transition: transform 0.4s;
+  }
+
+  .visible {
+    transform: translateY(0);
+  }
+}

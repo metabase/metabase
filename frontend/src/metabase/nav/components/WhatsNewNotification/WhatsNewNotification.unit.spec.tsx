@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
@@ -7,8 +8,8 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import * as iframeUtils from "metabase/utils/iframe";
 import type { VersionInfo, VersionInfoRecord } from "metabase-types/api"; // Add VersionInfo
 import {
@@ -154,7 +155,7 @@ describe("WhatsNewNotification", () => {
       const dismissButton = await screen.findByRole("button", {
         name: /close/i,
       }); // Use the icon name if no specific label
-      dismissButton.click();
+      await userEvent.click(dismissButton);
 
       await waitFor(() => {
         expect(fetchMock.callHistory.called(LAST_ACK_SETTINGS_URL)).toBe(true);

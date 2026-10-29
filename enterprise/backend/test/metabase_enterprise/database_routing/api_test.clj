@@ -5,6 +5,7 @@
    [metabase-enterprise.test :as met]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
+   [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools.resources :as read-resource]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
@@ -218,22 +219,24 @@
     (met/with-user-attributes! :rasta {"db_name" "customer-a"}
       (mt/with-current-user (mt/user->id :rasta)
         (testing "database list includes the router and hides destination databases"
-          (let [{:keys [output]} (read-resource/read-resource {:uris ["metabase://databases"]})]
+          (let [{:keys [output]} (test-util/call-tool read-resource/read-resource-tool
+                                                      {:uris ["metabase://databases"]})]
             (is (str/includes? output "Postgres Router"))
             (is (not (str/includes? output "customer-a")))
             (is (not (str/includes? output "customer-b")))))
+        ;; A read that found nothing is a failed call, so these assert the failure rather than
+        ;; probing a per-URI `:error` — that list is the Agent API's shape, and the tool no longer
+        ;; builds it.
         (testing "a sibling destination cannot be read by URI"
-          (is (some? (-> (read-resource/read-resource
-                          {:uris [(str "metabase://database/" other-destination-id)]})
-                         :resources
-                         first
-                         :error))))
+          (is (= :metabase.metabot.tools.core/all-items-failed
+                 (:code (test-util/tool-failure
+                         read-resource/read-resource-tool
+                         {:uris [(str "metabase://database/" other-destination-id)]})))))
         (testing "the current user's routed destination cannot be read by URI"
-          (is (some? (-> (read-resource/read-resource
-                          {:uris [(str "metabase://database/" selected-destination-id)]})
-                         :resources
-                         first
-                         :error))))))))
+          (is (= :metabase.metabot.tools.core/all-items-failed
+                 (:code (test-util/tool-failure
+                         read-resource/read-resource-tool
+                         {:uris [(str "metabase://database/" selected-destination-id)]})))))))))
 
 (deftest destination-databases-excluded-from-permissions-graph
   (mt/with-temp [:model/Database {db-id :id} {}

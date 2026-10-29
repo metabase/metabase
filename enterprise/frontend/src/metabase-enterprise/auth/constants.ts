@@ -9,6 +9,7 @@ export const JWT_SCHEMA = Yup.object({
   "jwt-attribute-firstname": Yup.string().nullable().default(null),
   "jwt-attribute-lastname": Yup.string().nullable().default(null),
   "jwt-attribute-groups": Yup.string().nullable().default(null),
+  "jwt-attribute-tenant": Yup.string().nullable().default(null),
   "jwt-group-sync": Yup.boolean().default(false),
   "jwt-group-mappings": Yup.object().default(null),
 });
@@ -27,6 +28,7 @@ export const SAML_SCHEMA = Yup.object({
   "saml-attribute-firstname": Yup.string().nullable().default(null),
   "saml-attribute-lastname": Yup.string().nullable().default(null),
   "saml-attribute-group": Yup.string().nullable().default(null),
+  "saml-attribute-tenant": Yup.string().nullable().default(null),
   "saml-group-sync": Yup.boolean().default(false),
   "saml-group-mappings": Yup.object().default(null),
 });

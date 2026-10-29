@@ -10,9 +10,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.result-metadata :as lib.metadata.result-metadata]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.debug :as qp.debug]
-   [metabase.query-processor.middleware.annotate.legacy-helper-fns]
+   [metabase.query-processor.middleware.annotate.legacy-helper-fns :as annotate.legacy-helper-fns]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.util.malli :as mu]
@@ -20,12 +19,8 @@
    [metabase.util.performance :refer [every? mapv empty? get-in]]
    [potemkin :as p]))
 
-(comment metabase.query-processor.middleware.annotate.legacy-helper-fns/keep-me)
-
 (mr/def ::col
-  [:map
-   [:source    {:optional true} ::lib.schema.metadata/column.legacy-source]
-   [:field_ref {:optional true} ::mbql.s/Reference]])
+  [:or ::mbql.s/legacy-column-metadata ::mbql.s/driver-column])
 
 (mr/def ::qp-results-cased-col
   "Map where all simple keywords are snake_case, but lib keywords can stay in kebab-case."
@@ -42,8 +37,7 @@
   [:maybe [:sequential ::col]])
 
 (mr/def ::metadata
-  [:map
-   [:cols {:optional true} ::cols]])
+  ::qp.schema/metadata)
 
 (mu/defn expected-cols :- [:sequential ::qp-results-cased-col]
   "Return metadata for columns returned by a MBQL 5 `query`.
@@ -52,7 +46,7 @@
   name and base type). If provided these are merged with the columns the query is expected to return.
 
   Note this `initial-cols` is more or less required for native queries unless they have metadata attached."
-  ([query]
+  ([query :- ::lib.schema/query]
    (expected-cols query []))
 
   ([query         :- ::lib.schema/query
@@ -76,7 +70,7 @@
   "Native queries don't have the type information from the original `Field` objects used in the query. If the driver
   returned a base type more specific than :type/*, use that; otherwise look at the sample of rows and infer the base
   type based on the classes of the values"
-  [{:keys [cols]} :- :map]
+  [{:keys [cols]} :- ::metadata]
   (apply analyze/col-wise
          (for [{driver-base-type :base_type} cols]
            (if (contains? #{nil :type/*} driver-base-type)
@@ -159,6 +153,14 @@
 ;;; convert drivers to MBQL 5.
 #_{:clj-kondo/ignore [:deprecated-var]}
 (p/import-vars
- [metabase.query-processor.middleware.annotate.legacy-helper-fns
-  aggregation-name
-  merged-column-info])
+ [annotate.legacy-helper-fns
+  aggregation-name])
+
+(mu/defn merged-column-info :- ::cols
+  "Returns deduplicated and merged column metadata (`:cols`) for query results by combining (a) the initial results
+  metadata returned by the driver's impl of `execute-reducible-query` and (b) column metadata inferred by logic in
+  this namespace."
+  {:deprecated "0.64.0"}
+  [legacy-query                                        :- :metabase.lib.util/legacy-query
+   {initial-cols :cols, :as _initial-metadata} :- [:maybe ::metadata]]
+  (expected-cols (annotate.legacy-helper-fns/legacy-query->mbql5-query legacy-query) initial-cols))

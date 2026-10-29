@@ -182,14 +182,15 @@ export function formatChangeWithSign(
 export const formatPercent = (percent: number) =>
   `${(100 * percent).toFixed(Math.abs(percent) === 1 ? 0 : 2)} %`;
 
+const NUMBER_FORMATTER_CACHE_SIZE = 100;
+const numberFormatterCache = new Map<string, Intl.NumberFormat>();
+
 export function numberFormatterForOptions(options: FormatNumberOptions) {
   options = {
     ...getDefaultNumberOptions(options),
     ...options,
   };
-  // always use "en" locale so we have known number separators we can replace depending on number_separators option
-  // TODO: if we do that how can we get localized currency names?
-  return new Intl.NumberFormat("en", {
+  const formatterOptions: Intl.NumberFormatOptions = {
     // Unjustified type cast. FIXME
     style: options.number_style as Intl.NumberFormatOptions["style"],
     currency: options.currency,
@@ -203,7 +204,23 @@ export function numberFormatterForOptions(options: FormatNumberOptions) {
     maximumFractionDigits: options.maximumFractionDigits,
     minimumSignificantDigits: options.minimumSignificantDigits,
     maximumSignificantDigits: options.maximumSignificantDigits,
-  });
+  };
+  const cacheKey = JSON.stringify(formatterOptions);
+  const cached = numberFormatterCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+  // always use "en" locale so we have known number separators we can replace depending on number_separators option
+  // TODO: if we do that how can we get localized currency names?
+  const formatter = new Intl.NumberFormat("en", formatterOptions);
+  if (numberFormatterCache.size >= NUMBER_FORMATTER_CACHE_SIZE) {
+    const oldestKey = numberFormatterCache.keys().next().value;
+    if (oldestKey !== undefined) {
+      numberFormatterCache.delete(oldestKey);
+    }
+  }
+  numberFormatterCache.set(cacheKey, formatter);
+  return formatter;
 }
 
 function formatNumberCompact(

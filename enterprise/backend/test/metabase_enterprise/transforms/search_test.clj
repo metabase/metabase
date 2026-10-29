@@ -1,15 +1,18 @@
 (ns metabase-enterprise.transforms.search-test
   (:require
-   [clojure.test :refer [deftest testing is]]
+   [clojure.test :refer [deftest is testing use-fixtures]]
    [java-time.api :as t]
    [metabase.app-db.core :as mdb]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
+   [metabase.test.fixtures :as fixtures]
    [metabase.transforms.search-test :as search-test])
   (:import
    (org.postgresql.util PGobject)))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest transform-ingestion-test
   (search.tu/with-temp-index-table

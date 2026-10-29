@@ -327,12 +327,10 @@ describe("suggestFields", () => {
                   operator: "=",
                   left: {
                     type: "column",
-                    sourceName: "ORDERS",
                     name: "PRODUCT_ID",
                   },
                   right: {
                     type: "column",
-                    sourceName: "REVIEWS",
                     name: "PRODUCT_ID",
                   },
                 },
@@ -399,7 +397,6 @@ describe("suggestFields", () => {
           breakouts: [
             {
               type: "column",
-              sourceName: "ORDERS",
               name: "TOTAL",
             },
           ],

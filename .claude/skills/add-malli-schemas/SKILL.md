@@ -9,9 +9,9 @@ This skill helps you efficiently and uniformly add Malli schemas to API endpoint
 
 ## Reference Files (Best Examples)
 
-- `src/metabase/warehouses/api.clj` - Most comprehensive schemas, custom error messages
+- `src/metabase/warehouses_rest/api.clj` - Most comprehensive schemas, custom error messages
 - `src/metabase/api_keys/api.clj` - Excellent response schemas
-- `src/metabase/collections/api.clj` - Great named schema patterns
+- `src/metabase/collections_rest/api.clj` - Great named schema patterns
 - `src/metabase/timeline/api/timeline.clj` - Clean, simple examples
 
 ## Quick Checklist
@@ -149,8 +149,7 @@ ms/NonBlankString               ;; Non-empty string
 ms/BooleanValue                 ;; String "true"/"false" or boolean
 ms/MaybeBooleanValue            ;; BooleanValue or nil
 ms/TemporalString               ;; ISO-8601 date/time string (for REQUEST params only!)
-ms/Map                          ;; Any map
-ms/JSONString                   ;; JSON-encoded string
+ms/OpaqueJSONObject             ;; JSON object whose keys are not ours to declare; string-keyed
 ms/PositiveNum                  ;; Positive number
 ms/IntGreaterThanOrEqualToZero  ;; 0 or positive
 ```
@@ -417,4 +416,4 @@ After adding schemas, verify:
 
 - [Malli Documentation](https://github.com/metosin/malli)
 - Metabase Malli utilities: `src/metabase/util/malli/schema.clj`
-- Metabase schema registry: `src/metabase/util/malli/registry.clj`
+- Metabase schema registry: `src/metabase/util/malli/registry.cljc`

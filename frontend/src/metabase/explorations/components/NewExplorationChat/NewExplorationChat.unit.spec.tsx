@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
   trackExplorationAgentMessageSent,
@@ -11,10 +12,11 @@ import {
 import { makeMockSelection } from "metabase/explorations/test-utils";
 import { useMetabotAgent } from "metabase/metabot/hooks";
 import type {
-  MetabotChatMessage,
+  MetabotAgentDataPartMessage,
   MetabotDebugToolCallMessage,
+  MetabotMessage,
+  MetabotMessagePart,
 } from "metabase/metabot/state";
-import { createMockState } from "metabase/redux/store/mocks";
 import type {
   AddResearchGroupsResponse,
   GetExplorationDataResponse,
@@ -100,7 +102,7 @@ const metricChurn: GetExplorationDataResponse["metrics"][number] = {
   dimensions: [customerSegmentDimension],
 };
 
-const userMessage: MetabotChatMessage = {
+const userMessage: MetabotMessagePart = {
   id: "user-1",
   role: "user",
   type: "text",
@@ -138,24 +140,24 @@ const addResearchGroupsResponse: AddResearchGroupsResponse = {
     },
   ],
   groups: [
-    // metric-anchored: Revenue with an explicitly-chosen dimension
     {
-      anchor: "metric",
       metric_id: metricRevenue.id,
       dimension_ids: [revenueDateDimension.id],
     },
-    // dimension-anchored: slice every related metric by Customer Segment
-    { anchor: "dimension", dimension_id: customerSegmentDimension.id },
+    {
+      metric_id: metricChurn.id,
+    },
   ],
 };
 
-const addResearchGroupsToolCallMessage: MetabotDebugToolCallMessage = {
-  id: "tool-call-2",
+const researchPlanUpdateMessage: MetabotAgentDataPartMessage = {
+  id: "data-part-2",
   role: "agent",
-  type: "tool_call",
-  name: "add_research_groups",
-  status: "ended",
-  result: JSON.stringify(addResearchGroupsResponse),
+  type: "data_part",
+  part: {
+    type: "data-research_plan_update",
+    data: addResearchGroupsResponse,
+  },
 };
 
 const setNameToolCallMessage: MetabotDebugToolCallMessage = {
@@ -174,16 +176,37 @@ const removeFromResearchPlanToolCallMessage: MetabotDebugToolCallMessage = {
   name: "remove_from_research_plan",
   status: "ended",
   result: JSON.stringify({
-    block_ids: ["metric:1", "dim:customer.segment"],
+    block_ids: ["metric:1", "metric:2"],
   }),
 };
 
-const agentMessage: MetabotChatMessage = {
+const agentMessage: MetabotMessagePart = {
   id: "agent-1",
   role: "agent",
   type: "text",
   message: "I selected these metrics because they are related to revenue.",
 };
+
+/**
+ * Group the fixture parts the way a stream would: each user prompt is its own
+ * message, and the agent parts that follow belong to one reply.
+ */
+function toMessages(parts: MetabotMessagePart[]): MetabotMessage[] {
+  return parts.reduce<MetabotMessage[]>((messages, part) => {
+    const open = messages.at(-1);
+    if (open && part.role === "agent" && open.role === "agent") {
+      open.parts.push(part);
+      return messages;
+    }
+    messages.push({
+      id: `message-${messages.length}`,
+      role: part.role,
+      parts: [part],
+      status: { type: "done" },
+    });
+    return messages;
+  }, []);
+}
 
 function mockMetabotAgentState({
   messages,
@@ -192,18 +215,19 @@ function mockMetabotAgentState({
   submitInput = jest.fn(),
   retryMessage = jest.fn(),
 }: {
-  messages: MetabotChatMessage[];
+  messages: MetabotMessagePart[];
   isDoingScience: boolean;
   prompt?: string;
   submitInput?: jest.Mock;
   retryMessage?: jest.Mock;
 }) {
+  const groupedMessages = toMessages(messages);
   // Unjustified type cast. FIXME
   jest.mocked(useMetabotAgent).mockReturnValue({
     prompt,
     setPrompt: jest.fn(),
-    conversation: { messages },
-    messages,
+    conversation: { messages: groupedMessages },
+    messages: groupedMessages,
     errorMessages: [],
     retryMessage,
     isDoingScience,
@@ -221,7 +245,7 @@ function setup({
   isDoingScience = true,
   prompt = "",
 }: {
-  messages?: MetabotChatMessage[];
+  messages?: MetabotMessagePart[];
   isDoingScience?: boolean;
   prompt?: string;
 } = {}) {
@@ -260,7 +284,7 @@ function setup({
     messages,
     isDoingScience,
   }: {
-    messages: MetabotChatMessage[];
+    messages: MetabotMessagePart[];
     isDoingScience: boolean;
   }) => {
     mockMetabotAgentState({
@@ -303,7 +327,7 @@ describe("NewExplorationChat", () => {
     });
   });
 
-  it("adds metric- and dimension-anchored groups from an add_research_groups tool call response", async () => {
+  it("adds groups from a research_plan_update data part", async () => {
     const { selection, rerender } = setup();
 
     rerender({
@@ -311,43 +335,45 @@ describe("NewExplorationChat", () => {
       isDoingScience: true,
     });
     rerender({
-      messages: [
-        userMessage,
-        searchToolCallMessage,
-        addResearchGroupsToolCallMessage,
-      ],
+      messages: [userMessage, searchToolCallMessage, researchPlanUpdateMessage],
       isDoingScience: true,
     });
 
     expect(selection.addMetric).not.toHaveBeenCalled();
-    expect(selection.addDimension).not.toHaveBeenCalled();
 
     rerender({
       messages: [
         userMessage,
         searchToolCallMessage,
-        addResearchGroupsToolCallMessage,
+        researchPlanUpdateMessage,
         agentMessage,
       ],
       isDoingScience: false,
     });
 
-    // metric-anchored group -> addMetric, carrying the explicitly-chosen dimension ids
     await waitFor(() => {
-      expect(selection.addMetric).toHaveBeenCalledTimes(1);
+      expect(selection.addMetric).toHaveBeenCalledTimes(2);
     });
     expect(selection.addMetric).toHaveBeenCalledWith(
       expect.objectContaining({
         id: metricRevenue.id,
         name: metricRevenue.name,
       }),
-      {
+      expect.objectContaining({
         dimensionsById: expect.any(Map),
         additionalSelectedDimensionIds: new Set([revenueDateDimension.id]),
-      },
+      }),
+    );
+    expect(selection.addMetric).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: metricChurn.id,
+        name: metricChurn.name,
+      }),
+      expect.objectContaining({
+        additionalSelectedDimensionIds: new Set(),
+      }),
     );
 
-    // The dimensionsById map should contain every dimension from the groups.
     const { dimensionsById } = jest.mocked(selection.addMetric).mock
       .calls[0][1];
     expect(dimensionsById.size).toBe(3);
@@ -355,45 +381,32 @@ describe("NewExplorationChat", () => {
       revenueDateDimension,
     );
 
-    // dimension-anchored group -> addDimension with the resolved dimension group
-    expect(selection.addDimension).toHaveBeenCalledTimes(1);
-    expect(selection.addDimension).toHaveBeenCalledWith(
-      expect.objectContaining({ id: customerSegmentDimension.id }),
-      {
-        group: customerSegmentGroup,
-        metricsByDimension: expect.any(Map),
-      },
-    );
-
     expect(trackExplorationPlanEdited).toHaveBeenCalledWith("agent", "metrics");
-    expect(trackExplorationPlanEdited).toHaveBeenCalledWith(
+    expect(trackExplorationPlanEdited).not.toHaveBeenCalledWith(
       "agent",
       "dimensions",
     );
   });
 
-  it("forwards replace_default_dimensions and metric_ids to the selection mutators", async () => {
+  it("forwards replace_default_dimensions to addMetric", async () => {
     const { selection, rerender } = setup();
 
-    const message: MetabotDebugToolCallMessage = {
-      ...addResearchGroupsToolCallMessage,
-      id: "tool-call-replace",
-      result: JSON.stringify({
-        ...addResearchGroupsResponse,
-        groups: [
-          {
-            anchor: "metric",
-            metric_id: metricRevenue.id,
-            dimension_ids: [revenueDateDimension.id],
-            replace_default_dimensions: true,
-          },
-          {
-            anchor: "dimension",
-            dimension_id: customerSegmentDimension.id,
-            metric_ids: [metricRevenue.id],
-          },
-        ],
-      }),
+    const message: MetabotAgentDataPartMessage = {
+      ...researchPlanUpdateMessage,
+      id: "data-part-replace",
+      part: {
+        type: "data-research_plan_update",
+        data: {
+          ...addResearchGroupsResponse,
+          groups: [
+            {
+              metric_id: metricRevenue.id,
+              dimension_ids: [revenueDateDimension.id],
+              replace_default_dimensions: true,
+            },
+          ],
+        },
+      },
     };
 
     rerender({ messages: [userMessage, message], isDoingScience: true });
@@ -405,17 +418,9 @@ describe("NewExplorationChat", () => {
     await waitFor(() => {
       expect(selection.addMetric).toHaveBeenCalled();
     });
-    // metric anchor forwards the replace flag
     expect(selection.addMetric).toHaveBeenCalledWith(
       expect.objectContaining({ id: metricRevenue.id }),
       expect.objectContaining({ replace: true }),
-    );
-    // dimension anchor forwards the curated metric subset
-    expect(selection.addDimension).toHaveBeenCalledWith(
-      expect.objectContaining({ id: customerSegmentDimension.id }),
-      expect.objectContaining({
-        selectedMetricIds: new Set([metricRevenue.id]),
-      }),
     );
   });
 
@@ -462,10 +467,10 @@ describe("NewExplorationChat", () => {
     await waitFor(() => {
       expect(selection.removeBlock).toHaveBeenCalledWith("metric:1");
     });
-    expect(selection.removeBlock).toHaveBeenCalledWith("dim:customer.segment");
+    expect(selection.removeBlock).toHaveBeenCalledWith("metric:2");
     expect(selection.removeBlock).toHaveBeenCalledTimes(2);
     expect(trackExplorationPlanEdited).toHaveBeenCalledWith("agent", "metrics");
-    expect(trackExplorationPlanEdited).toHaveBeenCalledWith(
+    expect(trackExplorationPlanEdited).not.toHaveBeenCalledWith(
       "agent",
       "dimensions",
     );
@@ -487,7 +492,6 @@ describe("NewExplorationChat", () => {
       result: JSON.stringify({
         members: [
           { block_id: "metric:1", dimension_ids: ["revenue.created_at"] },
-          { block_id: "dim:customer.segment", metric_ids: [2] },
         ],
       }),
     };
@@ -498,20 +502,18 @@ describe("NewExplorationChat", () => {
     });
 
     await waitFor(() => {
-      expect(selection.removeBlockMembers).toHaveBeenCalledWith("metric:1", {
-        metricIds: undefined,
-        dimensionIds: ["revenue.created_at"],
-      });
+      expect(selection.removeBlockDimensions).toHaveBeenCalledWith("metric:1", [
+        "revenue.created_at",
+      ]);
     });
-    expect(selection.removeBlockMembers).toHaveBeenCalledWith(
-      "dim:customer.segment",
-      { metricIds: [2], dimensionIds: undefined },
-    );
     expect(selection.removeBlock).not.toHaveBeenCalled();
-    expect(trackExplorationPlanEdited).toHaveBeenCalledWith("agent", "metrics");
     expect(trackExplorationPlanEdited).toHaveBeenCalledWith(
       "agent",
       "dimensions",
+    );
+    expect(trackExplorationPlanEdited).not.toHaveBeenCalledWith(
+      "agent",
+      "metrics",
     );
     expect(trackExplorationPlanEdited).not.toHaveBeenCalledWith(
       "agent",
@@ -557,13 +559,13 @@ describe("NewExplorationChat", () => {
   it("does not re-apply tool calls that survive a conversation rewind/retry", async () => {
     const { selection, rerender } = setup();
 
-    const secondUserMessage: MetabotChatMessage = {
+    const secondUserMessage: MetabotMessagePart = {
       id: "user-2",
       role: "user",
       type: "text",
       message: "Remove the churn block",
     };
-    const secondAgentMessage: MetabotChatMessage = {
+    const secondAgentMessage: MetabotMessagePart = {
       id: "agent-2",
       role: "agent",
       type: "text",
@@ -602,7 +604,7 @@ describe("NewExplorationChat", () => {
       id: "tool-call-4-retry",
       result: JSON.stringify({ block_ids: ["metric:1"] }),
     };
-    const retriedSecondAgentMessage: MetabotChatMessage = {
+    const retriedSecondAgentMessage: MetabotMessagePart = {
       ...secondAgentMessage,
       id: "agent-2-retry",
     };

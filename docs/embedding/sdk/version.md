@@ -43,7 +43,7 @@ On Metabase 56 or earlier, pinning also keeps the SDK Package and Metabase major
 
 To manually pin your version of Metabase:
 
-1. Go to **Admin > Embedding > Modular**.
+1. Go to **Admin > Settings > General**.
 2. Scroll to **Version pinning** and click **Request version pinning**.
 
 This will open a mailto link to our support team.

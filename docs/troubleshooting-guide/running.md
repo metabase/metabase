@@ -61,7 +61,7 @@ You can set a JVM option to allocate more memory to the JVM's heap. For example,
 java -Xmx2g -jar metabase.jar
 ```
 
-Adjust the memory allocation upward until Metabase seems happy, but make sure to keep the number lower than the total amount of RAM available on your machine, because Metabase won't be the only process running. Leaving 1 to 2 GB of RAM for other processes on the machine is generally enough, so you might set `-Xmx` to `1g` on a machine with 2 GB of RAM, `2g` on one with 4 GB of RAM, and so on. You may need to experiment with this settings to find one that makes Metabase and everything else play nicely together (and this experimentation may require upgrading to a machine with more memory).
+Adjust the memory allocation upward until Metabase seems happy, but make sure to keep the number lower than the total amount of RAM available on your machine, because Metabase won't be the only process running. Leaving 1 to 2 GB of RAM for other processes on the machine is generally enough, so you might set `-Xmx` to `1g` on a machine with 2 GB of RAM, `2g` on one with 4 GB of RAM, and so on. You may need to experiment with this setting to find one that makes Metabase and everything else play nicely together (and this experimentation may require upgrading to a machine with more memory).
 
 You can also use the environment variable `JAVA_OPTS` to set JVM args instead of passing them directly to `java`. This is particularly useful when running the Docker image:
 
@@ -93,4 +93,4 @@ WARNING: sun.reflect.Reflection.getCallerClass is not supported. This will impac
 
 If you see the above error, ignore it. Your Metabase is perfectly healthy and performing as it should.
 
-[eclipse-memory-analyzer]: https://www.eclipse.org/mat/
+[eclipse-memory-analyzer]: https://eclipse.dev/mat/

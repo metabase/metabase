@@ -3,10 +3,12 @@
    [clojure.tools.deps.alpha :as deps]
    [metabuild-common.core :as u]))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *driver-project-dir*
   "Override [[driver-project-dir]]."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *target-directory*
   "Override the target directory where we'll put the finished uberjar ([[driver-jar-destination-directory]])."
   nil)

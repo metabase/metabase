@@ -129,7 +129,7 @@ export function ConversationsTable({
         withBorder
         data-testid="conversations-table"
       >
-        <Center p="xl">
+        <Center p="xxl">
           <LoadingAndErrorWrapper loading={false} error={error} />
         </Center>
       </Card>

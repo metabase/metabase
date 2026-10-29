@@ -1,14 +1,14 @@
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 
-import { createMockMetadata } from "__support__/metadata";
+import { createMockSettingsState, createMockState } from "__support__/state";
+import { createMockEntitiesState } from "__support__/store";
 import { getIcon, render, renderWithProviders, screen } from "__support__/ui";
 import { delay } from "__support__/utils";
-import { UnconnectedDataSelector as DataSelector } from "metabase/querying/common/components/DataSelector";
 import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
+  UnconnectedDataSelector as DataSelector,
+  getEntityLookups,
+} from "metabase/querying/common/components/DataSelector";
 import { checkNotNull } from "metabase/utils/types";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
@@ -77,31 +77,43 @@ describe("DataSelector", () => {
     }),
   ];
 
-  const metadata = createMockMetadata({ databases });
-  const emptyMetadata = createMockMetadata({});
+  const entities = createMockEntitiesState({ databases });
+  // Each stage of loading is a store with fewer records in it.
+  const lookupsWith = (overrides: Partial<typeof entities> = {}) =>
+    getEntityLookups(
+      createMockState({ entities: { ...entities, ...overrides } }),
+    );
+  const entityLookups = lookupsWith();
+  const emptyLookups = getEntityLookups(
+    createMockState({ entities: createMockEntitiesState({}) }),
+  );
   const storeInitialState = createMockState({
     settings: createMockSettingsState({
       "enable-nested-queries": true,
     }),
   });
 
-  const SAMPLE_DATABASE = checkNotNull(metadata.database(SAMPLE_DB_ID));
-  const ANOTHER_DATABASE = checkNotNull(metadata.database(EMPTY_DB_ID));
+  const SAMPLE_DATABASE = checkNotNull(entityLookups.database(SAMPLE_DB_ID));
+  const ANOTHER_DATABASE = checkNotNull(entityLookups.database(EMPTY_DB_ID));
   const MULTI_SCHEMA_DATABASE = checkNotNull(
-    metadata.database(MULTI_SCHEMA_DB_ID),
+    entityLookups.database(MULTI_SCHEMA_DB_ID),
   );
   const OTHER_MULTI_SCHEMA_DATABASE = checkNotNull(
-    metadata.database(OTHER_MULTI_SCHEMA_DB_ID),
+    entityLookups.database(OTHER_MULTI_SCHEMA_DB_ID),
   );
   const SAVED_QUESTIONS_DATABASE = checkNotNull(
-    createMockMetadata({
-      databases: [createMockSavedQuestionsDatabase()],
-    }).database(SAVED_QUESTIONS_VIRTUAL_DB_ID),
+    getEntityLookups(
+      createMockState({
+        entities: createMockEntitiesState({
+          databases: [createMockSavedQuestionsDatabase()],
+        }),
+      }),
+    ).database(SAVED_QUESTIONS_VIRTUAL_DB_ID),
   );
 
   const defaultProps: DataSelectorProps = {
     steps: ["DATABASE"],
-    metadata: emptyMetadata,
+    entityLookups: emptyLookups,
     databases: [],
     availableModels: [],
     hasLoadedDatabasesWithTablesSaved: false,
@@ -109,7 +121,6 @@ describe("DataSelector", () => {
     hasLoadedDatabasesWithTables: false,
     hasDataAccess: false,
     hasNestedQueriesEnabled: false,
-    selectedQuestion: null,
     loading: false,
     loaded: false,
     allLoading: false,
@@ -129,7 +140,7 @@ describe("DataSelector", () => {
         combineDatabaseSchemaSteps
         triggerElement={<div />}
         databases={[MULTI_SCHEMA_DATABASE, SAMPLE_DATABASE, ANOTHER_DATABASE]}
-        metadata={metadata}
+        entityLookups={entityLookups}
         isOpen={true}
         setSourceTableFn={setTable}
       />,
@@ -180,7 +191,7 @@ describe("DataSelector", () => {
       combineDatabaseSchemaSteps: true,
       triggerElement: <div />,
       databases: [],
-      metadata: emptyMetadata,
+      entityLookups: emptyLookups,
       isOpen: true,
       fetchDatabases,
       fetchSchemas,
@@ -190,12 +201,12 @@ describe("DataSelector", () => {
     const { rerender } = render(<DataSelector {...props} />);
 
     // we call rerenderWith to add more data after a fetch function was called
-    const rerenderWith = (nextMetadata: typeof metadata) => {
+    const rerenderWith = (nextLookups: typeof entityLookups) => {
       rerender(
         <DataSelector
           {...props}
-          metadata={nextMetadata}
-          databases={Object.values(metadata.databases)}
+          entityLookups={nextLookups}
+          databases={Object.values(entities.databases)}
         />,
       );
     };
@@ -207,11 +218,7 @@ describe("DataSelector", () => {
     expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
 
     // select a db
-    let nextMetadata = createMockMetadata({ databases });
-    nextMetadata.schemas = {};
-    nextMetadata.tables = {};
-    nextMetadata.fields = {};
-    rerenderWith(nextMetadata);
+    rerenderWith(lookupsWith({ schemas: {}, tables: {}, fields: {} }));
 
     expect(screen.getByText("Sample Database")).toBeInTheDocument();
     expect(screen.getByText("Multi-schema Database")).toBeInTheDocument();
@@ -222,10 +229,7 @@ describe("DataSelector", () => {
     expect(fetchSchemas).toHaveBeenCalled();
 
     // select a schema
-    nextMetadata = createMockMetadata({ databases });
-    nextMetadata.tables = {};
-    nextMetadata.fields = {};
-    rerenderWith(nextMetadata);
+    rerenderWith(lookupsWith({ tables: {}, fields: {} }));
     expect(screen.getByText("First Schema")).toBeInTheDocument();
     expect(screen.getByText("Second Schema")).toBeInTheDocument();
     await userEvent.click(screen.getByText("Second Schema"));
@@ -235,7 +239,7 @@ describe("DataSelector", () => {
     expect(fetchSchemaTables).toHaveBeenCalled();
 
     // table is displayed
-    rerenderWith(metadata);
+    rerenderWith(entityLookups);
     expect(screen.getByText("Table in Second Schema")).toBeInTheDocument();
   });
 
@@ -247,7 +251,7 @@ describe("DataSelector", () => {
         combineDatabaseSchemaSteps
         triggerElement={<div />}
         databases={[SAMPLE_DATABASE]}
-        metadata={metadata}
+        entityLookups={entityLookups}
         isOpen={true}
       />,
     );
@@ -265,9 +269,12 @@ describe("DataSelector", () => {
     const fetchSchemas = jest.fn();
     const fetchSchemaTables = jest.fn();
 
-    const metadataWithoutTables = createMockMetadata({
+    const entitiesWithoutTables = createMockEntitiesState({
       databases: [createMockDatabase({ id: SAMPLE_DB_ID, tables: [] })],
     });
+    const lookupsWithoutTables = getEntityLookups(
+      createMockState({ entities: entitiesWithoutTables }),
+    );
 
     const props: DataSelectorProps = {
       ...defaultProps,
@@ -283,8 +290,8 @@ describe("DataSelector", () => {
     const { rerender } = render(
       <DataSelector
         {...props}
-        databases={[checkNotNull(metadataWithoutTables.database(SAMPLE_DB_ID))]}
-        metadata={metadataWithoutTables}
+        databases={[checkNotNull(lookupsWithoutTables.database(SAMPLE_DB_ID))]}
+        entityLookups={lookupsWithoutTables}
       />,
     );
 
@@ -297,8 +304,8 @@ describe("DataSelector", () => {
     rerender(
       <DataSelector
         {...props}
-        databases={[checkNotNull(metadata.database(SAMPLE_DB_ID))]}
-        metadata={metadata}
+        databases={[checkNotNull(entityLookups.database(SAMPLE_DB_ID))]}
+        entityLookups={entityLookups}
       />,
     );
 
@@ -312,7 +319,7 @@ describe("DataSelector", () => {
         {...defaultProps}
         steps={["DATABASE"]}
         triggerElement={<div>button</div>}
-        metadata={emptyMetadata}
+        entityLookups={emptyLookups}
         databases={[]}
         fetchDatabases={fetchDatabases}
       />,
@@ -331,7 +338,7 @@ describe("DataSelector", () => {
         combineDatabaseSchemaSteps
         triggerElement={<div />}
         databases={[MULTI_SCHEMA_DATABASE, SAMPLE_DATABASE]}
-        metadata={metadata}
+        entityLookups={entityLookups}
         isOpen={true}
       />,
     );
@@ -351,7 +358,7 @@ describe("DataSelector", () => {
         combineDatabaseSchemaSteps
         triggerElement={<div />}
         databases={[MULTI_SCHEMA_DATABASE, SAMPLE_DATABASE]}
-        metadata={metadata}
+        entityLookups={entityLookups}
         isOpen={true}
       />,
     );
@@ -381,7 +388,7 @@ describe("DataSelector", () => {
         combineDatabaseSchemaSteps
         triggerElement={<div />}
         databases={[MULTI_SCHEMA_DATABASE, SAMPLE_DATABASE]}
-        metadata={metadata}
+        entityLookups={entityLookups}
         isOpen={true}
       />,
     );
@@ -413,7 +420,7 @@ describe("DataSelector", () => {
         combineDatabaseSchemaSteps
         triggerElement={<div />}
         databases={[MULTI_SCHEMA_DATABASE, SAMPLE_DATABASE]}
-        metadata={metadata}
+        entityLookups={entityLookups}
         isOpen={true}
       />,
     );
@@ -445,7 +452,7 @@ describe("DataSelector", () => {
         selectedDatabaseId={SAMPLE_DATABASE.id}
         databases={[SAMPLE_DATABASE]}
         triggerElement={<div />}
-        metadata={metadata}
+        entityLookups={entityLookups}
         isOpen={true}
       />,
     );
@@ -462,7 +469,7 @@ describe("DataSelector", () => {
         selectedDatabaseId={MULTI_SCHEMA_DATABASE.id}
         databases={[MULTI_SCHEMA_DATABASE]}
         triggerElement={<div />}
-        metadata={metadata}
+        entityLookups={entityLookups}
         isOpen={true}
       />,
     );
@@ -479,7 +486,7 @@ describe("DataSelector", () => {
         databases={[SAMPLE_DATABASE, MULTI_SCHEMA_DATABASE]}
         selectedDatabaseId={SAMPLE_DATABASE.id}
         triggerElement={<div />}
-        metadata={metadata}
+        entityLookups={entityLookups}
         isOpen={true}
       />,
     );
@@ -497,7 +504,7 @@ describe("DataSelector", () => {
         databases={[MULTI_SCHEMA_DATABASE, OTHER_MULTI_SCHEMA_DATABASE]}
         combineDatabaseSchemaSteps
         triggerElement={<div />}
-        metadata={metadata}
+        entityLookups={entityLookups}
         isOpen={true}
       />,
     );
@@ -519,7 +526,7 @@ describe("DataSelector", () => {
         databases={[SAMPLE_DATABASE, ANOTHER_DATABASE]}
         combineDatabaseSchemaSteps
         triggerElement={<div />}
-        metadata={metadata}
+        entityLookups={entityLookups}
         isOpen={true}
       />,
     );
@@ -584,6 +591,7 @@ describe("DataSelector", () => {
         steps={["BUCKET", "DATABASE", "SCHEMA", "TABLE"]}
         combineDatabaseSchemaSteps
         databases={[SAMPLE_DATABASE]}
+        entityLookups={entityLookups}
         hasNestedQueriesEnabled
         loaded
         triggerElement={<div />}

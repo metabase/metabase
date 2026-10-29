@@ -7,10 +7,10 @@ import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
+import { useQuestionFromCardBuilder } from "metabase/metadata-store";
 import { Button } from "metabase/ui";
-import { sumMetric } from "metabase/visualizations/lib/dataset";
-import { unaggregatedDataWarningMap } from "metabase/visualizations/lib/warnings";
 import type { VisualizationProps } from "metabase/visualizations/types";
+import { sumMetric, unaggregatedDataWarningMap } from "metabase/viz-core";
 import type {
   DatasetData,
   PinMapStyle,
@@ -178,6 +178,7 @@ type PinMapChildProps = LeafletMapProps<PinMapPoint> & {
 };
 
 export function PinMap(props: PinMapProps) {
+  const buildQuestion = useQuestionFromCardBuilder();
   const {
     className,
     settings,
@@ -300,6 +301,7 @@ export function PinMap(props: PinMapProps) {
       {MapComponent ? (
         <MapComponent
           {...mapProps}
+          buildQuestion={buildQuestion}
           ref={handleMapRef}
           className={cx(
             CS.absolute,
@@ -342,7 +344,6 @@ export function PinMap(props: PinMapProps) {
         {shouldShowDefaultViewChangeButton ? (
           <Button
             className={cx("PinMapUpdateButton", S.pinMapButton)}
-            size="sm"
             disabled={disableUpdateButton}
             onClick={updateSettings}
           >
@@ -352,7 +353,6 @@ export function PinMap(props: PinMapProps) {
         {!isDashboard && mapInstance?.supportsFilter() && (
           <Button
             className={cx("PinMapUpdateButton", S.pinMapButton)}
-            size="sm"
             onClick={() => {
               if (!mapInstance) {
                 return;

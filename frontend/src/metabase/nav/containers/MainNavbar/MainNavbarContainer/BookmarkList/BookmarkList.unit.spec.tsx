@@ -3,8 +3,8 @@ import { times } from "underscore";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import {
   createMockBookmark,
   createMockTokenFeatures,
@@ -66,6 +66,30 @@ describe("BookmarkList", () => {
     });
 
     expect(screen.queryByLabelText("grabber icon")).not.toBeInTheDocument();
+  });
+
+  it("renders the metric icon for metric bookmarks (#83340)", () => {
+    renderWithProviders(
+      <BookmarkList
+        {...mockProps}
+        bookmarks={[
+          createMockBookmark({
+            id: "card-1",
+            type: "card",
+            card_type: "metric",
+            display: "scalar",
+            name: "Total revenue",
+          }),
+        ]}
+      />,
+    );
+
+    const bookmarkItem = screen.getByRole("listitem", {
+      name: "Total revenue",
+    });
+    expect(
+      within(bookmarkItem).getByLabelText("metric icon"),
+    ).toBeInTheDocument();
   });
 
   describe("collection bookmark icons (enterprise)", () => {

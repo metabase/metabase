@@ -3,7 +3,7 @@ import { useParams } from "metabase/router";
 import { Center } from "metabase/ui";
 
 import { DataModelSegmentBreadcrumbs } from "../../components/SegmentBreadcrumbs";
-import { useDataModelSegmentPage } from "../../hooks";
+import { useDataModelSegmentPage } from "../../hooks/use-data-model-segment-page";
 import { SegmentDetailPage } from "../SegmentDetailPage";
 
 type DataModelSegmentDetailPageParams = {
@@ -29,6 +29,7 @@ export function DataModelSegmentDetailPage() {
   return (
     <SegmentDetailPage
       segment={segment}
+      table={table}
       tabUrls={tabUrls}
       breadcrumbs={
         <DataModelSegmentBreadcrumbs table={table} segment={segment} />

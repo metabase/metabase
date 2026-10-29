@@ -61,13 +61,17 @@ export const MetabotAsk = () => {
   ) : undefined;
 
   return (
-    <Flex direction="column" h="100%" w="100%" bg="background_page-primary">
+    <Flex
+      direction="column"
+      h="100%"
+      w="100%"
+      bg="background_page-primary"
+      pos="relative"
+    >
       {showGreeting ? (
         <>
           {historyAction && (
-            <Flex justify="flex-end" px="md" pt="md">
-              {historyAction}
-            </Flex>
+            <Box className={S.historyAction}>{historyAction}</Box>
           )}
           <MetabotGreeting
             conversationId={conversationId}
@@ -76,10 +80,10 @@ export const MetabotAsk = () => {
         </>
       ) : (
         <Box pos="relative" h="100%" w="100%">
-          <Box className={S.topFade} />
           <MetabotChat
             conversationId={conversationId}
             agentId="ask"
+            size="lg"
             onNewConversation={() =>
               navigate(Urls.newQuestion({ mode: "ask" }))
             }

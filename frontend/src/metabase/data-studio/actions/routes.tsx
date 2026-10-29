@@ -1,0 +1,75 @@
+import type { ComponentType } from "react";
+
+import { ActionsSectionLayout } from "metabase/data-studio/app/pages/ActionsSectionLayout";
+import { PLUGIN_DEPENDENCIES } from "metabase/plugins";
+import { Route } from "metabase/router";
+
+/**
+ * The action pages, in one chunk, so moving between an action's tabs costs no fetch.
+ */
+const actionsPage = () =>
+  import(/* webpackChunkName: "data-actions" */ "./pages/ActionListPage").then(
+    ({ ActionListPage }) => ({ Component: ActionListPage }),
+  );
+
+const archivedActionListPage = () =>
+  import(
+    /* webpackChunkName: "data-actions" */ "./pages/ArchivedActionListPage"
+  ).then(({ ArchivedActionListPage }) => ({
+    Component: ArchivedActionListPage,
+  }));
+
+const newActionPage = () =>
+  import(/* webpackChunkName: "data-actions" */ "./pages/NewActionPage").then(
+    ({ NewActionPage }) => ({ Component: NewActionPage }),
+  );
+
+const actionQueryPage = () =>
+  import(
+    /* webpackChunkName: "data-actions" */ "./pages/ActionDefinitionPage"
+  ).then(({ ActionDefinitionPage }) => ({ Component: ActionDefinitionPage }));
+
+const actionFieldsPage = () =>
+  import(
+    /* webpackChunkName: "data-actions" */ "./pages/ActionFieldsPage"
+  ).then(({ ActionFieldsPage }) => ({ Component: ActionFieldsPage }));
+
+const actionRunPage = () =>
+  import(/* webpackChunkName: "data-actions" */ "./pages/ActionRunPage").then(
+    ({ ActionRunPage }) => ({ Component: ActionRunPage }),
+  );
+
+const actionSettingsPage = () =>
+  import(
+    /* webpackChunkName: "data-actions" */ "./pages/ActionSettingsPage"
+  ).then(({ ActionSettingsPage }) => ({ Component: ActionSettingsPage }));
+
+const actionDependenciesPage = () =>
+  import(
+    /* webpackChunkName: "data-actions" */ "./pages/ActionDependenciesPage"
+  ).then(({ ActionDependenciesPage }) => ({
+    Component: ActionDependenciesPage,
+  }));
+
+export function getDataStudioActionRoutes(IsAdmin: ComponentType) {
+  return (
+    <Route path="actions" element={<ActionsSectionLayout />}>
+      <Route index lazy={actionsPage} />
+      <Route path="new" element={<IsAdmin />}>
+        <Route index lazy={newActionPage} />
+      </Route>
+      <Route path="archived" lazy={archivedActionListPage} />
+      <Route path=":actionId" lazy={actionQueryPage} />
+      <Route path=":actionId/edit" lazy={actionQueryPage} />
+      <Route path=":actionId/fields" lazy={actionFieldsPage} />
+      <Route path=":actionId/fields/:fieldId" lazy={actionFieldsPage} />
+      <Route path=":actionId/run" lazy={actionRunPage} />
+      {PLUGIN_DEPENDENCIES.isEnabled && (
+        <Route path=":actionId/dependencies" lazy={actionDependenciesPage}>
+          <Route index element={<PLUGIN_DEPENDENCIES.DependencyGraphPage />} />
+        </Route>
+      )}
+      <Route path=":actionId/settings" lazy={actionSettingsPage} />
+    </Route>
+  );
+}
