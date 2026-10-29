@@ -189,7 +189,7 @@ describe("MetabaseTestProvider", () => {
     setup({ children: <OrdersQueryError /> });
 
     expect(
-      await screen.findByText(/No mock for resolveDatasetQuery/),
+      await screen.findByText(/No mock for query "ordersQuestionEntity"/),
     ).toBeInTheDocument();
   });
 
