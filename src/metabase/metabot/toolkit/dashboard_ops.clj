@@ -757,14 +757,18 @@
 
 (defn- check-cards-resolved!
   "Every card `op` puts on the dashboard must be in the caller's `cards` map.
-   So must the source card of a parameter it leaves with a card source, which may come from the config it already had.
+   So must a source card the op gives a parameter, which may come from the config the parameter already had.
+   A source card the parameter had before the op is not checked again, just as the save leaves stored references alone.
    The caller leaves out the cards its user cannot read, so this is where an op naming one fails.
-   `state` is the state after the op."
-  [state op]
+   The states are the ones before and after the op."
+  [before after op]
   (doseq [card-id (concat (placed-card-ids op)
                           (when (contains? parameter-ops (:op op))
-                            (some-> (find-row state :parameters (:parameter_id op)) source-card-id vector)))
-          :when   (not (contains? (::cards state) card-id))]
+                            (let [source     #(some-> (find-row % :parameters (:parameter_id op)) source-card-id)
+                                  new-source (source after)]
+                              (when (and new-source (not= new-source (source before)))
+                                [new-source]))))
+          :when   (not (contains? (::cards after) card-id))]
     (fail! :unknown-card {:card-id card-id})))
 
 (defn- at-op
@@ -807,8 +811,9 @@
   "Runs [[apply-op]] on `op`, the op at `idx`, then checks that the cards it references are resolved."
   [state idx op]
   ;; The card check runs second, so an op that is malformed in some other way reports that instead.
-  (at-op idx op #(doto (apply-op state op)
-                   (check-cards-resolved! op))))
+  (at-op idx op #(let [after (apply-op state op)]
+                   (check-cards-resolved! state after op)
+                   after)))
 
 (defn compile-ops
   "Fold `ops` over `current`, a dashboard hydrated with `[:dashcards :series :card] :tabs`.
