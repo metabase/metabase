@@ -465,9 +465,8 @@ describe("scenarios > visualizations > legend", () => {
   });
 
   it("should toggle series visibility in the query builder", () => {
-    cy.intercept("PUT", "/api/setting/non-table-chart-generated").as(
-      "nonTableChartGenerated",
-    );
+    // Stop the first-chart PUT and its settings refetch during the hovers.
+    H.updateSetting("non-table-chart-generated", true);
     H.createQuestion(SINGLE_AGGREGATION_QUESTION, { visitQuestion: true });
 
     H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).should("have.length", 5);
@@ -475,12 +474,10 @@ describe("scenarios > visualizations > legend", () => {
     H.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 5);
     H.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
 
-    // CI failed here once: the first hover showed no tooltip. We do not know the cause.
-    // The query builder sends this PUT for the first non-table chart on the instance. Wait for it as a precaution.
-    // A hover while the DebouncedFrame has "pointer-events: none" is lost, so wait until the frame is active.
-    cy.wait("@nonTableChartGenerated");
-    H.ensureChartIsActive();
-    H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover();
+    // trigger() waits until the DebouncedFrame accepts pointer events, then
+    // sends the event at once. realHover() sends one mouse move that the
+    // frame can drop.
+    firstDoohickeyBar().trigger("mousemove");
     H.assertEChartsTooltip({
       header: "2025",
       rows: [
@@ -513,7 +510,7 @@ describe("scenarios > visualizations > legend", () => {
     H.chartPathWithFillColor(CATEGORY_COLOR.GIZMO).should("have.length", 0);
     H.chartPathWithFillColor(CATEGORY_COLOR.WIDGET).should("have.length", 5);
 
-    H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover();
+    firstDoohickeyBar().trigger("mousemove");
     H.assertEChartsTooltip({
       header: "2025",
       rows: [
@@ -573,7 +570,7 @@ describe("scenarios > visualizations > legend", () => {
 
     cy.wait(1000);
 
-    H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover();
+    firstDoohickeyBar().trigger("mousemove");
     H.assertEChartsTooltip({
       header: "2025",
       rows: [
@@ -589,7 +586,7 @@ describe("scenarios > visualizations > legend", () => {
     hideSeries(2); // Gizmo
     hideSeries(3); // Widget
 
-    H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first().realHover();
+    firstDoohickeyBar().trigger("mousemove");
     H.assertEChartsTooltip({
       header: "2025",
       rows: [
@@ -684,6 +681,10 @@ function showSeries(legendItemIndex) {
     .eq(legendItemIndex)
     .findByLabelText("Show series")
     .click({ scrollBehavior: "nearest" });
+}
+
+function firstDoohickeyBar() {
+  return H.chartPathWithFillColor(CATEGORY_COLOR.DOOHICKEY).first();
 }
 
 function hideSeriesByName(name) {
