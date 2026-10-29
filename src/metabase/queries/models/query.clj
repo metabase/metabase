@@ -1,6 +1,7 @@
 (ns metabase.queries.models.query
   "Functions related to the 'Query' model, which records stuff such as average query execution time."
   (:require
+   [clojure.set :as set]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -165,7 +166,8 @@
     (if-let [source-card-id (lib/primary-source-card-id query)]
       (let [card (or (lib.metadata/card query source-card-id)
                      ;; Card may belong to a different Database; fetch from the app DB
-                     (queries.db/card-database-and-table-ids source-card-id))]
+                     (some-> (queries.db/card source-card-id)
+                             (set/rename-keys {:database_id :database-id, :table_id :table-id})))]
         (merge {:table-id nil, :database-id (:database query)} (select-keys card [:database-id :table-id])))
       (let [table-id (lib/primary-source-table-id query)]
         {:database-id database-id

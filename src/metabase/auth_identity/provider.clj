@@ -64,6 +64,7 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.request.schema :as request.schema]
    [metabase.settings.core :as setting]
+   [metabase.users.db :as users.db]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -429,7 +430,7 @@
   [{user-id :id}]
   (when (setting/get :send-new-sso-user-admin-email?)
     (try
-      (messages/send-user-joined-admin-notification-email! (auth-identity.db/user user-id) :sso-auth? true)
+      (messages/send-user-joined-admin-notification-email! (users.db/user user-id) :sso-auth? true)
       (catch Exception e
         (log/errorf e "Error sending new SSO user notification to admins for user %d" user-id)))))
 
@@ -510,7 +511,7 @@
         (auth-identity.db/insert-auth-identity! (cond-> {:user_id (:id <>) :provider (name provider)}
                                                   (:provider-id user-data) (assoc :provider_id (:provider-id user-data))))
         (notification/with-skip-sending-notification true
-          (events/publish-event! :event/user-invited {:object (assoc (auth-identity.db/user (:id <>))
+          (events/publish-event! :event/user-invited {:object (assoc (users.db/user (:id <>))
                                                                      :sso_source (name provider))}))))))
 
 (defn- create-or-update-user!

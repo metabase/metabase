@@ -51,6 +51,7 @@
    [metabase.channel.render.table :as table]
    [metabase.channel.render.util :as render.util]
    [metabase.channel.shared :as channel.shared]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.notification.payload.core :as notification.payload]
    [metabase.parameters.shared :as shared.params]
@@ -1507,7 +1508,7 @@
                                     (map (juxt #(-> % :dashcard :id) identity)))
                            parts)
            dims      (paper-dims paper-key)
-           dash      (channel.db/dashboard dashboard-id)
+           dash      (dashboards.db/dashboard dashboard-id)
            tabs      (channel.db/dashboard-tabs dashboard-id)
            dcs       (t2/hydrate (channel.db/dashcards dashboard-id) :card)
            ;; only treat a dashboard as tabbed when there's more than one tab -- a lone tab isn't shown as a tab in

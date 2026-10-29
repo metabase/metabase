@@ -62,11 +62,6 @@
                  limit  (assoc :limit limit)
                  offset (assoc :offset offset)))))
 
-(mu/defn permissions-group
-  "The PermissionsGroup with `id`, or nil."
-  [id :- ms/PositiveInt]
-  (t2/select-one :model/PermissionsGroup :id id))
-
 (mu/defn permissions-group-exists?
   "Whether a PermissionsGroup with `id` exists."
   [id :- ms/PositiveInt]
@@ -109,11 +104,6 @@
   "Whether the User with `user-id` exists and is not a superuser."
   [user-id :- ::lib.schema.id/user]
   (t2/exists? :model/User :id user-id :is_superuser false))
-
-(mu/defn group-membership
-  "The PermissionsGroupMembership with `id`, or nil."
-  [id :- ms/PositiveInt]
-  (t2/select-one :model/PermissionsGroupMembership :id id))
 
 (mu/defn set-group-membership-manager!
   "Set the group manager flag of the PermissionsGroupMembership with `id`, returning the number updated."

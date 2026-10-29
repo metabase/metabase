@@ -2210,7 +2210,7 @@
     (let [adapter-calls (atom 0)]
       (mt/with-dynamic-fn-redefs
         [usage/check-usage-limits!
-         (fn [] "you've used all of your AI tokens")
+         (fn [& _] "you've used all of your AI tokens")
          self.claude/claude
          (fn [& _] (swap! adapter-calls inc) [])]
         (let [ex (try-structured-call {})]
@@ -2296,7 +2296,7 @@
     (let [adapter-calls (atom 0)]
       (mt/with-dynamic-fn-redefs
         [usage/check-usage-limits!
-         (fn [] "you've used all of your AI tokens")
+         (fn [& _] "you've used all of your AI tokens")
          self.claude/claude
          (fn [& _] (swap! adapter-calls inc) [])]
         (let [parts (into [] (self/call-llm "anthropic/claude-haiku-4-5"

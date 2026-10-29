@@ -739,6 +739,9 @@
       "It calls query_to_xml, which runs SQL passed to it as text that this check cannot see into."
       :postgres "SELECT query_to_xml('SELECT pg_advisory_lock(1)', true, false, '')"
 
+      "It calls a function through IDENTIFIER(...), whose name this check cannot read. Call the function by its name."
+      :snowflake "SELECT IDENTIFIER('f')(1)"
+
       "It is too long to check. Shorten it, for example with a subquery in place of a long list."
       :postgres (str "SELECT 1 FROM t WHERE x IN (" (str/join ", " (repeat 20000 "NULL")) ")")
 

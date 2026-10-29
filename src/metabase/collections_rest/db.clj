@@ -7,11 +7,6 @@
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
-(mu/defn collection
-  "The Collection with `id`, or nil."
-  [id :- [:maybe ::lib.schema.id/collection]]
-  (t2/select-one :model/Collection :id id))
-
 (mu/defn directly-archived-descendant-collections
   "The directly archived Collections whose location starts with `location-prefix`."
   [location-prefix :- :string]

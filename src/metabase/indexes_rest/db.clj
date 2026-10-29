@@ -13,11 +13,6 @@
   [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/Database :id database-id))
 
-(mu/defn table-index
-  "The TableIndex with `id`, or nil."
-  [id :- ms/PositiveInt]
-  (t2/select-one :model/TableIndex :id id))
-
 (mu/defn insert-table-index!
   "Insert the TableIndex `row` and return the inserted instance."
   [row :- ::indexes.schema/table-index.update]

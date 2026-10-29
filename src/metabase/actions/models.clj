@@ -6,6 +6,7 @@
    [metabase.actions.db :as actions.db]
    [metabase.actions.schema :as actions.schema]
    [metabase.api.common :as api]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -15,6 +16,7 @@
    [metabase.parameters.core :as parameters]
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.core :as public-sharing]
+   [metabase.queries.db :as queries.db]
    [metabase.queries.models.query :as query]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
@@ -22,6 +24,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouses.db :as warehouses.db]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
@@ -98,7 +102,7 @@
 (defn- check-implicit-action-model
   "Throws a 400 unless the Card with `model-id` is a model."
   [model-id]
-  (when-not (= (actions.db/card-type model-id) :model)
+  (when-not (= (:type (queries.db/card model-id)) :model)
     (throw (ex-info (tru "Actions must be made with models, not cards.")
                     {:status-code 400}))))
 
@@ -107,7 +111,7 @@
   [{model-id :model_id, :as action}]
   (when (and (implicit? action)
              model-id
-             (not (query/supports-implicit-actions? (actions.db/card-query model-id))))
+             (not (query/supports-implicit-actions? (:dataset_query (queries.db/card model-id)))))
     (throw (ex-info (tru "Implicit actions are not supported for models with clauses.")
                     {:status-code 400}))))
 
@@ -124,7 +128,7 @@
 (defn- collection-namespace
   "The namespace of the Collection with `collection-id` as a keyword, or nil."
   [collection-id]
-  (some-> collection-id actions.db/collection-namespace keyword))
+  (some-> collection-id collections.db/collection :namespace keyword))
 
 (defn- check-model-less-collection
   "Throws a 400 unless an Action without a model is in the data actions root or a data actions or data app Collection."
@@ -151,7 +155,7 @@
 (defn- set-model-collection
   "`action` with the `:collection_id` of its model Card; throws a 400 when it is given another Collection."
   [{model-id :model_id, collection-id :collection_id, :as action}]
-  (let [model-collection-id (actions.db/card-collection-id model-id)]
+  (let [model-collection-id (:collection_id (queries.db/card model-id))]
     (when (and (some? collection-id) (not= collection-id model-collection-id))
       (throw (model-collection-error)))
     (assoc action :collection_id model-collection-id)))
@@ -206,7 +210,7 @@
              (some? table-id)
              (not mi/*deserializing?*)
              (perms/data-app-collection? collection-id)
-             (not (actions.db/table-published? table-id)))
+             (not (:is_published (warehouse-schema.db/table table-id))))
     (throw (data-app-action-error (tru "An implicit action in a data app''s collection can write only to a table published to the Library.")))))
 
 (t2/define-before-insert :model/Action
@@ -225,7 +229,7 @@
       (throw (ex-info (tru "An action''s model can''t be changed.") {:status-code 400})))
     (when (and model-id
                (changed? :collection_id)
-               (not= (:collection_id action) (actions.db/card-collection-id model-id)))
+               (not= (:collection_id action) (:collection_id (queries.db/card model-id))))
       (throw (model-collection-error)))
     (u/prog1 (public-sharing/add-public-uuid-prefix-if-changed action)
       (when (and (implicit? action) model-id (changed? :type))
@@ -251,19 +255,19 @@
 (t2/define-before-insert :model/QueryAction
   [query-action]
   (u/prog1 (set-query-database query-action)
-    (check-data-app-action-query (actions.db/action-collection-id (:action_id <>)) (:dataset_query <>))))
+    (check-data-app-action-query (:collection_id (actions.db/action (:action_id <>))) (:dataset_query <>))))
 
 (t2/define-before-update :model/QueryAction
   [query-action]
   (u/prog1 (set-query-database query-action)
     (when (contains? (t2/changes query-action) :dataset_query)
-      (check-data-app-action-query (actions.db/action-collection-id (:action_id <>)) (:dataset_query <>)))))
+      (check-data-app-action-query (:collection_id (actions.db/action (:action_id <>))) (:dataset_query <>)))))
 
 (defn- check-implicit-action-table
   "Throws a 400 unless `implicit-action` has a Table exactly when its Action has no model, as an action of a model writes
   to the table its model reads when it runs."
   [{table-id :table_id, action-id :action_id}]
-  (if (actions.db/action-model-id action-id)
+  (if (:model_id (actions.db/action action-id))
     (when (some? table-id)
       (throw (ex-info (tru "An action of a model writes to the model''s table, so it can''t be given one.")
                       {:status-code 400})))
@@ -290,7 +294,7 @@
   the action is in a data app's collection."
   [{table-id :table_id, action-id :action_id}]
   (when table-id
-    (check-data-app-action-table (actions.db/action-collection-id action-id) table-id)))
+    (check-data-app-action-table (:collection_id (actions.db/action action-id)) table-id)))
 
 (t2/define-before-update :model/ImplicitAction
   [implicit-action]
@@ -312,7 +316,8 @@
     :implicit [(if model-id
                  (:database_id (actions.db/card-scope-columns model-id))
                  (some-> (or table-id (some-> action-id actions.db/implicit-action-table-id))
-                         actions.db/table-database-id))]
+                         warehouse-schema.db/table
+                         :db_id))]
     :query    [(:database query)]
     []))
 
@@ -321,7 +326,7 @@
   [action]
   (doseq [database-id (action-database-ids action)
           :when       database-id]
-    (actions/check-actions-enabled-for-database (actions.db/database database-id))))
+    (actions/check-actions-enabled-for-database (warehouses.db/database database-id))))
 
 (defn- effective-collection-id
   "The id of the Collection `action` goes in, its model's when it has one; throws a 404 when either does not exist."
@@ -778,7 +783,7 @@
          (serdes/mbql-deps true dataset_query)))))))
 
 (defmethod serdes/descendants "Action" [_model-name id _opts]
-  (when-let [model-id (actions.db/action-model-id id)]
+  (when-let [model-id (:model_id (actions.db/action id))]
     {["Card" model-id] {"Action" id}}))
 
 ;;;; ------------------------------------------------- Search ----------------------------------------------------------

@@ -34,8 +34,7 @@
   (testing "Creating a session with Google SSO authentication tracks the auth_identity_id"
     (mt/with-temp [:model/User user {}
                    :model/AuthIdentity google-auth {:user_id (:id user)
-                                                    :provider "google"
-                                                    :metadata {:sso_source "google"}}]
+                                                    :provider "google"}]
       (let [device-info {:device_id "test-device-456"
                          :embedded false
                          :token_exchange false
@@ -51,8 +50,7 @@
   (testing "Creating a session with LDAP authentication tracks the auth_identity_id"
     (mt/with-temp [:model/User user {}
                    :model/AuthIdentity ldap-auth {:user_id (:id user)
-                                                  :provider "ldap"
-                                                  :metadata {:login_attributes {:uid "testuser"}}}]
+                                                  :provider "ldap"}]
       (let [device-info {:device_id "test-device-789"
                          :embedded false
                          :token_exchange false

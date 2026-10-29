@@ -9,11 +9,6 @@
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
-(mu/defn database-engine
-  "The engine of the Database with `database-id`, or nil."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :engine :model/Database :id database-id))
-
 (defn- table-match-clause
   "Match a Table by name and, when given, schema, both case-insensitively."
   [{:keys [schema table]}]
