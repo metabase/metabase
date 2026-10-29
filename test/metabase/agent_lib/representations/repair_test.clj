@@ -4184,6 +4184,16 @@
              (base-type (first (join-fields (orders-stage {"aggregation" [["count" {}]]
                                                            "breakout"    [(orders-col "USER_ID")]})))))))))
 
+(deftest ^:parallel join-without-alias-fields-test
+  (testing "a by-name ref in the fields of a join with no alias is left for validation"
+    (let [no-alias (-> (join "First" [first-orders-stage] :lhs user-id-by-name)
+                       (dissoc "alias")
+                       (assoc "fields" [["field" {} "min"]]))
+          q        (query (orders-stage {"aggregation" [["count" {}]]
+                                         "breakout"    [(orders-col "USER_ID")]})
+                          (stage {"joins" [no-alias]}))]
+      (is (= [["field" {} "min"]] (get-in (repair* q) ["stages" 1 "joins" 0 "fields"]))))))
+
 (def ^:private prev-joined-stage
   "Orders with a `Prev` join of each user's first order, returning all its columns."
   (orders-stage {"joins" [(assoc (join "Prev" [first-orders-stage]) "fields" "all")]}))
