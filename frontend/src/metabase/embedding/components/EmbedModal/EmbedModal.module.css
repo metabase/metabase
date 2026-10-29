@@ -27,3 +27,16 @@
     color: var(--mb-color-core-brand);
   }
 }
+
+.clickableTitle {
+  cursor: pointer;
+
+  &:hover {
+    color: var(--mb-color-core-brand);
+  }
+}
+
+.header:has(.clickableTitle:hover) .backButton,
+.header:has(.backButton:hover) .clickableTitle {
+  color: var(--mb-color-core-brand);
+}
