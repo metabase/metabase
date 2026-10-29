@@ -5,6 +5,7 @@
    [clojure.test :refer :all]
    [compojure.response]
    [metabase.api.common :as mb.api]
+   [metabase.api.macros :as api.macros]
    [metabase.config.core :as config]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -34,6 +35,7 @@
    [metabase.test.server.handler :as test.server.handler]
    [metabase.util :as u]
    [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -1560,6 +1562,24 @@
   (testing "items without :chart_configs keep no chart_configs"
     (let [result (first (upgrade-viewing-queries [{:type "question" :query (legacy-query)}]))]
       (is (nil? (:chart_configs result))))))
+
+(deftest ^:parallel upgrade-viewing-queries-keeps-lib-uuids-test
+  (testing "an MBQL 5 query keeps its :lib/uuids through the request decoder, so a ref to its aggregation still resolves (BOT-2410)"
+    (let [q        (let [q (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                               (lib/aggregate (lib/count)))]
+                     (lib/order-by q (lib/aggregation-ref q 0) :desc))
+          agg-uuid (-> q :stages first :aggregation first second :lib/uuid)
+          ;; the query as the frontend sends it: serialized, after a JSON round trip
+          sent     (-> q lib/prepare-for-serialization json/encode json/decode+kw)
+          body     (api.macros/decode-and-validate-params
+                    :body
+                    [:map [:context ::metabot.context/context]]
+                    {:context {:user_is_viewing [{:type "adhoc" :query sent}]}})
+          [item]   (#'api/upgrade-viewing-queries (get-in body [:context :user_is_viewing]))
+          stage    (-> item :query :stages first)]
+      (is (= agg-uuid (-> stage :aggregation first second :lib/uuid)))
+      (is (= agg-uuid (-> stage :order-by first (nth 2) (nth 2))))
+      (is (mr/validate :metabase.lib.schema/query (:query item))))))
 
 (deftest upgrade-viewing-queries-mixed-items-test
   (let [lq (legacy-query)
