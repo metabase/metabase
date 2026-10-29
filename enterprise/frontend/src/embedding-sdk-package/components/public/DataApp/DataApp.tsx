@@ -15,6 +15,7 @@ import { useMetabaseProviderPropsStore } from "embedding-sdk-package/lib/provide
 import {
   getDataAppEmbedUrl,
   normalizeDataAppPath,
+  validateDataAppPath,
 } from "embedding-sdk-shared/lib/embedded-data-app-path";
 import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
@@ -59,6 +60,7 @@ function DataAppInner({ path, ...props }: DataAppProps) {
     }
 
     try {
+      validateDataAppPath(path);
       const url = getDataAppEmbedUrl(instanceUrl, path);
       url.searchParams.set("embed-js-identifier", `react-data-app-${id}`);
       return {
