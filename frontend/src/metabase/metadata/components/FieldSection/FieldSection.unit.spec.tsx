@@ -297,6 +297,44 @@ describe("FieldSection", () => {
         });
       });
     });
+
+    it("shows the AI source for a previewed data sensitivity proposal", async () => {
+      const savedField = createOrdersQuantityField({
+        data_sensitivity: "PUBLIC",
+        data_sensitivity_source: "human",
+      });
+      const table = createOrdersTable({ fields: [savedField] });
+      const previewField = createOrdersQuantityField({
+        data_sensitivity: "PII",
+        ai_proposals: {
+          data_sensitivity: {
+            value: "PII",
+            reasoning: null,
+            confidence: null,
+            conflict: true,
+          },
+        },
+      });
+      setup({
+        field: previewField,
+        table,
+        database: createSampleDatabase({ tables: [table] }),
+      });
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called(`path:/api/field/${savedField.id}`),
+        ).toBe(true);
+      });
+      expect(await screen.findByText("Set by AI")).toBeInTheDocument();
+      expect(screen.getByLabelText("Data sensitivity")).toHaveValue(
+        "Personally identifiable information",
+      );
+      expect(screen.queryByText("Set by a person")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Reset" }),
+      ).not.toBeInTheDocument();
+    });
   });
 
   describe("read-only table", () => {

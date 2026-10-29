@@ -14,6 +14,7 @@ import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
 import type {
   Field,
   FieldDataSensitivity,
+  FieldDataSensitivitySource,
   FieldId,
   Table,
 } from "metabase-types/api";
@@ -59,6 +60,11 @@ const MetadataSectionBase = ({
   }, [table, field, getFieldHref]);
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
+  // A preview shows the proposal as if accepted, and accepting it writes the AI layer.
+  const dataSensitivitySource: FieldDataSensitivitySource | null =
+    field.ai_proposals?.data_sensitivity != null
+      ? "ai"
+      : (editableField?.data_sensitivity_source ?? null);
 
   const handleChange = async (patch: Patch) => {
     const { error } = await updateField({ id, ...patch });
@@ -133,7 +139,7 @@ const MetadataSectionBase = ({
       <DataSensitivityPicker
         description={t`How sensitive this data is`}
         label={t`Data sensitivity`}
-        source={editableField?.data_sensitivity_source ?? null}
+        source={dataSensitivitySource}
         value={field.data_sensitivity ?? null}
         onChange={handleDataSensitivityChange}
         onReset={handleDataSensitivityReset}
