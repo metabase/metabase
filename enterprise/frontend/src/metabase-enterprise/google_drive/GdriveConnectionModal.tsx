@@ -3,6 +3,7 @@ import { type FormEvent, useState } from "react";
 import { c, t } from "ttag";
 
 import { skipToken, useGetUserQuery } from "metabase/api";
+import { getErrorMessage } from "metabase/api/utils/errors";
 import { CopyButton } from "metabase/common/components/CopyButton";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Markdown } from "metabase/common/components/Markdown";
@@ -128,7 +129,7 @@ function GoogleSheetsConnectModal({
         onClose(true);
       })
       .catch((response) => {
-        setErrorMessage(response?.data?.message ?? "Something went wrong");
+        setErrorMessage(getErrorMessage(response));
       });
   };
 

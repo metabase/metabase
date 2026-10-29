@@ -3,7 +3,6 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { isErrorWithMessage } from "metabase/admin/performance/utils";
 import {
   useGetAdminSettingsDetailsQuery,
   useGetSettingsQuery,
@@ -125,9 +124,10 @@ export const BaseSMTPConnectionForm = ({
       sendToast({
         icon: "warning",
         toastColor: "feedback-negative",
-        message: isErrorWithMessage(result.error)
-          ? result.error.data.message
-          : t`Error clearing email settings`,
+        message: getErrorMessage(
+          result.error,
+          t`Error clearing email settings`,
+        ),
       });
     } else {
       sendToast({

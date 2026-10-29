@@ -151,11 +151,12 @@
   "Return the data part used to surface a query/chart result to the frontend.
 
   When `inline?` is true (the surface declared it can render visualizations
-  inline) returns a `generated_entity` card part that embeds the (legacy)
-  dataset_query so the FE runs and renders it in the conversation; otherwise
-  returns a `navigate_to` part that sends the user to the question. Pure: the
-  caller passes `inline?` (typically `(shared/inline-viz-capable?)`) and a legacy
-  `query`. The caller must supply a distinct `entity-id` (card id), `query-id`,
+  inline) returns a `generated_entity` card part that embeds the dataset_query
+  so the FE runs and renders it in the conversation; otherwise returns a
+  `navigate_to` part that sends the user to the question. Pure: the caller
+  passes `inline?` (typically `(shared/inline-viz-capable?)`) and a `query`
+  prepared by `links/->frontend-query`. The caller must supply a distinct
+  `entity-id` (card id), `query-id`,
   and `title`; `display` is included when present."
   [{:keys [inline? entity-id query-id query display title link]}]
   (if inline?

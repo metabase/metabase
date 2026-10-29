@@ -255,14 +255,20 @@
              (when-not (str/blank? instance) {:instanceName instance}))
       (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon)))
 
-(def ^:private disallowed-additional-opts
-  #"(?i)(?:socketFactoryClass|socketFactoryConstructorArg|trustManagerClass|trustManagerConstructorArg|accessTokenCallbackClass)")
+(def ^:private sqlserver-disallowed-parameters
+  ["socketFactoryClass" "socketFactoryConstructorArg" "trustManagerClass" "trustManagerConstructorArg"
+   "accessTokenCallbackClass"])
+
+(defmethod driver/disallowed-connection-parameters :sqlserver
+  [driver]
+  (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver) sqlserver-disallowed-parameters))
 
 (defmethod driver/validate-db-details! :sqlserver
-  [_driver {:keys [host additional-options] :as details}]
-  (when-let [match (some->> (str host ";" additional-options) (re-find disallowed-additional-opts))]
-    (throw (ex-info "Potentially dangerous keys in connection details" {:disallowed-key match})))
-  (sql-jdbc/reject-dangerous-additional-options! details))
+  [driver {:keys [host] :as details}]
+  ;; `host` is written into the connection string too, so a property can be smuggled in through it after a `;`
+  (when-let [match (driver.u/disallowed-connection-parameter driver host)]
+    (throw (ex-info "Potentially dangerous keys in connection details" {:status-code 400, :disallowed-key match})))
+  (driver.u/validate-connection-parameters! driver details))
 
 (defmethod driver/can-connect? :sqlserver
   [driver details]

@@ -21,18 +21,8 @@ import type {
   CacheStrategyType,
   CacheableModel,
 } from "metabase-types/api";
-import { isObject } from "metabase-types/guards";
 
 import { rootId } from "./constants/simple";
-
-type ErrorWithMessage = { data: { message: string } };
-export const isErrorWithMessage = (error: unknown): error is ErrorWithMessage =>
-  typeof error === "object" &&
-  error !== null &&
-  "data" in error &&
-  isObject(error.data) &&
-  "message" in error.data &&
-  typeof error.data.message === "string";
 
 const delay = (milliseconds: number) =>
   new Promise((resolve) => setTimeout(resolve, milliseconds));

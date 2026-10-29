@@ -2,10 +2,10 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { useAdminSetting } from "metabase/api/utils";
+import { getErrorMessage } from "metabase/api/utils/errors";
 import { InputWithSelectPrefix } from "metabase/common/components/InputWithSelectPrefix";
 import { useHasTokenFeature } from "metabase/common/hooks";
 import { Box, Text } from "metabase/ui";
-import type { GenericErrorResponse } from "metabase/utils/errors";
 
 import { SettingHeader } from "../SettingHeader";
 
@@ -24,10 +24,9 @@ export function SiteUrlWidget() {
     updateSetting({ key: "site-url", value: newValue }).then((response) => {
       setErrorMessage("");
       if (response?.error) {
-        const message =
-          (response.error as { data: GenericErrorResponse })?.data?.message ||
-          t`Error saving Site URL`;
-        setErrorMessage(message);
+        setErrorMessage(
+          getErrorMessage(response.error, t`Error saving Site URL`),
+        );
       }
     });
   };

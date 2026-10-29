@@ -6,6 +6,7 @@
    [metabase.driver-api.core :as driver-api]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]
@@ -18,6 +19,28 @@
 
 (declare #^:private substitute*)
 
+(def ^:private max-substituted-sql-length
+  "Maximum length of the SQL produced by substituting parameters into a native query."
+  10000000)
+
+(def ^:private max-snippet-expansions
+  "Maximum number of native query snippets that can be expanded while substituting parameters into a native query."
+  10000)
+
+(defn- check-snippet-expansion! [{:keys [expanding-snippet-ids snippet-expansions]} {:keys [snippet-id]}]
+  (when (contains? expanding-snippet-ids snippet-id)
+    (throw (ex-info (tru "This query has circular referencing snippets.")
+                    {:type driver-api/qp.error-type.invalid-query, :snippet-id snippet-id})))
+  (when (> (vswap! snippet-expansions inc) max-snippet-expansions)
+    (throw (ex-info (tru "This query uses too many snippets.")
+                    {:type driver-api/qp.error-type.invalid-query}))))
+
+(defn- check-sql-length! [[sql :as acc]]
+  (when (> (count sql) max-substituted-sql-length)
+    (throw (ex-info (tru "This query is too long.")
+                    {:type driver-api/qp.error-type.invalid-query})))
+  acc)
+
 (defn- ->replacement-snippet-info [metadata-providerable x]
   (qp.store/with-metadata-provider metadata-providerable
     (sql.params.substitution/->replacement-snippet-info driver/*driver* x)))
@@ -28,6 +51,13 @@
     #_sql     [:maybe string?]
     #_args    [:maybe [:sequential any?]]
     #_missing [:maybe any?]]])
+
+(mr/def ::ctx
+  [:map {:closed true}
+   ;; IDs of the snippets currently being expanded, used to detect snippets that reference themselves
+   [:expanding-snippet-ids [:set ::lib.schema.id/snippet]]
+   ;; volatile count of the snippets expanded so far by the current call to [[substitute]]
+   [:snippet-expansions    [:fn volatile?]]])
 
 (mu/defn- substitute-field-param :- ::acc
   [metadata-providerable
@@ -53,12 +83,15 @@
 
 (mu/defn- substitute-native-query-snippet :- ::acc
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   ctx                   :- ::ctx
    param->value
    [sql args missing]
    in-optional? v]
+  (check-snippet-expansion! ctx v)
   (let [{:keys [replacement-snippet]}                    (->replacement-snippet-info metadata-providerable v)
         [processed-snippet snippet-args snippet-missing] (substitute*
                                                           metadata-providerable
+                                                          (update ctx :expanding-snippet-ids conj (:snippet-id v))
                                                           param->value
                                                           (lib/parse-parameters replacement-snippet)
                                                           in-optional?)]
@@ -68,6 +101,7 @@
 
 (mu/defn- substitute-param :- ::acc
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   ctx                   :- ::ctx
    param->value
    [sql args missing] :- ::acc
    in-optional?
@@ -85,7 +119,7 @@
         (substitute-simple-query metadata-providerable [sql args missing] v)
 
         (lib/parsed-referenced-query-snippet-param? v)
-        (substitute-native-query-snippet metadata-providerable param->value [sql args missing] in-optional? v)
+        (substitute-native-query-snippet metadata-providerable ctx param->value [sql args missing] in-optional? v)
 
         (= v lib/parsed-param-no-value-placeholder)
         [sql args (conj missing k)]
@@ -97,10 +131,11 @@
 
 (mu/defn- substitute-optional :- ::acc
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   ctx                   :- ::ctx
    param->value
    [sql args missing] :- ::acc
    {subclauses :args}]
-  (let [[opt-sql opt-args opt-missing] (substitute* metadata-providerable param->value subclauses true)]
+  (let [[opt-sql opt-args opt-missing] (substitute* metadata-providerable ctx param->value subclauses true)]
     (if (seq opt-missing)
       [sql args missing]
       [(str sql opt-sql) (concat args opt-args) missing])))
@@ -108,23 +143,25 @@
 (mu/defn- substitute* :- ::acc
   "Returns a sequence of `[replaced-sql-string jdbc-args missing-parameters]`."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
+   ctx                   :- ::ctx
    param->value          :- [:maybe [:map-of string? any?]]
    parsed                :- [:sequential :metabase.lib.parameters.parse/parsed-token]
    in-optional?]
   (reduce
    (fn [[sql args missing] x]
-     (cond
-       (string? x)
-       [(str sql x) args missing]
+     (check-sql-length!
+      (cond
+        (string? x)
+        [(str sql x) args missing]
 
-       (lib/parsed-param? x)
-       (substitute-param metadata-providerable param->value [sql args missing] in-optional? x)
+        (lib/parsed-param? x)
+        (substitute-param metadata-providerable ctx param->value [sql args missing] in-optional? x)
 
-       (lib/parsed-optional-param? x)
-       (substitute-optional metadata-providerable param->value [sql args missing] x)
+        (lib/parsed-optional-param? x)
+        (substitute-optional metadata-providerable ctx param->value [sql args missing] x)
 
-       :else
-       (throw (ex-info (format "Unexpected parsed param ^%s %s" (some-> x class .getCanonicalName) (pr-str x)) {:x x}))))
+        :else
+        (throw (ex-info (format "Unexpected parsed param ^%s %s" (some-> x class .getCanonicalName) (pr-str x)) {:x x})))))
    nil
    parsed))
 
@@ -141,7 +178,11 @@
    param->value          :- [:maybe [:map-of string? any?]]]
   (log/tracef "Substituting %d params in query" (count param->value))
   (let [[sql args missing] (try
-                             (substitute* metadata-providerable param->value parsed-query false)
+                             (substitute* metadata-providerable
+                                          {:expanding-snippet-ids #{}, :snippet-expansions (volatile! 0)}
+                                          param->value
+                                          parsed-query
+                                          false)
                              (catch Throwable e
                                (throw (ex-info (tru "Unable to substitute parameters: {0}" (ex-message e))
                                                {:type         (or (:type (ex-data e)) driver-api/qp.error-type.qp)

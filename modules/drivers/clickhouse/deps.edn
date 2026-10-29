@@ -1,11 +1,16 @@
 {:paths ["src" "resources"]
  :deps
- {com.clickhouse/clickhouse-jdbc {:mvn/version "0.9.8"
+ {com.clickhouse/clickhouse-jdbc {:mvn/version "0.11.0"
                                   :exclusions [org.apache.commons/commons-lang3
                                                org.lz4/lz4-java
+                                               ;; pulls the `cloud` classifier, which holds the same classes as
+                                               ;; the plain artifact below that other drivers also use
+                                               com.github.luben/zstd-jni
                                                ;; pinned in and resolved from /deps.edn
+                                               com.google.guava/guava
                                                org.apache.httpcomponents.client5/httpclient5
                                                org.apache.httpcomponents.core5/httpcore5
                                                org.apache.httpcomponents.core5/httpcore5-h2]}
   ;; original org.lz4:lz4-java project is discontinued, this is the maintained fork
-  at.yawk.lz4/lz4-java {:mvn/version "1.10.2"}}}
+  at.yawk.lz4/lz4-java {:mvn/version "1.11.4"}
+  com.github.luben/zstd-jni {:mvn/version "1.5.7-23"}}}

@@ -1098,7 +1098,7 @@ describe("scenarios > dashboard", () => {
         );
 
         cy.log("should not be visible (below the fold)");
-        cy.visit(`/dashboard/${dashboard.id}}`);
+        cy.visit(`/dashboard/${dashboard.id}`);
         cy.findByText(TARGET_TEXT).should("not.be.visible");
 
         cy.log("should scroll into view w/ scrollTo hash param");

@@ -73,7 +73,6 @@ export const setup = ({
       duration={duration}
       error={error as DatasetError}
       errorType={errorType}
-      via={[]}
     />,
     { storeInitialState: state },
   );

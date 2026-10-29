@@ -15,6 +15,7 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
    [methodical.core :as methodical]
@@ -104,7 +105,8 @@
                         {:base            (reify token-check/TokenChecker
                                             (-check-token [_ token]
                                               (token-response token))
-                                            (-clear-cache! [_]))
+                                            (-clear-cache! [_])
+                                            (-clear-local-cache! [_]))
                          :circuit-breaker {:failure-threshold-ratio-in-period [4 4 1000]
                                            :delay-ms                          50
                                            :success-threshold                 1}
@@ -138,7 +140,8 @@
                           {:base            (reify token-check/TokenChecker
                                               (-check-token [_ token]
                                                 (token-response token))
-                                              (-clear-cache! [_]))
+                                              (-clear-cache! [_])
+                                              (-clear-local-cache! [_]))
                            :circuit-breaker {:failure-threshold-ratio-in-period [4 4 1000]
                                              :delay-ms                          5000
                                              :success-threshold                 1}
@@ -504,10 +507,54 @@
     (token-check/make-checker
      {:base      (reify token-check/TokenChecker
                    (-check-token [_ token] (token-response-fn token))
-                   (-clear-cache! [_]))
+                   (-clear-cache! [_])
+                   (-clear-local-cache! [_]))
       :local-ttl local-ttl
       :soft-ttl  soft-ttl
       :hard-ttl  hard-ttl})))
+
+(deftest clear-local-cache-test
+  (testing "clear-local-cache! drops in-process memoization but leaves the shared DB row alone"
+    (let [token         (tu/random-token)
+          token-hash    (#'token-check/hash-token token)
+          call-count    (atom 0)
+          deletes       (atom 0)
+          good-response {:valid true :status "OK" :features ["sandboxes"] :canonical? true}
+          local-cache   (atom {})
+          checker       (binding [token-check/*customize-checker* true]
+                          (token-check/make-checker
+                           {:base                (reify token-check/TokenChecker
+                                                   (-check-token [_ _token]
+                                                     (swap! call-count inc)
+                                                     good-response)
+                                                   (-clear-cache! [_])
+                                                   (-clear-local-cache! [_]))
+                            ;; long enough that nothing expires during the test
+                            :local-ttl           (t/hours 1)
+                            :soft-ttl            (t/hours 12)
+                            :hard-ttl            (t/hours 36)
+                            :db-hash-local-cache local-cache}))]
+      (try
+        (is (= good-response (token-check/check-token checker token)))
+        (is (= 1 @call-count))
+        (mt/with-dynamic-fn-redefs [token-check/clear-db-cache! (fn [] (swap! deletes inc))]
+          (token-check/-clear-local-cache! checker))
+        (is (zero? @deletes) "the shared DB row is never deleted")
+        (is (some? (t2/select-one :model/PremiumFeaturesCache :token_hash token-hash)))
+        (is (contains? @local-cache token-hash) "the DB-hash-validated local entry survives")
+        (testing "the next check re-validates against the DB hash and, since it matches, skips the MetaStore"
+          (is (= good-response (token-check/check-token checker token)))
+          (is (= 1 @call-count)))
+        (testing "but a refresh done by another instance (DB hash changed) is picked up"
+          (t2/update! :model/PremiumFeaturesCache :token_hash token-hash {:token_status_hash "refreshed-elsewhere"})
+          (testing "not while the in-process memo still holds"
+            (is (= good-response (token-check/check-token checker token)))
+            (is (= 1 @call-count)))
+          (token-check/-clear-local-cache! checker)
+          (is (= good-response (token-check/check-token checker token)))
+          (is (= 2 @call-count)))
+        (finally
+          (token-check/-clear-cache! checker))))))
 
 (deftest db-hash-aware-token-checker-fresh-hit-test
   (testing "Fresh cache entry (< soft-ttl) is returned without hitting the underlying checker"
@@ -805,3 +852,12 @@
         (mt/with-temporary-setting-values [premium-embedding-token nil]
           (token-check/-set-premium-embedding-token! token)
           (is (= token (premium-features/premium-embedding-token))))))))
+
+(deftest invalid-token-error-response-test
+  (testing "an invalid token's error response carries its `:error-details`, and nothing else from the ex-data"
+    (let [data (try (token-check/-set-premium-embedding-token! "not-a-token")
+                    (catch clojure.lang.ExceptionInfo e (ex-data e)))]
+      (is (= {:message       "Token format is invalid."
+              :error-details "Token should be 64 hexadecimal characters."}
+             (api-error/response-data data)))
+      (is (= 400 (:status-code data))))))

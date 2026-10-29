@@ -322,6 +322,16 @@
   ;; becomes available
   false)
 
+(defenterprise sandboxed-user-for-db?
+  "Returns a boolean if the current user has any enforced sandbox for the given database. In OSS this is always false.
+  Will throw an error if [[api/*current-user-id*]] is not bound."
+  metabase-enterprise.sandbox.api.util
+  [_db-or-id]
+  (when-not api/*current-user-id*
+    (throw (ex-info (str (tru "No current user found"))
+                    {:status-code 403})))
+  false)
+
 (defenterprise row-restricted-by-routing?
   "Whether database routing sends the current user from router `db-or-id` to a Destination Database. In OSS this is
   always false. The EE implementation ignores feature availability, so a restriction never disappears just because a
@@ -357,6 +367,20 @@
                     {:status-code 403})))
   ;; oss doesn't have connection impersonation. But we throw if no current-user-id so the behavior doesn't change when
   ;; ee version becomes available
+  false)
+
+(defenterprise routed-user?
+  "Returns a boolean if the current user is routed to a destination database for any router database they can view
+  data from. In OSS this is always false. Will throw an error if [[api/*current-user-id*]] is not bound."
+  metabase-enterprise.database-routing.common
+  []
+  (when-not api/*current-user-id*
+    ;; If no *current-user-id* is bound we can't check for routing, so we should throw in this case to avoid returning
+    ;; `false` for users who should actually be routed.
+    (throw (ex-info (str (tru "No current user found"))
+                    {:status-code 403})))
+  ;; oss doesn't have database routing. But we throw if no current-user-id so the behavior doesn't change when the ee
+  ;; version becomes available
   false)
 
 (defn sandboxed-or-impersonated-user?

@@ -276,8 +276,9 @@
    [:context                             {:optional true} [:maybe :keyword]]
    [:models                                               [:maybe [:set SearchableModel]]]
    [:current-user-id                                      pos-int?]
-   [:is-impersonated-user?               {:optional true} :boolean]
-   [:is-sandboxed-user?                  {:optional true} :boolean]
+   [:is-impersonated-user?                                :boolean]
+   [:is-sandboxed-user?                                   :boolean]
+   [:is-routed-user?                                      :boolean]
    [:is-superuser?                                        :boolean]
    [:is-data-analyst?                    {:optional true} :boolean]
    [:current-user-perms                                   [:set perms/PathSchema]]
@@ -323,6 +324,7 @@
            ids
            is-impersonated-user?
            is-sandboxed-user?
+           is-routed-user?
            include-dashboard-questions?
            include-metadata?
            is-superuser?
@@ -365,6 +367,7 @@
                                                                  (fvalue :filter-items-in-personal-collection))
                         :is-impersonated-user?               is-impersonated-user?
                         :is-sandboxed-user?                  is-sandboxed-user?
+                        :is-routed-user?                     is-routed-user?
                         :is-superuser?                       is-superuser?
                         :is-data-analyst?                    (boolean is-data-analyst?)
                         :models                              models

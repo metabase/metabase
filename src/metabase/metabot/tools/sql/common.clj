@@ -15,7 +15,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metabot.tools.sql.validation :as metabot.tools.sql.validation]
-   [metabase.permissions.core :as perms]
+   [metabase.query-permissions.core :as query-perms]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli.registry :as mr]))
 
@@ -45,10 +45,12 @@
   non-integer `database-id` fails closed."
   [database-id]
   (when-not (and (int? database-id)
-                 (= :query-builder-and-native
-                    (perms/full-database-permission-for-user api/*current-user-id*
-                                                             :perms/create-queries
-                                                             database-id)))
+                 (some? api/*current-user-id*)
+                 ;; The check the QP makes before it runs SQL. Native permission alone is not enough: the user also
+                 ;; needs unrestricted data access, and no sandbox on the database from any of their groups.
+                 (query-perms/can-run-query? {:database database-id
+                                              :type     :native
+                                              :native   {:query "SELECT 1"}}))
     (throw (ex-info (tru "You do not have permission to write SQL queries against this database. Native query permissions are required.")
                     {:agent-error?    true
                      :terminal-error? true

@@ -340,6 +340,7 @@
            metabase.app-db.init
            metabase.app-db.setting
            metabase.app-db.setup
+           metabase.app-db.sql-errors
            metabase.app-db.transient-error}
    :uses #{auth-provider
            classloader
@@ -551,7 +552,6 @@
    :model-imports #{:model/AuditLog
                     :model/Card
                     :model/LoginHistory
-                    :model/Session
                     :model/Setting
                     :model/User
                     :model/UserParameterValue
@@ -1136,7 +1136,8 @@
            metabase.lib.schema.util
            metabase.lib.schema.validate
            metabase.lib.types.isa
-           metabase.lib.util}
+           metabase.lib.util
+           metabase.lib.walk}
    :uses #{config
            graph
            legacy-mbql
@@ -1307,6 +1308,7 @@
               permissions
               premium-features
               pulse
+              query-permissions
               query-processor
               request
               search
@@ -1847,6 +1849,7 @@
               metabase.query-processor.pivot
               metabase.query-processor.preprocess
               metabase.query-processor.schema
+              metabase.query-processor.sensitive-fields
               metabase.query-processor.setup
               metabase.query-processor.store
               metabase.query-processor.streaming
@@ -2020,7 +2023,7 @@
   secrets
   {:team "Graphy"
    :api  #{metabase.secrets.core}
-   :uses #{api driver models premium-features util}}
+   :uses #{api driver models premium-features system util}}
 
   segments
   {:team "Graphy"
@@ -2277,7 +2280,7 @@
   {:team "UX West"
    :api  #{metabase.system.core
            metabase.system.init}
-   :uses #{appearance settings util}}
+   :uses #{appearance premium-features settings util}}
 
   task
   {:team "UX West"
@@ -3108,6 +3111,7 @@
            events
            lib
            models
+           permissions
            premium-features
            query-processor
            settings

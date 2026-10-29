@@ -34,12 +34,10 @@ import * as Urls from "metabase/urls";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type {
-  DatasetQuery,
   IconName,
   MetabotCodeEdit,
   MetabotCodeEditorBufferContext,
   MetabotSourceFeedback,
-  NativeDatasetQuery,
   TemplateTags,
 } from "metabase-types/api";
 
@@ -68,11 +66,6 @@ type SourceFeedbackTarget = Pick<
   "source_id" | "source_type"
 >;
 
-const isNativeDatasetQuery = (
-  datasetQuery: DatasetQuery,
-): datasetQuery is NativeDatasetQuery =>
-  "type" in datasetQuery && datasetQuery.type === "native";
-
 const decodeQueryFromPath = (path: string): DecodedQuery => {
   try {
     const datasetQuery = deserializeCardFromQuery(path).dataset_query;
@@ -80,22 +73,25 @@ const decodeQueryFromPath = (path: string): DecodedQuery => {
       return { kind: "none" };
     }
 
-    if (isNativeDatasetQuery(datasetQuery)) {
-      const sql = datasetQuery.native.query;
-      const databaseId = datasetQuery.database;
-      if (typeof sql === "string" && typeof databaseId === "number") {
-        return {
-          kind: "native",
-          databaseId,
-          sql,
-          templateTags: datasetQuery.native["template-tags"],
-        };
-      }
-      return { kind: "none" };
-    }
-
     const question = Question.create({ dataset_query: datasetQuery });
     const query = question.query();
+    const isNativeOnly =
+      Lib.queryDisplayInfo(query).isNative && Lib.stageCount(query) === 1;
+
+    if (isNativeOnly) {
+      const databaseId = Lib.databaseID(query);
+      if (databaseId == null) {
+        return { kind: "none" };
+      }
+      const templateTags = Lib.templateTags(query);
+      return {
+        kind: "native",
+        databaseId,
+        sql: Lib.rawNativeQuery(query),
+        templateTags:
+          Object.keys(templateTags).length > 0 ? templateTags : undefined,
+      };
+    }
 
     const tableIds = uniqueNumbers(Lib.allSourceTableIds(query));
     const cardIds = uniqueNumbers(Lib.allSourceCardIds(query));

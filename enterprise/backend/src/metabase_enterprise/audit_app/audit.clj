@@ -97,6 +97,8 @@
                                                ;; Exclude DATABASECHANGELOG, DATABASECHANGELOGLOCK, and QRTZ_* tables, they are not metabase managed
                                                [:not= :table.name "DATABASECHANGELOG"]
                                                [:not= :table.name "DATABASECHANGELOGLOCK"] ;; new instances do not get this file, but existing instances may have it
+                                               [:not= :table.name "DATABASECHANGELOG_VERSION"]
+                                               [:not= :table.name "DATABASECHANGELOG_FIRST_RUN"]
                                                [:not [:like :table.name "QRTZ_%"]]
                                                [:not [:exists ^:allow-subquery
                                                       {:select [1]

@@ -402,7 +402,7 @@
      embedding text (they remain in full-text search). Use for fields whose raw value is
      not suitable for semantic search.
    - `:render-terms` - Additional attributes needed for display (required)
-   - `:visibility` - `:all` (default) or `:app-user` (non-sandboxed, non-impersonated users only)
+   - `:visibility` - `:all` (default) or `:app-user` (non-sandboxed, non-impersonated, non-routed users only)
    - `:where` - HoneySQL where clause to filter indexed records
    - `:bookmark` - HoneySQL join expression to detect if entity is bookmarked by current user
    - `:joins` - Map of join aliases to [model join-condition] tuples
