@@ -76,6 +76,20 @@
                                                            :ops   [{:op "add_card" :id -1 :card_id (:id card)}]}))))
           (is (not (t2/exists? :model/Dashboard :name dash-name))))))))
 
+(deftest malformed-ops-test
+  (testing "ops that are not a list fail as :invalid-op on every path, before anything reads them"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Dashboard dash {:name "Sales"}]
+        (doseq [ops            [5 {}]
+                validate-only? [true false]]
+          (testing (pr-str ops validate-only?)
+            (is (=? {::dashboard-ops/error :invalid-op}
+                    (error-data #(dashboard-write/write! {:dashboard      (hydrated (:id dash))
+                                                          :attrs          {:name "Revenue"}
+                                                          :ops            ops
+                                                          :validate-only? validate-only?}))))))
+        (is (= "Sales" (:name (hydrated (:id dash)))))))))
+
 (deftest invalid-payload-test
   (testing "ops that compile to a payload the save would reject fail with :invalid-payload, before any write"
     (mt/with-current-user (mt/user->id :crowberto)

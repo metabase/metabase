@@ -121,24 +121,28 @@
    With a `dashboard`, hydrated the same way and already read-checked by the caller, it updates that one.
    Without one it creates a dashboard.
    With `validate-only?` it writes nothing, and returns the dashboard the save would produce.
+   A nil `ops` means none were sent; anything else must be a list of ops.
    Throws an error from [[dashboard-ops/errors]] when an op is invalid or the save would be rejected."
-  [{:keys [dashboard attrs ops validate-only?]}]
-  (cond
-    (and validate-only? (nil? dashboard))
-    (let [blank                   (blank-dashboard attrs)
-          {:keys [payload cards]} (compile-write blank attrs (or ops []))]
-      (dry-run-dashboard blank attrs payload cards))
+  [{:keys [dashboard attrs validate-only?] :as opts}]
+  ;; Prepared before any branch reads them, so a malformed `ops` fails as :invalid-op rather than crashing a `seq`
+  ;; or passing as no ops.
+  (let [ops (some-> (:ops opts) dashboard-ops/prepare-ops)]
+    (cond
+      (and validate-only? (nil? dashboard))
+      (let [blank                   (blank-dashboard attrs)
+            {:keys [payload cards]} (compile-write blank attrs (or ops []))]
+        (dry-run-dashboard blank attrs payload cards))
 
-    (and validate-only? (seq ops))
-    (let [{:keys [payload cards]} (compile-write dashboard attrs ops)]
-      (dry-run-dashboard dashboard attrs payload cards))
+      (and validate-only? (seq ops))
+      (let [{:keys [payload cards]} (compile-write dashboard attrs ops)]
+        (dry-run-dashboard dashboard attrs payload cards))
 
-    validate-only?
-    (do (validate-payload! attrs)
-        (dry-run-dashboard dashboard attrs nil nil))
+      validate-only?
+      (do (validate-payload! attrs)
+          (dry-run-dashboard dashboard attrs nil nil))
 
-    (nil? dashboard)
-    (create-dashboard! attrs ops)
+      (nil? dashboard)
+      (create-dashboard! attrs ops)
 
-    :else
-    (saved-dashboard (:id (update-dashboard! dashboard attrs ops)))))
+      :else
+      (saved-dashboard (:id (update-dashboard! dashboard attrs ops))))))
