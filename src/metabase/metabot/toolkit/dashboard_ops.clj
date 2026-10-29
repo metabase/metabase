@@ -738,13 +738,20 @@
 ;;; ------------------------------------------------ Entry ---------------------------------------------------------
 
 (defn card-refs
-  "The ids of the cards `op` puts on the dashboard: its `card_id`, add_card's `series`, and set_series' `card_ids`.
+  "The ids of the cards `op` references.
+   Those are the cards it puts on the dashboard, and the card a parameter it adds or updates draws its values from.
    The caller resolves these into the `cards` map for [[compile-ops]], which rejects any it left out."
   [op]
-  (remove nil? (concat [(:card_id op)] (:series op) (:card_ids op))))
+  (remove nil?
+          (case (:op op)
+            "add_card"                           (cons (:card_id op) (:series op))
+            "replace_card"                       [(:card_id op)]
+            "set_series"                         (:card_ids op)
+            ("add_parameter" "update_parameter") [(get-in op [:values_source_config :card_id])]
+            nil)))
 
 (defn- check-cards-resolved!
-  "Every card `op` puts on the dashboard must be in the caller's `cards` map.
+  "Every card `op` references must be in the caller's `cards` map.
    The caller leaves out the cards its user cannot read, so this is where an op naming one fails."
   [state op]
   (doseq [card-id (card-refs op)
@@ -752,21 +759,22 @@
     (fail! :unknown-card {:card-id card-id})))
 
 (defn- apply-op-at
-  "Runs [[apply-op]] on `op`, the op at `idx`, after checking its cards are resolved.
+  "Runs [[apply-op]] on `op`, the op at `idx`, then checks that the cards it references are resolved.
    Adds `:op-index` and `:op-name` to any error it throws."
   [state idx op]
   (try
-    (check-cards-resolved! state op)
-    (apply-op state op)
+    ;; The card check runs second, so an op that is malformed in some other way reports that instead.
+    (doto (apply-op state op)
+      (check-cards-resolved! op))
     (catch clojure.lang.ExceptionInfo e
       (throw (if-let [data (error-data e)]
                (ex-info (ex-message e) (assoc data :op-index idx :op-name (:op op)) e)
                e)))))
 
 (defn compile-ops
-  "Fold `ops` over `current` (a dashboard hydrated with `[:dashcards :series :card] :tabs`) and
-   return `{:dashcards :tabs :parameters}` — the full-replacement payload `update-dashboard!`
-   saves. New rows carry the caller's negative ids.
+  "Fold `ops` over `current`, a dashboard hydrated with `[:dashcards :series :card] :tabs`.
+   Returns `{:dashcards :tabs :parameters}`, the full-replacement payload `update-dashboard!` saves.
+   New rows carry the caller's negative ids.
    The `cards` map holds the row of each card the ops may touch, keyed by id.
    It covers the cards [[card-refs]] finds in `ops` and the cards already on the dashboard.
    It leaves out cards the user cannot read.

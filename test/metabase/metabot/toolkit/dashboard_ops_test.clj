@@ -7,6 +7,7 @@
    [metabase.metabot.toolkit.dashboard-ops :as dashboard-ops]
    [metabase.parameters.mapping-targets :as mapping-targets]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
+   [metabase.util :as u]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -21,7 +22,7 @@
 (defn- resolved-cards
   "A bare card row for each card `ops` name, as a caller that can read them all resolves them."
   [ops]
-  (into {} (map (fn [id] [id {:id id}])) (mapcat dashboard-ops/card-refs ops)))
+  (u/for-map [id (mapcat dashboard-ops/card-refs ops)] [id {:id id}]))
 
 ;; TODO (Chris 2026-10-29) -- a name unique to this helper would be less ambiguous. It shares its name with
 ;; [[dashboard-ops/compile-ops]], but also resolves a stub row for every card the ops name.
@@ -1012,7 +1013,24 @@
                       [{:op "replace_card" :dashcard_id 7 :card_id 43}] {})))
     (is (=? {::dashboard-ops/error :unknown-card, :card-id 44, :op-name "set_series"}
             (op-error (dash-with [{:id 7 :card_id 9 :row 0 :col 0 :size_x 4 :size_y 4}])
-                      [{:op "set_series" :dashcard_id 7 :card_ids [44]}] {}))))
+                      [{:op "set_series" :dashcard_id 7 :card_ids [44]}] {})))
+    (is (=? {::dashboard-ops/error :unknown-card, :card-id 45, :op-name "add_parameter"}
+            (op-error empty-dash
+                      [{:op "add_parameter" :parameter_id "p1" :name "P" :type "string/="
+                        :values_source_type "card" :values_source_config {:card_id 45}}]
+                      {})))
+    (is (=? {::dashboard-ops/error :unknown-card, :card-id 46, :op-name "update_parameter"}
+            (op-error (assoc empty-dash :parameters [{:id "p1"}])
+                      [{:op "update_parameter" :parameter_id "p1"
+                        :values_source_type "card" :values_source_config {:card_id 46}}]
+                      {}))))
   (testing "ops are checked in order, so an earlier op's error is reported first"
     (is (=? {::dashboard-ops/error :unknown-op, :op-index 0}
-            (op-error empty-dash [{:op "frobnicate"} {:op "add_card" :id -1 :card_id 42}] {})))))
+            (op-error empty-dash [{:op "frobnicate"} {:op "add_card" :id -1 :card_id 42}] {}))))
+  (testing "an op's own error is reported before an unresolved card it names"
+    (is (=? {::dashboard-ops/error :unknown-op}
+            (op-error empty-dash [{:op "frobnicate" :card_id 42}] {})))
+    (is (=? {::dashboard-ops/error :unknown-dashcard, :dashcard-id 12345}
+            (op-error empty-dash [{:op "replace_card" :dashcard_id 12345 :card_id 42}] {}))))
+  (testing "a card key the op does not use is not checked"
+    (is (nil? (op-error empty-dash [{:op "add_text" :id -1 :markdown "hi" :card_id 42}] {})))))
