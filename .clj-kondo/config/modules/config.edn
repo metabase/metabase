@@ -4293,6 +4293,7 @@
            models
            premium-features
            query-processor
+           settings
            task
            util
            util.config

@@ -73,17 +73,20 @@
         (is (= "SELECT 2" (query-cache/validated-query :postgres false false native (constantly "SELECT 2"))))))))
 
 (deftest cleanup-deletes-outdated-rows-test
-  (mt/with-model-cleanup [:model/ImpersonationQueryCache]
-    (let [current  (mt/random-name)
-          old      (mt/random-name)
-          outdated (mt/random-name)]
-      (doseq [native [current old outdated]]
-        (query-cache/validated-query :postgres false false native (constantly "SELECT 1")))
-      (t2/update! :model/ImpersonationQueryCache :input_query old {:created_at (t/minus (t/offset-date-time) (t/days 31))})
-      (t2/update! :model/ImpersonationQueryCache :input_query outdated {:input_version "v0.0.0 (other)"})
-      (#'query-cache-cleanup/cleanup-query-cache!)
-      (is (= #{current}
-             (t2/select-fn-set :input_query :model/ImpersonationQueryCache
-                               :input_query [:in [current old outdated]])))
-      (is (= config/mb-version-string
-             (t2/select-one-fn :input_version :model/ImpersonationQueryCache :input_query current))))))
+  (mt/with-temporary-setting-values [impersonation-query-cache-retention-days 7]
+    (mt/with-model-cleanup [:model/ImpersonationQueryCache]
+      (let [current  (mt/random-name)
+            recent   (mt/random-name)
+            old      (mt/random-name)
+            outdated (mt/random-name)]
+        (doseq [native [current recent old outdated]]
+          (query-cache/validated-query :postgres false false native (constantly "SELECT 1")))
+        (t2/update! :model/ImpersonationQueryCache :input_query recent {:created_at (t/minus (t/offset-date-time) (t/days 6))})
+        (t2/update! :model/ImpersonationQueryCache :input_query old {:created_at (t/minus (t/offset-date-time) (t/days 8))})
+        (t2/update! :model/ImpersonationQueryCache :input_query outdated {:input_version "v0.0.0 (other)"})
+        (#'query-cache-cleanup/cleanup-query-cache!)
+        (is (= #{current recent}
+               (t2/select-fn-set :input_query :model/ImpersonationQueryCache
+                                 :input_query [:in [current recent old outdated]])))
+        (is (= config/mb-version-string
+               (t2/select-one-fn :input_version :model/ImpersonationQueryCache :input_query current)))))))

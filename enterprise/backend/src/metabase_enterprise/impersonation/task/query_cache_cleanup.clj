@@ -1,12 +1,13 @@
 (ns metabase-enterprise.impersonation.task.query-cache-cleanup
   "Scheduled task that deletes impersonation query cache rows cached by another Metabase version or more than
-  [[max-age-days]] ago."
+  [[impersonation.settings/impersonation-query-cache-retention-days]] ago."
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
    [java-time.api :as t]
    [metabase-enterprise.impersonation.db :as impersonation.db]
+   [metabase-enterprise.impersonation.settings :as impersonation.settings]
    [metabase.config.core :as config]
    [metabase.task.core :as task]
    [metabase.util.log :as log]
@@ -14,17 +15,13 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private max-age-days
-  "How long a cached validation result is kept."
-  30)
-
 (def ^:private cleanup-job-key (jobs/key "metabase.task.impersonation.query-cache-cleanup.job"))
 (def ^:private cleanup-trigger-key (triggers/key "metabase.task.impersonation.query-cache-cleanup.trigger"))
 
 (mu/defn- cleanup-query-cache! :- :nil
   "Delete the outdated impersonation query cache rows."
   []
-  (let [cutoff  (t/minus (t/offset-date-time) (t/days max-age-days))
+  (let [cutoff  (t/minus (t/offset-date-time) (t/days (impersonation.settings/impersonation-query-cache-retention-days)))
         deleted (impersonation.db/delete-outdated-query-cache-rows! config/mb-version-string cutoff)]
     (log/infof "Impersonation query cache cleanup complete. Deleted %d row(s)." deleted)))
 
