@@ -10,7 +10,10 @@
   functions that have a Lib expression function with the same meaning. Each sqlglot node class the subset covers has
   a converter in [[value-converters]], for a node used as a value, or [[predicate-converters]], for one used where a
   boolean is expected; [[->value]] and [[->predicate]] dispatch on the class. `NULLIF(x, 0)` as a divisor is plain
-  division in Metabase (see [[safe-divisor]]). Anything else is reported as unsupported, naming the construct.
+  division in Metabase (see [[safe-divisor]]). A negation keeps SQL's three-valued meaning, leaving the null rows out
+  (see [[not-equal]] and [[negated-match]]), and a cast or a `LIKE` whose meaning depends on the warehouse is read in
+  the dialect's terms (see [[cast->value]] and [[default-like-escape]]). Anything else is reported as unsupported,
+  naming the construct.
 
   Column references are resolved through a callback, so this namespace knows nothing about semantic models or
   Metabase metadata. Unsupported constructs are thrown with [[unsupported/throw!]], which the resolve stage turns
@@ -19,8 +22,10 @@
    [better-cond.core :as b]
    [clojure.string :as str]
    [dev.dbt-import.unsupported :as unsupported]
+   [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.sql-parsing.core :as sql-parsing]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -53,19 +58,28 @@
             :keyword :any]]
    [:func  {:optional true} :string]])
 
+(mr/def ::context
+  "What a converter needs besides its node: the dialect the SQL was parsed in, for the converters whose meaning depends
+  on the warehouse (see [[default-like-escape]] and [[cast->value]]), and the column callback."
+  [:map {:closed true}
+   [:dialect        ::dialect]
+   [:resolve-column ::resolve-column]])
+
 (mr/def ::converter
-  "A function of a node and the column callback that converts the node, see [[value-converters]] and
+  "A function of a node and the [[::context]] that converts the node, see [[value-converters]] and
   [[predicate-converters]]."
   ifn?)
 
-(def ^:private string-literal-re
-  "A single-quoted SQL string, with doubled quotes inside it."
-  #"'(?:[^']|'')*'")
+(mu/defn- dialect-name :- :string
+  "`dialect` for a message."
+  [dialect :- ::dialect]
+  (or dialect "the default dialect"))
 
 (mu/defn jinja? :- :boolean
-  "Does `sql` still contain Jinja (`{{`) outside its string literals? Inside one it is just text."
+  "Does `sql` still contain Jinja: an expression `{{`, a statement `{%` or a comment `{#`? Inside a string literal
+  too: dbt renders the template before the warehouse sees it, so `'{{ var(\"x\") }}'` is not the literal text."
   [sql :- :string]
-  (str/includes? (str/replace sql string-literal-re "''") "{{"))
+  (boolean (re-find #"\{\{|\{%|\{#" sql)))
 
 (mu/defn- parse :- ::node
   "Parse the SQL expression `sql` in `dialect`, or throw [[unsupported/throw!]] saying why it could not be parsed."
@@ -82,7 +96,7 @@
                             (pr-str sql) (first (str/split-lines (str (sql-parsing/parse-error-message e)))))
         (throw e)))))
 
-(mu/defn- arg :- :any
+(mu/defn- arg :- [:maybe [:or ::node [:sequential ::node] :string :boolean number?]]
   "The child `k` of `node`: a node, a vector of nodes, a string, a boolean or a number; nil when there is none."
   [node :- ::node
    k    :- :keyword]
@@ -101,12 +115,17 @@
       (recur (arg node :this))
       node)))
 
-(declare ->value ->predicate)
+(declare ->value ->predicate without-null-operands)
 
 (mu/defn- parse-number :- number?
-  "The number a SQL numeric literal `s` is: a long when it fits one, otherwise a double."
+  "The number a SQL numeric literal `s` is: a long when it fits one, otherwise a double. [[unsupported/throw!]] for
+  one no double holds (`1e400`), which would reach the YAML as infinity."
   [s :- :string]
-  (or (parse-long s) (parse-double s)))
+  (or (parse-long s)
+      (let [d (parse-double s)]
+        (when-not (and d (Double/isFinite d))
+          (unsupported/throw! "the number %s is too large to represent" s))
+        d)))
 
 (mu/defn- literal-number :- [:maybe number?]
   "The number `node` is, when it is a numeric literal; nil otherwise."
@@ -117,13 +136,13 @@
 (mu/defn- column->value :- ::value
   "A column reference, as the callback resolves it. The table qualifier, if any, is dropped: a metric has one table."
   [node           :- ::node
-   resolve-column :- ::resolve-column]
-  (resolve-column (arg (arg node :this) :this)))
+   ctx            :- ::context]
+  ((:resolve-column ctx) (arg (arg node :this) :this)))
 
 (mu/defn- literal->value :- [:or :string number?]
   "A string literal as the string, a numeric literal as the number."
   [node            :- ::node
-   _resolve-column :- ::resolve-column]
+   _ctx            :- ::context]
   (let [text (arg node :this)]
     (if (arg node :is_string)
       text
@@ -132,8 +151,8 @@
 (mu/defn- negation->value :- ::value
   "Unary minus: of a numeric literal, the negative number; of anything else, `0 - x`."
   [node           :- ::node
-   resolve-column :- ::resolve-column]
-  (let [value (->value (arg node :this) resolve-column)]
+   ctx            :- ::context]
+  (let [value (->value (arg node :this) ctx)]
     (if (number? value)
       (- value)
       (lib/- 0 value))))
@@ -142,20 +161,20 @@
   "`(lib-fn left right)` over the two operands of `node`, converted as values."
   [lib-fn         :- ifn?
    node           :- ::node
-   resolve-column :- ::resolve-column]
-  (lib-fn (->value (arg node :this) resolve-column) (->value (arg node :expression) resolve-column)))
+   ctx            :- ::context]
+  (lib-fn (->value (arg node :this) ctx) (->value (arg node :expression) ctx)))
 
 (mu/defn- arithmetic :- ::converter
   "The converter for a binary operator node: `(lib-fn left right)`."
   [lib-fn :- ifn?]
-  (fn [node resolve-column]
-    (binary-value lib-fn node resolve-column)))
+  (fn [node ctx]
+    (binary-value lib-fn node ctx)))
 
 (mu/defn- unary :- ::converter
   "The converter for a one-argument function node: `(lib-fn x)`."
   [lib-fn :- ifn?]
-  (fn [node resolve-column]
-    (lib-fn (->value (arg node :this) resolve-column))))
+  (fn [node ctx]
+    (lib-fn (->value (arg node :this) ctx))))
 
 (mu/defn- safe-divisor :- ::node
   "The divisor of `x / NULLIF(y, 0)` is just `y`: Metabase's `/` already turns a zero divisor into NULL (see
@@ -188,9 +207,9 @@
   Metabase's `/` divides as floats, so the number would silently differ. MySQL, Snowflake, BigQuery and Oracle divide
   as decimals, as Metabase does, and are not marked. A `NULLIF(y, 0)` divisor is `y` (see [[safe-divisor]])."
   [node           :- ::node
-   resolve-column :- ::resolve-column]
-  (let [dividend (->value (arg node :this) resolve-column)
-        divisor  (->value (safe-divisor (arg node :expression)) resolve-column)]
+   ctx            :- ::context]
+  (let [dividend (->value (arg node :this) ctx)
+        divisor  (->value (safe-divisor (arg node :expression)) ctx)]
     (when (and (arg node :typed) (integer-typed? dividend) (integer-typed? divisor))
       (unsupported/throw! (str "%s divides an integer by an integer, which the warehouse truncates to a whole number"
                                " and Metabase does not; cast an operand to a decimal or float")
@@ -201,7 +220,8 @@
   "sqlglot's name for a SQL type (`cast(x as numeric(10, 2))` and `x::numeric` both arrive as `DECIMAL`) → the Lib
   conversion function that casts to it. Lib's `integer`, `float` and `text` take any expression; `date` takes a string
   to parse or a datetime to truncate; `datetime` takes a string, which is how SQL casts a text column to a timestamp.
-  There is no cast to boolean or to an interval."
+  There is no cast to boolean or to an interval. `DECIMAL` and the integer types convert only where the warehouse
+  keeps the same digits Metabase does, see [[cast->value]]."
   {"TINYINT"      lib/integer
    "SMALLINT"     lib/integer
    "INT"          lib/integer
@@ -221,109 +241,172 @@
    "TIMESTAMPLTZ" lib/datetime
    "TIMESTAMPNTZ" lib/datetime})
 
+(def ^:private unconstrained-decimal-dialects
+  "The sqlglot dialects where `DECIMAL` with no precision and scale keeps every digit of the value, so that a cast to
+  it is Metabase's `float` conversion: on Postgres a bare `numeric` is unconstrained, BigQuery's `NUMERIC` is fixed at
+  nine decimal places, and SQLite has no fixed-point type at all. Everywhere else it is a fixed-point type of scale 0,
+  which rounds to a whole number: MySQL, Spark/Databricks and Hive make it `DECIMAL(10, 0)`, SQL Server and Redshift
+  `DECIMAL(18, 0)`, Oracle `NUMBER(38, 0)`, Snowflake `NUMBER(38, 0)` and Trino/Presto `DECIMAL(38, 0)`."
+  #{"postgres" "bigquery" "sqlite"})
+
+(def ^:private truncating-integer-cast-dialects
+  "The sqlglot dialects of the drivers whose `integer` conversion Metabase compiles as `CAST(ROUND(x) AS BIGINT)` (see
+  [[metabase.driver.sql.query-processor/->integer-with-round]]) although the warehouse's own `CAST(x AS INT)` drops
+  the fraction: Spark/Databricks, SQLite, ClickHouse, and Redshift unless its `enable_numeric_rounding` setting is
+  on (it is off by default). A cast of a value that is already an integer is the same on both."
+  #{"spark" "databricks" "sqlite" "clickhouse" "redshift"})
+
+(mu/defn- decimal-cast-check :- :nil
+  "[[unsupported/throw!]] for the `CAST(x AS DECIMAL ...)` `node` when the warehouse would round the value where
+  Metabase's `float` conversion keeps it: a `DECIMAL(p, s)` rounds to `s` decimal places and a `DECIMAL(p)` to none,
+  and a bare `DECIMAL` is one of scale 0 on every `dialect` but those in [[unconstrained-decimal-dialects]]."
+  [node    :- ::node
+   dialect :- ::dialect]
+  (let [parameters (arg (arg node :to) :expressions)
+        scale      (when (seq parameters)
+                     (or (some-> (second parameters) (arg :this) literal-number) 0))]
+    (cond
+      scale
+      (unsupported/throw! "%s rounds to %d decimal places, which Metabase's float conversion does not; cast to a float"
+                          (:sql node) scale)
+
+      (not (contains? unconstrained-decimal-dialects dialect))
+      (unsupported/throw! (str "%s is a cast to a fixed-point type of scale 0 on %s, which rounds to a whole number"
+                               " where Metabase's float conversion does not; cast to a float")
+                          (:sql node) (dialect-name dialect)))))
+
 (mu/defn- cast->value :- ::value
-  "`CAST(x AS type)` or `x::type`, as the Lib conversion for the type (see [[cast-targets]])."
+  "`CAST(x AS type)` or `x::type`, as the Lib conversion for the type (see [[cast-targets]]). [[unsupported/throw!]]
+  when the warehouse keeps different digits than the conversion does: a `DECIMAL` with a scale (see
+  [[decimal-cast-check]]), or an integer cast of a value that is not one on a warehouse that truncates where Metabase
+  rounds (see [[truncating-integer-cast-dialects]])."
   [node           :- ::node
-   resolve-column :- ::resolve-column]
-  (let [target (arg (arg node :to) :this)]
-    (if-let [cast-fn (get cast-targets target)]
-      (cast-fn (->value (arg node :this) resolve-column))
-      (unsupported/throw! "a cast to %s, %s, is not supported" target (:sql node)))))
+   ctx            :- ::context]
+  (let [target  (arg (arg node :to) :this)
+        cast-fn (get cast-targets target)
+        value   (when cast-fn (->value (arg node :this) ctx))]
+    (cond
+      (not cast-fn)
+      (unsupported/throw! "a cast to %s, %s, is not supported" target (:sql node))
+
+      (= target "DECIMAL")
+      (decimal-cast-check node (:dialect ctx))
+
+      (and (= cast-fn lib/integer)
+           (not (integer-typed? value))
+           (contains? truncating-integer-cast-dialects (:dialect ctx)))
+      (unsupported/throw! (str "%s drops the fraction on %s, where Metabase's integer conversion rounds it; use"
+                               " floor or round")
+                          (:sql node) (dialect-name (:dialect ctx))))
+    (cast-fn value)))
 
 (mu/defn- case->value :- ::value
   "Both forms of `CASE`. The simple form, `CASE x WHEN v THEN ...`, is the searched form with `x = v` as each
-  condition; `x` is converted once per branch so that each branch gets a column ref of its own."
+  condition, so neither `x` nor a `v` may be `NULL` (see [[without-null-operands]]); `x` is converted once per branch
+  so that each branch gets a column ref of its own."
   [node           :- ::node
-   resolve-column :- ::resolve-column]
+   ctx            :- ::context]
   (let [operand   (arg node :this)
         condition (fn [when-node]
                     (if operand
-                      (lib/= (->value operand resolve-column) (->value when-node resolve-column))
-                      (->predicate when-node resolve-column)))
+                      (do (without-null-operands node [operand when-node])
+                          (lib/= (->value operand ctx) (->value when-node ctx)))
+                      (->predicate when-node ctx)))
         branches  (mapv (fn [if-node]
                           [(condition (arg if-node :this))
-                           (->value (arg if-node :true) resolve-column)])
+                           (->value (arg if-node :true) ctx)])
                         (arg node :ifs))]
     (if (contains? (:args node) :default)
-      (lib/case branches (->value (arg node :default) resolve-column))
+      (lib/case branches (->value (arg node :default) ctx))
       (lib/case branches))))
 
 (mu/defn- log->value :- ::value
   "`log(x)` or `log(10, x)`. Metabase's `log` is base 10, as a one-argument SQL `log` is (`ln` is the natural log and
   does not map); any other base is [[unsupported/throw!]]."
   [node           :- ::node
-   resolve-column :- ::resolve-column]
+   ctx            :- ::context]
   (let [base-node (when (arg node :expression) (arg node :this))
         x-node    (or (arg node :expression) (arg node :this))]
     (when (and base-node (not= 10 (literal-number base-node)))
       (unsupported/throw! "log to a base other than 10 is not supported: %s" (:sql node)))
-    (lib/log (->value x-node resolve-column))))
+    (lib/log (->value x-node ctx))))
+
+(def ^:private max-round-decimals
+  "The most decimals `round(x, n)` converts to: `10^n` has to fit a long."
+  18)
 
 (mu/defn- round->value :- ::value
   "`round(x)`, or `round(x, n)` as `round(x * 10^n) / 10^n`, since Metabase rounds to a whole number only; `n` has to
-  be a literal."
+  be a literal of at most [[max-round-decimals]]."
   [node           :- ::node
-   resolve-column :- ::resolve-column]
-  (let [x        (->value (arg node :this) resolve-column)
+   ctx            :- ::context]
+  (let [x        (->value (arg node :this) ctx)
         decimals (when-let [decimals-node (arg node :decimals)]
                    (let [n (literal-number decimals-node)]
-                     (when-not (and (integer? n) (not (neg? n)))
-                       (unsupported/throw! "round to %s decimals is not supported; only a literal number of decimals is"
-                                           (:sql decimals-node)))
+                     (when-not (and (integer? n) (<= 0 n max-round-decimals))
+                       (unsupported/throw! "round to %s decimals is not supported; only a literal from 0 to %d is"
+                                           (:sql decimals-node) max-round-decimals))
                      n))]
     (if (or (nil? decimals) (zero? decimals))
       (lib/round x)
       (let [scale (long (Math/pow 10.0 (double decimals)))]
         (lib// (lib/round (lib/* x scale)) scale)))))
 
+(mu/defn variadic :- ::value
+  "`(lib-fn & values)`, or the one value when there is only one: `coalesce(x)` and `concat(x)` are `x`, and the
+  `and` of one filter clause is that clause. `lib-fn` is a variadic Lib constructor, [[lib/coalesce]], [[lib/concat]]
+  or [[lib/and]]; `values` are the Lib expressions or clauses it takes, at least one."
+  [lib-fn :- ifn?
+   values :- [:sequential ::value]]
+  (if (next values)
+    (apply lib-fn values)
+    (first values)))
+
 (mu/defn- coalesce->value :- ::value
   "`coalesce(x, ...)`; of one argument, just that argument."
   [node           :- ::node
-   resolve-column :- ::resolve-column]
-  (let [values (map #(->value % resolve-column) (cons (arg node :this) (arg node :expressions)))]
-    (if (next values)
-      (apply lib/coalesce values)
-      (first values))))
+   ctx            :- ::context]
+  (variadic lib/coalesce (map #(->value % ctx) (cons (arg node :this) (arg node :expressions)))))
 
 (mu/defn- nullif->value :- ::value
   "`NULLIF(x, y)` is `CASE WHEN x = y THEN NULL ELSE x END`; `x` is converted twice so that each use has its own ref."
   [node           :- ::node
-   resolve-column :- ::resolve-column]
-  (lib/case [[(binary-value lib/= node resolve-column) nil]]
-            (->value (arg node :this) resolve-column)))
+   ctx            :- ::context]
+  (lib/case [[(binary-value lib/= node ctx) nil]]
+            (->value (arg node :this) ctx)))
 
 (mu/defn- trim->value :- ::value
   "`trim`, `ltrim` and `rtrim`, of spaces only."
   [node           :- ::node
-   resolve-column :- ::resolve-column]
+   ctx            :- ::context]
   (let [characters (arg node :expression)]
-    (when (and characters (not= " " (->value characters resolve-column)))
+    (when (and characters (not= " " (->value characters ctx)))
       (unsupported/throw! "TRIM of characters other than spaces is not supported: %s" (:sql node)))
     ((unary (case (arg node :position)
               "LEADING"  lib/ltrim
               "TRAILING" lib/rtrim
               lib/trim))
-     node resolve-column)))
+     node ctx)))
 
 (mu/defn- replace->value :- ::value
   "`replace(x, from, to)`."
   [node           :- ::node
-   resolve-column :- ::resolve-column]
+   ctx            :- ::context]
   (when-not (arg node :replacement)
     (unsupported/throw! "REPLACE without a replacement is not supported: %s" (:sql node)))
-  (lib/replace (->value (arg node :this) resolve-column)
-               (->value (arg node :expression) resolve-column)
-               (->value (arg node :replacement) resolve-column)))
+  (lib/replace (->value (arg node :this) ctx)
+               (->value (arg node :expression) ctx)
+               (->value (arg node :replacement) ctx)))
 
 (mu/defn- substring->value :- ::value
   "`substring(x, start)` or `substring(x, start, length)`, with the same 1-based start and optional length as SQL."
   [node           :- ::node
-   resolve-column :- ::resolve-column]
+   ctx            :- ::context]
   (lib/expression-clause :substring
-                         (into [(->value (arg node :this) resolve-column)
-                                (->value (arg node :start) resolve-column)]
+                         (into [(->value (arg node :this) ctx)
+                                (->value (arg node :start) ctx)]
                                (when-let [length (arg node :length)]
-                                 [(->value length resolve-column)]))
+                                 [(->value length ctx)]))
                          nil))
 
 (mu/defn- operands :- [:sequential ::node]
@@ -337,11 +420,8 @@
 (mu/defn- concatenate :- ::value
   "`concat` over the converted `nodes`; of one, just that one."
   [nodes          :- [:sequential ::node]
-   resolve-column :- ::resolve-column]
-  (let [values (map #(->value % resolve-column) nodes)]
-    (if (next values)
-      (apply lib/concat values)
-      (first values))))
+   ctx            :- ::context]
+  (variadic lib/concat (map #(->value % ctx) nodes)))
 
 (def ^:private extract-parts
   "The date parts `EXTRACT(part FROM x)` and `date_part('part', x)` take, as sqlglot spells them, that Lib has a
@@ -358,31 +438,33 @@
 (mu/defn- extract->value :- ::value
   "`EXTRACT(part FROM x)` and `date_part('part', x)`, for the parts in [[extract-parts]]."
   [node           :- ::node
-   resolve-column :- ::resolve-column]
+   ctx            :- ::context]
   (let [part (arg (arg node :this) :this)]
     (if-let [get-part (get extract-parts part)]
-      (get-part (->value (arg node :expression) resolve-column))
+      (get-part (->value (arg node :expression) ctx))
       (unsupported/throw! "extracting %s from a date is not supported" part))))
 
-(def ^:private truncation-units
-  "The units `date_trunc('unit', x)` takes, as sqlglot spells them, that are Metabase temporal units."
-  {"MINUTE"  :minute
-   "HOUR"    :hour
-   "DAY"     :day
-   "WEEK"    :week
-   "MONTH"   :month
-   "QUARTER" :quarter
-   "YEAR"    :year})
+(mu/defn truncation-unit :- [:maybe ::lib.schema.temporal-bucketing/unit.date-time.truncate]
+  "The Metabase truncation unit named `unit-name`, a `date_trunc` unit as sqlglot spells it (`MONTH`) or a dbt
+  granularity (`month`), in either case singular or plural; nil when Metabase has no truncation unit of that name
+  (`nanosecond`, `decade`). The one table of accepted units for `date_trunc` in SQL and for the grains of
+  `TimeDimension` and `.grain()` references: [[lib.schema.temporal-bucketing/datetime-truncation-units]],
+  `millisecond` through `year`. A `week` is accepted as Metabase's week, which starts on the day the instance's
+  start-of-week setting names where dbt's starts on Monday."
+  [unit-name :- :string]
+  (let [singular (str/replace (u/lower-case-en unit-name) #"s$" "")]
+    (m/find-first #(= singular (name %)) lib.schema.temporal-bucketing/datetime-truncation-units)))
 
 (mu/defn- date-trunc->value :- ::value
-  "`date_trunc('unit', column)` as the column bucketed by that temporal unit. Metabase truncates a column by bucketing
-  its ref, so there is nothing to bucket when the argument is an expression rather than a column. sqlglot parses
-  `date_trunc` as a `TimestampTrunc` or a `DateTrunc` depending on the dialect; both have the same children."
+  "`date_trunc('unit', column)` as the column bucketed by that temporal unit (see [[truncation-unit]]). Metabase
+  truncates a column by bucketing its ref, so there is nothing to bucket when the argument is an expression rather
+  than a column. sqlglot parses `date_trunc` as a `TimestampTrunc` or a `DateTrunc` depending on the dialect; both
+  have the same children."
   [node           :- ::node
-   resolve-column :- ::resolve-column]
+   ctx            :- ::context]
   (let [unit-name (arg (arg node :unit) :this)
-        unit      (get truncation-units unit-name)
-        value     (->value (arg node :this) resolve-column)]
+        unit      (truncation-unit unit-name)
+        value     (->value (arg node :this) ctx)]
     (when-not unit
       (unsupported/throw! "truncating a date to %s is not supported" unit-name))
     (when-not (lib/clause-of-type? value :field)
@@ -400,8 +482,8 @@
   types as anything else cannot be, and the warehouse would reject it where Lib's `[:= x true]` would run, so it is
   [[unsupported/throw!]]."
   [node           :- ::node
-   resolve-column :- ::resolve-column]
-  (let [value (->value node resolve-column)]
+   ctx            :- ::context]
+  (let [value (->value node ctx)]
     (when-not (boolean-typed? value)
       (unsupported/throw! "%s is not a boolean column, so it cannot stand alone as a condition" (:sql node)))
     (lib/= value true)))
@@ -419,26 +501,43 @@
   "The converter for a comparison node: `(lib-fn left right)` over its operands, neither of which may be `NULL` (see
   [[without-null-operands]])."
   [lib-fn :- ifn?]
-  (fn [node resolve-column]
+  (fn [node ctx]
     (without-null-operands node [(arg node :this) (arg node :expression)])
-    (binary-value lib-fn node resolve-column)))
+    (binary-value lib-fn node ctx)))
+
+(mu/defn- not-equal :- ::condition
+  "`a != b` as `NOT (a = b)`, never as Lib's `!=`: Metabase compiles `[:!= x v]` on a column to `x <> v OR x IS NULL`,
+  which counts the null rows, where SQL's `!=` is null for them and leaves them out. `NOT (a = b)` compiles to just
+  that, and is what `NOT (a = b)` written in the SQL converts to as well."
+  [a :- ::value
+   b :- ::value]
+  (lib/not (lib/= a b)))
+
+(mu/defn- negated-match :- ::condition
+  "`NOT clause`, where `clause` is a `LIKE`, `SIMILAR TO` or regex match over the value `thunk` returns, with the null
+  rows left out as SQL leaves them out: Metabase compiles `NOT` over `contains`, `starts-with` and `ends-with` to
+  include them, and the regex match (see [[regex-match]]) is two-valued, so `NOT` over it would turn null into true.
+  `thunk` is called afresh, so that no two refs share a uuid."
+  [thunk  :- ifn?
+   clause :- ::condition]
+  (lib/and (lib/not-null (thunk)) (lib/not clause)))
 
 (mu/defn- logical :- ::converter
   "The converter for an `AND` or `OR` node, `node-class`: `(lib-fn & operands)` over its flattened operands, so
   `a AND b AND c` is one `:and`."
   [lib-fn     :- ifn?
    node-class :- :string]
-  (fn [node resolve-column]
-    (apply lib-fn (map #(->predicate % resolve-column) (operands node node-class)))))
+  (fn [node ctx]
+    (apply lib-fn (map #(->predicate % ctx) (operands node node-class)))))
 
 (mu/defn- is :- ::condition
   "`x IS NULL`, `x IS TRUE` or `x IS FALSE`, negated when `negate?`. `IS TRUE` is `x = true`, but `IS NOT TRUE` holds
   for a null `x` too where `x != true` is null, so the negated form is `x != b OR x IS NULL`."
   [node           :- ::node
-   resolve-column :- ::resolve-column
+   ctx            :- ::context
    negate?        :- :boolean]
   (let [compared-to (arg node :expression)
-        x           (fn [] (->value (arg node :this) resolve-column))]
+        x           (fn [] (->value (arg node :this) ctx))]
     (case (:class compared-to)
       "Null"    (if negate? (lib/not-null (x)) (lib/is-null (x)))
       "Boolean" (let [b (boolean (arg compared-to :this))]
@@ -448,17 +547,40 @@
       (unsupported/throw! "%s is not supported, only IS [NOT] NULL, TRUE or FALSE" (describe node)))))
 
 (mu/defn- in :- ::condition
-  "`x IN (...)`, or with [[lib/not-in]] as `lib-fn`, `x NOT IN (...)`. Only over a list of values, none of them `NULL`
-  (see [[without-null-operands]])."
+  "`x IN (...)`, or when `negate?` `x NOT IN (...)` as `NOT (x IN (...))`, never as Lib's `not-in`, which includes the
+  null rows the way `!=` does (see [[not-equal]]). Only over a list of values, none of them `NULL` (see
+  [[without-null-operands]])."
   [node           :- ::node
-   resolve-column :- ::resolve-column
-   lib-fn         :- ifn?]
+   ctx            :- ::context
+   negate?        :- :boolean]
   (when (arg node :query)
     (unsupported/throw! "IN over a subquery is not supported, only over a list of values"))
   (without-null-operands node (cons (arg node :this) (arg node :expressions)))
-  (apply lib-fn
-         (->value (arg node :this) resolve-column)
-         (map #(->value % resolve-column) (arg node :expressions))))
+  (let [clause (apply lib/in
+                      (->value (arg node :this) ctx)
+                      (map #(->value % ctx) (arg node :expressions)))]
+    (if negate? (lib/not clause) clause)))
+
+(mr/def ::null-safe-comparison.shape
+  "What the two operands of an `IS [NOT] DISTINCT FROM` are, see [[null-safe-comparison]]: an expression against
+  `NULL`, an expression against another literal, or two expressions."
+  [:enum :expression-and-null :expression-and-literal :two-expressions])
+
+(mu/defn- null-safe-comparison-shape :- ::null-safe-comparison.shape
+  "The shape of the comparison with the converted operands `a` and `b`, or [[unsupported/throw!]] for `node` when
+  neither is an expression."
+  [node :- ::node
+   a    :- ::value
+   b    :- ::value]
+  (let [literal (cond
+                  (and (lib/clause? a) (lib/clause? b)) ::none
+                  (lib/clause? a)                        b
+                  (lib/clause? b)                        a
+                  :else (unsupported/throw! "%s compares two literals" (describe node)))]
+    (cond
+      (= literal ::none) :two-expressions
+      (nil? literal)     :expression-and-null
+      :else              :expression-and-literal)))
 
 (mu/defn- null-safe-comparison :- ::condition
   "`a IS NOT DISTINCT FROM b`, or `a IS DISTINCT FROM b` when `distinct-from?`: equality that treats two nulls as the
@@ -467,56 +589,77 @@
   nulls. Between two columns (or expressions) it is spelled out over `IS NULL` checks with every branch two-valued,
   which runs on any warehouse where `IS DISTINCT FROM` or a boolean `COALESCE` would not."
   [node           :- ::node
-   resolve-column :- ::resolve-column
+   ctx            :- ::context
    distinct-from? :- :boolean]
   ;; a value is converted afresh each time it appears in the clause, so that no two refs share a uuid
-  (let [a #(->value (arg node :this) resolve-column)
-        b #(->value (arg node :expression) resolve-column)
-        [column literal] (cond
-                           (and (lib/clause? (a)) (lib/clause? (b))) nil
-                           (lib/clause? (a))                          [a (b)]
-                           (lib/clause? (b))                          [b (a)]
-                           :else (unsupported/throw! "%s compares two literals" (describe node)))]
-    (cond
-      (and column (nil? literal))
-      (if distinct-from? (lib/not-null (column)) (lib/is-null (column)))
+  (let [a          #(->value (arg node :this) ctx)
+        b          #(->value (arg node :expression) ctx)
+        shape      (null-safe-comparison-shape node (a) (b))
+        expression (if (lib/clause? (a)) a b)
+        literal    (if (lib/clause? (a)) (b) (a))]
+    (case [shape distinct-from?]
+      [:expression-and-null false]
+      (lib/is-null (expression))
 
-      column
-      (if distinct-from?
-        ;; `!=` on a column already includes the nulls; on an expression it does not, so say so
-        (if (lib/clause-of-type? (column) :field)
-          (lib/!= (column) literal)
-          (lib/or (lib/!= (column) literal) (lib/is-null (column))))
-        (lib/= (column) literal))
+      [:expression-and-null true]
+      (lib/not-null (expression))
 
-      distinct-from?
+      [:expression-and-literal false]
+      (lib/= (expression) literal)
+
+      ;; `!=` on a column already includes the nulls; on an expression it does not, so say so
+      [:expression-and-literal true]
+      (if (lib/clause-of-type? (expression) :field)
+        (lib/!= (expression) literal)
+        (lib/or (lib/!= (expression) literal) (lib/is-null (expression))))
+
+      [:two-expressions false]
+      (lib/or (lib/and (lib/not-null (a)) (lib/not-null (b)) (lib/= (a) (b)))
+              (lib/and (lib/is-null (a)) (lib/is-null (b))))
+
+      [:two-expressions true]
       (lib/or (lib/and (lib/not-null (a)) (lib/not-null (b)) (lib/!= (a) (b)))
               (lib/and (lib/is-null (a)) (lib/not-null (b)))
-              (lib/and (lib/not-null (a)) (lib/is-null (b))))
+              (lib/and (lib/not-null (a)) (lib/is-null (b)))))))
 
-      :else
-      (lib/or (lib/and (lib/not-null (a)) (lib/not-null (b)) (lib/= (a) (b)))
-              (lib/and (lib/is-null (a)) (lib/is-null (b)))))))
+(def ^:private match-classes
+  "The sqlglot node classes of the pattern and regex matches, whose `NOT` keeps the null rows out (see
+  [[negated-match]]). `Escape` wraps one of the others."
+  #{"Like" "ILike" "SimilarTo" "RegexpLike" "RegexpILike" "Escape"})
+
+(mu/defn- match-subject :- ::node
+  "The value a pattern or regex match `node` (one of [[match-classes]]) matches."
+  [node :- ::node]
+  (arg (if (= "Escape" (:class node)) (arg node :this) node) :this))
 
 (mu/defn- not->predicate :- ::condition
-  "`NOT x`. sqlglot wraps `NOT IN` and `NOT (x IS NULL)` in a `Not`; Lib has clauses for both, and `NOT (x IS TRUE)`
-  has to keep the null semantics of `IS` rather than become `NOT (x = true)`."
+  "`NOT x`. sqlglot wraps `NOT IN`, `!~`, `NOT SIMILAR TO` and `NOT (x IS NULL)` in a `Not`; `NOT IN` is `NOT (x IN)`
+  (see [[in]]), a negated match keeps the null rows out (see [[negated-match]]), and `NOT (x IS TRUE)` has to keep the
+  null semantics of `IS` rather than become `NOT (x = true)`."
   [node           :- ::node
-   resolve-column :- ::resolve-column]
+   ctx            :- ::context]
   (let [inner (unparenthesized (arg node :this))]
-    (case (:class inner)
-      "In" (in inner resolve-column lib/not-in)
-      "Is" (is inner resolve-column (not (arg inner :negate)))
-      (lib/not (->predicate inner resolve-column)))))
+    (cond
+      (= "In" (:class inner))
+      (in inner ctx true)
+
+      (= "Is" (:class inner))
+      (is inner ctx (not (arg inner :negate)))
+
+      (contains? match-classes (:class inner))
+      (negated-match #(->value (match-subject inner) ctx) (->predicate inner ctx))
+
+      :else
+      (lib/not (->predicate inner ctx)))))
 
 (mu/defn- between->predicate :- ::condition
   "`x BETWEEN low AND high`, none of them `NULL` (see [[without-null-operands]])."
   [node           :- ::node
-   resolve-column :- ::resolve-column]
+   ctx            :- ::context]
   (without-null-operands node [(arg node :this) (arg node :low) (arg node :high)])
-  (lib/between (->value (arg node :this) resolve-column)
-               (->value (arg node :low) resolve-column)
-               (->value (arg node :high) resolve-column)))
+  (lib/between (->value (arg node :this) ctx)
+               (->value (arg node :low) ctx)
+               (->value (arg node :high) ctx)))
 
 (def ^:private regex-metacharacters
   "The characters a backslash makes literal in a POSIX regular expression."
@@ -585,91 +728,138 @@
                       tokens))
        "$"))
 
+(mr/def ::like-shape
+  "The shape of a `LIKE` pattern, as [[like-shape]] reads its tokens: the kind, and the literals and the number of `_`
+  the clause for that kind is built from. `:other` is a pattern Lib's string filters cannot express exactly."
+  [:map {:closed true}
+   [:kind      [:enum :empty :literal :any :contains :starts-with :ends-with :starts-and-ends-with :ones
+                :literal-then-ones :ones-then-literal :other]]
+   [:literals  {:optional true} [:sequential :string]]
+   [:n-ones    {:optional true} pos-int?]])
+
+(mu/defn- n-ones :- [:maybe pos-int?]
+  "How many `_` `tokens` are, when they are nothing but `_`; nil otherwise."
+  [tokens :- ::like-tokens]
+  (when (and (seq tokens) (every? #{:one} tokens))
+    (count tokens)))
+
+(mu/defn- like-shape :- ::like-shape
+  "The shape of the `LIKE` pattern `tokens`, see [[like-clause]] for what each kind becomes."
+  [tokens :- ::like-tokens]
+  (let [[a b c] tokens
+        n       (count tokens)
+        z       (peek tokens)]
+    (b/cond
+      (zero? n)                                        {:kind :empty}
+      (and (= n 1) (string? a))                        {:kind :literal, :literals [a]}
+      (= [:any] tokens)                                {:kind :any}
+      (and (= n 3) (= :any a) (string? b) (= :any c))  {:kind :contains, :literals [b]}
+      (and (= n 2) (string? a) (= :any b))             {:kind :starts-with, :literals [a]}
+      (and (= n 2) (= :any a) (string? b))             {:kind :ends-with, :literals [b]}
+      (and (= n 3) (string? a) (= :any b) (string? c)) {:kind :starts-and-ends-with, :literals [a c]}
+      :let [ones (n-ones tokens)]
+      ones                                             {:kind :ones, :n-ones ones}
+      :let [ones (when (string? a) (n-ones (rest tokens)))]
+      ones                                             {:kind :literal-then-ones, :literals [a], :n-ones ones}
+      :let [ones (when (string? z) (n-ones (pop tokens)))]
+      ones                                             {:kind :ones-then-literal, :literals [z], :n-ones ones}
+      :else                                            {:kind :other})))
+
 (mu/defn- like-clause :- ::condition
   "The filter clause for the value `thunk` returns (afresh each time, so that no two refs share a uuid) matching the
-  `LIKE` pattern `tokens`, or `ILIKE` when `case-insensitive?`. Where Lib's string filters express the pattern exactly
-  they are used, since they read as what was written and run on any warehouse: `%x%`, `x%` and `%x` are `:contains`,
-  `:starts-with` and `:ends-with`, `x%y` adds a minimum `length` so that the two ends cannot overlap, and one literal
-  with a run of `_` pins the exact `length`. A pattern with no wildcard is `=`, over `lower` for `ILIKE`. Anything else
-  is the equivalent regular expression (see [[regex-match]]), over `lower` with lower-cased literals for `ILIKE`, so
-  that it does not depend on the warehouse's regex flags."
+  `LIKE` pattern `tokens`, or `ILIKE` when `case-insensitive?`, by the pattern's [[like-shape]]. Where Lib's string
+  filters express the pattern exactly they are used, since they read as what was written and run on any warehouse:
+  `%x%`, `x%` and `%x` are `:contains`, `:starts-with` and `:ends-with`, `x%y` adds a minimum `length` so that the two
+  ends cannot overlap, and one literal with a run of `_` pins the exact `length`. A pattern with no wildcard is `=`,
+  over `lower` for `ILIKE`. Anything else is the equivalent regular expression (see [[regex-match]]), over `lower`
+  with lower-cased literals for `ILIKE`, so that it does not depend on the warehouse's regex flags."
   [thunk             :- ifn?
    tokens            :- ::like-tokens
    case-insensitive? :- :boolean]
-  (let [options      (when case-insensitive? {:case-sensitive false})
-        string-match (fn [operator body] (lib/expression-clause operator [(thunk) body] options))
-        length       (fn [] (lib/length (thunk)))
-        literal?     string?
-        ones         (fn [tokens] (when (and (seq tokens) (every? #{:one} tokens)) (count tokens)))
-        lower-case   (if case-insensitive? u/lower-case-en identity)]
-    (b/cond
-      (empty? tokens)
-      (lib/= (thunk) "")
-
-      :let [[a b c] tokens]
-
-      (and (= 1 (count tokens)) (literal? a))
-      (if case-insensitive? (lib/= (lib/lower (thunk)) (lower-case a)) (lib/= (thunk) a))
-
-      (= [:any] tokens)
-      (lib/not-null (thunk))
-
-      (and (= 3 (count tokens)) (= :any a) (literal? b) (= :any c))
-      (string-match :contains b)
-
-      (and (= 2 (count tokens)) (literal? a) (= :any b))
-      (string-match :starts-with a)
-
-      (and (= 2 (count tokens)) (= :any a) (literal? b))
-      (string-match :ends-with b)
-
-      (and (= 3 (count tokens)) (literal? a) (= :any b) (literal? c))
-      (lib/and (string-match :starts-with a)
-               (string-match :ends-with c)
-               (lib/>= (length) (+ (count a) (count c))))
-
-      :let [[first-token & more] tokens
-            n-ones               (ones tokens)]
-
-      n-ones
-      (lib/= (length) n-ones)
-
-      :let [n-ones (and (literal? first-token) (ones more))]
-
-      n-ones
-      (lib/and (string-match :starts-with first-token) (lib/= (length) (+ (count first-token) n-ones)))
-
-      :let [n-ones (and (literal? (peek tokens)) (ones (pop tokens)))]
-
-      n-ones
-      (lib/and (string-match :ends-with (peek tokens)) (lib/= (length) (+ (count (peek tokens)) n-ones)))
-
-      :else
-      (regex-match (if case-insensitive? (lib/lower (thunk)) (thunk)) (like-regex tokens lower-case) false))))
+  (let [options                       (when case-insensitive? {:case-sensitive false})
+        string-match                  (fn [operator body] (lib/expression-clause operator [(thunk) body] options))
+        length                        (fn [] (lib/length (thunk)))
+        lower-case                    (if case-insensitive? u/lower-case-en identity)
+        {:keys [kind literals], ones :n-ones} (like-shape tokens)
+        [x y]                         literals]
+    (case kind
+      :empty                (lib/= (thunk) "")
+      :literal              (if case-insensitive? (lib/= (lib/lower (thunk)) (lower-case x)) (lib/= (thunk) x))
+      :any                  (lib/not-null (thunk))
+      :contains             (string-match :contains x)
+      :starts-with          (string-match :starts-with x)
+      :ends-with            (string-match :ends-with x)
+      :starts-and-ends-with (lib/and (string-match :starts-with x)
+                                     (string-match :ends-with y)
+                                     (lib/>= (length) (+ (count x) (count y))))
+      :ones                 (lib/= (length) ones)
+      :literal-then-ones    (lib/and (string-match :starts-with x) (lib/= (length) (+ (count x) ones)))
+      :ones-then-literal    (lib/and (string-match :ends-with x) (lib/= (length) (+ (count x) ones)))
+      :other                (regex-match (if case-insensitive? (lib/lower (thunk)) (thunk))
+                                         (like-regex tokens lower-case)
+                                         false))))
 
 (mu/defn- pattern-literal :- :string
   "The string literal the pattern of `node` (a `LIKE`, `ILIKE` or `SIMILAR TO`) is, or [[unsupported/throw!]] naming
   the `operator`: a pattern that is a column or an expression has no Lib equivalent."
   [node           :- ::node
-   resolve-column :- ::resolve-column
+   ctx            :- ::context
    operator       :- :string]
-  (let [pattern (->value (arg node :expression) resolve-column)]
+  (let [pattern (->value (arg node :expression) ctx)]
     (when-not (string? pattern)
       (unsupported/throw! "%s with a pattern that is not a string literal is not supported" operator))
     pattern))
 
+(def ^:private default-like-escape
+  "sqlglot dialect → the character `LIKE` treats as its escape when there is no `ESCAPE` clause, as each warehouse
+  documents it: a backslash on Postgres, Redshift, MySQL, BigQuery, Spark/Databricks, Hive and ClickHouse; none on
+  Snowflake, SQL Server, Oracle, SQLite and Trino/Presto, where a backslash in the pattern is just a backslash. A
+  dialect that is not here (Druid, or the default dialect) is not known either way, see [[default-escape]]."
+  {"postgres"   \\
+   "redshift"   \\
+   "mysql"      \\
+   "bigquery"   \\
+   "spark"      \\
+   "databricks" \\
+   "hive"       \\
+   "clickhouse" \\
+   "snowflake"  nil
+   "tsql"       nil
+   "oracle"     nil
+   "sqlite"     nil
+   "trino"      nil
+   "presto"     nil})
+
+(mu/defn- default-escape :- [:maybe char?]
+  "The escape character of the `LIKE` `pattern` written without an `ESCAPE` clause in `dialect` (see
+  [[default-like-escape]]); [[unsupported/throw!]] when the pattern has a backslash and the dialect's default is not
+  known, since the pattern means two different things depending on it."
+  [pattern :- :string
+   dialect :- ::dialect]
+  (if (contains? default-like-escape dialect)
+    (get default-like-escape dialect)
+    (when (str/includes? pattern "\\")
+      (unsupported/throw! (str "the pattern %s has a backslash, and whether %s reads one as the escape character"
+                               " without an ESCAPE clause is not known; add ESCAPE")
+                          (pr-str pattern) (dialect-name dialect)))))
+
 (mu/defn- like :- ::condition
-  "`LIKE` or, `case-insensitive?`, `ILIKE`, with `escape` as the pattern's escape character (nil for none); see
-  [[like-clause]]."
+  "`LIKE` or, `case-insensitive?`, `ILIKE`, with `escape` as the pattern's escape character: `::default` for the
+  dialect's own (see [[default-escape]]), when there is no `ESCAPE` clause. See [[like-clause]]. On SQL Server `[`
+  opens a character class, which Lib's string filters cannot express, so a pattern with one is
+  [[unsupported/throw!]]."
   [node              :- ::node
-   resolve-column    :- ::resolve-column
+   ctx               :- ::context
    case-insensitive? :- :boolean
-   escape            :- [:maybe char?]]
-  (let [pattern (pattern-literal node resolve-column (if case-insensitive? "ILIKE" "LIKE"))
-        clause  (like-clause #(->value (arg node :this) resolve-column)
-                             (like-tokens pattern escape)
-                             case-insensitive?)]
-    (if (arg node :negate) (lib/not clause) clause)))
+   escape            :- [:or char? [:= ::default]]]
+  (let [pattern (pattern-literal node ctx (if case-insensitive? "ILIKE" "LIKE"))
+        escape  (if (= escape ::default) (default-escape pattern (:dialect ctx)) escape)
+        thunk   #(->value (arg node :this) ctx)]
+    (when (and (= (:dialect ctx) "tsql") (str/includes? pattern "["))
+      (unsupported/throw! "the pattern %s has a [, which SQL Server reads as a character class; that is not supported"
+                          (pr-str pattern)))
+    (let [clause (like-clause thunk (like-tokens pattern escape) case-insensitive?)]
+      (if (arg node :negate) (negated-match thunk clause) clause))))
 
 (mu/defn- similar-to-regex :- :string
   "The POSIX regular expression for the SQL-standard one of `SIMILAR TO`: `%` is `.*`, `_` is `.`, `.` is a literal
@@ -702,35 +892,35 @@
 (mu/defn- similar-to :- ::condition
   "`SIMILAR TO`, with `escape` as its escape character (SQL's default is a backslash), as a regex match."
   [node           :- ::node
-   resolve-column :- ::resolve-column
+   ctx            :- ::context
    escape         :- [:maybe char?]]
-  (regex-match (->value (arg node :this) resolve-column)
-               (similar-to-regex (pattern-literal node resolve-column "SIMILAR TO") escape)
+  (regex-match (->value (arg node :this) ctx)
+               (similar-to-regex (pattern-literal node ctx "SIMILAR TO") escape)
                false))
 
 (mu/defn- escape->predicate :- ::condition
   "`x LIKE 'a!%' ESCAPE '!'`: the escape character wraps the pattern operator."
   [node           :- ::node
-   resolve-column :- ::resolve-column]
-  (let [escape-string (->value (arg node :expression) resolve-column)
+   ctx            :- ::context]
+  (let [escape-string (->value (arg node :expression) ctx)
         inner         (arg node :this)]
     (when-not (and (string? escape-string) (= 1 (count escape-string)))
       (unsupported/throw! "ESCAPE %s is not supported, only a one-character string literal is"
                           (:sql (arg node :expression))))
     (let [escape (first escape-string)]
       (case (:class inner)
-        "Like"      (like inner resolve-column false escape)
-        "ILike"     (like inner resolve-column true escape)
-        "SimilarTo" (similar-to inner resolve-column escape)
+        "Like"      (like inner ctx false escape)
+        "ILike"     (like inner ctx true escape)
+        "SimilarTo" (similar-to inner ctx escape)
         (unsupported/throw! "%s is not supported as a condition" (describe node))))))
 
 (mu/defn- regexp-like :- ::condition
   "`x ~ 'regex'` (`regexp_like(x, 'regex')`), or `x ~* 'regex'` when `case-insensitive?`, as a regex match."
   [node              :- ::node
-   resolve-column    :- ::resolve-column
+   ctx               :- ::context
    case-insensitive? :- :boolean]
-  (regex-match (->value (arg node :this) resolve-column)
-               (pattern-literal node resolve-column (if case-insensitive? "~*" "~"))
+  (regex-match (->value (arg node :this) ctx)
+               (pattern-literal node ctx (if case-insensitive? "~*" "~"))
                case-insensitive?))
 
 (def ^:private value-converters
@@ -739,16 +929,19 @@
   is [[->value]]."
   {"Column"           column->value
    "Literal"          literal->value
-   "Boolean"          (fn [node _resolve-column] (boolean (arg node :this)))
+   "Boolean"          (fn [node _ctx] (boolean (arg node :this)))
    "Null"             (constantly nil)
    "Neg"              negation->value
-   "Paren"            (fn [node resolve-column] (->value (arg node :this) resolve-column))
+   "Paren"            (fn [node ctx] (->value (arg node :this) ctx))
    "Add"              (arithmetic lib/+)
    "Sub"              (arithmetic lib/-)
    "Mul"              (arithmetic lib/*)
    "Div"              division->value
    "Pow"              (arithmetic lib/power)
    "Cast"             cast->value
+   ;; sqlglot reads Spark's `CAST`, which is lenient, as a `TRY_CAST`; the two differ only in what a value that
+   ;; cannot be converted does, an error or a null
+   "TryCast"          cast->value
    "Case"             case->value
    "Abs"              (unary lib/abs)
    "Floor"            (unary lib/floor)
@@ -765,22 +958,22 @@
    "Trim"             trim->value
    "Replace"          replace->value
    "Substring"        substring->value
-   "Concat"           (fn [node resolve-column] (concatenate (arg node :expressions) resolve-column))
+   "Concat"           (fn [node ctx] (concatenate (arg node :expressions) ctx))
    ;; `a || b || c`
-   "DPipe"            (fn [node resolve-column] (concatenate (operands node "DPipe") resolve-column))
+   "DPipe"            (fn [node ctx] (concatenate (operands node "DPipe") ctx))
    "Extract"          extract->value
    "TimestampTrunc"   date-trunc->value
    "DateTrunc"        date-trunc->value
-   "CurrentTimestamp" (fn [_node _resolve-column] (lib/now))
-   "CurrentDate"      (fn [_node _resolve-column] (lib/today))})
+   "CurrentTimestamp" (fn [_node _ctx] (lib/now))
+   "CurrentDate"      (fn [_node _ctx] (lib/today))})
 
 (def ^:private predicate-converters
   "The converter for each sqlglot node class the subset covers where a boolean is expected: a whole filter, a `WHEN`,
   an operand of `AND`, `OR` or `NOT`. The dispatch is [[->predicate]]."
   {"Column"      column->predicate
-   "Paren"       (fn [node resolve-column] (->predicate (arg node :this) resolve-column))
+   "Paren"       (fn [node ctx] (->predicate (arg node :this) ctx))
    "EQ"          (comparison lib/=)
-   "NEQ"         (comparison lib/!=)
+   "NEQ"         (comparison not-equal)
    "GT"          (comparison lib/>)
    "GTE"         (comparison lib/>=)
    "LT"          (comparison lib/<)
@@ -788,26 +981,26 @@
    "And"         (logical lib/and "And")
    "Or"          (logical lib/or "Or")
    "Not"         not->predicate
-   "Is"          (fn [node resolve-column] (is node resolve-column (boolean (arg node :negate))))
-   "In"          (fn [node resolve-column] (in node resolve-column lib/in))
+   "Is"          (fn [node ctx] (is node ctx (boolean (arg node :negate))))
+   "In"          (fn [node ctx] (in node ctx false))
    "Between"     between->predicate
-   "NullSafeEQ"  (fn [node resolve-column] (null-safe-comparison node resolve-column false))
-   "NullSafeNEQ" (fn [node resolve-column] (null-safe-comparison node resolve-column true))
-   "Like"        (fn [node resolve-column] (like node resolve-column false nil))
-   "ILike"       (fn [node resolve-column] (like node resolve-column true nil))
-   "SimilarTo"   (fn [node resolve-column] (similar-to node resolve-column \\))
+   "NullSafeEQ"  (fn [node ctx] (null-safe-comparison node ctx false))
+   "NullSafeNEQ" (fn [node ctx] (null-safe-comparison node ctx true))
+   "Like"        (fn [node ctx] (like node ctx false ::default))
+   "ILike"       (fn [node ctx] (like node ctx true ::default))
+   "SimilarTo"   (fn [node ctx] (similar-to node ctx \\))
    "Escape"      escape->predicate
-   "RegexpLike"  (fn [node resolve-column] (regexp-like node resolve-column false))
-   "RegexpILike" (fn [node resolve-column] (regexp-like node resolve-column true))})
+   "RegexpLike"  (fn [node ctx] (regexp-like node ctx false))
+   "RegexpILike" (fn [node ctx] (regexp-like node ctx true))})
 
 (mu/defn- ->value :- ::value
   "The Lib expression for the sqlglot `node` used as a value, through [[value-converters]]: a column, a literal (a
   `NULL` is nil), arithmetic, or `CASE`. [[unsupported/throw!]] for a node class the subset does not cover, naming
   the function or the construct."
   [node           :- ::node
-   resolve-column :- ::resolve-column]
+   ctx            :- ::context]
   (if-let [convert (get value-converters (:class node))]
-    (convert node resolve-column)
+    (convert node ctx)
     (if-let [function-name (:func node)]
       (unsupported/throw! "the function %s is not supported" (u/lower-case-en function-name))
       (unsupported/throw! "%s is not supported" (describe node)))))
@@ -816,9 +1009,9 @@
   "The Lib filter clause for the sqlglot `node` used where a boolean is expected, through [[predicate-converters]].
   [[unsupported/throw!]] for a node class the subset does not cover as a condition."
   [node           :- ::node
-   resolve-column :- ::resolve-column]
+   ctx            :- ::context]
   (if-let [convert (get predicate-converters (:class node))]
-    (convert node resolve-column)
+    (convert node ctx)
     (unsupported/throw! "%s is not supported as a condition" (describe node))))
 
 (mu/defn expression->mbql :- ::value
@@ -827,7 +1020,7 @@
   [dialect        :- ::dialect
    sql            :- :string
    resolve-column :- ::resolve-column]
-  (->value (parse dialect sql) resolve-column))
+  (->value (parse dialect sql) {:dialect dialect, :resolve-column resolve-column}))
 
 (mu/defn condition->mbql :- ::condition
   "The Lib filter clause for the SQL condition `sql` in `dialect`, resolving column names with `resolve-column`.
@@ -835,7 +1028,7 @@
   [dialect        :- ::dialect
    sql            :- :string
    resolve-column :- ::resolve-column]
-  (->predicate (parse dialect sql) resolve-column))
+  (->predicate (parse dialect sql) {:dialect dialect, :resolve-column resolve-column}))
 
 (mr/def ::reference
   "A MetricFlow object reference from a filter template: `Dimension('entity__name')`, `TimeDimension('entity__name',

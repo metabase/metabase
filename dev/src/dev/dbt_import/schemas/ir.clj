@@ -27,7 +27,9 @@
    [:description [:maybe :string]]])
 
 (mr/def ::entity
-  "A join key. `expr` is always set: a bare column name or SQL."
+  "A join key. `expr` is always set: a bare column name or SQL. `type` is dbt's: `primary`, `unique` or `foreign`, or
+  `natural`, the key of a slowly changing dimension whose rows are versions of one thing, told apart by the validity
+  window of a time dimension with `validity-params` (see `::dimension`)."
   [:map {:closed true}
    [:name        :string]
    [:type        ::dbt-manifest/entity-type]
@@ -35,15 +37,24 @@
    [:label       [:maybe :string]]
    [:description [:maybe :string]]])
 
-(mr/def ::dimension
-  "Something a metric can be grouped by. `expr` is always set. `granularity` is only set for time dimensions."
+(mr/def ::validity-params
+  "The flags of a time dimension that bounds a slowly changing dimension's validity window: whether it is the window's
+  start or its end (dbt's `validity_params`)."
   [:map {:closed true}
-   [:name        :string]
-   [:type        ::dbt-manifest/dimension-type]
-   [:expr        :string]
-   [:granularity [:maybe ::dbt-manifest/time-granularity]]
-   [:label       [:maybe :string]]
-   [:description [:maybe :string]]])
+   [:is-start :boolean]
+   [:is-end   :boolean]])
+
+(mr/def ::dimension
+  "Something a metric can be grouped by. `expr` is always set. `granularity` is only set for time dimensions, and
+  `validity-params` only for a time dimension that bounds a validity window (see `::entity`)."
+  [:map {:closed true}
+   [:name            :string]
+   [:type            ::dbt-manifest/dimension-type]
+   [:expr            :string]
+   [:granularity     [:maybe ::dbt-manifest/time-granularity]]
+   [:validity-params [:maybe ::validity-params]]
+   [:label           [:maybe :string]]
+   [:description     [:maybe :string]]])
 
 (mr/def ::aggregation
   "An aggregation function over an expression. `expr` is always set: a bare column name, the literal `1`, or SQL.
@@ -148,12 +159,16 @@
    [:derived    ::metric.derived]])
 
 (mr/def ::unsupported
-  "A metric the parser could not turn into a `::metric`, and why. Reported rather than thrown so one bad metric does
-  not fail the whole run."
+  "A metric a stage could not convert, and why: at parse time one that could not become a `::metric` (or, rarely, a
+  semantic model that could not be parsed), at resolve time one that has no Metabase equivalent. Reported rather than
+  thrown so one bad metric does not fail the whole run. `error?` marks an entry that is not a case the converter chose
+  not to convert but an exception it did not anticipate, a bug or an input outside what it reads; absent means a
+  reported case."
   [:map {:closed true}
    [:name      :string]
    [:unique-id :string]
-   [:reason    :string]])
+   [:reason    :string]
+   [:error?    {:optional true} :boolean]])
 
 (mr/def ::manifest.source
   "Where a manifest came from: the semantic layer `tool` (`\"dbt\"`), its version and the project's name, as the
@@ -165,9 +180,12 @@
 
 (mr/def ::manifest
   "Everything parsed from one semantic layer. `semantic-models` is keyed by semantic model name; `metrics` is sorted
-  by name (the resolve stage puts a metric after the metrics it refers to)."
+  by name (the resolve stage puts a metric after the metrics it refers to). `adapter-type` is the warehouse the
+  semantic layer was written for, as the tool names it (dbt's `metadata.adapter_type`: `postgres`, `bigquery`, …), nil
+  when it does not say; it is the manifest's say on which Metabase driver the config should name."
   [:map {:closed true}
    [:source          ::manifest.source]
+   [:adapter-type    [:maybe :string]]
    [:semantic-models [:map-of :string ::semantic-model]]
    [:metrics         [:sequential ::metric]]
    [:unsupported     [:sequential ::unsupported]]])

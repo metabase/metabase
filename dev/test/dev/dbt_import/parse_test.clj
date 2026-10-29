@@ -1,21 +1,32 @@
 (ns dev.dbt-import.parse-test
+  "The parse stage, [[parse/parse-manifest]] and what leads up to it: reading and decoding a manifest against the
+  manifest schemas, the version check, and what the two fixtures and small hand-built manifests parse into, metric by
+  metric, including every case the stage reports rather than converts."
   (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
+   [clojure.walk :as walk]
    [dev.dbt-import.fixture :as fixture]
    [dev.dbt-import.parse :as parse]
+   [dev.dbt-import.schemas.dbt-manifest :as dbt-manifest]
    [dev.dbt-import.schemas.ir :as ir]
    [dev.dbt-import.test-util :as tu :refer [fld]]
    [mb.hawk.assert-exprs]
+   [metabase.test :as mt]
+   [metabase.util.json :as json]
+   [metabase.util.log.capture :as log.capture]
    [metabase.util.malli.registry :as mr])
   (:import
-   (clojure.lang ExceptionInfo)))
+   (clojure.lang ExceptionInfo)
+   (java.io File)))
 
 (set! *warn-on-reflection* true)
 
 (deftest ^:parallel parse-semantic-model-test
   (let [manifest (tu/flexanalytics-manifest)
         parsed   (parse/parse-semantic-model
-                  manifest
+                  (:nodes manifest)
                   (get-in manifest [:semantic_models "semantic_model.dbt_business_intelligence.fact_sales"]))]
     (is (mr/validate ::ir/semantic-model parsed))
     (is (= {:database "dbt_bi", :schema "public", :table "fact_sales"}
@@ -81,7 +92,7 @@
 
 (deftest ^:parallel parse-metric-unsupported-test
   (let [manifest        (tu/flexanalytics-manifest)
-        semantic-models (update-vals (:semantic_models manifest) #(parse/parse-semantic-model manifest %))
+        semantic-models (update-vals (:semantic_models manifest) #(parse/parse-semantic-model (:nodes manifest) %))
         metric          #(get-in manifest [:metrics (str "metric.dbt_business_intelligence." %)])
         sales           (metric "sales")]
     (testing "a ratio metric parses to its two inputs, which it refers to by name"
@@ -205,11 +216,9 @@
 (defn- dbt-version [v]
   (fn [m] (assoc-in m [:metadata :dbt_version] v)))
 
-(defn- add-measure [measure]
-  (fn [m] (update-in m [:semantic_models tu/sm-id :measures] conj (merge (tu/base-measure) measure))))
-
-(defn- add-metric [metric]
-  (fn [m] (assoc-in m [:metrics (:unique_id metric)] (merge (get-in m [:metrics "metric.p.m"]) metric))))
+(def ^:private funnel-metric
+  "A `:edit` fn for [[tu/build-manifest]] that adds a metric of a type dbt's manifest schema does not have."
+  (tu/add-metric "funnel" #(assoc % :type "funnel")))
 
 (deftest ^:parallel manifest-version-test
   (testing "manifest schema v12 is the only one accepted"
@@ -252,8 +261,8 @@
     ;; mean a dbt newer than the converter knows (`conversion` arrived with v11) or a hand-edited file: an invalid
     ;; manifest, rejected up front rather than guessed at.
     (are [edit] (thrown-with-msg? ExceptionInfo #"Invalid dbt manifest" (tu/convert {:edit edit}))
-      (add-measure {:name "weird", :agg "approx_count_distinct"})
-      (add-metric {:unique_id "metric.p.funnel", :name "funnel", :type "funnel"})
+      (tu/add-measure {:name "weird", :agg "approx_count_distinct"})
+      funnel-metric
       (fn [m]
         (update-in m [:semantic_models tu/sm-id :entities] conj
                    {:name "k", :type "composite", :description nil, :label nil, :role nil, :expr nil}))
@@ -277,7 +286,7 @@
       (is (=? {:semantic_models {tu/sm-id {:measures [{:agg [#"^should be either :sum, :min, :max, .*:count$"]}]}}}
               (errors-of (fn [m] (assoc-in m [:semantic_models tu/sm-id :measures 0 :agg] "approx_count_distinct")))))
       (is (=? {:metrics {"metric.p.funnel" {:type [#"^should be either :simple, :ratio, :cumulative, :derived.*"]}}}
-              (errors-of (add-metric {:unique_id "metric.p.funnel", :name "funnel", :type "funnel"}))))
+              (errors-of funnel-metric)))
       (testing "an item of a list is placed by its index"
         (is (=? [#"^should be either :primary, :unique, :foreign or :natural$"]
                 (get-in (errors-of (fn [m]
@@ -324,10 +333,14 @@
                (tu/unsupported {:input-measure {:name "nope"}}))))
 
 (defn- other-type-reason
-  "The reason a metric of `metric-type` with `type-params` is reported."
+  "The reason a metric of `metric-type` with `type-params` is reported. `depends_on` lists the input metrics the way
+  dbt resolves them, so that the reason is about the shape under test and not about a reference dbt did not resolve."
   [metric-type type-params]
-  (tu/unsupported {:metric      {:type metric-type}
-                   :type-params (merge {:measure nil, :input_measures []} type-params)}))
+  (let [{:keys [numerator denominator metrics]} type-params
+        input-names                             (distinct (keep :name (concat [numerator denominator] metrics)))]
+    (tu/unsupported {:metric      {:type       metric-type
+                                   :depends_on {:macros [], :nodes (mapv #(str "metric.p." %) input-names)}}
+                     :type-params (merge {:measure nil, :input_measures []} type-params)})))
 
 (deftest ^:parallel advanced-metric-types-test
   (testing "what is structurally beyond Metabase is reported at parse time, with the reason"
@@ -445,9 +458,9 @@
            (tu/aggregation (update (inline {:agg "sum", :expr "sales"}) :type-params assoc :fill_nulls_with 0)))))
   (is (re-find #"neither a measure nor metric_aggregation_params"
                (tu/unsupported {:type-params {:measure nil, :input_measures [], :metric_aggregation_params nil}})))
-  (is (re-find #"non-additive"
-               (tu/unsupported (inline {:agg "sum", :expr "sales"
-                                        :non_additive_dimension {:name "date_day", :window_choice "max"}}))))
+  (is (= "non-additive measures have no Metabase equivalent"
+         (tu/unsupported (inline {:agg "sum", :expr "sales"
+                                  :non_additive_dimension {:name "date_day", :window_choice "max"}}))))
   (testing "a measure and inline params both present: the measure wins"
     (is (= tu/sum-sales
            (tu/aggregation {:type-params {:expr                      "sales"
@@ -456,3 +469,274 @@
                                                                       :agg_params             nil
                                                                       :agg_time_dimension     nil
                                                                       :non_additive_dimension nil}}})))))
+
+(defn- parse-built
+  "The IR the manifest [[tu/build-manifest]] makes from `tweaks` parses into, decoded the way the converter reads it."
+  [tweaks]
+  (-> (tu/build-manifest tweaks) tu/round-trip dbt-manifest/decode-manifest parse/parse-manifest))
+
+(defn- built-metric
+  "The IR of the metric `m` of the manifest [[tu/build-manifest]] makes from `tweaks`, or its `:unsupported` entry."
+  [tweaks]
+  (let [{:keys [metrics unsupported]} (parse-built tweaks)]
+    (or (tu/metric-named metrics "m")
+        (tu/metric-named unsupported "m"))))
+
+(deftest ^:parallel time-granularity-test
+  (testing "every grain of a time dimension is lifted into the IR as written"
+    (are [grain] (= grain
+                    (-> (parse-built {:edit (tu/edit-semantic-model
+                                             #(assoc % :dimensions [(tu/dimension "d" "time"
+                                                                                  :granularity (name grain))]))})
+                        (get-in [:semantic-models "fact_sales" :dimensions 0 :granularity])))
+      :hour :day :week :month :quarter :year))
+  (testing "a metric's time_granularity is a free-form string, kept as written"
+    (are [grain] (= grain (:time-granularity (built-metric {:metric {:time_granularity grain}})))
+      "week" "quarter" "year" "fiscal_quarter")))
+
+(defn- temp-manifest
+  "A temporary file holding `content`, deleted when the JVM exits."
+  ^File [content]
+  (let [f (File/createTempFile "manifest" ".json")]
+    (.deleteOnExit f)
+    (spit f content)
+    f))
+
+(defn- read-error
+  "How [[parse/read-manifest]] fails on a file holding `content`: the message with the file's path replaced by
+  `<path>`, and whether the message and the exception's data carry the path. Nil when it reads."
+  [content]
+  (let [path (.getPath (temp-manifest content))]
+    (try
+      (parse/read-manifest path)
+      nil
+      (catch ExceptionInfo e
+        {:message          (str/replace (ex-message e) path "<path>")
+         :path-in-message? (str/includes? (ex-message e) path)
+         :path-in-data?    (= path (:path (ex-data e)))}))))
+
+(defn- old-manifest
+  "The fixture manifest as JSON, written by dbt 1.11.5."
+  []
+  (json/encode (assoc-in (tu/build-manifest {}) [:metadata :dbt_version] "1.11.5")))
+
+(deftest ^:parallel read-manifest-errors-test
+  (testing "every failure to read a manifest names the file, in the message and in the exception's data"
+    (are [content message] (= {:message message, :path-in-message? true, :path-in-data? true}
+                              (read-error content))
+      ""      "Invalid dbt manifest <path>: the file is empty"
+      "[1, 2]" "Invalid dbt manifest <path>: the file holds a JSON array, not an object"
+      "42"    "Invalid dbt manifest <path>: the file holds a JSON value that is not an object"
+      "{}"    "Invalid dbt manifest (<path>)"
+      (old-manifest) (str "Unsupported dbt manifest: the converter reads manifests written by dbt 1.12 or later"
+                          " (manifest schema v12), this one says dbt \"1.11.5\" and"
+                          " \"https://schemas.getdbt.com/dbt/manifest/v12.json\" (<path>)"))
+    (testing "truncated JSON, with the JSON parser's own message"
+      (is (=? {:message #"(?s)^Cannot read dbt manifest <path>: Unexpected end-of-input.*", :path-in-message? true
+               :path-in-data? true}
+              (read-error "{\"metadata\": "))))
+    (testing "a file that does not exist"
+      (is (thrown-with-msg? ExceptionInfo #"^Cannot read dbt manifest /nope/manifest\.json: "
+                            (parse/read-manifest "/nope/manifest.json"))))
+    (testing "the decode error's own data comes along"
+      (let [path (.getPath (temp-manifest (old-manifest)))]
+        (is (=? {:dbt-version "1.11.5", :dbt-schema-version string?, :errors map?, :path path}
+                (try
+                  (parse/read-manifest path)
+                  (catch ExceptionInfo e
+                    (ex-data e)))))))))
+
+(def ^:private with-ratio
+  "A `:edit` fn for [[tu/build-manifest]] that adds a ratio metric `r` of `m` to `m`."
+  (tu/add-metric "r" #(-> %
+                          (assoc :type "ratio", :depends_on {:macros [], :nodes ["metric.p.m"]})
+                          (assoc-in [:type_params :measure] nil)
+                          (assoc-in [:type_params :numerator] (tu/metric-input "m"))
+                          (assoc-in [:type_params :denominator] (tu/metric-input "m")))))
+
+(deftest parse-error-test
+  (testing "an exception while parsing one metric is logged and reported as an error; the other metrics still parse"
+    (mt/with-dynamic-fn-redefs [parse/parse-ratio (fn [_] (throw (NullPointerException. "boom")))]
+      (log.capture/with-log-messages-for-level [messages [dev.dbt-import.parse :error]]
+        (let [{:keys [metrics unsupported]} (parse-built {:edit with-ratio})]
+          (is (= ["m"] (map :name metrics)))
+          (is (= [{:name      "r"
+                   :unique-id "metric.p.r"
+                   :reason    "error parsing metric (java.lang.NullPointerException): boom"
+                   :error?    true}]
+                 unsupported))
+          (is (=? [{:level :error, :message "Error parsing metric \"r\""}] (messages)))))))
+  (testing (str "an exception while parsing a semantic model is logged and reported the same way, and the metrics over"
+                " it are reported as over a model the manifest does not have")
+    (mt/with-dynamic-fn-redefs [parse/parse-columns (fn [_] (throw (IllegalStateException. "boom")))]
+      (log.capture/with-log-messages-for-level [messages [dev.dbt-import.parse :error]]
+        (let [{:keys [semantic-models metrics unsupported]} (parse-built {})
+              reason (str "error parsing semantic model (java.lang.IllegalStateException): boom")]
+          (is (= {} semantic-models))
+          (is (= [] metrics))
+          (is (= {"fact_sales"  [reason true]
+                  "dim_product" [reason true]
+                  "dim_order"   [reason true]
+                  "m"           ["semantic model \"semantic_model.p.fact_sales\" not found in manifest" nil]}
+                 (into {} (map (juxt :name (juxt :reason :error?))) unsupported)))
+          (is (= 3 (count (messages)))))))))
+
+(deftest ^:parallel cumulative-input-offset-test
+  (let [manifest        (parse/read-manifest tu/parcel-delivery-manifest-filename)
+        semantic-models (update-vals (:semantic_models manifest) #(parse/parse-semantic-model (:nodes manifest) %))
+        to-date         (get-in manifest [:metrics "metric.parcel_delivery.parcels_to_date"])
+        reason          (fn [edit-reference]
+                          (:reason (parse/parse-metric semantic-models (:metrics manifest)
+                                                       (update-in to-date [:type_params :cumulative_type_params :metric]
+                                                                  edit-reference))))]
+    (testing "an inline-spec cumulative metric over an input shifted in time is reported, as a ratio input is"
+      (is (= (str "input \"parcel_count\" has an offset_window of 1 month: period-over-period comparisons have no"
+                  " Metabase equivalent")
+             (reason #(assoc % :offset_window {:count 1, :granularity "month"}))))
+      (is (= (str "input \"last_month\" has an offset_window of 1 month: period-over-period comparisons have no"
+                  " Metabase equivalent")
+             (reason #(assoc % :alias "last_month", :offset_window {:count 1, :granularity "month"}))))
+      (is (= (str "input \"parcel_count\" has an offset_to_grain of \"month\": comparisons with the start of a period"
+                  " have no Metabase equivalent")
+             (reason #(assoc % :offset_to_grain "month")))))
+    (testing "the reference has to name the metric depends_on resolved to"
+      (is (= (str "cumulative_type_params.metric names \"other\" but depends_on resolved to the metric"
+                  " \"parcel_count\": the manifest disagrees with itself")
+             (reason #(assoc % :name "other")))))
+    (testing "a manifest with the depends_on node alone, no reference, still parses"
+      (is (nil? (reason (constantly nil)))))))
+
+(defn- without-nulls
+  "`manifest`, raw JSON with string keys, with every key whose value is null left out: what a writer that omits unset
+  keys instead of writing `null` would produce."
+  [manifest]
+  (walk/postwalk (fn [x]
+                   (if (map? x)
+                     (into {} (remove (comp nil? val)) x)
+                     x))
+                 manifest))
+
+(defn- bare
+  "A `:edit` fn for [[tu/build-manifest]] that strips the fixture down to the keys the published manifest schema
+  requires, plus what the metric needs to convert to the sum of `sales`."
+  [manifest]
+  (-> manifest
+      (update-in [:nodes tu/model-id] dissoc :description :relation_name)
+      (update-in [:nodes tu/model-id :columns] update-vals #(dissoc % :description))
+      (update-in [:semantic_models tu/sm-id] dissoc :label :description :defaults :primary_entity :config)
+      (update-in [:semantic_models tu/sm-id :node_relation] dissoc :relation_name)
+      (update-in [:semantic_models tu/sm-id :entities] (partial mapv #(dissoc % :description :label :role)))
+      (update-in [:semantic_models tu/sm-id :dimensions] (partial mapv #(dissoc % :description :label :is_partition)))
+      (update-in [:semantic_models tu/sm-id :measures 0]
+                 dissoc :description :label :create_metric :agg_params :non_additive_dimension :agg_time_dimension
+                 :config)
+      (update-in [:metrics "metric.p.m"] dissoc :filter :description :label :time_granularity :meta :config)
+      (assoc-in [:metrics "metric.p.m" :type_params] {:measure {:name "m"}})))
+
+(deftest ^:parallel optional-keys-test
+  (testing "a manifest that leaves out the keys dbt-core writes as null parses to the same IR"
+    (doseq [manifest-filename [tu/flexanalytics-manifest-filename tu/parcel-delivery-manifest-filename]]
+      (testing manifest-filename
+        (let [raw (with-open [r (io/reader manifest-filename)]
+                    (json/decode r))]
+          (is (= (parse/parse-manifest-file manifest-filename)
+                 (parse/parse-manifest (dbt-manifest/decode-manifest (without-nulls raw))))))))
+    (is (= (parse-built {})
+           (-> (tu/build-manifest {}) tu/round-trip without-nulls dbt-manifest/decode-manifest parse/parse-manifest))))
+  (testing "a manifest with little more than the keys the published schema requires converts"
+    (is (= tu/sum-sales (tu/aggregation {:edit bare})))
+    (is (= {:default-agg-time-dimension nil, :label nil, :description nil}
+           (-> (parse-built {:edit bare})
+               (get-in [:semantic-models "fact_sales"])
+               (select-keys [:default-agg-time-dimension :label :description]))))
+    (is (= {:filters [], :fill-nulls-with nil, :join-to-timespine false, :time-granularity nil, :meta nil
+            :label   "m", :description nil, :agg-time-dimension nil}
+           (select-keys (built-metric {:edit bare})
+                        [:filters :fill-nulls-with :join-to-timespine :time-granularity :meta :label :description
+                         :agg-time-dimension])))))
+
+(deftest ^:parallel parse-validity-params-test
+  (testing "a natural entity and a time dimension's validity_params, dbt's SCD type II, are carried into the IR"
+    (let [edit  (tu/edit-semantic-model
+                 #(-> %
+                      (update :entities conj (tu/entity "customer_version" "natural" :expr "customer_key"))
+                      (assoc :dimensions [(assoc-in (tu/dimension "valid_from" "time")
+                                                    [:type_params :validity_params] {:is_start true, :is_end false})
+                                          (assoc-in (tu/dimension "valid_to" "time")
+                                                    [:type_params :validity_params] {:is_end true})
+                                          (tu/dimension "date_day" "time")])))
+          model (get-in (parse-built {:edit edit}) [:semantic-models "fact_sales"])]
+      (is (= {:name "customer_version", :type :natural, :expr "customer_key"}
+             (select-keys (last (:entities model)) [:name :type :expr])))
+      (is (= {"valid_from" {:is-start true, :is-end false}
+              "valid_to"   {:is-start false, :is-end true}
+              "date_day"   nil}
+             (into {} (map (juxt :name :validity-params)) (:dimensions model)))
+          "a flag left out is false, as dbt defaults it"))))
+
+(deftest ^:parallel inline-aggregation-params-expr-test
+  (let [inline-expr (fn [tweaks expr]
+                      (update tweaks :type-params assoc-in [:metric_aggregation_params :expr] expr))]
+    (testing (str "an expr inside metric_aggregation_params, which the published schema allows, is read when"
+                  " type_params has none")
+      (is (= tu/sum-sales (tu/aggregation (inline-expr (inline {:agg "sum"}) "sales")))))
+    (testing "type_params.expr is the one dbt writes; the two may agree, and a disagreement is reported"
+      (is (= tu/sum-sales (tu/aggregation (inline-expr (inline {:agg "sum", :expr "sales"}) "sales"))))
+      (is (= "metric_aggregation_params.expr \"quantity\" disagrees with type_params.expr \"sales\""
+             (tu/unsupported (inline-expr (inline {:agg "sum", :expr "sales"}) "quantity")))))))
+
+(deftest ^:parallel depends-on-cross-check-test
+  (testing "a ratio or derived input that is not among the metrics depends_on lists is reported"
+    (are [metric-type type-params]
+         (= (str "input metric \"b\" is not among the metrics depends_on lists: the manifest did not resolve it, so it"
+                 " is not read")
+            (tu/unsupported {:metric      {:type metric-type, :depends_on {:macros [], :nodes ["metric.p.a"]}}
+                             :type-params (merge {:measure nil, :input_measures []} type-params)}))
+      "ratio"   {:numerator (tu/metric-input "a"), :denominator (tu/metric-input "b")}
+      "derived" {:expr "a + b", :metrics [(tu/metric-input "a") (tu/metric-input "b")]}))
+  (testing "metric_aggregation_params has to name the semantic model depends_on resolved to, when it names one"
+    (is (= (str "metric_aggregation_params names semantic model \"dim_product\" but depends_on resolved to"
+                " \"fact_sales\": the manifest disagrees with itself")
+           (tu/unsupported (inline {:agg "sum", :expr "sales", :semantic_model "dim_product"}))))
+    (is (= tu/sum-sales (tu/aggregation (inline {:agg "sum", :expr "sales", :semantic_model nil}))))))
+
+(deftest ^:parallel simple-metric-extras-precedence-test
+  (testing "fill_nulls_with: the metric's own over its input measure's; 0 is a value"
+    (are [type-params input-measure expected]
+         (= expected (:fill-nulls-with (built-metric {:type-params type-params, :input-measure input-measure})))
+      {:fill_nulls_with 1} {:fill_nulls_with 2} 1
+      {:fill_nulls_with 0} {:fill_nulls_with 2} 0
+      {}                   {:fill_nulls_with 2} 2
+      {}                   {}                   nil))
+  (testing "join_to_timespine: true when either says so"
+    (are [type-params input-measure expected]
+         (= expected (:join-to-timespine (built-metric {:type-params type-params, :input-measure input-measure})))
+      {:join_to_timespine true} {}                        true
+      {}                        {:join_to_timespine true} true
+      {}                        {}                        false))
+  (testing "filters: the metric's own first, then its input measure's; both apply"
+    (is (= ["{{ Dimension('x') }} = 1" "{{ Dimension('y') }} = 2"]
+           (:filters (built-metric {:metric        {:filter (tu/where-filters "{{ Dimension('x') }} = 1")}
+                                    :input-measure {:filter (tu/where-filters "{{ Dimension('y') }} = 2")}})))))
+  (testing "an inline-spec cumulative metric: its own, then the metric it runs over's, then the reference's"
+    (let [manifest        (parse/read-manifest tu/parcel-delivery-manifest-filename)
+          semantic-models (update-vals (:semantic_models manifest) #(parse/parse-semantic-model (:nodes manifest) %))
+          cumulative-id   "metric.parcel_delivery.parcels_to_date"
+          input-id        "metric.parcel_delivery.parcel_count"
+          parsed          (fn [edit-cumulative edit-input]
+                            (let [metrics (-> (:metrics manifest)
+                                              (update cumulative-id edit-cumulative)
+                                              (update input-id edit-input))]
+                              (parse/parse-metric semantic-models metrics (get metrics cumulative-id))))
+          fill-nulls      (fn [value] #(assoc-in % [:type_params :fill_nulls_with] value))]
+      (is (= 3 (:fill-nulls-with (parsed (fill-nulls 3) (fill-nulls 5)))))
+      (is (= 5 (:fill-nulls-with (parsed identity (fill-nulls 5)))))
+      (is (true? (:join-to-timespine (parsed identity #(assoc-in % [:type_params :join_to_timespine] true)))))
+      (is (= ["{{ Dimension('parcel__is_insured') }}"
+              "{{ Dimension('parcel__is_delivered') }}"
+              "{{ Dimension('parcel__is_fragile') }}"]
+             (:filters (parsed #(-> %
+                                    (assoc :filter (tu/where-filters "{{ Dimension('parcel__is_insured') }}"))
+                                    (assoc-in [:type_params :cumulative_type_params :metric :filter]
+                                              (tu/where-filters "{{ Dimension('parcel__is_fragile') }}")))
+                               #(assoc % :filter (tu/where-filters "{{ Dimension('parcel__is_delivered') }}")))))))))

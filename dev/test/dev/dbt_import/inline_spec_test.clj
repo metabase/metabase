@@ -16,7 +16,7 @@
    [dev.dbt-import.parse :as parse]
    [dev.dbt-import.resolve :as resolve]
    [dev.dbt-import.schemas.ir :as ir]
-   [dev.dbt-import.test-util :as tu]
+   [dev.dbt-import.test-util :as tu :refer [fld]]
    [mb.hawk.assert-exprs]
    [metabase.util.malli.registry :as mr]))
 
@@ -30,7 +30,7 @@
 (defn- parcels-field
   "The `:field` clause serdes writes for `column` on `public.<table>` of [[db]]."
   [table column base-type]
-  (tu/fld db "public" table column base-type))
+  (fld db "public" table column base-type))
 
 (def ^:private parsed
   (delay (parse/parse-manifest-file tu/parcel-delivery-manifest-filename)))
@@ -40,19 +40,15 @@
   name → its entity id, the clauses of its query, and its unsupported dimensions as name → reason."
   (delay
     (let [resolved (resolve/resolve-manifest config @parsed)]
-      {:unsupported (into {} (map (juxt :name :reason)) (:unsupported resolved))
+      {:unsupported (tu/reasons-by-name (:unsupported resolved))
        :metrics     (into {}
                           (for [{:keys [metric]} (emit/files config resolved)
                                 :when metric
-                                :let  [stage (-> (emit/dataset-query metric) :stages first)]]
+                                :let  [{:keys [entity-id unsupported-dimensions]} metric]]
                             [(-> metric :ir :name)
-                             {:entity-id              (:entity-id metric)
-                              :aggregation            (first (:aggregation stage))
-                              :filters                (:filters stage [])
-                              :source-table           (:source-table stage)
-                              :unsupported-dimensions (into {}
-                                                            (map (juxt :name :reason))
-                                                            (:unsupported-dimensions metric))}]))})))
+                             (assoc (tu/query-clauses metric)
+                                    :entity-id              entity-id
+                                    :unsupported-dimensions (tu/reasons-by-name unsupported-dimensions))]))})))
 
 (deftest ^:parallel parse-semantic-models-test
   (let [{:keys [semantic-models] :as manifest} @parsed]
@@ -161,7 +157,7 @@
 
 (deftest ^:parallel parse-cumulative-input-test
   (let [manifest        (parse/read-manifest tu/parcel-delivery-manifest-filename)
-        semantic-models (update-vals (:semantic_models manifest) #(parse/parse-semantic-model manifest %))
+        semantic-models (update-vals (:semantic_models manifest) #(parse/parse-semantic-model (:nodes manifest) %))
         metrics         (:metrics manifest)
         to-date         (get metrics "metric.parcel_delivery.parcels_to_date")
         parse           (fn [metric] (parse/parse-metric semantic-models metrics metric))]
@@ -224,10 +220,11 @@
                                      1]}
              (update-vals metrics :aggregation))))
     (testing "the metric filters resolve against the primary entity's dimensions"
-      (is (= {"open_exceptions"     [[:!= {} (parcels-field "delivery_exceptions" "status" :type/Text) "resolved"]]
-              "resolved_exceptions" [[:= {} (parcels-field "delivery_exceptions" "status" :type/Text) "resolved"]]
-              "disputed_exceptions" [[:= {} (parcels-field "delivery_exceptions" "status" :type/Text) "disputed"]]
-              "exception_count"     []}
+      (is (= (let [status (parcels-field "delivery_exceptions" "status" :type/Text)]
+               {"open_exceptions"     [[:not {} [:= {} status "resolved"]]]
+                "resolved_exceptions" [[:= {} status "resolved"]]
+                "disputed_exceptions" [[:= {} status "disputed"]]
+                "exception_count"     []})
              (into {} (map (juxt key (comp :filters val)))
                    (filter #(= [db "public" "delivery_exceptions"] (:source-table (val %))) metrics)))))
     (testing "the derived_semantics SQL dimensions are reported on every metric of their model, nothing else is"

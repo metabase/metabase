@@ -1,21 +1,27 @@
 (ns dev.dbt-import.fixture-test
   "The fixture generator's parts that run without dbt: what it copies, what it keeps of a manifest, how it runs dbt,
-  and the password wrapper the marts generator uses too."
+  how the scratch copy is set up and torn down, and how the password stays off the screen."
   (:require
    [clojure.java.io :as io]
    [clojure.java.shell :as sh]
+   [clojure.pprint :as pprint]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [dev.dbt-import.fixture :as fixture]
-   [metabase.test :as mt])
+   [metabase.test :as mt]
+   [metabase.util.secret :as u.secret]
+   [metabase.util.yaml :as yaml])
   (:import
    (java.io File)))
 
 (set! *warn-on-reflection* true)
 
 (deftest ^:parallel dbt-command-test
-  (testing "uvx with dbt-core pinned, whenever uvx is there"
-    (is (= ["uvx" "--from" (str "dbt-core==" fixture/dbt-version) "--with" "dbt-postgres" "dbt"]
+  (testing "uvx with dbt-core and dbt-postgres pinned, whenever uvx is there"
+    (is (= ["uvx"
+            "--from" (str "dbt-core==" fixture/dbt-version)
+            "--with" (str "dbt-postgres==" fixture/dbt-postgres-version)
+            "dbt"]
            (#'fixture/dbt-command #{"uvx" "dbt"})
            (#'fixture/dbt-command #{"uvx"}))))
   (testing "a dbt on PATH only when uvx is not"
@@ -25,13 +31,76 @@
 
 (deftest ^:parallel dbt-env-test
   (let [profiles-dir (io/file "/scratch/.profiles")]
-    (testing "the user's DBT_* variables stay out, everything else goes through, and the profiles dir is the scratch one"
-      (is (= {"PATH" "/usr/bin", "HOME" "/home/me", "DBT_PROFILES_DIR" (.getPath profiles-dir)}
-             (#'fixture/dbt-env profiles-dir {"PATH"             "/usr/bin"
-                                              "HOME"             "/home/me"
-                                              "DBT_PROFILES_DIR" "/home/me/.dbt"
-                                              "DBT_PROJECT_DIR"  "/home/me/some-other-project"
-                                              "DBT_TARGET_PATH"  "elsewhere"}))))))
+    (testing "only what dbt and uvx need goes through, and the profiles dir is the scratch one"
+      (is (= {"PATH"             "/usr/bin"
+              "HOME"             "/home/me"
+              "USER"             "me"
+              "LANG"             "C.UTF-8"
+              "LC_ALL"           "C"
+              "TMPDIR"           "/tmp"
+              "UV_CACHE_DIR"     "/home/me/.cache/uv"
+              "XDG_CACHE_HOME"   "/home/me/.cache"
+              "https_proxy"      "http://proxy:3128"
+              "NO_PROXY"         "localhost"
+              "DBT_PROFILES_DIR" (.getPath profiles-dir)}
+             (#'fixture/dbt-env profiles-dir {"PATH"                  "/usr/bin"
+                                              "HOME"                  "/home/me"
+                                              "USER"                  "me"
+                                              "LANG"                  "C.UTF-8"
+                                              "LC_ALL"                "C"
+                                              "TMPDIR"                "/tmp"
+                                              "UV_CACHE_DIR"          "/home/me/.cache/uv"
+                                              "XDG_CACHE_HOME"        "/home/me/.cache"
+                                              "https_proxy"           "http://proxy:3128"
+                                              "NO_PROXY"              "localhost"
+                                              ;; the user's dbt settings, which would send dbt elsewhere
+                                              "DBT_PROFILES_DIR"      "/home/me/.dbt"
+                                              "DBT_PROJECT_DIR"       "/home/me/some-other-project"
+                                              "DBT_TARGET_PATH"       "elsewhere"
+                                              ;; secrets a project's env_var() could copy into the manifest
+                                              "AWS_SECRET_ACCESS_KEY" "s3cret"
+                                              "MB_POSTGRESQL_TEST_PASSWORD" "hunter2"
+                                              "GITHUB_TOKEN"          "ghp_x"
+                                              ;; a prefix match is not a match
+                                              "PATHOLOGICAL"          "no"
+                                              "XHOME"                 "no"}))))))
+
+(deftest ^:parallel on-path-test
+  (mt/with-temp-dir [bin-path nil]
+    (mt/with-temp-dir [other-path nil]
+      (let [executable (io/file bin-path "dbt")
+            plain      (io/file bin-path "readme")
+            path       (str other-path File/pathSeparator bin-path)]
+        (spit executable "#!/bin/sh\n")
+        (.setExecutable executable true)
+        (spit plain "")
+        (testing "an executable file in a PATH directory"
+          (is (true? (#'fixture/on-path? "dbt" path))))
+        (testing "not a file that is not executable, a directory, or a file elsewhere"
+          (is (false? (#'fixture/on-path? "readme" path)))
+          (is (false? (#'fixture/on-path? "dbt" (str other-path))))
+          (is (false? (#'fixture/on-path? (.getName (io/file bin-path)) (.getParent (io/file bin-path))))))
+        (testing "an empty or missing PATH"
+          (is (false? (#'fixture/on-path? "dbt" "")))
+          (is (false? (#'fixture/on-path? "dbt" nil))))))))
+
+(deftest ^:parallel profiles-yaml-test
+  (let [connection {:host "db.example.com", :port 15432, :user "dbt", :dbname "dbt_bi"}]
+    (testing "one Postgres profile under the project's profile name, with the password as dbt should read it"
+      (is (= {:my_project {:target  "dev"
+                           :outputs {:dev {:type     "postgres"
+                                           :host     "db.example.com"
+                                           :port     15432
+                                           :user     "dbt"
+                                           :password "p: ss #word"
+                                           :dbname   "dbt_bi"
+                                           :schema   "public"
+                                           :threads  4}}}}
+             (-> (#'fixture/profiles-yaml "my_project" (assoc connection :password (u.secret/secret "p: ss #word")))
+                 yaml/parse-string))))
+    (testing "no password: an empty one, as a parse that never connects is happy with"
+      (is (= "" (get-in (yaml/parse-string (#'fixture/profiles-yaml "p" (assoc connection :password nil)))
+                        [:p :outputs :dev :password]))))))
 
 (deftest check-dbt-version-test
   (is (nil? (#'fixture/check-dbt-version! {"dbt_version" fixture/dbt-version})))
@@ -93,7 +162,7 @@
   [^File dir & args]
   (let [{:keys [exit err]} (apply sh/sh "git" "-C" (.getPath dir) args)]
     (when-not (zero? exit)
-      (throw (ex-info (str "git failed: " err) {:args args})))))
+      (throw (ex-info (format "git %s failed: %s" (str/join " " args) err) {:args args, :exit exit})))))
 
 (defn- write!
   [^File dir relative content]
@@ -149,13 +218,96 @@
         (is (= #{"dbt_project.yml" "models/a.sql"}
                (relative-files (io/file scratch-path))))))))
 
-(deftest ^:parallel secret-test
-  (let [password (fixture/secret "hunter2")]
-    (is (= "hunter2" (fixture/reveal password)))
-    (testing "prints redacted, however it is printed"
-      (is (= "#secret <redacted>" (pr-str password)))
-      (is (= "<redacted>" (str password)))
-      (is (not (str/includes? (pr-str {:host "localhost", :password password}) "hunter2"))))))
+(def ^:private connection
+  "A connection with a password that must never show up in a test's output."
+  {:host "localhost", :port 5432, :user "nobody", :password (u.secret/secret "hunter2"), :dbname "db"})
+
+(deftest ^:parallel connection-prints-redacted-test
+  (testing "a connection map prints without its password, however it is printed"
+    (is (not (str/includes? (pr-str connection) "hunter2")))
+    (is (not (str/includes? (str connection) "hunter2")))
+    (is (not (str/includes? (with-out-str (pprint/pprint connection)) "hunter2"))))
+  (testing "a schema check that fails on the map reports it, redacted"
+    (let [e (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid input"
+                                  (fixture/with-scratch-project (io/file "nowhere") (dissoc connection :host) {}
+                                                                (fn [_ _]))))]
+      (is (not (str/includes? (ex-message e) "hunter2")))
+      (is (not (str/includes? (pr-str (ex-data e)) "hunter2"))))))
+
+(deftest with-scratch-project-test
+  (mt/with-temp-dir [project-path nil]
+    (let [project  (io/file project-path)
+          scratch* (atom nil)]
+      (write! project "dbt_project.yml" "name: p\nprofile: my_profile\n")
+      (write! project "models/a.sql" "select 1")
+      (testing "f gets a copy of the project and a profiles dir with the connection's profile; its result comes back"
+        (is (= :done
+               (fixture/with-scratch-project project connection {}
+                 (fn [^File scratch ^File profiles-dir]
+                   (reset! scratch* scratch)
+                   (is (= #{"dbt_project.yml" "models/a.sql" ".profiles/profiles.yml"} (relative-files scratch)))
+                   (is (= "my_profile"
+                          (-> (yaml/parse-string (slurp (io/file profiles-dir "profiles.yml"))) keys first name)))
+                   (is (= "hunter2"
+                          (-> (yaml/parse-string (slurp (io/file profiles-dir "profiles.yml")))
+                              (get-in [:my_profile :outputs :dev :password]))))
+                   :done)))))
+      (testing "the scratch directory is gone afterwards"
+        (is (not (.exists ^File @scratch*)))))))
+
+(deftest ^:parallel with-scratch-project-not-a-project-test
+  (mt/with-temp-dir [project-path nil]
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"is not a dbt project; pass :project"
+                          (fixture/with-scratch-project (io/file project-path) connection {} (fn [_ _]))))))
+
+(deftest with-scratch-project-cleanup-does-not-mask-test
+  (testing "when f throws and the scratch directory cannot be deleted, f's exception is the one that comes out"
+    (mt/with-temp-dir [project-path nil]
+      (let [project (io/file project-path)
+            locked* (atom nil)]
+        (write! project "dbt_project.yml" "name: p\nprofile: p\n")
+        (try
+          (mt/with-log-messages-for-level [messages [dev.dbt-import.fixture :warn]]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"^boom$"
+                                  (fixture/with-scratch-project project connection {}
+                                    (fn [^File scratch _]
+                                      (let [locked (io/file scratch "locked")]
+                                        (write! locked "x" "x")
+                                        (.setReadable locked false)
+                                        (.setExecutable locked false)
+                                        (reset! locked* locked))
+                                      (throw (ex-info "boom" {}))))))
+            ;; root can delete anything, so there is nothing to log then
+            (when-not (.canRead ^File @locked*)
+              (is (=? [{:level :warn, :message #"Could not delete the scratch directory .*"}]
+                      (messages)))))
+          (finally
+            (when-let [^File locked @locked*]
+              (.setReadable locked true)
+              (.setExecutable locked true)
+              (org.apache.commons.io.FileUtils/deleteDirectory (.getParentFile locked)))))))))
+
+(deftest with-scratch-project-packages-test
+  (mt/with-temp-dir [project-path nil]
+    (let [project (io/file project-path)]
+      (write! project "dbt_project.yml" "name: p\nprofile: p\n")
+      (write! project "packages.yml" "packages:\n  - package: dbt-labs/dbt_utils\n    version: 1.3.0\n")
+      (testing "packages declared but not installed: refused unless asked to run dbt deps"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"declares packages but has no dbt_packages"
+                              (fixture/with-scratch-project project connection {} (fn [_ _] :ran))))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"declares packages but has no dbt_packages"
+                              (fixture/with-scratch-project project connection {:deps? false} (fn [_ _] :ran)))))
+      (testing "installed packages come along, so dbt deps is not needed"
+        (write! project "dbt_packages/dbt_utils/dbt_project.yml" "name: dbt_utils\n")
+        (is (= :ran (fixture/with-scratch-project project connection {} (fn [_ _] :ran))))))))
+
+(deftest fixture-overrides-test
+  (testing "the checked-in fixture projects declare no packages, so no regeneration needs dbt deps"
+    (is (not (.exists (io/file (get-in fixture/fixtures [:parcel-delivery :project]) "packages.yml"))))
+    (is (not (.exists (io/file (get-in fixture/fixtures [:parcel-delivery :project]) "dependencies.yml")))))
+  (testing "a typo in the overrides is refused before anything runs"
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Invalid input"
+                          (fixture/regenerate! :parcel-delivery {:dep? true})))))
 
 (deftest check-repo-root-test
   (testing "the tests run at the repo root"

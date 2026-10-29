@@ -14,8 +14,9 @@
   as it is in a dev REPL.
 
   Run from a REPL at the repo root, with a Postgres to build in. The connection defaults to the one the test suite
-  uses for the `:postgres` driver (the `MB_POSTGRESQL_TEST_*` env vars), building in database `dbt_bi`, which has to
-  exist. The password is a separate argument, see [[regenerate!]]:
+  uses for the `:postgres` driver (the `MB_POSTGRESQL_TEST_*` env vars, see
+  [[metabase.test.data.interface/db-test-env-var]]), building in database `dbt_bi`, which has to exist. The password
+  is a separate argument, see [[regenerate!]]:
 
     (dev.dbt-import.marts/regenerate!)
     (dev.dbt-import.marts/regenerate! {:connection {:port 15432, :user \"postgres\"}} \"password\")"
@@ -24,11 +25,13 @@
    [clojure.string :as str]
    [dev.dbt-import.fixture :as fixture]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.test.data.interface :as tx]
    ;; for the `#t` print-method of `LocalDate`, which the dataset EDN is written with
    [metabase.util.date-2]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.secret :as u.secret]
    [next.jdbc :as jdbc]
    [next.jdbc.result-set :as jdbc.rs])
   (:import
@@ -96,30 +99,54 @@
   (ms/InstanceOfClass javax.sql.DataSource))
 
 (mr/def ::options
-  "What [[regenerate!]] takes: the checkout to build, where to write the dataset, how to reach Postgres."
+  "What [[regenerate!]] takes: the checkout to build, where to write the dataset, how to reach Postgres, and whether to
+  run `dbt deps` (see [[fixture/with-scratch-project]])."
   [:map {:closed true}
    [:project    {:optional true} :string]
    [:out        {:optional true} :string]
-   [:connection {:optional true} ::connection-overrides]])
+   [:connection {:optional true} ::connection-overrides]
+   [:deps?      {:optional true} :boolean]])
 
 (mu/defn- with-defaults :- ::fixture/connection
-  "The connection to build in: `overrides` over the test suite's `:postgres` settings, with `password` wrapped so that it
-  prints redacted (see [[fixture/secret]])."
+  "The connection to build in: `overrides` over the test suite's `:postgres` settings, with `password` wrapped as a
+  [[metabase.util.secret/secret]] so that it prints redacted."
   [{:keys [host port dbname user]} :- ::connection-overrides
    password                        :- [:maybe :string]]
-  (let [env (fn [k default] (or (System/getenv (str "MB_POSTGRESQL_TEST_" k)) default))]
-    {:host     (or host (env "HOST" "localhost"))
-     :port     (or port (parse-long (env "PORT" "5432")))
-     :dbname   (or dbname "dbt_bi")
-     :user     (or user (env "USER" "postgres"))
-     :password (some-> (or password (env "PASSWORD" nil)) fixture/secret)}))
+  {:host     (or host (tx/db-test-env-var :postgresql :host "localhost"))
+   :port     (or port (parse-long (str (tx/db-test-env-var :postgresql :port 5432))))
+   :dbname   (or dbname "dbt_bi")
+   :user     (or user (tx/db-test-env-var :postgresql :user "postgres"))
+   :password (some-> (or password (tx/db-test-env-var :postgresql :password)) u.secret/secret)})
+
+(mr/def ::jdbc-spec
+  "A next.jdbc db-spec for [[data-source]]: the connection with the password exposed, since next.jdbc turns every
+  value into a string with `str`, which for a secret is its redaction."
+  [:map {:closed true}
+   [:dbtype   [:= "postgresql"]]
+   [:host     :string]
+   [:port     :int]
+   [:user     :string]
+   [:password {:optional true} :string]
+   [:dbname   :string]])
+
+(mu/defn- jdbc-spec :- ::jdbc-spec
+  "The next.jdbc db-spec for `connection`, see [[::jdbc-spec]]. Not for printing."
+  [{:keys [password] :as connection} :- ::fixture/connection]
+  (cond-> (-> connection (dissoc :password) (assoc :dbtype "postgresql"))
+    password (assoc :password (u.secret/expose password))))
+
+(mu/defn- data-source :- ::data-source
+  "A data source for the Postgres `connection` points at."
+  [connection :- ::fixture/connection]
+  (jdbc/get-datasource (jdbc-spec connection)))
 
 (mu/defn- build! :- :nil
   "Build the checkout at `project` in a scratch copy against `connection`: `dbt seed`, then `dbt run` of the project's
   own models."
   [^File project :- (ms/InstanceOfClass File)
-   connection    :- ::fixture/connection]
-  (fixture/with-scratch-project project connection
+   connection    :- ::fixture/connection
+   options       :- ::fixture/scratch-options]
+  (fixture/with-scratch-project project connection options
     (fn [scratch profiles-dir]
       (fixture/dbt! scratch profiles-dir "seed")
       (fixture/dbt! scratch profiles-dir "run" "--select" (str "package:" package-name)))))
@@ -128,19 +155,20 @@
   "The dataset field definitions for `table`, from the columns Postgres reports for it, in column order."
   [ds                     :- ::data-source
    {:keys [table pk fks]} :- ::table]
-  (for [{:keys [column_name udt_name]} (jdbc/execute! ds ["SELECT column_name, udt_name
-                                                          FROM information_schema.columns
-                                                          WHERE table_schema = 'public' AND table_name = ?
-                                                          ORDER BY ordinal_position"
-                                                         table]
-                                                      {:builder-fn jdbc.rs/as-unqualified-maps})
-        :let [base-type (or (sql-jdbc.sync/database-type->base-type :postgres (keyword udt_name))
+  (for [{column-name :column_name, udt-name :udt_name}
+        (jdbc/execute! ds ["SELECT column_name, udt_name
+                            FROM information_schema.columns
+                            WHERE table_schema = 'public' AND table_name = ?
+                            ORDER BY ordinal_position"
+                           table]
+                       {:builder-fn jdbc.rs/as-unqualified-maps})
+        :let [base-type (or (sql-jdbc.sync/database-type->base-type :postgres (keyword udt-name))
                             (throw (ex-info (format "the Postgres driver has no base type for type %s of %s.%s"
-                                                    udt_name table column_name)
-                                            {:table table, :column column_name, :udt udt_name})))
-              fk        (get fks column_name)]]
-    (cond-> {:field-name column_name, :base-type base-type}
-      (= column_name pk) (assoc :pk? true)
+                                                    udt-name table column-name)
+                                            {:table table, :column column-name, :udt udt-name})))
+              fk        (get fks column-name)]]
+    (cond-> {:field-name column-name, :base-type base-type}
+      (= column-name pk) (assoc :pk? true)
       fk                 (assoc :fk (keyword fk)))))
 
 (mu/defn- rows :- [:sequential ::row]
@@ -182,7 +210,8 @@
 (mu/defn regenerate! :- :string
   "Regenerate the dataset (see the namespace docstring) from the checkout at `:project` (default
   `~/dbt-business-intelligence`), building it in `:connection` with `password` (default `MB_POSTGRESQL_TEST_PASSWORD`),
-  and write it to `:out` (default the dataset file). Returns a one-line summary of what was written.
+  and write it to `:out` (default the dataset file); `:deps? true` lets `dbt deps` run in the scratch copy (see
+  [[fixture/with-scratch-project]]). Returns a one-line summary of what was written.
 
   The password is its own argument rather than a key of `:connection` so that a mistake in the options does not put it
   on the screen: a schema check that fails reports the whole value it was given."
@@ -192,14 +221,14 @@
   ([options :- ::options]
    (regenerate! options nil))
 
-  ([{:keys [project out connection]
+  ([{:keys [project out connection deps?]
      :or   {project (str (System/getProperty "user.home") "/dbt-business-intelligence")
             out     dataset-filename}} :- ::options
     password                           :- [:maybe :string]]
    (fixture/check-repo-root!)
    (let [connection (with-defaults (or connection {}) password)]
-     (build! (io/file project) connection)
-     (let [ds          (jdbc/get-datasource (assoc connection :dbtype "postgresql"))
+     (build! (io/file project) connection {:deps? (boolean deps?)})
+     (let [ds          (data-source connection)
            definitions (vec (for [table tables
                                   :let  [fields (vec (field-definitions ds table))]]
                               [(:table table) fields (vec (rows ds table fields))]))]

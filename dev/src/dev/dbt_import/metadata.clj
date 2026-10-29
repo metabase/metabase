@@ -12,13 +12,16 @@
   metric's `[:metric id]` references resolve, and [[portable-card-ref]] turns a card id back into the `entity_id`
   serdes writes.
 
-  Base types come from the project's declared `data_type` through the driver's own type mapping; see [[base-type]]."
+  Base types come from the project's declared `data_type` through the driver's own type mapping; see [[base-type]].
+  The provider's Database carries the driver's features (see [[driver-features]]), so the resolve stage can tell which
+  clauses the warehouse could not run."
   (:require
    [clojure.string :as str]
    [dev.dbt-import.schemas.ir :as ir]
    [dev.dbt-import.schemas.resolved :as resolved]
    [medley.core :as m]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.cached-provider :as lib.metadata.cached-provider]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -52,9 +55,15 @@
 
 (mu/defn base-type :- [:maybe ::lib.schema.common/base-type]
   "The Metabase base type for a warehouse `data-type` string, as the `driver` maps it during sync, or nil when it is
-  unknown or missing."
+  unknown or missing. Only a JDBC driver has the mapping (see [[resolved/jdbc-driver?]]); the `::resolved/driver`
+  schema says so where it is checked, and this fails the same way where it is not."
   [driver    :- ::resolved/driver
    data-type :- [:maybe :string]]
+  (when-not (resolved/jdbc-driver? driver)
+    (throw (ex-info (format (str "%s is not a JDBC driver: the converter types columns through the driver's sql-jdbc"
+                                 " type mapping")
+                            driver)
+                    {:driver driver})))
   (when-not (str/blank? data-type)
     (let [type-name (normalize-type-name data-type)]
       ;; an array is an array; Metabase does not type the elements
@@ -74,8 +83,8 @@
   (or (m/find-first #(= the-name (:name %)) named)
       (m/find-first #(= (u/lower-case-en the-name) (u/lower-case-en (:name %))) named)))
 
-(mu/defn model-database :- [:maybe :string]
-  "The Metabase database the config maps `model`'s warehouse database to; nil when it maps none."
+(mu/defn semantic-model-database :- [:maybe :string]
+  "The Metabase database the config maps `semantic-model`'s warehouse database to; nil when it maps none."
   [config             :- ::resolved/config
    {:keys [relation]} :- ::ir/semantic-model]
   (get-in config [:databases (:database relation)]))
@@ -156,37 +165,49 @@
    :base-type      field-base-type
    :effective-type field-base-type})
 
+(mu/defn- driver-features :- [:set :keyword]
+  "The features `driver` supports, as it answers for the Database `database-name`, which it has never connected to:
+  what it never has (`median` on MySQL, a regex on SQL Server) is what the resolve stage reports a metric for (see
+  [[dev.dbt-import.resolve/check-features!]]). A driver that answers a feature from the warehouse's version, which the
+  stub has none of, answers for the version it assumes without one; one that throws over the missing connection is
+  taken not to support the feature, which [[driver.u/features]] logs."
+  [driver        :- ::resolved/driver
+   database-name :- :string]
+  (driver.u/features driver {:lib/type :metadata/database, :id 1, :name database-name, :engine driver}))
+
 (mu/defn metadata-provider :- ::lib.schema.metadata/metadata-provider
   "A provider for the Metabase database `database-name`: the semantic models whose relation lives in it, as Tables,
-  and their documented columns, as Fields. A column whose declared type is unknown gets `:type/*`; the resolve stage
-  reports it before it gets that far."
+  and their documented columns, as Fields, the tables numbered from 1 and the fields after them. A column whose
+  declared type is unknown gets `:type/*`; the resolve stage reports it before it gets that far."
   [{:keys [driver] :as config} :- ::resolved/config
    {:keys [semantic-models]}   :- ::ir/manifest
    database-name               :- :string]
-  (let [models  (filter #(= database-name (model-database config %)) (vals semantic-models))
-        next-id (volatile! 0)
-        id!     #(vswap! next-id inc)
-        tables  (for [{:keys [relation]} models]
-                  {:lib/type     :metadata/table
-                   :id           (id!)
-                   :db-id        1
-                   :name         (:table relation)
-                   :display-name (:table relation)
-                   :schema       (:schema relation)})
-        fields  (for [[table-id {:keys [columns]}] (map vector (map :id tables) models)
-                      {column-name :name, :keys [data-type]} (vals columns)]
-                  (field-metadata (id!) table-id column-name (or (base-type driver data-type) :type/*)))]
+  (let [in-database (filter #(= database-name (semantic-model-database config %)) (vals semantic-models))
+        tables      (map-indexed (fn [i {:keys [relation]}]
+                                   {:lib/type     :metadata/table
+                                    :id           (inc i)
+                                    :db-id        1
+                                    :name         (:table relation)
+                                    :display-name (:table relation)
+                                    :schema       (:schema relation)})
+                                 in-database)
+        fields      (map-indexed (fn [i [table-id {column-name :name, :keys [data-type]}]]
+                                   (field-metadata (+ (count tables) (inc i)) table-id column-name
+                                                   (or (base-type driver data-type) :type/*)))
+                                 (for [[table-id {:keys [columns]}] (map vector (map :id tables) in-database)
+                                       column                       (vals columns)]
+                                   [table-id column]))]
     (lib.metadata.cached-provider/cached-metadata-provider
      (->ManifestMetadata
       (atom {:database {:lib/type :metadata/database
                         :id       1
                         :name     database-name
                         :engine   driver
-                        :features #{}}
+                        :features (driver-features driver database-name)}
              :tables   (vec tables)
              :fields   (vec fields)
              :cards    []
-             :next-id  @next-id})))))
+             :next-id  (+ (count tables) (count fields))})))))
 
 (mu/defn providers :- [:map-of :string ::lib.schema.metadata/metadata-provider]
   "A [[metadata-provider]] for every Metabase database the config maps a warehouse database to, keyed by its name."
@@ -196,17 +217,24 @@
         (map (fn [database-name] [database-name (metadata-provider config ir database-name)]))
         (distinct (vals (:databases config)))))
 
-(mu/defn model-table :- [:maybe ::lib.schema.metadata/table]
-  "The Table in `provider` for `model`'s relation, by schema and name."
+(mu/defn semantic-model-table :- [:maybe ::lib.schema.metadata/table]
+  "The Table in `provider` for `semantic-model`'s relation, by schema and name: matched exactly, or failing that
+  ignoring case, as [[find-named]] matches a column."
   [provider           :- ::lib.schema.metadata/metadata-provider
    {:keys [relation]} :- ::ir/semantic-model]
-  (m/find-first #(and (= (:schema relation) (:schema %)) (= (:table relation) (:name %)))
-                (lib.metadata/tables provider)))
+  (let [tables   (lib.metadata/tables provider)
+        matches? (fn [same?]
+                   (fn [table]
+                     (and (same? (:schema relation) (:schema table))
+                          (same? (:table relation) (:name table)))))]
+    (or (m/find-first (matches? =) tables)
+        (m/find-first (matches? #(= (some-> %1 u/lower-case-en) (some-> %2 u/lower-case-en))) tables))))
 
 (mu/defn column :- ::lib.schema.metadata/column
   "The Field named `column-name` on `table-id`, matched exactly or ignoring case (see [[find-named]]). A column the
-  project did not document is added, with no known type, so the instance supplies it when the import binds the field;
-  a column that does not exist in the warehouse fails there, with the authoritative metadata."
+  project did not document is added, with no known type, so the instance supplies it when the import binds the field.
+  A column that does not exist in the warehouse does not fail the import, which makes up an inactive Field for it;
+  [[dev.dbt-import.preflight/check]] reports it before the import, and the card fails when run otherwise."
   [provider    :- ::lib.schema.metadata/metadata-provider
    table-id    :- ::lib.schema.id/table
    column-name :- :string]

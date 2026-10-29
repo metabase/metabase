@@ -1,8 +1,9 @@
 (ns dev.dbt-import.advanced-metrics-test
   "The metric types that compose other metrics: a ratio or derived metric becomes the same arithmetic over
-  `:metric` references to the cards its input metrics convert to, an input with a filter of its own is inlined as a
-  `:sum-where`, `:count-where` or `:distinct-where` so the metric stays one card, a cumulative metric becomes
-  `:cum-sum` or `:cum-count`, and what has no Metabase equivalent (offsets, cumulative windows, conversion) is
+  `:metric` references to the cards its input metrics convert to, an input with a filter of its own is inlined as the
+  filtered form of its aggregation (`:count-where`, `:distinct-where`, or the aggregation over a `:case` that is null
+  where the filter fails) so the metric stays one card, a cumulative metric becomes `:cum-sum` or `:cum-count`, with
+  a note on when it agrees with dbt, and what has no Metabase equivalent (offsets, cumulative windows, conversion) is
   reported.
 
   The parse-time reasons for what is reported (offsets, windows, conversion) are in
@@ -17,7 +18,8 @@
    [clojure.test :refer [are deftest is testing]]
    [clojure.walk :as walk]
    [dev.dbt-import.emit :as emit]
-   [dev.dbt-import.test-util :as tu :refer [fld]]))
+   [dev.dbt-import.test-util :as tu :refer [fld]]
+   [mb.hawk.assert-exprs]))
 
 (def ^:private input-measures
   "The measures the input metrics aggregate, replacing the fixture's default `m`."
@@ -26,25 +28,31 @@
    (assoc (tu/base-measure) :name "order_count" :agg "count_distinct" :expr "order_key")
    (assoc (tu/base-measure) :name "row_count" :expr "1")
    (assoc (tu/base-measure) :name "avg_sales" :agg "average" :expr "sales")
+   (assoc (tu/base-measure) :name "min_sales" :agg "min" :expr "sales")
+   (assoc (tu/base-measure) :name "max_sales" :agg "max" :expr "sales")
+   (assoc (tu/base-measure) :name "median_sales" :agg "median" :expr "sales")
+   (assoc (tu/base-measure) :name "p90_sales" :agg "percentile" :expr "sales" :agg_params {:percentile 0.9})
    (assoc (tu/base-measure) :name "col_count" :agg "count" :expr "order_key")
    (assoc (tu/base-measure) :name "returned" :agg "sum_boolean" :expr "is_returned")])
 
-(def ^:private shipped-filter
-  (tu/where-filters "{{ Dimension('fact_sales_key__status') }} = 'Shipped'"))
-
 (def ^:private input-metrics
   "The simple metrics next to the metric under test: name, the measure it aggregates and its own filter. `sales`,
-  `target`, `order_count` and `row_count` are what dbt generates from `create_metric: true`; `avg_sales` is an
-  average, which has no filtered form; `col_count` and `returned` are a `count` of a column and a `sum_boolean`, whose
-  filtered forms carry a condition of their own; `shipped_sales` is `sales` with a filter of its own."
-  [["sales"         "sales"       nil]
-   ["target"        "target"      nil]
-   ["order_count"   "order_count" nil]
-   ["row_count"     "row_count"   nil]
-   ["avg_sales"     "avg_sales"   nil]
-   ["col_count"     "col_count"   nil]
-   ["returned"      "returned"    nil]
-   ["shipped_sales" "sales"       shipped-filter]])
+  `target`, `order_count` and `row_count` are what dbt generates from `create_metric: true`; `avg_sales`, `min_sales`,
+  `max_sales`, `median_sales` and `p90_sales` are the aggregations whose filtered form is over a `case`; `col_count`
+  and `returned` are a `count` of a column and a `sum_boolean`, whose filtered forms carry a condition of their own;
+  `shipped_sales` is `sales` with a filter of its own."
+  [["sales"         "sales"        nil]
+   ["target"        "target"       nil]
+   ["order_count"   "order_count"  nil]
+   ["row_count"     "row_count"    nil]
+   ["avg_sales"     "avg_sales"    nil]
+   ["min_sales"     "min_sales"    nil]
+   ["max_sales"     "max_sales"    nil]
+   ["median_sales"  "median_sales" nil]
+   ["p90_sales"     "p90_sales"    nil]
+   ["col_count"     "col_count"    nil]
+   ["returned"      "returned"     nil]
+   ["shipped_sales" "sales"        tu/shipped-filter]])
 
 (defn- simple-metric
   "A simple metric `metric-name` over `measure-name` with `metric-filter`; `base` is the fixture's metric `m` to take
@@ -53,8 +61,7 @@
   (-> base
       (assoc :name metric-name, :unique_id (str "metric.p." metric-name), :label metric-name, :type "simple"
              :filter metric-filter, :depends_on {:macros [], :nodes [tu/sm-id]})
-      (assoc-in [:type_params :measure] (tu/input-measure {:name measure-name}))
-      (assoc-in [:type_params :input_measures] [(tu/input-measure {:name measure-name})])))
+      (tu/over-measure measure-name)))
 
 (defn- with-input-metrics
   "A `:edit` fn for [[tu/build-manifest]] that adds [[input-metrics]]."
@@ -110,12 +117,11 @@
   `:metric` leaves named, see [[name-metric-refs]]), `:filters` (exported filter clauses), `:unsupported` (the
   reason), and `:paths`, the card files in the order they are written."
   [resolved]
-  (let [names       (into {} (map (juxt :entity-id (comp :name :ir))) (:metrics resolved))
-        stage       (fn [resolved-metric] (-> (emit/dataset-query resolved-metric) :stages first))
-        by-name     (fn [f] (into {} (map (juxt (comp :name :ir) f)) (:metrics resolved)))]
-    {:aggregation (by-name #(name-metric-refs names (-> % stage :aggregation first)))
-     :filters     (by-name #(-> % stage (:filters [])))
-     :unsupported (into {} (map (juxt :name :reason)) (:unsupported resolved))
+  (let [names   (into {} (map (juxt :entity-id (comp :name :ir))) (:metrics resolved))
+        by-name (fn [f] (into {} (map (juxt (comp :name :ir) f)) (:metrics resolved)))]
+    {:aggregation (by-name #(name-metric-refs names (:aggregation (tu/query-clauses %))))
+     :filters     (by-name #(:filters (tu/query-clauses %)))
+     :unsupported (tu/reasons-by-name (:unsupported resolved))
      :paths       (mapv :path (rest (emit/files tu/default-config resolved)))}))
 
 (defn- convert
@@ -139,14 +145,10 @@
 (def ^:private sum-target [:sum {} (fld "target" :type/Float)])
 (def ^:private cum-sum-sales [:cum-sum {} (fld "sales" :type/Float)])
 
-(def ^:private order-status
-  "`dim_order.status`, reached from `fact_sales` through the `order` entity's column."
-  (tu/joined-fld "order_key" "dim_order" "status" :type/Text))
-
 (def ^:private cancelled-filter
   (tu/where-filters "{{ Dimension('order__order_status_dim') }} = 'Cancelled'"))
 
-(def ^:private cancelled [:= {} order-status "Cancelled"])
+(def ^:private cancelled [:= {} tu/order-status "Cancelled"])
 (def ^:private shipped [:= {} (fld "status" :type/Text) "Shipped"])
 
 (deftest ^:parallel ratio-test
@@ -171,15 +173,12 @@
                      :unsupported
                      (get "m")))))
   (testing "an input the parse stage reported is reported with that reason, not as missing"
-    (let [windowed (fn [manifest]
-                     (let [base (get-in manifest [:metrics "metric.p.m"])]
-                       (assoc-in manifest [:metrics "metric.p.sales_7d"]
-                                 (-> (simple-metric base ["sales_7d" "sales" nil])
-                                     (assoc :type "cumulative")
-                                     (assoc-in [:type_params :cumulative_type_params]
-                                               {:window        {:count 7, :granularity "day"}
-                                                :grain_to_date nil
-                                                :period_agg    "last"})))))
+    (let [windowed (tu/add-metric "sales_7d" #(-> (simple-metric % ["sales_7d" "sales" nil])
+                                                 (assoc :type "cumulative")
+                                                 (assoc-in [:type_params :cumulative_type_params]
+                                                           {:window        {:count 7, :granularity "day"}
+                                                            :grain_to_date nil
+                                                            :period_agg    "last"})))
           {:keys [unsupported]} (convert (-> (composed "ratio" ["sales_7d" "sales"]
                                                        {:numerator   (tu/metric-input "sales_7d")
                                                         :denominator (tu/metric-input "sales")})
@@ -189,7 +188,7 @@
                    (get unsupported "m"))))))
 
 (defn- filtered-ratio
-  "Tweaks for a ratio `m` of the metric `numerator-name` filtered by `cancelled-filter` (with `input-alias`, when
+  "Tweaks for a ratio `m` of the metric `numerator-name` filtered by [[cancelled-filter]] (with `input-alias`, when
   given) to the metric `denominator-name`."
   [numerator-name denominator-name & {:keys [input-alias]}]
   (composed "ratio" (distinct [numerator-name denominator-name])
@@ -208,18 +207,26 @@
       (is (= [] (filters "order_count"))))
     (are [numerator expected] (= [:/ {} expected [:metric {} "target"]]
                                  (-> (convert (filtered-ratio numerator "target")) :aggregation (get "m")))
-      "sales"     [:sum-where {} (fld "sales" :type/Float) cancelled]
       "row_count" [:count-where {} cancelled]
       ;; a count of a column skips its nulls, and a sum_boolean counts where the column is true: both conditions join
       ;; the filter's
       "col_count" [:count-where {} [:and {} cancelled [:not-null {} (fld "order_key" :type/Text)]]]
       "returned"  [:count-where {} [:and {} cancelled [:= {} (fld "is_returned" :type/Boolean) true]]]))
+  (testing (str "every other aggregation is over a case that is the expression where the condition holds and null"
+                " elsewhere, which it skips: as the query processor splices a filtered metric in, and null, like dbt,"
+                " for a group no row of which passes, where sum-where would give 0")
+    (let [filtered-sales [:case {} [[cancelled (fld "sales" :type/Float)]]]]
+      (are [numerator expected] (= [:/ {} expected [:metric {} "target"]]
+                                   (-> (convert (filtered-ratio numerator "target")) :aggregation (get "m")))
+        "sales"        [:sum {} filtered-sales]
+        "avg_sales"    [:avg {} filtered-sales]
+        "min_sales"    [:min {} filtered-sales]
+        "max_sales"    [:max {} filtered-sales]
+        "median_sales" [:median {} filtered-sales]
+        "p90_sales"    [:percentile {} filtered-sales 0.9])))
   (testing "the input's own filter and the one on the reference both apply"
-    (is (= [:/ {} [:sum-where {} (fld "sales" :type/Float) [:and {} shipped cancelled]] [:metric {} "target"]]
+    (is (= [:/ {} [:sum {} [:case {} [[[:and {} shipped cancelled] (fld "sales" :type/Float)]]]] [:metric {} "target"]]
            (-> (convert (filtered-ratio "shipped_sales" "target")) :aggregation (get "m")))))
-  (testing "an aggregation with no filtered form is reported"
-    (is (re-find #"average"
-                 (-> (convert (filtered-ratio "avg_sales" "target")) :unsupported (get "m")))))
   (testing "an alias alone changes nothing: the ratio refers to the input itself"
     (is (= [:/ {} [:metric {} "sales"] [:metric {} "target"]]
            (-> (convert (composed "ratio" ["sales" "target"]
@@ -252,17 +259,14 @@
                :aggregation
                (get "m")))))
   (testing "a derived metric over a derived metric refers to its card"
-    (let [d-metric (fn [manifest]
-                     (let [base (get-in manifest [:metrics "metric.p.m"])]
-                       (assoc-in manifest [:metrics "metric.p.d"]
-                                 (-> base
-                                     (assoc :name "d", :unique_id "metric.p.d", :label "d")
-                                     (assoc-in [:type_params :expr] "sales - target")
-                                     (assoc-in [:type_params :metrics]
-                                               [(tu/metric-input "sales") (tu/metric-input "target")])
-                                     (assoc-in [:type_params :input_measures]
-                                               [(tu/input-measure {:name "sales"}) (tu/input-measure {:name "target"})])
-                                     (assoc-in [:depends_on :nodes] ["metric.p.sales" "metric.p.target"])))))
+    (let [d-metric (tu/add-metric "d" #(-> %
+                                         (assoc-in [:type_params :expr] "sales - target")
+                                         (assoc-in [:type_params :metrics]
+                                                   [(tu/metric-input "sales") (tu/metric-input "target")])
+                                         (assoc-in [:type_params :input_measures]
+                                                   [(tu/input-measure {:name "sales"})
+                                                    (tu/input-measure {:name "target"})])
+                                         (assoc-in [:depends_on :nodes] ["metric.p.sales" "metric.p.target"])))
           tweaks   (-> (composed "derived" ["d"] {:expr "d * 2", :metrics [(tu/metric-input "d")]})
                        (assoc-in [:type-params :input_measures]
                                  [(tu/input-measure {:name "sales"}) (tu/input-measure {:name "target"})])
@@ -279,9 +283,10 @@
            (-> (convert (derived "coalesce(sales, 0) - target")) :aggregation (get "m")))))
   (testing "what the expr cannot say in MBQL is reported"
     (are [expr re] (re-find re (-> (convert (derived expr)) :unsupported (get "m")))
-      "greatest(sales, 0) - target" #"(?i)greatest"
-      "sales - nope"                #"nope"
-      "sales - target = 0"          #"sales - target = 0 \(EQ\) is not supported"))
+      "greatest(sales, 0) - target" #"^expr \"greatest\(sales, 0\) - target\": the function greatest is not supported$"
+      "sales - nope"
+      #"^expr \"sales - nope\": \"nope\" is not one of the metric's inputs \(\"sales\", \"target\"\)$"
+      "sales - target = 0"          #"^expr \"sales - target = 0\": sales - target = 0 \(EQ\) is not supported$"))
   (testing "an input with its own filter is inlined, as in a ratio"
     (is (= [:- {} [:distinct-where {} (fld "order_key" :type/Text) cancelled] [:metric {} "order_count"]]
            (-> (convert (derived "cancelled - order_count"
@@ -308,12 +313,25 @@
     (is (= [[:= {} (fld "status" :type/Text) "Shipped"]]
            (tu/filters (merge (cumulative {})
                               {:metric {:type   "cumulative"
-                                        :filter (tu/where-filters
-                                                 "{{ Dimension('fact_sales_key__status') }} = 'Shipped'")}})))))
+                                        :filter tu/shipped-filter}})))))
   (testing "a running aggregation other than a sum or count has no Metabase equivalent"
     (are [measure-name re] (re-find re (tu/unsupported (cumulative {:measure (tu/input-measure {:name measure-name})})))
-      "order_count" #"count_distinct"
-      "avg_sales"   #"average")))
+      "order_count" #"a running count_distinct has no Metabase equivalent"
+      "avg_sales"   #"a running average has no Metabase equivalent"
+      "median_sales" #"a running median has no Metabase equivalent"
+      ;; a sum_boolean is a count of the rows where the condition holds, but its running form is not a cum-count
+      "returned"    #"a running sum_boolean has no Metabase equivalent")))
+
+(deftest ^:parallel cumulative-note-test
+  (testing (str "a cumulative metric carries a note: a running total over whatever it is broken out by, which agrees"
+                " with dbt under its agg_time_dimension only")
+    (is (=? [#"^a cumulative metric is a running total over whatever it is broken out by.*"]
+            (:notes (tu/convert (cumulative {})))))
+    (is (=? [#"^a cumulative metric is a running total.*"]
+            (:notes (tu/convert (cumulative {:measure (tu/input-measure {:name "row_count"})})))))
+    (is (= [] (:notes (tu/convert (composed "ratio" ["sales" "target"]
+                                            {:numerator   (tu/metric-input "sales")
+                                             :denominator (tu/metric-input "target")})))))))
 
 (deftest ^:parallel composed-fill-nulls-with-test
   (testing "fill_nulls_with on a ratio wraps the division in coalesce, as it does the aggregation of a simple metric"
@@ -341,15 +359,6 @@
   [tweaks f]
   (update tweaks :edit (fn [edit] (comp f edit))))
 
-(defn- metric-named
-  "A `:edit` fn for [[tu/build-manifest]] that adds a metric `metric-name` made from the metric under test, `m`, by
-  `f`: the same boilerplate, type and `type_params`, with `f` changing what differs."
-  [metric-name f]
-  (fn [manifest]
-    (assoc-in manifest [:metrics (str "metric.p." metric-name)]
-              (f (assoc (get-in manifest [:metrics "metric.p.m"])
-                        :name metric-name, :unique_id (str "metric.p." metric-name), :label metric-name)))))
-
 (def ^:private cyclic-reason
   "metric refers to itself, directly or through the metrics it refers to")
 
@@ -360,27 +369,34 @@
       (is (= {"m" cyclic-reason} unsupported))
       (is (= tu/sum-sales (aggregation "sales")) "the other metrics still convert")))
   (testing "two metrics that refer to each other are both reported, and neither is written"
-    (let [d-over-m (metric-named "d" #(-> %
+    (let [d-over-m (tu/add-metric "d" #(-> %
                                          (assoc :depends_on {:macros [], :nodes ["metric.p.m"]})
                                          (update :type_params assoc :expr "m + 1" :metrics [(tu/metric-input "m")])))
           {:keys [unsupported paths]}
           (convert (also (composed "derived" ["d"] {:expr "d * 2", :metrics [(tu/metric-input "d")]}) d-over-m))]
       (is (= {"m" cyclic-reason, "d" cyclic-reason} unsupported))
       (is (nil? (position paths "m")))
-      (is (nil? (position paths "d"))))))
+      (is (nil? (position paths "d")))))
+  (testing (str "a metric that refers to a cyclic one is not cyclic itself: it is reported as referring to a metric"
+                " that was not converted, like any other dependent")
+    (let [d-over-d (tu/add-metric "d" #(-> %
+                                         (assoc :depends_on {:macros [], :nodes ["metric.p.d"]})
+                                         (update :type_params assoc :expr "d + 1" :metrics [(tu/metric-input "d")])))
+          {:keys [unsupported]}
+          (convert (also (composed "derived" ["d"] {:expr "d * 2", :metrics [(tu/metric-input "d")]}) d-over-d))]
+      (is (= {"d" cyclic-reason
+              "m" (str "expr \"d * 2\": metric \"d\" was not converted: " cyclic-reason)}
+             unsupported)))))
 
 (def ^:private msrp-total
   "A measure on `dim_product`, which has none in the fixture."
   (assoc (tu/base-measure) :name "msrp_total" :expr "msrp"))
 
-(defn- with-product-metric
+(def ^:private with-product-metric
   "A `:edit` fn for [[tu/build-manifest]] that adds [[msrp-total]] to `dim_product` and a simple metric over it."
-  [manifest]
-  (-> manifest
-      (update-in [:semantic_models tu/product-sm-id :measures] conj msrp-total)
-      (assoc-in [:metrics "metric.p.msrp_total"]
-                (assoc (simple-metric (get-in manifest [:metrics "metric.p.m"]) ["msrp_total" "msrp_total" nil])
-                       :depends_on {:macros [], :nodes [tu/product-sm-id]}))))
+  (comp (tu/add-metric "msrp_total" #(assoc (simple-metric % ["msrp_total" "msrp_total" nil])
+                                            :depends_on {:macros [], :nodes [tu/product-sm-id]}))
+        (tu/add-measure tu/product-sm-id msrp-total)))
 
 (deftest ^:parallel inputs-on-different-models-test
   (testing "a ratio or derived metric has one table, so its inputs have to be on one semantic model"
@@ -398,18 +414,15 @@
   "A measure the resolve stage reports: `greatest` has no Metabase equivalent."
   (assoc (tu/base-measure) :name "greatest_sales" :expr "greatest(sales, 0)"))
 
-(defn- with-greatest-sales-metric
+(def ^:private with-greatest-sales-metric
   "A `:edit` fn for [[tu/build-manifest]] that adds [[greatest-sales]] and a simple metric over it."
-  [manifest]
-  (-> manifest
-      (update-in [:semantic_models tu/sm-id :measures] conj greatest-sales)
-      (assoc-in [:metrics "metric.p.greatest_sales"]
-                (simple-metric (get-in manifest [:metrics "metric.p.m"]) ["greatest_sales" "greatest_sales" nil]))))
+  (comp (tu/add-metric "greatest_sales" #(simple-metric % ["greatest_sales" "greatest_sales" nil]))
+        (tu/add-measure greatest-sales)))
 
 (deftest ^:parallel failed-input-test
   (testing "an input the resolve stage reported is reported with that reason, not as missing"
     (let [greatest-reason "expr \"greatest(sales, 0)\": the function greatest is not supported"
-          d-over-m        (metric-named "d" #(-> %
+          d-over-m        (tu/add-metric "d" #(-> %
                                                 (assoc :type "derived", :depends_on {:macros [], :nodes ["metric.p.m"]})
                                                 (update :type_params assoc
                                                         :expr "m * 2" :metrics [(tu/metric-input "m")])))
@@ -434,7 +447,7 @@
 
 (deftest ^:parallel composed-input-filter-test
   (testing "only a simple metric can be inlined with a filter: a ratio or derived input with one is reported"
-    (let [ratio-d (metric-named "d" #(-> %
+    (let [ratio-d (tu/add-metric "d" #(-> %
                                         (assoc :type "ratio"
                                                :depends_on {:macros [], :nodes ["metric.p.sales" "metric.p.target"]})
                                         (update :type_params assoc

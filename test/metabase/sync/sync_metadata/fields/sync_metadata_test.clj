@@ -380,22 +380,79 @@
 (deftest untyped-field-getting-its-base-type-keeps-user-settings-test
   (testing "A Field that never had a real base type, like one serdes synthesized for a stub database, keeps its user settings"
     (mt/with-temp [:model/Field {field-id :id} {:base_type :type/* :active false}]
-      (field-user-settings/upsert-field-user-settings! {:id field-id} {:semantic_type :type/Category})
-      (perform-updates!
-       (merge default-metadata
-              {:base-type      :type/Text
-               :effective-type :type/Text})
-       (merge default-metadata
-              {:id             field-id
-               :base-type      :type/*
-               :effective-type :type/*}))
-      (is (=? {:base_type           :type/Text
-               :effective_type      :type/Text
-               :fingerprint_version 0
-               :semantic_type       :type/Category}
-              (t2/select-one :model/Field :id field-id)))
-      (is (=? {:semantic_type :type/Category :semantic_type_set true}
-              (t2/select-one :model/FieldUserSettings :field_id field-id))))))
+      (field-user-settings/upsert-user-settings {:id field-id} {:semantic_type :type/Category})
+      (is (= [["Field"
+               field-id
+               {:base_type           :type/Text
+                :effective_type      :type/Text
+                :coercion_strategy   nil
+                :fingerprint_version 0
+                :fingerprint         nil}]]
+             (updates-that-will-be-performed!
+              (merge default-metadata
+                     {:base-type      :type/Text
+                      :effective-type :type/Text})
+              (merge default-metadata
+                     {:id             field-id
+                      :base-type      :type/*
+                      :effective-type :type/*})))))))
+
+(deftest untyped-field-getting-its-base-type-keeps-semantic-type-test
+  (testing "A Field going from :type/* to a real base type keeps the semantic type sync gave it, e.g. a binary FK"
+    (mt/with-temp [:model/Field {field-id :id} {:base_type :type/* :semantic_type :type/FK}]
+      (is (= [["Field"
+               field-id
+               {:base_type           :type/Binary
+                :effective_type      :type/Binary
+                :coercion_strategy   nil
+                :fingerprint_version 0
+                :fingerprint         nil}]]
+             (updates-that-will-be-performed!
+              (merge default-metadata
+                     {:database-type  "RAW"
+                      :base-type      :type/Binary
+                      :effective-type :type/Binary})
+              (merge default-metadata
+                     {:id             field-id
+                      :database-type  "RAW"
+                      :base-type      :type/*
+                      :effective-type :type/*
+                      :semantic-type  :type/FK})))))
+    (testing "but a change between two real base types still clears it for re-analysis"
+      (mt/with-temp [:model/Field {field-id :id} {:base_type :type/Integer :semantic_type :type/FK}]
+        (is (=? [["Field" field-id {:base_type :type/Text, :semantic_type nil}]]
+                (updates-that-will-be-performed!
+                 (merge default-metadata
+                        {:base-type      :type/Text
+                         :effective-type :type/Text})
+                 (merge default-metadata
+                        {:id             field-id
+                         :base-type      :type/Integer
+                         :effective-type :type/Integer
+                         :semantic-type  :type/FK}))))))
+    (testing "end to end: a binary column synced as :type/* before :type/Binary existed keeps :type/FK when it syncs again"
+      (mt/with-temp-test-data [["table"
+                                [{:field-name "bin_fk", :base-type {:native "VARBINARY(16)"}}]
+                                [[(byte-array [1 2 3])]]]]
+        (try
+          (sync/sync-table! (t2/select-one :model/Table (mt/id :table)))
+          (let [field-id (mt/id :table :bin_fk)]
+            (testing "sanity check: the column syncs as :type/Binary"
+              (is (=? {:base_type :type/Binary, :effective_type :type/Binary}
+                      (t2/select-one :model/Field :id field-id))))
+            ;; put the row in its pre-upgrade state: untyped, marked as an FK by sync
+            (t2/update! :model/Field field-id {:base_type          :type/*
+                                               :effective_type     :type/*
+                                               :semantic_type      :type/FK
+                                               :fk_target_field_id (mt/id :table :id)})
+            (sync/sync-table! (t2/select-one :model/Table (mt/id :table)))
+            (is (=? {:base_type          :type/Binary
+                     :effective_type     :type/Binary
+                     :semantic_type      :type/FK
+                     :fk_target_field_id (mt/id :table :id)}
+                    (t2/select-one :model/Field :id field-id))))
+          (finally
+            (t2/delete! :model/Database (mt/id))))))))
 
 (deftest create-or-replace-table-updates-effective-type-test
   (testing "GHY-3388: when a column's database type changes in place (e.g. TEXT -> numeric via

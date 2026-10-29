@@ -1,13 +1,25 @@
 (ns dev.dbt-import.resolve-test
+  "The resolve stage: what each IR metric is bound to, metric by metric, and the SQL subset its `expr` and `filter`
+  templates are mapped through. The aggregation each `agg` and expression becomes, the base type each declared column
+  type gets through the driver, the filter clauses each MetricFlow reference and SQL construct converts to (and the
+  reason when it does not), the implicit joins through entities, the relation and database mapping, the notes on a
+  metric, and how a metric the stage fails on is reported apart from the unsupported ones."
   (:require
    [clojure.test :refer [are deftest is testing]]
    [dev.dbt-import.emit :as emit]
+   [dev.dbt-import.ids :as ids]
    [dev.dbt-import.metadata :as metadata]
    [dev.dbt-import.parse :as parse]
    [dev.dbt-import.resolve :as resolve]
+   [dev.dbt-import.resolve.columns :as resolve.columns]
    [dev.dbt-import.schemas.dbt-manifest :as dbt-manifest]
    [dev.dbt-import.schemas.resolved :as resolved]
    [dev.dbt-import.test-util :as tu :refer [fld]]
+   [mb.hawk.assert-exprs]
+   [metabase.driver :as driver]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.test :as mt]
    [metabase.util.log.capture :as log.capture]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms])
@@ -15,18 +27,18 @@
    (clojure.lang ExceptionInfo)))
 
 (deftest ^:parallel entity-id-test
-  (is (mr/validate ms/NanoIdString (resolve/entity-id "x")))
+  (is (mr/validate ms/NanoIdString (ids/entity-id "x")))
   (testing "deterministic"
-    (is (= (resolve/entity-id "dbt-import/metric/a")
-           (resolve/entity-id "dbt-import/metric/a"))))
-  (is (not= (resolve/entity-id "a") (resolve/entity-id "b")))
+    (is (= (ids/entity-id "dbt-import/metric/a")
+           (ids/entity-id "dbt-import/metric/a"))))
+  (is (not= (ids/entity-id "a") (ids/entity-id "b")))
   (testing "no collisions across 5,000 metrics"
-    (let [ids (map #(resolve/entity-id (str "dbt-import/metric/metric.p.m" %)) (range 5000))]
+    (let [ids (map #(ids/entity-id (str "dbt-import/metric/metric.p.m" %)) (range 5000))]
       (is (every? #(mr/validate ms/NanoIdString %) ids))
       (is (= 5000 (count (set ids))))))
   (testing "the same metric name in two projects gets two entity ids"
-    (is (not= (resolve/entity-id "dbt-import/metric/metric.a.sales")
-              (resolve/entity-id "dbt-import/metric/metric.b.sales")))))
+    (is (not= (ids/entity-id "dbt-import/metric/metric.a.sales")
+              (ids/entity-id "dbt-import/metric/metric.b.sales")))))
 
 (deftest ^:parallel resolve-manifest-test
   (let [resolved (tu/flexanalytics-resolved)]
@@ -40,8 +52,7 @@
              (map (comp :name :ir) (:metrics resolved))))
       (is (= ["customer_reorder_rate" "sales_mtd" "sales_trailing_7d" "sales_vs_prior_week"]
              (map :name (:unsupported resolved)))))
-    (let [stage (fn [metric-name]
-                  (-> (emit/dataset-query (tu/resolved-metric-named resolved metric-name)) :stages first))]
+    (let [stage (fn [metric-name] (tu/stage (tu/resolved-metric-named resolved metric-name)))]
       (testing "sales is a sum over its column, typed from the project"
         (is (= {:lib/type     :mbql.stage/mbql
                 :source-table ["Sales DB" "public" "fact_sales"]
@@ -59,26 +70,25 @@
              (map :entity-id (:metrics (tu/flexanalytics-resolved))))))))
 
 (deftest ^:parallel resolve-error-test
-  (testing "an exception while resolving one metric is logged and reported, and the other metrics are still converted"
+  (testing (str "an exception while resolving one metric is logged and listed under :errors, apart from the unsupported"
+                " metrics, and the other metrics are still converted")
     ;; the parse stage reports a percentile without a value, so one in the IR is a bug, not a reported case: resolving
     ;; it fails on `(double nil)`
-    (let [bad-metric (fn [manifest]
-                       (assoc (get-in manifest [:metrics "metric.p.m"]) :name "bad", :unique_id "metric.p.bad"))
-          ir         (-> (tu/build-manifest {:edit #(assoc-in % [:metrics "metric.p.bad"] (bad-metric %))})
-                         tu/round-trip
-                         dbt-manifest/decode-manifest
-                         parse/parse-manifest
-                         (update :metrics (fn [metrics]
-                                            (mapv #(cond-> %
-                                                     (= "bad" (:name %)) (assoc :agg        :percentile
-                                                                                :agg-params {:percentile nil}))
-                                                  metrics))))]
+    (let [ir (-> (tu/build-manifest {:edit (tu/add-metric "bad")})
+                 tu/round-trip
+                 dbt-manifest/decode-manifest
+                 parse/parse-manifest
+                 (update :metrics (fn [metrics]
+                                    (mapv #(cond-> %
+                                             (= "bad" (:name %)) (assoc :agg        :percentile
+                                                                        :agg-params {:percentile nil}))
+                                          metrics))))]
       (log.capture/with-log-messages-for-level [messages [dev.dbt-import.resolve :error]]
         (let [resolved (resolve/resolve-manifest tu/default-config ir)]
           (is (= ["m"] (map (comp :name :ir) (:metrics resolved))))
-          (is (= ["bad"] (map :name (:unsupported resolved))))
-          (is (re-find #"^error resolving metric \(java\.lang\.NullPointerException\)"
-                       (-> resolved :unsupported first :reason)))
+          (is (= [] (:unsupported resolved)))
+          (is (=? [{:name "bad", :unique-id "metric.p.bad", :message #"^java\.lang\.NullPointerException: .+"}]
+                  (:errors resolved)))
           (testing "the log carries the exception, with its stack"
             (is (= [{:level :error, :message "Error resolving metric \"bad\""}]
                    (map #(select-keys % [:level :message]) (messages))))
@@ -87,15 +97,16 @@
 (deftest ^:parallel resolve-metric-test
   (let [ir              (tu/flexanalytics-ir)
         semantic-models (:semantic-models ir)
-        providers       (metadata/providers tu/default-config ir)
+        env             (resolve.columns/env tu/default-config ir)
         sales           (tu/metric-named (:metrics ir) "sales")
         reason          (fn [config semantic-models metric]
-                          (:reason (resolve/resolve-metric config (metadata/providers config ir)
-                                                           semantic-models metric)))]
+                          (:reason (resolve/resolve-metric
+                                    (resolve.columns/env config (assoc ir :semantic-models semantic-models))
+                                    metric)))]
     (testing "a column the project does not document resolves with an unknown type; the import checks it exists"
       (is (= [[:sum {} (fld "nope" nil)]]
-             (-> (resolve/resolve-metric tu/default-config providers semantic-models (assoc sales :expr "nope"))
-                 emit/dataset-query :stages first :aggregation))))
+             (-> (resolve/resolve-metric env (assoc sales :expr "nope"))
+                 tu/stage :aggregation))))
     (is (re-find #"no Metabase database configured for warehouse database \"dbt_bi\""
                  (reason (assoc tu/default-config :databases {}) semantic-models sales)))
     (is (re-find #"no base type known for column \"sales\" of type \"geography\""
@@ -121,35 +132,26 @@
       "sum_boolean"    [:count-where {} [:= {} f true]])))
 
 (deftest ^:parallel aggregation-x-column-type-test
-  ;; Every aggregation over every column it makes sense for: numeric aggregations over numeric columns, min and max
-  ;; over orderable ones, counts over anything, and sum_boolean over booleans only. The converter does not refuse a
-  ;; numeric aggregation over a non-numeric column (the lib schema accepts it and dbt itself would fail on it), so
-  ;; only the sum_boolean refusal is asserted. min/max over uuid and bytea are skipped: whether they work depends on
+  ;; Every aggregation over every column. The converter refuses a sum_boolean over a column typed as anything but
+  ;; boolean, and nothing else: a numeric aggregation over a text column converts as written, since the lib schema
+  ;; accepts it and dbt itself would fail on it, and so do min and max over a uuid or bytea, which work or not with
   ;; the warehouse version.
   (doseq [agg                                ["sum" "average" "median" "percentile" "min" "max" "count" "count_distinct"
                                               "sum_boolean"]
           [column data-type base-type kind] tu/pg-columns
-          :when (not (and (#{"min" "max"} agg) (#{:uuid :binary} kind)))
-          :let [ok?    (case agg
-                         ("sum" "average" "median" "percentile") (= kind :numeric)
-                         ("min" "max")                           (contains? #{:numeric :text :temporal} kind)
-                         ("count" "count_distinct")              true
-                         "sum_boolean"                           (= kind :boolean))
-                tweaks {:measure (cond-> {:agg agg, :expr column}
+          :let [tweaks {:measure (cond-> {:agg agg, :expr column}
                                    (= agg "percentile") (assoc :agg_params {:percentile 0.9}))}]]
     (testing (format "%s over %s (%s)" agg column data-type)
-      (cond
-        ok?
-        (is (= (expected-clause agg column base-type) (tu/aggregation tweaks)))
+      (if (and (= agg "sum_boolean") (not= kind :boolean))
+        (is (re-find #"sum_boolean over the non-boolean column" (tu/unsupported tweaks)))
+        (is (= (expected-clause agg column base-type) (tu/aggregation tweaks)))))))
 
-        (= agg "sum_boolean")
-        (is (re-find #"sum_boolean over the non-boolean column" (tu/unsupported tweaks)))))))
-
-(defn- count-of-column-typed
-  "The aggregation a `count` over a column declared as `data-type` converts to, with `config` merged over the default.
-  `count` accepts any column, so only the base type is under test."
-  [data-type & {:as config-overrides}]
-  (tu/aggregation {:columns {"x" data-type}, :measure {:agg "count", :expr "x"}, :config config-overrides}))
+(defn- base-type-of
+  "The base type the converter gives a column declared as `data-type`, through `driver`'s (default Postgres) own type
+  mapping. The type never reaches the written query (see [[no-ref-types-test]]); it is what the converter checks a
+  `sum_boolean`, a `fill_nulls_with` or a division against."
+  [data-type & {:keys [driver]}]
+  (metadata/base-type (or driver :postgres) data-type))
 
 (defn- count-of-column-typed-reason
   "The reason a `count` over a column declared as `data-type` is reported."
@@ -157,7 +159,7 @@
   (tu/unsupported {:columns {"x" data-type}, :measure {:agg "count", :expr "x"}}))
 
 (deftest ^:parallel postgres-type-string-test
-  (are [data-type base-type] (= [:count-where {} [:not-null {} (fld "x" base-type)]] (count-of-column-typed data-type))
+  (are [data-type base-type] (= base-type (base-type-of data-type))
     "float"                          :type/Float
     "FLOAT"                          :type/Float
     "Float"                          :type/Float
@@ -224,20 +226,20 @@
     "timestamptz"                    :type/DateTimeWithLocalTZ
     "TIMESTAMP WITH TIME ZONE"       :type/DateTimeWithLocalTZ)
   (testing "arrays are arrays; Metabase does not type them further"
-    (are [data-type] (= [:count-where {} [:not-null {} (fld "x" :type/*)]] (count-of-column-typed data-type))
+    (are [data-type] (= :type/* (base-type-of data-type))
       "integer[]" "numeric(10,2)[]"))
-  (testing "types the driver does not map are reported, not guessed"
-    (are [data-type] (re-find #"no base type known for column \"x\" of type .*: the postgres driver has no mapping"
-                              (count-of-column-typed-reason data-type))
+  (testing "types the driver does not map have no base type, and a column declared with one is reported, not guessed"
+    (are [data-type] (and (nil? (base-type-of data-type))
+                          (re-find #"no base type known for column \"x\" of type .*: the postgres driver has no mapping"
+                                   (count-of-column-typed-reason data-type)))
       "geography" "geography(Point,4326)" "my_enum" "USER-DEFINED"))
   (testing "a blank data_type is no data_type"
-    (are [data-type] (= [:count-where {} [:not-null {} (fld "x" nil)]] (count-of-column-typed data-type))
+    (are [data-type] (nil? (base-type-of data-type))
       "" "   ")))
 
 (deftest ^:parallel upper-case-type-map-test
   (testing "MySQL keys its type map by upper-case names"
-    (are [data-type base-type] (= [:count-where {} [:not-null {} (fld "x" base-type)]]
-                                  (count-of-column-typed data-type :driver :mysql))
+    (are [data-type base-type] (= base-type (base-type-of data-type :driver :mysql))
       "int"                 :type/Integer
       "INT"                 :type/Integer
       "integer"             :type/Integer
@@ -260,8 +262,7 @@
       "year"                :type/Integer
       "enum('a','b')"       :type/MySQLEnum))
   (testing "so does H2"
-    (are [data-type base-type] (= [:count-where {} [:not-null {} (fld "x" base-type)]]
-                                  (count-of-column-typed data-type :driver :h2))
+    (are [data-type base-type] (= base-type (base-type-of data-type :driver :h2))
       "INTEGER"                  :type/Integer
       "integer"                  :type/Integer
       "VARCHAR"                  :type/Text
@@ -383,18 +384,20 @@
         [:case {} [[[:= {} quantity 1] sales] [[:= {} quantity 2] [:* {} sales 2]]]]))
     (testing "SQL the converter cannot express is reported, naming the construct"
       (are [expr reason] (re-find reason (expr-reason expr))
-        "greatest(sales, 0)"           #"the function greatest"
-        "ln(sales)"                    #"the function ln"
-        "sales::boolean"               #"a cast to BOOLEAN"
-        "cast(sales as interval)"      #"a cast to INTERVAL"
-        "{{ var('amount_col') }}"      #"could not parse"
-        "1.0"                          #"sum over the literal 1.0"
-        ""                             #"could not parse"
-        "  \n"                         #"could not parse"))
+        "greatest(sales, 0)"      #"the function greatest is not supported$"
+        "ln(sales)"               #"the function ln is not supported$"
+        "sales::boolean"          #"a cast to BOOLEAN, CAST\(sales AS BOOLEAN\), is not supported$"
+        "cast(sales as interval)" #"a cast to INTERVAL, CAST\(sales AS INTERVAL\), is not supported$"
+        "{{ var('amount_col') }}" #"could not parse \"\{\{ var\('amount_col'\) \}\}\": it still contains Jinja$"
+        "1.0"                     #"sum over the literal 1.0 has no Metabase equivalent$"
+        ""                        #"could not parse \"\": ParseError: expected a single expression, got 0 statements$"
+        "  \n"
+        #"could not parse \"  \\n\": ParseError: expected a single expression, got 0 statements$"))
     (testing "an aggregate or DISTINCT inside expr"
       (are [expr reason] (re-find reason (expr-reason expr :agg "count"))
-        "count(*)"              #"the function count"
-        "distinct customer_key" #"could not parse"))))
+        "count(*)" #"the function count is not supported$"
+        "distinct customer_key"
+        #"could not parse \"distinct customer_key\": ParseError: Invalid expression / Unexpected token"))))
 
 (deftest ^:parallel expr-function-test
   (let [sales      (fld "sales" :type/Float)
@@ -490,7 +493,6 @@
     (testing "casts to the types Metabase has a conversion for, in either spelling"
       (are [expr clause] (= [:sum {} clause] (aggregation-of-expr expr))
         "cast(amount as decimal) / 100"     [:/ {} [:float {} amount] 100]
-        "cast(amount as numeric(10, 2))"    [:float {} amount]
         "amount::float"                     [:float {} amount]
         "cast(amount as double precision)"  [:float {} amount]
         "cast(sales as int)"                [:integer {} sales]
@@ -651,10 +653,11 @@
   (testing "a dimension reached through the model's own primary entity is one of its columns"
     (are [template clause] (= clause (filter-of template))
       "{{ Dimension('fact_sales_key__status') }} = 'Shipped'"                 [:= {} status "Shipped"]
-      "{{ Dimension('fact_sales_key__status') }} != 'Cancelled'"              [:!= {} status "Cancelled"]
-      "{{ Dimension('fact_sales_key__status') }} <> 'Cancelled'"              [:!= {} status "Cancelled"]
+      ;; never Lib's !=, which Metabase compiles to include the null rows SQL's != leaves out
+      "{{ Dimension('fact_sales_key__status') }} != 'Cancelled'"              [:not {} [:= {} status "Cancelled"]]
+      "{{ Dimension('fact_sales_key__status') }} <> 'Cancelled'"              [:not {} [:= {} status "Cancelled"]]
       "{{ Dimension('fact_sales_key__status') }} IN ('Shipped', 'Delivered')" [:in {} status "Shipped" "Delivered"]
-      "{{ Dimension('fact_sales_key__status') }} NOT IN ('Cancelled')"        [:not-in {} status "Cancelled"]
+      "{{ Dimension('fact_sales_key__status') }} NOT IN ('Cancelled')"        [:not {} [:in {} status "Cancelled"]]
       "{{ Dimension('fact_sales_key__status') }} IS NULL"                     [:is-null {} status]
       "{{ Dimension('fact_sales_key__status') }} IS NOT NULL"                 [:not-null {} status]
       "{{ Dimension('fact_sales_key__amount') }} > 100"                       [:> {} amount 100]
@@ -669,8 +672,7 @@
     (are [template clause] (= clause (filter-of template))
       "{{ Dimension('fact_sales_key__status') }} = 'O''Reilly'"       [:= {} status "O'Reilly"]
       "{{ Dimension('fact_sales_key__status') }} = '😀'"              [:= {} status "😀"]
-      "{{ Dimension('fact_sales_key__status') }} = ''"                [:= {} status ""]
-      "{{ Dimension('fact_sales_key__status') }} = '{{ not jinja }}'" [:= {} status "{{ not jinja }}"]))
+      "{{ Dimension('fact_sales_key__status') }} = ''"                [:= {} status ""]))
   (testing "LIKE with a simple pattern"
     (are [template clause] (= clause (filter-of template))
       "{{ Dimension('fact_sales_key__status') }} LIKE '%Inc%'"     [:contains {} status "Inc"]
@@ -678,7 +680,9 @@
       "{{ Dimension('fact_sales_key__status') }} LIKE '%acme'"     [:ends-with {} status "acme"]
       "{{ Dimension('fact_sales_key__status') }} LIKE 'acme'"      [:= {} status "acme"]
       "{{ Dimension('fact_sales_key__status') }} ILIKE 'acme%'"    [:starts-with {:case-sensitive false} status "acme"]
-      "{{ Dimension('fact_sales_key__status') }} NOT LIKE '%Inc%'" [:not {} [:contains {} status "Inc"]])))
+      ;; a negated match leaves the null rows out, as SQL does and as NOT over contains alone would not
+      "{{ Dimension('fact_sales_key__status') }} NOT LIKE '%Inc%'"
+      [:and {} [:not-null {} status] [:not {} [:contains {} status "Inc"]]])))
 
 (deftest ^:parallel filter-boolean-logic-test
   (are [template clause] (= clause (filter-of template))
@@ -686,7 +690,7 @@
     "{{ Dimension('fact_sales_key__is_returned') }} = true"   [:= {} is-returned true]
     "{{ Dimension('fact_sales_key__is_returned') }} = false"  [:= {} is-returned false]
     "{{ Dimension('fact_sales_key__is_returned') }} = TRUE"   [:= {} is-returned true]
-    "{{ Dimension('fact_sales_key__is_returned') }} != FALSE" [:!= {} is-returned false]
+    "{{ Dimension('fact_sales_key__is_returned') }} != FALSE" [:not {} [:= {} is-returned false]]
     "NOT {{ Dimension('fact_sales_key__is_returned') }}"      [:not {} [:= {} is-returned true]]
     ;; parentheses group, and nothing else
     "({{ Dimension('fact_sales_key__status') }} = 'Shipped')" [:= {} status "Shipped"]
@@ -860,15 +864,34 @@
     (is (re-find #"granularity \"hour\" has no Metabase temporal unit for \"date_day\""
                  (filter-reason "{{ TimeDimension('metric_time', 'hour') }} = '2024-01-01'")))))
 
-(deftest ^:parallel week-grain-warning-test
-  (testing (str "a week grain is read as a Metabase week, with a warning: dbt weeks start on Monday, Metabase's on the"
-                " instance's start-of-week setting")
-    (log.capture/with-log-messages-for-level [messages [dev.dbt-import.resolve :warn]]
-      (is (= [:>= {} (at "date_day" :type/Date :week) "2024-01-01"]
-             (filter-of "{{ TimeDimension('metric_time', 'week') }} >= '2024-01-01'")))
-      (is (= [:warn] (map :level (messages))))
-      (is (re-find #"week granularity of date_day is read as a Metabase week.*dbt weeks start on Monday"
-                   (:message (first (messages))))))))
+(def ^:private week-note-re
+  #"a week grain is read as a Metabase week.*dbt weeks start on Monday.*")
+
+(defn- notes
+  "The notes of the metric [[tu/convert]] builds from `tweaks`."
+  [tweaks]
+  (:notes (tu/convert tweaks)))
+
+(deftest ^:parallel week-grain-note-test
+  (testing (str "a week grain is read as a Metabase week, and the metric carries a note: dbt weeks start on Monday,"
+                " Metabase's on the instance's start-of-week setting")
+    (let [week-filter "{{ TimeDimension('metric_time', 'week') }} >= '2024-01-01'"]
+      (is (= [:>= {} (at "date_day" :type/Date :week) "2024-01-01"] (filter-of week-filter)))
+      (is (=? [week-note-re] (notes {:metric {:filter (tu/where-filters week-filter)}})))
+      (testing "whichever way the week is written: a .grain(), a date_trunc in a filter or in the measure's expr"
+        (are [tweaks] (=? [week-note-re] (notes tweaks))
+          {:metric {:filter (tu/where-filters "{{ Dimension('metric_time').grain('week') }} >= '2024-01-01'")}}
+          {:metric {:filter (tu/where-filters (str "date_trunc('week', {{ Dimension('fact_sales_key__created_at') }})"
+                                                   " = '2024-01-01'"))}}
+          {:measure {:agg "count_distinct", :expr "date_trunc('week', created_at)"}}))
+      (testing "once, however many times"
+        (is (=? [week-note-re]
+                (notes {:measure {:agg "count_distinct", :expr "date_trunc('week', created_at)"}
+                        :metric  {:filter (tu/where-filters week-filter)}}))))
+      (testing "and not for any other grain"
+        (is (= [] (notes {:metric {:filter (tu/where-filters
+                                            "{{ TimeDimension('metric_time', 'month') }} >= '2024-01-01'")}})))
+        (is (= [] (notes {})))))))
 
 (deftest ^:parallel virtual-primary-entity-test
   (testing (str "a semantic model with no entity of type primary names one in primary_entity; the model's own"
@@ -905,23 +928,19 @@
     (is (= [:= {} [:case {} [[[:> {} (fld "sales" :type/Float) 100] 1]] 0] 1]
            (filter-of "{{ Dimension('fact_sales_key__is_big_sale') }} = 1")))))
 
-(def ^:private order-status
-  "`dim_order.status`, reached from `fact_sales` through the `order` entity's column."
-  (tu/joined-fld "order_key" "dim_order" "status" :type/Text))
-
 (deftest ^:parallel filter-cross-model-test
   (testing (str "a dimension reached through a foreign entity is on the semantic model that entity is primary for,"
                 " joined implicitly through the entity's column")
     (are [template clause] (= clause (filter-of template))
       "{{ Dimension('order__order_status_dim') }} = 'Shipped'"
-      [:= {} order-status "Shipped"]
+      [:= {} tu/order-status "Shipped"]
       "{{ Dimension('product__product_category_dim') }} IN ('Planes', 'Trains')"
       [:in {} (tu/joined-fld "product_key" "dim_product" "product_category" :type/Text) "Planes" "Trains"]
       "{{ TimeDimension('order__order_date', 'month') }} = '2024-03-01'"
       [:= {} order-date-by-month "2024-03-01"]
       ;; a SQL dimension on the joined model is converted inline, its columns reached the same way
       "{{ Dimension('order__is_cancelled_order') }} = 1"
-      [:= {} [:case {} [[[:= {} order-status "Cancelled"] 1]] 0] 1]))
+      [:= {} [:case {} [[[:= {} tu/order-status "Cancelled"] 1]] 0] 1]))
   (testing "references no join can satisfy"
     (are [template reason] (re-find reason (filter-reason template))
       "{{ Dimension('customer__name') }} LIKE '%Inc%'"      #"no semantic model has entity \"customer\""
@@ -949,7 +968,9 @@
          [:ends-with {:case-sensitive false} status "-2024"]
          [:>= {} len 9]]
         "{{ Dimension('fact_sales_key__status') }} NOT LIKE 'a%b'"
-        [:not {} [:and {} [:starts-with {} status "a"] [:ends-with {} status "b"] [:>= {} len 2]]]))
+        [:and {}
+         [:not-null {} status]
+         [:not {} [:and {} [:starts-with {} status "a"] [:ends-with {} status "b"] [:>= {} len 2]]]]))
     (testing "a run of _ next to one literal is the literal at that end and the exact length"
       (are [template clause] (= clause (filter-of template))
         "{{ Dimension('fact_sales_key__status') }} LIKE 'order_'"
@@ -983,7 +1004,7 @@
         "{{ Dimension('fact_sales_key__status') }} LIKE 'a.b_(c)%'" "(^a\\.b.\\(c\\).*$)")
       (is (= [:not-null {} [:regex-match-first {} [:lower {} status] "(^a.c.*$)"]]
              (filter-of "{{ Dimension('fact_sales_key__status') }} ILIKE 'A_C%'")))
-      (is (= [:not {} [:not-null {} [:regex-match-first {} status "(^a.b$)"]]]
+      (is (= [:and {} [:not-null {} status] [:not {} [:not-null {} [:regex-match-first {} status "(^a.b$)"]]]]
              (filter-of "{{ Dimension('fact_sales_key__status') }} NOT LIKE 'a_b'"))))
     (testing "ESCAPE makes the next character literal, whatever the pattern then maps to"
       (are [template clause] (= clause (filter-of template))
@@ -997,7 +1018,7 @@
         [:contains {:case-sensitive false} status "a%b"]
 
         "{{ Dimension('fact_sales_key__status') }} NOT LIKE 'a!%b' ESCAPE '!'"
-        [:not {} [:= {} status "a%b"]]
+        [:and {} [:not-null {} status] [:not {} [:= {} status "a%b"]]]
 
         "{{ Dimension('fact_sales_key__status') }} LIKE 'a!%b_c' ESCAPE '!'"
         [:not-null {} [:regex-match-first {} status "(^a%b.c$)"]]
@@ -1025,11 +1046,12 @@
       "{{ Dimension('fact_sales_key__status') }} ~* '^ord-'"
       [:not-null {} [:regex-match-first {} status "(?i)(^ord-)"]]
 
+      ;; negated, with the null rows left out, as SQL leaves them out
       "{{ Dimension('fact_sales_key__status') }} !~ '^ORD-'"
-      [:not {} [:not-null {} [:regex-match-first {} status "(^ORD-)"]]]
+      [:and {} [:not-null {} status] [:not {} [:not-null {} [:regex-match-first {} status "(^ORD-)"]]]]
 
       "{{ Dimension('fact_sales_key__status') }} !~* '^ord-'"
-      [:not {} [:not-null {} [:regex-match-first {} status "(?i)(^ord-)"]]]
+      [:and {} [:not-null {} status] [:not {} [:not-null {} [:regex-match-first {} status "(?i)(^ord-)"]]]]
 
       "regexp_like({{ Dimension('fact_sales_key__status') }}, '^a')"
       [:not-null {} [:regex-match-first {} status "(^a)"]]))
@@ -1040,7 +1062,7 @@
       "{{ Dimension('fact_sales_key__status') }} SIMILAR TO 'a\\%b'"              "(^a%b$)"
       "{{ Dimension('fact_sales_key__status') }} SIMILAR TO 'a!%b' ESCAPE '!'"    "(^a%b$)"
       "{{ Dimension('fact_sales_key__status') }} SIMILAR TO '(a|b){2,}'"          "(^(a|b){2,}$)")
-    (is (= [:not {} [:not-null {} [:regex-match-first {} status "(^a.*$)"]]]
+    (is (= [:and {} [:not-null {} status] [:not {} [:not-null {} [:regex-match-first {} status "(^a.*$)"]]]]
            (filter-of "{{ Dimension('fact_sales_key__status') }} NOT SIMILAR TO 'a%'"))))
   (testing "the regex has to be a literal"
     (is (re-find #"~ with a pattern that is not a string literal"
@@ -1155,9 +1177,12 @@
     "regexp_replace({{ Dimension('fact_sales_key__status') }}, 'a', 'b') = 'acme'"   #"the function regexp_replace"
     "{{ Dimension('fact_sales_key__status') }} IN (SELECT status FROM x)"          #"IN over"
     "1 = 1"                                                                        #"references no dimension or entity"
-    "{{ Dimension('fact_sales_key__status') }} = 'Shipped'; DROP TABLE fact_sales" #"could not parse"
     "   "                                                                          #"references no dimension or entity"
     "status = 'Shipped'"                                                           #"references no dimension or entity")
+  (testing "a second statement is a parse error: the parser takes one expression"
+    (is (re-find (re-pattern (str "could not parse \"__dbt_ref_0__ = 'Shipped'; DROP TABLE fact_sales\": ParseError:"
+                                  " expected a single expression, got 2 statements$"))
+                 (filter-reason "{{ Dimension('fact_sales_key__status') }} = 'Shipped'; DROP TABLE fact_sales"))))
   (testing "Jinja the renderer does not read is reported as such, before the filter is said to reference nothing"
     (are [template] (re-find #"could not parse .*: it still contains Jinja" (filter-reason template))
       "{{ var('x') }} = 1"
@@ -1196,8 +1221,8 @@
 
 (deftest ^:parallel non-additive-test
   (testing "semi-additive measures have no Metabase equivalent"
-    (are [non-additive-dimension] (re-find #"non-additive"
-                                           (tu/unsupported {:measure {:non_additive_dimension non-additive-dimension}}))
+    (are [non-additive-dimension] (= "non-additive measures have no Metabase equivalent"
+                                     (tu/unsupported {:measure {:non_additive_dimension non-additive-dimension}}))
       {:name "date_day", :window_choice "max"}
       {:name "date_day", :window_choice "min"}
       {:name "date_day", :window_choice "max", :window_groupings ["customer"]}
@@ -1221,8 +1246,8 @@
   (testing "a relation with no database (Spark, some Databricks setups) cannot be mapped"
     (is (re-find #"no Metabase database configured" (tu/unsupported {:edit (edit-relation :database nil)}))))
   (testing "database names are matched exactly against the config"
-    (is (re-find #"no Metabase database configured for warehouse database \"DBT_BI\""
-                 (tu/unsupported {:edit (edit-relation :database "DBT_BI")}))))
+    (is (= "no Metabase database configured for warehouse database \"DBT_BI\"; add it to :databases"
+           (tu/unsupported {:edit (edit-relation :database "DBT_BI")}))))
   (testing "an upper-case schema is used verbatim"
     (is (= {:aggregation  [:sum {} (fld "PUBLIC" "fact_sales" "sales" :type/Float)]
             :filters      []
@@ -1241,3 +1266,255 @@
             :filters      []
             :source-table [tu/db "analytics.v2" "fact_sales"]}
            (query-of {:edit (edit-relation :schema_name "analytics.v2")})))))
+
+(deftest ^:parallel negated-filter-null-rows-test
+  (testing (str "a negated filter leaves the null rows out, as SQL does: != and NOT IN are NOT over = and IN, never"
+                " Lib's != and not-in, which Metabase compiles to include them, and a negated match is conjoined with"
+                " IS NOT NULL")
+    (are [template clause] (= clause (filter-of template))
+      "NOT ({{ Dimension('fact_sales_key__status') }} = 'a')"
+      [:not {} [:= {} status "a"]]
+
+      "{{ Dimension('fact_sales_key__status') }} != 'a'"
+      [:not {} [:= {} status "a"]]
+
+      "NOT ({{ Dimension('fact_sales_key__status') }} IN ('a', 'b'))"
+      [:not {} [:in {} status "a" "b"]]
+
+      "NOT ({{ Dimension('fact_sales_key__status') }} LIKE 'a%')"
+      [:and {} [:not-null {} status] [:not {} [:starts-with {} status "a"]]]
+
+      "NOT regexp_like({{ Dimension('fact_sales_key__status') }}, '^a')"
+      [:and {} [:not-null {} status] [:not {} [:not-null {} [:regex-match-first {} status "(^a)"]]]]
+
+      "NOT ({{ Dimension('fact_sales_key__status') }} LIKE 'a!%' ESCAPE '!')"
+      [:and {} [:not-null {} status] [:not {} [:= {} status "a%"]]]))
+  (testing "in an expr too"
+    (is (= [:sum {} [:case {} [[[:not {} [:= {} status "a"]] 1]] 0]]
+           (aggregation-of-expr "case when status != 'a' then 1 else 0 end"))))
+  (testing "IS DISTINCT FROM and IS NOT TRUE count the null rows in SQL, so they keep Lib's !="
+    (is (= [:!= {} status "a"] (filter-of "{{ Dimension('fact_sales_key__status') }} IS DISTINCT FROM 'a'")))))
+
+(deftest ^:parallel expr-simple-case-null-test
+  (testing "CASE x WHEN NULL is x = NULL, never true in SQL, so it is reported like any comparison against NULL"
+    (is (re-find #"compares against NULL, which is never true in SQL; use IS \[NOT\] NULL"
+                 (expr-reason "case status when null then 1 else 0 end")))
+    (is (re-find #"compares against NULL" (expr-reason "case null when status then 1 else 0 end")))
+    (is (re-find #"compares against NULL"
+                 (filter-reason "case {{ Dimension('fact_sales_key__status') }} when null then 1 else 0 end = 1")))))
+
+(deftest ^:parallel cast-fidelity-test
+  (let [amount (fld "amount" :type/Decimal)
+        sales  (fld "sales" :type/Float)]
+    (testing "a cast to a decimal with a scale rounds to that scale, which Metabase's float conversion does not"
+      (are [expr reason] (re-find reason (expr-reason expr))
+        "cast(amount as numeric(10, 2))" #"CAST\(amount AS DECIMAL\(10, 2\)\) rounds to 2 decimal places"
+        "amount::decimal(12)"            #"rounds to 0 decimal places"))
+    (testing "a bare decimal is unconstrained on Postgres and converts; on MySQL it is DECIMAL(10, 0) and is reported"
+      (is (= [:sum {} [:/ {} [:float {} amount] 100]] (aggregation-of-expr "cast(amount as decimal) / 100")))
+      (is (re-find #"cast to a fixed-point type of scale 0 on mysql, which rounds to a whole number"
+                   (tu/unsupported {:config {:driver :mysql}, :measure {:expr "cast(amount as decimal) / 100"}}))))
+    (testing "an integer cast rounds on Postgres and in Metabase alike"
+      (is (= [:sum {} [:integer {} sales]] (aggregation-of-expr "cast(sales as int)"))))
+    (testing "in a filter too"
+      (is (re-find #"rounds to 2 decimal places"
+                   (filter-reason "cast({{ Dimension('fact_sales_key__amount') }} as decimal(10, 2)) > 1"))))))
+
+(deftest ^:parallel filter-like-default-escape-test
+  (testing "on Postgres a backslash in a LIKE pattern is the escape character even without ESCAPE"
+    (are [template clause] (= clause (filter-of template))
+      "{{ Dimension('fact_sales_key__status') }} LIKE '100\\%'"   [:= {} status "100%"]
+      "{{ Dimension('fact_sales_key__status') }} LIKE '100\\_%'"  [:starts-with {} status "100_"]
+      "{{ Dimension('fact_sales_key__status') }} LIKE '%\\\\%'"   [:contains {} status "\\"]
+      "{{ Dimension('fact_sales_key__status') }} ILIKE 'a\\%b%'"  [:starts-with {:case-sensitive false} status "a%b"]))
+  (testing "a pattern ending in the default escape character is as malformed as one ending in an ESCAPE one"
+    (is (re-find #"ends with its escape character"
+                 (filter-reason "{{ Dimension('fact_sales_key__status') }} LIKE 'a\\'")))))
+
+(deftest ^:parallel literal-limits-test
+  (testing "round to more than 18 decimals, whose 10^n no long holds, is reported rather than failing"
+    (is (re-find #"round to 19 decimals is not supported; only a literal from 0 to 18 is"
+                 (expr-reason "round(sales, 19)")))
+    (is (= [:sum {} [:/ {} [:round {} [:* {} (fld "sales" :type/Float) 100]] 100]]
+           (aggregation-of-expr "round(sales, 2)"))))
+  (testing "a number no double holds is reported rather than written to the YAML as infinity"
+    (is (re-find #"the number 1e400 is too large to represent" (expr-reason "sales * 1e400")))
+    (is (re-find #"the number 1e999 is too large to represent"
+                 (filter-reason "{{ Dimension('fact_sales_key__amount') }} < 1e999")))))
+
+(deftest ^:parallel malformed-dimension-reference-test
+  (testing "a dimension path with an empty part says so, rather than naming a dimension that was never meant"
+    (are [template] (re-find #"is not a dimension reference: expected <entity>__<dimension>, or a dimension name"
+                             (filter-reason template))
+      "{{ Dimension('order__') }} = 'a'"
+      "{{ Dimension('__status') }} = 'a'"
+      "{{ Dimension('') }} = 'a'"
+      "{{ Dimension('order____status') }} = 'a'"
+      "{{ TimeDimension('fact_sales_key__', 'day') }} > '2024-01-01'"))
+  (testing "quoting the path"
+    (is (re-find #"\"order__\" is not a dimension reference" (filter-reason "{{ Dimension('order__') }} = 'a'")))))
+
+(deftest ^:parallel jinja-in-literal-test
+  (testing "Jinja inside a string literal is still Jinja: dbt renders it before the warehouse sees the filter"
+    (are [template] (re-find #"could not parse .*: it still contains Jinja" (filter-reason template))
+      "{{ Dimension('fact_sales_key__status') }} = '{{ var(\"status\") }}'"
+      "{% if var('x') %}{{ Dimension('fact_sales_key__status') }} = 'a'{% endif %}"
+      "{{ Dimension('fact_sales_key__status') }} = 'a' {# comment #}"
+      "{{ Dimension('fact_sales_key__status') }} = '{{ not jinja }}'"))
+  (testing "a brace on its own is text"
+    (is (= [:= {} status "{"] (filter-of "{{ Dimension('fact_sales_key__status') }} = '{'")))))
+
+(deftest ^:parallel truncation-units-agree-test
+  (let [created-at (fld "created_at" :type/DateTime)]
+    (testing "date_trunc in SQL and a grain on a reference accept the same units: second included, decade not"
+      (is (= [:distinct {} (assoc-in created-at [1 :temporal-unit] :second)]
+             (aggregation-of-expr "date_trunc('second', created_at)" :agg "count_distinct")))
+      (is (= [[:> {} (at "date_day" nil :second) "2024-01-01"]]
+             (untyped-time-filter "{{ TimeDimension('metric_time', 'second') }} > '2024-01-01'")))
+      (testing "though a column of known type still takes only the units Lib offers it, and a datetime has no second"
+        (is (re-find #"granularity \"second\" has no Metabase temporal unit for \"created_at\""
+                     (filter-reason "{{ Dimension('fact_sales_key__created_at').grain('second') }} > '2024-01-01'"))))
+      (is (re-find #"truncating a date to DECADE"
+                   (expr-reason "date_trunc('decade', created_at)" :agg "count_distinct")))
+      (is (re-find #"granularity \"decade\" has no Metabase temporal unit"
+                   (filter-reason "{{ Dimension('fact_sales_key__created_at').grain('decade') }} > '2024-01-01'"))))))
+
+(defn- field-ref?
+  "Whether `x` is a `:field` clause, in Lib's form or as serdes writes it, without clause ids."
+  [x]
+  (and (vector? x) (= :field (first x)) (map? (second x))))
+
+(deftest ^:parallel no-ref-types-test
+  (testing (str "a field ref names its column and carries no type: the type the converter knows the column as, from"
+                " the project's data_type or none at all, would otherwise override the instance's own metadata")
+    (let [resolved   (tu/flexanalytics-resolved)
+          field-refs (fn [x] (filter field-ref? (tree-seq coll? seq x)))]
+      (is (seq (:metrics resolved)))
+      (doseq [{:keys [query dimension-mappings] :as metric} (:metrics resolved)
+              :let [refs (concat (field-refs (:stages query))
+                                 (field-refs (map :target dimension-mappings))
+                                 (field-refs (:stages (emit/dataset-query metric))))]]
+        (testing (-> metric :ir :name)
+          (is (seq refs))
+          (is (= [] (filter #(seq (select-keys (second %) [:base-type :effective-type])) refs)))))
+      (testing "the converter still knows the type, from the provider's Field"
+        (let [{:keys [query]} (tu/resolved-metric-named resolved "sales")]
+          (is (= :type/Float (lib/type-of query (-> query :stages first :aggregation first (nth 2))))))))))
+
+(deftest ^:parallel driver-feature-test
+  (testing "the provider's Database carries the driver's features"
+    (let [features (fn [driver]
+                     (:features (lib.metadata/database (get (metadata/providers (assoc tu/default-config :driver driver)
+                                                                                (tu/flexanalytics-ir))
+                                                            tu/db))))]
+      (is (contains? (features :postgres) :percentile-aggregations))
+      (is (not (contains? (features :h2) :percentile-aggregations)))))
+  (testing (str "an aggregation or expression the driver has no feature for is reported, naming the clause and the"
+                " feature: the metric would import and fail when queried")
+    (let [median     {:measure {:agg "median", :expr "sales"}}
+          p90        {:measure {:agg "percentile", :expr "sales", :agg_params {:percentile 0.9}}}
+          cast       {:measure {:expr "cast(sales as integer)"}}
+          on-driver  (fn [tweaks driver] (assoc tweaks :config {:driver driver}))]
+      (is (= (str "the h2 driver does not support the median clause, which the metric needs"
+                  " (feature :percentile-aggregations)")
+             (tu/unsupported (on-driver median :h2))))
+      (is (= (str "the mysql driver does not support the median clause, which the metric needs"
+                  " (feature :percentile-aggregations)")
+             (tu/unsupported (on-driver median :mysql))))
+      (is (= (str "the h2 driver does not support the percentile clause, which the metric needs"
+                  " (feature :percentile-aggregations)")
+             (tu/unsupported (on-driver p90 :h2))))
+      (is (= "the h2 driver does not support the integer clause, which the metric needs (feature :expressions/integer)"
+             (tu/unsupported (on-driver cast :h2))))
+      (testing "Postgres has them all"
+        (is (= [:median {} (fld "sales" :type/Float)] (tu/aggregation median)))
+        (is (= [:percentile {} (fld "sales" :type/Float) 0.9] (tu/aggregation p90)))
+        (is (= [:sum {} [:integer {} (fld "sales" :type/Float)]] (tu/aggregation cast))))
+      (testing "and an aggregation the driver has converts on it"
+        (is (= tu/sum-sales (tu/aggregation (on-driver {} :h2))))))))
+
+(deftest non-jdbc-driver-test
+  (testing (str "a driver that is not a JDBC one fails the run with the reason: the converter types columns through the"
+                " driver's sql-jdbc type mapping, which only a JDBC driver has")
+    (driver/register! ::document-store)
+    (is (thrown-with-msg? ExceptionInfo
+                          #"not a JDBC driver: the converter types columns through the driver's sql-jdbc type mapping"
+                          (tu/convert {:config {:driver ::document-store}})))
+    (is (thrown-with-msg? ExceptionInfo #"not a JDBC driver" (metadata/base-type ::document-store "int")))))
+
+(deftest resolve-throwable-test
+  (testing "an Error, not only an Exception, thrown while resolving a metric is caught, logged and listed under :errors"
+    (log.capture/with-log-messages-for-level [messages [dev.dbt-import.resolve :error]]
+      (mt/with-dynamic-fn-redefs [resolve.columns/metric-context (fn [& _] (throw (AssertionError. "boom")))]
+        (is (= {:error "java.lang.AssertionError: boom"} (tu/convert {}))))
+      (is (= [{:level :error, :message "Error resolving metric \"m\""}]
+             (map #(select-keys % [:level :message]) (messages)))))))
+
+(deftest ^:parallel semantic-model-table-case-test
+  (testing "a semantic model's table is matched exactly, or failing that ignoring case, as a column is"
+    (let [ir             (tu/flexanalytics-ir)
+          provider       (get (metadata/providers tu/default-config ir) tu/db)
+          semantic-model (get-in ir [:semantic-models "fact_sales"])
+          table-name     (fn [semantic-model] (:name (metadata/semantic-model-table provider semantic-model)))]
+      (is (= "fact_sales" (table-name semantic-model)))
+      (is (= "fact_sales" (table-name (assoc-in semantic-model [:relation :table] "FACT_SALES"))))
+      (is (= "fact_sales" (table-name (assoc-in semantic-model [:relation :schema] "PUBLIC"))))
+      (is (nil? (table-name (assoc-in semantic-model [:relation :table] "nope")))))))
+
+(deftest ^:parallel parse-error-carried-over-test
+  (testing (str "a metric the parse stage failed on (flagged :error? there) is carried over under :errors, not"
+                " :unsupported, and a metric over it is reported with its reason")
+    (let [ir       (-> (tu/build-manifest {})
+                       tu/round-trip
+                       dbt-manifest/decode-manifest
+                       parse/parse-manifest
+                       (update :unsupported conj {:name      "broken"
+                                                  :unique-id "metric.p.broken"
+                                                  :reason    "java.lang.IllegalStateException: boom"
+                                                  :error?    true})
+                       (update :metrics conj {:type             :ratio
+                                              :name             "share"
+                                              :unique-id        "metric.p.share"
+                                              :label            "share"
+                                              :description      nil
+                                              :filters          []
+                                              :fill-nulls-with  nil
+                                              :time-granularity nil
+                                              :meta             nil
+                                              :numerator        {:metric "broken", :alias nil, :filters []}
+                                              :denominator      {:metric "m", :alias nil, :filters []}}))
+          resolved (resolve/resolve-manifest tu/default-config ir)]
+      (is (= ["m"] (map (comp :name :ir) (:metrics resolved))))
+      (is (= [{:name "broken", :unique-id "metric.p.broken", :message "java.lang.IllegalStateException: boom"}]
+             (:errors resolved)))
+      (is (= [{:name      "share"
+               :unique-id "metric.p.share"
+               :reason    "ratio: metric \"broken\" was not converted: java.lang.IllegalStateException: boom"}]
+             (:unsupported resolved))))))
+
+(defn- entity-expr
+  "A `:edit` fn for [[tu/build-manifest]] that gives the entity `entity-name` of semantic model `model-sm-id` the
+  `expr` `expr`."
+  [model-sm-id entity-name expr]
+  (tu/edit-semantic-model model-sm-id (fn [model]
+                                        (update model :entities
+                                                (partial mapv #(cond-> %
+                                                                 (= entity-name (:name %)) (assoc :expr expr)))))))
+
+(deftest ^:parallel filter-through-sql-entity-test
+  (let [sql-order    (entity-expr tu/sm-id "order" "lower(order_key)")
+        sql-dim-order (entity-expr tu/order-sm-id "order" "lower(order_key)")
+        reason-for   (fn [edit]
+                       (tu/unsupported {:edit edit, :metric {:filter tu/shipped-order-filter}}))]
+    (testing (str "an implicit join needs a column on each side: a foreign entity whose expr is SQL has none, so a"
+                  " filter through it reports the metric")
+      (is (= (str "filter " (pr-str tu/shipped-order-template) ": entity \"order\" is the SQL expression"
+                  " \"lower(order_key)\", not a column; an implicit join needs a column")
+             (reason-for sql-order))))
+    (testing "and so does the primary entity of the model joined to"
+      (is (= (str "filter " (pr-str tu/shipped-order-template) ": entity \"order\" on semantic model \"dim_order\""
+                  " is the SQL expression \"lower(order_key)\", not a column; an implicit join needs a column")
+             (reason-for sql-dim-order))))
+    (testing "the entity itself is still usable in a filter, as its SQL inlined (see the README under \"Filters\")"
+      (is (= [[:= {} [:lower {} (fld "order_key" :type/Text)] "x"]]
+             (tu/filters {:edit sql-order, :metric {:filter (tu/where-filters "{{ Entity('order') }} = 'x'")}}))))))

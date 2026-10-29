@@ -19,7 +19,8 @@
    [dev.dbt-import.resolve :as resolve]
    [dev.dbt-import.schemas.dbt-manifest :as dbt-manifest]
    [medley.core :as m]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [metabase.util.yaml :as yaml]))
 
 (set! *warn-on-reflection* true)
 
@@ -67,22 +68,22 @@
 
 (def model-id "model.p.fact_sales")
 (def sm-id "semantic_model.p.fact_sales")
-(def product-model-id "model.p.dim_product")
+(def ^:private product-model-id "model.p.dim_product")
 (def product-sm-id "semantic_model.p.dim_product")
 (def order-model-id "model.p.dim_order")
 (def order-sm-id "semantic_model.p.dim_order")
 
 (defn fld
-  "The `:field` clause serdes writes for `column` on `public.fact_sales` of [[db]], or on `schema`.`table` of `db`. A
-  nil `base-type` means a column whose type the manifest does not declare, which the converter types as `:type/*` for
-  the instance to fill in."
+  "The `:field` clause serdes writes for `column` on `public.fact_sales` of [[db]], or on `schema`.`table` of `db`.
+  `base-type` is what the converter knows the column as (nil for a column whose type the manifest does not declare) and
+  documents the expectation only: a written ref carries no type, so that the instance's own metadata decides (see
+  [[dev.dbt-import.resolve/without-ref-types]])."
   ([column base-type]
    (fld db "public" "fact_sales" column base-type))
   ([schema table column base-type]
    (fld db schema table column base-type))
-  ([database schema table column base-type]
-   (let [base-type (or base-type :type/*)]
-     [:field {:base-type base-type, :effective-type base-type} [database schema table column]])))
+  ([database schema table column _base-type]
+   [:field {} [database schema table column]]))
 
 (def sum-sales
   "What the fixture's metric `m` converts to untouched: the sum of `sales`."
@@ -93,6 +94,10 @@
   the foreign key column `fk-column`: an implicit join, which Metabase spells as `:source-field`."
   [fk-column table column base-type]
   (assoc-in (fld "public" table column base-type) [1 :source-field] [db "public" "fact_sales" fk-column]))
+
+(def order-status
+  "`dim_order.status`, reached from `fact_sales` through the `order` entity's column."
+  (joined-fld "order_key" "dim_order" "status" :type/Text))
 
 (defn portable-table
   "The `[database schema table]` serdes writes for `public.<table>`."
@@ -108,6 +113,18 @@
   "A metric or measure `filter` as the manifest writes it: one where clause per `template`."
   [& templates]
   {:where_filters (mapv (fn [template] {:where_sql_template template}) templates)})
+
+(def shipped-filter
+  "A metric `filter` on the fact table's own `status` column: `{{ Dimension('fact_sales_key__status') }} = 'Shipped'`."
+  (where-filters "{{ Dimension('fact_sales_key__status') }} = 'Shipped'"))
+
+(def shipped-order-template
+  "A filter template through the `order` entity, on `dim_order`'s `order_status_dim`."
+  "{{ Dimension('order__order_status_dim') }} = 'Shipped'")
+
+(def shipped-order-filter
+  "A metric `filter` of [[shipped-order-template]]: a join to `dim_order` through the `order` entity's column."
+  (where-filters shipped-order-template))
 
 (def pg-columns
   "Columns of `fact_sales`: name, declared Postgres `data_type`, the base type Postgres sync gives it, and a coarse
@@ -139,14 +156,14 @@
         (map (fn [[column-name data-type]] [column-name data-type]))
         pg-columns))
 
-(def product-columns
+(def ^:private product-columns
   "Columns of `dim_product` (name → data_type)."
   {"product_key"      "text"
    "product_category" "text"
    "msrp"             "integer"
    "first_order_date" "date"})
 
-(def order-columns
+(def ^:private order-columns
   "Columns of `dim_order` (name → data_type)."
   {"order_key"  "text"
    "status"     "text"
@@ -241,7 +258,7 @@
    :depends_on     {:macros [], :nodes [model-id]}
    :config         {:enabled true, :group nil, :meta {}}})
 
-(defn dimension-semantic-model
+(defn- dimension-semantic-model
   "A semantic model over dimension table `public.<table-name>` with no measures: one `primary-entity` and
   `model-dimensions`."
   [model-sm-id node-id table-name label primary-entity model-dimensions]
@@ -274,7 +291,7 @@
     (dimension "msrp" "categorical")
     (dimension "first_order_date" "time")]))
 
-(defn order-semantic-model
+(defn- order-semantic-model
   "`dim_order`, with no label: the `order` entity, a categorical dimension over a column, one over SQL (as the
   flexanalytics project's `is_cancelled_order`) and a time dimension."
   []
@@ -363,6 +380,34 @@
   ([model-sm-id f]
    #(update-in % [:semantic_models model-sm-id] f)))
 
+(defn add-measure
+  "A `:edit` fn for [[build-manifest]] that adds `measure`, merged over [[base-measure]], to the measures of the
+  semantic model `model-sm-id` (default the fact table's)."
+  ([measure]
+   (add-measure sm-id measure))
+  ([model-sm-id measure]
+   (edit-semantic-model model-sm-id #(update % :measures conj (merge (base-measure) measure)))))
+
+(defn add-metric
+  "A `:edit` fn for [[build-manifest]] that adds a metric `metric-name` next to the fixture's `m`, cloned from it: the
+  same boilerplate, type and `type_params`, with its `name`, `unique_id` (`metric.p.<metric-name>`) and `label` set,
+  then `f` (default identity) changing what differs."
+  ([metric-name]
+   (add-metric metric-name identity))
+  ([metric-name f]
+   (fn [manifest]
+     (assoc-in manifest [:metrics (str "metric.p." metric-name)]
+               (f (assoc (get-in manifest [:metrics "metric.p.m"])
+                         :name metric-name, :unique_id (str "metric.p." metric-name), :label metric-name))))))
+
+(defn over-measure
+  "`metric`, a manifest metric, made a simple metric over the measure `measure-name`: its `type_params.measure` and
+  `input_measures` point at it."
+  [metric measure-name]
+  (-> metric
+      (assoc-in [:type_params :measure] (input-measure {:name measure-name}))
+      (assoc-in [:type_params :input_measures] [(input-measure {:name measure-name})])))
+
 (defn round-trip
   "The manifest as `dbt parse` would write it and the converter would read it: JSON with string keys."
   [manifest]
@@ -374,6 +419,30 @@
    (resolve-manifest-map default-config manifest))
   ([config manifest]
    (->> manifest round-trip dbt-manifest/decode-manifest parse/parse-manifest (resolve/resolve-manifest config))))
+
+(defn stage
+  "The one stage of the query [[emit/dataset-query]] writes for `resolved-metric`."
+  [resolved-metric]
+  (-> (emit/dataset-query resolved-metric) :stages first))
+
+(defn query-clauses
+  "The clauses of the query `resolved-metric` converts to: `{:aggregation clause, :filters clauses, :source-table
+  ref}`, with `:filters` `[]` when the stage has none."
+  [resolved-metric]
+  (let [{:keys [aggregation filters source-table]} (stage resolved-metric)]
+    {:aggregation  (first aggregation)
+     :filters      (or filters [])
+     :source-table source-table}))
+
+(defn reasons-by-name
+  "`reports`, unsupported metrics or dimensions (`{:name ..., :reason ...}`), as a map of name → reason."
+  [reports]
+  (into {} (map (juxt :name :reason)) reports))
+
+(defn read-yaml
+  "The YAML file at `path` under `dir`, parsed; `opts` go to [[yaml/parse-string]] (`:key-fn`)."
+  [dir path & opts]
+  (apply yaml/parse-string (slurp (io/file dir path)) opts))
 
 (defn card-entity
   "The serdes Card entity [[emit/files]] writes for the resolved metric named `metric-name`, with its dimensions and
@@ -387,26 +456,28 @@
 (defn convert
   "Run the manifest [[build-manifest]] makes from `tweaks` through the whole pipeline and describe what happened to its
   metric (`m`, unless `:metric-name` says otherwise): `{:aggregation clause, :filters clauses, :source-table ref,
-  :dimensions dimensions, :dimension-mappings mappings, :unsupported-dimensions reports}` when it converted, with the
-  dimensions and mappings in the portable form serdes writes, `{:unsupported reason}` when it was reported. `:config`
-  is merged over [[default-config]]. A failure of the whole run throws, as it does in the converter."
+  :notes notes, :dimensions dimensions, :dimension-mappings mappings, :unsupported-dimensions reports}` when it
+  converted, with the dimensions and mappings in the portable form serdes writes, `{:unsupported reason}` when it was
+  reported, `{:error message}` when the converter failed on it. `:config` is merged over [[default-config]]. A failure
+  of the whole run throws, as it does in the converter."
   [{:keys [config metric-name] :as tweaks}]
   (let [config      (merge default-config config)
         metric-name (or metric-name (get-in tweaks [:metric :name]) "m")
-        resolved    (resolve-manifest-map config (build-manifest tweaks))]
+        resolved    (resolve-manifest-map config (build-manifest tweaks))
+        named       (fn [k] (m/find-first #(= metric-name (:name %)) (k resolved)))]
     (if-let [converted (resolved-metric-named resolved metric-name)]
-      (let [stage (-> (emit/dataset-query converted) :stages first)
-            card  (card-entity config resolved metric-name)]
-        {:aggregation            (first (:aggregation stage))
-         :filters                (:filters stage [])
-         :source-table           (:source-table stage)
-         :dimensions             (:dimensions card)
-         :dimension-mappings     (:dimension_mappings card)
-         :unsupported-dimensions (:unsupported-dimensions converted)})
-      (if-let [unsupported (m/find-first #(= metric-name (:name %)) (:unsupported resolved))]
+      (let [card (card-entity config resolved metric-name)]
+        (assoc (query-clauses converted)
+               :notes                  (:notes converted)
+               :dimensions             (:dimensions card)
+               :dimension-mappings     (:dimension_mappings card)
+               :unsupported-dimensions (:unsupported-dimensions converted)))
+      (if-let [unsupported (named :unsupported)]
         {:unsupported (:reason unsupported)}
-        (throw (ex-info (format "metric %s was neither converted nor reported" (pr-str metric-name))
-                        {:resolved resolved}))))))
+        (if-let [failed (named :errors)]
+          {:error (:message failed)}
+          (throw (ex-info (format "metric %s was neither converted nor reported" (pr-str metric-name))
+                          {:resolved resolved})))))))
 
 (defn- converted
   "`(f (k result))` where `result` is what [[convert]] makes of `tweaks`, when the metric converted. When it was
@@ -459,7 +530,7 @@
   "The dimensions of the metric [[convert]] builds from `tweaks` that could not become curated dimensions, as a map of
   dimension name → reason."
   [tweaks]
-  (converted tweaks :unsupported-dimensions #(into {} (map (juxt :name :reason)) %)))
+  (converted tweaks :unsupported-dimensions reasons-by-name))
 
 (defn metrics-manifest
   "A manifest whose metrics all sum `sales` and differ only in `label` (and description). Metric names are m0, m1, …"

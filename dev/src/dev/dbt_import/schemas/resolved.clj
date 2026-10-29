@@ -22,14 +22,26 @@
              (catch Throwable _
                false))))
 
+(mu/defn jdbc-driver? :- :boolean
+  "Whether `driver`, once loaded, is a JDBC driver: one derived from `:sql-jdbc`. Only a JDBC driver has the
+  [[metabase.driver.sql-jdbc.sync/database-type->base-type]] mapping the converter types the project's columns with,
+  so `:mongo` or `:bigquery-cloud-sdk` cannot be converted for."
+  [driver :- :keyword]
+  (isa? driver/hierarchy driver :sql-jdbc))
+
 (mr/def ::driver
-  "A Metabase driver by name, `:postgres`, one the instance can load (see [[loadable-driver?]]). Column base types
-  come from the driver's own [[metabase.driver.sql-jdbc.sync/database-type->base-type]]; a warehouse type the driver
-  does not map is reported, and the fix is a mapping in the driver, which is meant to have one for every type its
-  warehouse has."
+  "A Metabase driver by name, `:postgres`: one the instance can load (see [[loadable-driver?]]) and a JDBC one (see
+  [[jdbc-driver?]]). Column base types come from the driver's own
+  [[metabase.driver.sql-jdbc.sync/database-type->base-type]]; a warehouse type the driver does not map is reported,
+  and the fix is a mapping in the driver, which is meant to have one for every type its warehouse has."
   [:and
    :keyword
-   [:fn {:error/message "not a driver the instance can load"} loadable-driver?]])
+   [:fn {:error/fn (fn [{:keys [value]} _]
+                     (if (loadable-driver? value)
+                       "not a JDBC driver: the converter types columns through the driver's sql-jdbc type mapping"
+                       "not a driver the instance can load"))}
+    (fn [driver]
+      (and (loadable-driver? driver) (jdbc-driver? driver)))]])
 
 (mr/def ::config
   "The converter's configuration: what the manifest cannot supply, and how the metrics are written."
@@ -44,9 +56,9 @@
    [:creator-email   :string]
    ;; `:collection-name` names the collection the metrics are written to; `\"dbt metrics\"` when it is not given.
    [:collection-name {:optional true} :string]
-   ;; `:entity-models` says which semantic model a foreign entity joins to when more than one semantic model has the
-   ;; entity as its primary entity: entity name → semantic model name. An entity exactly one model is primary for
-   ;; needs no entry.
+   ;; `:entity-models` says which semantic model a foreign or unique entity joins to when more than one other
+   ;; semantic model is keyed by it, as its primary entity or as a unique one: entity name → semantic model name. An
+   ;; entity exactly one model is keyed by needs no entry.
    [:entity-models   {:optional true} [:map-of :string :string]]])
 
 (mr/def ::unsupported-dimension
@@ -61,7 +73,8 @@
   when they are written out. `semantic-model` names the model the query is over and `agg-time-dimension` its default
   time dimension; for a ratio or derived metric both come from its inputs. `unsupported-dimensions` lists the dbt
   dimensions that could not be curated dimensions. `card-id` is the metric's id in that provider, which a ratio or
-  derived metric's `[:metric id]` references use."
+  derived metric's `[:metric id]` references use. `notes` is what a user of the metric should know that the query does
+  not say (see [[dev.dbt-import.resolve/notes]]): where it agrees with dbt only under some conditions."
   [:map {:closed true}
    [:ir                     ::ir/metric]
    [:entity-id              ms/NanoIdString]
@@ -70,9 +83,19 @@
    [:semantic-model         :string]
    [:agg-time-dimension     [:maybe :string]]
    [:query                  ::lib.schema/query]
+   [:notes                  [:sequential :string]]
    [:dimensions             ::lib-metric.schema/persisted-dimensions]
    [:dimension-mappings     [:sequential ::lib-metric.schema/dimension-mapping]]
    [:unsupported-dimensions [:sequential ::unsupported-dimension]]])
+
+(mr/def ::error
+  "A metric the converter failed on: an unexpected exception while resolving it, which is a bug in the converter or an
+  input it did not anticipate, not something dbt can say that Metabase cannot (that is an `::ir/unsupported`).
+  `message` names the exception."
+  [:map {:closed true}
+   [:name      :string]
+   [:unique-id :string]
+   [:message   :string]])
 
 (mr/def ::collection
   "The collection the metrics are written into."
@@ -82,8 +105,10 @@
 
 (mr/def ::manifest
   "The resolve stage's output: what the emit stage needs, plus everything that could not be resolved and why.
-  `unsupported` carries over the parse stage's entries too, so it is the complete list for the run."
+  `unsupported` carries over the parse stage's entries too, so it is the complete list for the run; `errors` are the
+  metrics the converter itself failed on (see `::error`)."
   [:map {:closed true}
    [:collection  ::collection]
    [:metrics     [:sequential ::metric]]
-   [:unsupported [:sequential ::ir/unsupported]]])
+   [:unsupported [:sequential ::ir/unsupported]]
+   [:errors      [:sequential ::error]]])

@@ -1,4 +1,6 @@
 (ns dev.dbt-import.emit-test
+  "The emit stage: the serdes files a resolved manifest becomes, their names, and how [[emit/write!]] puts them on disk
+  and takes a previous run's away."
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -8,8 +10,7 @@
    [medley.core :as m]
    [metabase.queries.models.card :as card]
    [metabase.test :as mt]
-   [metabase.util :as u]
-   [metabase.util.yaml :as yaml])
+   [metabase.util :as u])
   (:import
    (java.nio.file Path Paths)))
 
@@ -17,7 +18,7 @@
 
 (deftest ^:parallel dataset-query-test
   (let [resolved (tu/resolve-manifest-map (tu/build-manifest {}))
-        stage    (-> (emit/dataset-query (first (:metrics resolved))) :stages first)]
+        stage    (tu/stage (first (:metrics resolved)))]
     (testing "the stage serdes writes: portable table and field refs, no clause ids, no :filters key without filters"
       (is (= {:lib/type     :mbql.stage/mbql
               :source-table [tu/db "public" "fact_sales"]
@@ -50,11 +51,14 @@
         paths    (fn [collection-name]
                    (map :path (emit/files tu/default-config (assoc-in resolved [:collection :name] collection-name))))]
     (testing "a name that slugifies to `..` or `.` would put the files, and the delete of the previous run, outside the
-              collection's directory; one that slugifies to nothing has no directory at all. All are refused."
-      (doseq [collection-name [".." "." ""]]
+              collection's directory"
+      (doseq [collection-name [".." "."]]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"is not a usable collection name"
                               (paths collection-name))
             (pr-str collection-name))))
+    (testing "one that slugifies to nothing has no directory at all"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"collection name \"\" slugifies to nothing"
+                            (paths ""))))
     (testing "dots inside a name are fine"
       (is (= ["collections/main/v1.2_metrics.yaml" "collections/main/v1.2_metrics/m.yaml"]
              (paths "v1.2 metrics"))))))
@@ -63,11 +67,11 @@
   (mt/with-temp-dir [out-dir nil]
     (let [resolved    (tu/flexanalytics-resolved)
           paths       (emit/write! out-dir (emit/files tu/default-config resolved))
-          read-yaml   (fn [path] (yaml/parse-string (slurp (io/file out-dir path))))
+          read-yaml   (partial tu/read-yaml out-dir)
           sales       (tu/resolved-metric-named resolved "sales")
           ;; a float column's field ref as it reads back from YAML, keywords as strings
           float-field (fn [column]
-                        ["field" {:base-type "type/Float", :effective-type "type/Float"}
+                        ["field" {}
                          ["Sales DB" "public" "fact_sales" column]])]
       (is (= (inc (count (:metrics resolved))) (count paths)) "the collection and one card per metric")
       (testing "the collection file"
@@ -84,7 +88,7 @@
                 :display       "scalar"
                 :collection_id (-> resolved :collection :entity-id)
                 :creator_id    "admin@example.com"
-                :card_schema   card/current-card-schema-version
+                :card_schema   emit/card-schema
                 :dataset_query {:lib/type "mbql/query"
                                 :database "Sales DB"
                                 :stages   [{:lib/type     "mbql.stage/mbql"
@@ -193,13 +197,13 @@
    "&anchor" "*alias" "!tag" "%percent" "@at" "`backtick`" "| pipe" "> greater" "| Metric | Definition |\n|---|---|"
    "   leading spaces" "trailing spaces   " "\\backslash" "emoji 📈" "a: b: c" "? question" ", comma" "=equals"])
 
-(deftest yaml-round-trip-test
+(deftest labels-survive-yaml-test
   (mt/with-temp-dir [out-dir nil]
     (let [manifest (tu/metrics-manifest yaml-hostile-strings yaml-hostile-strings)
           files    (emit/files tu/default-config (tu/resolve-manifest-map manifest))]
       (emit/write! out-dir files)
       (doseq [{:keys [path metric]} (rest files)
-              :let [{card-name :name, :keys [description]} (yaml/parse-string (slurp (io/file out-dir path)))]]
+              :let [{card-name :name, :keys [description]} (tu/read-yaml out-dir path)]]
         (testing (pr-str (-> metric :ir :label))
           (is (= (-> metric :ir :label) card-name) "the label survives YAML as the card name")
           (is (= (-> metric :ir :description) description) "the description survives YAML"))))))
@@ -224,3 +228,98 @@
     (is (= [] (:metrics resolved)))
     (is (= [] (:unsupported resolved)))
     (is (= 1 (count (emit/files tu/default-config resolved))) "only the collection")))
+
+(deftest ^:parallel card-schema-test
+  (is (= emit/card-schema card/current-card-schema-version)
+      (str "card_schema moved past " emit/card-schema ": check the hand-built card shape in"
+           " dev.dbt-import.emit/card-entity (the dimensions and dimension mappings in particular) against what"
+           " changed in the new version, then bump dev.dbt-import.emit/card-schema")))
+
+(deftest ^:parallel nfc-label-test
+  (testing "a label with combining marks and the same label precomposed slugify the same, and are then told apart"
+    (let [paths (map :path (tu/card-files (tu/metrics-manifest ["Café" "Café"])))]
+      (is (= ["collections/main/dbt_metrics/café.yaml" "collections/main/dbt_metrics/café_2.yaml"]
+             paths)))))
+
+(deftest ^:parallel empty-label-slug-test
+  (testing "a label that slugifies to nothing is refused rather than written as `.yaml`"
+    (let [resolved (tu/resolve-manifest-map (tu/build-manifest {}))]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"label \"\" slugifies to nothing"
+                            (emit/files tu/default-config (assoc-in resolved [:metrics 0 :ir :label] "")))))))
+
+(defn- write-labels!
+  "Convert a manifest whose metrics have `labels` and write it under `out-dir`; returns the paths written."
+  [out-dir labels]
+  (->> (tu/metrics-manifest labels)
+       tu/resolve-manifest-map
+       (emit/files tu/default-config)
+       (emit/write! out-dir)))
+
+(defn- listing
+  "Every file under `dir`, relative to it, sorted."
+  [dir]
+  (let [root (io/file dir)]
+    (sort (for [^java.io.File file (file-seq root)
+                :when (.isFile file)]
+            (subs (.getPath file) (inc (count (.getPath root))))))))
+
+(deftest write-nothing-when-no-metric-test
+  (mt/with-temp-dir [out-dir nil]
+    (write-labels! out-dir ["Sales"])
+    (let [before   (listing out-dir)
+          resolved (tu/resolve-manifest-map (assoc (tu/build-manifest {}) :metrics {}))
+          files    (emit/files tu/default-config resolved)]
+      (is (= 1 (count files)) "only the collection, which is not worth writing on its own")
+      (testing "nothing is written, the previous run stays, and the log says so"
+        (is (=? [{:level :info, :message #"^No metric converted, so nothing was written and .* was left as it is$"}]
+                (mt/with-log-messages-for-level [messages [dev.dbt-import.emit :info]]
+                  (is (= [] (emit/write! out-dir files)))
+                  (messages))))
+        (is (= before (listing out-dir)))))))
+
+(deftest write-replaces-regular-file-test
+  (mt/with-temp-dir [out-dir nil]
+    (let [card-dir (io/file out-dir "collections/main/dbt_metrics")]
+      (io/make-parents card-dir)
+      (spit card-dir "not a directory")
+      (testing "a regular file where the card directory goes is replaced by the directory"
+        (write-labels! out-dir ["Sales"])
+        (is (.isDirectory ^java.io.File card-dir))
+        (is (= ["collections/main/dbt_metrics.yaml" "collections/main/dbt_metrics/sales.yaml"]
+               (listing out-dir)))))))
+
+(deftest write-failure-leaves-previous-run-test
+  (mt/with-temp-dir [out-dir nil]
+    (write-labels! out-dir ["Sales" "Quantity"])
+    (let [before     (listing out-dir)
+          contents   (into {} (map (juxt identity #(slurp (io/file out-dir %)))) before)
+          failing    (fn [file content]
+                       (if (str/ends-with? (str file) "/price.yaml")
+                         (throw (java.io.IOException. "disk full"))
+                         ((mt/original-fn #'emit/write-file!) file content)))
+          e          (mt/with-dynamic-fn-redefs [emit/write-file! failing]
+                       (try
+                         (write-labels! out-dir ["Sales" "Price" "Quantity"])
+                         (catch clojure.lang.ExceptionInfo e e)))]
+      (is (some? e) "the failure propagates")
+      (testing "the failure says what was written before it and what failed"
+        (is (= "could not write collections/main/dbt_metrics/price.yaml: disk full" (ex-message e)))
+        (is (= {:written ["collections/main/dbt_metrics.yaml" "collections/main/dbt_metrics/sales.yaml"]
+                :failed  "collections/main/dbt_metrics/price.yaml"}
+               (ex-data e)))
+        (is (instance? java.io.IOException (ex-cause e))))
+      (testing "the previous run is exactly as it was, and no staging directory is left behind"
+        (is (= before (listing out-dir)))
+        (is (= contents (into {} (map (juxt identity #(slurp (io/file out-dir %)))) before)))
+        (is (= #{"collections"} (set (.list (io/file out-dir)))))))))
+
+(deftest ^:parallel metric-meta-test
+  (testing "a metric's free-form meta is parsed into the IR and written nowhere: no key of the card carries it"
+    (let [resolved (tu/resolve-manifest-map
+                    (tu/build-manifest {:metric {:meta {:format   {"type" "percent", "decimalPlaces" 1}
+                                                        :synonyms ["Sales Coverage Ratio"]}}}))
+          card     (tu/card-entity tu/default-config resolved "m")]
+      (is (= ["Sales Coverage Ratio"] (-> resolved :metrics first :ir :meta :synonyms)) "the IR carries it")
+      (is (not (contains? card :meta)))
+      (is (= {} (:visualization_settings card)))
+      (is (not (str/includes? (pr-str card) "Sales Coverage Ratio"))))))

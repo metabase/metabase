@@ -3,10 +3,14 @@
 
   These describe the *input* contract, not the converter's intermediate representation. They cover manifest schema
   v12 as written by dbt 1.12 and later, and only the keys the converter looks at. Undeclared keys pass through
-  untouched. Older dbt releases are not supported: dbt 1.8 to 1.11 also write schema v12 but without the
-  `type_params` keys the inline spec added (`fill_nulls_with`, `cumulative_type_params`, …), and v10 and v11 have
-  fewer still. [[decode-manifest]] rejects anything but v12 from dbt 1.12+ up front, by `metadata`, rather than
-  failing deeper in with a key-by-key explanation.
+  untouched. A key that may be `null` is optional here too: dbt-core writes every key, as `null` when unset, but the
+  published schema requires few of them and another writer (dbt Fusion, a hand-written manifest) may leave them out,
+  and the converter reads an absent key as `null`. Older dbt releases are not supported: the converter is written
+  against the manifests dbt 1.12 writes, the first release with the inline (`models:`-nested) spec and its
+  `metric_aggregation_params` and `cumulative_type_params.metric`; dbt 1.8 to 1.11 also write schema v12, with some of
+  the same keys (`fill_nulls_with` is from 1.7, `cumulative_type_params` from 1.9), but they have not been tested, and
+  v10 and v11 have fewer keys still. [[decode-manifest]] rejects anything but v12 from dbt 1.12+ up front, by
+  `metadata`, rather than failing deeper in with a key-by-key explanation.
 
   Decode with [[decode-manifest]], which expects the JSON parsed with *string* keys ([[metabase.util.json/decode]]
   without keywordization). The transformer then:
@@ -29,7 +33,8 @@
    [malli.error :as me]
    [malli.transform :as mtx]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
 
 (mr/def ::aggregation-type
   "`measures[].agg`. Mirrors `dbt_semantic_interfaces.type_enums.AggregationType`, a closed set the manifest JSON
@@ -70,7 +75,10 @@
   [:maybe ::where-filter-intersection])
 
 (mr/def ::aggregation-params
-  "`measures[].agg_params`, only present for `agg: percentile`."
+  "`measures[].agg_params` and `metric_aggregation_params.agg_params`: the parameters of the aggregation, of which only
+  `percentile` has any. On the legacy spec dbt writes the map for `agg: percentile` and `null` otherwise; on the 1.12
+  inline spec it writes the map for every aggregation, with a `null` `percentile` (see the `parcel_delivery` fixture).
+  The converter reads it only for a percentile."
   [:map
    [:percentile                 {:optional true} [:maybe number?]]
    [:use_discrete_percentile    {:optional true} [:maybe :boolean]]
@@ -81,9 +89,10 @@
   the parse stage reports a measure that has one."
   [:map
    [:name             :string]
-   ;; dbt documents min and max, but its manifest schema types this as the full aggregation enum
-   [:window_choice    ::aggregation-type]
-   [:window_groupings {:optional true} [:sequential :string]]])
+   ;; dbt documents min and max, but its manifest schema types this as the full aggregation enum; dbt defaults it to
+   ;; min when a project leaves it out
+   [:window_choice    {:optional true} [:maybe ::aggregation-type]]
+   [:window_groupings {:optional true} [:maybe [:sequential :string]]]])
 
 (mr/def ::measure
   "A legacy-spec measure. `expr` is either a bare column name, the literal `1`, or warehouse SQL; `nil` means the
@@ -92,13 +101,13 @@
   [:map
    [:name                   :string]
    [:agg                    ::aggregation-type]
-   [:label                  [:maybe :string]]
-   [:description            [:maybe :string]]
-   [:expr                   [:maybe :string]]
+   [:label                  {:optional true} [:maybe :string]]
+   [:description            {:optional true} [:maybe :string]]
+   [:expr                   {:optional true} [:maybe :string]]
    [:create_metric          {:optional true} :boolean]
-   [:agg_params             [:maybe ::aggregation-params]]
-   [:non_additive_dimension [:maybe ::non-additive-dimension]]
-   [:agg_time_dimension     [:maybe :string]]])
+   [:agg_params             {:optional true} [:maybe ::aggregation-params]]
+   [:non_additive_dimension {:optional true} [:maybe ::non-additive-dimension]]
+   [:agg_time_dimension     {:optional true} [:maybe :string]]])
 
 (mr/def ::entity
   "A join key. `expr` is the column; `nil` means the entity name is the column. The manifest JSON schema requires only
@@ -113,10 +122,11 @@
 
 (mr/def ::dimension-type-params.validity-params
   "`dimensions[].type_params.validity_params`, marking the start and end columns of a slowly changing dimension's
-  validity window. Not read by the converter."
+  validity window (dbt's SCD type II support, together with a `natural` entity). Each flag defaults to false when left
+  out. Carried into the IR for the resolve stage to report: a dimension set has no notion of a validity window."
   [:map
-   [:is_start :boolean]
-   [:is_end   :boolean]])
+   [:is_start {:optional true} [:maybe :boolean]]
+   [:is_end   {:optional true} [:maybe :boolean]]])
 
 (mr/def ::dimension-type-params
   "`dimensions[].type_params`, only present for `type: time`."
@@ -129,17 +139,17 @@
   [:map
    [:name         :string]
    [:type         ::dimension-type]
-   [:label        [:maybe :string]]
-   [:description  [:maybe :string]]
+   [:label        {:optional true} [:maybe :string]]
+   [:description  {:optional true} [:maybe :string]]
    [:is_partition {:optional true} :boolean]
-   [:type_params  [:maybe ::dimension-type-params]]
-   [:expr         [:maybe :string]]])
+   [:type_params  {:optional true} [:maybe ::dimension-type-params]]
+   [:expr         {:optional true} [:maybe :string]]])
 
 (mr/def ::node-relation
   "The physical table a semantic model is built on, already resolved from `ref()` plus the profile and `+schema` /
   `+alias` configs. This is the source for serdes portable table refs."
   [:map
-   [:database      [:maybe :string]]
+   [:database      {:optional true} [:maybe :string]]
    [:schema_name   :string]
    [:alias         :string]
    [:relation_name {:optional true} [:maybe :string]]])
@@ -154,8 +164,10 @@
    [:macros {:optional true} [:sequential :string]]])
 
 (mr/def ::semantic-model.defaults
+  "`semantic_models[].defaults`: what a measure of the model takes when it does not say. Only `agg_time_dimension`,
+  the time dimension the model's measures aggregate over, which the parse stage copies onto each measure without one."
   [:map
-   [:agg_time_dimension [:maybe :string]]])
+   [:agg_time_dimension {:optional true} [:maybe :string]]])
 
 (mr/def ::node-config
   "The `config` of a semantic model or a metric: only `enabled` is read, and only by dbt itself when it writes the
@@ -165,19 +177,21 @@
 
 (mr/def ::semantic-model
   "One entry of the top-level `semantic_models` map. `model` is the raw `ref('x')` string; use `node_relation` and
-  `depends_on` instead."
+  `depends_on` instead. `node_relation` is the one nullable key that is required here: dbt resolves it from `ref()`
+  when it parses the project and fails the parse when it cannot, so a manifest without it is one the converter has no
+  table to build on."
   [:map
    [:unique_id      :string]
-   [:name           :string]
-   [:label          [:maybe :string]]
-   [:description    [:maybe :string]]
+   [:name           ms/NonBlankString]
+   [:label          {:optional true} [:maybe :string]]
+   [:description    {:optional true} [:maybe :string]]
    [:model          :string]
    [:node_relation  ::node-relation]
-   [:defaults       [:maybe ::semantic-model.defaults]]
+   [:defaults       {:optional true} [:maybe ::semantic-model.defaults]]
    [:primary_entity {:optional true} [:maybe :string]]
-   [:entities       [:sequential ::entity]]
-   [:dimensions     [:sequential ::dimension]]
-   [:measures       [:sequential ::measure]]
+   [:entities       {:optional true} [:maybe [:sequential ::entity]]]
+   [:dimensions     {:optional true} [:maybe [:sequential ::dimension]]]
+   [:measures       {:optional true} [:maybe [:sequential ::measure]]]
    [:depends_on     ::depends-on]
    [:config         {:optional true} ::node-config]])
 
@@ -199,19 +213,20 @@
   `fill_nulls_with` may be set here *or* on the metric itself; honour either."
   [:map
    [:name              :string]
-   [:filter            ::filter]
-   [:alias             [:maybe :string]]
-   [:join_to_timespine {:optional true} :boolean]
-   [:fill_nulls_with   [:maybe :int]]])
+   [:filter            {:optional true} ::filter]
+   [:alias             {:optional true} [:maybe :string]]
+   [:join_to_timespine {:optional true} [:maybe :boolean]]
+   [:fill_nulls_with   {:optional true} [:maybe :int]]])
 
 (mr/def ::metric-input
-  "A reference to another metric, used by ratio (`numerator` / `denominator`) and derived (`metrics`) metrics.
-  `offset_window` and `offset_to_grain` shift the input in time (a period-over-period or start-of-period comparison),
-  which has no Metabase equivalent; the parse stage reports a metric with either."
+  "A reference to another metric, used by ratio (`numerator` / `denominator`) and derived (`metrics`) metrics, and by
+  an inline-spec cumulative metric for the metric it runs over (`cumulative_type_params.metric`). `offset_window` and
+  `offset_to_grain` shift the input in time (a period-over-period or start-of-period comparison), which has no
+  Metabase equivalent; the parse stage reports a metric with either."
   [:map
    [:name            :string]
-   [:filter          ::filter]
-   [:alias           [:maybe :string]]
+   [:filter          {:optional true} ::filter]
+   [:alias           {:optional true} [:maybe :string]]
    [:offset_window   {:optional true} [:maybe ::time-window]]
    [:offset_to_grain {:optional true} [:maybe :string]]])
 
@@ -219,15 +234,17 @@
   "`type_params.metric_aggregation_params`. New in dbt 1.12 for the inline (`models:`-nested) spec, where a simple
   metric carries its own aggregation instead of pointing at a measure: the semantic model it aggregates (also in
   `depends_on`), the `agg` and its params, the aggregation time dimension already defaulted from the model, and the
-  non-additive dimension. The expression is *not* here but in `type_params.expr`, and `agg_params` is always written,
-  with nil `percentile`, for every aggregation, as the `parcel_delivery` fixture, written by dbt 1.12.6, has it. On
-  the legacy spec this is `nil`."
+  non-additive dimension. dbt 1.12 writes the expression in `type_params.expr`, not here; the published v12 schema
+  also allows an `expr` here, which the parse stage reads when `type_params.expr` is nil. `agg_params` is always
+  written, with nil `percentile`, for every aggregation, as the `parcel_delivery` fixture, written by dbt 1.12.6, has
+  it. On the legacy spec this is `nil`."
   [:map
-   [:semantic_model         [:maybe :string]]
+   [:semantic_model         {:optional true} [:maybe :string]]
    [:agg                    ::aggregation-type]
-   [:agg_params             [:maybe ::aggregation-params]]
-   [:agg_time_dimension     [:maybe :string]]
-   [:non_additive_dimension [:maybe ::non-additive-dimension]]])
+   [:agg_params             {:optional true} [:maybe ::aggregation-params]]
+   [:agg_time_dimension     {:optional true} [:maybe :string]]
+   [:non_additive_dimension {:optional true} [:maybe ::non-additive-dimension]]
+   [:expr                   {:optional true} [:maybe :string]]])
 
 (mr/def ::cumulative-type-params
   "`type_params.cumulative_type_params`. On the 1.12 inline spec `metric` is the input metric the running total is
@@ -237,8 +254,8 @@
   breakout is the value at the end of the period, so only `last` converts; the parse stage reports the others, and a
   window or `grain_to_date`, before anything else is read."
   [:map
-   [:window        [:maybe ::time-window]]
-   [:grain_to_date [:maybe :string]]
+   [:window        {:optional true} [:maybe ::time-window]]
+   [:grain_to_date {:optional true} [:maybe :string]]
    [:period_agg    {:optional true} [:maybe [:enum :first :last :average]]]
    [:metric        {:optional true} [:maybe ::metric-input]]])
 
@@ -253,33 +270,34 @@
     metric under `metric` (1.12 inline spec, where the metric is also in `depends_on`)
   * conversion: `conversion_type_params` (out of scope, left untyped)
 
-  `input_measures` is dbt's flattened list of every measure the metric transitively depends on."
+  `input_measures` is dbt's flattened list of every measure the metric transitively depends on. `fill_nulls_with` and
+  `join_to_timespine` here are the inline spec's; the legacy spec writes them on `measure`."
   [:map
-   [:measure                   [:maybe ::metric-input-measure]]
-   [:input_measures            {:optional true} [:sequential ::metric-input-measure]]
-   [:numerator                 [:maybe ::metric-input]]
-   [:denominator               [:maybe ::metric-input]]
-   [:expr                      [:maybe :string]]
-   [:window                    [:maybe ::time-window]]
-   [:grain_to_date             [:maybe :string]]
-   [:metrics                   [:maybe [:sequential ::metric-input]]]
-   [:conversion_type_params    [:maybe :map]]
-   [:cumulative_type_params    [:maybe ::cumulative-type-params]]
+   [:measure                   {:optional true} [:maybe ::metric-input-measure]]
+   [:input_measures            {:optional true} [:maybe [:sequential ::metric-input-measure]]]
+   [:numerator                 {:optional true} [:maybe ::metric-input]]
+   [:denominator               {:optional true} [:maybe ::metric-input]]
+   [:expr                      {:optional true} [:maybe :string]]
+   [:window                    {:optional true} [:maybe ::time-window]]
+   [:grain_to_date             {:optional true} [:maybe :string]]
+   [:metrics                   {:optional true} [:maybe [:sequential ::metric-input]]]
+   [:conversion_type_params    {:optional true} [:maybe :map]]
+   [:cumulative_type_params    {:optional true} [:maybe ::cumulative-type-params]]
    [:metric_aggregation_params {:optional true} [:maybe ::metric-aggregation-params]]
-   [:fill_nulls_with           [:maybe :int]]
-   [:join_to_timespine         {:optional true} :boolean]])
+   [:fill_nulls_with           {:optional true} [:maybe :int]]
+   [:join_to_timespine         {:optional true} [:maybe :boolean]]])
 
 (mr/def ::metric
   "One entry of the top-level `metrics` map. `meta` is free-form user metadata; the flexanalytics project puts
   `format` (percent, decimal places) and `synonyms` there."
   [:map
    [:unique_id        :string]
-   [:name             :string]
-   [:label            [:maybe :string]]
-   [:description      [:maybe :string]]
+   [:name             ms/NonBlankString]
+   [:label            {:optional true} [:maybe :string]]
+   [:description      {:optional true} [:maybe :string]]
    [:type             ::metric-type]
    [:type_params      ::metric-type-params]
-   [:filter           ::filter]
+   [:filter           {:optional true} ::filter]
    [:time_granularity {:optional true} [:maybe :string]]
    [:meta             {:optional true} [:maybe :map]]
    [:depends_on       ::depends-on]
@@ -290,8 +308,8 @@
   which case base types have to come from Metabase's own synced metadata."
   [:map
    [:name        :string]
-   [:description [:maybe :string]]
-   [:data_type   [:maybe :string]]])
+   [:description {:optional true} [:maybe :string]]
+   [:data_type   {:optional true} [:maybe :string]]])
 
 (mr/def ::node
   "One entry of the top-level `nodes` map. `nodes` mixes models, seeds, snapshots, tests and operations; all of them
@@ -300,17 +318,19 @@
    [:unique_id     :string]
    [:resource_type :keyword]
    [:name          :string]
-   [:database      [:maybe :string]]
-   [:schema        :string]
-   [:alias         :string]
+   [:database      {:optional true} [:maybe :string]]
+   [:schema        ms/NonBlankString]
+   [:alias         ms/NonBlankString]
    [:relation_name {:optional true} [:maybe :string]]
-   [:description   [:maybe :string]]
-   [:columns       [:map-of :string ::column]]])
+   [:description   {:optional true} [:maybe :string]]
+   [:columns       {:optional true} [:maybe [:map-of :string ::column]]]])
 
 (def ^:private minimum-dbt-version
   "The oldest dbt release whose manifests the converter accepts, as `[major minor]`. dbt 1.12 is where the inline
-  spec and the `type_params` keys that go with it (`fill_nulls_with`, `cumulative_type_params`,
-  `metric_aggregation_params`) arrived; the schemas here require them."
+  (`models:`-nested) spec arrived, with `metric_aggregation_params` and `cumulative_type_params.metric`, and it is the
+  release the converter is written and tested against; the two fixtures are its manifests. Older releases write
+  manifests the schemas here would mostly accept (`fill_nulls_with` dates from dbt 1.7 and `cumulative_type_params`
+  from 1.9), but nothing has checked what they write, so they are refused rather than guessed at."
   [1 12])
 
 (mu/defn- supported-dbt-version? :- :boolean
@@ -373,9 +393,9 @@
         decoded  (decoder manifest)
         metadata (:metadata decoded)]
     (when-let [error (when (map? metadata) (mr/explain ::metadata metadata))]
-      (throw (ex-info (str "Unsupported dbt manifest: the converter reads manifests written by dbt 1.12 or later"
-                           " (manifest schema v12), this one says dbt " (pr-str (:dbt_version metadata))
-                           " and " (pr-str (:dbt_schema_version metadata)))
+      (throw (ex-info (format (str "Unsupported dbt manifest: the converter reads manifests written by dbt 1.12 or"
+                                   " later (manifest schema v12), this one says dbt %s and %s")
+                              (pr-str (:dbt_version metadata)) (pr-str (:dbt_schema_version metadata)))
                       {:dbt-version        (:dbt_version metadata)
                        :dbt-schema-version (:dbt_schema_version metadata)
                        :errors             (me/humanize error)})))

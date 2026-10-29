@@ -90,10 +90,13 @@
     (is (= nil
            (types/coercion-possibilities :type/Number))))
   (testing "Non-inheritable coercions"
-    ;; type/* has a coercion :Coercion/YYYYMMDDHHMMSSBytes->Temporal
-    (is (= {:type/* #{:Coercion/YYYYMMDDHHMMSSBytes->Temporal
-                      :Coercion/ISO8601Bytes->Temporal}}
-           (types/coercion-possibilities :type/*)))
+    ;; type/* and type/Binary have the coercions :Coercion/YYYYMMDDHHMMSSBytes->Temporal and
+    ;; :Coercion/ISO8601Bytes->Temporal
+    (doseq [base-type [:type/* :type/Binary]]
+      (testing base-type
+        (is (= {base-type #{:Coercion/YYYYMMDDHHMMSSBytes->Temporal
+                            :Coercion/ISO8601Bytes->Temporal}}
+               (types/coercion-possibilities base-type)))))
     ;; a random type descendant of type/* should not have this coercion
     (is (= nil (types/coercion-possibilities :type/DruidHyperUnique)))))
 
