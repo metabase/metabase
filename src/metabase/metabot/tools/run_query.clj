@@ -396,6 +396,8 @@
                                   " the database.")
         :sql-executing-function (str "It calls " detail ", which runs SQL passed to it as text that this check cannot"
                                      " see into.")
+        :dynamic-function-call (str "It calls a function through IDENTIFIER(...), whose name this check cannot read."
+                                    " Call the function by its name.")
         :statement-word      (str "It uses the word " detail " outside quotes, which starts a new statement on"
                                   " SQL Server.")
         :executable-comment  "It holds a /*! or /*M! comment, which MySQL and MariaDB run as SQL."

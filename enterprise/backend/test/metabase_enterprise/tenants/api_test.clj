@@ -407,7 +407,7 @@
       (mt/with-model-cleanup [:model/Collection]
         (let [{id :id} (mt/user-http-request :crowberto :post 200 "collection/" {:namespace collection/shared-tenant-ns
                                                                                  :name (mt/random-name)})
-              coll (t2/select-one :model/Collection id)]
+              coll (t2/select-one :model/Collection :id id)]
           (is (some? coll))
           (is (= collection/shared-tenant-ns (:namespace coll))))))))
 
@@ -421,7 +421,7 @@
       (mt/with-temp [:model/Collection {parent-id :id} {:namespace collection/shared-tenant-ns}]
         (let [id (:id (mt/user-http-request :crowberto :post 200 "collection/" {:name (mt/random-name)
                                                                                 :parent_id parent-id}))
-              coll (t2/select-one :model/Collection id)]
+              coll (t2/select-one :model/Collection :id id)]
           (is (some? id))
           (is (= collection/shared-tenant-ns (:namespace coll))))))))
 

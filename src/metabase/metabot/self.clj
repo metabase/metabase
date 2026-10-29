@@ -528,6 +528,15 @@
     (log/warnf "%s invoked without :required-permission (source=%s tag=%s) — every LLM call should declare which metabot permission gates it."
                fn-name (pr-str (:source opts)) (pr-str (:tag opts)))))
 
+(defn- warn-when-missing-request-id
+  "Every LLM call should carry the `:request-id` of its agent loop: a message limit leaves that loop out of its count,
+  so a call without one counts its own loop's earlier calls and can be blocked mid-turn. Logs a warn pointing at the
+  source/tag when the caller forgets. Shared by [[call-llm]] and [[call-llm-structured-with-trace]]."
+  [fn-name opts]
+  (when-not (:request-id opts)
+    (log/warnf "%s invoked without :request-id (source=%s tag=%s) — every LLM call should carry the id of its agent loop."
+               fn-name (pr-str (:source opts)) (pr-str (:tag opts)))))
+
 (defn llm-call-unavailable-reason
   "Single pre-flight gate for callers that want to *skip* an LLM call cleanly instead of
   attempting one and catching the failure it would throw. Bundles every check that decides
@@ -591,7 +600,8 @@
    (call-llm provider-and-model system-msg parts tools tracking-opts nil))
   ([provider-and-model system-msg parts tools tracking-opts {:keys [tool-choice]}]
    (warn-when-missing-required-permission "call-llm" tracking-opts)
-   (or (when-let [limit-msg (usage/check-usage-limits!)]
+   (warn-when-missing-request-id "call-llm" tracking-opts)
+   (or (when-let [limit-msg (usage/check-usage-limits! (:request-id tracking-opts))]
          (error-reducible limit-msg "ai_usage_limit_reached"))
        (when-let [missing (missing-required-permission (:required-permission tracking-opts))]
          (error-reducible (format "Permission denied: %s required" missing) "permission_denied"))
@@ -714,7 +724,8 @@
   provider system prompt, keeping untrusted content in the user channel."
   [provider-and-model messages json-schema temperature max-tokens opts]
   (warn-when-missing-required-permission "call-llm-structured-with-trace" opts)
-  (when-let [limit-msg (usage/check-usage-limits!)]
+  (warn-when-missing-request-id "call-llm-structured-with-trace" opts)
+  (when-let [limit-msg (usage/check-usage-limits! (:request-id opts))]
     (throw (ex-info limit-msg
                     {:type       :metabot/usage-limit-reached
                      :error-code "ai_usage_limit_reached"

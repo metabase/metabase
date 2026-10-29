@@ -139,9 +139,8 @@
            "a catalog entry missing this architecture's export fails instead of hashing nil"))))
 
 (deftest ^:synchronized plugin-artifact-smoke-test
-  (if-not (= "true" (System/getenv "MB_EMBEDDER_ARTIFACT_TEST"))
-    (testing "artifact smoke is enabled only in its dedicated CI process"
-      (is true))
+  ;; The artifact smoke runs only in its dedicated CI process.
+  (when (= "true" (System/getenv "MB_EMBEDDER_ARTIFACT_TEST"))
     (let [pre-plugin-thread
           (isolated-thread-call
            #(hash-map :readiness (embeddings.provider/readiness retrieval-model)
