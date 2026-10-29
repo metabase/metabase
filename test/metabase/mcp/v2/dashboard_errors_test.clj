@@ -40,8 +40,6 @@
 
 (deftest ^:parallel op-error-text-test
   (testing "GHY-4544: op errors name the index and op once, with caller-sent values quoted once"
-    (is (= "op 0 (\"frobnicate\"): unknown op — see the tool description for the supported list."
-           (error-text empty-dash [{:op "frobnicate"}])))
     (is (= "op 0 (\"add_link\"): pass exactly one of `url` or `entity`."
            (error-text empty-dash [{:op "add_link" :id -1}])))
     (is (= "op 0 (\"patch_dashcard\"): \"nonsense\" is not a patchable property."
@@ -50,15 +48,13 @@
     (is (= "op 1 (\"add_card\"): id -1 is already used in this batch — give each new row its own negative id."
            (error-text empty-dash [{:op "add_card" :id -1 :card_id 42}
                                    {:op "add_card" :id -1 :card_id 43}]))))
-  (testing "GHY-4544: an op sent without its `op` or a referenced id says so rather than naming null"
-    (is (= "op 0: missing `op` — see the tool description for the supported list."
-           (error-text empty-dash [{:id -1}])))
-    (is (= "op 0 (\"remove\"): missing `dashcard_id`."
-           (error-text empty-dash [{:op "remove"}])))
-    (is (= "op 0 (\"remove_tab\"): missing `tab_id`."
-           (error-text empty-dash [{:op "remove_tab"}])))
-    (is (= "op 0 (\"remove_parameter\"): missing `parameter_id`."
-           (error-text empty-dash [{:op "remove_parameter"}]))))
+  (testing "an op that breaks the op schema names the op and what is wrong with it"
+    (is (= (str "op 0 (\"move_tab\"): invalid op: \"index\": \"missing required key\" — "
+                "see the tool description for each op's arguments.")
+           (error-text empty-dash [{:op "move_tab" :tab_id 1}])))
+    (is (= (str "op 0: invalid op: \"op\": \"invalid dispatch value\" — "
+                "see the tool description for each op's arguments.")
+           (error-text empty-dash [{:id -1}]))))
   (testing "an unknown dashcard, tab or parameter id names the op"
     (is (= "op 0 (\"duplicate_card\"): no dashcard with id 999 on this dashboard."
            (error-text empty-dash [{:op "duplicate_card" :id -1 :dashcard_id 999}])))
@@ -72,7 +68,7 @@
   (testing "add_parameter names itself quoted, like every op, when the parameter exists"
     (is (= "op 0 (\"add_parameter\"): parameter \"p1\" already exists — use \"update_parameter\"."
            (error-text (assoc empty-dash :parameters [{:id "p1"}])
-                       [{:op "add_parameter" :parameter_id "p1"}]))))
+                       [{:op "add_parameter" :parameter_id "p1" :name "P"}]))))
   (testing "a card the caller could not resolve reads as one the user cannot read"
     (is (= "op 0 (\"add_card\"): no card with id 42 that you can read."
            (error-text empty-dash [{:op "add_card" :id -1 :card_id 42}] {}))))
@@ -131,7 +127,7 @@
     (let [e (try (dashboard-errors/compile-ops empty-dash [{:op "frobnicate"}] {})
                  (catch clojure.lang.ExceptionInfo e e))]
       (is (=? {:status-code 400} (ex-data e)))
-      (is (=? {::dashboard-ops/error :unknown-op} (dashboard-ops/error-data (ex-cause e)))))))
+      (is (=? {::dashboard-ops/error :invalid-op} (dashboard-ops/error-data (ex-cause e)))))))
 
 (deftest other-errors-pass-through-test
   (testing "an exception that is not a compiler error is rethrown as it is"

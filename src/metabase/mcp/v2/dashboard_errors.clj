@@ -14,30 +14,20 @@
 (def ^:private details
   "For each error code in [[dashboard-ops/errors]], a function from the error data to the message explaining it.
    The message has no op prefix."
-  {:missing-op
-   (fn [_] (message/raw "missing `op` — see the tool description for the supported list."))
-
-   :unknown-op
-   (fn [_] (message/raw "unknown op — see the tool description for the supported list."))
-
-   :invalid-new-id
-   (fn [_] (message/raw "`id` must be a negative integer — negative ids mark rows to create."))
+  {:invalid-op
+   (fn [{:keys [explanation]}]
+     (message/msg ["invalid op: %s — see the tool description for each op's arguments."]
+                  (common/humanize-detail explanation)))
 
    :duplicate-new-id
    (fn [{:keys [id]}]
      (message/msg ["id %s is already used in this batch — give each new row its own negative id."] id))
-
-   :missing-dashcard-id
-   (fn [_] (message/raw "missing `dashcard_id`."))
 
    :unknown-dashcard
    (fn [{:keys [dashcard-id]}] (message/msg ["no dashcard with id %s on this dashboard."] dashcard-id))
 
    :unknown-card
    (fn [{:keys [card-id]}] (message/msg ["no card with id %s that you can read."] card-id))
-
-   :missing-tab-id
-   (fn [_] (message/raw "missing `tab_id`."))
 
    :unknown-tab
    (fn [{:keys [tab-id]}] (message/msg ["no tab with id %s on this dashboard."] tab-id))
@@ -63,9 +53,6 @@
      (message/msg [(str "This dashboard has tabs, so every card must belong to a tab: %s have none. "
                         "Pass \"tab\" on the add op, or use \"move\" with \"tab\" for cards already placed.")]
                   (common/list-message dashcard-ids)))
-
-   :missing-parameter-id
-   (fn [_] (message/raw "missing `parameter_id`."))
 
    :unknown-parameter
    (fn [{:keys [parameter-id]}] (message/msg ["no parameter with id %s on this dashboard."] parameter-id))

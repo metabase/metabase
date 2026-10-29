@@ -4,6 +4,8 @@
    against plain maps."
   (:require
    [clojure.test :refer :all]
+   [malli.core :as mc]
+   [metabase.metabot.toolkit.dashboard-op-schema :as dashboard-op-schema]
    [metabase.metabot.toolkit.dashboard-ops :as dashboard-ops]
    [metabase.parameters.mapping-targets :as mapping-targets]
    [metabase.test.util.dynamic-redefs :as dynamic-redefs]
@@ -86,7 +88,6 @@
 (defn- op-error
   "The error data [[dashboard-ops/compile-ops]] throws for `ops` against `current` and `cards`, or nil when it compiles.
    It defaults `cards` to a stub row for every card `ops` name.
-   It also checks the data against the schema [[dashboard-ops/errors]] declares for its code.
    It rethrows an exception that is not a compiler error, so the test reports it as it is."
   ([current ops] (op-error current ops (resolved-cards ops)))
   ([current ops cards]
@@ -94,10 +95,7 @@
      (dashboard-ops/compile-ops current ops cards)
      nil
      (catch clojure.lang.ExceptionInfo e
-       (let [{code ::dashboard-ops/error :as data} (or (dashboard-ops/error-data e) (throw e))]
-         (is (mr/validate (get dashboard-ops/errors code) (dissoc data ::dashboard-ops/error :op-index :op-name))
-             "the error data matches its schema in `errors`")
-         data)))))
+       (or (dashboard-ops/error-data e) (throw e))))))
 
 (deftest ^:parallel autoplace-with-no-free-slot-test
   (testing "a tab with no free slot within autoplace's search is an error, not a card placed off the grid"
@@ -115,37 +113,52 @@
                      [{:op "add_card" :id -1 :card_id 42}
                       {:op "add_card" :id -1 :card_id 43}])))))
 
-(deftest ^:parallel positive-temp-id-is-rejected-test
-  (testing "GHY-4147: a new dashcard's id must be negative — positives would silently target a real row"
-    (is (=? {::dashboard-ops/error :invalid-new-id, :id 5}
-            (op-error empty-dash [{:op "add_card" :id 5 :card_id 42}])))))
+(deftest ^:parallel ops-that-break-the-op-schema-test
+  (testing "an op that breaks the op schema fails with the explanation, naming the op"
+    (is (= {::dashboard-ops/error :invalid-op
+            :explanation          {:index ["missing required key"]}
+            :op-index             0
+            :op-name              "move_tab"}
+           (op-error empty-dash [{:op "move_tab" :tab_id 1}])))
+    (are [op] (=? {::dashboard-ops/error :invalid-op, :op-index 0, :op-name (:op op)}
+                  (op-error empty-dash [op] {}))
+      ;; GHY-4147: a positive id would silently target a real row
+      {:op "add_card" :id 5 :card_id 42}
+      ;; an op the compiler does not know, or none at all
+      {:op "frobnicate"}
+      {:id -1}
+      ;; a referenced id left out
+      {:op "remove"}
+      {:op "remove_tab"}
+      {:op "add_parameter" :name "Country" :type "string/="}
+      ;; a value of the wrong type, or a key the op does not take
+      {:op "add_card" :id -1 :card_id 1 :series 5}
+      {:op "set_series" :dashcard_id 7 :card_ids 5}
+      {:op "add_text" :id -1 :markdown "hi" :card_id 42}))
+  (testing "every op is checked before any is applied"
+    (is (=? {::dashboard-ops/error :invalid-op, :op-index 1}
+            (op-error empty-dash [{:op "remove" :dashcard_id 999} {:op "frobnicate"}]))))
+  (testing "a null on an optional key reads as the key left out"
+    (is (=? {::dashboard-ops/error :missing-parameter-destination}
+            (op-error (assoc empty-dash :parameters [{:id "p1"}])
+                      [{:op "move_parameter" :parameter_id "p1" :index nil :dashcard_id nil}])))))
 
-(deftest ^:parallel unknown-op-is-rejected-test
-  (testing "GHY-4147: an unrecognized op names the index and the op"
-    (is (=? {::dashboard-ops/error :unknown-op, :op-name "frobnicate"}
-            (op-error empty-dash [{:op "frobnicate"}])))))
+(deftest ^:parallel every-schema-op-has-a-method-test
+  (testing "the op schema and the compiler name the same ops"
+    (is (= (set (map first (mc/children (mr/resolve-schema dashboard-op-schema/op-schema))))
+           (set (keys (methods @#'dashboard-ops/apply-op)))))))
 
-(deftest ^:parallel missing-op-or-id-test
-  (testing "GHY-4544: an op sent without its `op` or a referenced id has its own error"
-    (is (=? {::dashboard-ops/error :missing-op, :op-name nil}
-            (op-error empty-dash [{:id -1}])))
-    (is (=? {::dashboard-ops/error :missing-dashcard-id, :op-name "remove"}
-            (op-error empty-dash [{:op "remove"}])))
-    (is (=? {::dashboard-ops/error :missing-tab-id, :op-name "remove_tab"}
-            (op-error empty-dash [{:op "remove_tab"}])))
-    (is (=? {::dashboard-ops/error :missing-parameter-id, :op-name "remove_parameter"}
-            (op-error empty-dash [{:op "remove_parameter"}])))
-    (is (=? {::dashboard-ops/error :missing-parameter-id, :op-name "add_parameter"}
-            (op-error empty-dash [{:op "add_parameter" :name "Country" :type "string/="}])))))
+;; not ^:parallel: the `!` in fail! trips the kondo deftest lint
+(deftest error-data-must-match-its-schema-test
+  (testing "throwing an error whose data breaks its schema in `errors` is a bug, caught where it is thrown"
+    (is (thrown-with-msg? AssertionError #"Data for dashboard op error :unknown-dashcard does not match its schema"
+                          (#'dashboard-ops/fail! :unknown-dashcard {:dashcard_id 7})))))
 
 (deftest ^:parallel out-of-range-index-test
-  (testing "move_tab and move_parameter reject a missing or out-of-range index, giving the count"
+  (testing "move_tab and move_parameter reject an out-of-range index, giving the count"
     (is (=? {::dashboard-ops/error :tab-index-out-of-range, :index 3, :tab-count 1}
             (op-error (assoc empty-dash :tabs [{:id 1 :name "A"}])
                       [{:op "move_tab" :tab_id 1 :index 3}])))
-    (is (=? {::dashboard-ops/error :tab-index-out-of-range, :index nil, :tab-count 1}
-            (op-error (assoc empty-dash :tabs [{:id 1 :name "A"}])
-                      [{:op "move_tab" :tab_id 1}])))
     (is (=? {::dashboard-ops/error :parameter-index-out-of-range, :index 4, :parameter-count 1}
             (op-error (assoc empty-dash :parameters [{:id "p1"}])
                       [{:op "move_parameter" :parameter_id "p1" :index 4}])))))
@@ -406,7 +419,11 @@
       (is (=? {::dashboard-ops/error :unknown-patch-key, :key "bogus", :op-index 1}
               (op-error empty-dash
                         [{:op "add_card" :id -1 :card_id 42}
-                         {:op "patch_dashcard" :dashcard_id -1 :patch {:bogus 1}}]))))))
+                         {:op "patch_dashcard" :dashcard_id -1 :patch {:bogus 1}}])))))
+  (testing "a key that is not a keyword is rejected too, rather than crashing"
+    (is (=? {::dashboard-ops/error :unknown-patch-key, :key "5"}
+            (op-error (dash-with [a-dashcard])
+                      [{:op "patch_dashcard" :dashcard_id 7 :patch {5 "x"}}])))))
 
 (deftest ops-apply-in-order-test
   (testing "GHY-4147: a later op sees the effect of an earlier one — add then move the same new card"
@@ -558,13 +575,7 @@
                                 [{:op "add_parameter" :parameter_id "p1" :name "Order Total"
                                   :type "number/>="}]
                                 {})]
-      (is (= "order_total" (:slug (first parameters)))))
-    (testing "a nameless parameter gets no slug rather than a bogus one"
-      (let [{:keys [parameters]} (compile-ops
-                                  empty-dash
-                                  [{:op "add_parameter" :parameter_id "p1" :type "string/="}]
-                                  {})]
-        (is (not (contains? (first parameters) :slug)))))))
+      (is (= "order_total" (:slug (first parameters)))))))
 
 (deftest add-parameter-rejects-duplicate-id-test
   (testing "GHY-4147: reusing an existing parameter id is an error"
@@ -1024,13 +1035,9 @@
                       [{:op "update_parameter" :parameter_id "p1"
                         :values_source_type "card" :values_source_config {:card_id 46}}]
                       {}))))
-  (testing "ops are checked in order, so an earlier op's error is reported first"
-    (is (=? {::dashboard-ops/error :unknown-op, :op-index 0}
-            (op-error empty-dash [{:op "frobnicate"} {:op "add_card" :id -1 :card_id 42}] {}))))
+  (testing "ops are applied in order, so an earlier op's error is reported first"
+    (is (=? {::dashboard-ops/error :unknown-dashcard, :op-index 0}
+            (op-error empty-dash [{:op "remove" :dashcard_id 999} {:op "add_card" :id -1 :card_id 42}] {}))))
   (testing "an op's own error is reported before an unresolved card it names"
-    (is (=? {::dashboard-ops/error :unknown-op}
-            (op-error empty-dash [{:op "frobnicate" :card_id 42}] {})))
     (is (=? {::dashboard-ops/error :unknown-dashcard, :dashcard-id 12345}
-            (op-error empty-dash [{:op "replace_card" :dashcard_id 12345 :card_id 42}] {}))))
-  (testing "a card key the op does not use is not checked"
-    (is (nil? (op-error empty-dash [{:op "add_text" :id -1 :markdown "hi" :card_id 42}] {})))))
+            (op-error empty-dash [{:op "replace_card" :dashcard_id 12345 :card_id 42}] {})))))
