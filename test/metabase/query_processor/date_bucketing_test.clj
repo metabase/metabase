@@ -1262,6 +1262,10 @@
   "Dynamically generated dataset with 60 checkins spaced 24 hours apart, from 30 days ago to 29 days in the future."
   (dataset-def-with-timestamps (* 24 (u/minutes->seconds 60)) 60))
 
+(def ^:private checkins:1-per-10-days
+  "Dynamically generated dataset with 240 checkins spaced 10 days apart, from 1200 days ago to 1190 days in the future."
+  (dataset-def-with-timestamps (* 10 24 (u/minutes->seconds 60)) 240))
+
 (defn- checkins-db-is-old?
   "Determine whether we need to recreate one of the dynamically-generated datasets above, if the data has grown a little
   stale."
@@ -1408,6 +1412,29 @@
           (is (= 7
                  (ffirst
                   (mt/formatted-rows [int] (qp/process-query query))))))))))
+
+(deftest ^:parallel relative-time-interval-per-unit-test
+  (mt/test-drivers
+    (mt/normal-drivers-with-feature :date-arithmetics :test/dynamic-dataset-loading)
+    (testing "\"Previous/Next 1 unit, starting 1 unit ago/from now\" returns the rows of the bucket 2 units away"
+      (doseq [[dataset units] [[checkins:1-per-day:60 [:day :week]]
+                               [checkins:1-per-10-days [:month :quarter :year]]]]
+        (mt/dataset dataset
+          (doseq [unit units
+                  n    [-1 1]]
+            (testing (format "%s %s" n unit)
+              (let [timestamp [:field (mt/id :checkins :timestamp) nil]
+                    ;; Count, first and last timestamp: windows of the same size can have the same count.
+                    summary   (fn [filter-clause]
+                                (mt/first-row
+                                 (mt/run-mbql-query checkins
+                                   {:aggregation [[:count] [:min timestamp] [:max timestamp]]
+                                    :filter      filter-clause})))
+                    expected  (summary [:= (assoc timestamp 2 {:temporal-unit unit})
+                                        [:relative-datetime (* 2 n) unit]])]
+                (is (pos? (first expected)))
+                (is (= expected
+                       (summary [:relative-time-interval timestamp n unit n unit])))))))))))
 
 ;; Make sure that when referencing the same field multiple times with different units we return the one that actually
 ;; reflects the units the results are in. eg when we breakout by one unit and filter by another, make sure the results
