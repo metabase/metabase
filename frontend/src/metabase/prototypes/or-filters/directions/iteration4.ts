@@ -16,6 +16,17 @@ import { SummarizeBar } from "./expression-bar-rows/SummarizeBar";
 import { ExpressionBarNotebook as UnifiedExpressionBarNotebook } from "./expression-bar-unified/ExpressionBarNotebook";
 import { ExpressionBarSplitPrototype } from "./expression-bar-unified/ExpressionBarPrototype";
 import {
+  DataViewCanvas as InPlaceDataViewCanvas,
+  SummaryInBarDataZone as InPlaceSummaryInBarDataZone,
+} from "./iteration-4-in-place/DataViewCanvas";
+import {
+  type ExpressionBarProps as InPlaceExpressionBarProps,
+  ExpressionBar as InPlaceRowsExpressionBar,
+} from "./iteration-4-in-place/ExpressionBar";
+import { ExpressionBarNotebook as InPlaceExpressionBarNotebook } from "./iteration-4-in-place/ExpressionBarNotebook";
+import { ExpressionBarSplitPrototype as InPlaceExpressionBarSplitPrototype } from "./iteration-4-in-place/ExpressionBarPrototype";
+import { SummarizeBar as InPlaceSummarizeBar } from "./iteration-4-in-place/SummarizeBar";
+import {
   DataViewCanvas as SeparationDataViewCanvas,
   SummaryInBarDataZone as SeparationSummaryInBarDataZone,
 } from "./iteration-4-separation/DataViewCanvas";
@@ -88,6 +99,15 @@ const AddFilter2NotebookRowsBar = (props: AddFilter2ExpressionBarProps) =>
     hasRoundOps: true,
   });
 
+/** Same bar, from the in-place copy of the components. */
+const InPlaceNotebookRowsBar = (props: InPlaceExpressionBarProps) =>
+  createElement(InPlaceRowsExpressionBar, {
+    ...props,
+    isInNotebook: true,
+    rowsFromNesting: 2,
+    hasRoundOps: true,
+  });
+
 export const ITERATION_4_DIRECTIONS: FilterDirection[] = [
   {
     id: "iteration-4-draft",
@@ -142,6 +162,34 @@ export const ITERATION_4_DIRECTIONS: FilterDirection[] = [
         ...props,
         FilterBar: SeparationNotebookRowsBar,
         SummarizeBar: SeparationSummarizeBar,
+        appliesOnVisualize: true,
+      }),
+    initialExample: REALISTIC_EXAMPLES[0],
+  },
+  {
+    id: "iteration-4-in-place",
+    get name() {
+      return t`Iteration 4 in place`;
+    },
+    get description() {
+      return t`One bar, one kind of pill. Filters on the summary (Count ≥ 3) are typed like any other column (a "Summary" group in the chooser) and stay exactly where you put them while the expression is a plain AND chain. The instant one would end up inside an "or", it glides to the end as an AND-ed conjunct, the "or" group gets its parentheses, and a note under the moved pill says why, with Undo.`;
+    },
+    Component: InPlaceExpressionBarSplitPrototype,
+    Canvas: (props) =>
+      createElement(InPlaceDataViewCanvas, {
+        ...props,
+        DataZone: (zoneProps) =>
+          createElement(InPlaceSummaryInBarDataZone, {
+            ...zoneProps,
+            focusKey: FOCUS_KEY,
+          }),
+        hasThresholdsBesideLegend: false,
+      }),
+    NotebookCanvas: (props) =>
+      createElement(InPlaceExpressionBarNotebook, {
+        ...props,
+        FilterBar: InPlaceNotebookRowsBar,
+        SummarizeBar: InPlaceSummarizeBar,
         appliesOnVisualize: true,
       }),
     initialExample: REALISTIC_EXAMPLES[0],
