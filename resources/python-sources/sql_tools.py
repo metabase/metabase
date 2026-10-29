@@ -2072,7 +2072,9 @@ def _hidden_sql(sql: str, dialect: str):
     if dialect in _MYSQL_FAMILY_DIALECTS:
         if "/*!" in sql or "/*M!" in sql:
             return ("executable-comment", None)
-        if re.search(r"--(?=\S)", sql) is not None:
+        # MySQL reads `--` as a comment only before ASCII whitespace or a control character. Python's `\s` also
+        # matches non-ASCII spaces such as U+00A0, so the characters are spelled out.
+        if re.search(r"--(?![ \t\n\r\f\v]|\Z)", sql) is not None:
             return ("bare-dash-comment", None)
         if re.search(r"\\['\"`]", sql) is not None:
             return ("backslash-quote", None)

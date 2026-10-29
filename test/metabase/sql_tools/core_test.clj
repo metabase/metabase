@@ -536,6 +536,21 @@
       :postgres  "SELECT a --no space\n FROM t"
       :postgres  "SELECT 1 AS exec")))
 
+(deftest ^:parallel read-only-select?-dash-comment-unicode-space-test
+  (testing "-- before a non-ASCII space is not a comment on MySQL, so the text after it is refused"
+    (doseq [space [" " " " " " " " "　" "\u0085" " "]]
+      (testing (format "U+%04X" (int (first space)))
+        (is (= {:reason :bare-dash-comment, :detail nil}
+               (sql-tools/read-only-select-problem
+                :mysql (str "select 1 --" space ", sleep(5)\nfrom (select 1 as `" space "`) t")))))))
+  (testing "-- before ASCII whitespace or at the end of the text is a comment, and allowed"
+    (are [sql] (true? (sql-tools/read-only-select? :mysql sql))
+      "select 1 -- note\nfrom t"
+      "select 1 --\nfrom t"
+      "select 1 --\tnote\nfrom t"
+      "select 1 -- note\r\nfrom t\r\n"
+      "select 1 --")))
+
 (deftest ^:parallel read-only-select-problem-test
   (testing "SQL that is a read-only select has no problem"
     (is (nil? (sql-tools/read-only-select-problem :postgres "SELECT 1"))))
