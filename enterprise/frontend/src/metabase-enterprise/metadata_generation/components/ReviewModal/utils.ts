@@ -23,12 +23,18 @@ export function getHumanSetPendingCount(
 export const DESCRIPTION_MAX_LENGTH = 200;
 
 /**
- * The proposals a person ticked in the review, with the proposed value they saw, which apply sends so that the
- * backend skips a proposal that a run changed since. Nothing is sent until apply.
+ * The proposals a person ticked in the review, with the proposed value and the source they saw, which apply sends so
+ * that the backend skips a proposal that a run changed since, or that is over a human value they did not see.
+ * Nothing is sent until apply.
  */
 export type ProposalSelection = ReadonlyMap<
   MetadataGenerationProposalId,
-  string
+  SeenProposal
+>;
+
+export type SeenProposal = Pick<
+  MetadataGenerationProposal,
+  "proposed_value" | "source"
 >;
 
 /** The values a person chose in place of the proposed values, by proposal. Nothing is sent until apply. */
@@ -56,8 +62,8 @@ export function setSelected(
   isSelected: boolean,
 ): ProposalSelection {
   const next = new Map(selection);
-  proposals.forEach(({ id, proposed_value }) =>
-    isSelected ? next.set(id, proposed_value) : next.delete(id),
+  proposals.forEach(({ id, proposed_value, source }) =>
+    isSelected ? next.set(id, { proposed_value, source }) : next.delete(id),
   );
   return next;
 }
@@ -78,22 +84,33 @@ export function setEdit(
 }
 
 /**
- * The apply request body for the review: the selected proposals with the proposed values the person saw, and the
- * edits of selected proposals only.
+ * The apply request body for the review: the selected proposals with the proposed values and sources the person saw,
+ * and the edits of selected proposals only.
  */
 export function getApplyRequestBody(
   selection: ProposalSelection,
   edits: ProposalEdits,
 ): Pick<
   ApplyMetadataGenerationProposalsRequest,
-  "accept" | "edits" | "proposed_values"
+  "accept" | "edits" | "proposed_values" | "sources"
 > {
   const accept = [...selection.keys()].sort((a, b) => a - b);
-  const proposed_values = Object.fromEntries(selection);
+  const seen = [...selection];
+  const proposed_values = Object.fromEntries(
+    seen.map(([id, { proposed_value }]) => [id, proposed_value]),
+  );
+  const sources = Object.fromEntries(
+    seen.map(([id, { source }]) => [id, source]),
+  );
   const selectedEdits = [...edits].filter(([id]) => selection.has(id));
   return selectedEdits.length > 0
-    ? { accept, edits: Object.fromEntries(selectedEdits), proposed_values }
-    : { accept, proposed_values };
+    ? {
+        accept,
+        edits: Object.fromEntries(selectedEdits),
+        proposed_values,
+        sources,
+      }
+    : { accept, proposed_values, sources };
 }
 
 export function isHumanSet(proposal: MetadataGenerationProposal): boolean {
