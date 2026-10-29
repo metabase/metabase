@@ -122,7 +122,7 @@ One of Podman's advantages is that you can run Metabase as a user through system
 * Ensure that the Metabase container is operational.
 * Choose or create the user you will use to run Metabase.
 * Make sure that user has a Quadlet unit directory by running `mkdir -p ~/.config/containers/systemd/` as the user.
-* Run `loginctl enable-linger [user]` where `[user]` is the user that will own your Metabase process. Doing so will ensure that Metabase continues to run after you have logged out of that user's session.
+* Run `loginctl enable-linger [user]` where `[user]` is the user that will own your Metabase process. Doing so will ensure that Metabase continues to run after you have logged out of that user's session. If you are not logged in as that user, use `sudo` to run the command.
 
 Create a new file called `metabase.container` in `~/.config/containers/systemd/`. Add the following to the file:
 
