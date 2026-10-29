@@ -551,6 +551,23 @@
       "select 1 -- note\r\nfrom t\r\n"
       "select 1 --")))
 
+(deftest ^:parallel read-only-select?-lone-carriage-return-test
+  (testing "a carriage return with no newline after it is refused: the parser ends a comment there, MySQL does not"
+    (are [sql] (= {:reason :lone-carriage-return, :detail nil}
+                  (sql-tools/read-only-select-problem :mysql sql))
+      "select 1 -- x\r'\n, sleep(5) -- '"
+      "select 1 # x\r'\n, sleep(5) -- '"
+      "select 1\rfrom t")
+    (doseq [driver [:postgres :sqlserver :h2 :snowflake :oracle]]
+      (testing driver
+        (are [sql] (false? (sql-tools/read-only-select? driver sql))
+          "select 1 -- x\r'\n, sleep(5) -- '"
+          "select 1\rfrom t"))))
+  (testing "\\r\\n line endings are allowed"
+    (doseq [driver [:mysql :postgres :sqlserver :h2]]
+      (testing driver
+        (is (true? (sql-tools/read-only-select? driver "select 1 -- note\r\nfrom t\r\nwhere 1 = 1\r\n")))))))
+
 (deftest ^:parallel read-only-select-problem-test
   (testing "SQL that is a read-only select has no problem"
     (is (nil? (sql-tools/read-only-select-problem :postgres "SELECT 1"))))
@@ -570,6 +587,7 @@
       :sqlserver :statement-word      "EXEC"             "SELECT 1 FROM t exec('DROP TABLE x')"
       :mysql     :executable-comment  nil                "SELECT * FROM t /*! FOR UPDATE */"
       :mysql     :bare-dash-comment   nil                "SELECT id --1 FROM t"
+      :mysql     :lone-carriage-return nil               "SELECT 1\rFROM t"
       :mysql     :backslash-quote     nil                "SELECT 'it\\'s' FROM t"
       :postgres  :unicode-identifier  nil                "SELECT U&\"pg_\\0073leep\"(10)"
       :postgres  :not-a-select        nil                "-- nothing here"

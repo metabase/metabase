@@ -2061,7 +2061,12 @@ def _hidden_sql(sql: str, dialect: str):
     A `U&"..."` identifier is refused in every dialect. Postgres reads its escapes, so `U&"pg_\\0073leep"` names
     `pg_sleep`, and sqlglot keeps them, so the function checks above never see the name. Like the MySQL marks, it is
     looked for in the raw text.
+
+    A carriage return with no newline after it is refused in every dialect. sqlglot ends a `--` or `#` comment at
+    one, and MySQL does not, so the text after it would be a comment to one and SQL to the other.
     """
+    if re.search(r"\r(?!\n)", sql) is not None:
+        return ("lone-carriage-return", None)
     if re.search(r"(?<![\w\$])[uU]&\"", sql) is not None:
         return ("unicode-identifier", None)
     if dialect == "tsql":
