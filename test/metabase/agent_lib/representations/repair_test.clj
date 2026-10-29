@@ -4163,7 +4163,11 @@
         (is (= "type/Float" (base-type (get-in out ["stages" 0 "filters" 0 2]))))))
     (testing "a bad name inside a join is reported with the join it is in"
       (let [e (repair-error (joined (two-stage "nope") (join-ref "Two" "min")))]
-        (is (=? {:error :unresolved-cross-stage-field :join-alias "Two" :join-stage 0 :stage 1} e))
+        (is (=? {:error      :unresolved-cross-stage-field
+                 :join-alias "Two"
+                 :join-stage 0
+                 :stage      1}
+                e))
         (is (str/starts-with? (:message e) "In join \"Two\" of stage 0: No column named \"nope\""))))))
 
 (deftest ^:parallel join-fields-ref-without-alias-test
@@ -4173,7 +4177,7 @@
                                                                       "fields" [["field" {} "min"]])]})))
                               ["stages" 1 "joins" 0 "fields"]))]
     (testing "a by-name ref in a join's fields gets the join's alias and is typed from the join"
-      (is (= [["field" {"join-alias" "First" "base-type" "type/Date" "effective-type" "type/Date"} "min"]]
+      (is (= [["field" {"join-alias" "First", "base-type" "type/Date", "effective-type" "type/Date"} "min"]]
              (join-fields min-total-by-user-stage))))
     (testing "the previous stage not having the column doesn't matter"
       (is (= "type/Date"
@@ -4186,7 +4190,7 @@
       (is (= "type/Integer"
              (base-type (get-in (repair* (joined-on ["field" {} "USER_ID"])) ["stages" 1 "joins" 0 "conditions" 0 2])))))
     (testing "a bad name there raises the cross-stage error"
-      (is (=? {:error :unresolved-cross-stage-field :clause ["field" {} "nope"]}
+      (is (=? {:error :unresolved-cross-stage-field, :clause ["field" {} "nope"]}
               (repair-error (joined-on ["field" {} "nope"])))))))
 
 (deftest ^:parallel join-alias-field-type-runs-before-cross-stage-inference-test
