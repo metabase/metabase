@@ -4,13 +4,24 @@ import fetchMock from "fetch-mock";
 import {
   setupCancelMetadataGenerationRunEndpoint,
   setupGetMetadataGenerationRunEndpoint,
+  setupGetMetadataGenerationRunErrorEndpoint,
+  setupListMetadataGenerationProposalsEndpoint,
   setupRetryFailedMetadataGenerationRunEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type { MetadataGenerationRun } from "metabase-types/api";
-import { createMockMetadataGenerationRun } from "metabase-types/api/mocks";
+import {
+  createMockMetadataGenerationRun,
+  createMockUser,
+} from "metabase-types/api/mocks";
+
+import { RUN_POLLING_INTERVAL } from "../../utils";
+import { PendingBadge } from "../PendingBadge";
 
 import { RunProgress } from "./RunProgress";
+
+const TABLE_ID = 10;
+const PROPOSALS_ROUTE = `metadata-generation-proposals-${TABLE_ID}`;
 
 function setup(run: MetadataGenerationRun) {
   setupGetMetadataGenerationRunEndpoint(run);
@@ -138,5 +149,56 @@ describe("RunProgress", () => {
       screen.getByRole("button", { name: "Review suggestions" }),
     );
     expect(onReview).toHaveBeenCalled();
+  });
+
+  it("stops polling a run that fails to load", async () => {
+    const runId = 3;
+    setupGetMetadataGenerationRunErrorEndpoint(runId, 404);
+    renderWithProviders(<RunProgress runId={runId} />);
+
+    const runUrl = `path:/api/ee/data-sensitivity/runs/${runId}`;
+    await waitFor(() => {
+      expect(fetchMock.callHistory.called(runUrl)).toBe(true);
+    });
+    await new Promise((resolve) =>
+      setTimeout(resolve, RUN_POLLING_INTERVAL * 1.5),
+    );
+
+    expect(fetchMock.callHistory.calls(runUrl)).toHaveLength(1);
+  });
+
+  it("refreshes no pending suggestions when it opens a run that has ended", async () => {
+    const run = createMockMetadataGenerationRun({
+      status: "succeeded",
+      is_active: null,
+      ended_at: "2026-10-09T00:10:00Z",
+    });
+    setupGetMetadataGenerationRunEndpoint(run);
+    setupListMetadataGenerationProposalsEndpoint(TABLE_ID, []);
+    renderWithProviders(
+      <>
+        <PendingBadge
+          tableId={TABLE_ID}
+          isPreview={false}
+          onPreviewChange={jest.fn()}
+        />
+        <RunProgress runId={run.id} />
+      </>,
+      {
+        storeInitialState: {
+          currentUser: createMockUser({ is_superuser: true }),
+        },
+      },
+    );
+
+    expect(
+      await screen.findByTestId("metadata-generation-run-status"),
+    ).toHaveTextContent("Done");
+    await waitFor(() => {
+      expect(fetchMock.callHistory.calls(PROPOSALS_ROUTE)).toHaveLength(1);
+    });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    expect(fetchMock.callHistory.calls(PROPOSALS_ROUTE)).toHaveLength(1);
   });
 });

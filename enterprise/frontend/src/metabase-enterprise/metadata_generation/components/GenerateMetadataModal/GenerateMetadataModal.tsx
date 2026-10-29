@@ -80,7 +80,7 @@ export function GenerateMetadataModal({
   const { data: run } = useGetMetadataGenerationRunQuery(runId ?? skipToken);
   const isRunView = runId != null;
   // Closing a running run only hides the window: the run continues, and the
-  // database panel reopens it.
+  // owner's button reopens its progress while it is active.
   const isMinimizable = isRunView && (run == null || isRunActive(run));
 
   return (
