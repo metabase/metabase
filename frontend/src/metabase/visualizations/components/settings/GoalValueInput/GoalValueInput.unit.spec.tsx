@@ -1197,6 +1197,48 @@ describe("GoalValueInput", () => {
       });
     });
 
+    it("tracks picking a column of a multi-column question with its card type", async () => {
+      setupEntityPicker([
+        createMockSearchResult({ id: 9, model: "card", name: "Orders" }),
+      ]);
+      setupCardEndpoints(
+        createMockCard({
+          id: 9,
+          name: "Orders",
+          type: "metric",
+          result_metadata: [
+            createMockField({ name: "total", base_type: "type/Integer" }),
+            createMockField({
+              name: "avg",
+              display_name: "Average",
+              base_type: "type/Integer",
+            }),
+          ],
+        }),
+      );
+      setupCardDatasetWithReferencedEntities({});
+      const { onChange } = setup();
+
+      await openMenu();
+      await pickEntity("Orders");
+      expect(trackSimpleEvent).not.toHaveBeenCalled();
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: /Average/ }),
+      );
+
+      expect(onChange).toHaveBeenCalledWith({
+        type: "card",
+        id: 9,
+        column: "avg",
+      });
+      expect(trackSimpleEvent).toHaveBeenCalledTimes(1);
+      expect(trackSimpleEvent).toHaveBeenCalledWith({
+        event: "dynamic_goal_set",
+        triggered_from: "progress",
+        event_detail: "metric",
+      });
+    });
+
     it("tracks replacing a column of this question with another one", async () => {
       const { onChange } = setup({ value: "sum" });
 
