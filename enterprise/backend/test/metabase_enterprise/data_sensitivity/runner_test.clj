@@ -406,6 +406,61 @@
                       retry))
               (wait-ended (:id retry))))))))))
 
+(deftest nul-character-in-model-output-does-not-fail-the-run-test
+  (do-with-temp-tables
+   3
+   (fn [db tables]
+     (mt/with-log-messages-for-level [messages [metabase-enterprise.data-sensitivity.runner :warn]]
+       (ds.tu/do-with-llm!
+        (ds.tu/canned-llm (fn [field-name]
+                            (if (= "ds_00_field" field-name)
+                              {:data_sensitivity "PII" :reasoning "saw NUL-REASONING-MARKER\u0000 in the sample"}
+                              {:data_sensitivity "PII"})))
+        (fn []
+          (let [run   (start! db {:attributes [:data_sensitivity]})
+                ended (wait-ended (:id run))]
+            (testing "a NUL character in one table's model output does not fail the whole run"
+              (is (not= :failed (:status ended))))
+            (testing "the other tables get proposals"
+              (is (every? (set (map :table_id (suggestions (:id run))))
+                          [(:id (second tables)) (:id (nth tables 2))])))
+            (testing "no log entry holds the model reasoning"
+              (is (not-any? (fn [{:keys [message e]}]
+                              (str/includes? (str message (some-> e Throwable->map pr-str)) "NUL-REASONING-MARKER"))
+                            (messages)))))))))))
+
+(deftest refused-proposals-fail-one-table-test
+  (do-with-temp-tables
+   3
+   (fn [db tables]
+     (let [record-table! (mt/original-fn #'ds.db/record-table!)]
+       (mt/with-log-messages-for-level [messages [metabase-enterprise.data-sensitivity.runner :warn]]
+         (ds.tu/do-with-llm!
+          (ds.tu/canned-llm (constantly {:data_sensitivity "PII" :reasoning "REFUSED-REASONING-MARKER"}))
+          (fn []
+            (mt/with-dynamic-fn-redefs [ds.db/record-table! (fn [run-id changes proposals]
+                                                              (when (= (:id (first tables)) (:table_id proposals))
+                                                                (throw (ex-info "App DB refused the insert"
+                                                                                {:sql-args ["REFUSED-REASONING-MARKER"]})))
+                                                              (record-table! run-id changes proposals))]
+              (let [run   (start! db {:attributes [:data_sensitivity]})
+                    ended (wait-ended (:id run))]
+                (testing "the table whose proposals the app DB refuses is a table error and the run goes on"
+                  (is (=? {:status        :succeeded
+                           :done_tables   2
+                           :failed_tables 1
+                           :table_errors  [{:table_id   (:id (first tables))
+                                            :message    "The proposals of the table could not be saved."
+                                            :error_code "proposals_not_saved"}]}
+                          ended))
+                  (is (= #{(:id (second tables)) (:id (nth tables 2))}
+                         (set (map :table_id (suggestions (:id run)))))))
+                (testing "no log entry holds the model reasoning"
+                  (is (not-any? (fn [{:keys [message e]}]
+                                  (str/includes? (str message (some-> e Throwable->map pr-str))
+                                                 "REFUSED-REASONING-MARKER"))
+                                (messages)))))))))))))
+
 (deftest retry-failed-skips-inactive-tables-test
   (do-with-temp-tables
    3

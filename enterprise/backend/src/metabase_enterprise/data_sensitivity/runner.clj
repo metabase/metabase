@@ -9,8 +9,8 @@
   this node. The worker reads the status between tables and every [[poll-ms]] while it waits on chunk calls, cancels
   the chunks in flight, and writes `canceled`. A usage limit ends the run with status `usage_limit`. A table that
   fails is recorded on the run and the run continues. The worker reads each table again before its packet: a table
-  hidden or removed since the run started is not sent and is recorded as failed with error code `table_not_visible`.
-  The run records the tables it finished in `done_table_ids`.
+  hidden or removed since the run started is not sent and is recorded as failed with error code `table_not_visible`. A
+  table whose proposals the app DB refuses is recorded as failed with error code `proposals_not_saved`. The run records the tables it finished in `done_table_ids`.
   When a run ends before its last table (cancel, usage limit, an unexpected failure, or the reaper), the tables of its
   scope that it did not finish go to `table_errors` with error code `not_processed`, so [[retry-failed!]] covers them.
 
@@ -360,9 +360,42 @@
 (defn- add-table-time [state elapsed-ms]
   (update state :max-table-ms (fnil max 0) elapsed-ms))
 
+(defn- log-table-error [run-id table e]
+  ;; Not the throwable: its ex-data can hold model output that quotes warehouse values.
+  (log/warnf "Metadata generation run %d failed for table %d: %s (%s)"
+             run-id (:id table) (or (ex-message e) (class e)) (error-code e)))
+
+(defn- next-state
+  "`state` after `table` ended with `outcome` from [[run-tables!]]. `spent` is the usage of a failed table, as
+  [[add-spent]] takes it."
+  [state table outcome spent elapsed]
+  (let [e (:error outcome)]
+    (cond
+      e
+      (-> (add-spent state spent)
+          (add-table-time elapsed)
+          (update :failed inc)
+          (update :errors conj (table-error table (or (ex-message e) (str (class e))) (error-code e) elapsed)))
+
+      (:not-visible outcome)
+      (-> state
+          (update :failed inc)
+          (update :errors conj (table-error table
+                                            (tru "The table was hidden or removed during the run.")
+                                            "table_not_visible")))
+
+      :else
+      (-> state
+          (add-table-time elapsed)
+          (update :done inc)
+          (update :done-ids conj (:id table))
+          (update :slow-calls (fnil + 0) (:slow-calls outcome))
+          (update :usage add-usage (:model outcome) (:usage outcome))))))
+
 (defn- run-tables!
-  "Classify `tables` in order and record each one on the run. Returns the final state, with `:end` set to how the
-  run ended: `:succeeded`, `[:stopped reason]` or `[:usage-limit message]`."
+  "Classify `tables` in order and record each one on the run. A table whose classification fails, or whose proposals
+  the app DB refuses, is recorded as a table error and the run goes on. Returns the final state, with `:end` set to how
+  the run ended: `:succeeded`, `[:stopped reason]` or `[:usage-limit message]`."
   [{:keys [run-id attributes spent stop] :as ctx} database tables]
   (let [sample-error (core/sample-connection-error database nil)
         packet-opts  (cond-> {} sample-error (assoc :include-values? false))]
@@ -394,36 +427,26 @@
               elapsed (long (u/since-ms timer))]
           (if (:end outcome)
             (assoc (add-spent state @spent) :end (:end outcome) :remaining remaining)
-            (let [e     (:error outcome)
-                  state (cond
-                          e
-                          (-> (add-spent state @spent)
-                              (add-table-time elapsed)
-                              (update :failed inc)
-                              (update :errors conj (table-error table (or (ex-message e) (str (class e))) (error-code e)
-                                                                elapsed)))
-
-                          (:not-visible outcome)
-                          (-> state
-                              (update :failed inc)
-                              (update :errors conj (table-error table
-                                                                (tru "The table was hidden or removed during the run.")
-                                                                "table_not_visible")))
-
-                          :else
-                          (-> state
-                              (add-table-time elapsed)
-                              (update :done inc)
-                              (update :done-ids conj (:id table))
-                              (update :slow-calls (fnil + 0) (:slow-calls outcome))
-                              (update :usage add-usage (:model outcome) (:usage outcome))))]
-              (when e
-                ;; Not the throwable: the ex-data of a model error can hold model output that quotes warehouse values.
-                (log/warnf "Metadata generation run %d failed for table %d: %s (%s)"
-                           run-id (:id table) (or (ex-message e) (class e)) (error-code e)))
-              (if (db/record-table! run-id (progress state) (:proposals outcome))
-                (recur state more)
-                (assoc state :end [:stopped :gone] :remaining more)))))))))
+            (do
+              (when-let [e (:error outcome)]
+                (log-table-error run-id table e))
+              (let [[state recorded?]
+                    (try
+                      (let [state (next-state state table outcome @spent elapsed)]
+                        [state (db/record-table! run-id (progress state) (:proposals outcome))])
+                      (catch Exception e
+                        ;; A table whose proposals the app DB refuses fails alone; the run goes on. The table error
+                        ;; does not hold the app DB message, which can quote the refused values.
+                        (when (or (not (:proposals outcome)) (interrupted? e))
+                          (throw e))
+                        (log-table-error run-id table e)
+                        (let [error (ex-info (tru "The proposals of the table could not be saved.")
+                                             {:error-code "proposals_not_saved"})
+                              state (next-state state table {:error error} outcome elapsed)]
+                          [state (db/record-table! run-id (progress state) nil)])))]
+                (if recorded?
+                  (recur state more)
+                  (assoc state :end [:stopped :gone] :remaining more))))))))))
 
 (defn- finish!
   "Write the terminal status of a run from the final `state` of [[run-tables!]]. A run that is `canceling` after its
@@ -469,7 +492,8 @@
                             (tru "The run was canceled.")
                             (tru "The run failed before it processed the table."))))]
         (when-not canceled?
-          (log/errorf e "Metadata generation run %d failed" run-id))
+          ;; Not the throwable: the ex-data of an app DB error can hold the model output of the INSERT.
+          (log/errorf "Metadata generation run %d failed: %s (%s)" run-id (or (ex-message e) (class e)) (error-code e)))
         (u/ignore-exceptions
           (db/update-active-run! run-id (cond-> (if canceled?
                                                   {:status :canceled :message (tru "Canceled.")}
