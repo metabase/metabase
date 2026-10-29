@@ -10,6 +10,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useLatest } from "react-use";
 import { t } from "ttag";
 
 import { FilterPill } from "metabase/querying/filters/components/FilterPanel/FilterPill";
@@ -62,6 +63,8 @@ export type ExpressionBarProps = {
   rowsFromNesting?: number;
   /** AND / OR as small bordered circles, closer to the pills. */
   hasRoundOps?: boolean;
+  /** Pressing this key anywhere outside a text field puts the caret at the end of the bar. */
+  focusKey?: string;
 };
 
 const INDENT_REM = 1.5;
@@ -85,6 +88,7 @@ export function ExpressionBar({
   trailing,
   rowsFromNesting = 1,
   hasRoundOps = false,
+  focusKey,
 }: ExpressionBarProps) {
   const committedTokens = useMemo(
     () => readTokens(query, stageIndex),
@@ -202,6 +206,29 @@ export function ExpressionBar({
     }
     focusInput();
   };
+
+  // The shortcut reads the latest caret helper without re-subscribing every render.
+  const focusAtEndRef = useLatest(() => moveCaret(tokens.length));
+  useEffect(() => {
+    if (focusKey == null) {
+      return;
+    }
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (
+        event.key !== focusKey ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.altKey ||
+        isTypingTarget(event.target)
+      ) {
+        return;
+      }
+      event.preventDefault();
+      focusAtEndRef.current();
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [focusKey, focusAtEndRef]);
 
   const insert = (token: Token) => {
     const next = insertToken(tokens, caretIndex, token);
@@ -608,6 +635,16 @@ function Gap({ index, onClick }: { index: number; onClick: () => void }) {
         onClick();
       }}
     />
+  );
+}
+
+/** A key pressed here is text, not a shortcut. */
+function isTypingTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement ||
+    (target instanceof HTMLElement && target.isContentEditable)
   );
 }
 

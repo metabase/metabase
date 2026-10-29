@@ -372,7 +372,11 @@ function ViewZone({ query, onChange }: FilterCanvasProps) {
  * The rows bar with the summary's filters at its end, after an "and": the
  * same filter pills, a shade darker. It only breaks into rows for nested groups.
  */
-export function SummaryInBarDataZone({ query, onChange }: FilterCanvasProps) {
+export function SummaryInBarDataZone({
+  query,
+  onChange,
+  focusKey,
+}: FilterCanvasProps & { focusKey?: string }) {
   const isAggregated = Lib.aggregations(query, ROWS_STAGE).length > 0;
   return (
     <RowsExpressionBar
@@ -381,6 +385,7 @@ export function SummaryInBarDataZone({ query, onChange }: FilterCanvasProps) {
       onChange={onChange}
       rowsFromNesting={2}
       hasRoundOps
+      focusKey={focusKey}
       trailing={
         isAggregated && <SummaryFilterPills query={query} onChange={onChange} />
       }

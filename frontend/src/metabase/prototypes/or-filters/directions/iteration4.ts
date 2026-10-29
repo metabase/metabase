@@ -16,6 +16,9 @@ import { SummarizeBar } from "./expression-bar-rows/SummarizeBar";
 import { ExpressionBarNotebook as UnifiedExpressionBarNotebook } from "./expression-bar-unified/ExpressionBarNotebook";
 import { ExpressionBarSplitPrototype } from "./expression-bar-unified/ExpressionBarPrototype";
 
+/** Pressing this anywhere on the page puts the caret in the chill-mode bar (not the notebook's). */
+const FOCUS_KEY = "f";
+
 /** The chill-mode rows bar, flush inside a notebook Filter cell. */
 const NotebookRowsBar = (props: ExpressionBarProps) =>
   createElement(RowsExpressionBar, {
@@ -38,7 +41,11 @@ export const ITERATION_4_DIRECTIONS: FilterDirection[] = [
     Canvas: (props) =>
       createElement(DataViewCanvas, {
         ...props,
-        DataZone: SummaryInBarDataZone,
+        DataZone: (zoneProps) =>
+          createElement(SummaryInBarDataZone, {
+            ...zoneProps,
+            focusKey: FOCUS_KEY,
+          }),
         hasThresholdsBesideLegend: false,
       }),
     NotebookCanvas: (props) =>
