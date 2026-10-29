@@ -165,7 +165,7 @@ If you don't see the service has loaded, you can use systemd's generator tool to
 
 That command will pretend to run through the process of creating the service file with some verbosity and help expose any issues.
 
-You can also use systemd itself to check the syntax:
+You can also use systemd-analyze to check the syntax:
 
 `systemd-analyze --user --generators=true verify metabase.service`
 
