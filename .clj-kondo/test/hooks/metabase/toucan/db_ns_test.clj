@@ -104,6 +104,36 @@
     (is (empty? (lint-query-call '(t2/select :model/X {:where [:= :locale locale]})
                                  'metabase.foo.db "test/metabase/foo/db_test.clj")))))
 
+(deftest ^:parallel bindings-are-not-value-slots-test
+  (testing "the locals a binding form names, and the forms computing them, are not values, but its body is reached"
+    (are [form] (=? [{:message #"`k`.*"}]
+                    (lint-query-call form 'metabase.foo.db))
+      '(t2/select :model/X {:where (into [:or] (for [[k v] pairs] [:= :key k]))})
+      '(t2/select :model/X {:where (let [[k] (parse ks)] [:= :key k])})
+      '(t2/select :model/X {:where (into [:or] (map (fn [[k _]] [:= :key k])) pairs)})
+      '(t2/select :model/X {:where (into [:or] (map (fn f ([k] [:= :key k]))) ks)})
+      '(t2/select :model/X (if-let [[w] (where-of x)] {:where [:= :key k]} {}))
+      '(t2/select :model/X {:where (let [w [:= :key k]] w)})
+      '(t2/select :model/X {:where (into [:or] (for [x xs :let [w [:= :key k]]] w))}))))
+
+(deftest ^:parallel sql-vector-args-are-parameters-test
+  (testing "the args of an `[sql & args]` vector are already bound"
+    (is (empty? (lint-query-call '(t2/query ["SELECT * FROM t WHERE k = ?" k]) 'metabase.foo.db)))
+    (is (empty? (lint-query-call '(t2/query [(str "SELECT" " 1 WHERE k = ?") k]) 'metabase.foo.db)))))
+
+(deftest ^:parallel update-changes-map-is-not-linted-test
+  (testing "the changes map of an update is written rather than filtered on"
+    (is (empty? (lint-query-call '(t2/update! :model/X {:k [:auto/param k]} {:pos [op :pos 1]}) 'metabase.foo.db)))))
+
+(deftest ^:parallel var-symbols-are-not-values-test
+  (testing "a symbol naming a var holds code rather than a request value"
+    (is (empty? (lint-query-call '(t2/select :model/X {:where [:= :type collection/trash-type]}) 'metabase.foo.db)))))
+
+(deftest ^:parallel model-argument-is-not-a-value-slot-test
+  (testing "the model and the selector before it name what to read"
+    (is (empty? (lint-query-call '(t2/select (into [model] columns) :id [:auto/param id]) 'metabase.foo.db)))
+    (is (empty? (lint-query-call '(t2/select-pk->fn (fn [[c]] c) [model] :id [:auto/param id]) 'metabase.foo.db)))))
+
 (deftest ^:parallel kv-arg-style-is-not-flagged-test
   (testing "call style is not linted: a query written as :column value pairs is left alone"
     ;; Extraction to a .sql file is semantic rather than a transcription of the HoneySQL shape, so a
@@ -298,12 +328,8 @@
       '(t2/query {:select [:*] :from [[{:select [:*] :from [:u] :where [:= :k v]} :s]]}))))
 
 (deftest ^:parallel expression-entry-clauses-test
-  (testing "index 0 of an entry is a value slot, because HoneySQL binds a parameter there"
-    ;; `{:select [[[:auto/param "a"] :k]]}` compiles to `SELECT ? AS "K"`, so `value-guard` accepts
-    ;; a marker there. Treating the whole clause as names would hide a request value.
-    (are [form] (=? [{:type    :metabase/unsafe-app-db-query
-                      :message #"`v`.*reaches a SQL value slot unmarked.*"}]
-                    (lint-query-call form 'metabase.foo.db))
+  (testing "a bare symbol at index 0 of an entry holds an expression, not a value"
+    (are [form] (empty? (lint-query-call form 'metabase.foo.db))
       '(t2/query {:select [[v :label]] :from [:t]})
       '(t2/query {:select-distinct [[v :label]] :from [:t]})
       '(t2/query {:insert-into [:t] :returning [[v :label]]})))
@@ -331,9 +357,9 @@
   (testing "a value clause built the same way is still reported"
     (is (=? [{:message #"`v`.*"}]
             (lint-query-call '(t2/query (assoc q :where [:= :k v])) 'metabase.foo.db))))
-  (testing "an expression entry built the same way is still reported"
+  (testing "an expression entry built the same way still reaches its values"
     (is (=? [{:message #"`v`.*"}]
-            (lint-query-call '(t2/query (assoc q :select [[v :label]])) 'metabase.foo.db)))))
+            (lint-query-call '(t2/query (assoc q :select [[[:= :k v] :label]])) 'metabase.foo.db)))))
 
 (defn- implicit-pk-findings [form]
   (filter #(= :metabase/t2-implicit-pk (:type %))
