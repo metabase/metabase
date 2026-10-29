@@ -130,9 +130,9 @@ const createApiKey = (group: GroupInfo): ApiKey => ({
   updated_by: { id: 1, common_name: "Bobby Tables" },
 });
 
-// The length the app DB's `permissions_group.name` column rejects.
-const TOO_LONG_NAME = "a".repeat(300);
-const TOO_LONG_NAME_ERROR = {
+// What the app DB answers for a name longer than its column. The length of the
+// name the test types does not matter: the rejection comes from the server.
+const NAME_TOO_LONG_ERROR = {
   status: 500,
   data: { message: "Value too long for column NAME" },
 };
@@ -177,8 +177,8 @@ describe("GroupsListing group creation", () => {
   });
 
   it("should show the API error when creating fails (metabase#52886)", async () => {
-    setup({ createError: TOO_LONG_NAME_ERROR });
-    await startCreatingAGroup(TOO_LONG_NAME);
+    setup({ createError: NAME_TOO_LONG_ERROR });
+    await startCreatingAGroup("A name the column cannot hold");
 
     await userEvent.click(screen.getByRole("button", { name: "Add" }));
 
@@ -210,11 +210,14 @@ describe("GroupsListing group renaming", () => {
   });
 
   it("should show the API error when renaming fails (metabase#52886)", async () => {
-    setup({ groups: [COLLECTION], updateError: TOO_LONG_NAME_ERROR });
+    setup({ groups: [COLLECTION], updateError: NAME_TOO_LONG_ERROR });
     await openGroupActions(COLLECTION);
     await userEvent.click(screen.getByRole("menuitem", { name: "Edit Name" }));
 
-    await userEvent.type(screen.getByDisplayValue("collection"), TOO_LONG_NAME);
+    await userEvent.type(
+      screen.getByDisplayValue("collection"),
+      " a name the column cannot hold",
+    );
     await userEvent.click(screen.getByRole("button", { name: "Done" }));
 
     expect(

@@ -4,6 +4,7 @@ import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   findRequests,
   setupGroupsEndpoint,
+  setupMembershipMutationEndpoints,
   setupPermissionMembershipEndpoint,
   setupTenantEntpoints,
   setupUserCollectionEndpoints,
@@ -13,7 +14,14 @@ import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
 import { delay } from "__support__/utils";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
-import type { EnterpriseSettings, Tenant, User } from "metabase-types/api";
+import type {
+  EnterpriseSettings,
+  GroupInfo,
+  ListUserMembershipsResponse,
+  Membership,
+  Tenant,
+  User,
+} from "metabase-types/api";
 import {
   createMockGroup,
   createMockTokenFeatures,
@@ -31,6 +39,8 @@ interface SetupOpts {
   tenants?: Tenant[];
   useTenants?: boolean;
   settings?: Partial<EnterpriseSettings>;
+  groups?: GroupInfo[];
+  memberships?: ListUserMembershipsResponse;
 }
 
 const setup = ({
@@ -44,6 +54,11 @@ const setup = ({
   tenants = [],
   useTenants = true,
   settings: settingOverrides = {},
+  groups = [
+    createMockGroup(),
+    createMockGroup({ name: "Admin", id: 2, magic_group_type: "admin" }),
+  ],
+  memberships = {},
 }: SetupOpts = {}) => {
   const settings = mockSettings({
     "token-features": createMockTokenFeatures({
@@ -56,18 +71,12 @@ const setup = ({
   setupEnterprisePlugins();
   setupTenantEntpoints(tenants);
 
-  setupGroupsEndpoint([
-    createMockGroup(),
-    createMockGroup({
-      name: "Admin",
-      id: 2,
-      magic_group_type: "admin",
-    }),
-  ]);
+  setupGroupsEndpoint(groups);
 
   setupUserCollectionEndpoints(users);
 
-  setupPermissionMembershipEndpoint({});
+  setupPermissionMembershipEndpoint(memberships);
+  setupMembershipMutationEndpoints();
 
   renderWithProviders(
     <PeopleListingApp
@@ -475,5 +484,142 @@ describe("deactivating users", () => {
     expect(
       screen.getByRole("menuitem", { name: "Deactivate user" }),
     ).toHaveAttribute("href", "/admin/people/2/deactivate");
+  });
+});
+
+describe("group membership", () => {
+  const ALL_USERS = createMockGroup({
+    id: 1,
+    name: "All Users",
+    magic_group_type: "all-internal-users",
+  });
+  const ADMINISTRATORS = createMockGroup({
+    id: 2,
+    name: "Administrators",
+    magic_group_type: "admin",
+  });
+  const MARKETING = createMockGroup({
+    id: 3,
+    name: "Marketing",
+    magic_group_type: null,
+  });
+
+  const MEMBER = createMockUser({
+    id: 10,
+    first_name: "Normal",
+    last_name: "Tableton",
+    email: "normal@metabase.test",
+  });
+
+  const allUsersMembership = {
+    user_id: MEMBER.id,
+    group_id: ALL_USERS.id,
+    membership_id: 50,
+    is_group_manager: false,
+  };
+  const marketingMembership = {
+    user_id: MEMBER.id,
+    group_id: MARKETING.id,
+    membership_id: 51,
+    is_group_manager: false,
+  };
+
+  const CURRENT_ADMIN = createMockUser({ id: 1, is_superuser: true });
+
+  const setupMembership = (memberships: Membership[]) =>
+    setup({
+      users: [MEMBER],
+      currentUser: CURRENT_ADMIN,
+      groups: [ALL_USERS, ADMINISTRATORS, MARKETING],
+      memberships: {
+        [MEMBER.id]: memberships,
+        // The remove path reads the current user's own memberships to decide
+        // whether they are giving up group management.
+        [CURRENT_ADMIN.id]: [],
+      },
+      settings: {
+        "token-features": createMockTokenFeatures({
+          tenants: true,
+          advanced_permissions: true,
+        }),
+      },
+    });
+
+  const openGroupPicker = async () => {
+    await userEvent.click(await screen.findByLabelText("group-summary"));
+    return screen.findByRole("button", { name: "Marketing" });
+  };
+
+  it("should add the user to a group", async () => {
+    setupMembership([allUsersMembership]);
+
+    await userEvent.click(await openGroupPicker());
+
+    await waitFor(async () =>
+      expect(await findRequests("POST")).toHaveLength(1),
+    );
+    const [{ url, body }] = await findRequests("POST");
+    expect(url).toContain("/api/permissions/membership");
+    expect(body).toEqual({ group_id: MARKETING.id, user_id: MEMBER.id });
+  });
+
+  it("should remove the user from a group", async () => {
+    setupMembership([allUsersMembership, marketingMembership]);
+
+    await userEvent.click(await openGroupPicker());
+
+    await waitFor(async () =>
+      expect(
+        (await findRequests("DELETE")).map(({ url }) => url),
+      ).toContainEqual(
+        expect.stringContaining(
+          `/api/permissions/membership/${marketingMembership.membership_id}`,
+        ),
+      ),
+    );
+  });
+
+  it("should promote the user to group manager", async () => {
+    setupMembership([allUsersMembership, marketingMembership]);
+    await openGroupPicker();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Turn into Manager" }),
+    );
+
+    await waitFor(async () =>
+      expect(await findRequests("PUT")).toHaveLength(1),
+    );
+    const [{ url, body }] = await findRequests("PUT");
+    expect(url).toContain(
+      `/api/permissions/membership/${marketingMembership.membership_id}`,
+    );
+    expect(body).toMatchObject({ is_group_manager: true });
+  });
+
+  it("should show the Admin role of a user in the Administrators group", async () => {
+    setupMembership([
+      allUsersMembership,
+      {
+        user_id: MEMBER.id,
+        group_id: ADMINISTRATORS.id,
+        membership_id: 52,
+        is_group_manager: false,
+      },
+      marketingMembership,
+    ]);
+
+    expect(await screen.findByText("Admin")).toBeInTheDocument();
+    expect(screen.getByText("1 other group")).toBeInTheDocument();
+  });
+});
+
+describe("invite link", () => {
+  it("should point at the new user route", async () => {
+    setup();
+
+    expect(
+      await screen.findByRole("link", { name: "Invite someone" }),
+    ).toHaveAttribute("href", "/admin/people/new");
   });
 });

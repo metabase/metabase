@@ -250,6 +250,25 @@ describe("GroupDetail adding members", () => {
     });
   });
 
+  it("should close the add row once the members are added", async () => {
+    setup({ group: EMPTY_MARKETING, users: [CANDIDATE] });
+
+    await userEvent.click(getAddMembersButton());
+    await userEvent.type(
+      await screen.findByLabelText("Search for a user to add"),
+      "Testy",
+    );
+    await userEvent.click(await screen.findByText("Testy McTestface"));
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByLabelText("Search for a user to add"),
+      ).not.toBeInTheDocument(),
+    );
+    expect(getAddMembersButton()).toBeEnabled();
+  });
+
   it("should not suggest a user who is already a member", async () => {
     const member = MARKETING.members[0];
     setup({
