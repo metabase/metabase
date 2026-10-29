@@ -22,16 +22,11 @@
    [:expires_at   {:optional true} [:maybe ms/TemporalInstant]]
    [:confirmed_at {:optional true} [:maybe ms/TemporalInstant]]])
 
-(mu/defn auth-identity :- [:maybe ::auth-identity.schema/auth-identity]
-  "The ::auth-identity.schema/auth-identity with `auth-identity-id`, or nil."
-  [auth-identity-id :- ms/PositiveInt]
-  (t2/select-one :model/AuthIdentity :id [:auto/param auth-identity-id]))
-
-(mu/defn auth-identity-for-user-and-provider
+(mu/defn auth-identity
   "The AuthIdentity of the User with `user-id` at `provider`, or nil."
   [user-id  :- ::lib.schema.id/user
    provider :- :string]
-  (t2/select-one :model/AuthIdentity :user_id [:auto/param (long user-id)] :provider [:auto/param provider]))
+  (t2/select-one :model/AuthIdentity :user_id (long user-id) :provider [:auto/param provider]))
 
 (mu/defn auth-identity-id
   "The id of the AuthIdentity of the User with `user-id` at `provider`, or nil."
@@ -86,6 +81,11 @@
                :end_reason       "password-change"
                :ended_by_user_id ended-by
                :key_hashed       nil}))
+
+(mu/defn user
+  "The User with `user-id`, or nil."
+  [user-id :- ::lib.schema.id/user]
+  (t2/select-one :model/User user-id))
 
 (mu/defn user-by-email
   "The User whose email matches `email` case-insensitively, or nil."

@@ -2947,8 +2947,8 @@
              {:display "bar" :visualization-settings {}}))
           (is (= 2 (count @checked))
               "both source queries are permission-checked")
-          (is (= (set (map #(lib/primary-source-table-id (t2/select-one-fn :dataset_query :model/ExplorationQuery :id %)) query-ids))
-                 (set (map lib/primary-source-table-id @checked)))
+          (is (= (set (map #(t2/select-one-fn :dataset_query :model/ExplorationQuery :id %) query-ids))
+                 (set @checked))
               "and they are the two sources' own queries, not the first one twice"))))))
 
 (deftest composite-collapses-duplicate-exploration-query-ids-test

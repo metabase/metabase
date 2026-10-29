@@ -2668,7 +2668,7 @@
       ;; Uncomment to regenerate baseline:
       ;; (round-trip-test/add-to-baseline!)
       (testing "custom viz plugin extraction"
-        (let [ser (serdes/extract-one "CustomVizPlugin" {} (t2/select-one [:model/CustomVizPlugin :*] :id plugin-id))]
+        (let [ser (serdes/extract-one "CustomVizPlugin" {} (t2/select-one :model/CustomVizPlugin :id plugin-id))]
           (is (=? {:serdes/meta [{:model "CustomVizPlugin"
                                   :id    "test-plugin"}]
                    :display_name "Test Plugin"
