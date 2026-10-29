@@ -1,8 +1,14 @@
-import { AccordionList } from "metabase/common/components/AccordionList";
+import {
+  AccordionList,
+  type Section,
+} from "metabase/common/components/AccordionList";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import CS from "metabase/css/core/index.css";
-import type { DataSelectorSchema } from "metabase/querying/common/components/DataSelector";
-import { Box, Icon } from "metabase/ui";
+import type {
+  DataSelectorDatabase,
+  DataSelectorSchema,
+} from "metabase/querying/common/components/DataSelector";
+import { Box, Flex, Icon } from "metabase/ui";
 import { getSchemaDisplayName } from "metabase-lib/v1/metadata/utils/schema";
 import type { SchemaId } from "metabase-types/api";
 
@@ -13,21 +19,43 @@ type DataSelectorSchemaPickerProps = {
   hasInitialFocus: boolean;
   hasNextStep: boolean;
   schemas: DataSelectorSchema[];
+  selectedDatabase?: DataSelectorDatabase | null;
   selectedSchemaId?: SchemaId | null;
+  onBack?: (() => void) | null;
   onChangeSchema: (schema?: DataSelectorSchema) => void;
+};
+
+type Item = {
+  name: string | null;
+  schema: DataSelectorSchema;
 };
 
 export const DataSelectorSchemaPicker = ({
   schemas,
+  selectedDatabase,
   selectedSchemaId,
+  onBack,
   onChangeSchema,
   hasNextStep,
   hasFiltering,
   hasInitialFocus,
 }: DataSelectorSchemaPickerProps) => {
   const tc = useTranslateContent();
-  const sections = [
+  const sections: Section<Item>[] = [
     {
+      name: (
+        <Flex
+          align="center"
+          style={{ cursor: "pointer" }}
+          onClick={onBack ?? undefined}
+        >
+          {onBack && <Icon name="chevronleft" size={18} />}
+          <Box component="span" ml="sm">
+            {selectedDatabase && tc(selectedDatabase.name)}
+          </Box>
+        </Flex>
+      ),
+      type: "back",
       items: schemas.map((schema) => ({
         name: tc(getSchemaDisplayName(schema.name)),
         schema: schema,
