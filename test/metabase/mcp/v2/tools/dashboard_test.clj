@@ -380,6 +380,25 @@
                                                              :values_source_type   "card"
                                                              :values_source_config {:card_id 9999999}}]}))))))))
 
+(deftest dry-run-checks-a-reactivated-source-card-test
+  (testing "an op that makes a parameter's existing source card its source is checked against that card"
+    (mt/with-temp [:model/Card      card {}
+                   :model/Dashboard dash {:name       "Sales"
+                                          :parameters [{:id                   "p"
+                                                        :name                 "P"
+                                                        :slug                 "p"
+                                                        :type                 "string/="
+                                                        :values_source_type   "static-list"
+                                                        :values_source_config {:card_id (:id card) :values ["a"]}}]}]
+      (is (=? {:parameters [{:id "p"}]}
+              (tool-result (call-tool! :crowberto v2.tu/all-scopes "dashboard_write"
+                                       (wire {:method        "update"
+                                              :id            (:id dash)
+                                              :validate_only true
+                                              :ops           [{:op                 "update_parameter"
+                                                               :parameter_id       "p"
+                                                               :values_source_type "card"}]}))))))))
+
 (deftest archived-on-create-error-text-test
   (testing "GHY-4544: `archived` on a create is a teaching error"
     (is (= "\"archived\" applies to method \"update\" only — remove it from this create call."

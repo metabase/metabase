@@ -422,6 +422,35 @@
       (is (= "Old" (:card.title vs)))
       (is (= "New" (:card.description vs))))))
 
+(deftest patch-dashcard-from-a-strict-client-test
+  (testing "a patch whose other properties are null, as strict clients send them, leaves those properties alone"
+    (let [mapping {:parameter_id "p1" :card_id 9 :target [:dimension [:field 1 nil]]}
+          dc      (-> (compile-with-stub-cards
+                       (dash-with [(assoc a-dashcard :parameter_mappings [mapping] :inline_parameters ["p1"])])
+                       [{:op          "patch_dashcard"
+                         :dashcard_id 7
+                         :patch       {:visualization_settings {:card.description "New"}
+                                       :parameter_mappings     nil
+                                       :inline_parameters      nil}}])
+                      :dashcards
+                      first)]
+      (is (=? {:visualization_settings {:card.description "New"}
+               :parameter_mappings     [mapping]
+               :inline_parameters      ["p1"]}
+              dc))))
+  (testing "a patched mapping keeps the card it names, such as a series card"
+    (is (=? [{:parameter_id "p1", :card_id 3, :target [:dimension [:field 1 nil]]}]
+            (-> (compile-with-stub-cards
+                 (dash-with [a-dashcard])
+                 [{:op          "patch_dashcard"
+                   :dashcard_id 7
+                   :patch       {:parameter_mappings [{:parameter_id "p1"
+                                                       :card_id      3
+                                                       :target       ["dimension" ["field" 1 nil]]}]}}])
+                :dashcards
+                first
+                :parameter_mappings)))))
+
 (deftest patch-dashcard-rejects-layout-keys-test
   (testing "GHY-4147: layout and identity keys in a patch are rejected, naming the op that owns them"
     (doseq [[k use-op] {:row "move" :size_x "resize" :card_id "replace_card"}]
@@ -1063,4 +1092,17 @@
             (op-error empty-dash [{:op "remove" :dashcard_id 999} {:op "add_card" :id -1 :card_id 42}] {}))))
   (testing "an op's own error is reported before an unresolved card it names"
     (is (=? {::dashboard-ops/error :unknown-dashcard, :dashcard-id 12345}
-            (op-error empty-dash [{:op "replace_card" :dashcard_id 12345 :card_id 42}] {})))))
+            (op-error empty-dash [{:op "replace_card" :dashcard_id 12345 :card_id 42}] {}))))
+  (let [dash (assoc empty-dash :parameters [{:id                   "p1"
+                                             :values_source_type   "static-list"
+                                             :values_source_config {:card_id 45 :values ["a"]}}])]
+    (testing "a source card the parameter already had is checked once an op makes it the source"
+      (is (=? {::dashboard-ops/error :unknown-card, :card-id 45, :op-name "update_parameter"}
+              (op-error dash [{:op "update_parameter" :parameter_id "p1" :values_source_type "card"}] {})))
+      (is (nil? (op-error dash [{:op "update_parameter" :parameter_id "p1" :values_source_type "card"}]
+                          {45 {:id 45}}))))
+    (testing "a card in the config of a parameter whose source is not a card goes unchecked, as on save"
+      (is (nil? (op-error dash [{:op                   "update_parameter"
+                                 :parameter_id         "p1"
+                                 :values_source_config {:card_id 46 :values ["b"]}}]
+                          {}))))))
