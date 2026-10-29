@@ -40,6 +40,8 @@
 
 (set! *warn-on-reflection* true)
 
+(use-fixtures :each llm.tu/with-no-recorded-failures)
+
 (def ^:private test-provider "openrouter/anthropic/claude-haiku-4-5")
 
 (deftest agent-streaming-metabot-resolution-test

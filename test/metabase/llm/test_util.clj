@@ -1,5 +1,6 @@
 (ns metabase.llm.test-util
   (:require
+   [metabase.llm.health :as llm.health]
    [metabase.llm.settings :as llm.settings]
    [metabase.test.util :as tu]))
 
@@ -55,3 +56,8 @@
   {:style/indent 0}
   [& body]
   `(with-connections default-connections ~@body))
+
+(defn with-no-recorded-failures
+  [thunk]
+  (reset! @#'llm.health/failures {})
+  (thunk))

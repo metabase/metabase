@@ -27,6 +27,8 @@
 
 (use-fixtures :once (fixtures/initialize :db :test-users))
 
+(use-fixtures :each llm.tu/with-no-recorded-failures)
+
 (deftest generate-content-backwards-compatible-route-test
   (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                      llm-metabot-provider test-provider]

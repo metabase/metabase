@@ -43,9 +43,11 @@
 ;; which would otherwise append an extra `eval_session` data part to every agent stream and break
 ;; every `=?` on `run-agent-loop` output. The capture-ON path is covered by `eval-tracing-nesting-test`,
 ;; which forces capture via `capture-reducible` (independent of this gate) and is unaffected here.
-(use-fixtures :each (fn [thunk]
-                      (mt/with-dynamic-fn-redefs [ai-tracing.settings/ai-eval-capture (constantly false)]
-                        (thunk))))
+(use-fixtures :each
+  (fn [thunk]
+    (mt/with-dynamic-fn-redefs [ai-tracing.settings/ai-eval-capture (constantly false)]
+      (thunk)))
+  llm.tu/with-no-recorded-failures)
 
 (defn- run-agent-loop
   [opts]
