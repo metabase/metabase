@@ -9,7 +9,8 @@
    (com.metabase.sqlglot.ast Expressions$Anonymous Expressions$Column Expressions$Delete Expressions$Dot Expressions$Func
                              Expressions$Insert Expressions$Parameter Expressions$PropertyEQ Expressions$Query
                              Expressions$Select Expressions$SetOperation Expressions$Subquery
-                             Expressions$Table Expressions$Update Expressions$WithTableHint)
+                             Expressions$Table Expressions$TableAlias Expressions$Update
+                             Expressions$WithTableHint)
    (com.metabase.sqlglot.reference ParseError)))
 
 (set! *warn-on-reflection* true)
@@ -90,10 +91,11 @@
     ;; Snowflake: run a SQL string as a table function
     "to_query"})
 
-;; SQL Server table hints that take update or exclusive locks, or hold shared ones to the end of the transaction.
-;; `NOLOCK`, `INDEX(...)` and the rest only steer how a plain read runs.
+;; SQL Server table hints that take update or exclusive locks, hold shared ones to the end of the transaction, or set
+;; the granularity of the locks taken (`ROWLOCK`, `PAGLOCK`). `NOLOCK`, `INDEX(...)` and the rest only steer how a
+;; plain read runs.
 (def ^:private locking-table-hints
-  #{"UPDLOCK" "XLOCK" "TABLOCK" "TABLOCKX" "HOLDLOCK" "SERIALIZABLE" "REPEATABLEREAD"})
+  #{"UPDLOCK" "XLOCK" "TABLOCK" "TABLOCKX" "HOLDLOCK" "SERIALIZABLE" "REPEATABLEREAD" "ROWLOCK" "PAGLOCK"})
 
 ;; Words that start a T-SQL statement. SQL Server ends a SELECT at one of them without a semicolon, while sqlglot
 ;; reads a bare one as a table alias: `SELECT 1 FROM t EXEC('...')` parses as one SELECT and runs as two statements.
@@ -167,6 +169,12 @@
                          (contains? locking-table-hints (u/upper-case-en (ast/node-name %))))
                    (ast/expressions (ast/this node))))
 
+    ;; After an alias, `FROM t a (XLOCK)` parses as a column list on the alias, and SQL Server reads it as a hint.
+    ;; Only a plain table's alias counts: a derived table's column list, `(SELECT ...) d(a)`, names real columns.
+    (and (instance? Expressions$Table node) (instance? Expressions$TableAlias (ast/arg node "alias")))
+    (boolean (some #(contains? locking-table-hints (u/upper-case-en (ast/node-name %)))
+                   (ast/arg (ast/arg node "alias") "columns")))
+
     :else
     false))
 
@@ -181,20 +189,32 @@
 
   The MySQL marks are looked for in the raw text, string literals included: MySQL's `NO_BACKSLASH_ESCAPES` mode ends
   a literal where sqlglot does not, so a backslash before a quote is refused. A `U&\"...\"` identifier is refused in
-  every dialect, since Postgres reads its escapes and the function checks above never see the name."
+  every dialect, since Postgres reads its escapes and the function checks above never see the name.
+
+  A carriage return with no newline after it is refused in every dialect. sqlglot ends a `--` or `#` comment at one,
+  and MySQL does not, so the text after it would be a comment to one and SQL to the other."
   [sql dialect]
-  (or (when (re-find #"(?<![\w\$])[uU]&\"" sql)
+  (or (when (re-find #"\r(?!\n)" sql)
+        ["lone-carriage-return" nil])
+      (when (re-find #"(?<![\w\$])[uU]&\"" sql)
         ["unicode-identifier" nil])
       (when (= dialect "tsql")
         (some (fn [[token-type text]]
-                (when (and (not (#{"STRING" "NATIONAL_STRING" "IDENTIFIER"} token-type))
-                           (contains? tsql-statement-words (u/upper-case-en text)))
-                  ["statement-word" (u/upper-case-en text)]))
+                (when-not (#{"STRING" "NATIONAL_STRING" "IDENTIFIER"} token-type)
+                  ;; sqlglot keeps a character such as U+200B inside a word, `t<U+200B>EXEC`, where SQL Server may end
+                  ;; the word. Each piece between characters that cannot be part of a name is checked on its own.
+                  ;; `(?U)` makes `\w` match letters in any script, as Python's does; Java's also matches the join
+                  ;; controls U+200C and U+200D, which Python's does not, so they are split on too.
+                  (some #(when (contains? tsql-statement-words (u/upper-case-en %))
+                           ["statement-word" (u/upper-case-en %)])
+                        (str/split text #"(?U)(?:[^\w@#$]|[\x{200C}\x{200D}])+"))))
               (ast/tokenize sql dialect)))
       (when (contains? mysql-family-dialects dialect)
         (cond
           (or (str/includes? sql "/*!") (str/includes? sql "/*M!")) ["executable-comment" nil]
-          (re-find #"--(?=\S)" sql)                                  ["bare-dash-comment" nil]
+          ;; MySQL reads `--` as a comment only before ASCII whitespace or a control character, so the characters are
+          ;; spelled out rather than left to `\s`.
+          (re-find #"--(?![ \t\n\r\f\x0B]|\z)" sql)                   ["bare-dash-comment" nil]
           (re-find #"\\['\"`]" sql)                                  ["backslash-quote" nil]))))
 
 (defn- unbracketed
