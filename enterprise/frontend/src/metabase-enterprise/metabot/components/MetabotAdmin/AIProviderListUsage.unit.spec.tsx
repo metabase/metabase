@@ -3,6 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
+  setupLlmActiveModelEndpoint,
   setupLlmModelsEndpoint,
   setupLlmProviderTypesEndpoint,
   setupLlmProvidersEndpoint,
@@ -91,6 +92,7 @@ function setup({
     createMockLlmProviderConnection(),
   ]);
   setupLlmModelsEndpoint([]);
+  setupLlmActiveModelEndpoint();
 
   const storeInitialState = createMockState({
     currentUser: createMockUser({ is_superuser: true }),
@@ -112,7 +114,7 @@ describe("AIProviderList managed provider usage", () => {
 
     const row = await screen.findByTestId("provider-metabase");
     expect(await within(row).findByText("Current billing cycle")).toBeVisible();
-    expect(within(row).getByText("4,000,000")).toBeInTheDocument();
+    expect(await within(row).findByText("4,000,000")).toBeInTheDocument();
     expect(
       await within(row).findByText("$3.00 per 1M tokens"),
     ).toBeInTheDocument();

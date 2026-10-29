@@ -12,6 +12,7 @@
    [metabase.config.core :as config]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.llm.provider :as llm.provider]
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.profiles :as profiles]
@@ -201,7 +202,7 @@
   `:state` is the reconstructed [[metabot.persistence/conversation-state]] —
   it seeds the agent loop as the immutable baseline for this turn's state."
   [{:keys [metabot profile-id message context history conversation-id state debug?
-           eval-session-id assistant-msg-id external-id user-external-id title-job]}]
+           eval-session-id assistant-msg-id external-id user-external-id title-job model-selection]}]
   (let [enriched-context (metabot.context/create-context
                           ;; Server-authoritative: decided from the request's client header here, on the
                           ;; handler thread, before the agent moves to the streaming thread.
@@ -223,7 +224,9 @@
             ;; from a clean success.
             thrown     (volatile! nil)
             ;; Read once, so the stream reports the same window the row's verdict is judged against.
-            window     (metabot.self/context-window-tokens (metabot.settings/llm-metabot-provider))
+            window     (metabot.self/context-window-tokens
+                        (or (:model-ref model-selection)
+                            (metabot.settings/llm-metabot-provider)))
             xf         (comp (u/tee-xf parts-atom)
                              (self.core/parts->aisdk-sse-xf
                               (cond-> {:message-id            external-id
@@ -245,7 +248,8 @@
                                :tracking-opts         {:session-id conversation-id}
                                ;; A query a tool is running stops when the client goes away.
                                :request-canceled-chan canceled-chan}
-                        debug? (assoc :debug? true))))
+                        debug?          (assoc :debug? true)
+                        model-selection (assoc :model-selection model-selection))))
           (catch org.eclipse.jetty.io.EofException _
             (vreset! canceled? true)
             (log/debug "Client disconnected during native agent streaming"))
@@ -313,7 +317,11 @@
   (let [message    (metabot.envelope/user-message message)
         metabot    (metabot.config/resolve-metabot metabot_id)
         _          (metabot.config/check-metabot-enabled! metabot)
-        _          (metabot.usage/check-metabase-managed-free-limit!)
+        ;; resolved once: provider health can change mid-request, and the usage check, the persisted `ai_proxied`
+        ;; and the agent loop have to agree on the model serving this turn
+        selection  (metabot.settings/metabot-model-selection)
+        ai-proxy?  (llm.provider/managed-model-ref? (:model-ref selection))
+        _          (metabot.usage/check-metabase-managed-free-limit! (:model-ref selection))
         profile-id (metabot.config/resolve-dynamic-profile-id profile_id (:entity_id metabot))
         ;; reject before `start-turn!` persists anything or the title job calls the LLM. An eval-only profile on an
         ;; instance that doesn't run evals gets the same refusal, so nobody can tell it exists.
@@ -332,9 +340,11 @@
                   turn     (try
                              (if (= action :retry)
                                (metabot.persistence/retry-turn! conversation_id profile-id retry_message_id
+                                                                :ai-proxy? ai-proxy?
                                                                 :assistant-external-id assistant_message_id
                                                                 :delete-message-ids message-ids)
                                (metabot.persistence/start-turn! conversation_id profile-id message
+                                                                :ai-proxy? ai-proxy?
                                                                 :hostname hostname
                                                                 :pii-info pii-info
                                                                 :delete-message-ids message-ids
@@ -370,7 +380,8 @@
         :assistant-msg-id assistant-msg-id
         :external-id      assistant-external-id
         :user-external-id user-external-id
-        :title-job        title-job}))))
+        :title-job        title-job
+        :model-selection  selection}))))
 
 (defn- legacy->modern-query
   [query]

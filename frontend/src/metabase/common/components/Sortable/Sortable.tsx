@@ -1,4 +1,4 @@
-import type { UniqueIdentifier } from "@dnd-kit/core";
+import type { DraggableAttributes, UniqueIdentifier } from "@dnd-kit/core";
 import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -14,20 +14,25 @@ import {
 
 import S from "./Sortable.module.css";
 
+export interface SortableDragHandle {
+  dragHandleRef: MutableRefObject<HTMLElement | null>;
+  dragHandleListeners: SyntheticListenerMap | undefined;
+  /** dnd-kit's activator attributes: tabIndex, role and the aria wiring that lets a KeyboardSensor pick the
+   * item up from the keyboard. Only for consumers that set `attributesOnDragHandle`; the others keep them on the
+   * wrapper. */
+  dragHandleAttributes: DraggableAttributes;
+}
+
 export interface SortableProps {
   id: UniqueIdentifier;
   as?: ElementType;
-  children:
-    | ReactNode
-    | ((data: {
-        dragHandleRef: MutableRefObject<HTMLElement | null>;
-        dragHandleListeners: SyntheticListenerMap | undefined;
-      }) => ReactNode);
+  children: ReactNode | ((data: SortableDragHandle) => ReactNode);
   disabled?: boolean;
   className?: string;
   style?: CSSProperties;
   draggingStyle?: CSSProperties;
   role?: string;
+  attributesOnDragHandle?: boolean;
 }
 
 /**
@@ -43,6 +48,7 @@ export function Sortable({
   style,
   draggingStyle,
   role = "button",
+  attributesOnDragHandle = false,
 }: SortableProps) {
   const dragHandleRef = useRef(null);
 
@@ -79,12 +85,18 @@ export function Sortable({
       }}
       data-is-dragging={isDragging}
       ref={setNodeRef}
-      {...(disabled ? {} : attributes)}
+      {...(disabled || (childrenAsFunction && attributesOnDragHandle)
+        ? {}
+        : attributes)}
       {...(!childrenAsFunction && listeners)}
       role={role}
     >
       {childrenAsFunction
-        ? children({ dragHandleRef, dragHandleListeners: listeners })
+        ? children({
+            dragHandleRef,
+            dragHandleListeners: listeners,
+            dragHandleAttributes: attributes,
+          })
         : children}
     </Component>
   );

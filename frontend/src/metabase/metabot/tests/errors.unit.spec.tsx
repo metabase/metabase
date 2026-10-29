@@ -260,8 +260,9 @@ describe("metabot > errors", () => {
 
     await enterChatMessage("Who is your favorite?");
 
+    const alert = await screen.findByTestId("metabot-chat-message-turn-alert");
     expect(
-      await screen.findByTestId("metabot-chat-message-retry"),
+      within(alert).getByTestId("metabot-chat-message-retry"),
     ).toBeInTheDocument();
   });
 
