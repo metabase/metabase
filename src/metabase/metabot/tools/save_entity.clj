@@ -10,9 +10,7 @@
   (:require
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
-   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection :as collection]
-   [metabase.dashboards.db :as dashboards.db]
    [metabase.documents.core :as documents]
    [metabase.events.core :as events]
    [metabase.metabot.agent.links :as links]
@@ -213,7 +211,7 @@
   [collection-id]
   (if (nil? collection-id)
     (:name (collection/root-collection-with-ui-details nil))
-    (:name (collections.db/collection collection-id))))
+    (metabot.db/collection-name collection-id)))
 
 (tools/defrecoverable destination-archived!
   "The destination is in the trash."
@@ -276,7 +274,7 @@
                 :delay-event)]
       {:card             card
        :destination      {:type "dashboard" :id dashboard-id}
-       :destination-name (:name (dashboards.db/dashboard dashboard-id))
+       :destination-name (metabot.db/dashboard-name dashboard-id)
        :link             (str "metabase://dashboard/" dashboard-id)})))
 
 (defn- save-to-document!

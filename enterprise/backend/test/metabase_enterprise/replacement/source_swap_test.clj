@@ -11,7 +11,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.util.json :as json]
-   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -180,10 +179,9 @@
             (t2/query-one {:update :transform
                            :set    {:source "{\"type\":\"query\",\"query\":{}}"}
                            :where  [:= :id transform-id]})
-            (is (nil? (mu/disable-enforcement
-                        (replacement.source-swap/swap-source! [:transform transform-id]
-                                                              [:table (mt/id :orders)]
-                                                              [:table (mt/id :reviews)]))))))))))
+            (is (nil? (replacement.source-swap/swap-source! [:transform transform-id]
+                                                            [:table (mt/id :orders)]
+                                                            [:table (mt/id :reviews)])))))))))
 
 ;;; ------------------------------------------------- Segment ----------------------------------------------------------
 

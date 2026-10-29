@@ -20,7 +20,6 @@
   (:require
    [clojure.set :as set]
    [metabase.api.common :as api]
-   [metabase.documents.db :as documents.db]
    [metabase.explorations.db :as explorations.db]
    [metabase.lib-be.core :as lib-be]
    [metabase.queries.core :as queries]
@@ -194,7 +193,7 @@
 
     (:id document)
     (exploration-content-visible?
-     (:exploration_id (documents.db/document (:id document))))
+     (explorations.db/document-exploration-id (:id document)))
 
     :else
     false))
