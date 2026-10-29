@@ -20,9 +20,9 @@ import {
 import * as Urls from "metabase/urls";
 import {
   type DynamicGoalSource,
-  trackDynamicGoalRemoved,
   trackDynamicGoalReplaced,
   trackDynamicGoalSet,
+  trackDynamicGoalUnset,
 } from "metabase/visualizations/analytics";
 import { useAnsweredGoalValue } from "metabase/visualizations/hooks/use-answered-goal-value";
 import {
@@ -196,7 +196,7 @@ export const GoalValueInput = ({
 
   const removeDynamicValue = () => {
     if (currentSource != null) {
-      trackDynamicGoalRemoved(display, currentSource);
+      trackDynamicGoalUnset(display, currentSource);
     }
     commitValue(null);
   };

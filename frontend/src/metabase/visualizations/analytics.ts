@@ -69,12 +69,12 @@ export function trackDynamicGoalReplaced(
   });
 }
 
-export function trackDynamicGoalRemoved(
+export function trackDynamicGoalUnset(
   display: VisualizationDisplay,
   source: DynamicGoalSource,
 ) {
   trackSimpleEvent({
-    event: "dynamic_goal_removed",
+    event: "dynamic_goal_unset",
     triggered_from: display,
     event_detail: source,
   });

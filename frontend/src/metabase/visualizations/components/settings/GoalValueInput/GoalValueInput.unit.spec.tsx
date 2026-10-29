@@ -1291,7 +1291,7 @@ describe("GoalValueInput", () => {
 
       expect(trackSimpleEvent).toHaveBeenCalledTimes(1);
       expect(trackSimpleEvent).toHaveBeenCalledWith({
-        event: "dynamic_goal_removed",
+        event: "dynamic_goal_unset",
         triggered_from: "progress",
         event_detail: "self_column",
       });
@@ -1321,7 +1321,7 @@ describe("GoalValueInput", () => {
 
       expect(trackSimpleEvent).toHaveBeenCalledTimes(1);
       expect(trackSimpleEvent).toHaveBeenCalledWith({
-        event: "dynamic_goal_removed",
+        event: "dynamic_goal_unset",
         triggered_from: "progress",
         event_detail: "metric",
       });

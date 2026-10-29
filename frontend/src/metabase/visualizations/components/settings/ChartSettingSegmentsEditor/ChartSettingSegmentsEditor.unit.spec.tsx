@@ -576,12 +576,12 @@ describe("ChartSettingSegmentsEditor", () => {
       expect(onChange).toHaveBeenCalledWith([value[1]]);
       expect(trackSimpleEvent).toHaveBeenCalledTimes(2);
       expect(trackSimpleEvent).toHaveBeenNthCalledWith(1, {
-        event: "dynamic_goal_removed",
+        event: "dynamic_goal_unset",
         triggered_from: "gauge",
         event_detail: "self_column",
       });
       expect(trackSimpleEvent).toHaveBeenNthCalledWith(2, {
-        event: "dynamic_goal_removed",
+        event: "dynamic_goal_unset",
         triggered_from: "gauge",
         event_detail: "metric",
       });

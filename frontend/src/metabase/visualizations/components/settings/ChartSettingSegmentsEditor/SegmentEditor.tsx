@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import { ActionIcon, Box, Group, Icon, Stack, Tooltip } from "metabase/ui";
-import { trackDynamicGoalRemoved } from "metabase/visualizations/analytics";
+import { trackDynamicGoalUnset } from "metabase/visualizations/analytics";
 import { getSegmentColor } from "metabase/viz-core";
 import type {
   ColumnSettings,
@@ -51,7 +51,7 @@ export function SegmentEditor({
   const handleRemove = () => {
     [minSource, maxSource].forEach((source) => {
       if (source != null) {
-        trackDynamicGoalRemoved(display, source);
+        trackDynamicGoalUnset(display, source);
       }
     });
     onRemove();
