@@ -251,6 +251,20 @@ describe("DataSourceSelector", () => {
       expect(screen.queryByText("Accounting")).not.toBeInTheDocument();
     });
 
+    it("does not show a search box on the schema step of a database with 2 schemas", async () => {
+      setup({
+        ...setupOpts,
+        databases: [createSampleDatabase(), createWarehouseDatabase()],
+      });
+
+      await userEvent.click(await screen.findByText("Raw Data"));
+      await userEvent.click(await screen.findByText("Warehouse"));
+
+      expect(await screen.findByText("Accounting")).toBeInTheDocument();
+      expect(screen.getByText("Finance")).toBeInTheDocument();
+      expect(screen.queryByPlaceholderText("Find...")).not.toBeInTheDocument();
+    });
+
     it("should skip the bucket step and show the SavedEntityPicker right away if there is only models in the bucket step", async () => {
       setup({
         ...setupOpts,
