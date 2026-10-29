@@ -4282,3 +4282,37 @@
                 "Monthly job" false
                 "Custom job"  true}
                (job-active)))))))
+
+(deftest drop-report-card-collection-preview-test
+  (testing "j38192: report_card.collection_preview is dropped, and a rollback restores it with previews enabled"
+    (impl/test-migrations ["j38192"] [migrate!]
+      (let [user-id (t2/insert-returning-pk! :core_user {:first_name  "Collection"
+                                                         :last_name   "Preview"
+                                                         :email       "collection-preview@metabase.com"
+                                                         :password    "superstrong"
+                                                         :entity_id   (u/generate-nano-id)
+                                                         :date_joined :%now})
+            db-id   (t2/insert-returning-pk! :metabase_database {:name       "Preview DB"
+                                                                 :engine     "h2"
+                                                                 :details    "{}"
+                                                                 :created_at :%now
+                                                                 :updated_at :%now})
+            card-id (t2/insert-returning-pk! :report_card {:name                   "Card"
+                                                           :entity_id              (u/generate-nano-id)
+                                                           :display                "table"
+                                                           :dataset_query          "{}"
+                                                           :visualization_settings "{}"
+                                                           :creator_id             user-id
+                                                           :database_id            db-id
+                                                           :collection_preview     false
+                                                           :created_at             :%now
+                                                           :updated_at             :%now})
+            ;; Read whole rows: naming the column in the query would make the post-migration read a SQL error.
+            card    #(t2/select-one :report_card :id card-id)]
+        (migrate!)
+        (testing "the column is gone and the card is kept"
+          (is (not (contains? (card) :collection_preview)))
+          (is (= "Card" (:name (card)))))
+        (testing "rolling back restores the column with previews enabled"
+          (migrate! :down 64)
+          (is (true? (:collection_preview (card)))))))))
