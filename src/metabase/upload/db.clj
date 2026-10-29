@@ -25,7 +25,7 @@
 (mu/defn database-is-attached-dwh?
   "Whether the Database with `database-id` is an attached data warehouse."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :is_attached_dwh :model/Database database-id))
+  (t2/select-one-fn :is_attached_dwh :model/Database :id [:auto/param database-id]))
 
 (mu/defn disable-uploads-for-all-databases!
   "Disable uploads on every Database that has them enabled."
