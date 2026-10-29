@@ -884,10 +884,11 @@
                     :problem (or (not-runnable-problem error) (me/error-message error))})
         paths-of (group-by :problem located)
         lines    (for [problem (distinct (map :problem located))
-                       :let    [[path & others] (distinct (map :path (paths-of problem)))]]
+                       :let    [[path & others] (distinct (map :path (paths-of problem)))
+                                n-others         (count others)]]
                    (str path
                         (when others
-                          (format " (and %d other %s)" (count others) (u/format-plural (count others) "place")))
+                          (format " (and %d other %s)" n-others (u/format-plural n-others "place")))
                         ": " problem))
         omitted  (- (count lines) max-not-runnable-problems)]
     (cond-> (vec (take max-not-runnable-problems lines))

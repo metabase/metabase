@@ -4175,11 +4175,12 @@
                               "In a join with no alias in stage 0: No column named \"nope\""))))))
 
 (deftest ^:parallel join-fields-ref-without-alias-test
-  (let [join-fields (fn [previous-stage fields]
-                      (get-in (repair* (query previous-stage
-                                              (stage {"joins" [(assoc (join "First" [first-orders-stage] :lhs user-id-by-name)
-                                                                      "fields" fields)]})))
-                              ["stages" 1 "joins" 0 "fields"]))]
+  (let [fields-query (fn [previous-stage fields]
+                       (query previous-stage
+                              (stage {"joins" [(assoc (join "First" [first-orders-stage] :lhs user-id-by-name)
+                                                      "fields" fields)]})))
+        join-fields  (fn [previous-stage fields]
+                       (get-in (repair* (fields-query previous-stage fields)) ["stages" 1 "joins" 0 "fields"]))]
     (testing "a by-name ref in a join's fields gets the join's alias and is typed from the join"
       (is (= [["field" {"join-alias" "First", "base-type" "type/Date", "effective-type" "type/Date"} "min"]]
              (join-fields min-total-by-user-stage [["field" {} "min"]]))))
@@ -4193,9 +4194,7 @@
              (join-fields min-total-by-user-stage [(orders-col "USER_ID")]))))
     (testing "a path ref there to a column the grouped join doesn't return is reported"
       (is (=? {:error :unresolved-join-alias-field}
-              (repair-error (query min-total-by-user-stage
-                                   (stage {"joins" [(assoc (join "First" [first-orders-stage] :lhs user-id-by-name)
-                                                           "fields" [(orders-col "TOTAL")])]}))))))))
+              (repair-error (fields-query min-total-by-user-stage [(orders-col "TOTAL")])))))))
 
 (deftest ^:parallel alias-less-join-fields-left-for-validation-test
   (let [fields-of (fn [column]
