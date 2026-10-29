@@ -96,11 +96,11 @@ function ArchiveModalBody({
         </Box>
       </Stack>
       <Modal.Footer>
-        {error ? (
+        {!!error && (
           <Box flex={1}>
             <FormMessage formError={error} noPadding />
           </Box>
-        ) : null}
+        )}
         <Button onClick={onClose}>{getCancelMessage(hasUnsubscribed)}</Button>
         <Button variant="filled" color="negative" onClick={handleArchiveClick}>
           {getSubmitMessage(type, hasUnsubscribed)}
