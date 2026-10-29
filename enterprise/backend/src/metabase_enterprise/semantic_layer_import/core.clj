@@ -1,14 +1,15 @@
 (ns metabase-enterprise.semantic-layer-import.core
   "Import a semantic layer into Metabase as serdes YAML that `import` loads.
 
-  A source (dbt, see [[metabase-enterprise.semantic-layer-import.dbt.core]]) parses its project into the
-  intermediate representation of [[metabase-enterprise.semantic-layer-import.schemas.ir]] and hands it to
-  [[convert!]], which does the rest, the same way for every source:
+  [[convert!]] runs the whole import in one call, the same way for every source:
 
-  1. [[check-driver]]: the config's driver against the warehouse the project was written for;
-  2. resolve ([[metabase-enterprise.semantic-layer-import.resolve]]): bind the IR's content to Lib queries against a
+  1. parse: the source's [[interface/raw->ir]] (dbt's is in [[metabase-enterprise.semantic-layer-import.dbt.core]])
+     turns the semantic layer as the source writes it into the intermediate representation of
+     [[metabase-enterprise.semantic-layer-import.schemas.ir]], which stays in memory;
+  2. [[check-driver]]: the config's driver against the warehouse the project was written for;
+  3. resolve ([[metabase-enterprise.semantic-layer-import.resolve]]): bind the IR's content to Lib queries against a
      metadata provider made from it, reporting what has no Metabase equivalent;
-  3. emit ([[metabase-enterprise.semantic-layer-import.emit]]): turn what resolved into serdes entities in one
+  4. emit ([[metabase-enterprise.semantic-layer-import.emit]]): turn what resolved into serdes entities in one
      collection and write them.
 
   [[preflight]] then checks the tree against the instance it is going to be imported into.
@@ -17,15 +18,22 @@
   emitter, and an entry kind of the report here (see `::converted`)."
   (:require
    [metabase-enterprise.semantic-layer-import.emit :as emit]
+   [metabase-enterprise.semantic-layer-import.interface :as interface]
    [metabase-enterprise.semantic-layer-import.preflight :as preflight]
    [metabase-enterprise.semantic-layer-import.resolve :as resolve]
    [metabase-enterprise.semantic-layer-import.schemas.config :as config]
    [metabase-enterprise.semantic-layer-import.schemas.ir :as ir]
    [metabase-enterprise.semantic-layer-import.schemas.resolved :as resolved]
+   [metabase.classloader.core :as classloader]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]))
+
+(def ^:private source-namespaces
+  "The namespace that implements [[interface/raw->ir]] for each source, by its `:type`. [[convert!]] loads a source's
+  namespace the first time it converts something of that source's, rather than loading every source up front."
+  {:dbt 'metabase-enterprise.semantic-layer-import.dbt.core})
 
 (mu/defn check-driver :- :nil
   "Check the config's `driver` against `warehouse`, what the semantic layer says about the warehouse it was written
@@ -93,18 +101,41 @@
              :notes                  (:notes resolved)
              :unsupported-dimensions (:unsupported-dimensions resolved)}))
 
+(mu/defn- parse :- ::ir/semantic-layer
+  "The IR of `raw`, parsed by the `source-type` source's [[interface/raw->ir]] with its `options`, once the source's
+  namespace is loaded."
+  [source-type :- :keyword
+   raw         :- ::interface/raw
+   options     :- ::interface/options]
+  (when-let [source-namespace (source-namespaces source-type)]
+    ;; The namespace is looked up in [[source-namespaces]] at runtime, so the module linter cannot tell which one this
+    ;; requires.
+    #_{:clj-kondo/ignore [:metabase/modules]}
+    (classloader/require source-namespace))
+  (interface/raw->ir source-type raw options))
+
 (mu/defn convert! :- ::report
-  "Resolve `semantic-layer`, the IR a source parsed, with `config` (see `::config/config`), and write the serdes tree
-  to `out-dir`. Returns a report of what was converted and what was not. Import the result with
+  "Import `raw`, a semantic layer as the source `:type` writes it, with the source's own `options`, and write the
+  serdes tree to `out-dir`: parse it into the IR, resolve that with `config` (see `::config/config`), and emit what
+  resolved. Returns a report of what was converted and what was not.
+
+  dbt is the only source so far: `:type` `:dbt`, with `:raw` the path of the `manifest.json` `dbt parse` writes and
+  `:options` `{:entity-models {entity-name semantic-model-name}}` (see
+  `:metabase-enterprise.semantic-layer-import.dbt.parse/options`).
+
+  Check the tree with [[preflight]], then import it with
 
       MB_DB_CONNECTION_URI=... clojure -M:run:ee import <out-dir> -e"
-  [{:keys [semantic-layer out-dir config]} :- [:map {:closed true}
-                                               [:semantic-layer ::ir/semantic-layer]
-                                               [:out-dir        :string]
-                                               [:config         ::config/config]]]
-  (check-driver (:driver config) (:warehouse semantic-layer))
-  (let [resolved (resolve/resolve-semantic-layer config semantic-layer)
-        files    (emit/files config resolved)]
+  [{source-type :type, :keys [raw options out-dir config]} :- [:map {:closed true}
+                                                               [:type    :keyword]
+                                                               [:raw     ::interface/raw]
+                                                               [:options {:optional true} ::interface/options]
+                                                               [:out-dir :string]
+                                                               [:config  ::config/config]]]
+  (let [semantic-layer (parse source-type raw (or options {}))
+        _              (check-driver (:driver config) (:warehouse semantic-layer))
+        resolved       (resolve/resolve-semantic-layer config semantic-layer)
+        files          (emit/files config resolved)]
     (emit/write! out-dir files)
     {:out-dir     out-dir
      :converted   (mapv converted (filter :kind files))
@@ -120,3 +151,12 @@
   [{:keys [out-dir]} :- [:map {:closed true}
                          [:out-dir :string]]]
   (preflight/check out-dir))
+
+(comment
+  (convert! {:type    :dbt
+             :raw     "/path/to/dbt-business-intelligence/target/manifest.json"
+             :out-dir "/path/to/dbt-metrics-serdes"
+             :config  {:databases     {"dbt_bi" "Sales DB"}
+                       :driver        :postgres
+                       :creator-email "admin@example.com"}})
+  (preflight {:out-dir "/path/to/dbt-metrics-serdes"}))

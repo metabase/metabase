@@ -4785,7 +4785,7 @@
 
   enterprise/semantic-layer-import
   {:team "Querying Platform"
-   :api  #{metabase-enterprise.semantic-layer-import.core}
+   :api  #{}
    :uses #{driver
            lib
            lib.metadata
@@ -4796,6 +4796,7 @@
            sql-tools
            sql-tools.parsing
            util
+           util.classloader
            warehouse-schema-overlay
            enterprise/serialization}
    :model-imports #{:model/Card

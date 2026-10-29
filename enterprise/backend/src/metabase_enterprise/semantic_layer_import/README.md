@@ -25,20 +25,22 @@ The import is a pipeline. A source-specific front end parses a project into an i
 shared, source-agnostic stages turn the IR into serdes YAML:
 
 ```
-dbt.core/convert!       one entry point per source
- ├─ parse               project files ──► IR                          dbt.*, the source's own nested module
- └─ core/convert!
-     ├─ check-driver    the config's :driver vs. the IR's warehouse   core
-     ├─ resolve         IR ──► Lib queries, dimension sets, report    resolve, resolve.*, metadata, sql, ids
-     └─ emit            resolved content ──► serdes YAML tree         emit
+core/convert!           the one entry point, for every source
+ ├─ parse               project files ──► IR, in memory               interface/raw->ir, implemented by dbt.* (a
+ │                                                                    nested module of its own) for :dbt
+ ├─ check-driver        the config's :driver vs. the IR's warehouse   core
+ ├─ resolve             IR ──► Lib queries, dimension sets, report    resolve, resolve.*, metadata, sql, ids
+ └─ emit                resolved content ──► serdes YAML tree         emit
 
 core/preflight          YAML tree vs. the target instance's app DB    preflight, db
 serdes `import`         YAML tree ──► Cards in the app DB             enterprise/serialization
 ```
 
-1. **Parse** (source-specific). A source reads its project format and produces an `::ir/semantic-layer`
-   (`schemas/ir.clj`): *tables*, each a physical relation with its columns, dimensions, keys and joins, and *metrics*,
-   each simple, cumulative, ratio or derived, with filters written as SQL. The source applies its own defaulting rules,
+1. **Parse** (source-specific). `convert!` loads the source's namespace the first time it converts something of that
+   source's and calls its `interface/raw->ir` method, which reads the project format and produces an
+   `::ir/semantic-layer` (`schemas/ir.clj`), handed straight to the next stage without being written anywhere:
+   *tables*, each a physical relation with its columns, dimensions, keys and joins, and *metrics*, each simple,
+   cumulative, ratio or derived, with filters written as SQL. The source applies its own defaulting rules,
    translates its own idioms into the IR's terms (dbt's entity-based joins, Jinja filter templates and measures, for
    example), and reports what the IR has no place for.
 2. **Check the driver.** `check-driver` fails the run when the config's `:driver` is not the driver for the warehouse
@@ -59,8 +61,9 @@ serdes `import`         YAML tree ──► Cards in the app DB             ente
 A few principles hold throughout:
 
 - **The IR is the seam.** Everything after the parse stage knows only the IR. A source is a nested module that uses
-  this one, and this module never requires a source (the module linter enforces it). Adding a source changes nothing
-  in the shared stages, and anything added to the IR works for every source.
+  this one and implements `interface/raw->ir`; this module never requires a source, and `core` loads one by name, from
+  its `source-namespaces`, only when it is used. Adding a source changes nothing in the shared stages, and anything
+  added to the IR works for every source.
 - **Lib, not hand-written MBQL.** Queries are built with `metabase.lib.core`, what the import needs to know about them
   comes from Lib, and serdes writes them. The output tracks Metabase's query format as it changes.
 - **Report, don't fail.** A construct with no Metabase equivalent is thrown deep in a stage with `unsupported/throw!`
@@ -76,7 +79,8 @@ All under `metabase-enterprise.semantic-layer-import`:
 
 | Namespace | Stage | Purpose |
 | -- | -- | -- |
-| `core` | API | The module's public API and its only `:api` namespace: `convert!`, `preflight`, `check-driver` and the report's schema. See "The API" |
+| `core` | API | The module's public API: `convert!`, `preflight`, `check-driver` and the report's schema. See "The API". No other module calls it yet, so the module config's `:api` is empty |
+| `interface` | parse | `raw->ir`, the multimethod a source implements to parse its project into the IR, and the schemas of what it is handed |
 | `schemas.ir` | parse → resolve | The IR: the contract between a source and the shared stages. See "The IR" |
 | `schemas.config` | all | The config: what a semantic layer cannot supply (the Metabase Databases, the driver, the cards' creator) and how its content is named and written |
 | `schemas.resolved` | resolve → emit | The resolve stage's output: IR content bound to Lib queries |
@@ -96,13 +100,15 @@ All under `metabase-enterprise.semantic-layer-import`:
 
 ## The API
 
-`metabase-enterprise.semantic-layer-import.core` is the module's API. Sources call it, and so does a REPL session
-checking a tree; nothing else in Metabase does yet.
+`metabase-enterprise.semantic-layer-import.core` is the module's API. A REPL session running an import or checking a
+tree calls it; nothing else in Metabase does yet.
 
-- **`(convert! {:semantic-layer ir, :out-dir dir, :config config})`** runs the shared stages on `ir`, the
-  `::ir/semantic-layer` a source parsed: it checks the driver, resolves, emits and writes the serdes tree under
-  `dir`, then returns a `::report`. A problem with one entry goes in the report; `convert!` throws only for a
-  problem with the run as a whole, such as a driver that does not match the project's warehouse, or a write that fails
+- **`(convert! {:type source, :raw raw, :options options, :out-dir dir, :config config})`** runs the whole import in
+  one call: it parses `raw`, the semantic layer as the `source` writes it (for `:dbt`, the path of a `manifest.json`),
+  with the source's own `options` (optional; for dbt, `:entity-models`) into the IR, keeps that in memory, checks the
+  driver, resolves, emits and writes the serdes tree under `dir`, then returns a `::report`. A problem with one entry
+  goes in the report; `convert!` throws only for a problem with the run as a whole, such as an unknown `:type`,
+  options the source does not take, a driver that does not match the project's warehouse, or a write that fails
   part-way (the previous run's files are then left as they were). `config` is a `::config/config`; see "Running an
   import" for its keys.
 - **`::report`** is what `convert!` returns: `:out-dir`; `:converted`, one `::converted` entry per piece of content
@@ -116,19 +122,20 @@ checking a tree; nothing else in Metabase does yet.
   to import. See "Importing the result".
 - **`(check-driver driver warehouse)`** is the driver check `convert!` runs first, public for sources and tests.
 
-A source wraps `convert!` in an entry point of its own, which takes the project's files and the source's own options.
-For dbt that is `dbt.core/convert!`, which takes `:manifest` and an optional `:entity-models`. A whole run, from a REPL
+`:type` picks the source, whose namespace `convert!` loads the first time it is used; dbt is the only one so far.
+What `:raw` and `:options` hold is the source's own business, and the source checks them. A whole run, from a REPL
 started with the `:ee` alias:
 
 ```clojure
-(require '[metabase-enterprise.semantic-layer-import.core :as semantic-layer-import]
-         '[metabase-enterprise.semantic-layer-import.dbt.core :as dbt])
+(require '[metabase-enterprise.semantic-layer-import.core :as semantic-layer-import])
 
-(dbt/convert! {:manifest "/path/to/project/target/manifest.json"
-               :out-dir  "/path/to/serdes-out"
-               :config   {:databases     {"dbt_bi" "Sales DB"}  ; warehouse database -> Metabase Database
-                          :driver        :postgres              ; the Metabase driver for those databases
-                          :creator-email "admin@example.com"}}) ; the user the cards are created as
+(semantic-layer-import/convert!
+ {:type    :dbt
+  :raw     "/path/to/project/target/manifest.json"
+  :out-dir "/path/to/serdes-out"
+  :config  {:databases     {"dbt_bi" "Sales DB"}  ; warehouse database -> Metabase Database
+            :driver        :postgres              ; the Metabase driver for those databases
+            :creator-email "admin@example.com"}}) ; the user the cards are created as
 ;; => {:out-dir "/path/to/serdes-out", :converted [...], :unsupported [...], :errors [...]}
 
 ;; against the instance the tree will be imported into; import when this is []
@@ -144,8 +151,8 @@ MB_DB_CONNECTION_URI=... clojure -M:run:ee import /path/to/serdes-out -e
 ### Adding a source
 
 The IR is meant to be no one tool's model; the table under "The IR" lines dbt's, Cube's and OSI's concepts up with
-it. A new source, such as OSI (Open Semantic Interchange), is a parser and an entry point, and nothing in the shared
-stages changes:
+it. A new source, such as OSI (Open Semantic Interchange), is a parser behind `interface/raw->ir`, and nothing in the
+shared stages changes:
 
 1. Make it a nested module, `enterprise/semantic-layer-import.<source>`, in a directory next to `dbt/`, and run
    `./bin/mage fix-modules-config` to record it. A nested module may use this module's internal namespaces, as dbt's
@@ -163,8 +170,9 @@ stages changes:
      to take the aggregate function apart from its argument;
    - `:unsupported`: an entry with a reason for anything of the source's own the IR has no place for, thrown with
      `unsupported/throw!` and caught per entry with `unsupported/catching`, as the dbt source does.
-3. Give it an entry point, `<source>.core/convert!`, that parses the project and calls `core/convert!`, with the
-   source's own options next to the shared `:config` (dbt's `:entity-models` is one).
+3. Implement `interface/raw->ir` for the source's `:type` with `mu/defmethod` in `<source>.core`, giving the raw
+   project (dbt's is a manifest path) and the source's own options (dbt's `:entity-models`) schemas of their own, and
+   add the namespace to `core/source-namespaces` so that `convert!` loads it the first time the source is used.
 4. Test it with fixtures in its format, as `dbt/`'s tests do. `core_test.clj` runs an IR written by hand, for a
    made-up tool, through the whole import: that is the contract a parser has to meet.
 
@@ -241,8 +249,8 @@ The IR holds metrics, the one kind of content an import carries today; see "Addi
 
 ## Running an import
 
-A source's entry point calls `core/convert!` with the IR, a directory and the config; "The API" above shows a whole
-run, and the source's README shows its own entry point.
+`core/convert!` takes the source's `:type`, its `:raw` project and `:options`, a directory and the config; "The API"
+above shows a whole run, and the source's README shows what its own `:raw` and `:options` are.
 
 The config is the closed map `schemas.config/config`; a source's own options are its own, not part of it:
 

@@ -1,6 +1,6 @@
 (ns metabase-enterprise.semantic-layer-import.schemas.ir
   "The intermediate representation (IR) of a semantic layer: what a source parses its project into (see
-  [[metabase-enterprise.semantic-layer-import.dbt.core]]), and all the rest of the import reads.
+  [[metabase-enterprise.semantic-layer-import.interface/raw->ir]]), and all the rest of the import reads.
 
   The IR is in the import's own terms, not any one tool's:
 

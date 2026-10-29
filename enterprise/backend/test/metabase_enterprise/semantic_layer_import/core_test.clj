@@ -1,14 +1,15 @@
 (ns metabase-enterprise.semantic-layer-import.core-test
-  "The import of a semantic layer written straight in the IR, with no source behind it: what any source's parser makes
-  goes through [[semantic-layer-import/convert!]] the way dbt's does. The source here is a made-up tool, `acme`, so
-  nothing dbt-specific can creep in unnoticed: its table names its own key as an alias, joins through a key column,
-  and its filters are SQL with placeholders for references to the tables' dimensions."
+  "The import of a semantic layer written straight in the IR, with no parser behind it: what any source's
+  [[interface/raw->ir]] makes goes through [[semantic-layer-import/convert!]] the way dbt's does. The source here is a
+  made-up tool, `acme`, so nothing dbt-specific can creep in unnoticed: its table names its own key as an alias, joins
+  through a key column, and its filters are SQL with placeholders for references to the tables' dimensions."
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer [deftest is testing]]
    [mb.hawk.assert-exprs]
    [metabase-enterprise.semantic-layer-import.core :as semantic-layer-import]
    [metabase-enterprise.semantic-layer-import.ids :as ids]
+   [metabase-enterprise.semantic-layer-import.interface :as interface]
    [metabase-enterprise.semantic-layer-import.schemas.ir :as ir]
    [metabase.test :as mt]
    [metabase.util.malli.registry :as mr]
@@ -99,6 +100,11 @@
                          :time-dimension "created_at")]
    :unsupported [{:kind :metric, :name "funnel", :unique-id "acme.metric.funnel", :reason "funnels are acme's own"}]})
 
+;; acme writes its semantic layer in the IR already, so its raw is the IR
+(defmethod interface/raw->ir ::acme
+  [_source-type semantic-layer _options]
+  semantic-layer)
+
 (def ^:private config
   {:databases     {"shop" "Shop DB"}
    :driver        :postgres
@@ -115,7 +121,8 @@
   (is (mr/validate ::ir/semantic-layer semantic-layer))
   (mt/with-temp-dir [dir nil]
     (let [out-dir   (str (io/file dir "out"))
-          report    (semantic-layer-import/convert! {:semantic-layer semantic-layer, :out-dir out-dir, :config config})
+          report    (semantic-layer-import/convert! {:type ::acme, :raw semantic-layer, :out-dir out-dir
+                                                     :config config})
           read-yaml #(yaml/parse-string (slurp (io/file out-dir %)))
           card      (fn [metric-name]
                       (read-yaml (:path (some #(when (= metric-name (:name %)) %) (:converted report)))))
@@ -162,9 +169,10 @@
                       (assoc-in [:tables "orders" :joins] [broken])
                       (update :metrics #(filterv (comp #{"revenue" "vip_orders"} :name) %)))]
       (mt/with-temp-dir [dir nil]
-        (let [report (semantic-layer-import/convert! {:semantic-layer layer
-                                                      :out-dir        (str (io/file dir "out"))
-                                                      :config         config})]
+        (let [report (semantic-layer-import/convert! {:type    ::acme
+                                                      :raw     layer
+                                                      :out-dir (str (io/file dir "out"))
+                                                      :config  config})]
           (is (= [{:name "segment", :reason "acme cannot join here"}]
                  (:unsupported-dimensions (first (:converted report)))))
           (is (= [{:kind :metric, :name "funnel", :reason "funnels are acme's own"}
@@ -172,3 +180,15 @@
                    :name   "vip_orders"
                    :reason "filter \"{customers.segment} = 'vip'\": acme cannot join here"}]
                  (:unsupported report))))))))
+
+(deftest unknown-source-test
+  (testing "a :type no source implements fails the run before anything is written"
+    (mt/with-temp-dir [dir nil]
+      (let [out-dir (io/file dir "out")]
+        (is (thrown-with-msg? IllegalArgumentException
+                              #"No method in multimethod 'raw->ir' for dispatch value: :no-such-source"
+                              (semantic-layer-import/convert! {:type    :no-such-source
+                                                               :raw     semantic-layer
+                                                               :out-dir (str out-dir)
+                                                               :config  config})))
+        (is (not (.exists out-dir)))))))

@@ -1,14 +1,13 @@
 (ns metabase-enterprise.semantic-layer-import.dbt.adapter-test
   "The check that the config's `:driver` agrees with the dbt adapter the manifest was written with
-  ([[adapter/warehouse]], then [[semantic-layer-import/check-driver]]), on its own and as [[dbt-import/convert!]] runs
-  it, before anything is written."
+  ([[adapter/warehouse]], then [[semantic-layer-import/check-driver]]), on its own and as
+  [[semantic-layer-import/convert!]] runs it on a dbt project, before anything is written."
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer [deftest is testing]]
    [mb.hawk.assert-exprs]
    [metabase-enterprise.semantic-layer-import.core :as semantic-layer-import]
    [metabase-enterprise.semantic-layer-import.dbt.adapter :as adapter]
-   [metabase-enterprise.semantic-layer-import.dbt.core :as dbt-import]
    [metabase-enterprise.semantic-layer-import.dbt.test-util :as tu]
    [metabase.test :as mt]
    [metabase.util.json :as json]
@@ -64,9 +63,10 @@
     (let [manifest-file (io/file dir "manifest.json")
           out-dir       (io/file dir "out")
           convert!      (fn [config]
-                          (dbt-import/convert! {:manifest (str manifest-file)
-                                                :out-dir  (str out-dir)
-                                                :config   config}))]
+                          (semantic-layer-import/convert! {:type    :dbt
+                                                           :raw     (str manifest-file)
+                                                           :out-dir (str out-dir)
+                                                           :config  config}))]
       (spit manifest-file (json/encode (tu/build-manifest {})))
       (testing "a :driver that disagrees with the manifest's adapter_type fails the run before anything is written"
         (is (thrown-with-msg? ExceptionInfo
