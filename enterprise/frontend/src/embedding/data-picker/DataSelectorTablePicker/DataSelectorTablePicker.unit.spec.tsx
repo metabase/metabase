@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -12,6 +14,7 @@ const NOT_SYNCED_DB_STATUSES: InitialSyncStatus[] = ["aborted", "incomplete"];
 
 interface SetupOpts {
   database: Database;
+  onBack?: () => void;
 }
 
 const setup = (opts: SetupOpts) => {
@@ -22,16 +25,21 @@ const setup = (opts: SetupOpts) => {
   const database = checkNotNull(lookups.database(opts.database.id));
   const schemas = lookups.databaseSchemas(database.id);
   const tables = lookups.databaseTables(database.id);
+  const onChangeTable = jest.fn();
 
   renderWithProviders(
     <DataSelectorTablePicker
       selectedDatabase={database}
       schemas={schemas}
       tables={tables}
-      onChangeTable={jest.fn()}
+      hasInitialFocus
+      onBack={opts.onBack}
+      onChangeTable={onChangeTable}
     />,
     { storeInitialState: state },
   );
+
+  return { onChangeTable };
 };
 
 describe("DataSelectorTablePicker", () => {
@@ -91,5 +99,39 @@ describe("DataSelectorTablePicker", () => {
     expect(screen.getByText("People")).toBeInTheDocument();
     expect(screen.getAllByLabelText("table icon")).toHaveLength(2);
     expect(screen.queryByLabelText("More info")).not.toBeInTheDocument();
+  });
+
+  it("goes back with Enter from the database back link without picking the table under the list cursor", async () => {
+    const onBack = jest.fn();
+    const database = createMockDatabase({ tables: [createMockTable()] });
+    const { onChangeTable } = setup({ database, onBack });
+
+    // highlight a table row, so an Enter that reaches the list would pick it
+    await userEvent.keyboard("{ArrowDown}{ArrowDown}");
+    // focus the database's back link
+    await userEvent.tab();
+    expect(
+      screen.getByRole("button", { name: `chevronleft icon ${database.name}` }),
+    ).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+
+    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(onChangeTable).not.toHaveBeenCalled();
+  });
+
+  it("goes back once with Space from the back link", async () => {
+    const onBack = jest.fn();
+    const database = createMockDatabase({ tables: [createMockTable()] });
+    const { onChangeTable } = setup({ database, onBack });
+
+    // focus the database's back link
+    await userEvent.tab();
+    expect(
+      screen.getByRole("button", { name: `chevronleft icon ${database.name}` }),
+    ).toHaveFocus();
+    await userEvent.keyboard(" ");
+
+    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(onChangeTable).not.toHaveBeenCalled();
   });
 });

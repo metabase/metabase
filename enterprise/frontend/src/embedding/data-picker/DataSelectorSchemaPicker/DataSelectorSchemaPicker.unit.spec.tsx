@@ -67,4 +67,42 @@ describe("DataSelectorSchemaPicker", () => {
     expect(onBack).toHaveBeenCalledTimes(1);
     expect(onChangeSchema).not.toHaveBeenCalled();
   });
+
+  it("goes back with Enter from the Warehouse back link without picking the schema under the list cursor", async () => {
+    const onBack = jest.fn();
+    const { onChangeSchema } = setup({
+      schemaNames: ["Accounting", "Finance"],
+      onBack,
+    });
+
+    // highlight a schema row, so an Enter that reaches the list would pick it
+    await userEvent.keyboard("{ArrowDown}{ArrowDown}");
+    // focus the "‹ Warehouse" back link
+    await userEvent.tab();
+    expect(
+      screen.getByRole("button", { name: "chevronleft icon Warehouse" }),
+    ).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+
+    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(onChangeSchema).not.toHaveBeenCalled();
+  });
+
+  it("goes back once with Space from the back link", async () => {
+    const onBack = jest.fn();
+    const { onChangeSchema } = setup({
+      schemaNames: ["Accounting", "Finance"],
+      onBack,
+    });
+
+    // focus the "‹ Warehouse" back link
+    await userEvent.tab();
+    expect(
+      screen.getByRole("button", { name: "chevronleft icon Warehouse" }),
+    ).toHaveFocus();
+    await userEvent.keyboard(" ");
+
+    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(onChangeSchema).not.toHaveBeenCalled();
+  });
 });

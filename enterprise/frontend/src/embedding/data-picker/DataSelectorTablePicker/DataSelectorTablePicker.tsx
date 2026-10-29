@@ -14,7 +14,7 @@ import type {
   DataSelectorSchema,
   DataSelectorTable,
 } from "metabase/querying/common/components/DataSelector";
-import { Box, Flex, Icon, rem } from "metabase/ui";
+import { Box, Flex, Icon, UnstyledButton, rem } from "metabase/ui";
 import { isSyncCompleted } from "metabase/utils/syncing";
 import { isNotNull } from "metabase/utils/types";
 import { getSchemaDisplayName } from "metabase-lib/v1/metadata/utils/schema";
@@ -187,16 +187,23 @@ const Header = ({
 
   return (
     <Flex align="center" wrap="wrap">
-      <Flex
-        align="center"
-        style={{ cursor: "pointer" }}
+      <UnstyledButton
+        display="flex"
+        fz="inherit"
+        disabled={!onBack}
+        style={{ alignItems: "center" }}
         onClick={onBack ?? undefined}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.stopPropagation();
+          }
+        }}
       >
         {onBack && <Icon name="chevronleft" size={18} />}
         <Box component="span" ml="sm" data-testid="source-database">
           {tc(selectedDatabase.name)}
         </Box>
-      </Flex>
+      </UnstyledButton>
 
       {selectedSchema?.name && schemas.length > 1 && (
         <>

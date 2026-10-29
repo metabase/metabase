@@ -8,7 +8,7 @@ import type {
   DataSelectorDatabase,
   DataSelectorSchema,
 } from "metabase/querying/common/components/DataSelector";
-import { Box, Flex, Icon } from "metabase/ui";
+import { Box, Icon, UnstyledButton } from "metabase/ui";
 import { getSchemaDisplayName } from "metabase-lib/v1/metadata/utils/schema";
 import type { SchemaId } from "metabase-types/api";
 
@@ -43,16 +43,23 @@ export const DataSelectorSchemaPicker = ({
   const sections: Section<Item>[] = [
     {
       name: (
-        <Flex
-          align="center"
-          style={{ cursor: "pointer" }}
+        <UnstyledButton
+          display="flex"
+          fz="inherit"
+          disabled={!onBack}
+          style={{ alignItems: "center" }}
           onClick={onBack ?? undefined}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.stopPropagation();
+            }
+          }}
         >
           {onBack && <Icon name="chevronleft" size={18} />}
           <Box component="span" ml="sm">
             {selectedDatabase && tc(selectedDatabase.name)}
           </Box>
-        </Flex>
+        </UnstyledButton>
       ),
       type: "back",
       items: schemas.map((schema) => ({

@@ -31,6 +31,7 @@ const setup = ({ databases = [TEST_DATABASE], onBack }: SetupOpts = {}) => {
       databases={databases.map((database) =>
         checkNotNull(lookups.database(database.id)),
       )}
+      hasInitialFocus
       onBack={onBack}
       onChangeDatabase={onChangeDatabase}
     />,
@@ -57,5 +58,43 @@ describe("DataSelectorDatabasePicker", () => {
     expect(onBack).toHaveBeenCalledTimes(1);
     expect(onChangeDatabase).not.toHaveBeenCalled();
     expect(screen.getByText("Sample Database")).toBeInTheDocument();
+  });
+
+  it("goes back with Enter from the Raw Data back link without picking the database under the list cursor", async () => {
+    const onBack = jest.fn();
+    const { onChangeDatabase } = setup({
+      databases: [SAMPLE_DATABASE, WAREHOUSE_DATABASE],
+      onBack,
+    });
+
+    // highlight a database row, so an Enter that reaches the list would pick it
+    await userEvent.keyboard("{ArrowDown}{ArrowDown}");
+    // focus the "‹ Raw Data" back link
+    await userEvent.tab();
+    expect(
+      screen.getByRole("button", { name: "chevronleft icon Raw Data" }),
+    ).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+
+    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(onChangeDatabase).not.toHaveBeenCalled();
+  });
+
+  it("goes back once with Space from the Raw Data back link", async () => {
+    const onBack = jest.fn();
+    const { onChangeDatabase } = setup({
+      databases: [SAMPLE_DATABASE, WAREHOUSE_DATABASE],
+      onBack,
+    });
+
+    // focus the "‹ Raw Data" back link
+    await userEvent.tab();
+    expect(
+      screen.getByRole("button", { name: "chevronleft icon Raw Data" }),
+    ).toHaveFocus();
+    await userEvent.keyboard(" ");
+
+    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(onChangeDatabase).not.toHaveBeenCalled();
   });
 });
