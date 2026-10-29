@@ -349,6 +349,20 @@
           (testing "and the atomic save means nothing changed"
             (is (= "Cat" (:name (param))))))))))
 
+(deftest response-echoes-parameter-default-and-value-source-test
+  (testing "BOT-2524: the response shows each parameter's default, required flag, and value source"
+    (mt/with-temp [:model/Dashboard dash {:name "Sales"}]
+      (let [run! (fn [ops] (tool-result (call-tool! :crowberto v2.tu/all-scopes "dashboard_write"
+                                                    (wire {:method "update" :id (:id dash) :ops ops}))))]
+        (run! [{:op "add_parameter" :parameter_id "country" :name "Country" :type "string/="}])
+        (is (=? {:parameters [{:id                   "country"
+                               :default              ["US"]
+                               :required             true
+                               :values_source_type   "static-list"
+                               :values_source_config {:values ["US" "CA"]}}]}
+                (run! [{:op "update_parameter" :parameter_id "country" :default ["US"] :required true
+                        :values_source_type "static-list" :values_source_config {:values ["US" "CA"]}}])))))))
+
 (deftest unknown-card-is-a-teaching-error-test
   (testing "GHY-4147: add_card referencing a card the user cannot read fails before any write"
     (mt/with-temp [:model/Dashboard dash {:name "Sales"}]
