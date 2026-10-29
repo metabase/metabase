@@ -13,7 +13,6 @@
    [clojure.test :refer [deftest is testing]]
    [medley.core :as m]
    [metabase-enterprise.semantic-layer-import.core :as semantic-layer-import]
-   [metabase-enterprise.semantic-layer-import.dbt.core :as dbt-import]
    [metabase-enterprise.semantic-layer-import.dbt.test-util :as tu]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase-enterprise.serialization.v2.load :as serdes.load]
@@ -42,11 +41,12 @@
   `:preflight`."
   []
   (mt/with-temp-dir [out-dir nil]
-    (let [report    (dbt-import/convert! {:manifest tu/flexanalytics-manifest-filename
-                                          :out-dir  out-dir
-                                          :config   {:databases     {"dbt_bi" (:name (mt/db))}
-                                                     :driver        :postgres
-                                                     :creator-email (:email (mt/fetch-user :crowberto))}})
+    (let [report    (semantic-layer-import/convert! {:type    :dbt
+                                                     :raw     tu/flexanalytics-manifest-filename
+                                                     :out-dir out-dir
+                                                     :config  {:databases     {"dbt_bi" (:name (mt/db))}
+                                                               :driver        :postgres
+                                                               :creator-email (:email (mt/fetch-user :crowberto))}})
           preflight (semantic-layer-import/preflight {:out-dir out-dir})]
       (mt/with-dynamic-fn-redefs [search/reindex! (constantly nil)]
         (serdes.load/load-metabase! (serdes.ingest/ingest-yaml out-dir)))

@@ -1,17 +1,19 @@
 (ns metabase-enterprise.semantic-layer-import.dbt.core-test
-  "The dbt entry point, [[dbt-import/convert!]]: a manifest file in, a serdes tree and a report out. The report is
-  what a user of the tool reads, so its shape is pinned here: what converted and where it was written, with its notes
-  and the dimensions it could not be given; what did not convert, with the reason; and what the import failed on."
+  "The dbt source through the import's entry point, [[semantic-layer-import/convert!]] with `:type` `:dbt`: a manifest
+  file in, a serdes tree and a report out. The report is what a user of the tool reads, so its shape is pinned here:
+  what converted and where it was written, with its notes and the dimensions it could not be given; what did not
+  convert, with the reason; and what the import failed on."
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.semantic-layer-import.core :as semantic-layer-import]
-   [metabase-enterprise.semantic-layer-import.dbt.core :as dbt-import]
    [metabase-enterprise.semantic-layer-import.dbt.test-util :as tu]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
 
@@ -58,9 +60,9 @@
           _             (spit manifest-file (json/encode (tu/build-manifest {:measures [(tu/base-measure) avg-one]
                                                                              :edit     (comp with-cumulative-metric
                                                                                              with-avg-one-metric)})))
-          report        (dbt-import/convert! {:manifest (str manifest-file)
-                                              :out-dir  out-dir
-                                              :config   (assoc tu/default-config :collection-name "dbt import")})
+          config        (assoc tu/default-config :collection-name "dbt import")
+          report        (semantic-layer-import/convert! {:type :dbt, :raw (str manifest-file), :out-dir out-dir
+                                                         :config config})
           read-yaml     (partial tu/read-yaml out-dir)]
       (is (mr/validate ::semantic-layer-import/report report))
       (is (= out-dir (:out-dir report)))
@@ -96,3 +98,34 @@
             "nothing is written for the metric that did not convert")
         (is (= #{"cumulative_sales.yaml" "m.yaml"}
                (set (.list (io/file out-dir "collections/main/dbt_import")))))))))
+
+(deftest convert!-options-test
+  (testing "the dbt source's own :options reach its parser"
+    (mt/with-temp-dir [dir nil]
+      (let [twin          (assoc (tu/product-semantic-model)
+                                 :unique_id "semantic_model.p.dim_product_2"
+                                 :name      "dim_product_2")
+            manifest-file (io/file dir "manifest.json")
+            convert!      (fn [options]
+                            (semantic-layer-import/convert! (cond-> {:type    :dbt
+                                                                     :raw     (str manifest-file)
+                                                                     :out-dir (str (io/file dir "out"))
+                                                                     :config  tu/default-config}
+                                                              options (assoc :options options))))
+            ambiguous     (fn [report]
+                            (->> report :converted first :unsupported-dimensions
+                                 (filter #(re-find #"more than one semantic model has entity \"product\"" (:reason %)))
+                                 (map :name)
+                                 set))]
+        (spit manifest-file (json/encode (tu/build-manifest
+                                          {:edit #(assoc-in % [:semantic_models (:unique_id twin)] twin)})))
+        (testing "without :entity-models, every dimension joined through the twice-keyed entity is ambiguous"
+          (is (= (set (map :name (:dimensions twin)))
+                 (ambiguous (convert! nil)))))
+        (testing "with them, it joins to the semantic model they name"
+          (is (= #{}
+                 (ambiguous (convert! {:entity-models {"product" "dim_product"}})))))
+        (testing "an option the dbt source does not know fails the run"
+          (is (thrown-with-msg? ExceptionInfo
+                                #"Invalid input"
+                                (convert! {:entity-model {"product" "dim_product"}}))))))))

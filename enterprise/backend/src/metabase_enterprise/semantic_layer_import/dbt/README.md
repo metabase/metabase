@@ -17,7 +17,8 @@ The dbt source is a nested module, `enterprise/semantic-layer-import.dbt`:
 - `dbt.filters` rewrites a `filter`'s Jinja templates into IR filters, and reports the MetricFlow syntax they cannot
   hold;
 - `dbt.adapter` maps the dbt adapter the manifest was written with to a Metabase driver;
-- `dbt.core` is the entry point, `convert!`.
+- `dbt.core` implements `interface/raw->ir` for `:dbt`: the module's `core/convert!` loads it and calls it to parse a
+  manifest.
 
 ## Importing a dbt project
 
@@ -78,16 +79,18 @@ reads a missing key as `null`.
 From a dev REPL (needs the `:ee` alias on the classpath for the serdes YAML writer):
 
 ```clojure
-(require '[metabase-enterprise.semantic-layer-import.dbt.core :as dbt-import])
+(require '[metabase-enterprise.semantic-layer-import.core :as semantic-layer-import])
 
-(dbt-import/convert! {:manifest "/path/to/dbt-business-intelligence/target/manifest.json"
-                      :out-dir  "/path/to/serdes-out"
-                      :config   {:databases     {"dbt_bi" "Sales DB"}   ; warehouse db name -> Metabase Database name
-                                 :driver        :postgres               ; the Metabase driver for those databases
-                                 :creator-email "admin@example.com"}})  ; the user the cards are created as
+(semantic-layer-import/convert!
+ {:type    :dbt
+  :raw     "/path/to/dbt-business-intelligence/target/manifest.json"
+  :out-dir "/path/to/serdes-out"
+  :config  {:databases     {"dbt_bi" "Sales DB"}   ; warehouse db name -> Metabase Database name
+            :driver        :postgres               ; the Metabase driver for those databases
+            :creator-email "admin@example.com"}})  ; the user the cards are created as
 ```
 
-A relative `:out-dir` (or `:manifest`) resolves against the JVM's working directory (`user.dir`): the repo root for a
+A relative `:out-dir` (or `:raw`) resolves against the JVM's working directory (`user.dir`): the repo root for a
 REPL started there. `convert!` returns the report the module's README describes, and the tree it writes is checked
 with `metabase-enterprise.semantic-layer-import.core/preflight` before importing it (see "Importing the result" there).
 
@@ -99,10 +102,11 @@ The `:config` is the import's, described in the module's README. For dbt:
 - `:schema-mapping` maps a dbt `schema_name`;
 - `:collection-name` defaults to `dbt metrics`, written as `collections/main/dbt_metrics.yaml` and `dbt_metrics/`.
 
-Beside it, `convert!` takes the dbt source's own option, `:entity-models`: entity name to semantic model name, which
-semantic model a foreign or unique entity joins to when more than one other semantic model is keyed by that entity,
-as its primary entity or as a unique one (see "Entities and dimensions"). An entity exactly one model is keyed by
-needs no entry; when several are, an entry naming a model that is not keyed by the entity is reported.
+Beside it, `convert!` takes the dbt source's own option under `:options`, `{:entity-models {...}}`: entity name to
+semantic model name, which semantic model a foreign or unique entity joins to when more than one other semantic model
+is keyed by that entity, as its primary entity or as a unique one (see "Entities and dimensions"). An entity exactly
+one model is keyed by needs no entry; when several are, an entry naming a model that is not keyed by the entity is
+reported.
 
 The `:driver` has to agree with the dbt adapter the manifest was written with (`metadata.adapter_type`, the `type` of
 the profile `dbt parse` ran with): `convert!` fails up front when the adapter maps to another driver (`postgres` →
