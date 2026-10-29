@@ -4168,7 +4168,11 @@
                  :join-stage 0
                  :stage      1}
                 e))
-        (is (str/starts-with? (:message e) "In join \"Two\" of stage 0: No column named \"nope\""))))))
+        (is (str/starts-with? (:message e) "In join \"Two\" of stage 0: No column named \"nope\""))))
+    (testing "a bad name inside a join with no alias is reported as being in such a join"
+      (let [no-alias (-> (join "Two" (two-stage "nope")) (dissoc "alias") (assoc "conditions" []))]
+        (is (str/starts-with? (:message (repair-error (query (orders-stage {"joins" [no-alias]}))))
+                              "In a join with no alias in stage 0: No column named \"nope\""))))))
 
 (deftest ^:parallel join-fields-ref-without-alias-test
   (let [join-fields (fn [previous-stage]
