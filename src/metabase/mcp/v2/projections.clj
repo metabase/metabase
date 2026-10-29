@@ -250,8 +250,9 @@
     :inline_parameters (not-empty (:inline_parameters dc))}))
 
 (defn- dashboard-parameters-summary
-  "One row per dashboard parameter: id, name, type, default, required flag, value source, and wired dashcard ids.
-   The ids come from `:parameter_mappings`, so a dry run's unsaved dashcards appear under their negative ids."
+  "One row per dashboard parameter, with its id, name, type, default, required flag and value source.
+   Each row also lists the dashcards wired to the parameter through their `:parameter_mappings`.
+   A dry run's unsaved dashcards appear under their negative ids."
   [dash]
   (let [param-id->dashcard-ids (reduce (fn [acc {dashcard-id :id :keys [parameter_mappings]}]
                                          (reduce #(update %1 (u/qualified-name (:parameter_id %2)) (fnil conj #{}) dashcard-id)
@@ -269,9 +270,10 @@
               :default              (:default param)
               :required             (:required param)
               :values_source_type   (:values_source_type param)
-              ;; TODO (Chris 2026-10-29) -- `values_source_config` carries a static list's every value into each
-              ;; concise read and every `dashboard_write` response, so a long list fills the agent's context.
-              ;; Trimming it changes what agents see on every surface that reads this row: decide it with evals.
+              ;; TODO (Chris 2026-10-29) -- a static list's `values_source_config` carries every value into
+              ;; each concise read and every `dashboard_write` response. A long list fills the agent's
+              ;; context. Trimming it changes what agents see on every surface that reads this row, so
+              ;; decide it with evals.
               :values_source_config (:values_source_config param)
               :dashcard_ids         (->> (get param-id->dashcard-ids (u/qualified-name param-id))
                                          (remove nil?)
