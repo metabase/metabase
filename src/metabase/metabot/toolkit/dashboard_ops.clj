@@ -68,12 +68,16 @@
 
 (defn- fail!
   "Throw the error `code` from [[errors]], with `data` holding the values that explain it.
-   Asserts that the code is in [[errors]] and that `data` matches its schema there."
+   An unknown code, or data that breaks the code's schema, throws a plain `ex-info` instead.
+   That is a bug in the caller, and no tool words it as a teaching error."
   ([code] (fail! code {}))
   ([code data]
-   (assert (contains? errors code) (str "Unknown dashboard op error code " code))
-   (assert (mr/validate (get errors code) data)
-           (str "Data for dashboard op error " code " does not match its schema: " (pr-str data)))
+   ;; Not `assert`: an AssertionError is not an Exception, so MCP's registry would not sanitize it.
+   (when-not (contains? errors code)
+     (throw (ex-info (str "Unknown dashboard op error code " code) {:code code})))
+   (when-not (mr/validate (get errors code) data)
+     (throw (ex-info (str "Data for dashboard op error " code " does not match its schema")
+                     {:code code, :data data})))
    (throw (ex-info (str "Invalid dashboard op: " (name code))
                    (assoc data ::error code)))))
 
@@ -755,20 +759,27 @@
           (when (contains? parameter-ops (:op op))
             (some-> (get-in op [:values_source_config :card_id]) vector))))
 
+(defn- dashboard-card-ids
+  "The ids of every card `dash` references: on its dashcards, in their series, and as a parameter's card source.
+   These are the references the save treats as already stored, and leaves alone."
+  [dash]
+  (-> #{}
+      (into (mapcat (fn [dc] (cons (:card_id dc) (keep :id (:series dc))))) (:dashcards dash))
+      (into (keep source-card-id) (:parameters dash))
+      (disj nil)))
+
 (defn- check-cards-resolved!
   "Every card `op` puts on the dashboard must be in the caller's `cards` map.
-   So must a source card the op gives a parameter, which may come from the config the parameter already had.
-   A source card the parameter had before the op is not checked again, just as the save leaves stored references alone.
+   So must the source card of a parameter it leaves with a card source, which may come from the config it already had.
+   A card the dashboard already referenced before the ops is exempt, as the save leaves stored references alone.
    The caller leaves out the cards its user cannot read, so this is where an op naming one fails.
-   The states are the ones before and after the op."
-  [before after op]
+   `state` is the state after the op."
+  [state op]
   (doseq [card-id (concat (placed-card-ids op)
                           (when (contains? parameter-ops (:op op))
-                            (let [source     #(some-> (find-row % :parameters (:parameter_id op)) source-card-id)
-                                  new-source (source after)]
-                              (when (and new-source (not= new-source (source before)))
-                                [new-source]))))
-          :when   (not (contains? (::cards after) card-id))]
+                            (some-> (find-row state :parameters (:parameter_id op)) source-card-id vector)))
+          :when   (not (contains? (::stored-card-ids state) card-id))
+          :when   (not (contains? (::cards state) card-id))]
     (fail! :unknown-card {:card-id card-id})))
 
 (defn- at-op
@@ -811,9 +822,8 @@
   "Runs [[apply-op]] on `op`, the op at `idx`, then checks that the cards it references are resolved."
   [state idx op]
   ;; The card check runs second, so an op that is malformed in some other way reports that instead.
-  (at-op idx op #(let [after (apply-op state op)]
-                   (check-cards-resolved! state after op)
-                   after)))
+  (at-op idx op #(doto (apply-op state op)
+                   (check-cards-resolved! op))))
 
 (defn compile-ops
   "Fold `ops` over `current`, a dashboard hydrated with `[:dashcards :series :card] :tabs`.
@@ -824,11 +834,12 @@
    It covers the cards [[card-refs]] finds in `ops` and the cards already on the dashboard.
    Those include the source cards of the dashboard's parameters.
    It leaves out cards the user cannot read.
+   A card the dashboard already references needs no row, as the save leaves stored references alone.
    This namespace does no I/O, so the caller resolves them.
    Throws an error from [[errors]] on the first invalid op; read it with [[error-data]]."
   [current ops cards]
   (-> (reduce-kv apply-op-at
-                 (init-state current cards)
+                 (assoc (init-state current cards) ::stored-card-ids (dashboard-card-ids current))
                  (prepare-ops ops))
       check-tab-coverage!
       (select-keys [:dashcards :tabs :parameters])))
