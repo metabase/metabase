@@ -83,12 +83,12 @@
   "Apply `changes` to the Transform with `transform-id`."
   [transform-id :- ::lib.schema.id/transform
    changes      :- ::transforms.schema/transform.update]
-  (t2/update! :model/Transform transform-id changes))
+  (t2/update! :model/Transform :id transform-id changes))
 
 (mu/defn delete-transform!
   "Delete the Transform with `transform-id`."
   [transform-id :- ::lib.schema.id/transform]
-  (t2/delete! :model/Transform transform-id))
+  (t2/delete! :model/Transform :id transform-id))
 
 ;;; ---------------------------------------------- Transform tags ----------------------------------------------
 
@@ -471,7 +471,7 @@
   [transform-ids :- [:maybe [:or
                              [:set ::lib.schema.id/transform]
                              [:sequential ::lib.schema.id/transform]]]]
-  (t2/select :model/TransformRun (latest-run-start-times-query transform-ids)))
+  (t2/select :model/TransformRun (h2x/assert-map-or-nil! (latest-run-start-times-query transform-ids))))
 
 (mu/defn insert-run!
   "Insert `run` and return the new instance."

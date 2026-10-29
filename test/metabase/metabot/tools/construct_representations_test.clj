@@ -2772,7 +2772,7 @@
                    :model/Card {two-stage-id :id, two-stage-eid :entity_id}
                    {:name "Two-stage count" :type :metric
                     :dataset_query (-> (card-query c1-id) lib/append-stage (lib/aggregate (lib/count)))}]
-      (t2/update! :model/Card c1-id {:dataset_query (table-query :products)})
+      (t2/update! :model/Card :id c1-id {:dataset_query (table-query :products)})
       (mt/with-current-user (mt/user->id :crowberto)
         (let [mp      (mt/metadata-provider)
               rows    (fn [source metric-eid]
@@ -2811,7 +2811,7 @@
                     :type          :metric
                     :dataset_query (lib/aggregate (table-query :products) (lib/count))}]
       ;; Straight to the table: the model's `:in` transform would not store a blank query.
-      (t2/update! (t2/table-name :model/Card) metric-id {:dataset_query "{}"})
+      (t2/update! (t2/table-name :model/Card) :id metric-id {:dataset_query "{}"})
       (mt/with-current-user (mt/user->id :crowberto)
         (let [mp    (lib-be/application-database-metadata-provider (mt/id))
               query (assoc-in (lib/query mp (lib.metadata/table mp (mt/id :products)))

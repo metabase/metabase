@@ -39,7 +39,7 @@
     (mt/with-premium-features #{:transforms-basic :hosting}
       (mt/with-temp [:model/Transform transform {}
                      :model/Table     {table-id :id} {:transform_id (:id transform)}]
-        (t2/delete! :model/Transform (:id transform))
+        (t2/delete! :model/Transform :id (:id transform))
         (testing "metabase_table.transform_id -> transform.id is ON DELETE SET NULL, not left dangling"
           (is (nil? (user-table-fn :transform_id table-id))))
         (testing "GET /api/table/:id does not crash"

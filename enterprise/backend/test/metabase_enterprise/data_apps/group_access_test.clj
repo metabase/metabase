@@ -249,7 +249,7 @@
     (mt/with-temp [:model/DataApp app {}
                    :model/PermissionsGroup group {}]
       (group-access/add-groups! app [(:id group)])
-      (t2/update! :model/PermissionsGroup (:id group) {:is_tenant_group true})
+      (t2/update! :model/PermissionsGroup :id (:id group) {:is_tenant_group true})
       (mt/user-http-request :rasta :delete 403 (data-apps.tu/app-url app "groups" (:id group)))
       (is (= [(:id group)] (mapv :id (group-access/assigned-groups app))))
       (mt/user-http-request :crowberto :delete 204 (data-apps.tu/app-url app "groups" (:id group)))

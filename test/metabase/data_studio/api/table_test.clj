@@ -433,7 +433,7 @@
                                                   :schema       "PUBLIC"}]}
                   response))))
       (testing "if products is already published, it appears in published_downstream when selecting it"
-        (t2/update! :model/Table products-id {:is_published true})
+        (t2/update! :model/Table :id products-id {:is_published true})
         (let [response (mt/user-http-request :crowberto :post 200 "data-studio/table/selection"
                                              {:table_ids [products-id]})]
           (is (=? {:selected_table               {:id           products-id
@@ -448,8 +448,8 @@
           ;; but orders is already unpublished, so published_downstream_tables should be empty
           (is (= [] (:published_downstream_tables response)))))
       (testing "when orders is published and we select products, orders appears in published_downstream"
-        (t2/update! :model/Table orders-id {:is_published true})
-        (t2/update! :model/Table products-id {:is_published true})
+        (t2/update! :model/Table :id orders-id {:is_published true})
+        (t2/update! :model/Table :id products-id {:is_published true})
         (let [response (mt/user-http-request :crowberto :post 200 "data-studio/table/selection"
                                              {:table_ids [products-id]})]
           (is (=? {:selected_table               {:id           products-id

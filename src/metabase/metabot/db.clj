@@ -15,6 +15,7 @@
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
@@ -53,7 +54,7 @@
   "Apply `changes` to the Metabot with `metabot-id`."
   [metabot-id :- ms/PositiveInt
    changes :- (mut/select-keys ::metabot.schema/metabot.update [:use_verified_content :collection_id])]
-  (t2/update! :model/Metabot metabot-id changes))
+  (t2/update! :model/Metabot :id metabot-id changes))
 
 ;;; --------------------------------------------- Metabot prompts ---------------------------------------------
 
@@ -101,12 +102,13 @@
               [:card.name :model_name]
               :created_at
               :updated_at]
-             (cond-> (prompts-for-metabot-query metabot-id card-type card-id)
-               true   (assoc :order-by (if sample?
-                                         (prompt-sample-order-by)
-                                         [[:card.name :asc] [:id :asc]]))
-               limit  (assoc :limit limit)
-               offset (assoc :offset offset))))
+             (h2x/assert-map-or-nil!
+              (cond-> (prompts-for-metabot-query metabot-id card-type card-id)
+                true   (assoc :order-by (if sample?
+                                          (prompt-sample-order-by)
+                                          [[:card.name :asc] [:id :asc]]))
+                limit  (assoc :limit limit)
+                offset (assoc :offset offset)))))
 
 (mu/defn prompt-count
   "The number of MetabotPrompts of the Metabot with `metabot-id` whose Card is within scope, optionally restricted to
@@ -114,7 +116,7 @@
   [metabot-id :- ms/PositiveInt
    card-type :- [:maybe [:enum "metric" "model"]]
    card-id :- [:maybe ::lib.schema.id/card]]
-  (t2/count :model/MetabotPrompt (prompts-for-metabot-query metabot-id card-type card-id)))
+  (t2/count :model/MetabotPrompt (h2x/assert-map-or-nil! (prompts-for-metabot-query metabot-id card-type card-id))))
 
 (mu/defn prompt-count-for-metabot
   "The number of MetabotPrompts of the Metabot with `metabot-id`."
@@ -356,7 +358,7 @@
   "Apply `changes` to the MetabotMessage with `message-id`."
   [message-id :- ms/PositiveInt
    changes :- ::metabot.schema/metabot-message.update]
-  (t2/update! :model/MetabotMessage message-id changes))
+  (t2/update! :model/MetabotMessage :id message-id changes))
 
 (mu/defn soft-delete-messages-where!
   "Soft-delete the MetabotMessages matching `conditions` on behalf of `deleted-by-user-id`, returning the number of
@@ -373,8 +375,8 @@
   (let [{:keys [id]} conditions
         conditions   (cond-> conditions
                        (coll? id) (assoc :id [:in id]))]
-    (t2/update! :model/MetabotMessage conditions {:deleted_at         [:now]
-                                                  :deleted_by_user_id deleted-by-user-id})))
+    (t2/update! :model/MetabotMessage (h2x/assert-map-or-nil! conditions) {:deleted_at         [:now]
+                                                                           :deleted_by_user_id deleted-by-user-id})))
 
 (mu/defn insert-used-tables!
   "Insert the MetabotUsedTable `rows`."
@@ -425,7 +427,7 @@
   "The `columns` of the Database with `database-id`."
   [columns :- [:sequential :keyword]
    database-id :- ::lib.schema.id/database]
-  (t2/select-one columns database-id))
+  (t2/select-one columns :id database-id))
 
 (mu/defn database-exists?
   "Whether a Database with `database-id` exists."
@@ -807,8 +809,9 @@
   given, caps the number of rows returned."
   [metabot-id :- ms/PositiveInt
    limit      :- [:maybe ms/PositiveInt]]
-  (t2/select :model/Card (-> (metabot-metrics-and-models-query metabot-id limit)
-                             (update :order-by (fnil conj []) [:report_card.id]))))
+  (t2/select :model/Card (h2x/assert-map-or-nil!
+                          (-> (metabot-metrics-and-models-query metabot-id limit)
+                              (update :order-by (fnil conj []) [:report_card.id])))))
 
 (mu/defn card-entity-ids
   "A map of Card ID to entity ID for `card-ids`."
@@ -886,8 +889,8 @@
   [card-id :- ::lib.schema.id/card
    conversation-id :- :string
    chart-id :- :string]
-  (t2/update! (t2/table-name :model/Card) card-id {:metabot_conversation_id conversation-id
-                                                   :metabot_chart_id        chart-id}))
+  (t2/update! (t2/table-name :model/Card) :id card-id {:metabot_conversation_id conversation-id
+                                                       :metabot_chart_id        chart-id}))
 
 ;;; ----------------------------------------------- Collections -----------------------------------------------
 

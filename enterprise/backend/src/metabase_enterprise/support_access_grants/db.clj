@@ -73,7 +73,7 @@
   "Apply `changes` to the SupportAccessGrantLog with `grant-id`, returning the number updated."
   [grant-id :- ms/PositiveInt
    changes  :- (mut/select-keys ::support-access-grants.schema/support-access-grant-log.update [:revoked_at :revoked_by_user_id])]
-  (t2/update! :model/SupportAccessGrantLog grant-id changes))
+  (t2/update! :model/SupportAccessGrantLog :id grant-id changes))
 
 (mu/defn user
   "The User with `user-id`, or nil."
@@ -104,7 +104,7 @@
   "Apply `changes` to the User with `user-id`, returning the number updated."
   [user-id :- ::lib.schema.id/user
    changes :- (mut/select-keys ::users.schema/user.update [:is_active :is_superuser])]
-  (t2/update! :model/User user-id changes))
+  (t2/update! :model/User :id user-id changes))
 
 (mu/defn unended-session-exists-for-user?
   "Whether the User with `user-id` has a Session whose ending has not been recorded."
@@ -155,7 +155,7 @@
                                    [:map {:closed true}
                                     [:user_agent {:optional true} [:maybe :string]]
                                     [:timestamp  {:optional true} [:or ms/TemporalInstant :string]]]]]]]]]
-  (t2/update! :model/AuthIdentity auth-identity-id changes))
+  (t2/update! :model/AuthIdentity :id auth-identity-id changes))
 
 (mu/defn expire-auth-identities!
   "Set the expiry of the AuthIdentities with `auth-identity-ids` to `expires-at`, returning the number updated."

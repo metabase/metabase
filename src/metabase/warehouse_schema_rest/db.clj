@@ -52,7 +52,7 @@
   "Apply `changes` to the Dimension with `id`."
   [id      :- ::lib.schema.id/dimension
    changes :- (mut/select-keys ::warehouse-schema.schema/dimension.update [:type :name :human_readable_field_id])]
-  (t2/update! :model/Dimension id changes))
+  (t2/update! :model/Dimension :id id changes))
 
 (mu/defn rename-dimension-for-field!
   "Set the name of the Dimension of the Field with `field-id`."
