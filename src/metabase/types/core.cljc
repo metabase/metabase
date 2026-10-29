@@ -508,9 +508,9 @@
 ;; Binary columns sync as `:type/Binary`; drivers that don't know a type map it to `:type/*`, which is also what binary
 ;; columns synced before `:type/Binary` existed still have until their next sync. Both may hold byte-encoded timestamps.
 (coercion-hierarchies/define-non-inheritable-type! :Coercion/YYYYMMDDHHMMSSBytes->Temporal
-                                                   #{:type/* :type/Binary} :type/DateTime)
+  #{:type/* :type/Binary} :type/DateTime)
 (coercion-hierarchies/define-non-inheritable-type! :Coercion/ISO8601Bytes->Temporal
-                                                   #{:type/* :type/Binary} :type/DateTime)
+  #{:type/* :type/Binary} :type/DateTime)
 
 (coercion-hierarchies/define-non-inheritable-type! :Coercion/String->Float :type/Text :type/Float)
 
