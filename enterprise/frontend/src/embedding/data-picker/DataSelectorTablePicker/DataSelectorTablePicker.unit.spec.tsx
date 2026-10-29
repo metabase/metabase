@@ -64,11 +64,32 @@ describe("DataSelectorTablePicker", () => {
   });
 
   it("show tables in the database", () => {
-    const table = createMockTable({ description: "This a table description" });
+    const table = createMockTable();
     const database = createMockDatabase({ tables: [table] });
     setup({ database });
     expect(screen.getByText(database.name)).toBeInTheDocument();
     expect(screen.getByText(table.display_name)).toBeInTheDocument();
-    expect(screen.getByLabelText("More info")).toBeInTheDocument();
+  });
+
+  it("shows a plain table icon and no info icon on every row, with or without a description", () => {
+    const describedTable = createMockTable({
+      id: 1,
+      display_name: "Orders",
+      description:
+        "Confirmed Sample Company orders for a product, from a user.",
+    });
+    const undescribedTable = createMockTable({
+      id: 2,
+      display_name: "People",
+    });
+    const database = createMockDatabase({
+      tables: [describedTable, undescribedTable],
+    });
+    setup({ database });
+
+    expect(screen.getByText("Orders")).toBeInTheDocument();
+    expect(screen.getByText("People")).toBeInTheDocument();
+    expect(screen.getAllByLabelText("table icon")).toHaveLength(2);
+    expect(screen.queryByLabelText("More info")).not.toBeInTheDocument();
   });
 });
