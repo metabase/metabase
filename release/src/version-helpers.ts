@@ -295,7 +295,7 @@ export function isPatchVersion(version: string) {
 }
 
 const normalizeVersionForSorting = (version: string) =>
-  version.replace(/^(v?)(0|1)\./, "").replace(/-.*$/, "");
+  version.replace(/^(v?)(0|1)\./, "").split("-")[0];
 
 export function versionSort(a: string, b: string) {
   const [aMajor, aMinor, aPatch] = normalizeVersionForSorting(a)

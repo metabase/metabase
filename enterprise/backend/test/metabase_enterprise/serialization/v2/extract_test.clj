@@ -2665,11 +2665,12 @@
                                                                  :identifier   "test-plugin"
                                                                  :status       :active
                                                                  :bundle       (cv.tu/make-tgz-bytes files)}]
-        (let [ser (serdes/extract-one "CustomVizPlugin" {} (t2/select-one :model/CustomVizPlugin :id plugin-id))]
+        (let [ser (serdes/extract-one "CustomVizPlugin" {} (t2/select-one [:model/CustomVizPlugin :*] :id plugin-id))]
           (is (=? {:serdes/meta [{:model "CustomVizPlugin" :id "test-plugin"}]
-                   :identifier  "test-plugin"}
+                   :identifier  "test-plugin"
+                   :files       ["dist/index.js" "metabase-plugin.json"]}
                   ser))
-          (is (= #{:serdes/meta :identifier :serdes/resources} (set (keys ser))))
+          (is (= #{:serdes/meta :identifier :files :serdes/resources} (set (keys ser))))
           (is (= (update-vals files seq) (update-vals (:serdes/resources ser) seq)))
           (is (empty? (serdes/deserialization-dependencies ser))))))))
 

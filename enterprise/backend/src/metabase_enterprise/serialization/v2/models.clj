@@ -95,7 +95,6 @@
    "ContentDiagnosticsFinding"
    "ContentTranslation"
    "DashboardBookmark"
-   "DataAppGroupAssignment"
    "DataComplexityScore"
    "DataPermissions"
    "DatabaseRouter"

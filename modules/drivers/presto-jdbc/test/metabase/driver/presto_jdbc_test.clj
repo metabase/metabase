@@ -12,16 +12,22 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.presto-jdbc :as data.presto-jdbc]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.json :as json]
    [metabase.warehouses.core :as warehouses]
    [toucan2.core :as t2])
   (:import
-   (java.io File)))
+   (com.sun.net.httpserver HttpExchange HttpHandler HttpServer)
+   (java.io File)
+   (java.net InetSocketAddress)
+   (java.sql DriverManager SQLException)
+   (java.util Properties)))
 
 (set! *warn-on-reflection* true)
 
@@ -33,7 +39,7 @@
                       {:name "test_data_checkins" :schema "default"}
                       {:name "test_data_users" :schema "default"}
                       {:name "test_data_venues" :schema "default"}}}
-           (-> (driver/describe-database :presto-jdbc (mt/db))
+           (-> (driver/describe-database :presto-jdbc (lib.metadata/database (mt/metadata-provider)))
                (update :tables #(into #{} (filter (comp #{"test_data_categories"
                                                           "test_data_venues"
                                                           "test_data_checkins"
@@ -70,7 +76,7 @@
                        :database-type "integer"
                        :base-type     :type/Integer
                        :database-position 0}}}
-           (driver/describe-table :presto-jdbc (mt/db) (t2/select-one 'Table :id (mt/id :venues)))))))
+           (driver/describe-table :presto-jdbc (lib.metadata/database (mt/metadata-provider)) (t2/select-one 'Table :id (mt/id :venues)))))))
 
 (deftest ^:parallel table-rows-sample-test
   (mt/test-driver :presto-jdbc
@@ -121,7 +127,7 @@
 (deftest ^:parallel db-default-timezone-test
   (mt/test-driver :presto-jdbc
     (is (= "UTC"
-           (driver/db-default-timezone :presto-jdbc (mt/db))))))
+           (driver/db-default-timezone :presto-jdbc (lib.metadata/database (mt/metadata-provider)))))))
 
 (deftest ^:synchronized template-tag-timezone-test
   (mt/test-driver :presto-jdbc
@@ -219,7 +225,7 @@
         (mt/with-temp [:model/Database db {:engine :presto-jdbc, :name "Temp Presto JDBC Schema DB", :details with-schema}]
           (mt/with-db db
             ;; same as test_data, but with schema, so should NOT pick up venues, users, etc.
-            (sync/sync-database! db)
+            (sync/sync-database! (:id db))
             (is (= [{:name t, :schema s, :db_id (mt/id)}]
                    (map #(select-keys % [:name :schema :db_id]) (t2/select :model/Table :db_id (mt/id)))))))
         (execute-ddl! [(format "DROP TABLE %s.%s" s t)
@@ -333,3 +339,52 @@
                   (lib/native-query (mt/metadata-provider))
                   (qp/process-query)
                   (mt/rows)))))))
+
+(defn- do-with-presto-cancellation!
+  "Run `f` with a Presto HTTP endpoint that cancels after its first page of rows."
+  [f]
+  (let [server (HttpServer/create (InetSocketAddress. "127.0.0.1" 0) 0)
+        base   (str "http://127.0.0.1:" (.getPort (.getAddress server)))
+        shared {:id "canceled-query", :infoUri (str base "/info"), :warnings []}
+        page   (merge shared {:nextUri (str base "/next")
+                              :columns [{:name "x", :type "bigint", :typeSignature {:rawType "bigint", :arguments []}}]
+                              :data [[1]], :stats {:state "RUNNING"}})
+        failed (merge shared {:stats {:state "FAILED"}
+                              :error {:message "Query was canceled", :sqlState nil, :errorCode 3
+                                      :errorName "USER_CANCELED", :errorType "USER_ERROR", :retriable false}})]
+    (.createContext server "/"
+                    (reify HttpHandler
+                      (handle [_ exchange]
+                        (let [^HttpExchange exchange exchange]
+                          (.readAllBytes (.getRequestBody exchange))
+                          (if (= "DELETE" (.getRequestMethod exchange))
+                            (.sendResponseHeaders exchange 204 -1)
+                            (let [body (.getBytes ^String (json/encode (if (= "/next" (.getPath (.getRequestURI exchange)))
+                                                                         failed page)) "UTF-8")]
+                              (.set (.getResponseHeaders exchange) "Content-Type" "application/json")
+                              (.sendResponseHeaders exchange 200 (alength body))
+                              (with-open [out (.getResponseBody exchange)] (.write out body))))
+                          (.close ^HttpExchange exchange)))))
+    (.start server)
+    (try
+      (f (.getPort (.getAddress server)))
+      (finally (.stop server 0)))))
+
+(deftest presto-server-cancellation-is-qp-error-test
+  (mt/test-driver :presto-jdbc
+    (Class/forName "com.facebook.presto.jdbc.PrestoDriver")
+    (do-with-presto-cancellation!
+     (fn [port]
+       (with-open [conn (DriverManager/getConnection (str "jdbc:presto://127.0.0.1:" port)
+                                                     (doto (Properties.) (.setProperty "user" "test")))
+                   stmt (.createStatement conn)
+                   rs (.executeQuery stmt "SELECT 1 AS x")]
+         (is (.next rs))
+         (let [failure (try (.next rs) (catch SQLException e e))]
+           (is (nil? (.getSQLState ^SQLException failure)))
+           (is (= 3 (.getErrorCode ^SQLException failure)))))
+       (mt/with-temp [:model/Database db {:engine :presto-jdbc
+                                          :details {:host "127.0.0.1", :port port, :user "test", :ssl false}}]
+         (mt/with-db db
+           (is (=? {:status :failed, :error_type :qp}
+                   (qp/process-query (qp/userland-query (lib/native-query (mt/metadata-provider) "SELECT 1 AS x")))))))))))

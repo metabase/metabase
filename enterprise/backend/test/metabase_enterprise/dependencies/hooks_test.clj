@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.data-apps.test-util :as data-apps.tu]
    [metabase-enterprise.dependencies.db :as dependencies.db]
    [metabase-enterprise.dependencies.hooks]
    [metabase-enterprise.dependencies.test-util :as deps.test]
@@ -277,6 +278,36 @@
                                                                            {:field_id field-id :name "Price"
                                                                             :type :internal}))))
               (is (changes? #(t2/delete! :model/Dimension :id @dimension-id))))))))))
+
+(deftest card-writes-mark-resource-collection-apps-in-one-statement-test
+  (testing "a card write in a data app's resource collection marks the app's dependencies stale in one statement,
+           without looking the app up first"
+    (mt/with-premium-features #{:dependencies}
+      (data-apps.tu/with-published-tables! [(mt/id :products)]
+        (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id} {:name         "birds"
+                                                                                          :display_name "Birds"
+                                                                                          :bundle_path  "birds.js"}
+                       :model/Collection {other-collection-id :id} {}
+                       :model/Card card {:dataset_query (table-query :products) :collection_id collection-id}]
+          (let [marks       (fn [hook!]
+                              (computed! :data-app app-id)
+                              {:statements (filterv (partial re-find #"(?i)\b(?:data_app|dependency_status)\b")
+                                                    (deps.test/app-db-statements hook!))
+                               :pending?   (pending? :data-app app-id)})
+                moved-to    (fn [from-collection-id to-collection-id]
+                              (assoc (t2/instance :model/Card (assoc (into {} card) :collection_id from-collection-id))
+                                     :collection_id to-collection-id))
+                one-update? {:statements [#"(?is)UPDATE\b.*"] :pending? true}]
+            (testing "inserting a card"
+              (is (=? one-update? (marks #(dependencies.hooks/before-insert :model/Card card)))))
+            (testing "moving a card out"
+              (is (=? one-update? (marks #(dependencies.hooks/before-update
+                                           :model/Card (moved-to collection-id other-collection-id))))))
+            (testing "moving a card in"
+              (is (=? one-update? (marks #(dependencies.hooks/before-update
+                                           :model/Card (moved-to other-collection-id collection-id))))))
+            (testing "deleting a card"
+              (is (=? one-update? (marks #(dependencies.hooks/before-delete :model/Card card)))))))))))
 
 (deftest entity-delete-test
   (testing "the dependency job drops the dependencies and status of a deleted entity"

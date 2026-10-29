@@ -346,6 +346,7 @@ const configs = [
     files: [
       "**/*.unit.spec.*",
       "frontend/src/metabase/admin/**/*",
+      "frontend/src/metabase/permissions/**/*",
       "frontend/src/metabase/embedding-hub/**/*",
       "frontend/src/metabase/embedding/settings/**/*",
       "frontend/src/metabase/embedding/themes/**/*",
@@ -545,6 +546,19 @@ const configs = [
     files: ["frontend/src/static-viz-server/**/*.ts"],
     rules: {
       "no-console": "off",
+    },
+  },
+  {
+    files: ["metaplow/**/*.js"],
+    languageOptions: {
+      sourceType: "commonjs",
+      globals: {
+        ...globals.node,
+      },
+    },
+    rules: {
+      "no-console": "off",
+      "import/no-commonjs": "off",
     },
   },
   {

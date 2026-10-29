@@ -1,11 +1,10 @@
 import { useCallback } from "react";
 import { useMount } from "react-use";
 
-import { updateDataPermission } from "metabase/admin/permissions/permissions";
-import { DataPermissionType } from "metabase/admin/permissions/types";
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
+import { updateDataPermission } from "metabase/permissions";
 import { useDispatch } from "metabase/redux";
 import { parseIntParam } from "metabase/urls";
 import { updateImpersonation } from "metabase-enterprise/advanced_permissions/reducer";
@@ -21,6 +20,7 @@ import { fetchUserAttributes } from "metabase-enterprise/shared/reducer";
 import { getUserAttributes } from "metabase-enterprise/shared/selectors";
 import {
   DataPermission,
+  DataPermissionType,
   DataPermissionValue,
   type UserAttributeKey,
 } from "metabase-types/api";

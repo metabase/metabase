@@ -1,10 +1,9 @@
 (ns metabase-enterprise.support-access-grants.settings
   (:require
-   [metabase.settings.core :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.settings.core :refer [defsetting]]))
 
 (defsetting support-access-grant-email
-  (deferred-tru "Email to grant temporary access to for support")
+  "Email to grant temporary access to for support"
   :encryption :when-encryption-key-set
   :type :string
   :visibility :internal
@@ -15,7 +14,7 @@
   :default "success-instance-access@metabase.com")
 
 (defsetting support-access-grant-first-name
-  (deferred-tru "First name of the support user")
+  "First name of the support user"
   :encryption :no
   :type :string
   :visibility :internal
@@ -26,7 +25,7 @@
   :default "Support")
 
 (defsetting support-access-grant-last-name
-  (deferred-tru "Last name of the support user")
+  "Last name of the support user"
   :encryption :no
   :type :string
   :visibility :internal

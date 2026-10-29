@@ -22,6 +22,7 @@
    [metabase.permissions.core :as perms]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.queries.core :as queries]
+   [metabase.queries.db :as queries.db]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-permissions.core :as query-perms]
    [metabase.query-processor.metadata :as qp.metadata]
@@ -293,7 +294,7 @@
   [card]
   (cond
     ;; If this is a pre-existing card, just return it
-    (and (integer? (:id card)) (dashboards.db/card (:id card)))
+    (and (integer? (:id card)) (queries.db/card (:id card)))
     (do
       (api/read-check :model/Card (:id card))
       card)

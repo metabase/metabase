@@ -183,6 +183,29 @@
                 nil
                 [{:name "test", :type :info}])))))))
 
+(deftest connection-props-server->client-hidden-when-hosted-test
+  (let [prop   {:name    "auth-mode"
+                :type    "select"
+                :options [{:name "Local"   :value "local"}
+                          {:name "Ambient" :value "ambient" :hidden-when-hosted true}]}
+        strip  #(-> (driver.u/connection-props-server->client nil [prop]) first :options (->> (mapv :value)))]
+    (testing "On Metabase Cloud, options tagged :hidden-when-hosted are stripped from the client payload."
+      (mt/with-premium-features #{:hosting}
+        (is (= ["local"] (strip)))))
+    (testing "Off Metabase Cloud, every option passes through unchanged."
+      (mt/with-premium-features #{}
+        (is (= ["local" "ambient"] (strip))))))
+  (testing "Group fields recurse: a tagged option inside a nested :group field is stripped on hosted."
+    (let [prop  {:type   :group
+                 :fields [{:name    "nested"
+                           :type    "select"
+                           :options [{:name "ok"    :value "ok"}
+                                     {:name "nope"  :value "nope" :hidden-when-hosted true}]}]}]
+      (mt/with-premium-features #{:hosting}
+        (is (= ["ok"]
+               (-> (driver.u/connection-props-server->client nil [prop])
+                   first :fields first :options (->> (mapv :value)))))))))
+
 (deftest ^:parallel connection-props-server->client-schema-filters-test
   (testing "connection-props-server->client works as expected for the schema-filters type"
     (is (= [{:name "first-prop"}
@@ -885,9 +908,9 @@
           (try
             (testing "an attached DWH on a private address still gets a connection pool"
               ;; fetch by id so the database takes the metadata-provider path, which must carry `is-attached-dwh`
-              (is (some? (sql-jdbc.conn/db->pooled-connection-spec (u/the-id database)))))
+              (is (some? (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (u/the-id database))))))
             (finally
-              (sql-jdbc.conn/invalidate-pool-for-db! database))))))
+              (sql-jdbc.conn/invalidate-pool-for-db! (:id database)))))))
     ;; write the ordinary row under allow-all, the way a formerly-lax instance would have, then flip the policy
     (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-all"]
       (mt/with-temp [:model/Database database {:engine  :postgres
@@ -897,7 +920,7 @@
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"private or internal network address"
-                 (sql-jdbc.conn/db->pooled-connection-spec (u/the-id database))))))))))
+                 (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (u/the-id database)))))))))))
 
 (deftest warehouse-allowed-networks-default-test
   (testing "self-hosted, with nothing configured, all networks are allowed"

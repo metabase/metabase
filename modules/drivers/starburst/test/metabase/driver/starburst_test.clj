@@ -12,6 +12,7 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.starburst :as starburst]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.timezones-test :as timezones-test]
@@ -81,7 +82,7 @@
                       {:name "venues" :schema "default"}
                       {:name "checkins" :schema "default"}
                       {:name "users" :schema "default"}}}
-           (-> (driver/describe-database :starburst (mt/db))
+           (-> (driver/describe-database :starburst (lib.metadata/database (mt/metadata-provider)))
                (update :tables #(into #{} (filter (comp #{"categories"
                                                           "venues"
                                                           "checkins"
@@ -118,7 +119,7 @@
                        :database-type "integer"
                        :base-type     :type/Integer
                        :database-position 0}}}
-           (driver/describe-table :starburst (mt/db) (t2/select-one :model/Table :id (mt/id :venues)))))))
+           (driver/describe-table :starburst (lib.metadata/database (mt/metadata-provider)) (t2/select-one :model/Table :id (mt/id :venues)))))))
 
 (deftest table-rows-sample-test
   (mt/test-driver :starburst
@@ -156,7 +157,7 @@
   (mt/test-driver :starburst
     (testing "If global timezone is 'SYSTEM', should use system timezone"
       (is (= "UTC"
-             (driver/db-default-timezone driver/*driver* (mt/db)))))))
+             (driver/db-default-timezone driver/*driver* (lib.metadata/database (mt/metadata-provider))))))))
 
 (deftest template-tag-timezone-test
   (mt/test-driver :starburst
@@ -233,7 +234,7 @@
         (t2.with-temp/with-temp [:model/Database db {:engine :starburst, :name "Temp starburst JDBC Schema DB", :details with-schema}]
           (mt/with-db db
             ;; same as test_data, but with schema, so should NOT pick up venues, users, etc.
-            (sync/sync-database! db)
+            (sync/sync-database! (:id db))
             (is (= [{:name t, :schema s, :db_id (mt/id)}]
                    (map #(select-keys % [:name :schema :db_id]) (t2/select :model/Table :db_id (mt/id)))))))
         (execute-ddl! [(format "DROP TABLE %s.%s" s t)
@@ -397,7 +398,7 @@
     (testing "have-select-privilege? returns true if table exists"
       (sql-jdbc.execute/do-with-connection-with-options
        driver/*driver*
-       (mt/db)
+       (mt/id)
        nil
        (fn [^Connection conn]
          (is (true?
@@ -405,7 +406,7 @@
     (testing "have-select-privilege? returns false if table does not exist"
       (sql-jdbc.execute/do-with-connection-with-options
        driver/*driver*
-       (mt/db)
+       (mt/id)
        nil
        (fn [^Connection conn]
          (is (false?

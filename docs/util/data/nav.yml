@@ -119,6 +119,14 @@ categories:
           - name: "Actions on dashboards"
             url: "dashboards/actions"
 
+      - name: "Data apps"
+        url: "data-apps/start"
+        pages:
+          - name: "Build a data app"
+            url: "data-apps/build"
+          - name: "Manage data apps"
+            url: "data-apps/manage"
+
       - name: "Documents"
         url: "documents/start"
         pages:
@@ -235,6 +243,8 @@ categories:
             url: "data-modeling/tools/graph"
           - name: "Replace data sources"
             url: "data-modeling/tools/replace-data-sources"
+      - name: "Data actions"
+        url: "data-modeling/data-actions"
       - name: "Editable tables"
         url: "data-modeling/editable-tables"
       - name: "Models"
@@ -490,6 +500,8 @@ categories:
             url: "usage-and-performance-tools/usage-analytics"
           - name: "API key usage"
             url: "monitor/api-key-usage"
+          - name: "Data app analytics"
+            url: "monitor/data-app-analytics"
           - name: "Admin tools"
             url: "monitor/erroring-questions"
           - name: "Panopticon"

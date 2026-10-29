@@ -162,6 +162,7 @@
    [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.audit-app.core :as audit]
+   [metabase.collections.db :as collections.db]
    [metabase.collections.models.collection.root :as collection.root]
    [metabase.config.core :as config]
    [metabase.models.interface :as mi]
@@ -307,27 +308,13 @@
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set))
 
-(defn data-apps-namespace-collection?
-  "Is `collection-or-id` a collection of the data apps namespace? Reads the namespace from the app DB unless given a
-  collection with `:namespace`."
-  [collection-or-id]
-  (= "data-apps"
-     (some-> (if (and (map? collection-or-id) (contains? collection-or-id :namespace))
-               (:namespace collection-or-id)
-               ;; the root collection has no ID, and is the default namespace's
-               (some-> (u/id collection-or-id) permissions.db/collection-namespace))
-             name)))
-
 (defmethod mi/perms-objects-set :perms/use-parent-collection-perms
   [instance read-or-write]
-  (let [collection (or (:collection instance) (:collection_id instance))]
-    (if (or (= read-or-write :read)
-            ;; not even an administrator edits what a data app's collection holds: only a pull of its app changes it
-            (and (not (data-apps-namespace-collection? collection))
-                 (remote-sync/collection-editable? collection)))
-      (perms-objects-set-for-parent-collection (:collection_id instance) read-or-write)
-      ;; a path that no permissions set holds, not even an administrator's `/`
-      #{"___no-write-access"})))
+  (if (or (= read-or-write :read)
+          (remote-sync/collection-editable? (or (:collection instance) (:collection_id instance))))
+    (perms-objects-set-for-parent-collection (:collection_id instance) read-or-write)
+    ;; a path no permissions set holds, not even an admin's `/`, so nobody writes what remote sync keeps read-only
+    #{"___no-remote-sync-access"}))
 
 (methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :can_write]
   [_model k models]
@@ -342,7 +329,7 @@
 (defmethod mi/can-create? :perms/use-parent-collection-perms
   [_model m]
   (if-let [collection-id (:collection_id m)]
-    (mi/can-write? (permissions.db/collection collection-id))
+    (mi/can-write? (collections.db/collection collection-id))
     (mi/can-write? collection.root/root-collection)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -573,7 +560,7 @@
   [collection-or-id]
   (if (map? collection-or-id)
     collection-or-id
-    (permissions.db/collection (u/the-id collection-or-id))))
+    (collections.db/collection (u/the-id collection-or-id))))
 
 (mu/defn- check-is-modifiable-collection
   "Check whether `collection-or-id` refers to a collection that can have permissions modified. Personal collections, the

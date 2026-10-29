@@ -9,7 +9,9 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.premium-features.core :as premium-features]
@@ -197,7 +199,7 @@
              {:name "latitude",    :base-type :type/Float,   :database-type "double", :database-position 3}
              {:name "longitude",   :base-type :type/Float,   :database-type "double", :database-position 4}
              {:name "price",       :base-type :type/Integer, :database-type "int",    :database-position 5}}
-           (#'athena/describe-table-fields-with-nested-fields (mt/db) "v3_test_data" "venues")))))
+           (#'athena/describe-table-fields-with-nested-fields (lib.metadata/database (mt/metadata-provider)) "v3_test_data" "venues")))))
 
 (deftest ^:parallel endpoint-test
   (testing "AWS Endpoint URL"
@@ -425,20 +427,20 @@
                              :secret_key (tx/db-test-env-var-or-throw :athena :without-get-table-metadata-secret-key)
                              :catalog catalog)]
           (mt/with-temp [:model/Database db {:engine :athena, :details details}]
-            (sync/sync-database! db {:scan :schema})
+            (sync/sync-database! (:id db) {:scan :schema})
             (let [table (t2/select-one :model/Table :db_id (:id db) :name "airport")]
               (testing "Check that .getColumns returns no results, meaning the athena JDBC driver still has a bug"
                 ;; If this test fails and .getColumns returns results, the athena JDBC driver has been fixed and we can
                 ;; undo the changes in https://github.com/metabase/metabase/pull/44032
                 (is (empty? (sql-jdbc.execute/do-with-connection-with-options
                              :athena
-                             db
+                             (driver.u/ensure-lib-database db)
                              nil
                              (fn [^java.sql.Connection conn]
                                (let [metadata (.getMetaData conn)]
                                  (#'athena/get-columns metadata catalog (:schema table) (:name table))))))))
               (testing "`describe-table` returns the fields anyway"
-                (is (not-empty (:fields (driver/describe-table :athena db table))))))))))))
+                (is (not-empty (:fields (driver/describe-table :athena (driver.u/ensure-lib-database db) table))))))))))))
 
 (deftest describe-table-falls-back-to-describe-on-duplicate-jdbc-columns-test
   (testing "`describe-table-fields` uses DESCRIBE if the JDBC driver returns duplicate column names (#58441, GHY-3273)"
@@ -457,7 +459,7 @@
                      {:database-position 3, :name "latitude", :database-type "double", :base-type :type/Float}
                      {:database-position 4, :name "longitude", :database-type "double", :base-type :type/Float}
                      {:database-position 5, :name "municipality_id", :database-type "int", :base-type :type/Integer}}
-                   (:fields (driver/describe-table :athena db table))))
+                   (:fields (driver/describe-table :athena (driver.u/ensure-lib-database db) table))))
             (is (true? @get-columns-called))))))))
 
 (deftest column-name-with-question-mark-test
@@ -629,11 +631,11 @@
                         {:name "people", :schema nil, :description nil}
                         {:name "products", :schema nil, :description nil}
                         {:name "reviews", :schema nil, :description nil}}}
-             (driver/describe-database driver/*driver* (mt/db)))))
+             (driver/describe-database driver/*driver* (lib.metadata/database (mt/metadata-provider))))))
     (testing "when the dbname is not specified describe-database returns tables from all databases and does include the schema"
       (mt/with-temp [:model/Database db {:engine :athena,
                                          :details (dissoc (:details (mt/db)) :dbname)}]
-        (let [tables (driver/describe-database driver/*driver* db)
+        (let [tables (driver/describe-database driver/*driver* (driver.u/ensure-lib-database db))
               ;; athena CI has many (possibly changing) databases so we'll just filter for a few
               filter-dbs #{"v3_test_data" "airports" "db_router_data" "db_routed_data" "diff_time_zones_athena_cases"}
               filtered-tables {:tables (set (filter (comp filter-dbs :schema) (:tables tables)))}]

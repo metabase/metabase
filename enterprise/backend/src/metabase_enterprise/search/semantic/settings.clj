@@ -104,9 +104,8 @@
   :doc        false)
 
 (defsetting semantic-search-embedder-circuit-breaker-enabled
-  (deferred-tru
-   (str "Wrap embedding-service calls in a circuit breaker that fails fast after repeated failures. "
-        "Runtime kill switch; the breaker thresholds are fixed."))
+  (str "Wrap embedding-service calls in a circuit breaker that fails fast after repeated failures. "
+       "Runtime kill switch; the breaker thresholds are fixed.")
   :type       :boolean
   :default    true
   :encryption :no
@@ -115,7 +114,7 @@
   :doc        false)
 
 (defsetting openai-max-tokens-per-batch
-  (deferred-tru "The maximum number of tokens sent in a single embedding API call.")
+  "The maximum number of tokens sent in a single embedding API call."
   :type :integer
   :default 4000
   :encryption :no
@@ -124,7 +123,7 @@
   :doc false)
 
 (defsetting semantic-search-results-limit
-  (deferred-tru "Maximum number of results to return from a single semantic search query.")
+  "Maximum number of results to return from a single semantic search query."
   :type :integer
   :default 1000
   :encryption :no
@@ -138,13 +137,12 @@
   (set search.config/vector-search-strategies))
 
 (defsetting semantic-search-vector-strategy
-  (deferred-tru
-   (str "Default vector-search strategy for semantic search: `hnsw` (approximate, HNSW-index-backed), "
-        "`brute-force` (exact, applies non-vector filters first then computes cosine distance over the "
-        "survivors), or `hnsw-iterative-relaxed`/`hnsw-iterative-strict` (HNSW-index-backed iterative scans "
-        "with inline filters). Defaults to `brute-force`, which needs no index; selecting `hnsw` builds the "
-        "HNSW index just-in-time. Individual requests may override this via the `vector_search_strategy` API "
-        "parameter."))
+  (str "Default vector-search strategy for semantic search: `hnsw` (approximate, HNSW-index-backed), "
+       "`brute-force` (exact, applies non-vector filters first then computes cosine distance over the "
+       "survivors), or `hnsw-iterative-relaxed`/`hnsw-iterative-strict` (HNSW-index-backed iterative scans "
+       "with inline filters). Defaults to `brute-force`, which needs no index; selecting `hnsw` builds the "
+       "HNSW index just-in-time. Individual requests may override this via the `vector_search_strategy` API "
+       "parameter.")
   :type       :keyword
   :default    :brute-force
   :encryption :no
@@ -168,10 +166,9 @@
                       (events/publish-event! :event/semantic-search-hnsw-enabled {}))))))
 
 (defsetting semantic-search-ef-search
-  (deferred-tru
-   (str "Default pgvector `hnsw.ef_search` (HNSW candidate-list size) for the `hnsw-iterative-*` strategies. "
-        "Larger values improve recall at the cost of latency. Individual requests may override this via the "
-        "`vector_search_ef_search` API parameter."))
+  (str "Default pgvector `hnsw.ef_search` (HNSW candidate-list size) for the `hnsw-iterative-*` strategies. "
+       "Larger values improve recall at the cost of latency. Individual requests may override this via the "
+       "`vector_search_ef_search` API parameter.")
   :type       :positive-integer
   :default    40
   :encryption :no
@@ -180,10 +177,9 @@
   :doc        false)
 
 (defsetting semantic-search-max-scan-tuples
-  (deferred-tru
-   (str "Default pgvector `hnsw.max_scan_tuples` (soft cap on tuples an iterative scan visits) for the "
-        "`hnsw-iterative-*` strategies. Larger values improve recall under selective filters at the cost of "
-        "latency. Individual requests may override this via the `vector_search_max_scan_tuples` API parameter."))
+  (str "Default pgvector `hnsw.max_scan_tuples` (soft cap on tuples an iterative scan visits) for the "
+       "`hnsw-iterative-*` strategies. Larger values improve recall under selective filters at the cost of "
+       "latency. Individual requests may override this via the `vector_search_max_scan_tuples` API parameter.")
   :type       :positive-integer
   :default    20000
   :encryption :no
@@ -198,10 +194,9 @@
 ;; EXPLAIN ANALYZE re-runs the inner vector subquery, so the intended lifecycle is on-for-an-investigation,
 ;; then off.
 (defsetting semantic-search-explain
-  (deferred-tru
-   (str "Run EXPLAIN (ANALYZE) instrumentation of the inner vector subquery for every semantic search? "
-        "Expensive (re-executes the inner query); intended for ad-hoc analysis. Individual requests may "
-        "override this via the `vector_search_explain` API parameter."))
+  (str "Run EXPLAIN (ANALYZE) instrumentation of the inner vector subquery for every semantic search? "
+       "Expensive (re-executes the inner query); intended for ad-hoc analysis. Individual requests may "
+       "override this via the `vector_search_explain` API parameter.")
   :type       :boolean
   :default    false
   :encryption :no
@@ -210,7 +205,7 @@
   :doc        false)
 
 (defsetting semantic-search-min-results-threshold
-  (deferred-tru "Minimum number of semantic search results required before falling back to other engines.")
+  "Minimum number of semantic search results required before falling back to other engines."
   :type :integer
   :default 100
   :encryption :no
@@ -219,7 +214,7 @@
   :doc false)
 
 (defsetting index-update-thread-count
-  (deferred-tru "Number of threads to use for batched index updates, including embedding requests")
+  "Number of threads to use for batched index updates, including embedding requests"
   :type :integer
   :default 2
   :encryption :no
@@ -279,7 +274,7 @@
   :doc false)
 
 (defsetting stale-index-retention-hours
-  (deferred-tru "Number of hours to retain stale semantic search indexes before cleanup.")
+  "Number of hours to retain stale semantic search indexes before cleanup."
   :type :integer
   :default 24
   :encryption :no
@@ -288,7 +283,7 @@
   :doc false)
 
 (defsetting tombstone-retention-hours
-  (deferred-tru "Number of hours to retain tombstone records in the gate table before cleanup.")
+  "Number of hours to retain tombstone records in the gate table before cleanup."
   :type :integer
   :default 24
   :encryption :no
@@ -297,8 +292,8 @@
   :doc false)
 
 (defsetting repair-table-retention-hours
-  (deferred-tru "Number of hours until repair tables are considered stale and eligible for cleanup, if they were not
-    cleaned up successfully after use.")
+  "Number of hours until repair tables are considered stale and eligible for cleanup, if they were not
+    cleaned up successfully after use."
   :type :integer
   :default 2
   :encryption :no

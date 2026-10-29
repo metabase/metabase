@@ -10,6 +10,7 @@
    [metabase.auth-identity.core :as auth-identity]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
@@ -21,6 +22,7 @@
    [metabase.tenants.core :as tenants]
    [metabase.users-rest.db :as users-rest.db]
    [metabase.users.core :as users]
+   [metabase.users.db :as users.db]
    [metabase.users.models.user :as user]
    [metabase.users.schema :as users.schema]
    [metabase.users.settings :as users.settings]
@@ -331,7 +333,7 @@
   [user]
   (let [enabled? (appearance/custom-homepage)
         id       (appearance/custom-homepage-dashboard)
-        dash     (users-rest.db/dashboard id)
+        dash     (when (pos-int? id) (dashboards.db/dashboard id))
         valid?   (and enabled? id (some? dash) (not (:archived dash)) (mi/can-read? dash))]
     (assoc user
            :custom_homepage (when valid? {:dashboard_id id}))))
@@ -568,7 +570,7 @@
             (api/check-400 (not (and (:tenant_id changes) (:is_superuser changes)))
                            "Superusers cannot be tenant users")
             (reset-magic-group-membership! id (:tenant_id changes)))
-          (events/publish-event! :event/user-update {:object (users-rest.db/user id)
+          (events/publish-event! :event/user-update {:object (users.db/user id)
                                                      :previous-object user-before-update
                                                      :user-id api/*current-user-id*}))
         (maybe-update-user-personal-collection-name! user-before-update body)
@@ -641,6 +643,11 @@
    request]
   (users/check-self-or-superuser id)
   (api/let-404 [user (users-rest.db/active-personal-user-login-columns id)]
+    ;; admins can't give a password to a user who signs in through an enabled SSO provider; that would let them log
+    ;; in as that user while bypassing the provider.
+    (when api/*is-superuser?*
+      (api/check-404 (or (nil? (:sso_source user))
+                         (not (sso/sso-source-enabled? (:sso_source user))))))
     ;; admins are allowed to reset anyone's password (in the admin people list) so no need to check the value of
     ;; `old_password` for them regular users have to know their password, however
     (when-not api/*is-superuser?*
@@ -659,6 +666,7 @@
                                        :mfa_auth_identity_id)]
       ;; set-password! invalidates the user's existing sessions; a self-change gets a fresh one below
       (auth-identity/set-password! id password {:ended-by api/*current-user-id*})
+      (events/publish-event! :event/password-changed {:object user :user-id api/*current-user-id*})
       ;; after a successful password update go ahead and offer the client a new session that they can use
       (when (= id api/*current-user-id*)
         (let [{session-key :key, :as session} (auth-identity/create-session-with-auth-tracking!
@@ -680,9 +688,11 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (let [user (api/check-404 (users-rest.db/user-active-and-type id))]
+  (let [user (api/check-404 (users-rest.db/user-active-type-and-sso-source id))]
     (api/check-404 (:is_active user))
     (api/check-404 (= :personal (:type user)))
+    (api/check-404 (or (nil? (:sso_source user))
+                       (not (sso/sso-source-enabled? (:sso_source user)))))
     (let [reset-token        (auth-identity/create-password-reset! id)
           password-reset-url (str (system/site-url) "/auth/reset_password/" reset-token)]
       (events/publish-event! :event/password-reset-initiated
@@ -706,7 +716,7 @@
   (check-not-internal-user id)
   (api/check-404 (users-rest.db/user-exists? id))
   (users-rest.db/update-personal-user! id {:is_active false})
-  (events/publish-event! :event/user-deactivated {:object (users-rest.db/user id) :user-id api/*current-user-id*})
+  (events/publish-event! :event/user-deactivated {:object (users.db/user id) :user-id api/*current-user-id*})
   {:success true})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

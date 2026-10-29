@@ -271,7 +271,7 @@
   [{:keys [id]} validated]
   (custom-viz-plugin.db/update-plugin! id (derived-columns validated))
   (purge-plugin-cache! {:id id})
-  (custom-viz-plugin.db/non-blob-plugin id))
+  (custom-viz-plugin.db/custom-viz-plugin id))
 
 (defn insert-bundle!
   "Insert a new plugin row from a validated bundle and an `:identifier`. Returns
@@ -455,7 +455,7 @@
    Always returns nil when dev mode is disabled."
   [id]
   (when (custom-viz.settings/custom-viz-plugin-dev-mode-enabled)
-    (not-empty (custom-viz-plugin.db/plugin-dev-bundle-url id))))
+    (not-empty (:dev_bundle_url (custom-viz-plugin.db/custom-viz-plugin id)))))
 
 ;;; ------------------------------------------------ Resolve ------------------------------------------------
 

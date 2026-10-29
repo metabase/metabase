@@ -17,7 +17,7 @@
         last-recipient?        (zero? other-recipients-count)]
     (when last-recipient?
       ;; make sure this channel doesn't have any email-address (non-User) recipients.
-      (let [details              (pulse.db/pulse-channel-details channel-id)
+      (let [details              (:details (pulse.db/pulse-channel channel-id))
             has-email-addresses? (seq (:emails details))]
         (when-not has-email-addresses?
           (pulse.db/delete-pulse-channel! channel-id))))))

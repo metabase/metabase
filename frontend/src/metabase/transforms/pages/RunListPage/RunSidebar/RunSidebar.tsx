@@ -1,7 +1,7 @@
 import { memo } from "react";
 
+import { SidebarResizableBox } from "metabase/common/components/SidebarResizableBox";
 import { ErrorSection } from "metabase/transforms/components/ErrorSection";
-import { SidebarResizableBox } from "metabase/transforms/components/SidebarResizableBox";
 import { Stack } from "metabase/ui";
 import type { TransformRun } from "metabase-types/api";
 

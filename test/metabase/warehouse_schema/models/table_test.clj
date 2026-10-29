@@ -58,12 +58,12 @@
                               "('California Gull', 'Steven Seagull'), "
                               "('Chicken', 'Colin Fowl');")]]
         (jdbc/execute! one-off-dbs/*conn* [statement]))
-      (sync/sync-database! (mt/db))
+      (sync/sync-database! (mt/id))
       (is (#'table-user-settings/valid-field-order? (mt/id :birds)
                                                     [(mt/id :birds :species)
                                                      (mt/id :birds :example_name)]))
       (jdbc/execute! one-off-dbs/*conn* ["ALTER TABLE \"BIRDS\" DROP COLUMN \"EXAMPLE_NAME\";"])
-      (sync/sync-database! (mt/db))
+      (sync/sync-database! (mt/id))
       (is (#'table-user-settings/valid-field-order? (mt/id :birds)
                                                     [(mt/id :birds :species)])))))
 

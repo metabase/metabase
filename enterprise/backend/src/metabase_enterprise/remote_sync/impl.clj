@@ -147,10 +147,6 @@
           (instance? java.net.UnknownHostException (ex-cause e)))
       "Network error: Unable to reach git repository host"
 
-      ;; the validator names a file, whose path may hold any word the matches below look for
-      (= (:error (ex-data e)) :metabase-enterprise.remote-sync.source.ingestable/invalid-data-app-files)
-      (str "Failed to reload from git repository. " message)
-
       (str/includes? message "Authentication failed")
       "Authentication failed: Please check your git credentials"
 
@@ -650,10 +646,6 @@
     (try
       (let [snapshot-version      (source.p/version snapshot)
             last-imported-version (remote-sync.task/last-version)
-            ;; before anything is read for loading, the files of each data app's collection are checked; a pull of
-            ;; the commit already imported loads nothing, so there is nothing to check
-            _                     (when (or force? merge? (not= last-imported-version snapshot-version))
-                                    (source.ingestable/check-data-app-files! snapshot))
             first-import?         (nil? last-imported-version)
             ;; force-deletion? defaults to force? when a caller doesn't pass it.
             force-deletion?       (if (nil? force-deletion?) force? force-deletion?)
@@ -827,8 +819,7 @@
          :conflicts     labels
          :merge-summary summary
          :message       "Export blocked: the same content was changed both locally and on the remote branch."})
-      (let [_           (source.ingestable/check-data-app-files! (source/specs->snapshot merged))
-            [_ version] (commit-staged! snapshot message
+      (let [[_ version] (commit-staged! snapshot message
                                         (fn [commit]
                                           (source/replace-managed-files! commit snapshot) ; merged set replaces the managed files wholesale
                                           (run! #(source.p/stage-upsert! commit %) merged)))
@@ -1522,7 +1513,7 @@
   (e.g. `{:branch \"main\"}`, plus `:auto true` for system-triggered syncs); `user-id` is nil for
   system-triggered syncs."
   [topic task-id details user-id]
-  (let [task (remote-sync.db/task task-id)]
+  (let [task (remote-sync.db/remote-sync-task task-id)]
     (events/publish-event! topic
                            {:object  task
                             :details details
@@ -1555,7 +1546,7 @@
   is still open may be that the app DB is unreachable."
   [task-id]
   (try
-    (when (some-> (remote-sync.db/task task-id) remote-sync.task/running?)
+    (when (some-> (remote-sync.db/remote-sync-task task-id) remote-sync.task/running?)
       (log/warnf "Remote sync task %d ended without recording a result; failing it" task-id)
       (handle-task-result! {:status :error :message "Task ended without recording a result"} task-id))
     (catch Throwable t

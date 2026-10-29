@@ -1,6 +1,7 @@
 (ns metabase.sync.sync-metadata-test
   (:require
    [clojure.test :refer :all]
+   [metabase.driver.util :as driver.u]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.fields :as sync-fields]
@@ -44,7 +45,7 @@
       (mt/with-temp [:model/Database db {:initial_sync_status "incomplete"}]
         (mt/with-dynamic-fn-redefs [fetch-metadata/db-metadata (fn [_] (throw (ex-info "boom" {})))]
           (is (thrown? Throwable
-                       (#'sync-metadata/sync-db-metadata!* db))))
+                       (#'sync-metadata/sync-db-metadata!* (driver.u/lib-database (:id db))))))
         (is (= "aborted"
                (t2/select-one-fn :initial_sync_status :model/Database (:id db))))
         (testing "and the message of the error is recorded as the cause (GHY-3856)"
@@ -62,7 +63,7 @@
                                         (throw (doto (java.sql.SQLSyntaxErrorException.
                                                       "Unknown column 'generation_expression' in 'field list'")
                                                  (.setStackTrace (into-array StackTraceElement [])))))]
-            (#'sync-metadata/sync-db-metadata!* (t2/select-one :model/Database :id (mt/id))))
+            (#'sync-metadata/sync-db-metadata!* (driver.u/lib-database (mt/id))))
           (is (= "aborted"
                  (t2/select-one-fn :initial_sync_status :model/Database (mt/id))))
           (testing "and the step's own error message is recorded as the cause, not a schema-validation error (GHY-3856)"
@@ -74,6 +75,18 @@
     (mt/with-temp-copy-of-db
       (t2/update! :model/Database (mt/id) {:initial_sync_status "aborted"
                                            :initial_sync_error  "boom"})
-      (#'sync-metadata/sync-db-metadata!* (t2/select-one :model/Database :id (mt/id)))
+      (#'sync-metadata/sync-db-metadata!* (driver.u/lib-database (mt/id)))
       (is (= {:initial_sync_status "complete", :initial_sync_error nil}
              (t2/select-one [:model/Database :initial_sync_status :initial_sync_error] :id (mt/id)))))))
+
+(deftest transient-db-metadata-failure-is-logged-test
+  (testing "an unreachable warehouse logs a WARN even when the caller drops the exception (e.g. POST /api/notify/db)"
+    (mt/with-dynamic-fn-redefs [fetch-metadata/db-metadata
+                                (fn [_database]
+                                  (throw (java.sql.SQLException.
+                                          "Connections could not be acquired from the underlying database!"
+                                          (com.mchange.v2.resourcepool.CannotAcquireResourceException. "x"))))]
+      (mt/with-log-messages-for-level [messages [metabase.sync.sync-metadata :warn]]
+        (is (thrown? Throwable (sync-metadata/sync-db-metadata! (mt/id))))
+        (is (=? [{:level :warn, :message #"Could not fetch metadata for .*Connections could not be acquired.*"}]
+                (messages)))))))

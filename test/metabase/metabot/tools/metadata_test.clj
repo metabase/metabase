@@ -363,12 +363,14 @@
                             :metabase.metabot.tools.core/all-items-failed
                             ::tools.u/wrong-source-type)} error))
             (is (str/includes? (or output "")
-                               (str (if (= expected-type "metric") "Card " "ID ")
-                                    source-id " is a " actual-type ", not a " expected-type "."
-                                    (if (and (= profile :internal) (= expected-type "metric"))
-                                      (str "\nRead `metabase://" actual-type "/" source-id "/fields/"
-                                           (mt/id :orders :id) "` instead.")
-                                      (str "\nRetry using a " expected-type " ID.")))))))))))
+                               (if (= profile :internal)
+                                 (str "Card " source-id " is a " actual-type ", not a " expected-type "."
+                                      "\nRead `metabase://" actual-type "/" source-id
+                                      (if (= actual-type "metric") "/dimensions/" "/fields/")
+                                      (mt/id :orders :id) "` instead.")
+                                 (str (if (= expected-type "metric") "Card " "ID ")
+                                      source-id " is a " actual-type ", not a " expected-type "."
+                                      "\nRetry using a " expected-type " ID."))))))))))
 
 (deftest question-field-details-use-returned-columns-test
   (mt/as-admin

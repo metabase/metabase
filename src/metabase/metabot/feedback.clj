@@ -15,7 +15,7 @@
   [external-id]
   (let [message      (metabot.db/message-by-external-id external-id)
         _            (api/check-404 message)
-        conversation (metabot.db/conversation-id-and-user-id (:conversation_id message))
+        conversation (metabot.db/metabot-conversation (:conversation_id message))
         _            (api/check-404 conversation)
         _            (api/check-404 (mi/can-read? conversation))]
     (assoc message :conversation conversation)))

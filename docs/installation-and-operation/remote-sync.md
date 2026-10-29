@@ -10,8 +10,9 @@ description: Version control your dashboards, questions, and transforms. Sync yo
 Remote Sync lets you develop analytics content in your Metabase and automatically deploy it to a read-only production Metabase through Git. Remote Sync can sync:
 
 - Top-level collections (dashboards, questions, models, metrics)
-- Library content (published tables with their segments and measures, plus metrics, dashboards, snippets, and the glossary)
+- Library content (published tables with their segments and measures, plus metrics, dashboards, snippets, data actions, and the glossary)
 - Transforms
+- [Data apps](../data-apps/build.md#what-syncs-with-a-data-app), with their bundles and collections
 
 Metabase doesn't sync any of your data. All Metabase stores in Git are [YAML files](./serialization.md#example-of-a-serialized-question) that describe your analytics content. Your actual data stays in your databases and never leaves your Metabase.
 
@@ -38,7 +39,11 @@ Your repository can't change users, groups, or permissions, because those [don't
 ### Remote Sync has two modes for different roles
 
 - **Read-write mode**: Create and edit content. You can [push](#pushing-changes-to-git) and [pull](#pulling-changes-from-git) changes to and from your repository. Multiple Metabase instances can connect in Read-write mode, each working on [different branches](#branch-management).
-- **Read-only mode**: Read-only instances only [pull](#pulling-changes-from-git) changes (typically from your main branch) and don't allow direct editing of synced content. In Read-only mode, you also can't edit transforms (transforms are always read-only in this mode—see [Configure transforms syncing](#8-configure-transforms-syncing-optional)), can't edit Library content, and can't create segments or measures on published tables. You can set up [auto-sync](#pulling-changes-automatically) to automatically pull approved changes every five minutes.
+- **Read-only mode**: Read-only instances only [pull](#pulling-changes-from-git) changes (typically from your main branch) and don't allow direct editing of synced content. You can set up [auto-sync](#pulling-changes-automatically) to automatically pull approved changes every five minutes. In Read-only mode, you also can't:
+  - Edit transforms. Transforms are always read-only in this mode. See [Configure transforms syncing](#8-configure-transforms-syncing-optional).
+  - Edit Library content.
+  - Create segments or measures on published tables.
+  - Create, edit, or delete [data apps](../data-apps/build.md#ship-the-app-to-production-with-remote-sync).
 
 ### You choose what to sync
 
@@ -367,8 +372,9 @@ Remote Sync uses the same serialization format as the [Metabase CLI serializatio
 - Documents
 - Timelines and events
 - Collection structure and metadata
-- Library content (published tables, metrics, dashboards, snippets, segments, measures, glossary)
+- Library content (published tables, metrics, dashboards, snippets, data actions, segments, measures, glossary)
 - Transforms (including tags, tests, and folders)
+- [Data apps](../data-apps/build.md#what-syncs-with-a-data-app), with their bundles and collections
 
 **What doesn't sync:**
 
@@ -378,6 +384,7 @@ Remote Sync uses the same serialization format as the [Metabase CLI serializatio
 - Transform jobs
 - Personal collections
 - Table metadata (table names, column types, descriptions, visibility settings, etc.)
+- A data app's live or draft status, and its group access
 
 ### Synced content that uses a database your Metabase doesn't have
 

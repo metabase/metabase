@@ -72,7 +72,7 @@
                            :name         "End to end"}
                           created)))
                 (testing "GET returns what POST created"
-                  (is (= created (mt/user-http-request :crowberto :get 200 path))))
+                  (is (= (assoc created :last_run nil) (mt/user-http-request :crowberto :get 200 path))))
                 (testing "running a passing test"
                   (let [result (mt/user-http-request :crowberto :post 200 (str path "/run"))]
                     (is (= #{:status :expectations :tables} (set (keys result))))
@@ -108,7 +108,7 @@
       (with-transforms-enabled #{:transforms-basic :transforms-python :transforms-testing}
         (testing "422 — the environment prevents a run: not a query transform"
           (mt/with-temp [:model/Transform     {transform-id :id}
-                         {:source {:type "python" :source-database (mt/id)}}
+                         {:source {:type "python" :source-database (mt/id) :source-tables [] :body "def transform():\n    pass"}}
                          :model/TransformTest {test-id :id} {:transform_id transform-id}]
             (let [response (mt/user-http-request :crowberto :post 422
                                                  (format "ee/transform-test/%d/run" test-id))]

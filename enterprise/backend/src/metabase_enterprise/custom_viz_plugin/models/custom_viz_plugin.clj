@@ -11,7 +11,8 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.tools.default-fields :as t2.default-fields])
   (:import
    (java.sql Blob)))
 
@@ -39,11 +40,8 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
-(def non-blob-columns
-  "Columns to select for normal plugin metadata reads, excluding the raw bundle blob."
-  [:id :identifier :display_name :icon :status :error_message :enabled
-   :manifest :metabase_version :bundle_hash :dev_bundle_url
-   :created_at :updated_at])
+(t2.default-fields/define-default-fields :model/CustomVizPlugin
+  custom-viz-plugin.db/non-blob-columns)
 
 (defmethod mi/can-read? :model/CustomVizPlugin
   ([_instance]   (some? api/*current-user-id*))
@@ -217,7 +215,7 @@
   [_model-name ingested {:keys [id]}]
   (custom-viz-plugin.db/update-plugin! id (merge ingested (bundle-columns ingested)))
   (cache/purge-plugin-cache! {:id id})
-  (custom-viz-plugin.db/non-blob-plugin id))
+  (custom-viz-plugin.db/custom-viz-plugin id))
 
 (defmethod serdes/entity-id "CustomVizPlugin" [_ {:keys [identifier]}]
   identifier)

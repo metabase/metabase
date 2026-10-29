@@ -40,17 +40,12 @@
   },
   "typesVersions": {
     "*": {
-      "next": [
-        "./dist/next.d.ts"
-      ]
+      "next": ["./dist/next.d.ts"]
     }
   },
   "types": "./dist/index.d.ts",
   "peerDependencies": {
-    "react": ">=18 <=19",
-    "react-dom": ">=18 <=19"
-  },
-  "dependencies": {
-    "esbuild": "^0.28.1"
+    "react": "^19",
+    "react-dom": "^19"
   }
 }

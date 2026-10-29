@@ -7,6 +7,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.transforms.execute :as transforms.execute]
@@ -115,7 +116,7 @@
   "Append `rows` (vectors of `[order-id status change-seq]`) to the source table."
   [rows]
   (let [[schema table-name] (t2/select-one-fn (juxt :schema :name) :model/Table (mt/id :order_status))
-        spec   (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
+        spec   (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
         values (str/join ", " (map (fn [[oid st sq]] (format "(%d, '%s', %d)" oid st sq)) rows))
         sql    (format "INSERT INTO %s (%s) VALUES %s"
                        (sql.u/quote-name driver/*driver* :table schema table-name)
@@ -191,7 +192,7 @@
                   insert!      (fn [rows]
                                  (let [[schema tbl] (t2/select-one-fn (juxt :schema :name) :model/Table
                                                                       (mt/id :order_status_ts))
-                                       spec         (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
+                                       spec         (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                                        values       (str/join ", " (map (fn [[oid st ts]]
                                                                           (format "(%d, '%s', '%s')" oid st ts))
                                                                         rows))
@@ -279,7 +280,7 @@
                   insert!      (fn [rows]
                                  (let [[schema tbl] (t2/select-one-fn (juxt :schema :name) :model/Table
                                                                       (mt/id :order_status_lb))
-                                       spec         (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
+                                       spec         (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                                        values       (str/join ", " (map (fn [[oid st ts]]
                                                                           (format "(%d, '%s', '%s')" oid st ts))
                                                                         rows))
@@ -300,7 +301,7 @@
                   delete-order! (fn [order-id]
                                   (let [[schema tbl] (t2/select-one-fn (juxt :schema :name) :model/Table
                                                                        (mt/id :order_status_lb))
-                                        spec         (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
+                                        spec         (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                                         sql          (format "DELETE FROM %s WHERE %s = %d"
                                                              (sql.u/quote-name driver/*driver* :table schema tbl)
                                                              (q "order_id") order-id)]
@@ -383,7 +384,7 @@
                   insert!     (fn [rows]
                                 (let [[schema tbl] (t2/select-one-fn (juxt :schema :name) :model/Table
                                                                      (mt/id :order_status_unix))
-                                      spec         (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
+                                      spec         (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                                       values       (str/join ", " (map (fn [[oid st ts]]
                                                                          (format "(%d, '%s', %d)" oid st ts))
                                                                        rows))
@@ -458,7 +459,7 @@
                   insert!      (fn [rows]
                                  (let [[schema tbl] (t2/select-one-fn (juxt :schema :name) :model/Table
                                                                       (mt/id :order_region_status))
-                                       spec         (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
+                                       spec         (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                                        values       (str/join ", " (map (fn [[oid rg st sq]]
                                                                           (format "(%d, '%s', '%s', %d)" oid rg st sq))
                                                                         rows))

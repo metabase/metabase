@@ -11,10 +11,12 @@
    [metabase-enterprise.dependencies.task.result-metadata :as task.result-metadata]
    [metabase.app-db.core :as mdb]
    [metabase.batch-processing.core :as grouper]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -76,6 +78,7 @@
   {:model/Action             #{:model_id :type}
    :model/Card               #{:type :dataset_query :dimension_mappings :parameters}
    :model/Dashboard          #{:parameters}
+   :model/DataApp            #{:resource_collection_id}
    :model/Document           #{:content_type :document}
    :model/Measure            #{:definition :table_id}
    :model/NativeQuerySnippet #{:content :template_tags}
@@ -117,10 +120,11 @@
   (case model
     (:model/DashboardCard :model/DashboardTab)    [:dashboard (:dashboard_id row)]
     :model/DashboardCardSeries                    [:dashboard (some-> (:dashboardcard_id row)
-                                                                      dependencies.db/dashcard-dashboard-id)]
-    :model/QueryAction                            [:action (:action_id row)]
+                                                                      dashboards.db/dashboard-card
+                                                                      :dashboard_id)]
+    (:model/QueryAction :model/ImplicitAction)    [:action (:action_id row)]
     (:model/Field :model/TableUserSettings)       [:table (:table_id row)]
-    :model/FieldUserSettings                      [:table (some-> (:field_id row) dependencies.db/field-table-id)]
+    :model/FieldUserSettings                      [:table (some-> (:field_id row) warehouse-schema.db/field :table_id)]
     nil))
 
 (def ^:private part-columns
@@ -129,6 +133,7 @@
    :model/DashboardCardSeries #{:card_id :dashboardcard_id}
    :model/DashboardTab        #{}
    :model/QueryAction         #{:dataset_query}
+   :model/ImplicitAction      #{:table_id}
    :model/Field               field-columns
    :model/TableUserSettings   #{:display_name :visibility_type :data_layer :field_order}
    :model/FieldUserSettings   (conj field-columns :custom_position :nfc_path :json_unfolding)})
@@ -167,7 +172,7 @@
 (mu/defn- mark-dimension!
   "Mark what reads the remap of the Dimension `row`, whose Field's Table's entities show it."
   [row :- [:maybe Row]]
-  (when-let [table-id (some-> (:field_id row) dependencies.db/field-table-id)]
+  (when-let [table-id (some-> (:field_id row) warehouse-schema.db/field :table_id)]
     (mark-remapped-tables! #{table-id})))
 
 (mu/defn- mark-field-values! :- :boolean
@@ -218,6 +223,21 @@
              (changed? row (disj columns :result_metadata))
              (not (deps.result-metadata/same-output? (:result_metadata (t2/original row)) (:result_metadata row)))))))
 
+(mu/defn- data-apps-changed? :- :boolean
+  "Whether the update of `row` of `model` moves a Card or an Action to another collection, which changes what the data
+  apps whose resource collection it leaves or enters depend on."
+  [model :- :keyword
+   row   :- Row]
+  (and (contains? #{:model/Action :model/Card} model)
+       (changed? row #{:collection_id})))
+
+(mu/defn- mark-data-apps!
+  "Mark the dependencies of the data apps whose resource collection is one of `collection-ids` stale, querying nothing
+  when every one is nil."
+  [collection-ids :- [:sequential [:maybe ms/PositiveInt]]]
+  (when-let [collection-ids (not-empty (into [] (comp (remove nil?) (distinct)) collection-ids))]
+    (dependencies.db/mark-data-app-dependency-statuses-stale! collection-ids)))
+
 (mu/defn- mark-update! :- :boolean
   "Mark the statuses an update of `row` of `model` makes stale: the entity's own, by the columns each job
   reads, and what reads its output when that changes, returning whether a column some job reads changed."
@@ -228,7 +248,8 @@
         dependency? (changed? row (dependency-columns model))
         analysis?   (changed? row (analysis-columns model))
         output?     (output-changed? model row)
-        part?       (changed? row (part-columns model))]
+        part?       (changed? row (part-columns model))
+        data-apps?  (data-apps-changed? model row)]
     (when dependency?
       (dependencies.db/mark-dependency-statuses-stale! own))
     (when analysis?
@@ -242,7 +263,9 @@
         :model/Field             (mark-remap-targets! #{(:id row)})
         :model/FieldUserSettings (mark-remap-targets! #{(:field_id row)})
         nil))
-    (or dependency? analysis? output? part?
+    (when data-apps?
+      (mark-data-apps! [(:collection_id (t2/original row)) (:collection_id row)]))
+    (or dependency? analysis? output? part? data-apps?
         (case model
           :model/Dimension   (do (run! mark-dimension! (distinct [(t2/original row) row])) true)
           :model/FieldValues (mark-field-values! (t2/original row) row)
@@ -277,9 +300,10 @@
   (when (contains? part-columns model)
     (mark-part-owner! (part-owner model row)))
   (case model
-    :model/Dimension         (mark-dimension! row)
-    :model/FieldValues       (mark-field-values! nil row)
-    :model/FieldUserSettings (mark-remap-targets! #{(:field_id row)})
+    (:model/Action :model/Card) (mark-data-apps! [(:collection_id row)])
+    :model/Dimension            (mark-dimension! row)
+    :model/FieldValues          (mark-field-values! nil row)
+    :model/FieldUserSettings    (mark-remap-targets! #{(:field_id row)})
     nil)
   (trigger-jobs!))
 
@@ -298,10 +322,11 @@
   (when (contains? part-columns model)
     (mark-part-owner! (part-owner model row)))
   (case model
-    :model/Dimension         (mark-dimension! row)
-    :model/FieldValues       (mark-field-values! row nil)
-    :model/Field             (mark-remap-targets! #{(:id row)})
-    :model/FieldUserSettings (mark-remap-targets! #{(:field_id row)})
+    (:model/Action :model/Card) (mark-data-apps! [(:collection_id row)])
+    :model/Dimension            (mark-dimension! row)
+    :model/FieldValues          (mark-field-values! row nil)
+    :model/Field                (mark-remap-targets! #{(:id row)})
+    :model/FieldUserSettings    (mark-remap-targets! #{(:field_id row)})
     nil)
   (when-let [entity-type (deps.dependency-types/model->dependency-type model)]
     (mark-output-changed! entity-type row))

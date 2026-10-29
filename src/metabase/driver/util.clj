@@ -8,12 +8,14 @@
    [metabase.app-db.core :as mdb]
    [metabase.auth-provider.core :as auth-provider]
    [metabase.config.core :as config]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.error-type :as qp.error-type]
    ;; the legacy QP pipeline still conveys the metadata provider via the ambient store; no MBQL 5 path yet
@@ -350,7 +352,8 @@
   how long the driver may take -- callers bound it at whatever granularity suits them."
   [driver feature database]
   (try
-    (driver/database-supports? driver feature database)
+    (database-routing/with-anonymous-router-access
+      (driver/database-supports? driver feature database))
     (catch Throwable e
       (log/error (u/format-color 'red "Failed to check feature '%s' for database %s: %s" (u/qualified-name feature) (:id database) (ex-message e)))
       false)))
@@ -378,6 +381,11 @@
   (if-not (:lib/type database)
     (lib-be/instance->metadata database :metadata/database)
     database))
+
+(mu/defn lib-database :- ::lib.schema.metadata/database
+  "The Database with `database-id` from the application database, as the Lib metadata that connections take."
+  [database-id :- ::lib.schema.id/database]
+  (lib.metadata/database (lib-be/application-database-metadata-provider database-id)))
 
 (mu/defn supports?
   "A defensive wrapper around [[metabase.driver/database-supports?]]. It adds logging, caching, and error handling to
@@ -705,6 +713,19 @@
 
     [conn-prop]))
 
+(defn- strip-hidden-when-hosted
+  "Return `prop` with any option tagged `:hidden-when-hosted` removed. Recurses into group fields."
+  [prop]
+  (cond
+    (= :group (:type prop))
+    (update prop :fields #(mapv strip-hidden-when-hosted %))
+
+    (seq (:options prop))
+    (update prop :options #(filterv (complement :hidden-when-hosted) %))
+
+    :else
+    prop))
+
 (defn connection-props-server->client
   "Transforms `conn-props` for the given `driver` from their server side definition into a client side definition.
 
@@ -716,7 +737,8 @@
    if one was provided."
   {:added "0.42.0"}
   [driver conn-props]
-  (let [final-props (into [] (mapcat process-connection-prop) conn-props)
+  (let [hosted-filter (if (premium-features/is-hosted?) strip-hidden-when-hosted identity)
+        final-props   (into [] (comp (mapcat process-connection-prop) (map hosted-filter)) conn-props)
         ;; Build complete props-by-name map including nested fields from groups
         props-by-name (collect-all-props-by-name final-props)]
     ;; now, traverse the visible-if-edges and update all visible-if entries with their full set of "transitive"
@@ -918,13 +940,6 @@
    when the write-data-connection form marker is true."
   [driver]
   (fields-hidden-by-form-marker driver "write-data-connection"))
-
-(defn fields-hidden-for-admin-connection
-  "Returns the set of field names (strings) that should NOT appear in `admin_details` for the given `driver`.
-   These are fields whose resolved `visible-if` includes `\"admin-connection\" false`, meaning they are hidden
-   when the admin-connection form marker is true."
-  [driver]
-  (fields-hidden-by-form-marker driver "admin-connection"))
 
 (defn fetch-and-incorporate-auth-provider-details
   "Incorporates auth-provider responses with db-details.

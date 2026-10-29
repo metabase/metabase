@@ -12,6 +12,7 @@
    [metabase.driver.common :as driver.common]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc :as sql-jdbc]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -26,9 +27,10 @@
    [metabase.util.performance :refer [mapv some]])
   (:import
    (java.net MalformedURLException URL)
-   (java.sql Connection ResultSet Types)
+   (java.sql Connection ResultSet SQLException Types)
    (java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
-   (java.time.temporal Temporal)))
+   (java.time.temporal Temporal)
+   (org.sqlite SQLiteErrorCode)))
 
 (set! *warn-on-reflection* true)
 
@@ -743,6 +745,19 @@
 (defmethod sql.qp/->integer :sqlite
   [driver value]
   (sql.qp/->integer-with-round driver value))
+
+(defmethod sql-jdbc.execute/impl-error-in-query? :sqlite
+  [driver ^SQLException e]
+  (or ((get-method sql-jdbc.execute/impl-error-in-query? :sql-jdbc) driver e)
+      (and (nil? (.getSQLState e))
+           (contains? #{(.code SQLiteErrorCode/SQLITE_ERROR)
+                        (.code SQLiteErrorCode/SQLITE_CONSTRAINT)
+                        (.code SQLiteErrorCode/SQLITE_MISMATCH)}
+                      (.getErrorCode e)))))
+
+(defmethod sql-jdbc/impl-query-canceled? :sqlite
+  [_driver ^SQLException e]
+  (= (.code SQLiteErrorCode/SQLITE_INTERRUPT) (.getErrorCode e)))
 
 (defmethod driver/llm-sql-dialect-resource :sqlite [_]
   "metabot/prompts/dialects/sqlite.md")

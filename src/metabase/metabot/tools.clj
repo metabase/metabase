@@ -39,7 +39,8 @@
 
 (p/import-vars
  [tools.analyze-chart
-  analyze-chart-tool]
+  analyze-chart-tool
+  analyze-chart-sql-tool]
  [tools.search search-tool
   sql-search-tool
   nlq-search-tool

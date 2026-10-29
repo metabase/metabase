@@ -1,9 +1,7 @@
 (ns mage.new-migration
-  "Mage task for creating new directory-based migration files (v60+).
-
-  Each migration file is a YAML file inside a version directory,
-  e.g., `resources/migrations/060/20260905_mq_indexes.yaml`."
+  "Mage task for creating a new migration file."
   (:require
+   [babashka.fs :as fs]
    [clojure.java.io :as io]
    [mage.util :as u])
   (:import
@@ -23,53 +21,74 @@
     (catch Exception _
       "author")))
 
-(defn- utc-date []
-  (.format (DateTimeFormatter/ofPattern "yyyyMMdd")
-           (ZonedDateTime/now ZoneOffset/UTC)))
+(defn- migration-template [id author]
+  (str "## TODO: quick description of what feature/bug this migration is for\n"
+       "\n"
+       "databaseChangeLog:\n"
+       "  - changeSet:\n"
+       "      id: " id "\n"
+       "      author: " author "\n"
+       "      comment: TODO\n"
+       "      changes:\n"
+       "        - TODO\n"))
+
+(def ^:private first-chars
+  "A version-less id must have a letter and must not start with `v`, so it starts with one of these."
+  "abcdefghijklmnopqrstuwxyz")
 
 (def ^:private alphanumeric "abcdefghijklmnopqrstuvwxyz0123456789")
 
 (defn- random-id
-  "Generates a random 6-character lowercase alphanumeric string."
-  []
-  (let [rng (SecureRandom.)]
-    (apply str (repeatedly 6 #(nth alphanumeric (.nextInt rng (count alphanumeric)))))))
+  "A random 6-character version-less changeset id not in `existing-ids`."
+  [existing-ids]
+  (let [rng  (SecureRandom.)
+        pick (fn [^String chars] (.charAt chars (.nextInt rng (count chars))))]
+    (->> (repeatedly #(apply str (pick first-chars) (repeatedly 5 (fn [] (pick alphanumeric)))))
+         (remove (set existing-ids))
+         first)))
 
-(defn- migration-template [version author]
-  (let [id (random-id)]
-    (str "## TODO: quick description of what feature/bug this migration is for\n"
-         "\n"
-         "databaseChangeLog:\n"
-         "  - changeSet:\n"
-         "      id: v" version "." id "\n"
-         "      author: " author "\n"
-         "      comment: TODO\n"
-         "      changes:\n"
-         "        - TODO\n")))
+(defn migration-file
+  "The `{:path :id :content}` of a new migration file. `:existing-ids` are the changeset ids already in the repository."
+  [{:keys [description author ^ZonedDateTime now existing-ids]}]
+  (when-not (re-matches valid-description-re description)
+    (throw (ex-info (str "description must be lowercase alphanumeric or underscores, got: \"" description "\"")
+                    {:description description})))
+  (let [date (.format (DateTimeFormatter/ofPattern "yyyyMMdd") now)
+        id   (random-id existing-ids)]
+    {:path    (str "resources/migrations/" (.getYear now) "/" date "_" description ".yaml")
+     :id      id
+     :content (migration-template id author)}))
+
+(defn- existing-changeset-ids []
+  (into #{}
+        (mapcat (fn [file]
+                  (map second (re-seq #"(?m)^\s*-?\s*id:\s*(\S+)\s*$" (slurp (str file))))))
+        (fs/glob (io/file u/project-root-directory "resources" "migrations") "**.yaml")))
 
 (defn new-migration
-  "Creates a new directory-based migration file for the given version number.
+  "Creates a new migration file.
 
-  Usage: `./bin/mage new-migration 60 mq_indexes`"
+  Usage: `./bin/mage new-migration mq_indexes`"
   [{:keys [arguments]}]
-  (let [version     (first arguments)
-        description (second arguments)
-        _           (when-not (and version description)
-                      (binding [*out* *err*]
-                        (println "Usage: mage new-migration <version> <description>")
-                        (println "  e.g., mage new-migration 60 mq_indexes"))
-                      (u/exit 1))
-        _           (when-not (re-matches valid-description-re description)
-                      (binding [*out* *err*]
-                        (println (str "Error: description must be lowercase alphanumeric or underscores, got: \"" description "\""))
-                        (println "  e.g., mq_indexes, add_user_table, fix_fk"))
-                      (u/exit 1))
-        dir-name    (format "%03d" version)
-        dir         (io/file u/project-root-directory "resources" "migrations" dir-name)
-        date        (utc-date)
-        filename    (str date "_" description ".yaml")
-        file        (io/file dir filename)
-        author      (git-user-name)]
-    (.mkdirs dir)
-    (spit file (migration-template version author))
-    (println "Created" (str "resources/migrations/" dir-name "/" filename))))
+  (when-not (= 1 (count arguments))
+    (throw (ex-info (str "Usage: mage new-migration <description>. Migrations are version-less on every supported "
+                         "major, so there is no version argument.")
+                    {:arguments arguments})))
+  (let [{:keys [path]
+         :as   migration} (try
+                            (migration-file {:description  (first arguments)
+                                             :author       (git-user-name)
+                                             :now          (ZonedDateTime/now ZoneOffset/UTC)
+                                             :existing-ids (existing-changeset-ids)})
+                            (catch clojure.lang.ExceptionInfo e
+                              (binding [*out* *err*]
+                                (println (str "Error: " (ex-message e))))
+                              (u/exit 1)))
+        file      (io/file u/project-root-directory path)]
+    (when (.exists file)
+      (binding [*out* *err*]
+        (println "Error:" path "already exists"))
+      (u/exit 1))
+    (io/make-parents file)
+    (spit file (:content migration))
+    (println "Created" path)))

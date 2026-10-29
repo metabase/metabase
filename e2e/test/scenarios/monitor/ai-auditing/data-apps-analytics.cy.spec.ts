@@ -1,9 +1,9 @@
 import { USERS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { PortableTable } from "e2e/support/helpers";
+import { createAddTeamAction } from "e2e/test/scenarios/data-apps/helpers";
 
 const { H } = cy;
-const { ORDERS_ID } = SAMPLE_DATABASE;
 
 const DATA_APPS_ANALYTICS_PATH = "/monitor/ai-auditing/data-apps";
 
@@ -33,9 +33,7 @@ const ADMIN_NAME = `${USERS.admin.first_name} ${USERS.admin.last_name}`;
 function removeTestFiles() {
   cy.task("removeDataAppPaths", {
     paths: [
-      `${appRoot(QUESTION_APP.slug)}/queries`,
       `${appRoot(QUESTION_APP.slug)}/collections`,
-      `${appRoot(ACTIONS_APP.slug)}/actions`,
       `${appRoot(ACTIONS_APP.slug)}/collections`,
     ],
   });
@@ -62,13 +60,6 @@ function writeQuestionAppResources(root: string) {
 function publishQuestionApp() {
   const root = appRoot(QUESTION_APP.slug);
 
-  H.declareDataAppQueries(root, [
-    {
-      name: "OrdersCount",
-      tableId: ORDERS_ID,
-      savedQuestionEntityId: QUESTION_APP.question,
-    },
-  ]);
   writeQuestionAppResources(root);
   return H.publishDataApp(root, QUESTION_APP.slug);
 }
@@ -78,35 +69,19 @@ function publishQuestionApp() {
 function publishActionsApp() {
   const root = appRoot(ACTIONS_APP.slug);
 
-  return H.createDataAppScoreboardAction().then((source) => {
-    const actionCopy = H.newEntityId();
-
-    H.declareDataAppActions(root, [
-      {
-        exportName: "CreateScore",
-        sourceActionId: source.id,
-        copiedActionEntityId: actionCopy,
-      },
-    ]);
-
-    return H.serializeDataAppActionCopies(
-      [{ sourceActionId: source.id, entityId: actionCopy }],
+  H.writeDataAppResources(root, {
+    collection: H.dataAppRepresentations.collection(
       ACTIONS_APP.collection,
-    )
-      .then((actions) =>
-        H.writeDataAppResources(root, {
-          collection: H.dataAppRepresentations.collection(
-            ACTIONS_APP.collection,
-            `Data App: ${ACTIONS_APP.displayName}`,
-          ),
-          actions,
-        }),
-      )
-      .then(() => writeQuestionAppResources(root))
-      .then(() =>
-        H.publishDataApp(root, ACTIONS_APP.slug, { initializeRepo: false }),
-      );
+      `Data App: ${ACTIONS_APP.displayName}`,
+    ),
   });
+  writeQuestionAppResources(root);
+
+  return H.publishDataApp(root, ACTIONS_APP.slug, {
+    initializeRepo: false,
+  }).then((app) =>
+    createAddTeamAction(app.resource_collection_id).then(() => app),
+  );
 }
 
 // The first query against the audit view can take a while to settle, and the page's other
@@ -136,6 +111,8 @@ describe(
       H.restore("postgres-writable");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
+      H.createLibrary();
+      H.publishTables({ table_ids: [SAMPLE_DATABASE.ORDERS_ID] });
 
       H.resetTestTable({ type: "postgres", table: SCOREBOARD_TABLE });
       H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SCOREBOARD_TABLE });
@@ -149,14 +126,18 @@ describe(
     });
 
     it("lists the questions and actions published data apps run, and narrows the log by entity type and app", () => {
-      publishQuestionApp();
-      publishActionsApp();
+      cy.log(
+        "Publish both apps, then upload their bundles, since each pull reloads every app's placeholder bundle",
+      );
+      publishQuestionApp().then((questionApp) =>
+        publishActionsApp().then((actionsApp) => {
+          H.uploadDataAppBundle(questionApp);
+          H.uploadDataAppBundle(actionsApp);
+        }),
+      );
 
       cy.log("Read the question in one app");
       cy.intercept("POST", "/api/dataset").as("appQuery");
-      H.mockDataApp(QUESTION_APP.slug, {
-        displayName: QUESTION_APP.displayName,
-      });
       cy.visit(`/apps/${QUESTION_APP.slug}`);
       H.dataAppIframe(QUESTION_APP.displayName)
         .findByTestId("synced-app-total", { timeout: 30000 })
@@ -167,22 +148,12 @@ describe(
 
       cy.log("Run the action in the other");
       cy.intercept("POST", "/api/action/*/execute").as("execute");
-      H.mockDataApp(ACTIONS_APP.slug, {
-        displayName: ACTIONS_APP.displayName,
-      });
       cy.visit(`/apps/${ACTIONS_APP.slug}`);
       H.dataAppIframe(ACTIONS_APP.displayName).within(() => {
         cy.findByTestId("action-execute", { timeout: 30000 }).click();
         cy.findByTestId("action-output").should("have.text", "executed");
       });
       cy.wait("@execute");
-
-      cy.log(
-        "The page names the apps from the installed list, which the app mocks replaced",
-      );
-      cy.intercept("GET", "/api/apps", (req) => {
-        req.continue();
-      });
 
       cy.visit(DATA_APPS_ANALYTICS_PATH);
       cy.findByTestId("monitor-nav")

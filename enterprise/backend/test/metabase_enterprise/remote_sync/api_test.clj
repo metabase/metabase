@@ -1040,37 +1040,15 @@
        (is (false? (remote-sync.object/dirty?)))
        (is (not (t2/exists? :model/RemoteSyncObject :model_type "Action")))))))
 
-(deftest push-tracks-archiving-an-action-test
-  (testing "GHY-4722: archiving an action removes its file on the next push, and unarchiving it writes the file back"
+(deftest push-tracks-deleting-an-action-test
+  (testing "deleting a model's action removes its file on the next push"
     (do-with-pushed-model-actions!
      (fn [{:keys [model push! repo-file]}]
        (let [action-id (t2/select-one-pk :model/Action :model_id (:id model) :name "Rename Venue")]
-         (mt/user-http-request :crowberto :put 200 (str "action/" action-id) {:archived true})
+         (is (some? (repo-file "collections/main/synced/rename_venue.yaml")))
+         (mt/user-http-request :crowberto :delete 204 (str "action/" action-id))
          (is (remote-sync.task/successful? (push!)))
-         (is (nil? (repo-file "collections/main/synced/rename_venue.yaml")))
-         (mt/user-http-request :crowberto :put 200 (str "action/" action-id) {:archived false})
-         (is (remote-sync.task/successful? (push!)))
-         (is (some? (repo-file "collections/main/synced/rename_venue.yaml"))))))))
-
-(deftest push-tracks-moving-an-action-between-models-test
-  (testing "GHY-4722: moving an action to a model outside the synced collections removes its file on the next push, and moving it back writes the file again"
-    (do-with-pushed-model-actions!
-     (fn [{:keys [model push! repo-file]}]
-       (mt/with-temp [:model/Collection {unsynced-id :id} {:name "Unsynced" :location "/"}]
-         (let [action-id (t2/select-one-pk :model/Action :model_id (:id model) :name "Rename Venue")
-               other     (mt/user-http-request :crowberto :post 200 "card"
-                                               {:name                   "Other Model"
-                                                :type                   "model"
-                                                :collection_id          unsynced-id
-                                                :display                "table"
-                                                :visualization_settings {}
-                                                :dataset_query          (mt/mbql-query venues)})]
-           (mt/user-http-request :crowberto :put 200 (str "action/" action-id) {:model_id (:id other)})
-           (is (remote-sync.task/successful? (push!)))
-           (is (nil? (repo-file "collections/main/synced/rename_venue.yaml")))
-           (mt/user-http-request :crowberto :put 200 (str "action/" action-id) {:model_id (:id model)})
-           (is (remote-sync.task/successful? (push!)))
-           (is (some? (repo-file "collections/main/synced/rename_venue.yaml")))))))))
+         (is (nil? (repo-file "collections/main/synced/rename_venue.yaml"))))))))
 
 (deftest turning-sync-on-again-tracks-untracked-actions-test
   (testing "GHY-4722: turning sync on again for a collection tracks an action created while sync was off, and the next push writes it"
@@ -2406,11 +2384,11 @@
                 "no NEW RemoteSyncTask row should be created when the guard fires")))))))
 
 (deftest archiving-a-synced-model-with-actions-test
-  (testing "a model in a synced collection can be archived although it has actions, which are archived with it"
+  (testing "a model in a synced collection can be archived although it has actions, which are deleted with it"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/Collection {synced-id :id} {:name "Synced" :is_remote_synced true :location "/"}
                      :model/Card       {model-id :id}  {:type :model :collection_id synced-id
                                                         :dataset_query (mt/mbql-query venues)}
                      :model/Action     {action-id :id} {:type :query :name "Rename" :model_id model-id}]
         (mt/user-http-request :crowberto :put 200 (str "card/" model-id) {:archived true})
-        (is (true? (t2/select-one-fn :archived :model/Action :id action-id)))))))
+        (is (not (t2/exists? :model/Action :id action-id)))))))

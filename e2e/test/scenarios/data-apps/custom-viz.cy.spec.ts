@@ -1,10 +1,9 @@
 import {
   DATA_APP_DISPLAY_NAME as APP_DISPLAY_NAME,
-  DATA_APP_NAME as APP_NAME,
   visitDataAppRoute as visitAppRoute,
 } from "e2e/support/helpers";
 
-import { DATA_APP_TEST_ENV as TEST_ENV } from "./helpers";
+import { createKitchenSinkDataApp } from "./helpers";
 
 const { H } = cy;
 
@@ -21,15 +20,7 @@ describe("scenarios > data apps > custom visualizations", () => {
   });
 
   it("renders a custom visualization inside a data app", () => {
-    H.mockDataApp(APP_NAME, {
-      displayName: APP_DISPLAY_NAME,
-      testEnv: {
-        ...TEST_ENV,
-        // Opt the SDK into loading the custom viz inside the data app; without this
-        // allowlist the SDK never surfaces or loads the plugin.
-        allowedCustomVisualizations: [H.CUSTOM_VIZ_DISPLAY], // "custom:demo-viz"
-      },
-    });
+    createKitchenSinkDataApp();
 
     visitAppRoute("custom-viz");
 

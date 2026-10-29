@@ -4,6 +4,7 @@
   methods."
   (:require
    [metabase.app-db.core :as mdb]
+   [metabase.collections.core :as collections]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -15,6 +16,16 @@
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
+
+(mu/defn stored-result :- [:maybe ::queries.schema/stored-result]
+  "The ::queries.schema/stored-result with `stored-result-id`, or nil."
+  [stored-result-id :- ms/PositiveInt]
+  (t2/select-one :model/StoredResult :id [:auto/param stored-result-id]))
+
+(mu/defn stored-result-data
+  "The serialized result bytes of the StoredResult with `stored-result-id`, or nil."
+  [stored-result-id :- ms/PositiveInt]
+  (t2/select-one-fn :result_data [:model/StoredResult :result_data] :id [:auto/param stored-result-id]))
 
 ;;; ------------------------------------------------ Cards ------------------------------------------------
 
@@ -53,10 +64,10 @@
                                         not-in-exploration-document]}
                          (seq order-columns) (assoc :order-by (mapv (fn [column] [column :asc]) order-columns)))))
 
-(mu/defn card
-  "The Card with `card-id`, or nil."
+(mu/defn card :- [:maybe ::queries.schema/card]
+  "The ::queries.schema/card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))
+  (t2/select-one :model/Card :id [:auto/param card-id]))
 
 (mu/defn cards
   "The Cards with `card-ids` (nil entries, e.g. from virtual dashcards, are ignored)."
@@ -83,27 +94,12 @@
   [card-id :- ::lib.schema.id/card]
   (:dataset_query (card-query-info card-id)))
 
-(mu/defn card-document-id
-  "The `:document_id` of the Card with `card-id`."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :document_id :model/Card :id card-id))
-
-(mu/defn card-parameters
-  "The `:parameters` of the Card with `card-id`."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :parameters [:model/Card :parameters] :id card-id))
-
 (mu/defn raw-card-dimensions
   "The raw `:dimensions` row of the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]
   (t2/query-one {:select [:dimensions]
                  :from   [:report_card]
                  :where  [:= :id card-id]}))
-
-(mu/defn card-database-and-table-ids
-  "The database and primary table IDs of the Card with `card-id`, as `:database-id` and `:table-id`."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card [:database_id :database-id] [:table_id :table-id]] :id card-id))
 
 (mu/defn cards-queries-info
   "The IDs and query-related fields of the Cards with `card-ids`.
@@ -241,11 +237,6 @@
   [database-ids :- [:set ::lib.schema.id/database]]
   (t2/select :model/Database :id [:in database-ids]))
 
-(mu/defn database-name
-  "The name of the Database with `database-id`."
-  [database-id :- [:maybe ::lib.schema.id/database]]
-  (t2/select-one-fn :name :model/Database :id database-id))
-
 (mu/defn field-database-info-for-ids
   "The id, name, table name, and Database id of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
@@ -268,25 +259,10 @@
   [snippet-ids :- [:set ::lib.schema.id/native-query-snippet]]
   (t2/select :model/NativeQuerySnippet :id [:in snippet-ids]))
 
-(mu/defn dashboard
-  "The Dashboard with `dashboard-id`, or nil."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/Dashboard :id dashboard-id))
-
 (mu/defn dashboards
   "The Dashboards with `dashboard-ids`."
   [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
   (t2/select :model/Dashboard :id [:in dashboard-ids]))
-
-(mu/defn dashboard-collection-id
-  "The `:collection_id` of the Dashboard with `dashboard-id`."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] :id dashboard-id))
-
-(mu/defn dashboard-parameters
-  "The `:parameters` of the Dashboard with `dashboard-id`."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one-fn :parameters [:model/Dashboard :parameters] :id dashboard-id))
 
 (mu/defn update-dashboard!
   "Apply `changes` to the Dashboard with `dashboard-id`, returning the number updated."
@@ -359,21 +335,17 @@
                                     :join   [:implicit_action [:= :action.id :implicit_action.action_id]]
                                     :where  [:= :action.model_id model-id]}))
 
-(mu/defn move-actions-of-models!
-  "Move the Actions of the Cards with `model-ids` to the Collection with `collection-id`, returning the number
+(mu/defn move-actions-of-model!
+  "Move the Actions of the model Card with `model-id` to the Collection with `collection-id`, returning the number
   updated."
-  [model-ids     :- [:set ::lib.schema.id/card]
+  [model-id      :- ::lib.schema.id/card
    collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/update! :model/Action :model_id [:in model-ids] {:collection_id collection-id}))
+  (t2/update! :model/Action {:model_id model-id} {:collection_id collection-id}))
 
-(mu/defn set-actions-of-model-archived!
-  "Archive the unarchived Actions of the Card with `model-id` along with it, or unarchive the ones archived along with
-  it, returning the number updated."
-  [model-id  :- ms/PositiveInt
-   archived? :- :boolean]
-  (if archived?
-    (t2/update! :model/Action {:model_id model-id, :archived false} {:archived true, :archived_directly false})
-    (t2/update! :model/Action {:model_id model-id, :archived true, :archived_directly false} {:archived false})))
+(mu/defn delete-actions-of-model!
+  "Delete the Actions of the Card with `model-id`, returning the number deleted."
+  [model-id :- ms/PositiveInt]
+  (t2/delete! :model/Action :model_id model-id))
 
 (mu/defn actions-for-model
   "The Actions of the model Card with `model-id`."
@@ -384,25 +356,6 @@
   "Delete the Actions with `action-ids`, returning the number deleted."
   [action-ids :- [:set ::lib.schema.id/action]]
   (t2/delete! :model/Action :id [:in action-ids]))
-
-(mu/defn delete-dashcards-for-model-actions!
-  "Delete the DashboardCards of the Actions of the model Card with `model-id`, returning the number deleted."
-  [model-id :- ms/PositiveInt]
-  (if-let [action-ids (not-empty (t2/select-pks-set :model/Action :model_id model-id))]
-    (t2/delete! :model/DashboardCard :action_id [:in action-ids])
-    0))
-
-(mu/defn archive-explicit-actions-for-model!
-  "Archive the unarchived non-implicit Actions of the model Card with `model-id` directly, returning the number
-  updated."
-  [model-id :- ms/PositiveInt]
-  (t2/update! :model/Action {:model_id model-id, :type [:not= :implicit], :archived false}
-              {:archived true, :archived_directly true}))
-
-(mu/defn delete-implicit-actions-for-model!
-  "Delete the implicit Actions of the model Card with `model-id`, returning the number deleted."
-  [model-id :- ms/PositiveInt]
-  (t2/delete! :model/Action :model_id model-id :type :implicit))
 
 (mu/defn delete-card-moderation-reviews!
   "Delete the ModerationReviews of the Card with `card-id`, returning the number deleted."
@@ -589,6 +542,23 @@
              :id [:in ^:allow-subquery {:select [:stored_result_id]
                                         :from   [:stored_result_use]
                                         :where  [:= :card_id card-id]}]))
+
+(mu/defn unpublished-table-names :- [:set :string]
+  "Among the Tables with `table-ids`, the names of those not published to the Library."
+  [table-ids :- [:set {:min 1} ::lib.schema.id/table]]
+  (or (t2/select-fn-set :name [:model/Table :name] :id [:in table-ids] :is_published false
+                        {:from [(warehouse-schema-overlay/table-query)]})
+      #{}))
+
+(mu/defn library-metric-ids :- [:set ::lib.schema.id/card]
+  "Among `card-ids`, the IDs of the metrics in the Library's Metrics collection or one of its subcollections."
+  [card-ids :- [:set {:min 1} ::lib.schema.id/card]]
+  (or (t2/select-fn-set :id [:model/Card :report_card.id] {:join  [:collection [:= :collection.id :report_card.collection_id]]
+                                                           :where [:and
+                                                                   [:in :report_card.id card-ids]
+                                                                   [:= :report_card.type "metric"]
+                                                                   [:= :collection.type collections/library-metrics-collection-type]]})
+      #{}))
 
 (defn card-ids-outside-collection
   "Among `card-ids`, the IDs of the cards that are not in the collection with `collection-id`."

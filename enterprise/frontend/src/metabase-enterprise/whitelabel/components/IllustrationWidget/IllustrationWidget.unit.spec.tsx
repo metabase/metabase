@@ -2,9 +2,8 @@ import userEvent from "@testing-library/user-event";
 
 import {
   findRequests,
-  setupPropertiesEndpoints,
   setupSettingsEndpoints,
-  setupUpdateSettingEndpoint,
+  setupStatefulSettingsEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type {
@@ -47,15 +46,34 @@ async function setup({
     "no-object-illustration-custom": "",
     ...settingOverrides,
   });
-  setupPropertiesEndpoints(settings);
+  setupStatefulSettingsEndpoints(settings);
   setupSettingsEndpoints([]);
-  setupUpdateSettingEndpoint();
 
   renderWithProviders(
     <IllustrationWidget name={name} title={title} description={description} />,
   );
 
   await screen.findByText(title);
+}
+
+const MB = 1024 * 1024;
+
+// jsdom does not decode images, so fire the load or error event that a
+// browser fires for an intact or a corrupted image.
+function mockImageDecoding({ isIntact }: { isIntact: boolean }) {
+  return jest
+    .spyOn(HTMLImageElement.prototype, "src", "set")
+    .mockImplementation(function (this: HTMLImageElement) {
+      setTimeout(() => {
+        this.dispatchEvent(new Event(isIntact ? "load" : "error"));
+      });
+    });
+}
+
+async function selectCustomAndUpload(file: File) {
+  await userEvent.click(screen.getByRole("textbox"));
+  await userEvent.click(screen.getByText("Custom"));
+  await userEvent.upload(screen.getByTestId("file-input"), file);
 }
 
 describe("IllustrationWidget", () => {
@@ -68,6 +86,14 @@ describe("IllustrationWidget", () => {
       expect(await screen.findByDisplayValue("Lighthouse")).toBeInTheDocument();
       expect(screen.getByText("Login page illustration")).toBeInTheDocument();
     });
+
+    it.each(["no-data-illustration", "no-object-illustration"] as const)(
+      "should render the Sailboat default value for %s",
+      async (name) => {
+        await setup({ name, title: "Illustration" });
+        expect(await screen.findByDisplayValue("Sailboat")).toBeInTheDocument();
+      },
+    );
 
     it("should render options", async () => {
       await setup({
@@ -106,12 +132,6 @@ describe("IllustrationWidget", () => {
       const puts = await findRequests("PUT");
       expect(puts).toHaveLength(0);
     });
-
-    /**
-     * We couldn't test uploading an image because it relies on image.onerror and image.onload
-     * which don't seem to be supported by jsdom. However the file upload test cases has already
-     * been covered in E2E tests.
-     */
 
     it("should not remove the custom uploaded image after changing the option away from custom", async () => {
       const fakeImage = new Blob(["fake-image"], {
@@ -154,7 +174,12 @@ describe("IllustrationWidget", () => {
         },
       });
 
-      await userEvent.click(await screen.findByLabelText("close icon"));
+      await userEvent.click(
+        await screen.findByRole("button", {
+          name: "Remove custom illustration",
+        }),
+      );
+      expect(await screen.findByDisplayValue("Lighthouse")).toBeInTheDocument();
 
       await waitFor(async () => {
         const puts = await findRequests("PUT");
@@ -174,6 +199,107 @@ describe("IllustrationWidget", () => {
       expect(put2.body).toEqual({
         value: null,
       });
+    });
+  });
+
+  describe("file upload", () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it("should reject an image larger than 2MB", async () => {
+      mockImageDecoding({ isIntact: true });
+      await setup({
+        name: "login-page-illustration",
+        title: "Login page illustration",
+      });
+
+      await selectCustomAndUpload(
+        new File(["a".repeat(2 * MB + 1)], "big-file.jpg", {
+          type: "image/jpeg",
+        }),
+      );
+
+      expect(
+        await screen.findByText(
+          "The image you chose is larger than 2MB. Please choose another one.",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("big-file.jpg")).not.toBeInTheDocument();
+      expect(await findRequests("PUT")).toHaveLength(0);
+    });
+
+    it("should reject a corrupted image", async () => {
+      mockImageDecoding({ isIntact: false });
+      await setup({
+        name: "login-page-illustration",
+        title: "Login page illustration",
+      });
+
+      await selectCustomAndUpload(
+        new File(["a".repeat(2 * MB)], "corrupted-file.jpg", {
+          type: "image/jpeg",
+        }),
+      );
+
+      expect(
+        await screen.findByText(
+          "The image you chose is corrupted. Please choose another one.",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("corrupted-file.jpg")).not.toBeInTheDocument();
+      expect(await findRequests("PUT")).toHaveLength(0);
+    });
+
+    it.each([
+      "login-page-illustration",
+      "landing-page-illustration",
+      "no-data-illustration",
+      "no-object-illustration",
+    ] as const)("should save an uploaded image for %s", async (name) => {
+      mockImageDecoding({ isIntact: true });
+      await setup({ name, title: "Illustration" });
+
+      await selectCustomAndUpload(
+        new File(["logo"], "logo.jpeg", { type: "image/jpeg" }),
+      );
+
+      expect(await screen.findByText("logo.jpeg")).toBeInTheDocument();
+      const puts = await findRequests("PUT");
+      expect(puts.map(({ url, body }) => ({ url, body }))).toEqual([
+        {
+          url: `http://localhost/api/setting/${name}`,
+          body: { value: "custom" },
+        },
+        {
+          url: `http://localhost/api/setting/${name}-custom`,
+          body: { value: "data:image/jpeg;base64,bG9nbw==" },
+        },
+      ]);
+    });
+
+    it("should clear the corrupted image error after a valid upload", async () => {
+      const imageDecoding = mockImageDecoding({ isIntact: false });
+      await setup({
+        name: "login-page-illustration",
+        title: "Login page illustration",
+      });
+      await selectCustomAndUpload(
+        new File(["corrupted"], "corrupted-file.jpg", { type: "image/jpeg" }),
+      );
+      const errorMessage =
+        "The image you chose is corrupted. Please choose another one.";
+      expect(await screen.findByText(errorMessage)).toBeInTheDocument();
+
+      imageDecoding.mockRestore();
+      mockImageDecoding({ isIntact: true });
+      await userEvent.upload(
+        screen.getByTestId("file-input"),
+        new File(["logo"], "logo.jpeg", { type: "image/jpeg" }),
+      );
+
+      expect(await screen.findByText("logo.jpeg")).toBeInTheDocument();
+      expect(screen.queryByText(errorMessage)).not.toBeInTheDocument();
     });
   });
 

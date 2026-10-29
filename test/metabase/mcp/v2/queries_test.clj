@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.agent-lib.test-util :as agent-lib.tu]
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.queries :as v2.queries]
@@ -232,3 +233,9 @@
              (message/render (v2.recovery-hints/recovery-hint
                               {:error error :source-card 12 :source-card-type "question"})))
           (str error)))))
+
+(deftest ^:parallel structural-validation-schema-detail-test
+  (is (= (str "\"Representations query has an invalid structure.\" "
+              "Invalid at \"stages\": [0] \"filters\": \"invalid type\". "
+              "Fix the named paths, or call \"learn\" with \"query-dialect\" for the clause shapes.")
+         (ex-message (#'v2.queries/with-schema-detail (agent-lib.tu/structural-validation-error))))))

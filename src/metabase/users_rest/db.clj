@@ -75,13 +75,6 @@
   [user-id :- ::lib.schema.id/user]
   (t2/select-one [:model/LoginHistory :timestamp] :user_id user-id {:order-by [[:timestamp :asc]]}))
 
-(mu/defn dashboard
-  "The Dashboard with `dashboard-id`, or nil. `dashboard-id` may be nil (e.g. when no custom homepage dashboard is
-  configured) or a stale/invalid id (e.g. a deleted custom homepage Dashboard) that matches no Dashboard, in which
-  case the result is nil."
-  [dashboard-id :- [:maybe :int]]
-  (t2/select-one :model/Dashboard :id dashboard-id))
-
 (mu/defn writable-collection-exists?
   "Whether the current user can write to at least one Collection (excluding the Trash and archived items)."
   []
@@ -104,11 +97,6 @@
    changes :- ::users.schema/user.update]
   (t2/update! :model/User user-id changes))
 
-(mu/defn user
-  "The User with `user-id`, or nil."
-  [user-id :- ::lib.schema.id/user]
-  (t2/select-one :model/User :id user-id))
-
 (mu/defn personal-user-columns
   "The id, email, name, active flag, SSO source, and tenant id of the personal User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
@@ -117,14 +105,14 @@
                  :id user-id))
 
 (mu/defn active-personal-user-login-columns
-  "The id, email, and last login of the active personal User with `user-id`, or nil."
+  "The id, email, last login, and `sso_source` of the active personal User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :id :email :last_login], :id user-id, :type :personal, :is_active true))
+  (t2/select-one [:model/User :id :email :last_login :sso_source], :id user-id, :type :personal, :is_active true))
 
-(mu/defn user-active-and-type
-  "The id, active flag, and type of the User with `user-id`, or nil."
+(mu/defn user-active-type-and-sso-source
+  "The id, active flag, type, and sso_source of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :id :is_active :type] :id user-id))
+  (t2/select-one [:model/User :id :is_active :type :sso_source] :id user-id))
 
 (mu/defn user-exists?
   "Whether a User with `user-id` exists."

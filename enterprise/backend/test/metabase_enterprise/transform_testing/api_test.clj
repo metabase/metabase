@@ -41,7 +41,8 @@
                              [:get 402 path]
                              [:put 402 path {:name "t"}]
                              [:delete 402 path]
-                             [:post 402 (str path "/run")]]]
+                             [:post 402 (str path "/run")]
+                             [:get 402 (str path "/run")]]]
               (mt/assert-has-premium-feature-error
                "Transforms Testing"
                (apply mt/user-http-request :crowberto request)))))))))
@@ -69,7 +70,7 @@
                      :expectations expectations}
                     created)))
           (testing "GET returns the test"
-            (is (= created (mt/user-http-request :crowberto :get 200 path))))
+            (is (= (assoc created :last_run nil) (mt/user-http-request :crowberto :get 200 path))))
           (testing "GET / filters by transform"
             (is (= [(:id created)]
                    (map :id (mt/user-http-request :crowberto :get 200 "ee/transform-test" :transform-id transform-id))))
@@ -189,3 +190,65 @@
             (mt/user-http-request :lucky :delete 403 path)
             (mt/user-http-request :lucky :post 403 (str path "/run"))))
         (is (t2/exists? :model/TransformTest test-id))))))
+
+(deftest list-runs-test
+  (with-transforms-enabled
+    (mt/with-temp [:model/Transform        {transform-id :id} {}
+                   :model/TransformTest    {test-id :id}      {:transform_id transform-id}
+                   :model/TransformTest    {other-id :id}     {:transform_id transform-id}
+                   :model/TransformTestRun {old-id :id}       {:transform_test_id test-id
+                                                               :status            :passed
+                                                               :start_time        #t "2026-01-01T10:00:00Z"
+                                                               :end_time          #t "2026-01-01T10:00:02Z"}
+                   :model/TransformTestRun {failed-id :id}    {:transform_test_id test-id
+                                                               :initiated_by      (mt/user->id :crowberto)
+                                                               :status            :failed
+                                                               :start_time        #t "2026-02-01T10:00:00Z"
+                                                               :end_time          #t "2026-02-01T10:00:02Z"}
+                   :model/TransformTestRun {new-id :id}       {:transform_test_id test-id
+                                                               :status            :passed
+                                                               :start_time        #t "2026-03-01T10:00:00Z"
+                                                               :end_time          #t "2026-03-01T10:00:02Z"}
+                   :model/TransformTestRun _                  {:transform_test_id other-id
+                                                               :status            :error
+                                                               :start_time        #t "2026-04-01T10:00:00Z"}]
+      (let [path (str "ee/transform-test/" test-id "/run")]
+        (testing "lists the runs of the test, newest first, with who started them"
+          (is (=? {:data   [{:id new-id :status "passed" :initiated_by_user nil}
+                            {:id failed-id :status "failed" :initiated_by_user {:common_name "Crowberto Corv"}}
+                            {:id old-id :status "passed"}]
+                   :total  3
+                   :offset 0}
+                  (mt/user-http-request :crowberto :get 200 path))))
+        (testing "pages"
+          (is (=? {:data [{:id failed-id}] :total 3 :limit 1 :offset 1}
+                  (mt/user-http-request :crowberto :get 200 path :limit 1 :offset 1))))
+        (testing "filters by status"
+          (is (=? {:data [{:id failed-id}] :total 1}
+                  (mt/user-http-request :crowberto :get 200 path :statuses "failed"))))
+        (testing "filters by start and end time"
+          (is (=? {:data [{:id failed-id}] :total 1}
+                  (mt/user-http-request :crowberto :get 200 path :start-time "2026-02-01~2026-02-28")))
+          (is (=? {:data [{:id new-id}] :total 1}
+                  (mt/user-http-request :crowberto :get 200 path :end-time "2026-03-01"))))
+        (testing "refuses users who can't read the test"
+          (mt/user-http-request :rasta :get 403 path))))))
+
+(deftest last-run-test
+  (with-transforms-enabled
+    (mt/with-temp [:model/Transform        {transform-id :id} {}
+                   :model/TransformTest    {test-id :id}      {:transform_id transform-id :name "a"}
+                   :model/TransformTest    {never-id :id}     {:transform_id transform-id :name "b"}
+                   :model/TransformTestRun _                  {:transform_test_id test-id
+                                                               :status            :passed
+                                                               :start_time        #t "2026-01-01T10:00:00Z"}
+                   :model/TransformTestRun {new-id :id}       {:transform_test_id test-id
+                                                               :status            :failed
+                                                               :start_time        #t "2026-02-01T10:00:00Z"}]
+      (testing "the list carries each test's newest run"
+        (is (=? [{:id test-id :last_run {:id new-id :status "failed"}}
+                 {:id never-id :last_run nil}]
+                (mt/user-http-request :crowberto :get 200 "ee/transform-test" :transform-id transform-id))))
+      (testing "a single test carries its newest run"
+        (is (=? {:id test-id :last_run {:id new-id}}
+                (mt/user-http-request :crowberto :get 200 (str "ee/transform-test/" test-id))))))))

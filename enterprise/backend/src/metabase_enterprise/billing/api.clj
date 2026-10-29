@@ -10,6 +10,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.premium-features.core :as premium-features]
    [metabase.store-api.core :as store-api]
+   [metabase.users.db :as users.db]
    [metabase.util :as u]
    [metabase.util.date-2.parse :as u.date.parse]
    [metabase.util.i18n :as i18n]
@@ -66,7 +67,7 @@
    using the embedding token and signed in user's email to fetch the billing information."
   []
   (let [token    (premium-features/premium-embedding-token)
-        email    (billing.db/user-email api/*current-user-id*)
+        email    (:email (users.db/user api/*current-user-id*))
         language (i18n/user-locale-string)]
     (if (and token (str/starts-with? token "airgap_"))
       (billing-status)

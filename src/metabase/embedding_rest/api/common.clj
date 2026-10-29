@@ -4,10 +4,10 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.database-routing.core :as database-routing]
    [metabase.eid-translation.core :as eid-translation]
-   [metabase.embedding-rest.db :as embedding-rest.db]
    [metabase.embedding.jwt :as embed]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
@@ -18,6 +18,7 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.public-sharing-rest.api :as api.public]
    [metabase.queries.core :as queries]
+   [metabase.queries.db :as queries.db]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.parameters.operators :as params.ops]
@@ -350,13 +351,19 @@
   (->> (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
        (eid-translation/->id :model/Card)))
 
+(defn active-card
+  "The Card with `card-id` unless it is archived, in which case nil; a trashed Card keeps its DashboardCard rows."
+  [card-id]
+  (let [card (queries.db/card card-id)]
+    (when-not (:archived card) card)))
+
 (defn card-for-unsigned-token
   "Return the info needed for embedding about Card specified in `token`."
   [unsigned-token & {:keys [embedding-params enable-embedding?]}]
   (let [card-id      (unsigned-token->card-id unsigned-token)
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
         resolved-embedding-params (or embedding-params
-                                      (embedding-rest.db/card-embedding-params card-id))]
+                                      (:embedding_params (queries.db/card card-id)))]
     (-> (api.public/public-card card-id :enable-embedding? enable-embedding?)
         api.public/combine-parameters-and-template-tags
         (remove-token-parameters token-params)
@@ -374,7 +381,7 @@
     :embedded-question))
 
 ;;; Embedded viewers have no Metabase account, so there are no user attributes to route by: embedded query execution
-;;; always uses the router (primary) database. The `with-database-routing-off` wraps live here, in the shared
+;;; always uses the router (primary) database. The `with-anonymous-router-access` wraps live here, in the shared
 ;;; execution helpers that every /api/embed and /api/preview_embed endpoint funnels through, so that individual
 ;;; endpoints cannot forget them. (For preview_embed this also means the preview shows what the published embed will
 ;;; show, rather than routing via the previewing admin's own user attribute.)
@@ -389,7 +396,7 @@
   {:pre [(map? card) (pos-int? (:id card)) (u/maybe? map? embedding-params) (map? token-params) (map? query-params)]}
   (let [merged-slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
         parameters         (apply-slug->value (resolve-card-parameters card) merged-slug->value)]
-    (database-routing/with-database-routing-off
+    (database-routing/with-anonymous-router-access
       (m/mapply api.public/process-query-for-card-with-id
                 card export-format parameters
                 :context     (get-embed-card-context export-format)
@@ -430,7 +437,7 @@
   "Like [[metabase.tiles.api/process-tiles-query-for-card]], but takes a pre-loaded Card entity and runs with database
   routing off (see above). Used by the embed tiles endpoints. Returns a Ring response."
   [card parameters zoom x y lat-field lon-field]
-  (database-routing/with-database-routing-off
+  (database-routing/with-anonymous-router-access
     (api.tiles/process-tiles-query-for-card card parameters zoom x y lat-field lon-field)))
 
 ;;; -------------------------- Dashboard Fns used by both /api/embed and /api/preview_embed --------------------------
@@ -469,7 +476,7 @@
                                                               [:enable-embedding? {:optional true} [:maybe :boolean]]]]]
   (let [dashboard-id (unsigned-token->dashboard-id unsigned-token)
         embedding-params (or embedding-params
-                             (embedding-rest.db/dashboard-embedding-params dashboard-id))
+                             (:embedding_params (dashboards.db/dashboard dashboard-id)))
         token-params (embed/get-in-unsigned-token-or-throw unsigned-token [:params])]
     (-> (api.public/public-dashboard dashboard-id :enable-embedding? enable-embedding?)
         (substitute-token-parameters-in-text token-params)
@@ -499,7 +506,7 @@
          (map? token-params) (map? query-params)]}
   (let [slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
         parameters  (resolve-dashboard-parameters dashboard slug->value)]
-    (database-routing/with-database-routing-off
+    (database-routing/with-anonymous-router-access
       (api.public/process-query-for-dashcard
        :dashboard     dashboard
        :card          card
@@ -516,7 +523,7 @@
   entities and runs with database routing off (see the comment above [[process-query-for-card-with-params]]). Used by
   the embed tiles endpoints. Callers select each entity exactly once and thread it here. Returns a Ring response."
   [dashboard dashcard card parameters zoom x y lat-field lon-field]
-  (database-routing/with-database-routing-off
+  (database-routing/with-anonymous-router-access
     (api.public/process-tiles-query-for-dashcard dashboard dashcard card
                                                  parameters zoom x y lat-field lon-field)))
 
@@ -541,7 +548,7 @@
                         {:status-code 400})))
       (try
         ;; guest embeds always use the router (primary) database, never a routed destination
-        (database-routing/with-database-routing-off
+        (database-routing/with-anonymous-router-access
           (request/as-admin
             (queries/card-param-values card param-key search-prefix
                                        (queries/card-param-constraints
@@ -588,7 +595,7 @@
                              (pr-str searched-param-slug))
                         {:status-code 400})))
       (try
-        (database-routing/with-database-routing-off
+        (database-routing/with-anonymous-router-access
           (request/as-admin
             (queries/card-param-remapped-value card param-key value
                                                (queries/card-param-constraints
@@ -623,7 +630,7 @@
    & {:keys [preview] :or {preview false}}]
   (let [unsigned-token                                 (embed/unsign token)
         dashboard-id                                   (unsigned-token->dashboard-id unsigned-token)
-        dashboard                                      (embedding-rest.db/dashboard dashboard-id)
+        dashboard                                      (dashboards.db/dashboard dashboard-id)
         _                                              (when-not preview (check-embedding-enabled-for-dashboard dashboard))
         slug-token-params                              (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
         {parameters                 :parameters
@@ -650,7 +657,7 @@
       ;; ok, at this point we can run the query
       (let [merged-id-params (param-values-merged-params id->slug slug->id embedding-params slug-token-params id-query-params)]
         (try
-          (database-routing/with-database-routing-off
+          (database-routing/with-anonymous-router-access
             (request/as-admin
               (parameters.dashboard/param-values dashboard searched-param-id merged-id-params prefix)))
           (catch Throwable e
@@ -678,7 +685,7 @@
   ([token param-key value {:keys [preview] :or {preview false}}]
    (let [unsigned-token             (embed/unsign token)
          dashboard-id               (unsigned-token->dashboard-id unsigned-token)
-         dashboard                  (embedding-rest.db/dashboard dashboard-id)
+         dashboard                  (dashboards.db/dashboard dashboard-id)
          _                          (when-not preview (check-embedding-enabled-for-dashboard dashboard))
          slug-token-params          (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
          parameters                 (:parameters dashboard)
@@ -707,6 +714,6 @@
                        {:status-code 400})))
      (let [constraints (-> (param-values-merged-params id->slug slug->id embedding-params slug-token-params {})
                            (select-keys locked-param-ids))]
-       (database-routing/with-database-routing-off
+       (database-routing/with-anonymous-router-access
          (request/as-admin
            (parameters.dashboard/dashboard-param-remapped-value dashboard param-key value constraints)))))))
