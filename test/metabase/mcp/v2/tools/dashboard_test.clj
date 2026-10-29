@@ -14,6 +14,7 @@
    [metabase.mcp.v2.test-util :as v2.tu]
    ;; Registers the tool the assertions below drive.
    [metabase.mcp.v2.tools.dashboard :as tools.dashboard]
+   [metabase.metabot.toolkit.dashboard-ops :as dashboard-ops]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -451,6 +452,44 @@
                 "the refusal must not leak the card's name"))))
       (is (zero? (t2/count :model/DashboardCard :dashboard_id (:id dash)))
           "nothing may be written before the refusal"))))
+
+(deftest reactivated-source-card-is-refused-for-a-non-admin-test
+  (testing "switching a parameter to the card its config already names checks that card, so a non-admin is refused one
+            they cannot read before any write"
+    (mt/with-temp [:model/Collection {secret-id :id} {}
+                   :model/Card       {hidden-id :id} {:name "CONFIDENTIAL" :collection_id secret-id}
+                   :model/Dashboard  dash            {:name       "Sales"
+                                                      :parameters [{:id                   "p"
+                                                                    :name                 "P"
+                                                                    :slug                 "p"
+                                                                    :type                 "string/="
+                                                                    :values_source_type   "static-list"
+                                                                    :values_source_config {:card_id hidden-id
+                                                                                           :values  ["a"]}}]}]
+      (perms/revoke-collection-permissions! (perms-group/all-users) secret-id)
+      (doseq [validate-only? [true false]]
+        (testing (str "validate_only " validate-only?)
+          (is (re-find #"no card with id \d+ that you can read"
+                       (tool-error (call-tool! :rasta v2.tu/all-scopes "dashboard_write"
+                                               (wire {:method        "update"
+                                                      :id            (:id dash)
+                                                      :validate_only validate-only?
+                                                      :ops           [{:op                 "update_parameter"
+                                                                       :parameter_id       "p"
+                                                                       :values_source_type "card"}]})))))))
+      (is (= :static-list (:values_source_type (first (t2/select-one-fn :parameters :model/Dashboard :id (:id dash)))))
+          "nothing may be written before the refusal"))))
+
+(deftest stored-card-ids-match-the-save-test
+  (testing "the compiler exempts exactly the card references the save treats as stored"
+    (let [dash {:dashcards  [{:id 7 :card_id 9 :series [{:id 11}]} {:id 8 :card_id nil}]
+                :parameters [{:id "p1" :values_source_type "card" :values_source_config {:card_id 45}}
+                             {:id "p2" :values_source_type :card :values_source_config {:card_id 46}}
+                             {:id "p3" :values_source_type "static-list" :values_source_config {:card_id 47}}
+                             {:id "p4"}]}]
+      (is (= #{9 11 45 46}
+             (:cards (#'dashboards.write/references dash))
+             (#'dashboard-ops/dashboard-card-ids dash))))))
 
 (deftest create-applies-display-attributes-test
   (testing "GHY-4147: width and auto_apply_filters are honored on create, not silently dropped"

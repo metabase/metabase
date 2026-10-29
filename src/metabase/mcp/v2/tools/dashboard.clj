@@ -46,15 +46,6 @@
   (-> (v2.resolve/resolve-and-read :model/Dashboard id-or-eid)
       (t2/hydrate [:dashcards :series :card] :tabs)))
 
-(defn- referenced-card-ids
-  "Every card id the compiled payload may need metadata for: those already on the dashboard, plus
-   any named by an op."
-  [dash ops]
-  (-> (set (keep :card_id (:dashcards dash)))
-      ;; A parameter's source card is checked whenever an op leaves it with a card source, even one it already had.
-      (into (keep (comp :card_id :values_source_config)) (:parameters dash))
-      (into (mapcat dashboard-ops/card-refs) ops)))
-
 (defn- fetch-cards
   "The `{card-id card}` map for `ids`, behind read checks.
    It omits a card the caller cannot read, so an op naming one fails the compiler's `:unknown-card` check.
@@ -186,7 +177,7 @@
   (let [{:keys [payload cards]}
         (dashboard-errors/do-with-teaching-errors
          #(let [ops   (dashboard-ops/prepare-ops ops)
-                cards (fetch-cards (referenced-card-ids dash ops))]
+                cards (fetch-cards (dashboard-ops/referenced-card-ids dash ops))]
             {:payload (normalize-parameters (dashboard-ops/compile-ops dash ops cards))
              :cards   cards}))]
     (validate-payload! (merge attrs payload))
