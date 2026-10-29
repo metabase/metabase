@@ -171,7 +171,7 @@ You can also use systemd-analyze to check the syntax:
 
 If it returns nothing it found no problems with the service file.
 
-If you see that the service's status is loaded and inactive then you can inspect the contents of the service file at `~/.config/systemd/user/metabase.service`. Verify that all the accurate configuration details from your unit file are present and that there are no surprises. For instance, it pays to make sure your database password doesn't contain a % sign which might trigger a [existing systemd unit specifier](https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/using_systemd_unit_files_to_customize_and_optimize_your_system/assembly_working-with-systemd-unit-files_working-with-systemd#important-unit-specifiers_assembly_working-with-systemd-unit-files).
+If you see that the service's status is loaded and inactive then you can inspect the contents of the service file by running `systemctl --user cat metabase.service`. Verify that all the accurate configuration details from your unit file are present and that there are no surprises. For instance, it pays to make sure your database password doesn't contain a % sign which might trigger a [existing systemd unit specifier](https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/using_systemd_unit_files_to_customize_and_optimize_your_system/assembly_working-with-systemd-unit-files_working-with-systemd#important-unit-specifiers_assembly_working-with-systemd-unit-files).
 
 If all looks good, start the service:
 
