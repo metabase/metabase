@@ -1375,13 +1375,13 @@
       (is (= errors (map :error (mt/as-admin (agent-loop-streamed-error-parts! chunks)))))
       (is (= errors (map :error (mt/with-current-user (mt/user->id :rasta)
                                   (agent-loop-streamed-error-parts! chunks)))))))
-  (testing "any other streamed error keeps no error code"
+  (testing "any other streamed error is the provider's, with the code that shows its message and offers a retry"
     (let [error {:code 400 :message "string too long" :metadata {:error_type "string_too_long"}}]
-      (is (= [error]
+      (is (= [(assoc error :error-code "provider_error")]
              (map :error (mt/as-admin (agent-loop-streamed-error-parts! (openrouter-midstream-error-chunks error)))))))))
 
-(deftest agent-loop-other-400s-keep-the-generic-error-part-test
-  (testing "a 400 that is not a context overflow keeps the generic error part"
+(deftest agent-loop-other-400s-are-provider-errors-test
+  (testing "a 400 that is not a context overflow is a provider error, not a \"full\" one"
     (doseq [[model-ref provider body]
             [["openrouter/anthropic/claude-haiku-4.5" "openrouter"
               {:error {:code 400 :message "string too long" :metadata {:error_type "string_too_long"}}}]
@@ -1390,9 +1390,10 @@
       (testing (str provider " " (pr-str body))
         (let [e (rethrown-api-error! provider 400 body)]
           (is (= [{:type  :error
-                   :error {:message (ex-message e)
-                           :type    (str (type e))
-                           :data    (ex-data e)}}]
+                   :error {:message    (ex-message e)
+                           :type       (str (type e))
+                           :data       (ex-data e)
+                           :error-code "provider_error"}}]
                  (mt/as-admin (agent-loop-error-parts! model-ref e)))))))))
 
 (deftest streamed-provider-error-is-generic-for-non-admins-test
