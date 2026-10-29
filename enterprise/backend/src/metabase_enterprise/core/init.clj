@@ -23,6 +23,7 @@
    [metabase-enterprise.memoize-monitor.init]
    [metabase-enterprise.metabot.init]
    [metabase-enterprise.mfa.init]
+   [metabase-enterprise.monitor-relay.init]
    [metabase-enterprise.remote-sync.init]
    [metabase-enterprise.scim.init]
    [metabase-enterprise.search.entity-retrieval.init]

@@ -3,7 +3,11 @@ import { t } from "ttag";
 import { AdminNavWrapper } from "metabase/admin/components/AdminNav";
 import { UpsellGem } from "metabase/common/components/upsells/components/UpsellGem";
 import { useHasTokenFeature } from "metabase/common/hooks";
-import { PLUGIN_REMOTE_SYNC, PLUGIN_SECURITY_CENTER } from "metabase/plugins";
+import {
+  PLUGIN_MONITOR_RELAY,
+  PLUGIN_REMOTE_SYNC,
+  PLUGIN_SECURITY_CENTER,
+} from "metabase/plugins";
 import { getPlan, isProPlan, useSetting } from "metabase/settings";
 import { Box, Divider, Flex } from "metabase/ui";
 
@@ -68,6 +72,13 @@ export function SettingsNav() {
       <SettingsNavItem path="email" label={t`Email`} icon="mail" />
       <SettingsNavItem path="slack" label={t`Slack`} icon="slack" />
       <SettingsNavItem path="webhooks" label={t`Webhooks`} icon="webhook" />
+      {PLUGIN_MONITOR_RELAY.isEnabled && (
+        <SettingsNavItem
+          path="metabase-monitor"
+          label={t`Metabase Monitor`}
+          icon="eye"
+        />
+      )}
       {!hasHosting && <UpdatesNavItem />}
       <NavDivider />
       <SettingsNavItem

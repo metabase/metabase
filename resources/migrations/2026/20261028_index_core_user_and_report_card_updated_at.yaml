@@ -1,0 +1,77 @@
+## The Metabase Monitor relay reads the users and the cards that changed since a time, every 10 s. These indexes serve
+## that read. An update that moves updated_at then also writes the index: one entry per login on core_user, one per
+## card edit on report_card. On Postgres such an update can no longer be a HOT update.
+##
+## The relay's indexes are built so that the table stays writable wherever the database can do it, and
+## 20261028_index_query_execution_id says where it cannot. Postgres builds these two CONCURRENTLY. A build that fails
+## leaves an invalid index of that name, which IF NOT EXISTS then keeps: drop it by hand and run the migration again.
+## MySQL and MariaDB add a secondary index in place, without a lock. H2 needs neither: the relay does nothing on H2.
+
+databaseChangeLog:
+  - changeSet:
+      id: u7kq2m
+      author: Filipe Silva
+      comment: Index core_user by updated_at (PostgreSQL), for readers that read the users changed since a time
+      dbms: postgresql
+      runInTransaction: false
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_core_user_updated_at ON core_user (updated_at)
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: DROP INDEX CONCURRENTLY IF EXISTS idx_core_user_updated_at
+
+  - changeSet:
+      id: t3vx8n
+      author: Filipe Silva
+      comment: Index report_card by updated_at (PostgreSQL), for readers that read the cards changed since a time
+      dbms: postgresql
+      runInTransaction: false
+      changes:
+        - sql:
+            dbms: postgresql
+            sql: CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_report_card_updated_at ON report_card (updated_at)
+      rollback:
+        - sql:
+            dbms: postgresql
+            sql: DROP INDEX CONCURRENTLY IF EXISTS idx_report_card_updated_at
+
+  - changeSet:
+      id: m9rw4c
+      author: Filipe Silva
+      comment: Index core_user by updated_at (MySQL, MariaDB), for readers that read the users changed since a time
+      dbms: mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: core_user
+                indexName: idx_core_user_updated_at
+      changes:
+        - createIndex:
+            tableName: core_user
+            indexName: idx_core_user_updated_at
+            columns:
+              - column:
+                  name: updated_at
+
+  - changeSet:
+      id: b2hy6j
+      author: Filipe Silva
+      comment: Index report_card by updated_at (MySQL, MariaDB), for readers that read the cards changed since a time
+      dbms: mysql,mariadb
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: report_card
+                indexName: idx_report_card_updated_at
+      changes:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_report_card_updated_at
+            columns:
+              - column:
+                  name: updated_at

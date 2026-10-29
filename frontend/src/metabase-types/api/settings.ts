@@ -897,6 +897,7 @@ export interface EnterpriseSettings extends Settings {
   "mcp-apps-cors-enabled-clients": string[] | null;
   "mcp-apps-cors-custom-origins": string | null;
   "transforms-meter-locked": boolean | null;
+  "metabase-monitor-url"?: string | null;
   /**
    * @deprecated
    */

@@ -1,5 +1,6 @@
 import {
   PLUGIN_AUTH_PROVIDERS,
+  PLUGIN_MONITOR_RELAY,
   PLUGIN_MULTI_FACTOR_AUTH,
   PLUGIN_SECURITY_CENTER,
   PLUGIN_TENANTS,
@@ -31,6 +32,7 @@ const SLOTS: [string, () => PluginRoute][] = [
     "python runner settings",
     () => PLUGIN_TRANSFORMS_PYTHON.pythonRunnerSettingsPage,
   ],
+  ["Metabase Monitor settings", () => PLUGIN_MONITOR_RELAY.settingsPage],
   [
     "tenant specific collection guard",
     () => PLUGIN_TENANTS.canAccessTenantSpecificRoute,

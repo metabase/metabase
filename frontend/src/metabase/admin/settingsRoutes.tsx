@@ -3,6 +3,7 @@ import type { Store } from "@reduxjs/toolkit";
 import { NotFound } from "metabase/common/components/ErrorPages";
 import {
   PLUGIN_AUTH_PROVIDERS,
+  PLUGIN_MONITOR_RELAY,
   PLUGIN_MULTI_FACTOR_AUTH,
   PLUGIN_TRANSFORMS_PYTHON,
 } from "metabase/plugins";
@@ -182,6 +183,10 @@ export const getSettingsRoutes = (store: Store<State>) => {
         <Route path="email" lazy={emailSettings} />
         <Route path="slack" lazy={slackSettings} />
         <Route path="webhooks" lazy={webhooksSettings} />
+        <Route
+          path="metabase-monitor"
+          lazy={PLUGIN_MONITOR_RELAY.settingsPage}
+        />
         <Route
           path="authentication"
           lazy={authenticationSettings("authentication")}

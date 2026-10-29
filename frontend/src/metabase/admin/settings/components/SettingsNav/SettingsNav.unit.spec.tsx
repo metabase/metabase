@@ -4,6 +4,7 @@ import fetchMock from "fetch-mock";
 import { setupSettingEndpoint } from "__support__/server-mocks";
 import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
+import { PLUGIN_MONITOR_RELAY, reinitialize } from "metabase/plugins";
 import { Route } from "metabase/router";
 import type { TokenFeatures } from "metabase-types/api";
 import {
@@ -250,5 +251,35 @@ describe("SettingsNav", () => {
 
     expect(screen.queryByText("Manage visualizations")).not.toBeInTheDocument();
     expect(screen.queryByText("Development")).not.toBeInTheDocument();
+  });
+
+  describe("Metabase Monitor", () => {
+    afterEach(() => {
+      reinitialize();
+    });
+
+    it("should hide the Metabase Monitor nav item without its plugin", async () => {
+      await setup({ initialRoute: "/admin/settings/general" });
+
+      expect(await screen.findByText("General")).toBeInTheDocument();
+      expect(screen.queryByText("Metabase Monitor")).not.toBeInTheDocument();
+    });
+
+    it("should show the Metabase Monitor nav item to admins when its plugin is enabled", async () => {
+      PLUGIN_MONITOR_RELAY.isEnabled = true;
+      await setup({ initialRoute: "/admin/settings/general" });
+
+      expect(
+        await screen.findByRole("link", { name: /Metabase Monitor/ }),
+      ).toHaveAttribute("href", "/admin/settings/metabase-monitor");
+    });
+
+    it("should hide the Metabase Monitor nav item from settings managers", async () => {
+      PLUGIN_MONITOR_RELAY.isEnabled = true;
+      await setup({ initialRoute: "/admin/settings/general", isAdmin: false });
+
+      expect(await screen.findByText("General")).toBeInTheDocument();
+      expect(screen.queryByText("Metabase Monitor")).not.toBeInTheDocument();
+    });
   });
 });
