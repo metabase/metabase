@@ -62,13 +62,17 @@
   "A single-quoted SQL string, with doubled quotes inside it."
   #"'(?:[^']|'')*'")
 
+(mu/defn jinja? :- :boolean
+  "Does `sql` still contain Jinja (`{{`) outside its string literals? Inside one it is just text."
+  [sql :- :string]
+  (str/includes? (str/replace sql string-literal-re "''") "{{"))
+
 (mu/defn- parse :- ::node
   "Parse the SQL expression `sql` in `dialect`, or throw [[unsupported]] saying why it could not be parsed."
   [dialect :- ::dialect
    sql     :- :string]
-  ;; sqlglot reads `{{ ... }}` as a struct literal, so catch Jinja the filter renderer did not recognise first;
-  ;; inside a string literal it is just text
-  (when (str/includes? (str/replace sql string-literal-re "''") "{{")
+  ;; sqlglot reads `{{ ... }}` as a struct literal, so catch Jinja the filter renderer did not recognise first
+  (when (jinja? sql)
     (unsupported "could not parse %s: it still contains Jinja" (pr-str sql)))
   (try
     (sql-parsing/parse-expression dialect sql)
@@ -166,10 +170,31 @@
       (arg divisor :this)
       divisor)))
 
+(defn- types-of
+  "The types `value`, a converted operand, may have: [[lib.schema.expression/type-of]] as a set, since it returns one
+  when the type is ambiguous."
+  [value]
+  (let [t (lib.schema.expression/type-of value)]
+    (if (set? t) t #{t})))
+
+(defn- integer-typed?
+  "Is `value` known to be an integer? A column the project does not type is `:type/*`, which is not known to be one."
+  [value]
+  (every? #(isa? % :type/Integer) (types-of value)))
+
 (defmethod ->value "Div"
   [node resolve-column]
-  (lib// (->value (arg node :this) resolve-column)
-         (->value (safe-divisor (arg node :expression)) resolve-column)))
+  (let [dividend (->value (arg node :this) resolve-column)
+        divisor  (->value (safe-divisor (arg node :expression)) resolve-column)]
+    ;; sqlglot marks a `/` whose meaning depends on its operands' types as `typed`: on Postgres, SQL Server, Redshift,
+    ;; Presto and SQLite an integer divided by an integer is truncated to an integer, where Metabase's `/` divides as
+    ;; floats, so the number would silently differ. MySQL, Snowflake, BigQuery and Oracle divide as decimals, as
+    ;; Metabase does, and are not marked.
+    (when (and (arg node :typed) (integer-typed? dividend) (integer-typed? divisor))
+      (unsupported (str "%s divides an integer by an integer, which the warehouse truncates to a whole number and"
+                        " Metabase does not; cast an operand to a decimal or float")
+                   (:sql node)))
+    (lib// dividend divisor)))
 
 (def ^:private cast-targets
   "sqlglot's name for a SQL type (`cast(x as numeric(10, 2))` and `x::numeric` both arrive as `DECIMAL`) → the Lib
@@ -377,10 +402,20 @@
 
 ;;; conditions
 
+(defn- boolean-typed?
+  "Can `value` be a boolean: is its type `:type/Boolean`, or unknown (`:type/*`, a column the project does not type),
+  which is trusted?"
+  [value]
+  (boolean (some #(or (= % :type/*) (isa? % :type/Boolean)) (types-of value))))
+
 (defmethod ->predicate "Column"
   [node resolve-column]
-  ;; a bare column in a boolean position is a boolean column, `WHERE is_returned`
-  (lib/= (->value node resolve-column) true))
+  ;; a bare column in a boolean position is a boolean column, `WHERE is_returned`; one the project types as anything
+  ;; else cannot be, and the warehouse would reject it where Lib's `[:= x true]` would run
+  (let [value (->value node resolve-column)]
+    (when-not (boolean-typed? value)
+      (unsupported "%s is not a boolean column, so it cannot stand alone as a condition" (:sql node)))
+    (lib/= value true)))
 
 (defn- without-null-operands
   "Report comparison `node` when any of its operand `nodes` is the literal `NULL`. In SQL a comparison against NULL
@@ -715,13 +750,16 @@
 
 (mr/def ::reference
   "A MetricFlow object reference from a filter template: `Dimension('entity__name')`, `TimeDimension('entity__name',
-  'grain')`, `Entity('name')` or `Metric('name', ...)`. `:arguments` is whatever followed the quoted arguments,
-  `entity_path=['order']` or `group_by=['customer']`, as written; nil when nothing did."
+  'grain')`, `Entity('name')` or `Metric('name', ...)`. `:grain` is the second argument of a `TimeDimension`, or the
+  argument of a `.grain('month')` chained onto the reference, which means the same. `:arguments` is whatever followed
+  the quoted arguments, `entity_path=['order']` or `group_by=['customer']`, as written; `:methods` is every other
+  method call chained onto the reference, `.date_part('month')`, as written; both nil when there was none."
   [:map
    [:kind      [:enum :dimension :time-dimension :entity :metric]]
    [:name      :string]
    [:grain     [:maybe :string]]
-   [:arguments [:maybe :string]]])
+   [:arguments [:maybe :string]]
+   [:methods   [:maybe :string]]])
 
 (mr/def ::rendered-filter
   "A filter template with its references replaced by placeholder identifiers, and what each placeholder stood for."
@@ -731,15 +769,35 @@
 
 (def ^:private reference-re
   "`{{ Dimension('order__status') }}`, `{{ TimeDimension('metric_time', 'day') }}`, `{{ Entity('customer') }}`,
-  `{{ Metric('revenue', group_by=['customer']) }}`: the object, its quoted first argument, an optional quoted second
-  argument, and whatever else precedes the closing parenthesis."
-  #"\{\{\s*(Dimension|TimeDimension|Entity|Metric)\(\s*(?:'([^']*)'|\"([^\"]*)\")\s*(?:,\s*(?:'([^']*)'|\"([^\"]*)\"))?([^)]*)\)\s*\}\}")
+  `{{ Metric('revenue', group_by=['customer']) }}`, `{{ Dimension('order__ordered_at').grain('month') }}`: the
+  object, its quoted first argument, an optional quoted second argument, whatever else precedes the closing
+  parenthesis, and the method calls chained onto it."
+  #"\{\{\s*(Dimension|TimeDimension|Entity|Metric)\(\s*(?:'([^']*)'|\"([^\"]*)\")\s*(?:,\s*(?:'([^']*)'|\"([^\"]*)\"))?([^)]*)\)((?:\s*\.\s*\w+\([^)]*\))*)\s*\}\}")
+
+(def ^:private method-re
+  "One `.name(arguments)` call chained onto a reference."
+  #"\.\s*(\w+)\(([^)]*)\)")
 
 (defn- extra-arguments
   "`remainder`, what a reference had after its quoted arguments, without the comma that separated it from them; nil
   when there was nothing but whitespace."
   [remainder]
   (not-empty (str/replace (str/trim remainder) #"^,\s*" "")))
+
+(mu/defn- chained-methods :- [:map {:closed true}
+                              [:grain   [:maybe :string]]
+                              [:methods [:maybe :string]]]
+  "What the method calls chained onto a reference, `chain`, say: `.grain('month')` names the grain (the last one wins),
+  and anything else is `:methods`, as written, for the resolver to report."
+  [chain :- :string]
+  (reduce (fn [acc [call method-name arguments]]
+            (if-let [grain (when (= method-name "grain")
+                             (let [[_ single-quoted double-quoted] (re-matches #"\s*(?:'([^']*)'|\"([^\"]*)\")\s*" arguments)]
+                               (or single-quoted double-quoted)))]
+              (assoc acc :grain grain)
+              (update acc :methods str (str/replace call #"\s+" ""))))
+          {:grain nil, :methods nil}
+          (re-seq method-re chain)))
 
 (def ^:private reference-kinds
   {"Dimension"     :dimension
@@ -755,12 +813,14 @@
   [template :- :string]
   (let [references (volatile! (transient {}))
         sql        (str/replace template reference-re
-                                (fn [[_ object single-1 double-1 single-2 double-2 remainder]]
-                                  (let [placeholder (format "__dbt_ref_%d__" (count @references))]
+                                (fn [[_ object single-1 double-1 single-2 double-2 remainder chain]]
+                                  (let [placeholder     (format "__dbt_ref_%d__" (count @references))
+                                        {:keys [grain methods]} (chained-methods chain)]
                                     (vswap! references assoc! placeholder {:kind      (reference-kinds object)
                                                                            :name      (or single-1 double-1)
-                                                                           :grain     (or single-2 double-2)
-                                                                           :arguments (extra-arguments remainder)})
+                                                                           :grain     (or grain single-2 double-2)
+                                                                           :arguments (extra-arguments remainder)
+                                                                           :methods   methods})
                                     placeholder)))]
     {:sql        sql
      :references (persistent! @references)}))

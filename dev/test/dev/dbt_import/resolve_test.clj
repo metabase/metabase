@@ -552,6 +552,37 @@
     (is (re-find #"sales = NULL \(EQ\) compares against NULL"
                  (expr-reason "CASE WHEN sales = NULL THEN 1 ELSE 0 END")))))
 
+(deftest ^:parallel integer-division-test
+  (let [quantity (fld "quantity" :type/Integer)
+        sales    (fld "sales" :type/Float)]
+    (testing "on a warehouse that truncates an integer quotient (Postgres), an integer divided by an integer is reported: Metabase divides as floats, so the number would differ"
+      (are [expr] (re-find #"divides an integer by an integer, which the warehouse truncates" (expr-reason expr))
+        "quantity / 2"
+        "quantity / small_qty"
+        "big_amount / 100"
+        "(quantity + 1) / 2"
+        "quantity / nullif(small_qty, 0)"
+        "100 / quantity"
+        "sales + quantity / 2")
+      (testing "naming the division"
+        (is (re-find #"^expr \"quantity / 2\": quantity / 2 divides an integer by an integer" (expr-reason "quantity / 2")))))
+    (testing "a float or decimal on either side divides the same way everywhere"
+      (are [expr clause] (= [:sum {} clause] (aggregation-of-expr expr))
+        "quantity / 2.0"              [:/ {} quantity 2.0]
+        "sales / quantity"            [:/ {} sales quantity]
+        "quantity / sales"            [:/ {} quantity sales]
+        "amount / 100"                [:/ {} (fld "amount" :type/Decimal) 100]
+        "cast(quantity as float) / 2" [:/ {} [:float {} quantity] 2]
+        "quantity * 1.0 / 2"          [:/ {} [:* {} quantity 1.0] 2]))
+    (testing "a column the project does not type is not known to be an integer"
+      (is (= [:sum {} [:/ {} (fld "x" nil) 2]] (aggregation-of-expr "x / 2" :columns {"x" nil}))))
+    (testing "a warehouse that divides integers as decimals (MySQL, Snowflake, BigQuery, Oracle) is left alone"
+      (is (= [:sum {} [:/ {} quantity 2]]
+             (tu/aggregation {:config {:driver :mysql}, :measure {:expr "quantity / 2"}}))))
+    (testing "in a filter too"
+      (is (re-find #"divides an integer by an integer"
+                   (tu/unsupported {:metric {:filter {:where_filters [{:where_sql_template "{{ Dimension('fact_sales_key__amount') }} > {{ Entity('fact_sales_key') }} / 2"}]}}}))))))
+
 (deftest ^:parallel count-test
   (is (= [:count-where {} [:not-null {} (fld "sales" :type/Float)]] (aggregation-of-expr "sales" :agg "count"))
       "COUNT(col) skips nulls")
@@ -564,7 +595,7 @@
   {:measure {:agg "percentile", :expr "sales", :agg_params agg-params}})
 
 (deftest ^:parallel percentile-test
-  (testing "dbt documents the percentile as a fraction, so 1 is p100; a value above 1 is read as a percentage"
+  (testing "dbt takes the percentile as a fraction between 0 and 1, so 1 is p100; Lib takes the same"
     (are [agg-params fraction] (= [:percentile {} (fld "sales" :type/Float) fraction]
                                   (tu/aggregation (percentile-of-sales agg-params)))
       {:percentile 0.95}                                  0.95
@@ -572,21 +603,21 @@
       {:percentile 0.99}                                  0.99
       {:percentile 0.25}                                  0.25
       {:percentile 1}                                     1.0
+      {:percentile 1.0}                                   1.0
       {:percentile 0}                                     0.0
       {:percentile 0.0}                                   0.0
-      {:percentile 95}                                    0.95
-      {:percentile 95.0}                                  0.95
-      {:percentile 50}                                    0.5
-      {:percentile 99}                                    0.99
-      {:percentile 75}                                    0.75
-      {:percentile 100}                                   1.0
       {:percentile 0.9, :use_discrete_percentile false}   0.9
       {:percentile 0.9, :use_approximate_percentile true} 0.9))
   (testing "no percentile value"
     (are [agg-params] (re-find #"without a percentile value" (tu/unsupported (percentile-of-sales agg-params)))
       nil {} {:percentile nil}))
-  (testing "out of range"
+  (testing "out of range: a value above 1 is not read as a percentage, since 1.5 could not be one and 95 would have to"
     (are [agg-params reason] (re-find reason (tu/unsupported (percentile-of-sales agg-params)))
+      {:percentile 1.01} #"percentile 1.01 is out of range: dbt takes a fraction between 0 and 1"
+      {:percentile 1.5}  #"percentile 1.5 is out of range"
+      {:percentile 95}   #"percentile 95 is out of range"
+      {:percentile 95.0} #"percentile 95.0 is out of range"
+      {:percentile 100}  #"percentile 100 is out of range"
       {:percentile 150}  #"percentile 150 is out of range"
       {:percentile -0.5} #"percentile -0.5 is out of range"))
   (testing "Metabase percentiles are continuous"
@@ -678,6 +709,25 @@
     "{{ Dimension('fact_sales_key__status') }} = 'a' AND {{ Dimension('fact_sales_key__status') }} = 'b' AND {{ Dimension('fact_sales_key__amount') }} > 0"
     [:and {} [:= {} status "a"] [:= {} status "b"] [:> {} amount 0]]))
 
+(deftest ^:parallel bare-column-condition-test
+  (testing "a bare reference in a boolean position has to be a boolean column; the warehouse would reject anything else"
+    (are [template] (re-find #"is not a boolean column, so it cannot stand alone as a condition" (filter-reason template))
+      "{{ Dimension('fact_sales_key__status') }}"
+      "{{ Dimension('fact_sales_key__amount') }} AND {{ Dimension('fact_sales_key__is_returned') }}"
+      "NOT {{ Entity('customer') }}"
+      ;; a SQL dimension that is 1 or 0 is an integer, not a boolean
+      "{{ Dimension('fact_sales_key__is_big_sale') }}"
+      "{{ Dimension('order__order_status_dim') }}"))
+  (testing "a column the project does not type is trusted to be one"
+    (is (= [[:= {} (fld "flag" nil) true]]
+           (tu/filters {:columns {"flag" nil}
+                        :edit    (tu/edit-semantic-model #(update % :dimensions conj (tu/dimension "flag" "categorical")))
+                        :metric  {:filter (where-filters "{{ Dimension('fact_sales_key__flag') }}")}}))))
+  (testing "the same check applies to a CASE condition in an expr"
+    (is (re-find #"status is not a boolean column" (expr-reason "case when status then sales else 0 end")))
+    (is (= [:sum {} [:case {} [[[:= {} is-returned true] (fld "sales" :type/Float)]] 0]]
+           (aggregation-of-expr "case when is_returned then sales else 0 end")))))
+
 (deftest ^:parallel filter-time-dimension-test
   (testing "TimeDimension buckets the column by the granularity; metric_time is the measure's agg_time_dimension"
     (are [template clause] (= clause (filter-of template))
@@ -717,6 +767,76 @@
       "{{ TimeDimension('fact_sales_key__status', 'day') }} = '2024-01-01'"   #"\"status\" is not a time dimension"
       "{{ TimeDimension('fact_sales_key__next_day', 'day') }} = '2024-01-01'" #"cannot bucket the SQL expression \"date_day \+ 1\""
       "{{ TimeDimension('metric_time', 'week') }} < random()"                 #"the function rand")))
+
+(deftest ^:parallel grain-method-test
+  (testing ".grain('<granularity>') chained onto a Dimension means what TimeDimension's second argument does"
+    (are [template clause] (= clause (filter-of template))
+      "{{ Dimension('metric_time').grain('month') }} >= '2024-01-01'"
+      [:>= {} (at "date_day" :type/Date :month) "2024-01-01"]
+      "{{ Dimension('fact_sales_key__created_at').grain(\"year\") }} = '2024-01-01'"
+      [:= {} (at "created_at" :type/DateTime :year) "2024-01-01"]
+      "{{ Dimension('fact_sales_key__created_at') . grain( 'day' ) }} = '2024-01-01'"
+      [:= {} (at "created_at" :type/DateTime :day) "2024-01-01"]
+      "{{ TimeDimension('metric_time').grain('month') }} >= '2024-01-01'"
+      [:>= {} (at "date_day" :type/Date :month) "2024-01-01"]
+      ;; chained onto the positional grain, the method wins
+      "{{ TimeDimension('metric_time', 'day').grain('month') }} >= '2024-01-01'"
+      [:>= {} (at "date_day" :type/Date :month) "2024-01-01"]
+      ;; through a foreign entity too
+      "{{ Dimension('order__order_date').grain('month') }} = '2024-03-01'"
+      [:= {} (assoc-in (tu/joined-fld "order_key" "dim_order" "order_date" :type/Date) [1 :temporal-unit] :month) "2024-03-01"]))
+  (testing "the grain is checked as a TimeDimension's is"
+    (are [template reason] (re-find reason (filter-reason template))
+      "{{ Dimension('fact_sales_key__status').grain('month') }} = 'x'" #"\"status\" is not a time dimension"
+      "{{ Dimension('metric_time').grain('hour') }} = '2024-01-01'"   #"granularity \"hour\" has no Metabase temporal unit"
+      "{{ Entity('customer').grain('month') }} IS NOT NULL"           #"Entity\(\"customer\"\) has the grain \"month\", but an entity is a key"))
+  (testing "any other method chained onto a reference is reported, naming it"
+    (are [template reason] (re-find reason (filter-reason template))
+      "{{ Dimension('metric_time').date_part('month') }} = 3"
+      #"\"metric_time\" has the method call \.date_part\('month'\), which is not supported: only \.grain\('<granularity>'\) is"
+      "{{ Dimension('metric_time').grain('month').date_part('year') }} = 2024"
+      #"has the method call \.date_part\('year'\)"
+      "{{ Dimension('fact_sales_key__status').descending(True) }} = 'x'"
+      #"has the method call \.descending\(True\)"
+      "{{ Entity('customer').date_part('year') }} IS NOT NULL"
+      #"has the method call \.date_part\('year'\)")))
+
+(defn- untyped-time-filter
+  "The filter clauses for `template` when `fact_sales` documents neither `date_day` nor a type for `created_at`."
+  [template]
+  (tu/filters {:columns {"date_day" ::tu/remove, "created_at" nil}
+               :metric  {:filter (where-filters template)}}))
+
+(deftest ^:parallel untyped-time-dimension-test
+  (testing "a TimeDimension over a column the project does not type is bucketed as written: dbt says it is a time dimension, and the instance checks the column when the import binds it"
+    (are [template clause] (= [clause] (untyped-time-filter template))
+      "{{ TimeDimension('metric_time', 'month') }} >= '2024-01-01'"
+      [:>= {} (at "date_day" nil :month) "2024-01-01"]
+      "{{ TimeDimension('metric_time') }} >= '2024-01-01'"
+      [:>= {} (at "date_day" nil :day) "2024-01-01"]
+      "{{ TimeDimension('fact_sales_key__created_at', 'hour') }} >= '2024-01-01 09:00:00'"
+      [:>= {} (at "created_at" nil :hour) "2024-01-01 09:00:00"]
+      "{{ Dimension('fact_sales_key__created_at').grain('week') }} >= '2024-01-01'"
+      [:>= {} (at "created_at" nil :week) "2024-01-01"]
+      ;; Dimension on it still does not bucket
+      "{{ Dimension('metric_time') }} >= '2024-01-01'"
+      [:>= {} (fld "date_day" nil) "2024-01-01"]))
+  (testing "a grain Metabase has no unit for is still reported"
+    (is (re-find #"granularity \"nanosecond\" has no Metabase temporal unit"
+                 (tu/unsupported {:columns {"date_day" ::tu/remove}
+                                  :metric  {:filter (where-filters "{{ TimeDimension('metric_time', 'nanosecond') }} = '2024-01-01'")}}))))
+  (testing "a column of known type still takes only the units Lib allows it"
+    (is (re-find #"granularity \"hour\" has no Metabase temporal unit for \"date_day\""
+                 (filter-reason "{{ TimeDimension('metric_time', 'hour') }} = '2024-01-01'")))))
+
+(deftest ^:parallel week-grain-warning-test
+  (testing "a week grain is read as a Metabase week, with a warning: dbt weeks start on Monday, Metabase's on the instance's start-of-week setting"
+    (log.capture/with-log-messages-for-level [messages [dev.dbt-import.resolve :warn]]
+      (is (= [:>= {} (at "date_day" :type/Date :week) "2024-01-01"]
+             (filter-of "{{ TimeDimension('metric_time', 'week') }} >= '2024-01-01'")))
+      (is (= [:warn] (map :level (messages))))
+      (is (re-find #"week granularity of date_day is read as a Metabase week.*dbt weeks start on Monday"
+                   (:message (first (messages))))))))
 
 (deftest ^:parallel virtual-primary-entity-test
   (testing "a semantic model with no entity of type primary names one in primary_entity; the model's own dimensions are reached through that name"
@@ -958,8 +1078,13 @@
     "{{ Dimension('fact_sales_key__status') }} IN (SELECT status FROM x)"          #"IN over"
     "1 = 1"                                                                        #"references no dimension or entity"
     "{{ Dimension('fact_sales_key__status') }} = 'Shipped'; DROP TABLE fact_sales" #"could not parse"
-    "{{ var('x') }} = 1"                                                           #"references no dimension or entity"
-    "   "                                                                          #"references no dimension or entity"))
+    "   "                                                                          #"references no dimension or entity"
+    "status = 'Shipped'"                                                           #"references no dimension or entity")
+  (testing "Jinja the renderer does not read is reported as such, before the filter is said to reference nothing"
+    (are [template] (re-find #"could not parse .*: it still contains Jinja" (filter-reason template))
+      "{{ var('x') }} = 1"
+      "{{ Dimension('fact_sales_key__status') }} = {{ var('status') }}"
+      "{{ Dimension(get_dimension_name()) }} = 'Shipped'")))
 
 (deftest ^:parallel filter-syntax-test
   (testing "spellings of the same filter"

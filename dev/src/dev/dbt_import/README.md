@@ -79,12 +79,17 @@ collection, and `:entity-models` (entity name → semantic model name) says whic
 to when more than one semantic model has that entity as its primary entity; all three are optional. A column the
 project does not document, or documents without a `data_type`, is emitted
 without a base type: the instance supplies it when the import binds the field, and a column that does not exist in the
-warehouse fails there.
+warehouse fails there. The converter trusts what dbt says about such a column where it has to decide something: a
+`type: time` dimension over it is bucketed by the grain as written (a typed column takes only the grains Metabase
+allows its type, so a date has no `hour`), a bare column in a boolean position is taken for a boolean, and a division
+by it is not taken for integer division.
 
 `convert!` returns a report: `:converted` lists each metric with its `entity_id` and file, and `:unsupported` lists
 every metric that could not be converted with the reason ("Limitations" below collects every reason). Nothing is
 silently dropped, and one bad metric does not stop the run: an unexpected exception while resolving a metric is logged
-with its stack and reported like any other unsupported metric, naming the exception. Entity IDs are derived from the
+with its stack and reported like any other unsupported metric, naming the exception. A ratio or derived metric over a
+metric that was reported is reported too, with that metric's reason (`metric "x" was not converted: ...`), whichever
+stage reported it. Entity IDs are derived from the
 dbt metric's unique ID, so re-running and re-importing updates the existing cards instead of duplicating them. A
 re-run first deletes what the previous run wrote for the collection (`collections/main/<collection>.yaml` and
 `collections/main/<collection>/`), so a metric renamed or removed from the project since then does not survive as a
@@ -158,10 +163,14 @@ listed under "Filters and SQL expressions"; everything outside it is reported, n
 | a function with no MBQL expression function of the same meaning | `greatest(a, b)`, `regexp_replace(x, 'a', 'b')`, `to_char(d, 'YYYY')`, `ln(x)`, `log(2, x)`, `dateadd(day, 1, d)`, `extract(dow from d)`, `trim('x' from s)`, `round(x, -1)`, `date_trunc('decade', d)`, `date_trunc('month', d + 1)` | The functions that have an MBQL expression function with the same meaning are mapped (the list is under "Filters and SQL expressions"); the rest have nothing to map onto. `round` to a number of decimals is `round(x * 10^n) / 10^n`, so the decimals have to be a literal. `date_trunc` is a temporal bucket on a column ref, so there is nothing to bucket when its argument is an expression, and nothing for a unit Metabase does not have. | Extend the converter where MBQL has an equivalent under another shape (`dateadd` as `datetime-add`, `greatest` as a `case`); extend MBQL with the rest (a regex replace, a date format, a natural log, week and day-of-week extraction that agrees on the first day of the week). |
 | a `CAST` to anything but an integer, decimal, float, text, date or timestamp type | `cast(x as boolean)`, `x::uuid`, `cast(x as interval)` | MBQL's conversions are `integer`, `float`, `text`, `date` and `datetime`, and the common SQL spellings of those types map onto them (`cast(amount_cents as decimal) / 100` converts). | Extend MBQL with the missing conversions. |
 | a comparison, `IN` or `BETWEEN` with a `NULL` literal as an operand | `{{ Dimension('order__status') }} = NULL`, `status IN ('a', NULL)` | In SQL the comparison is null, so never true. Lib reads a nil operand of `=`, `!=` or `in` as a null check, so `[:= x nil]` would match the null rows, the opposite of what was written. | Nothing: `IS [NOT] NULL` converts. |
+| an integer divided by an integer, on a warehouse that truncates the quotient | `expr: quantity / 2`, `expr: amount_cents / 100` with an integer column, on Postgres, SQL Server, Redshift, Presto/Trino or SQLite | There `7 / 2` is `3`; Metabase's `/` divides as floats and gives `3.5`, so the number would silently differ. Both operands have to be known integers (a column the project does not type is not), and the warehouse has to be one that truncates: sqlglot knows which do, and MySQL, Snowflake, BigQuery, Oracle and Databricks divide as decimals, as Metabase does, so the same `expr` converts there. The inputs of a derived metric are `[:metric ...]` references of no known type, so `a / b` over two counts is not caught. | Cast an operand in the project (`quantity / 2.0`, `cast(amount_cents as decimal) / 100` converts); or extend MBQL with an integer division. |
+| a non-boolean column standing alone as a condition | `filter: "{{ Dimension('order__status') }}"`, `expr: case when status then 1 end` | A bare column in a boolean position is read as `column = true`, which is right for a boolean column (`WHERE is_returned`) and nothing else: the warehouse rejects an integer or text there, where `[:= x true]` would run and match nothing. A column the project types as anything but boolean is reported; one it does not type is trusted. | Nothing: this is a mistake in the project. |
 | a `LIKE`, `SIMILAR TO` or regex pattern that is not a string literal | `like {{ Dimension('order__prefix') }} \|\| '%'`, `~ {{ Dimension('order__pattern') }}` | A pattern that is a column or an expression cannot be taken apart into Lib's string filters, and the regex fallback needs the regex as a literal too. | Extend MBQL with a `like` clause taking an expression as the pattern. |
 | a custom calendar granularity | `TimeDimension('order__ordered_at', 'retail_month')`, defined on the project's time spine | Metabase buckets by its standard truncation units, `minute` through `year`. `fiscal_quarter` is read as `quarter` until custom calendars are supported. | Custom calendars in Metabase, then a mapping from a dbt custom granularity onto one. |
 | a dimension reached through two entities | `Dimension('order__customer__region')` | A dimension mapping is one implicit join, a foreign key on the metric's table to the joined table's key. A two-hop path has no representation. | Extend Metabase metrics so a dimension mapping can carry a multi-hop join path, or so a metric query can hold explicit joins. |
 | an `entity_path` argument on a reference | `Dimension('customer__region', entity_path=['order'])` | The converter reaches a dimension through the entity named in the reference, as the one implicit join above. A path through other entities is the same multi-hop join, and the argument is reported rather than dropped so that the filter is not resolved against the wrong entity. | The same multi-hop join path as above. |
+| a method other than `.grain()` chained onto a reference | `Dimension('metric_time').date_part('month')`, `Dimension('order__status').descending(True)` | `.grain('month')` is read and means what `TimeDimension('...', 'month')` does. `.date_part()` extracts a part of a date (dbt's `dow` and `doy` depend on the first day of the week, see the week caveat under "Filters and SQL expressions"), and the rest are ordering hints that mean nothing in a filter; all are reported, naming the call, rather than dropped. | Map `.date_part('year'|'quarter'|'month'|'day')` onto `get-year` and friends; `dow`/`doy` need the week-start agreement below. |
+| Jinja other than a MetricFlow reference | `{{ var('status_col') }} = 'x'`, `{{ Dimension(some_macro()) }}` | Only `Dimension(...)`, `TimeDimension(...)`, `Entity(...)` and `Metric(...)` with quoted names are read. Anything else is left in the SQL and reported as Jinja the converter could not parse. | Render the filter with dbt (`dbt compile`) before importing, or evaluate the manifest's `var`s in the converter. |
 
 ### Dimensions and joins
 
@@ -187,6 +196,9 @@ conversion:
   entity no other model is keyed by is just a key and reports nothing.
 - A metric `time_granularity` Metabase has no temporal unit for (a custom calendar grain, or `hour` on a date
   column); see "Entities and dimensions".
+- A `percentile` outside 0 and 1. dbt takes the percentile as a fraction (`0.95`) and nothing else, and so does the
+  converter: `95` is reported rather than read as 95%, since `1.5` could not be and the two readings would have to
+  meet somewhere.
 
 ## The end-to-end test
 
@@ -289,7 +301,10 @@ of SQL maps onto MBQL:
 
 - column references, literals, `+ - * /` and `^`, comparisons, `AND`/`OR`/`NOT`, `IN`, `BETWEEN`. A comparison, `IN`
   or `BETWEEN` with a `NULL` literal as an operand is reported: in SQL it is null, so never true, while the
-  `[:= x nil]` it would become is a null check that matches the null rows;
+  `[:= x nil]` it would become is a null check that matches the null rows. A `/` of two known integers is reported on
+  the warehouses that truncate the quotient (Postgres, SQL Server, Redshift, Presto/Trino, SQLite), since Metabase's
+  `/` does not; a bare column as a condition (`WHERE is_returned`) is `column = true`, and is reported when the
+  project types the column as anything but boolean (see "Limitations" for both);
 - `IS [NOT] NULL`, `IS [NOT] TRUE` and `IS [NOT] FALSE`, the negated boolean forms as `!= ... OR IS NULL` so that
   they still hold for a null column;
 - `IS [NOT] DISTINCT FROM`, the null-safe comparison. Against a literal it is `=` or `!=`: `=` is null, so false in a
@@ -325,14 +340,23 @@ of SQL maps onto MBQL:
 
 Anything outside that subset is reported, naming the construct; see "Limitations".
 
+A caveat on weeks: dbt's `week` grain, and `date_trunc('week', ...)` on most warehouses, is the ISO week, which starts
+on Monday. A Metabase `week` starts on the day the instance's "First day of the week" setting names (Sunday by
+default), so a metric filtered or broken out by week agrees with dbt only on an instance set to Monday. The converter
+reads `week` as the Metabase unit and logs a warning naming the dimension each time it does; `extract(dow ...)` and
+`extract(week ...)` are reported for the same reason.
+
 In a filter, `Dimension('<entity>__<dimension>')` resolves to one of the metric's own columns when the entity is the
-semantic model's primary entity, and `TimeDimension(..., '<grain>')` additionally buckets it by the matching Metabase
-temporal unit; `metric_time` is the measure's `agg_time_dimension` and `Entity('<name>')` is that entity's column. A
+semantic model's primary entity, and `TimeDimension(..., '<grain>')`, or equivalently `Dimension(...).grain('<grain>')`,
+additionally buckets it by the matching Metabase temporal unit; `metric_time` is the measure's `agg_time_dimension` and
+`Entity('<name>')` is that entity's column. A
 dimension reached through a foreign entity is on the semantic model that entity is primary for, and resolves to that
 model's column joined implicitly through the entity's column (see "Entities and dimensions"). `Metric(...)` references
 are reported (see "Limitations"), and so is a reference with any argument beyond its name and grain, such as
 `Dimension('customer__region', entity_path=['order'])`: the converter reaches a dimension through the entity named in
-the reference and cannot follow another path.
+the reference and cannot follow another path. Any other method chained onto a reference (`.date_part('month')`) is
+reported too, and so is Jinja that is not one of those four references (`{{ var('x') }}`), as Jinja the converter
+could not parse.
 
 ## Advanced metric types
 
@@ -360,7 +384,9 @@ Each metric card is written with a curated dimension set (`dimensions` and `dime
 out in the UI as soon as it is imported:
 
 - Every dimension of the metric's own semantic model whose `expr` is a column becomes a dimension of the metric's
-  table. A time dimension's `time_granularity` is its default temporal unit.
+  table. A time dimension's `time_granularity` is its default temporal unit, when Metabase can bucket the column by it:
+  a typed column takes the units Lib allows its type, and a column the project does not type takes the grain as
+  written, since dbt says it is a time dimension and the instance checks the column when the import binds it.
 - Every foreign or unique entity of the model joins to the other semantic model that is keyed by an entity of the same
   name: one that has it as its primary entity or as a unique entity, either of which identifies one row. (These are
   the joins MetricFlow itself allows, except that a model's primary entity is not followed to another model keyed by
@@ -381,6 +407,11 @@ out in the UI as soon as it is imported:
 
 Dimension ids are derived from the metric's dbt unique ID and the dimension's reference, so a re-run writes the same
 ids and a re-import updates the dimensions in place. Groups are named after the semantic model's label, or its table.
+Dimensions are named after the dbt dimension, except that no two dimensions of a metric share a name: a joined
+dimension named like another dimension of the set (a `status` on both the fact table and `dim_order`) is named by its
+dbt reference instead, `order__status`, the way dbt itself tells the two apart. Its display name, column, group and id
+are unchanged, so two dimensions may still share a display name, as two same-named columns of the metric's table and
+a joined table do in Metabase; their groups tell them apart.
 
 A dbt dimension that cannot be a curated dimension, because its `expr` is SQL or because the join behind its foreign
 entity cannot be made, is listed per metric under `:unsupported-dimensions` in the report rather than dropped;
