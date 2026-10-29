@@ -37,7 +37,6 @@ export const DataSelectorSchemaPicker = ({
   onBack,
   onChangeSchema,
   hasNextStep,
-  hasFiltering,
   hasInitialFocus,
 }: DataSelectorSchemaPickerProps) => {
   const tc = useTranslateContent();
@@ -71,7 +70,6 @@ export const DataSelectorSchemaPicker = ({
         className={CS.textBrand}
         hasInitialFocus={hasInitialFocus}
         sections={sections}
-        searchable={hasFiltering}
         onChange={({ schema }: any) => onChangeSchema(schema)}
         itemIsSelected={(item: { schema: DataSelectorSchema }) =>
           item?.schema.id === selectedSchemaId
