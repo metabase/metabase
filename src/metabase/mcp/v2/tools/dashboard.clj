@@ -2,11 +2,11 @@
   "The v2 MCP `dashboard_write` tool: create and update dashboards, and apply an ordered list of
    editor operations.
 
-   An update applies its ops as one save. A create does not: it writes the dashboard row, then
-   applies the ops to it. The ops are compiled against a blank dashboard first so a malformed one
-   fails before anything is written, but per-field parameter-mapping permission checks run only on
-   the real save — so that second save can still fail and leave an empty dashboard behind. The tool
-   description says so, since the agent is the one that has to recover.
+   An update applies its ops as one save. A create writes the dashboard row, then applies the ops
+   to it in a second save, both in one transaction. The ops are compiled against a blank dashboard
+   first, so a malformed op fails before anything is written. The transaction covers failures that
+   compiling cannot catch, such as the per-field parameter-mapping permission checks that run only
+   on the real save. Either way a failed call leaves nothing behind.
 
    A whole dashboard's JSON cannot survive a round trip through model context, so callers send
    *ops*. This namespace reads current state, hands it to the pure compiler in
@@ -388,8 +388,8 @@
     [:maybe [:sequential [:enum {:description "Update only: property names to unset (description, collection_position, cache_ttl). Needed because a null cannot say \"clear this\" — strict clients fill every unset property with null, so nulls are stripped at the boundary."}
                           "description" "collection_position" "cache_ttl"]]]]
    [:ops {:optional true}
-    [:maybe [:sequential {:description (str "Editor operations, applied in order. One atomic save on update; on "
-                                            "create the dashboard row is written before the ops are applied.")}
+    [:maybe [:sequential {:description (str "Editor operations, applied in order. The call saves them atomically, "
+                                            "together with the new dashboard on create.")}
              op-schema]]]])
 
 (def ^:private dashboard-write-entry
@@ -444,12 +444,9 @@
   (merge {:id nil :dashcards [] :tabs [] :parameters []} attrs))
 
 (registry/deftool dashboard-write
-  "Create or update a dashboard and edit its layout with ordered ops. On update the ops are one atomic save —
-  nothing is written unless every op succeeds, so a failed call leaves the dashboard untouched and a retry
-  cannot double-add. Create is not atomic: the dashboard row is written first and the ops applied second, so a
-  failure on that second save leaves an empty dashboard behind (the ops are compiled beforehand, but per-field
-  parameter-mapping permission checks run only on the real save). Find it by name and finish it with method
-  \"update\" — calling create again leaves a second one.
+  "Create or update a dashboard and edit its layout with ordered ops. Each call is atomic — nothing is written
+  unless every op succeeds, so a failed call leaves the dashboard untouched (or, for create, creates nothing),
+  and a retry cannot double-add.
   method: \"create\" requires name; \"update\" requires id and accepts archived (true trashes,
   false restores — there is no hard delete). Give each new card or tab its own negative id (-1, -2, …); later
   ops in the same call reference it, and the server assigns real ids on save. Ops: add_card, add_text,
@@ -497,9 +494,8 @@
                                                 ;; ...and the two writes share a transaction, because the compile
                                                 ;; above only proves the OPS are good. Anything else that throws
                                                 ;; after the row exists — a schema check, a permission check, a
-                                                ;; failing save — would otherwise strand an empty dashboard that
-                                                ;; the tool's own advice ("find it by name and finish it with
-                                                ;; update") turns into a pile of them on retry (GHY-4501).
+                                                ;; failing save — would otherwise strand an empty dashboard,
+                                                ;; and every retry would add another (GHY-4501).
                                                 (t2/with-transaction [_conn]
                                                   (apply-ops! (t2/hydrate (dashboards.write/create-dashboard! attrs)
                                                                           [:dashcards :series :card] :tabs)
