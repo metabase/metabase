@@ -4203,9 +4203,22 @@
         (is (= "type/Date"
                (base-type (get-in (repair* (prev-joined-on ["field" {"join-alias" "Prev"} "min"]))
                                   ["stages" 1 "joins" 0 "conditions" 0 2])))))
+      (testing "a ref there through that join to a column the previous stage deduplicates is typed from the join"
+        (is (= "type/Integer"
+               (base-type (get-in (repair* (prev-joined-on ["field" {"join-alias" "Prev"} "USER_ID"]))
+                                  ["stages" 1 "joins" 0 "conditions" 0 2])))))
       (testing "a ref there through that join to a column only outside it raises the cross-stage error"
-        (is (=? {:error :unresolved-cross-stage-field, :clause ["field" {"join-alias" "Prev"} "TOTAL"]}
-                (repair-error (prev-joined-on ["field" {"join-alias" "Prev"} "TOTAL"]))))))))
+        (let [e (repair-error (prev-joined-on ["field" {"join-alias" "Prev"} "TOTAL"]))]
+          (is (=? {:error     :unresolved-cross-stage-field
+                   :clause    ["field" {"join-alias" "Prev"} "TOTAL"]
+                   :available ["USER_ID_2" "min"]}
+                  e))
+          (is (str/starts-with? (:message e) "No column named \"TOTAL\" from join \"Prev\" is available")))))))
+
+(deftest ^:parallel unresolved-cross-stage-ref-with-no-columns-test
+  (testing "a ref without a join alias is reported when the previous stage returns no columns"
+    (is (= ["field" {} "nope"]
+           (#'repair/first-unresolved-cross-stage-ref {"filters" [["not-null" {} ["field" {} "nope"]]]} [])))))
 
 (deftest ^:parallel join-alias-field-type-runs-before-cross-stage-inference-test
   (testing "a stage carrying a join-alias ref still resolves as the next stage's prefix"
