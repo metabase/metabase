@@ -298,35 +298,6 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     );
   }
 
-  /**
-   * Data app path property can be changed after the embed is created.
-   *
-   * We re-initialize the iframe.
-   */
-  private _handleDataAppPathPropChange(
-    settings: Partial<SdkIframeEmbedElementSettings>,
-    newValues: SdkIframeEmbedElementSettings,
-  ): boolean {
-    const hasDataAppPathChanged =
-      newValues.componentName === "metabase-data-app" &&
-      "path" in settings &&
-      normalizeDataAppPath(newValues.path) !== this._dataAppPath;
-
-    if (!hasDataAppPathChanged) {
-      return false;
-    }
-
-    this._validateEmbedSettings(newValues);
-
-    this._removeMessageListener?.();
-    this._isEmbedReady = false;
-    this._iframe?.remove();
-    this._iframe = null;
-    this._setup();
-
-    return true;
-  }
-
   destroy() {
     this._removeMessageListener?.();
     this._removeMessageListener = null;
@@ -775,6 +746,36 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     }
 
     return data.jwt;
+  }
+
+  /**
+   * Data app path property can be changed after the embed is created.
+   *
+   * Changes to the path prop remount the iframe.
+   */
+  private _handleDataAppPathPropChange(
+    settings: Partial<SdkIframeEmbedElementSettings>,
+    nextValues: SdkIframeEmbedElementSettings,
+  ): boolean {
+    const hasDataAppPathChanged =
+      nextValues.componentName === "metabase-data-app" &&
+      "path" in settings &&
+      normalizeDataAppPath(nextValues.path) !== this._dataAppPath;
+
+    if (!hasDataAppPathChanged) {
+      return false;
+    }
+
+    this._validateEmbedSettings(nextValues);
+
+    // TODO(DAT-72): Use client-side routing when the path changes within the same app.
+    this._removeMessageListener?.();
+    this._isEmbedReady = false;
+    this._iframe?.remove();
+    this._iframe = null;
+    this._setup();
+
+    return true;
   }
 
   // `parameters`, `sqlParameters` and `navigatedEntityParameters` are JS properties whose value
