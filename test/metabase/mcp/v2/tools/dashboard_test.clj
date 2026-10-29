@@ -365,6 +365,21 @@
                                      (wire {:method "update" :id (:id dash)
                                             :ops [{:op "add_card" :id -1 :card_id 9999999}]}))))))))
 
+(deftest dry-run-rejects-an-unreadable-parameter-source-card-test
+  (testing "validate_only rejects a parameter drawing its values from a card the user cannot read, as the save does"
+    (mt/with-temp [:model/Dashboard dash {:name "Sales"}]
+      (is (= "op 0 (\"add_parameter\"): no card with id 9999999 that you can read."
+             (tool-error (call-tool! :crowberto v2.tu/all-scopes "dashboard_write"
+                                     (wire {:method        "update"
+                                            :id            (:id dash)
+                                            :validate_only true
+                                            :ops           [{:op                   "add_parameter"
+                                                             :parameter_id         "p"
+                                                             :name                 "P"
+                                                             :type                 "string/="
+                                                             :values_source_type   "card"
+                                                             :values_source_config {:card_id 9999999}}]}))))))))
+
 (deftest archived-on-create-error-text-test
   (testing "GHY-4544: `archived` on a create is a teaching error"
     (is (= "\"archived\" applies to method \"update\" only — remove it from this create call."

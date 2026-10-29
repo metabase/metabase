@@ -8,7 +8,8 @@
    [metabase.mcp.v2.dashboard-errors :as dashboard-errors]
    [metabase.mcp.v2.message :as message]
    [metabase.metabot.toolkit.dashboard-ops :as dashboard-ops]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -17,9 +18,9 @@
 
 (defn- error-text
   "The teaching error text MCP returns for `ops` against `current` and `cards`, or nil when they compile.
-   `cards` defaults to a bare row for every card `ops` name."
+   It defaults `cards` to a stub row for every card `ops` name."
   ([current ops]
-   (error-text current ops (into {} (map (fn [id] [id {:id id}])) (mapcat dashboard-ops/card-refs ops))))
+   (error-text current ops (u/for-map [id (mapcat dashboard-ops/card-refs ops)] [id {:id id}])))
   ([current ops cards]
    (try
      (dashboard-errors/compile-ops current ops cards)
