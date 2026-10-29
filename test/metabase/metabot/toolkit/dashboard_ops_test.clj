@@ -1105,4 +1105,10 @@
       (is (nil? (op-error dash [{:op                   "update_parameter"
                                  :parameter_id         "p1"
                                  :values_source_config {:card_id 46 :values ["b"]}}]
-                          {}))))))
+                          {})))))
+  (testing "a source card the parameter already had is not checked again by an op that leaves it alone, as on save"
+    (is (nil? (op-error (assoc empty-dash :parameters [{:id                   "p1"
+                                                        :values_source_type   "card"
+                                                        :values_source_config {:card_id 45}}])
+                        [{:op "update_parameter" :parameter_id "p1" :name "Renamed"}]
+                        {})))))
