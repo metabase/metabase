@@ -59,4 +59,6 @@ export type FilterDirection = {
   initialExample?: Example;
   /** Tucked into the iteration's collapsed "Other drafts" group in the rail. */
   draft?: boolean;
+  /** Offers the "Compact reading" setting, switched on when the direction opens. */
+  hasCompactReadingOn?: boolean;
 };

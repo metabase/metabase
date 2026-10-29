@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { useContext, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
@@ -182,6 +183,10 @@ type AddSummaryFilterProps = {
   label?: string;
   /** Inside another popover: renders the picker within it, so clicks there do not close the parent. */
   isNested?: boolean;
+  /** Extra class on the button, e.g. to recolor it. */
+  className?: string;
+  /** Extra class on the dropdown, e.g. to recolor its icons. */
+  dropdownClassName?: string;
   onAdd: (column: SummaryColumn, filterable: Lib.Filterable) => void;
 };
 
@@ -191,6 +196,8 @@ export function AddSummaryFilter({
   summaryCount,
   label,
   isNested = false,
+  className,
+  dropdownClassName,
   onAdd,
 }: AddSummaryFilterProps) {
   const [isOpened, setIsOpened] = useState(false);
@@ -207,7 +214,7 @@ export function AddSummaryFilter({
         <Button
           size="compact-sm"
           variant="subtle"
-          className={S.summaryAddButton}
+          className={cx(S.summaryAddButton, className)}
           leftSection={<Icon name="sum" size={12} />}
           rightSection={label ? undefined : <Icon name="add" size={10} />}
           onClick={() => setIsOpened((opened) => !opened)}
@@ -216,6 +223,7 @@ export function AddSummaryFilter({
         </Button>
       </Popover.Target>
       <AddSummaryFilterDropdown
+        className={dropdownClassName}
         columns={columns}
         summaryCount={summaryCount}
         onAdd={(column, filterable) => {
@@ -230,7 +238,9 @@ export function AddSummaryFilter({
 type AddSummaryFilterDropdownProps = Pick<
   AddSummaryFilterProps,
   "columns" | "summaryCount" | "onAdd"
->;
+> & {
+  className?: string;
+};
 
 /**
  * The dropdown of a popover that adds a filter on a summary: the aggregations,
@@ -238,6 +248,7 @@ type AddSummaryFilterDropdownProps = Pick<
  * popover, which unmounts its dropdown when closed.
  */
 export function AddSummaryFilterDropdown({
+  className,
   columns,
   summaryCount,
   onAdd,
@@ -245,7 +256,11 @@ export function AddSummaryFilterDropdown({
   const [column, setColumn] = useState<SummaryColumn>();
 
   return (
-    <Popover.Dropdown p={0} style={{ overflow: "visible" }}>
+    <Popover.Dropdown
+      p={0}
+      className={className}
+      style={{ overflow: "visible" }}
+    >
       {column ? (
         <FilterPickerBody
           query={column.summary.query}

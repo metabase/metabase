@@ -99,6 +99,7 @@ export const ITERATION_4_DIRECTIONS: FilterDirection[] = [
   },
   {
     id: "iteration-4-separation",
+    hasCompactReadingOn: true,
     get name() {
       return t`Iteration 4 separation`;
     },

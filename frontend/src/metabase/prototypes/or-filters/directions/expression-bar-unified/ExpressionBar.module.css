@@ -232,9 +232,10 @@
   color: var(--mb-color-core-summarize);
 }
 
+/* A copy of the bar can recolor the icon through the custom property on its dropdown. */
 .suggestionSummaryIcon {
   flex: 0 0 auto;
-  color: var(--mb-color-core-summarize);
+  color: var(--summary-icon-color, var(--mb-color-core-summarize));
 }
 
 .suggestionHint {

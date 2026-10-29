@@ -748,7 +748,8 @@ export function FilterTokenView({
   );
 }
 
-function compactLabel(label: string): string {
+/** A filter label with its comparison shortened to a symbol, for reading. */
+export function compactLabel(label: string): string {
   return label
     .replaceAll("is greater than or equal to", "≥")
     .replaceAll("is less than or equal to", "≤")

@@ -112,6 +112,7 @@ function getReadingContext(directionId: string) {
     case "expression-bar-unified":
     case "expression-bar-split":
     case "expression-bar-summary-menu":
+    case "iteration-4-separation":
       return UnifiedCompactReadingContext;
     default:
       return CompactReadingContext;
@@ -132,7 +133,9 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
   const [query, setQuery] = useState<Lib.Query>();
   /** The loaded example's display; `undefined` lets each view pick its own default. */
   const [display, setDisplay] = useState<CardDisplayType>();
-  const [compactReading, setCompactReading] = useState(false);
+  const [compactReading, setCompactReading] = useState(
+    direction.hasCompactReadingOn ?? false,
+  );
   const [summaryPlacement, setSummaryPlacement] =
     useState<SummaryPlacement>("caret");
   const [saved, setSaved] = useState<SavedQuestion>();
@@ -176,7 +179,8 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
     direction.id === "expression-bar-inline-2" ||
     direction.id === "expression-bar-unified" ||
     direction.id === "expression-bar-split" ||
-    direction.id === "expression-bar-summary-menu";
+    direction.id === "expression-bar-summary-menu" ||
+    direction.hasCompactReadingOn === true;
 
   const hasSummaryPlacement = direction.id === "expression-bar-unified";
 

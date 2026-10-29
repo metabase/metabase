@@ -4,6 +4,7 @@ import {
   type MouseEvent,
   type ReactNode,
   type RefObject,
+  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -17,16 +18,7 @@ import { FilterPill } from "metabase/querying/filters/components/FilterPanel/Fil
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
 import { FilterPickerBody } from "metabase/querying/filters/components/FilterPicker/FilterPickerBody";
 import { NotebookCellItem } from "metabase/querying/notebook/components/NotebookCell";
-import {
-  ActionIcon,
-  Box,
-  Button,
-  Group,
-  Icon,
-  Menu,
-  Popover,
-  Text,
-} from "metabase/ui";
+import { Box, Button, Group, Icon, Popover, Text } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { getFilterLabel, toFilterClause } from "../../harness/clauses";
@@ -48,6 +40,10 @@ import {
   LogicColumnList,
   matchLogic,
 } from "../expression-bar-drill/LogicColumnList";
+import { compactLabel } from "../expression-bar-unified/ExpressionBar";
+import UnifiedS from "../expression-bar-unified/ExpressionBar.module.css";
+import { useSummaryZonePlacement } from "../expression-bar-unified/SummaryPills";
+import { CompactReadingContext } from "../expression-bar-unified/settings";
 
 import S from "./ExpressionBar.module.css";
 
@@ -59,8 +55,6 @@ export type ExpressionBarProps = {
   isInNotebook?: boolean;
   /** Pills after the expression, outside it: the summary's own filters. */
   trailing?: ReactNode;
-  /** Draws a frozen "and" between the expression and `trailing` once both have something in them. */
-  isTrailingJoined?: boolean;
   /** How deep the parentheses must nest before editing lays them out as rows. */
   rowsFromNesting?: number;
   /** AND / OR as small bordered circles, closer to the pills. */
@@ -73,8 +67,7 @@ const INDENT_REM = 1.5;
 
 /**
  * The drill-through bar that lays parentheses out as indented rows while you
- * edit, and folds back into one line on blur. The Metabot icon opens a
- * menu of (non-working) actions without unfolding the bar.
+ * edit, and folds back into one line on blur.
  *
  * High-fidelity take on the expression bar, sitting where the QB filter panel
  * sits. You type in the bar itself; the popover under the caret is the app's
@@ -88,7 +81,6 @@ export function ExpressionBar({
   onChange,
   isInNotebook = false,
   trailing,
-  isTrailingJoined = false,
   rowsFromNesting = 1,
   hasRoundOps = false,
   focusKey,
@@ -112,6 +104,8 @@ export function ExpressionBar({
   const [hasFocus, setHasFocus] = useState(false);
   const isPointerInBarRef = useRef(false);
   const [openPillCount, setOpenPillCount] = useState(0);
+  // The summary's filters keep to the right, like the split bar's summary zone.
+  const trailingRef = useSummaryZonePlacement<HTMLSpanElement>();
 
   // External query changes (drills, examples) reset the draft; our own
   // notebook commits keep the caret where it is. Adjusted during render rather
@@ -147,6 +141,14 @@ export function ExpressionBar({
   const errorPosition = parsed.ok ? undefined : parsed.position;
   const parenDepths = useMemo(() => getParenDepths(tokens), [tokens]);
   const isExpanded = hasFocus || isOpen || openPillCount > 0;
+  // Shorter comparisons while reading; editing shows the full labels.
+  const isCompact =
+    useContext(CompactReadingContext) && !isExpanded && !isDirty;
+  // Plain AND-ed filters read as the QB's pills: no connectors between them until you edit.
+  const isPlainAnd = tokens.every(
+    (token) => token.type === "filter" || isAndToken(token),
+  );
+  const hidesAnds = isPlainAnd && !isExpanded;
   const nesting = Math.max(
     0,
     ...tokens.map((token, index) =>
@@ -487,14 +489,7 @@ export function ExpressionBar({
             event.preventDefault();
           }
         }}
-        onFocus={(event) => {
-          // The Metabot menu is an aside; focusing it shouldn't unfold the bar.
-          if (
-            !(event.target as HTMLElement).closest(`[${METABOT_MENU_ATTR}]`)
-          ) {
-            setHasFocus(true);
-          }
-        }}
+        onFocus={() => setHasFocus(true)}
         onBlur={(event) => {
           if (!event.currentTarget.contains(event.relatedTarget)) {
             setHasFocus(false);
@@ -514,33 +509,39 @@ export function ExpressionBar({
               <Gap
                 key={`gap-${index}`}
                 index={index}
+                className={cx({
+                  [S.gapHiddenAnd]: hidesAnds && isAndToken(token),
+                })}
                 onClick={() => moveCaret(index)}
               />
             ),
-            <TokenView
-              key={`token-${index}`}
-              query={query}
-              stageIndex={stageIndex}
-              token={token}
-              isInNotebook={isInNotebook}
-              depth={parenDepths[index]}
-              hasError={index === errorPosition}
-              isFlashed={
-                token.type === "filter" &&
-                flashed.has(getFilterLabel(query, stageIndex, token.clause))
-              }
-              onReplace={(next) =>
-                setTokens(replaceTokenAt(tokens, index, next))
-              }
-              onPopoverChange={(isOpened) =>
-                setOpenPillCount((count) => count + (isOpened ? 1 : -1))
-              }
-              onRemove={() => {
-                const next = removeTokenAt(tokens, index);
-                setTokens(next);
-                setCaret(Math.min(caretIndex, next.length));
-              }}
-            />,
+            hidesAnds && isAndToken(token) ? null : (
+              <TokenView
+                key={`token-${index}`}
+                query={query}
+                stageIndex={stageIndex}
+                token={token}
+                isInNotebook={isInNotebook}
+                isCompact={isCompact}
+                depth={parenDepths[index]}
+                hasError={index === errorPosition}
+                isFlashed={
+                  token.type === "filter" &&
+                  flashed.has(getFilterLabel(query, stageIndex, token.clause))
+                }
+                onReplace={(next) =>
+                  setTokens(replaceTokenAt(tokens, index, next))
+                }
+                onPopoverChange={(isOpened) =>
+                  setOpenPillCount((count) => count + (isOpened ? 1 : -1))
+                }
+                onRemove={() => {
+                  const next = removeTokenAt(tokens, index);
+                  setTokens(next);
+                  setCaret(Math.min(caretIndex, next.length));
+                }}
+              />
+            ),
           ]),
           ...rowStart(tokens.length),
           caretIndex === tokens.length ? (
@@ -554,18 +555,17 @@ export function ExpressionBar({
               onClick={() => moveCaret(tokens.length)}
             />
           ),
-          // After the end slot: the caret never gets past the summary's filters,
-          // and a frozen "and" joins them to the expression.
+          // After the end slot: the caret never gets past the summary's filters.
           ...(trailing
             ? [
-                // Like the Metabot menu, focusing these shouldn't unfold the bar.
+                // Focusing these shouldn't unfold the bar.
                 <Box
                   key="trailing"
+                  ref={trailingRef}
                   component="span"
-                  className={S.trailing}
+                  className={cx(S.trailing, UnifiedS.summaryZone)}
                   onFocus={(event) => event.stopPropagation()}
                 >
-                  {isTrailingJoined && tokens.length > 0 && <FrozenAnd />}
                   {trailing}
                 </Box>,
               ]
@@ -574,7 +574,13 @@ export function ExpressionBar({
         {tokens.length === 0 && text === "" && draftColumn == null && (
           <span className={S.placeholder}>{t`Type to filter…`}</span>
         )}
-        <Group gap="sm" ml="auto" pl="md" wrap="nowrap">
+        {/* The summary's filters take the free space when present, so these only push right without them. */}
+        <Group
+          gap="sm"
+          ml={trailing ? undefined : "auto"}
+          pl="md"
+          wrap="nowrap"
+        >
           {!parsed.ok && (
             <Text size="sm" c="feedback-negative" lh="1">
               {parsed.error}
@@ -590,19 +596,13 @@ export function ExpressionBar({
               {t`Apply`}
             </Button>
           )}
-          <Box className={S.metabot}>
-            <MetabotMenu />
-          </Box>
         </Group>
       </Box>
     </Box>
   );
 }
 
-/** The "and" that always joins the summary's filters to the expression: not a token, so not editable. */
-export function FrozenAnd() {
-  return <span className={cx(S.op, S.opFrozen)}>{t`and`}</span>;
-}
+const isAndToken = (token: Token) => token.type === "op" && token.op === "and";
 
 function RowBreak({ isBreak, indent }: { isBreak: boolean; indent: number }) {
   return (
@@ -610,31 +610,6 @@ function RowBreak({ isBreak, indent }: { isBreak: boolean; indent: number }) {
       {isBreak && <span className={S.rowBreak} />}
       <span style={{ width: `${indent * INDENT_REM}rem`, flexShrink: 0 }} />
     </>
-  );
-}
-
-const METABOT_MENU_ATTR = "data-metabot-menu";
-
-/** Placeholder actions: they only close the menu. */
-function MetabotMenu() {
-  const markAttr = { [METABOT_MENU_ATTR]: true };
-  return (
-    <Menu position="bottom-end">
-      <Menu.Target>
-        <ActionIcon
-          variant="subtle"
-          aria-label={t`Metabot`}
-          {...markAttr}
-          onClick={(event: MouseEvent) => event.stopPropagation()}
-        >
-          <Icon name="metabot" c="icon-brand" />
-        </ActionIcon>
-      </Menu.Target>
-      <Menu.Dropdown {...markAttr}>
-        <Menu.Item>{t`Generate filters`}</Menu.Item>
-        <Menu.Item>{t`Summarize`}</Menu.Item>
-      </Menu.Dropdown>
-    </Menu>
   );
 }
 
@@ -654,10 +629,18 @@ function CaretSlot({
   );
 }
 
-function Gap({ index, onClick }: { index: number; onClick: () => void }) {
+function Gap({
+  index,
+  className,
+  onClick,
+}: {
+  index: number;
+  className?: string;
+  onClick: () => void;
+}) {
   return (
     <span
-      className={S.gap}
+      className={cx(S.gap, className)}
       {...{ [SLOT_ATTR]: index }}
       onClick={(event) => {
         event.stopPropagation();
@@ -851,6 +834,7 @@ type TokenViewProps = {
   stageIndex: number;
   token: Token;
   isInNotebook: boolean;
+  isCompact: boolean;
   depth: number;
   hasError: boolean;
   isFlashed: boolean;
@@ -864,6 +848,7 @@ function TokenView({
   stageIndex,
   token,
   isInNotebook,
+  isCompact,
   depth,
   hasError,
   isFlashed,
@@ -906,6 +891,7 @@ function TokenView({
       stageIndex={stageIndex}
       clause={token.clause}
       isInNotebook={isInNotebook}
+      isCompact={isCompact}
       className={cx(errorClass, { [S.flash]: isFlashed })}
       onReplace={(filterable) =>
         onReplace(filterToken(toFilterClause(query, stageIndex, filterable)))
@@ -921,6 +907,7 @@ type FilterTokenViewProps = {
   stageIndex: number;
   clause: Lib.FilterClause;
   isInNotebook: boolean;
+  isCompact: boolean;
   className?: string;
   onReplace: (filterable: Lib.Filterable) => void;
   onRemove: () => void;
@@ -932,12 +919,15 @@ function FilterTokenView({
   stageIndex,
   clause,
   isInNotebook,
+  isCompact,
   className,
   onReplace,
   onRemove,
   onPopoverChange,
 }: FilterTokenViewProps) {
   const [isOpened, setIsOpenedState] = useState(false);
+  const fullLabel = getFilterLabel(query, stageIndex, clause);
+  const label = isCompact && !isOpened ? compactLabel(fullLabel) : fullLabel;
   const setIsOpened = (next: boolean | ((opened: boolean) => boolean)) => {
     const value = typeof next === "function" ? next(isOpened) : next;
     if (value !== isOpened) {
@@ -960,7 +950,7 @@ function FilterTokenView({
               color="core-filter"
               onClick={() => setIsOpened((opened) => !opened)}
             >
-              {getFilterLabel(query, stageIndex, clause)}
+              {label}
               <Icon
                 className={S.notebookPillClose}
                 name="close"
@@ -975,7 +965,7 @@ function FilterTokenView({
               onClick={() => setIsOpened((opened) => !opened)}
               onRemoveClick={onRemove}
             >
-              {getFilterLabel(query, stageIndex, clause)}
+              {label}
             </FilterPill>
           )}
         </Box>

@@ -48,9 +48,18 @@ import {
   getSourceName,
 } from "../chart-filters/describe";
 import { rowCountQuery, rowsOnly } from "../chart-filters/drillMenu";
-import { ExpressionBar } from "../expression-bar-unified/ExpressionBar";
+import {
+  ExpressionBar,
+  compactLabel,
+} from "../expression-bar-unified/ExpressionBar";
+import {
+  AddSummaryFilter,
+  commitSummaryQuery,
+  useSummaryFilters,
+} from "../expression-bar-unified/SummaryPills";
+import { CompactReadingContext } from "../expression-bar-unified/settings";
 
-import { FrozenAnd, ExpressionBar as RowsExpressionBar } from "./ExpressionBar";
+import { ExpressionBar as RowsExpressionBar } from "./ExpressionBar";
 import BarS from "./ExpressionBar.module.css";
 
 const ROWS_STAGE = 0;
@@ -391,7 +400,6 @@ export function SummaryInBarDataZone({
       rowsFromNesting={2}
       hasRoundOps
       focusKey={focusKey}
-      isTrailingJoined={thresholds.length > 0}
       trailing={
         isAggregated && (
           <SummaryFilterPills
@@ -415,36 +423,37 @@ type SummaryFilterPillsProps = FilterCanvasProps & {
   thresholds: Lib.FilterClause[];
 };
 
-/**
- * The summary's filters, always AND-ed, with a "+" to add one. The bar draws
- * the "and" before the first pill.
- */
+/** The summary's filters, always AND-ed so no connector is drawn, with the split bar's Σ+ button to add one. */
 function SummaryFilterPills({
   query,
   thresholds,
   onChange,
 }: SummaryFilterPillsProps) {
-  const summaryQuery =
-    Lib.stageCount(query) > SUMMARY_STAGE ? query : Lib.appendStage(query);
+  const { summaries, columns } = useSummaryFilters(query, ROWS_STAGE);
   const handleChange = (nextQuery: Lib.Query) =>
-    onChange(Lib.dropEmptyStages(nextQuery));
+    commitSummaryQuery(nextQuery, onChange);
 
   return (
     <>
       {thresholds.map((filter, index) => (
-        <Group key={index} gap={4} wrap="nowrap">
-          {index > 0 && <FrozenAnd />}
-          <SummaryFilterPill
-            query={query}
-            filter={filter}
-            onChange={handleChange}
-          />
-        </Group>
+        <SummaryFilterPill
+          key={index}
+          query={query}
+          filter={filter}
+          onChange={handleChange}
+        />
       ))}
-      <AddCompactThreshold
-        summaryQuery={summaryQuery}
-        isEmpty={false}
-        onChange={handleChange}
+      <AddSummaryFilter
+        className={BarS.summaryAddButton}
+        dropdownClassName={BarS.summaryAddDropdown}
+        columns={columns}
+        summaryCount={summaries.length}
+        label={thresholds.length === 0 ? t`Filter the summary` : undefined}
+        onAdd={({ summary }, filterable) =>
+          handleChange(
+            Lib.filter(summary.query, summary.stageIndex, filterable),
+          )
+        }
       />
     </>
   );
@@ -453,7 +462,10 @@ function SummaryFilterPills({
 /** A summary filter as a darker filter pill; clicking it opens the number filter. */
 function SummaryFilterPill({ query, filter, onChange }: CompactThresholdProps) {
   const [isOpened, setIsOpened] = useState(false);
+  const isCompact = useContext(CompactReadingContext);
   const column = Lib.numberFilterParts(query, SUMMARY_STAGE, filter)?.column;
+  const fullLabel = Lib.displayInfo(query, SUMMARY_STAGE, filter).displayName;
+  const label = isCompact && !isOpened ? compactLabel(fullLabel) : fullLabel;
 
   return (
     <Popover opened={isOpened} position="bottom-start" onChange={setIsOpened}>
@@ -465,7 +477,7 @@ function SummaryFilterPill({ query, filter, onChange }: CompactThresholdProps) {
               onChange(Lib.removeClause(query, SUMMARY_STAGE, filter))
             }
           >
-            {Lib.displayInfo(query, SUMMARY_STAGE, filter).displayName}
+            {label}
           </FilterPill>
         </Box>
       </Popover.Target>
