@@ -421,24 +421,24 @@
                                 [{:field-name "bin_fk", :base-type {:native "VARBINARY(16)"}}]
                                 [[(byte-array [1 2 3])]]]]
         (try
-          (sync/sync-table! (t2/select-one :model/Table (mt/id :table)))
+          (sync/sync-table! (t2/select-one :model/Table :id (mt/id :table)))
           (let [field-id (mt/id :table :bin_fk)]
             (testing "sanity check: the column syncs as :type/Binary"
               (is (=? {:base_type :type/Binary, :effective_type :type/Binary}
                       (t2/select-one :model/Field :id field-id))))
             ;; put the row in its pre-upgrade state: untyped, marked as an FK by sync
-            (t2/update! :model/Field field-id {:base_type          :type/*
-                                               :effective_type     :type/*
-                                               :semantic_type      :type/FK
-                                               :fk_target_field_id (mt/id :table :id)})
-            (sync/sync-table! (t2/select-one :model/Table (mt/id :table)))
+            (t2/update! :model/Field :id field-id {:base_type          :type/*
+                                                   :effective_type     :type/*
+                                                   :semantic_type      :type/FK
+                                                   :fk_target_field_id (mt/id :table :id)})
+            (sync/sync-table! (t2/select-one :model/Table :id (mt/id :table)))
             (is (=? {:base_type          :type/Binary
                      :effective_type     :type/Binary
                      :semantic_type      :type/FK
                      :fk_target_field_id (mt/id :table :id)}
                     (t2/select-one :model/Field :id field-id))))
           (finally
-            (t2/delete! :model/Database (mt/id))))))))
+            (t2/delete! :model/Database :id (mt/id))))))))
 
 (deftest create-or-replace-table-updates-effective-type-test
   (testing "GHY-3388: when a column's database type changes in place (e.g. TEXT -> numeric via

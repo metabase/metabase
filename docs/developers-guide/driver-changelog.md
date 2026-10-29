@@ -36,7 +36,6 @@ title: Driver interface changelog
   first sync after upgrading keeps its semantic type (sync no longer clears it when the old base type was `:type/*`)
   but gets its effective type, coercion strategy and fingerprint reset.
 
-
 ## Metabase 0.65.3
 
 - `metabase.driver.sql-jdbc.execute/impl-error-in-query?` `[driver exception]` identifies query errors raised while
