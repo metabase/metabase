@@ -84,12 +84,9 @@ const getAddButton = () => screen.getByRole("button", { name: /Add an event/ });
 const queryEmptySlot = () =>
   screen.queryByRole("button", { name: "Click to define this step" });
 
-/** The add button adds an empty slot, which opens the editor when clicked. */
+/** The add button adds a slot and opens its editor right away. */
 const startAddingEvent = async () => {
   await userEvent.click(getAddButton());
-  await userEvent.click(
-    screen.getByRole("button", { name: "Click to define this step" }),
-  );
 };
 
 const renameEditedEvent = async (name: string) => {
@@ -229,15 +226,14 @@ describe("EventDefinitionListWidget", () => {
         expect.objectContaining({ name: "Giant order" }),
         HUGE_ORDER,
       ]);
-      expect(
-        screen.queryByTestId("event-definition-name"),
-      ).not.toBeInTheDocument();
-      expect(queryEmptySlot()).toBeInTheDocument();
+      // The new event's editor opens in the slot that was added.
+      expect(getNameInput()).toHaveValue("");
+      expect(queryEmptySlot()).not.toBeInTheDocument();
     });
   });
 
   describe("while an event is being added", () => {
-    it("adds it and leaves a slot for another when adding again", async () => {
+    it("adds it and opens another when adding again", async () => {
       const { onChange } = setup({ value: [BIG_ORDER] });
 
       await startAddingEvent();
@@ -251,10 +247,8 @@ describe("EventDefinitionListWidget", () => {
         BIG_ORDER,
         expect.objectContaining({ name: "Created At is today" }),
       ]);
-      expect(
-        screen.queryByTestId("event-definition-name"),
-      ).not.toBeInTheDocument();
-      expect(queryEmptySlot()).toBeInTheDocument();
+      expect(getNameInput()).toHaveValue("");
+      expect(queryEmptySlot()).not.toBeInTheDocument();
     });
   });
 });
