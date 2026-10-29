@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 import { createMockMetadataFromState } from "__support__/metadata";
 import { createMockLocation, createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
-import { databaseApi, snippetApi } from "metabase/api";
+import { cardApi, databaseApi, snippetApi } from "metabase/api";
 import * as rtkEndpointUtils from "metabase/api/utils/run-rtk-endpoint";
 import * as CardLib from "metabase/common/utils/card";
 import * as questionActions from "metabase/questions/actions";
@@ -15,6 +15,7 @@ import { defer } from "metabase/utils/promise";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
+import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import type {
   Card,
@@ -26,7 +27,9 @@ import type {
   User,
 } from "metabase-types/api";
 import {
+  createMockCard,
   createMockSegment,
+  createMockTemplateTag,
   createMockUser,
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
@@ -679,6 +682,60 @@ describe("QB Actions > initializeQB", () => {
           );
         });
       });
+    });
+  });
+
+  describe("native questions with card references", () => {
+    const REFERENCED_CARD = createMockCard({ id: 10, name: "Bob's Café" });
+
+    function setupCardReference({ tagName }: { tagName: string }) {
+      const actualRunRtkEndpoint = rtkEndpointUtils.runRtkEndpoint;
+      jest
+        .spyOn(rtkEndpointUtils, "runRtkEndpoint")
+        .mockImplementation((request, dispatch, endpoint, options) =>
+          endpoint === cardApi.endpoints.getCard
+            ? Promise.resolve(REFERENCED_CARD)
+            : actualRunRtkEndpoint(request, dispatch, endpoint, options),
+        );
+
+      return setup({
+        card: createSavedNativeCard({
+          dataset_query: {
+            type: "native",
+            database: SAMPLE_DB_ID,
+            native: {
+              query: `SELECT * FROM {{${tagName}}}`,
+              "template-tags": {
+                [tagName]: createMockTemplateTag({
+                  name: tagName,
+                  "display-name": tagName,
+                  type: "card",
+                  "card-id": REFERENCED_CARD.id,
+                }),
+              },
+            },
+          },
+        }),
+      });
+    }
+
+    function getQueryText(card: Card, metadata: Metadata) {
+      return checkNotNull(new Question(card, metadata).legacyNativeQuery())
+        .queryText()
+        .toLowerCase();
+    }
+
+    it("keeps a card reference unchanged when its tag name matches the name the frontend generates", async () => {
+      const { result, metadata } = await setupCardReference({
+        tagName: "#10-bobs-cafe",
+      });
+
+      expect(getQueryText(result.card, metadata)).toBe(
+        "select * from {{#10-bobs-cafe}}",
+      );
+      expect(getQueryText(result.card, metadata)).toBe(
+        getQueryText(result.originalCard, metadata),
+      );
     });
   });
 
