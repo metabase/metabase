@@ -1,54 +1,193 @@
 # Semantic layer import
 
-Imports the metrics of a semantic layer into Metabase: each becomes a metric card, written as a serdes export tree
-that `import` loads. Each metric is one aggregation over one table, filtered as the semantic layer filters it, with a
-curated set of dimensions it can be broken out by. What the semantic layer can say that a Metabase metric cannot is
-reported, entry by entry, with the reason, and the run goes on.
+`enterprise/semantic-layer-import` turns the metrics defined in a semantic layer into Metabase metrics. A semantic
+layer, such as dbt's (MetricFlow), describes a warehouse's tables and the business metrics computed over them. The
+import reads such a project and writes each metric as a Metabase metric card: one aggregation over one table, with the
+filters the semantic layer defines it with and a curated set of dimensions it can be broken out by. The output is a
+serdes tree, the same YAML `export` writes, so an ordinary serdes `import` loads it into an instance. The module itself
+writes nothing to the app DB.
 
-It is a developer tool, run from a REPL; nothing calls it from the API yet, and no premium feature gates it. dbt is
-the one source today. [The dbt source's README](dbt/README.md) covers producing a manifest, running an import of a dbt
+Not everything a semantic layer can say has a Metabase equivalent. The import never drops or approximates such a
+thing silently: whatever it cannot convert faithfully is listed in a report with the reason, and the rest of the run
+goes on.
+
+It is a developer tool, run from a REPL: nothing in Metabase calls it yet, and no premium feature gates it. dbt is the
+only source so far; [the dbt source's README](dbt/README.md) covers producing a manifest, running an import of a dbt
 project, and how each dbt construct converts or why it does not.
 
-## How it fits together
+This README has two parts. The first is an overview: how the import is put together, its API, and how to extend it.
+The second, from "The IR" on, is reference material for working on the import: the IR in detail, the config, the
+report, importing the result, the ids, and the SQL the import understands.
+
+## Architecture
+
+The import is a pipeline. A source-specific front end parses a project into an intermediate representation (IR), and
+shared, source-agnostic stages turn the IR into serdes YAML:
 
 ```
-source project ─► source (dbt/) ─► IR ─► resolve ─► emit ─► serdes YAML ─► `import`
- manifest.json     parse, in the         Lib         Card,      collections/main/…
-                   source's own terms    queries     Collection
+dbt.core/convert!       one entry point per source
+ ├─ parse               project files ──► IR                          dbt.*, the source's own nested module
+ └─ core/convert!
+     ├─ check-driver    the config's :driver vs. the IR's warehouse   core
+     ├─ resolve         IR ──► Lib queries, dimension sets, report    resolve, resolve.*, metadata, sql, ids
+     └─ emit            resolved content ──► serdes YAML tree         emit
+
+core/preflight          YAML tree vs. the target instance's app DB    preflight, db
+serdes `import`         YAML tree ──► Cards in the app DB             enterprise/serialization
 ```
 
-1. A *source* parses its project into the intermediate representation (IR) of `schemas/ir.clj`. It applies its own
-   rules, puts what it says in the IR's terms, and reports what the IR has no place for. dbt's is under `dbt/`:
-   `dbt.core/convert!` reads a manifest and hands the IR to `core/convert!`.
-2. `core/convert!` checks the config's `:driver` against the warehouse the IR names (`core/check-driver`).
-3. The resolve stage (`resolve.clj` and `resolve/`) binds every IR metric to a Lib query against a metadata provider
-   built from the IR (`metadata.clj`), with a deterministic `entity_id` (`ids.clj`) and its dimension set. SQL in an
-   aggregation or a filter goes through sqlglot (`sql.clj`). What cannot be one Metabase metric is reported here.
-4. The emit stage (`emit.clj`) makes a Card row of each resolved metric, and a Collection row of the collection, which
-   serdes' own `extract-one` turns into entities the way an export does with rows from the app DB. It writes them as
-   YAML, replacing what a previous run wrote.
-5. `core/preflight` checks the tree against the instance it is going to be imported into (`preflight.clj`).
+1. **Parse** (source-specific). A source reads its project format and produces an `::ir/semantic-layer`
+   (`schemas/ir.clj`): *tables*, each a physical relation with its columns, dimensions, keys and joins, and *metrics*,
+   each simple, cumulative, ratio or derived, with filters written as SQL. The source applies its own defaulting rules,
+   translates its own idioms into the IR's terms (dbt's entity-based joins, Jinja filter templates and measures, for
+   example), and reports what the IR has no place for.
+2. **Check the driver.** `check-driver` fails the run when the config's `:driver` is not the driver for the warehouse
+   the project was written for, since the driver decides how the project's column types and SQL are read.
+3. **Resolve.** Builds an in-memory Lib metadata provider from the IR (`metadata`), with Tables and Fields named the
+   way sync would see them in the warehouse. It then builds each metric's query with Lib against that provider: the
+   source table, one aggregation and the filters, with SQL translated by `sql` (through sqlglot). Each metric also gets
+   its curated dimensions and a deterministic `entity_id`. Ratio and derived metrics refer to the cards of their input
+   metrics, so metrics are resolved in dependency order and each one is added to the provider as a card. What cannot
+   be a Metabase metric is reported here.
+4. **Emit.** Builds a Card row for each resolved metric and a Collection row for the collection they go in, and runs
+   them through serdes' own `extract-one`, as an export does, with the id lookups bound to the provider so that ids
+   come out as portable references. The YAML is staged and then swapped into place, replacing what the previous run
+   wrote.
+5. **Check, then import.** `preflight` reads the target instance's app DB to catch references that serdes `import`
+   would otherwise stub out silently. The serdes `import` command then loads the tree.
 
-MBQL is never written or read by hand: queries are built with `metabase.lib.core`, and what the import needs to know
-about them comes from Lib.
+A few principles hold throughout:
 
-Everything after the source knows only the IR. `dbt/` is a nested module, `enterprise/semantic-layer-import.dbt`,
-which uses this module's namespaces; this module never requires it, and the module linter keeps it that way.
+- **The IR is the seam.** Everything after the parse stage knows only the IR. A source is a nested module that uses
+  this one, and this module never requires a source (the module linter enforces it). Adding a source changes nothing
+  in the shared stages, and anything added to the IR works for every source.
+- **Lib, not hand-written MBQL.** Queries are built with `metabase.lib.core`, what the import needs to know about them
+  comes from Lib, and serdes writes them. The output tracks Metabase's query format as it changes.
+- **Report, don't fail.** A construct with no Metabase equivalent is thrown deep in a stage with `unsupported/throw!`
+  and caught where the stage knows which entry it is about. That entry is reported and the run goes on. An unexpected
+  exception is an `:errors` entry, not a failed run. A metric built on a reported metric is reported with that
+  metric's reason.
+- **Deterministic ids.** Every id is derived from the project (`ids`), so a re-run writes the same ids and a
+  re-import updates what the previous import created instead of duplicating it.
 
-| Namespace (under `metabase-enterprise.semantic-layer-import`) | What it holds |
+## Namespaces
+
+All under `metabase-enterprise.semantic-layer-import`:
+
+| Namespace | Stage | Purpose |
+| -- | -- | -- |
+| `core` | API | The module's public API and its only `:api` namespace: `convert!`, `preflight`, `check-driver` and the report's schema. See "The API" |
+| `schemas.ir` | parse → resolve | The IR: the contract between a source and the shared stages. See "The IR" |
+| `schemas.config` | all | The config: what a semantic layer cannot supply (the Metabase Databases, the driver, the cards' creator) and how its content is named and written |
+| `schemas.resolved` | resolve → emit | The resolve stage's output: IR content bound to Lib queries |
+| `resolve` | resolve | The stage's entry point: builds what all content shares (the env and the collection), resolves each kind of content, and merges in the parse stage's unsupported entries and errors |
+| `resolve.metrics` | resolve | Metrics: each IR aggregation as a Lib aggregation, ratio and derived metrics over `[:metric id]` references in dependency order, driver-feature checks, and notes on where a metric agrees with its source only under some conditions |
+| `resolve.columns` | resolve | Binds a metric to its table and columns: the run's shared env, the per-metric context, column refs, keys and joins |
+| `resolve.filters` | resolve | A metric's IR filters as Lib filter clauses, each placeholder resolved to a dimension, a key or the time dimension |
+| `resolve.dimensions` | resolve | A metric's curated dimension set: its table's dimensions, those reached through joins, and its time dimension as the default |
+| `sql` | resolve | Warehouse SQL snippets as Lib expressions and filter clauses, parsed by sqlglot; see "SQL in the IR" for the subset. It knows nothing about the IR (a callback resolves columns), so sources use it too |
+| `metadata` | resolve | The in-memory Lib metadata provider built from the IR, named as sync would name things, with converted metrics added as cards; also maps its made-up ids back to portable serdes references |
+| `ids` | resolve | Every id the import writes, derived by hashing the project's own identifiers. See "Identifiers and re-import" |
+| `unsupported` | all | How "no Metabase equivalent" is thrown deep in a stage and turned into a report entry |
+| `emit` | emit | Resolved content as serdes entities, through serdes' own extraction, written as a YAML tree |
+| `preflight` | after emit | A read-only check of a written tree against the target app DB: the references serdes `import` would stub out |
+| `db` | after emit | The app DB queries `preflight` makes |
+| `dbt.*` | parse | The dbt source, a nested module of its own (`enterprise/semantic-layer-import.dbt`). See [its README](dbt/README.md) |
+
+## The API
+
+`metabase-enterprise.semantic-layer-import.core` is the module's API. Sources call it, and so does a REPL session
+checking a tree; nothing else in Metabase does yet.
+
+- **`(convert! {:semantic-layer ir, :out-dir dir, :config config})`** runs the shared stages on `ir`, the
+  `::ir/semantic-layer` a source parsed: it checks the driver, resolves, emits and writes the serdes tree under
+  `dir`, then returns a `::report`. A problem with one entry goes in the report; `convert!` throws only for a
+  problem with the run as a whole, such as a driver that does not match the project's warehouse, or a write that fails
+  part-way (the previous run's files are then left as they were). `config` is a `::config/config`; see "Running an
+  import" for its keys.
+- **`::report`** is what `convert!` returns: `:out-dir`; `:converted`, one `::converted` entry per piece of content
+  written, dispatching on `:kind` (only `:metric` today: its name, the card's `entity_id`, the file, its notes and the
+  dimensions it could not get); `:unsupported`, one `{:kind :name :reason}` per entry that has no Metabase
+  equivalent; and `:errors`, one `{:kind :name :unique-id :message}` per entry the import itself failed on. See "The
+  report".
+- **`(preflight {:out-dir dir})`** checks the tree under `dir` against the app DB the REPL was started with, which
+  has to be the instance the tree will be imported into. It returns the cards whose Database, Table or Field references
+  serdes `import` would not bind, each with what is there instead when a near miss explains it. `[]` means it is safe
+  to import. See "Importing the result".
+- **`(check-driver driver warehouse)`** is the driver check `convert!` runs first, public for sources and tests.
+
+A source wraps `convert!` in an entry point of its own, which takes the project's files and the source's own options.
+For dbt that is `dbt.core/convert!`, which takes `:manifest` and an optional `:entity-models`. A whole run, from a REPL
+started with the `:ee` alias:
+
+```clojure
+(require '[metabase-enterprise.semantic-layer-import.core :as semantic-layer-import]
+         '[metabase-enterprise.semantic-layer-import.dbt.core :as dbt])
+
+(dbt/convert! {:manifest "/path/to/project/target/manifest.json"
+               :out-dir  "/path/to/serdes-out"
+               :config   {:databases     {"dbt_bi" "Sales DB"}  ; warehouse database -> Metabase Database
+                          :driver        :postgres              ; the Metabase driver for those databases
+                          :creator-email "admin@example.com"}}) ; the user the cards are created as
+;; => {:out-dir "/path/to/serdes-out", :converted [...], :unsupported [...], :errors [...]}
+
+;; against the instance the tree will be imported into; import when this is []
+(semantic-layer-import/preflight {:out-dir "/path/to/serdes-out"})
+```
+
+```sh
+MB_DB_CONNECTION_URI=... clojure -M:run:ee import /path/to/serdes-out -e
+```
+
+## Extending the import
+
+### Adding a source
+
+The IR is meant to be no one tool's model; the table under "The IR" lines dbt's, Cube's and OSI's concepts up with
+it. A new source, such as OSI (Open Semantic Interchange), is a parser and an entry point, and nothing in the shared
+stages changes:
+
+1. Make it a nested module, `enterprise/semantic-layer-import.<source>`, in a directory next to `dbt/`, and run
+   `./bin/mage fix-modules-config` to record it. A nested module may use this module's internal namespaces, as dbt's
+   does with `schemas.ir`, `schemas.config`, `sql` and `unsupported`.
+2. Parse the project into an `::ir/semantic-layer`:
+   - `:source`: the `:tool` name prefixes every id the import derives (and names the default collection), so it has to
+     be unique among sources and must never change;
+   - `:warehouse`: the warehouse the project was written for and the Metabase driver that connects to it, as
+     `dbt.adapter` works it out, so that `check-driver` catches a config with the wrong driver;
+   - `:tables`: for OSI, one per dataset, with its relation, documented columns, dimensions, keys, and joins (its
+     relationships, each through a column of the table to another table);
+   - `:metrics`: each a `:simple` or `:cumulative` metric (one aggregation over one table) or a `:ratio` or `:derived`
+     one (arithmetic over other metrics), with filters as SQL in which each reference to the semantic layer's own
+     objects is a placeholder. A format that defines a metric as a whole SQL expression, such as `SUM(amount)`, has
+     to take the aggregate function apart from its argument;
+   - `:unsupported`: an entry with a reason for anything of the source's own the IR has no place for, thrown with
+     `unsupported/throw!` and caught per entry with `unsupported/catching`, as the dbt source does.
+3. Give it an entry point, `<source>.core/convert!`, that parses the project and calls `core/convert!`, with the
+   source's own options next to the shared `:config` (dbt's `:entity-models` is one).
+4. Test it with fixtures in its format, as `dbt/`'s tests do. `core_test.clj` runs an IR written by hand, for a
+   made-up tool, through the whole import: that is the contract a parser has to meet.
+
+When a format can say something Metabase can express but the IR cannot hold, extend the IR in its own terms (the
+schema in `schemas/ir.clj`, then the resolve stage) rather than teaching the shared stages about one source. Every
+source can then use it.
+
+### Adding a kind of content
+
+Metrics are the only kind of content an import carries today, but every stage is organized by kind and every report
+entry names its `:kind`. Other candidates include Cube's segments as Metabase segments, a dbt semantic model's
+measures as Metabase measures, and a dbt model as a Metabase transform. A new kind goes in the same place in each
+stage:
+
+| Where | What to add |
 | -- | -- |
-| `core` | The entry point a source calls: `convert!`, `preflight`, `check-driver` and the report's schema |
-| `schemas.ir`, `schemas.config`, `schemas.resolved` | The IR, the config, and the resolve stage's output |
-| `resolve` | The resolve stage: what every kind of content shares, then each kind |
-| `resolve.metrics` | Metrics: aggregations, composed metrics, their order, notes |
-| `resolve.columns`, `resolve.filters`, `resolve.dimensions` | A metric's table, columns, keys and joins; its filters; its dimension set |
-| `sql` | The SQL subset that maps onto Lib, see "SQL in the IR" |
-| `metadata` | The Lib metadata provider over the IR, naming tables and fields as sync would |
-| `ids` | Every id the import derives |
-| `emit` | Serdes entities and the YAML tree |
-| `preflight`, `db` | The pre-import check against the app DB, and the queries it makes |
-| `unsupported` | How a reason is thrown and reported |
-| `dbt.*` | The dbt source, see [its README](dbt/README.md) |
+| `schemas/ir.clj` | A key of its own next to `:metrics` in `::ir/semantic-layer`, with its schema, and a value of `::ir/content-kind` for its report entries |
+| each source | Parsing it into that key; a source that has nothing of the kind leaves the key empty |
+| `resolve/<kind>.clj` | A resolver next to `resolve/metrics.clj`, called from `resolve/resolve-semantic-layer`, with a key of its own in `::resolved/semantic-layer`. When other content refers to it, as a derived metric refers to its inputs, add it to the metadata provider so Lib can resolve the reference, as `metadata/add-metric!` does for metrics |
+| `ids.clj` | An id derivation prefixed `<tool>-import/<kind>/`. Once released, it can't change without migrating what earlier runs wrote |
+| `emit.clj` | A function next to `metric-files`, called from `files`, and a branch of `::emit/file` for its files. Build the model's row and let its serdes spec extract it, as metrics do; `./bin/mage fix-modules-config` records the new `:model/...` import |
+| `core.clj` | A branch of `::converted` and of `converted` for its report entries |
+| `preflight.clj` | A check of whatever warehouse objects its entities name, if they name any |
 
 ## The IR
 
@@ -102,17 +241,8 @@ The IR holds metrics, the one kind of content an import carries today; see "Addi
 
 ## Running an import
 
-A source's entry point calls `core/convert!` with the IR, a directory, and the config; see the source's README for its
-own entry point. From a REPL started with the `:ee` alias:
-
-```clojure
-(metabase-enterprise.semantic-layer-import.core/convert!
- {:semantic-layer ir               ; what a source parsed, an `::ir/semantic-layer`
-  :out-dir        "/path/to/serdes-out"
-  :config         {:databases     {"dbt_bi" "Sales DB"}   ; warehouse database -> Metabase Database
-                   :driver        :postgres               ; the Metabase driver for those databases
-                   :creator-email "admin@example.com"}})  ; the user the cards are created as
-```
+A source's entry point calls `core/convert!` with the IR, a directory and the config; "The API" above shows a whole
+run, and the source's README shows its own entry point.
 
 The config is the closed map `schemas.config/config`; a source's own options are its own, not part of it:
 
@@ -265,7 +395,7 @@ parses an expression on its own in the dialect of the config's `:driver`, and a 
   become is a null check that matches the null rows. A `/` of two
   known integers is reported on the warehouses that truncate the quotient (Postgres, SQL Server, Redshift,
   Presto/Trino, SQLite), since Metabase's `/` does not; a bare column as a condition (`WHERE is_returned`) is
-  `column = true`, and is reported when the project types the column as anything but boolean (see "Limitations" for
+  `column = true`, and is reported when the project types the column as anything but boolean (see the table below for
   both);
 - `IS [NOT] NULL`, `IS [NOT] TRUE` and `IS [NOT] FALSE`, the negated boolean forms as `!= ... OR IS NULL` so that
   they still hold for a null column;
@@ -296,7 +426,7 @@ parses an expression on its own in the dialect of the config's `:driver`, and a 
   `date` and `datetime`, where the warehouse keeps the digits the conversion does: a `DECIMAL(p, s)` rounds to `s`
   decimals and a bare `DECIMAL` is a scale-0 type on most warehouses (not Postgres, BigQuery or SQLite), and
   Spark/Databricks, SQLite, ClickHouse and Redshift drop the fraction on a cast to an integer where Metabase rounds
-  it, so those are reported (see "Limitations");
+  it, so those are reported (see the table below);
 - the functions with an MBQL expression function of the same meaning: `coalesce`, `nullif` (as the `CASE` it stands
   for; `x / NULLIF(y, 0)` is plain division, since Metabase's `/` already returns NULL for a zero divisor), `abs`,
   `floor`, `ceil`/`ceiling`, `round` (to a literal number of decimals, at most 18, as `round(x * 10^n) / 10^n`),
@@ -343,37 +473,6 @@ code)` counts a row whose `code` is null, under its `status` alone, where the so
 null `||` gives it; a filter on `a || b` can likewise match rows the SQL would not. On warehouses whose `CONCAT()`
 propagates nulls as `||` does, Redshift, Snowflake, BigQuery and Databricks among them, the two agree. The fix belongs
 in Metabase: a `:concat` option that compiles to null-propagating concatenation; until then the import keeps `concat`.
-
-## Extending the import
-
-### Adding a source
-
-A source (Cube, or OSI, say) is a nested module of its own, `enterprise/semantic-layer-import.<source>`, in a
-directory next to `dbt/`:
-
-1. Parse the project into an `::ir/semantic-layer`, in the source's own namespaces. Apply the source's defaulting
-   rules, put what it says in the IR's terms (its tables, keys, joins and aliases, its filters as SQL with references),
-   and report as an `::ir/unsupported` entry whatever of its own the IR has no place for. Name the source's `:tool`,
-   which prefixes every id, and map the warehouse it was written for to a Metabase driver where you can.
-2. Give it an entry point, `<source>.core/convert!`, that parses and calls `core/convert!`, with the source's own
-   options beside the shared config (dbt's `:entity-models` is one).
-3. Test it through its own fixtures, as `dbt/`'s tests do. `core_test.clj` runs an IR written by hand, for a made-up
-   tool, through the whole import, which is the contract a parser has to meet.
-
-Nothing outside the new directory changes, but `.clj-kondo/config/modules/config.edn`, which
-`./bin/mage fix-modules-config` updates.
-
-### Adding a kind of content
-
-Metrics are the one kind of content today. Another (a dbt model as a Metabase transform, say) is:
-
-1. a key of its own in `::ir/semantic-layer` with its schema, and a value of `::ir/content-kind` for its report
-   entries;
-2. a resolver namespace next to `resolve/metrics.clj`, called from `resolve/resolve-semantic-layer`, with a key of its
-   own in `::resolved/semantic-layer`;
-3. an emitter next to `emit/metric-files`, called from `emit/files`, and a branch of `::emit/file` for its files;
-4. a branch of `::core/converted` for its report entries;
-5. what `preflight` should check of it, if it names warehouse objects.
 
 ## Tests
 
