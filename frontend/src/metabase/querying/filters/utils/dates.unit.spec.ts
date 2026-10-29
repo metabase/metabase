@@ -77,12 +77,28 @@ describe("getDateFilterClause", () => {
       displayName: "Created At is today",
     },
     {
+      value: { type: "relative", value: -1, unit: "day" },
+      displayName: "Created At is yesterday",
+    },
+    {
+      value: { type: "relative", value: -1, unit: "week" },
+      displayName: "Created At is in the previous week",
+    },
+    {
       value: { type: "relative", value: -7, unit: "day" },
       displayName: "Created At is in the previous 7 days",
     },
     {
       value: { type: "relative", value: -30, unit: "day" },
       displayName: "Created At is in the previous 30 days",
+    },
+    {
+      value: { type: "relative", value: -1, unit: "month" },
+      displayName: "Created At is in the previous month",
+    },
+    {
+      value: { type: "relative", value: -3, unit: "month" },
+      displayName: "Created At is in the previous 3 months",
     },
     {
       value: { type: "relative", value: -12, unit: "month" },
