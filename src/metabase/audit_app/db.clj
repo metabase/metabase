@@ -12,12 +12,12 @@
 (mu/defn cards
   "The Cards with `card-ids` (nil entries, e.g. from virtual dashcards, are ignored)."
   [card-ids :- [:sequential [:maybe ::lib.schema.id/card]]]
-  (t2/select :model/Card :id [:in card-ids]))
+  (t2/select :model/Card :id [:in [:auto/param card-ids]]))
 
 (mu/defn audit-log-topic-exists?
   "Whether an AuditLog entry with `topic` exists."
   [topic :- [:or :keyword :string]]
-  (t2/exists? :model/AuditLog :topic topic))
+  (t2/exists? :model/AuditLog :topic [:auto/param topic]))
 
 (mu/defn collection-with-entity-id
   "The Collection with `entity-id`, or nil."

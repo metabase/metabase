@@ -148,7 +148,7 @@
    filter-ids    :- [:maybe [:sequential [:maybe [:or :int :string]]]]
    order-columns :- [:maybe [:sequential :keyword]]]
   (t2/reducible-select model (cond-> {}
-                               filter-column       (assoc :where [:in filter-column filter-ids])
+                               filter-column       (assoc :where [:in filter-column [:auto/param filter-ids]])
                                (seq order-columns) (assoc :order-by (mapv (fn [column] [column :asc]) order-columns)))))
 
 (mu/defn entities-in-collections-reducible
@@ -163,11 +163,11 @@
   (t2/reducible-select model
                        (cond-> {:where [:and
                                         [:or
-                                         [:in :collection_id collection-set]
+                                         [:in :collection_id [:auto/param collection-set]]
                                          (when (some nil? collection-set)
                                            [:= :collection_id nil])]
                                         (when filter-column
-                                          [:in filter-column filter-ids])]}
+                                          [:in filter-column [:auto/param filter-ids]])]}
                          (seq order-columns) (assoc :order-by (mapv (fn [column] [column :asc]) order-columns)))))
 
 (mu/defn update-entity!
@@ -363,7 +363,7 @@
 (mu/defn timeline-ids-of-events
   "The distinct Timeline ids of the TimelineEvents with `event-ids`."
   [event-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-fn-set :timeline_id [:model/TimelineEvent :timeline_id] :id [:in event-ids]))
+  (t2/select-fn-set :timeline_id [:model/TimelineEvent :timeline_id] :id [:in [:auto/param event-ids]]))
 
 (mu/defn entity-by-own-pk
   "The `model` row identified by `id`, using whatever column is that model's own primary key."

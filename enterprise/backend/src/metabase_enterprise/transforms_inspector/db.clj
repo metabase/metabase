@@ -10,7 +10,7 @@
 (mu/defn table-source-rows
   "The ID, name, schema, and Database ID of the Tables with `table-ids`, as source info."
   [table-ids :- [:or [:set ::lib.schema.id/table] [:sequential ::lib.schema.id/table]]]
-  (t2/select [:model/Table [:id :table-id] [:name :table-name] :schema [:db_id :db-id]] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select [:model/Table [:id :table-id] [:name :table-name] :schema [:db_id :db-id]] :id [:in [:auto/param table-ids]] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn database-engine
   "The engine of the Database with `database-id`."

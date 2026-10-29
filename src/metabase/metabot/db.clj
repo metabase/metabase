@@ -263,7 +263,7 @@
   insert) and must return the fields to write."
   [conversation-id :- :string
    update-fn :- fn?]
-  (mdb/update-or-insert! :model/MetabotConversation {:id conversation-id} update-fn))
+  (mdb/update-or-insert! :model/MetabotConversation {:id [:auto/param conversation-id]} update-fn))
 
 (mu/defn set-conversation-title-if-missing!
   "Set the title of the MetabotConversation with `conversation-id` if it has none."
@@ -397,7 +397,7 @@
    submitter-user-id :- ::lib.schema.id/user
    update-fn :- fn?]
   (mdb/update-or-insert! :model/MetabotFeedback
-                         {:message_id message-id :user_id submitter-user-id}
+                         {:message_id [:auto/param message-id] :user_id [:auto/param submitter-user-id]}
                          update-fn))
 
 (mu/defn upsert-source-feedback!
@@ -410,10 +410,10 @@
    source-type :- [:enum "table" "card" "model" "dashboard"]
    update-fn :- fn?]
   (mdb/update-or-insert! :model/MetabotSourceFeedback
-                         {:message_id  message-id
-                          :user_id     submitter-user-id
-                          :source_id   source-id
-                          :source_type source-type}
+                         {:message_id  [:auto/param message-id]
+                          :user_id     [:auto/param submitter-user-id]
+                          :source_id   [:auto/param source-id]
+                          :source_type [:auto/param source-type]}
                          update-fn))
 
 ;;; ------------------------------------------------ Databases ------------------------------------------------
@@ -442,12 +442,12 @@
 (mu/defn database-engines-and-names
   "A map of ID to the engine and name of the Databases with `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select-pk->fn identity [:model/Database :id :engine :name] :id [:in database-ids]))
+  (t2/select-pk->fn identity [:model/Database :id :engine :name] :id [:in [:auto/param database-ids]]))
 
 (mu/defn destination-database-ids
   "The IDs of the routing destination Databases among `database-ids`."
   [database-ids :- [:set ::lib.schema.id/database]]
-  (t2/select-fn-set :id :model/Database :id [:in database-ids] :router_database_id [:not= nil]))
+  (t2/select-fn-set :id :model/Database :id [:in [:auto/param database-ids]] :router_database_id [:not= nil]))
 
 (mu/defn non-audit-databases
   "The ID, name, engine, description, and audit flag of every non-audit, non-stub, non-destination Database, ordered
@@ -491,19 +491,19 @@
   and `:collection_id`. Handing it a trimmed row makes it answer a narrower question and deny a
   user whose access comes through that path."
   [table-id]
-  (when-let [table (t2/select-one :model/Table :id table-id :active true {:from [(warehouse-schema-overlay/table-query)]})]
+  (when-let [table (t2/select-one :model/Table :id [:auto/param table-id] :active true {:from [(warehouse-schema-overlay/table-query)]})]
     (when (mi/can-read? table)
       (:db_id table))))
 
 (mu/defn tables-by-id
   "A map of ID to Table for `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select-fn->fn :id identity :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-fn->fn :id identity :model/Table :id [:in [:auto/param table-ids]] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn table-summaries
   "The ID, names, schema, Database ID, and description of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :name :display_name :schema :db_id :description] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select [:model/Table :id :name :display_name :schema :db_id :description] :id [:in [:auto/param table-ids]] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn table-schema-rows
   "Return the ID, name, schema, and database ID of each table in `table-ids`.
@@ -512,13 +512,13 @@
   through a collection. Both keys must be present, even when nil.
   Both are user values, so the rows read through the user-settings overlay."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :name :schema :db_id :is_published :collection_id] :id [:in table-ids]
+  (t2/select [:model/Table :id :name :schema :db_id :is_published :collection_id] :id [:in [:auto/param table-ids]]
              {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn table-curation-rows
   "The ID, published flag, data layer, and data authority of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :is_published :data_layer :data_authority] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select [:model/Table :id :is_published :data_layer :data_authority] :id [:in [:auto/param table-ids]] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn visible-table-summaries
   "The ID, name, schema, and description of the active, unhidden Tables among `table-ids` in the Database with
@@ -527,7 +527,7 @@
    table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select [:model/Table :id :name :schema :description]
              :db_id [:auto/param database-id]
-             :id [:in table-ids]
+             :id [:in [:auto/param table-ids]]
              :active true
              :visibility_type nil {:from [(warehouse-schema-overlay/table-query)]}))
 
@@ -552,7 +552,7 @@
    table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select [:model/Table :id :name :schema :description]
              :db_id [:auto/param database-id]
-             :id [:in table-ids]
+             :id [:in [:auto/param table-ids]]
              :active true
              :visibility_type nil
              (assoc (current-user-visible-table-clause) :from [(warehouse-schema-overlay/table-query)])))
@@ -703,7 +703,7 @@
 (mu/defn fields
   "The Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select :model/Field :id [:in [:auto/param field-ids]] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn field-fingerprint
   "The fingerprint of the Field with `field-id`."
@@ -713,7 +713,7 @@
 (mu/defn field-table-ids
   "A map of Field ID to Table ID for `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select-fn->fn :id :table_id [:model/Field :id :table_id] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-fn->fn :id :table_id [:model/Field :id :table_id] :id [:in [:auto/param field-ids]] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 ;;; -------------------------------------------------- Cards --------------------------------------------------
 
@@ -731,7 +731,7 @@
   "The Card with `card-id` if it is of `type`, or nil."
   [card-id :- ::lib.schema.id/card
    type :- [:enum :model :metric :question]]
-  (t2/select-one :model/Card :id [:auto/param card-id] :type type))
+  (t2/select-one :model/Card :id [:auto/param card-id] :type [:auto/param type]))
 
 (mu/defn card-type-row
   "The ID and type of the Card with `card-id`, or nil."
@@ -816,7 +816,7 @@
 (mu/defn card-entity-ids
   "A map of Card ID to entity ID for `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select-pk->fn :entity_id :model/Card :id [:in card-ids]))
+  (t2/select-pk->fn :entity_id :model/Card :id [:in [:auto/param card-ids]]))
 
 (mu/defn card-source-info
   "Return a map of Card IDs to stored metric definitions for `card-ids`.
@@ -836,18 +836,18 @@
   "Return the source cards in `card-ids`, including the columns needed by `can-read?`."
   ;; `can-read?` needs `:collection_id` and `:document_id`, including nil values, to check access.
   [card-ids :- [:or [:set ::lib.schema.id/card] [:sequential ::lib.schema.id/card]]]
-  (t2/select [:model/Card :id :name :entity_id :collection_id :document_id] :id [:in card-ids]))
+  (t2/select [:model/Card :id :name :entity_id :collection_id :document_id] :id [:in [:auto/param card-ids]]))
 
 (mu/defn card-search-rows
   "The searchable columns of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :name :description :database_id :collection_id :type] :id [:in card-ids]))
+  (t2/select [:model/Card :id :name :description :database_id :collection_id :type] :id [:in [:auto/param card-ids]]))
 
 (mu/defn unarchived-card-summaries
   "The presentable columns of the unarchived Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select [:model/Card :id :name :type :description :collection_id :database_id :table_id]
-             :id [:in card-ids]
+             :id [:in [:auto/param card-ids]]
              :archived false))
 
 (mu/defn cards-in-collection
@@ -907,17 +907,17 @@
 (mu/defn collection-descriptions
   "A map of Collection ID to description for `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select-pk->fn :description :model/Collection :id [:in collection-ids]))
+  (t2/select-pk->fn :description :model/Collection :id [:in [:auto/param collection-ids]]))
 
 (mu/defn collection-summaries
   "The ID, name, and authority level of the Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select [:model/Collection :id :name :authority_level] :id [:in collection-ids]))
+  (t2/select [:model/Collection :id :name :authority_level] :id [:in [:auto/param collection-ids]]))
 
 (mu/defn collection-curation-info-by-id
   "A map of ID to the ID, authority level, location, and type of the Collections with `collection-ids`."
   [collection-ids :- [:set ::lib.schema.id/collection]]
-  (t2/select-pk->fn identity [:model/Collection :id :authority_level :location :type] :id [:in collection-ids]))
+  (t2/select-pk->fn identity [:model/Collection :id :authority_level :location :type] :id [:in [:auto/param collection-ids]]))
 
 (mu/defn navigable-collections
   "The presentable columns of the non-trash Collections in the default namespace, ordered by location and name.
@@ -942,7 +942,7 @@
 (mu/defn root-collections-of-types
   "The top-level Collections whose type is one of `types`."
   [types :- [:sequential :string]]
-  (t2/select :model/Collection :type [:in types] :location "/"))
+  (t2/select :model/Collection :type [:in [:auto/param types]] :location "/"))
 
 ;;; ---------------------------------------------- Other models ----------------------------------------------
 
@@ -1002,12 +1002,12 @@
   still counts it."
   [document-ids :- [:set ms/PositiveInt]
    archived?    :- :boolean]
-  (t2/select :model/Document :id [:in document-ids] :archived (boolean archived?)))
+  (t2/select :model/Document :id [:in [:auto/param document-ids]] :archived (boolean archived?)))
 
 (mu/defn transforms
   "The Transforms with `transform-ids`."
   [transform-ids :- [:set ::lib.schema.id/transform]]
-  (t2/select :model/Transform :id [:in transform-ids]))
+  (t2/select :model/Transform :id [:in [:auto/param transform-ids]]))
 
 (mu/defn transforms-for-source-database
   "The ID, name, description, source Database, and source of the Transforms reading from the Database with
@@ -1022,7 +1022,7 @@
   [item-ids :- [:sequential ms/PositiveInt]
    item-type :- :string]
   (t2/select-fn-set :moderated_item_id :model/ModerationReview
-                    :moderated_item_id   [:in item-ids]
+                    :moderated_item_id   [:in [:auto/param item-ids]]
                     :moderated_item_type [:auto/param item-type]
                     :most_recent         true
                     :status              "verified"))
@@ -1059,17 +1059,17 @@
 (mu/defn user-summaries-by-id
   "A map of ID to the ID, email, and names of the Users with `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
-  (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
+  (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in [:auto/param user-ids]]))
 
 (mu/defn card-collection-ids
   "The ID and Collection ID of the Cards with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select [:model/Card :id :collection_id] :id [:in ids]))
+  (t2/select [:model/Card :id :collection_id] :id [:in [:auto/param ids]]))
 
 (mu/defn dashboard-collection-ids
   "The ID and Collection ID of the Dashboards with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select [:model/Dashboard :id :collection_id] :id [:in ids]))
+  (t2/select [:model/Dashboard :id :collection_id] :id [:in [:auto/param ids]]))
 
 (mu/defn measure-table-id
   "The Table ID of the Measure with `id`, or nil."
@@ -1094,19 +1094,19 @@
 (mu/defn measures
   "The ID, name, description, Table ID, and entity ID of the Measures with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select [:model/Measure :id :name :description :table_id :entity_id] :id [:in ids]))
+  (t2/select [:model/Measure :id :name :description :table_id :entity_id] :id [:in [:auto/param ids]]))
 
 (mu/defn segments
   "The ID, name, description, Table ID, and entity ID of the Segments with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select [:model/Segment :id :name :description :table_id :entity_id] :id [:in ids]))
+  (t2/select [:model/Segment :id :name :description :table_id :entity_id] :id [:in [:auto/param ids]]))
 
 (mu/defn measure-entity-ids
   "A map of Measure ID to entity ID for `ids`."
   [ids :- [:sequential ::lib.schema.id/measure]]
-  (t2/select-pk->fn :entity_id :model/Measure :id [:in ids]))
+  (t2/select-pk->fn :entity_id :model/Measure :id [:in [:auto/param ids]]))
 
 (mu/defn segment-entity-ids
   "A map of Segment ID to entity ID for `ids`."
   [ids :- [:sequential ::lib.schema.id/segment]]
-  (t2/select-pk->fn :entity_id :model/Segment :id [:in ids]))
+  (t2/select-pk->fn :entity_id :model/Segment :id [:in [:auto/param ids]]))

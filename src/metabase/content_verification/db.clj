@@ -15,14 +15,14 @@
   [item-types :- [:set :keyword]
    item-ids   :- [:sequential ms/PositiveInt]]
   (t2/select :model/ModerationReview
-             :moderated_item_type [:in item-types]
-             :moderated_item_id [:in item-ids]
+             :moderated_item_type [:in [:auto/param item-types]]
+             :moderated_item_id [:in [:auto/param item-ids]]
              {:order-by [[:id :desc]]}))
 
 (mu/defn users
   "The Users with `user-ids`."
   [user-ids :- [:maybe [:sequential [:maybe ::lib.schema.id/user]]]]
-  (t2/select :model/User :id [:in user-ids]))
+  (t2/select :model/User :id [:in [:auto/param user-ids]]))
 
 (mu/defn moderation-review-ids-for-item
   "The ids of the ModerationReviews of the item with `item-id` and `item-type`, newest first."
@@ -31,8 +31,8 @@
   (app-db/query {:select   [:id]
                  :from     [:moderation_review]
                  :where    [:and
-                            [:= :moderated_item_id item-id]
-                            [:= :moderated_item_type item-type]]
+                            [:= :moderated_item_id [:auto/param item-id]]
+                            [:= :moderated_item_type [:auto/param item-type]]]
                  :order-by [[:id :desc]]}))
 
 (mu/defn most-recent-moderation-review-statuses
@@ -41,22 +41,22 @@
   [item-types :- [:set :keyword]
    item-ids   :- [:sequential ms/PositiveInt]]
   (t2/select [:model/ModerationReview :moderated_item_id :moderated_item_type :status]
-             :moderated_item_type [:in item-types]
-             :moderated_item_id [:in item-ids]
+             :moderated_item_type [:in [:auto/param item-types]]
+             :moderated_item_id [:in [:auto/param item-ids]]
              :most_recent true
              {:order-by [[:id :desc]]}))
 
 (mu/defn delete-moderation-reviews!
   "Delete the ModerationReviews with `ids`."
   [ids :- [:set ms/PositiveInt]]
-  (t2/delete! :model/ModerationReview :id [:in ids]))
+  (t2/delete! :model/ModerationReview :id [:in [:auto/param ids]]))
 
 (mu/defn unmark-most-recent-moderation-reviews!
   "Clear `most_recent` on the ModerationReviews of the item with `item-id` and `item-type`."
   [item-id   :- ms/PositiveInt
    item-type :- [:or :string :keyword]]
   (t2/update! :model/ModerationReview
-              {:moderated_item_id [:auto/param item-id], :moderated_item_type item-type}
+              {:moderated_item_id [:auto/param item-id], :moderated_item_type [:auto/param item-type]}
               {:most_recent false}))
 
 (mu/defn insert-moderation-review!

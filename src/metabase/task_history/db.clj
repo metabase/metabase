@@ -11,17 +11,17 @@
 (mu/defn database-names-by-id
   "A map of id to name for the Databases with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pk->fn :name :model/Database :id [:in ids]))
+  (t2/select-pk->fn :name :model/Database :id [:in [:auto/param ids]]))
 
 (mu/defn card-names-by-id
   "A map of id to name for the Cards with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pk->fn :name :model/Card :id [:in ids]))
+  (t2/select-pk->fn :name :model/Card :id [:in [:auto/param ids]]))
 
 (mu/defn dashboard-names-by-id
   "A map of id to name for the Dashboards with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pk->fn :name :model/Dashboard :id [:in ids]))
+  (t2/select-pk->fn :name :model/Dashboard :id [:in [:auto/param ids]]))
 
 (mu/defn task-counts-for-runs
   "The total, successful, and failed TaskHistory counts of the TaskRuns with `run-ids`, grouped by run."
@@ -227,5 +227,5 @@
   the number updated."
   [run-ids :- [:set ms/PositiveInt]]
   (t2/update! :model/TaskHistory
-              {:status :started, :run_id [:in run-ids]}
+              {:status :started, :run_id [:in [:auto/param run-ids]]}
               {:status :unknown, :ended_at :%now}))

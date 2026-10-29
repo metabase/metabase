@@ -90,7 +90,7 @@
    finding-types :- [:set :keyword]]
   (t2/update! :model/ContentDiagnosticsFinding
               {:scan_id        [:not= [:auto/param scan-id]]
-               :finding_type   [:in finding-types]
+               :finding_type   [:in [:auto/param finding-types]]
                :invalidated_at nil}
               {:invalidated_at (mi/now)}))
 
@@ -99,7 +99,7 @@
   [entity-type :- :keyword
    entity-id   :- ms/PositiveInt]
   (t2/update! :model/ContentDiagnosticsFinding
-              {:entity_type    entity-type
+              {:entity_type    [:auto/param entity-type]
                :entity_id      [:auto/param entity-id]
                :invalidated_at nil}
               {:invalidated_at (mi/now)}))
@@ -193,17 +193,17 @@
   breadcrumb anchor is parsed from, `personal_owner_id`, and the tree's `namespace`."
   [collection-ids :- [:set ::lib.schema.id/collection]]
   (t2/select [:model/Collection :id :description :location :personal_owner_id :namespace]
-             :id [:in collection-ids]))
+             :id [:in [:auto/param collection-ids]]))
 
 (mu/defn collection-names-by-id
   "`{id → name}` for the Collections with `collection-ids`."
   [collection-ids :- [:set ::lib.schema.id/collection]]
-  (t2/select-pk->fn :name [:model/Collection :id :name] :id [:in collection-ids]))
+  (t2/select-pk->fn :name [:model/Collection :id :name] :id [:in [:auto/param collection-ids]]))
 
 (mu/defn collection-namespaces-by-id
   "`{id → namespace}` for the Collections with `collection-ids`."
   [collection-ids :- [:set ::lib.schema.id/collection]]
-  (t2/select-pk->fn :namespace [:model/Collection :id :namespace] :id [:in collection-ids]))
+  (t2/select-pk->fn :namespace [:model/Collection :id :namespace] :id [:in [:auto/param collection-ids]]))
 
 (mu/defn collection-parent-ids-by-id
   "`{id → parent collection id}` for the Collections with `collection-ids`, parsed from `location`; nil
@@ -211,7 +211,7 @@
   [collection-ids :- [:set ::lib.schema.id/collection]]
   (t2/select-pk->fn (comp collection/location-path->parent-id :location)
                     [:model/Collection :id :location]
-                    :id [:in collection-ids]))
+                    :id [:in [:auto/param collection-ids]]))
 
 ;;; --------------------------------------------- Entities of a type ------------------------------------------
 
@@ -259,14 +259,14 @@
   ;; the projection is what `add-common-name` reads - a bare model select would fetch every user
   ;; column to derive one field
   (t2/select-pk->fn :common_name [:model/User :id :email :first_name :last_name]
-                    :id [:in user-ids]))
+                    :id [:in [:auto/param user-ids]]))
 
 (mu/defn user-contacts-by-id
   "`{id → {:id :common_name :email}}` for the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
   (t2/select-pk->fn #(select-keys % [:id :common_name :email])
                     [:model/User :id :email :first_name :last_name]
-                    :id [:in user-ids]))
+                    :id [:in [:auto/param user-ids]]))
 
 ;;; -------------------------------------------------- Cards --------------------------------------------------
 

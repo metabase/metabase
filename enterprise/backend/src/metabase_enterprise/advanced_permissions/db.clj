@@ -28,14 +28,14 @@
                     :perm_type :perms/view-data
                     :perm_value :blocked
                     :group_id [:auto/param group-id]
-                    :db_id [:in database-ids]
+                    :db_id [:in [:auto/param database-ids]]
                     {:select-distinct [:db_id]}))
 
 (mu/defn impersonated-database-ids-for-group
   "The subset of `database-ids` the group with `group-id` accesses through connection impersonation."
   [group-id     :- ms/PositiveInt
    database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select-fn-set :db_id :model/ConnectionImpersonation :group_id [:auto/param group-id] :db_id [:in database-ids]))
+  (t2/select-fn-set :db_id :model/ConnectionImpersonation :group_id [:auto/param group-id] :db_id [:in [:auto/param database-ids]]))
 
 (mu/defn sandboxed-database-ids-for-group
   "The `:db_id` rows of the Databases among `database-ids` the group with `group-id` has a sandbox on."
@@ -55,18 +55,18 @@
   (t2/select-fn-set :group_id :model/DataPermissions
                     :perm_type :perms/view-data
                     :perm_value :blocked
-                    :group_id [:in group-ids]
+                    :group_id [:in [:auto/param group-ids]]
                     {:select-distinct [:group_id]}))
 
 (mu/defn impersonated-group-ids
   "The subset of `group-ids` with a connection impersonation."
   [group-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-fn-set :group_id :model/ConnectionImpersonation :group_id [:in group-ids]))
+  (t2/select-fn-set :group_id :model/ConnectionImpersonation :group_id [:in [:auto/param group-ids]]))
 
 (mu/defn sandboxed-group-ids
   "The subset of `group-ids` with a sandbox."
   [group-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-fn-set :group_id :model/Sandbox :group_id [:in group-ids]))
+  (t2/select-fn-set :group_id :model/Sandbox :group_id [:in [:auto/param group-ids]]))
 
 (mu/defn blocked-group-ids-for-database
   "The subset of `group-ids` blocked from viewing the Database with `database-id`."
@@ -76,7 +76,7 @@
                     :db_id [:auto/param database-id]
                     :perm_type :perms/view-data
                     :perm_value :blocked
-                    :group_id [:in group-ids]
+                    :group_id [:in [:auto/param group-ids]]
                     {:select-distinct [:group_id]}))
 
 (mu/defn sandboxed-group-ids-for-database

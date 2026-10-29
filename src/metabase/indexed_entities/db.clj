@@ -27,7 +27,7 @@
 (mu/defn model-indexes-except
   "The ModelIndexes whose id is not in `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/ModelIndex :id [:not-in ids]))
+  (t2/select :model/ModelIndex :id [:not-in [:auto/param ids]]))
 
 (mu/defn delete-model-index!
   "Delete the ModelIndex with `id`, returning the number deleted."
@@ -71,7 +71,7 @@
   returning the number deleted."
   [model-index-id :- ms/PositiveInt
    model-pks      :- [:sequential :int]]
-  (t2/delete! :model/ModelIndexValue :model_index_id [:auto/param model-index-id] :model_pk [:in model-pks]))
+  (t2/delete! :model/ModelIndexValue :model_index_id [:auto/param model-index-id] :model_pk [:in [:auto/param model-pks]]))
 
 (mu/defn insert-model-index-values!
   "Insert the ModelIndexValue `rows`, returning the number inserted."

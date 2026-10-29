@@ -28,13 +28,13 @@
 (mu/defn impersonations-for-groups
   "The ConnectionImpersonations of the groups with `group-ids`."
   [group-ids :- [:set ms/PositiveInt]]
-  (t2/select :model/ConnectionImpersonation :group_id [:in group-ids]))
+  (t2/select :model/ConnectionImpersonation :group_id [:in [:auto/param group-ids]]))
 
 (mu/defn impersonations-for-groups-and-database
   "The ConnectionImpersonations of the groups with `group-ids` on the Database with `database-id`."
   [group-ids   :- [:set ms/PositiveInt]
    database-id :- ::lib.schema.id/database]
-  (t2/select :model/ConnectionImpersonation :group_id [:in group-ids] :db_id [:auto/param database-id]))
+  (t2/select :model/ConnectionImpersonation :group_id [:in [:auto/param group-ids]] :db_id [:auto/param database-id]))
 
 (mu/defn impersonations-matching
   "The ConnectionImpersonations narrowed by the optional `database-id`, `group-id`, and `group-ids`, excluding the

@@ -22,7 +22,7 @@
   "Whether the router with `router-database-id` already has a destination Database named one of `names`."
   [router-database-id :- ::lib.schema.id/database
    names              :- [:sequential :string]]
-  (t2/exists? :model/Database :router_database_id [:auto/param router-database-id] :name [:in names]))
+  (t2/exists? :model/Database :router_database_id [:auto/param router-database-id] :name [:in [:auto/param names]]))
 
 (mu/defn insert-databases!
   "Insert the Database `rows` and return the new instances."
@@ -58,7 +58,7 @@
 (mu/defn router-user-attributes-by-database
   "A map of Database ID to routing user attribute for `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select-fn->fn :database_id :user_attribute :model/DatabaseRouter :database_id [:in database-ids]))
+  (t2/select-fn->fn :database_id :user_attribute :model/DatabaseRouter :database_id [:in [:auto/param database-ids]]))
 
 (mu/defn insert-router!
   "Insert a DatabaseRouter for the Database with `database-id` routing on `user-attribute`."

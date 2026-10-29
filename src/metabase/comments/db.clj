@@ -32,7 +32,7 @@
   [document-id]
   (t2/select :model/Comment
              :target_type "document"
-             :target_id document-id
+             :target_id [:auto/param document-id]
              {:order-by [[:created_at :asc] [:id :asc]]}))
 
 (defn document-child-target-counts
@@ -41,7 +41,7 @@
   [document-id]
   (t2/select [:model/Comment :child_target_id [:%count.id :comment_count]]
              :target_type "document"
-             :target_id document-id
+             :target_id [:auto/param document-id]
              :child_target_id [:not= nil]
              :deleted_at nil
              {:group-by [:child_target_id]}))
@@ -49,7 +49,7 @@
 (mu/defn active-user-ids
   "The ids among `user-ids` of active Users, or nil."
   [user-ids :- [:sequential ::lib.schema.id/user]]
-  (t2/select-pks-set :model/User :id [:in user-ids] :is_active true))
+  (t2/select-pks-set :model/User :id [:in [:auto/param user-ids]] :is_active true))
 
 (mu/defn document
   "The Document with `id`, or nil."
@@ -140,7 +140,7 @@
 (mu/defn users-by-id
   "A map of User id to the id, email, and name of the Users with `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
-  (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
+  (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in [:auto/param user-ids]]))
 
 (mu/defn reaction-exists?
   "Whether the User with `user-id` has reacted to the Comment with `comment-id` with `emoji`."

@@ -12,7 +12,7 @@
 (mu/defn table-database-ids
   "The set of Database IDs of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select-fn-set :db_id [:model/Table :db_id] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-fn-set :db_id [:model/Table :db_id] :id [:in [:auto/param table-ids]] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn table-database-id
   "The Database ID of the raw table row with `table-id`."
@@ -49,7 +49,7 @@
                      [:entity_id  {:optional true} :string]
                      [:is_default {:optional true} :boolean]]]
   (mdb/update-or-insert! :model/PythonLibrary
-                         {:path path}
+                         {:path [:auto/param path]}
                          (fn [existing]
                            (cond-> {:path path :source source}
                              (nil? existing) (merge insert-values)))))

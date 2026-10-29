@@ -58,7 +58,7 @@
                                   [:= :dim.human_readable_field_id :target_field.id]]
                          :where  [:and
                                   [:= :dim.type "external"]
-                                  [:in input-table-id table-ids]
+                                  [:in input-table-id [:auto/param table-ids]]
                                   not-in-tables]})))
 
 (mu/defn table-ids-matching-selectors
@@ -79,12 +79,12 @@
 (mu/defn published-table-ids
   "The IDs of the published Tables among `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select-pks-set :model/Table :id [:in table-ids] :is_published true {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select-pks-set :model/Table :id [:in [:auto/param table-ids]] :is_published true {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select :model/Table :id [:in [:auto/param table-ids]] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn collection
   "The Collection with `collection-id`, or nil."

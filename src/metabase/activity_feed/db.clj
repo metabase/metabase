@@ -147,7 +147,7 @@
   "The RecentViews of the User with `user-id` in `context`, newest first."
   [user-id :- ::lib.schema.id/user
    context :- [:or :keyword :string]]
-  (t2/select :model/RecentViews :user_id [:auto/param user-id] :context context {:order-by [[:timestamp :desc]]}))
+  (t2/select :model/RecentViews :user_id [:auto/param user-id] :context [:auto/param context] {:order-by [[:timestamp :desc]]}))
 
 (mu/defn recent-view-ids-to-prune
   "The ids of the RecentViews of the User with `user-id` for `db-model` in `context` beyond the newest `keep` of
@@ -184,7 +184,7 @@
 (mu/defn delete-recent-views!
   "Delete the RecentViews with `ids`."
   [ids :- [:set ms/PositiveInt]]
-  (t2/delete! :model/RecentViews :id [:in ids]))
+  (t2/delete! :model/RecentViews :id [:in [:auto/param ids]]))
 
 (mu/defn most-recently-viewed-dashboard-id
   "The id of the unarchived Dashboard the User with `user-id` viewed most recently after `since`, or nil."

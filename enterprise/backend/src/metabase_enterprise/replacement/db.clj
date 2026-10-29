@@ -70,32 +70,32 @@
 (mu/defn cards-with-ids
   "The Cards with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/Card :id [:in ids]))
+  (t2/select :model/Card :id [:in [:auto/param ids]]))
 
 (mu/defn tables-with-ids
   "The Tables with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/Table :id [:in ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select :model/Table :id [:in [:auto/param ids]] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn dashboards-with-ids
   "The Dashboards with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/Dashboard :id [:in ids]))
+  (t2/select :model/Dashboard :id [:in [:auto/param ids]]))
 
 (mu/defn transforms-with-ids
   "The Transforms with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/Transform :id [:in ids]))
+  (t2/select :model/Transform :id [:in [:auto/param ids]]))
 
 (mu/defn segments-with-ids
   "The Segments with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/Segment :id [:in ids]))
+  (t2/select :model/Segment :id [:in [:auto/param ids]]))
 
 (mu/defn measures-with-ids
   "The Measures with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/Measure :id [:in ids]))
+  (t2/select :model/Measure :id [:in [:auto/param ids]]))
 
 (mu/defn card
   "The Card with `card-id`, or nil."
@@ -105,7 +105,7 @@
 (mu/defn cards-by-id
   "A map of Card ID to Card for `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select-pk->fn identity :model/Card :id [:in card-ids]))
+  (t2/select-pk->fn identity :model/Card :id [:in [:auto/param card-ids]]))
 
 (mu/defn card-database-id
   "The Database ID of the Card with `card-id`."
@@ -116,7 +116,7 @@
   "Whether one of the Cards with `card-ids` is on the Table with `table-id`."
   [card-ids :- [:set ::lib.schema.id/card]
    table-id :- ::lib.schema.id/table]
-  (t2/exists? :model/Card :id [:in card-ids] :table_id [:auto/param table-id]))
+  (t2/exists? :model/Card :id [:in [:auto/param card-ids]] :table_id [:auto/param table-id]))
 
 (mu/defn update-card!
   "Apply `changes` to the Card with `card-id`, returning the number updated."

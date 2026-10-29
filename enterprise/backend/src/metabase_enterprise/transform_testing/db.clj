@@ -13,7 +13,7 @@
   [{:keys [transform-id]} :- [:map {:closed true}
                               [:transform-id {:optional true} [:maybe ::lib.schema.id/transform]]]]
   (t2/select :model/TransformTest (cond-> {:order-by [[:name :asc] [:id :asc]]}
-                                    transform-id (assoc :where [:= :transform_id transform-id]))))
+                                    transform-id (assoc :where [:= :transform_id [:auto/param transform-id]]))))
 
 (mu/defn transform-test :- [:maybe ::transform-testing.schema/transform-test]
   "The TransformTest with `id`, or nil."
@@ -85,7 +85,7 @@
 (mu/defn users-by-id
   "A map of User id to the id, email, and name of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
+  (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in [:auto/param user-ids]]))
 
 (mu/defn finish-started-transform-test-run!
   "Set `status` and the end time of TransformTestRun `run-id` if it is still started."

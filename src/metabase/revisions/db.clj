@@ -80,7 +80,7 @@
 (mu/defn card-queries
   "A map of Card id to query for the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select-pk->fn :dataset_query :model/Card :id [:in card-ids]))
+  (t2/select-pk->fn :dataset_query :model/Card :id [:in [:auto/param card-ids]]))
 
 (mu/defn revision
   "The Revision with `revision-id` of the `model-name` row with `model-id`, or nil."
@@ -145,7 +145,7 @@
 (mu/defn delete-revisions!
   "Delete the Revisions with `ids`, returning the number deleted."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/Revision :id [:in ids]))
+  (t2/delete! :model/Revision :id [:in [:auto/param ids]]))
 
 (mu/defn unmark-most-recent-revisions!
   "Clear `most_recent` on the Revisions of the `model-name` row with `model-id` other than `revision-id`, returning
@@ -288,5 +288,5 @@
                          (into [:or]
                                (keep (fn [[model-name ids]]
                                        (when (seq ids)
-                                         [:and [:= :model model-name] [:in :model_id ids]])))
+                                         [:and [:= :model [:auto/param model-name]] [:in :model_id [:auto/param ids]]])))
                                [["Card" card-ids] ["Dashboard" dashboard-ids]])]}))

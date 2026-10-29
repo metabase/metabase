@@ -16,11 +16,11 @@
                                                                  [:model-id {:optional true} [:maybe ::lib.schema.id/card]]
                                                                  [:archived :boolean]]]
   (t2/select-pks-vec :model/Action {:where [:and
-                                            [:= :archived archived]
+                                            [:= :archived [:auto/param archived]]
                                             (when action-type
                                               [:= :type (name action-type)])
                                             (if model-id
-                                              [:= :model_id model-id]
+                                              [:= :model_id [:auto/param model-id]]
                                               [:or
                                                [:and
                                                 [:not= :model_id nil]

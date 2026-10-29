@@ -15,7 +15,7 @@
 (mu/defn collections-by-id
   "A map of ID to Collection for `collection-ids`."
   [collection-ids :- [:set ::lib.schema.id/collection]]
-  (t2/select-pk->fn identity :model/Collection :id [:in collection-ids]))
+  (t2/select-pk->fn identity :model/Collection :id [:in [:auto/param collection-ids]]))
 
 (mu/defn stale-cards
   "The listing columns of the Cards with `card-ids`, with their latest moderation status."
@@ -55,7 +55,7 @@
                 :order-by [[:id :desc]]
                 :limit    1}
                :moderated_status]]
-             :id [:in card-ids]))
+             :id [:in [:auto/param card-ids]]))
 
 (mu/defn stale-dashboards
   "The listing columns of the Dashboards with `dashboard-ids`."
@@ -73,7 +73,7 @@
               [nil :dashboard_id]
               [nil :location]
               [nil :database_id]]
-             :id [:in dashboard-ids]))
+             :id [:in [:auto/param dashboard-ids]]))
 
 (defn- stale-content-union
   "The union of `union-queries` (per-model SELECTs from `metabase.staleness.core/find-stale-query`),

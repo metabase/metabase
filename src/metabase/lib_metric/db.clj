@@ -13,7 +13,7 @@
 (mu/defn fields
   "The Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select :model/Field :id [:in [:auto/param field-ids]] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn card-table-and-database-id
   "The `:table_id` and `:database_id` of the Card with `card-id`, or nil."

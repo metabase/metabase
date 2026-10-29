@@ -26,7 +26,7 @@
 (mu/defn existing-tag-ids
   "The subset of `tag-ids` that are ids of existing TransformTags."
   [tag-ids :- [:sequential ms/PositiveInt]]
-  (set (t2/select-pks-vec :model/TransformTag :id [:in tag-ids])))
+  (set (t2/select-pks-vec :model/TransformTag :id [:in [:auto/param tag-ids]])))
 
 (mu/defn tag
   "The TransformTag with `tag-id`, or nil."

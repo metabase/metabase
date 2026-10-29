@@ -135,12 +135,12 @@
   "The user id, group id (as `:id`), and group manager flag of the PermissionsGroupMemberships of the Users with
   `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select [:model/PermissionsGroupMembership :user_id [:group_id :id] :is_group_manager] :user_id [:in user-ids]))
+  (t2/select [:model/PermissionsGroupMembership :user_id [:group_id :id] :is_group_manager] :user_id [:in [:auto/param user-ids]]))
 
 (mu/defn user-group-ids-for-users
   "The user id and group id of the PermissionsGroupMemberships of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select [:model/PermissionsGroupMembership :user_id :group_id] :user_id [:in user-ids]))
+  (t2/select [:model/PermissionsGroupMembership :user_id :group_id] :user_id [:in [:auto/param user-ids]]))
 
 (mu/defn user-count
   "The number of Users."
@@ -150,7 +150,7 @@
 (mu/defn tenant-collection-ids
   "A map of Tenant id to tenant Collection id for the Tenants with `tenant-ids`."
   [tenant-ids :- [:set ms/PositiveInt]]
-  (t2/select-pk->fn :tenant_collection_id :model/Tenant :id [:in tenant-ids]))
+  (t2/select-pk->fn :tenant_collection_id :model/Tenant :id [:in [:auto/param tenant-ids]]))
 
 (mu/defn insert-user!
   "Insert the User `row` and return the inserted instance."
@@ -194,7 +194,7 @@
   "The UserParameterValues of the User with `user-id` for the Dashboards with `dashboard-ids`."
   [user-id       :- ::lib.schema.id/user
    dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
-  (t2/select :model/UserParameterValue :dashboard_id [:in dashboard-ids] :user_id [:auto/param user-id]))
+  (t2/select :model/UserParameterValue :dashboard_id [:in [:auto/param dashboard-ids]] :user_id [:auto/param user-id]))
 
 (mu/defn database-exists?
   "Whether a Database with `database-id` exists."

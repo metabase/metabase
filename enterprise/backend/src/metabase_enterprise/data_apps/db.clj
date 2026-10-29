@@ -42,7 +42,7 @@
    order-columns :- [:maybe [:sequential :keyword]]]
   (t2/reducible-select [:model/DataApp :*]
                        (cond-> {}
-                         filter-column       (assoc :where [:in filter-column filter-ids])
+                         filter-column       (assoc :where [:in filter-column [:auto/param filter-ids]])
                          (seq order-columns) (assoc :order-by (mapv (fn [column] [column :asc]) order-columns)))))
 
 (mu/defn data-app-exists?
@@ -95,22 +95,22 @@
 (defn collection-card-ids
   "The IDs of the cards in the collection with `collection-id`."
   [collection-id]
-  (t2/select-pks-vec :model/Card :collection_id collection-id))
+  (t2/select-pks-vec :model/Card :collection_id [:auto/param collection-id]))
 
 (defn collection-action-ids
   "The IDs of the actions in the collection with `collection-id`."
   [collection-id]
-  (t2/select-pks-vec :model/Action :collection_id collection-id))
+  (t2/select-pks-vec :model/Action :collection_id [:auto/param collection-id]))
 
 (defn resource-collection
   "The resource collection with `collection-id`, or nil."
   [collection-id]
-  (t2/select-one :model/Collection :id collection-id))
+  (t2/select-one :model/Collection :id [:auto/param collection-id]))
 
 (defn delete-resource-collection!
   "Delete the resource collection with `collection-id`."
   [collection-id]
-  (t2/delete! :model/Collection :id collection-id))
+  (t2/delete! :model/Collection :id [:auto/param collection-id]))
 
 (mu/defn readable-data-app-ids-select
   "A HoneySQL query of the ids of the DataApps that the User with `user-id` can read: every app for a superuser, else
@@ -141,10 +141,10 @@
   [group-ids database-ids table-ids]
   (if (and (seq group-ids) (seq database-ids) (seq table-ids))
     (t2/select [:model/DataPermissions :group_id :db_id :perm_type :table_id :perm_value]
-               :group_id [:in group-ids]
-               :db_id [:in database-ids]
+               :group_id [:in [:auto/param group-ids]]
+               :db_id [:in [:auto/param database-ids]]
                :perm_type :perms/view-data
-               {:where [:or [:in :table_id table-ids] [:= :table_id nil]]})
+               {:where [:or [:in :table_id [:auto/param table-ids]] [:= :table_id nil]]})
     []))
 
 (mu/defn active-tables
@@ -174,7 +174,7 @@
   [collection-id :- [:maybe ::lib.schema.id/collection]
    card-ids      :- [:set {:min 1} ::lib.schema.id/card]]
   (set/difference card-ids (when collection-id
-                             (t2/select-pks-set :model/Card :id [:in card-ids] :collection_id [:auto/param collection-id]))))
+                             (t2/select-pks-set :model/Card :id [:in [:auto/param card-ids]] :collection_id [:auto/param collection-id]))))
 
 (mu/defn external-metric-ids :- [:set ::lib.schema.id/card]
   "Among `card-ids`, those of no metric in the Library's Metrics collection or one of its subcollections."
@@ -182,7 +182,7 @@
   (set/difference card-ids (t2/select-fn-set :id [:model/Card :report_card.id]
                                              {:join  [:collection [:= :collection.id :report_card.collection_id]]
                                               :where [:and
-                                                      [:in :report_card.id card-ids]
+                                                      [:in :report_card.id [:auto/param card-ids]]
                                                       [:= :report_card.type "metric"]
                                                       [:= :collection.type collection/library-metrics-collection-type]]})))
 
@@ -190,7 +190,7 @@
   "Among `table-ids`, those of no Table published to the Library."
   [table-ids :- [:set {:min 1} ::lib.schema.id/table]]
   (set/difference table-ids (t2/select-pks-set :model/Table {:from  [(warehouse-schema-overlay/table-query)]
-                                                             :where [:and [:in :id table-ids] [:= :is_published true]]})))
+                                                             :where [:and [:in :id [:auto/param table-ids]] [:= :is_published true]]})))
 
 (mu/defn published-tables :- [:sequential :metabase.warehouse-schema.schema/table]
   "The Tables published to the Library, with their databases and schemas."
@@ -205,7 +205,7 @@
   (set/difference segment-ids (t2/select-fn-set :id [:model/Segment :segment.id]
                                                 {:join  [(warehouse-schema-overlay/table-query {:alias :table})
                                                          [:= :table.id :segment.table_id]]
-                                                 :where [:and [:in :segment.id segment-ids] [:= :table.is_published true]]})))
+                                                 :where [:and [:in :segment.id [:auto/param segment-ids]] [:= :table.is_published true]]})))
 
 (mu/defn external-measure-ids :- [:set ::lib.schema.id/measure]
   "Among `measure-ids`, those of no Measure of a Table published to the Library."
@@ -213,4 +213,4 @@
   (set/difference measure-ids (t2/select-fn-set :id [:model/Measure :measure.id]
                                                 {:join  [(warehouse-schema-overlay/table-query {:alias :table})
                                                          [:= :table.id :measure.table_id]]
-                                                 :where [:and [:in :measure.id measure-ids] [:= :table.is_published true]]})))
+                                                 :where [:and [:in :measure.id [:auto/param measure-ids]] [:= :table.is_published true]]})))

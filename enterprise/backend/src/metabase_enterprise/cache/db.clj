@@ -47,12 +47,12 @@
 (mu/defn cards-by-id
   "A map of ID to Card for `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select-pk->fn identity :model/Card :id [:in card-ids]))
+  (t2/select-pk->fn identity :model/Card :id [:in [:auto/param card-ids]]))
 
 (mu/defn router-database-ids
   "The subset of `database-ids` that are database routers."
   [database-ids :- [:set ::lib.schema.id/database]]
-  (t2/select-fn-set :database_id :model/DatabaseRouter :database_id [:in database-ids]))
+  (t2/select-fn-set :database_id :model/DatabaseRouter :database_id [:in [:auto/param database-ids]]))
 
 (mu/defn duration-cache-configs
   "The duration CacheConfigs that refresh automatically."
@@ -83,9 +83,9 @@
                                      [(t2/table-name :model/QueryCache) :qc] [:= :qc.query_hash :qe.cache_hash]]
                           :where    [:and
                                      (case model
-                                       "question"  [:= :qe.card_id model-id]
-                                       "dashboard" [:= :qe.dashboard_id model-id])
-                                     [:<= :qc.updated_at rerun-cutoff]
+                                       "question"  [:= :qe.card_id [:auto/param model-id]]
+                                       "dashboard" [:= :qe.dashboard_id [:auto/param model-id]])
+                                     [:<= :qc.updated_at [:auto/param rerun-cutoff]]
                                      [:>= :qe.started_at [:auto/param started-after]]
                                      [:= :qe.error nil]
                                      [:= :qe.is_sandboxed false]
@@ -145,7 +145,7 @@
 (mu/defn delete-query-caches!
   "Delete the QueryCache entries with `query-hashes`."
   [query-hashes :- [:sequential bytes?]]
-  (t2/delete! :model/QueryCache :query_hash [:in query-hashes]))
+  (t2/delete! :model/QueryCache :query_hash [:in [:auto/param query-hashes]]))
 
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil."
@@ -157,7 +157,7 @@
   [strategy :- :keyword
    now      :- ms/TemporalInstant]
   (t2/select :model/CacheConfig
-             :strategy strategy
+             :strategy [:auto/param strategy]
              {:where [:or
                       [:= :next_run_at nil]
                       [:<= :next_run_at [:auto/param now]]]}))

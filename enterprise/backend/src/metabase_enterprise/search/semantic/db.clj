@@ -18,7 +18,7 @@
 (mu/defn library-root-collections
   "The ID and type of the top-level Collections whose type is one of `types`."
   [types :- [:sequential :string]]
-  (t2/select [:model/Collection :id :type] :type [:in types] :location "/"))
+  (t2/select [:model/Collection :id :type] :type [:in [:auto/param types]] :location "/"))
 
 (mu/defn descendant-collection-ids
   "The IDs of the Collections under the top-level Collection with `root-id`."
@@ -51,13 +51,13 @@
 (mu/defn collection-owners-and-locations
   "The ID, owner, and location of the Collections with `collection-ids`."
   [collection-ids :- [:set ::lib.schema.id/collection]]
-  (t2/select [:model/Collection :id :personal_owner_id :location] :id [:in collection-ids]))
+  (t2/select [:model/Collection :id :personal_owner_id :location] :id [:in [:auto/param collection-ids]]))
 
 (mu/defn personal-collection-owners
   "The ID and owner of the personal Collections among `collection-ids`."
   [collection-ids :- [:set ::lib.schema.id/collection]]
   (t2/select [:model/Collection :id :personal_owner_id]
-             :id [:in collection-ids]
+             :id [:in [:auto/param collection-ids]]
              :personal_owner_id [:not= nil]))
 
 (mu/defn collection-locations

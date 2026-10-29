@@ -94,7 +94,7 @@
 (mu/defn delete-table-indexes!
   "Delete the TableIndexes with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/TableIndex :id [:in ids]))
+  (t2/delete! :model/TableIndex :id [:in [:auto/param ids]]))
 
 (mu/defn update-table-indexes!
   "Apply `changes` to the TableIndexes with `ids`, stamping `last_executed_at` with the app DB's now."
@@ -102,7 +102,7 @@
    changes :- [:map {:closed true}
                [:status        {:optional true} [:maybe [:or :keyword :string]]]
                [:error_message {:optional true} [:maybe :string]]]]
-  (t2/update! :model/TableIndex :id [:in ids] (merge {:last_executed_at :%now} changes)))
+  (t2/update! :model/TableIndex :id [:in [:auto/param ids]] (merge {:last_executed_at :%now} changes)))
 
 (mu/defn active-field-names-for-table
   "The names of the active Fields of the Table with `table-id`, in position order."
@@ -121,14 +121,14 @@
               :where (into [:or]
                            (map (fn [[db-id schema table-name]]
                                   [:and
-                                   [:= :db_id db-id]
+                                   [:= :db_id [:auto/param db-id]]
                                    (if (some? schema)
-                                     [:= :schema schema]
+                                     [:= :schema [:auto/param schema]]
                                      [:is :schema nil])
-                                   [:= :name table-name]]))
+                                   [:= :name [:auto/param table-name]]]))
                            refs)}))
 
 (mu/defn table-refs
   "The id, Database id, schema, and name of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select [:model/Table :id :db_id :schema :name] :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select [:model/Table :id :db_id :schema :name] :id [:in [:auto/param table-ids]] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))

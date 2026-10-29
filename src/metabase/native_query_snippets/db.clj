@@ -69,4 +69,4 @@
                                             (when (seq collection-ids) [:in :collection_id [:auto/param collection-ids]])
                                             (when include-root? [:= :collection_id nil])]]
                                 :order-by serdes/stable-storage-order}
-                         filter-column (sql.helpers/where :or [:in filter-column filter-ids]))))
+                         filter-column (sql.helpers/where :or [:in filter-column [:auto/param filter-ids]]))))

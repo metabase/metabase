@@ -72,7 +72,7 @@
                                                                  [:in [:lower :name] (keys name->display-name)]]}))
             :let  [lower-name (u/lower-case-en name)]
             :when (= display_name (humanization/name->human-readable-name lower-name))]
-      (t2/update! :model/Field :id id {:display_name (name->display-name lower-name)}))))
+      (t2/update! :model/Field :id [:auto/param id] {:display_name (name->display-name lower-name)}))))
 
 (mu/defn mark-table-upload!
   "Flag the Table with `table-id` as an authoritative, writable upload table."
@@ -128,4 +128,4 @@
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select :model/Table :id [:in [:auto/param table-ids]] {:from [(warehouse-schema-overlay/table-query)]}))

@@ -161,7 +161,7 @@
   "The ExplorationThreads of the Explorations with `exploration-ids`, in position order."
   [exploration-ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/ExplorationThread
-             :exploration_id [:in exploration-ids]
+             :exploration_id [:in [:auto/param exploration-ids]]
              {:order-by [[:position :asc] [:id :asc]]}))
 
 (mu/defn thread-ids-for-exploration
@@ -173,7 +173,7 @@
   "The ID and data-access token of the ExplorationThreads among `thread-ids` that carry a token."
   [thread-ids :- [:set ms/PositiveInt]]
   (t2/select [:model/ExplorationThread :id :data_access_token]
-             :id [:in thread-ids]
+             :id [:in [:auto/param thread-ids]]
              :data_access_token [:not= nil]))
 
 (mu/defn last-thread-position
@@ -286,7 +286,7 @@
   "The ExplorationBlocks of the ExplorationThreads with `thread-ids`, in position order."
   [thread-ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/ExplorationBlock
-             :exploration_thread_id [:in thread-ids]
+             :exploration_thread_id [:in [:auto/param thread-ids]]
              {:order-by [[:position :asc] [:id :asc]]}))
 
 (mu/defn block-metrics-for-threads-newest-first
@@ -294,7 +294,7 @@
   reverse position order."
   [thread-ids :- [:sequential ms/PositiveInt]]
   (t2/select [:model/ExplorationBlock :exploration_thread_id :metrics]
-             :exploration_thread_id [:in thread-ids]
+             :exploration_thread_id [:in [:auto/param thread-ids]]
              {:order-by [[:position :desc] [:id :desc]]}))
 
 (mu/defn block-ids-for-thread
@@ -341,23 +341,23 @@
   (t2/select-one-pk :model/ExplorationPage
                     :exploration_block_id [:auto/param block-id]
                     :card_id              [:auto/param card-id]
-                    :dimension_id         dimension-id
+                    :dimension_id         [:auto/param dimension-id]
                     :query_type           [:auto/param query-type]))
 
 (mu/defn pages-for-blocks
   "The ExplorationPages of the ExplorationBlocks with `block-ids`."
   [block-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/ExplorationPage :exploration_block_id [:in block-ids]))
+  (t2/select :model/ExplorationPage :exploration_block_id [:in [:auto/param block-ids]]))
 
 (mu/defn page-ids-for-blocks
   "The IDs of the ExplorationPages of the ExplorationBlocks with `block-ids`."
   [block-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pks-vec :model/ExplorationPage :exploration_block_id [:in block-ids]))
+  (t2/select-pks-vec :model/ExplorationPage :exploration_block_id [:in [:auto/param block-ids]]))
 
 (mu/defn starred-page-ids
   "The IDs of the starred ExplorationPages among `page-ids`."
   [page-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pks-set :model/ExplorationPage :id [:in page-ids] :starred true))
+  (t2/select-pks-set :model/ExplorationPage :id [:in [:auto/param page-ids]] :starred true))
 
 (mu/defn page-thread-ids
   "Rows of ExplorationPage `:id` and the `:thread_id` of its block, for the ExplorationThreads with `thread-ids`."
@@ -382,12 +382,12 @@
   "Apply `changes` to the ExplorationPages with `page-ids`."
   [page-ids :- [:sequential ms/PositiveInt]
    changes  :- (mut/select-keys ::explorations.schema/exploration-page.update [:hidden])]
-  (t2/update! :model/ExplorationPage :id [:in page-ids] changes))
+  (t2/update! :model/ExplorationPage :id [:in [:auto/param page-ids]] changes))
 
 (mu/defn delete-pages!
   "Delete the ExplorationPages with `page-ids`."
   [page-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/ExplorationPage :id [:in page-ids]))
+  (t2/delete! :model/ExplorationPage :id [:in [:auto/param page-ids]]))
 
 ;;; ------------------------------------------------- Queries -------------------------------------------------
 
@@ -428,7 +428,7 @@
   "The ExplorationQueries of the ExplorationThreads with `thread-ids`, in position order."
   [thread-ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/ExplorationQuery
-             :exploration_thread_id [:in thread-ids]
+             :exploration_thread_id [:in [:auto/param thread-ids]]
              {:order-by [[:position :asc] [:id :asc]]}))
 
 (mu/defn lens-stamped-queries
@@ -436,7 +436,7 @@
   ExplorationThreads with `thread-ids`, in ID order."
   [thread-ids :- [:set ms/PositiveInt]]
   (t2/select [:model/ExplorationQuery :id :exploration_thread_id :database_id :dataset_query :data_access_token]
-             :exploration_thread_id [:in thread-ids]
+             :exploration_thread_id [:in [:auto/param thread-ids]]
              :dataset_query [:not= nil]
              {:order-by [[:id :asc]]}))
 
@@ -489,7 +489,7 @@
 (mu/defn page-ids-with-queries
   "The subset of `page-ids` that some ExplorationQuery points at."
   [page-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-fn-set :page_id :model/ExplorationQuery :page_id [:in page-ids]))
+  (t2/select-fn-set :page_id :model/ExplorationQuery :page_id [:in [:auto/param page-ids]]))
 
 (mu/defn insert-queries!
   "Insert the ExplorationQuery `rows`."
@@ -556,7 +556,7 @@
   [score-column :- :keyword
    query-ids    :- [:sequential ms/PositiveInt]]
   (t2/select [:model/ExplorationQueryResult :exploration_query_id score-column]
-             :exploration_query_id [:in query-ids]))
+             :exploration_query_id [:in [:auto/param query-ids]]))
 
 (mu/defn query-result-row-counts
   "The query ID and stored row count of the ExplorationQueryResults of the ExplorationQueries with `query-ids`."
@@ -627,20 +627,20 @@
 (mu/defn delete-stored-results!
   "Delete the StoredResults with `stored-result-ids`, returning the number deleted."
   [stored-result-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/StoredResult :id [:in stored-result-ids]))
+  (t2/delete! :model/StoredResult :id [:in [:auto/param stored-result-ids]]))
 
 ;;; ------------------------------------------------ Timelines ------------------------------------------------
 
 (mu/defn timelines
   "The Timelines with `timeline-ids`."
   [timeline-ids :- [:set ms/PositiveInt]]
-  (t2/select :model/Timeline :id [:in timeline-ids]))
+  (t2/select :model/Timeline :id [:in [:auto/param timeline-ids]]))
 
 (mu/defn thread-timelines-for-threads
   "The ExplorationThreadTimelines of the ExplorationThreads with `thread-ids`, in position order."
   [thread-ids :- [:sequential ms/PositiveInt]]
   (t2/select :model/ExplorationThreadTimeline
-             :exploration_thread_id [:in thread-ids]
+             :exploration_thread_id [:in [:auto/param thread-ids]]
              {:order-by [[:position :asc] [:id :asc]]}))
 
 (mu/defn thread-timeline-ids
@@ -708,7 +708,7 @@
   (t2/select [:model/Document
               :id :name :exploration_id :creator_id :content_type
               :created_at :updated_at :archived :is_placeholder]
-             :exploration_id [:in exploration-ids]
+             :exploration_id [:in [:auto/param exploration-ids]]
              {:order-by [[:created_at :asc] [:id :asc]]}))
 
 (mu/defn unarchived-summary-document
@@ -759,7 +759,7 @@
 (mu/defn card-names
   "The ID and name of the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select [:model/Card :id :name] :id [:in card-ids]))
+  (t2/select [:model/Card :id :name] :id [:in [:auto/param card-ids]]))
 
 (mu/defn card-description
   "The description of the Card with `card-id`."
@@ -819,7 +819,7 @@
 (mu/defn segment-names
   "A map of ID to name for the Segments with `segment-ids`."
   [segment-ids :- [:set ::lib.schema.id/segment]]
-  (t2/select-pk->fn :name [:model/Segment :id :name] :id [:in segment-ids]))
+  (t2/select-pk->fn :name [:model/Segment :id :name] :id [:in [:auto/param segment-ids]]))
 
 (mu/defn segment-name
   "The name of the Segment with `segment-id`."
@@ -829,12 +829,12 @@
 (mu/defn user-summaries-by-id
   "A map of ID to the ID, email, and names of the Users with `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
-  (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
+  (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in [:auto/param user-ids]]))
 
 (mu/defn live-comment-targets
   "The child target IDs of the live exploration Comments anchored to one of `child-target-ids`."
   [child-target-ids :- [:sequential :string]]
   (t2/select-fn-set :child_target_id :model/Comment
                     :target_type     "exploration"
-                    :child_target_id [:in child-target-ids]
+                    :child_target_id [:in [:auto/param child-target-ids]]
                     :deleted_at      nil))

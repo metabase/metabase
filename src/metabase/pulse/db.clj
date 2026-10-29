@@ -46,7 +46,7 @@
   `card-ids`."
   [dashboard-id :- ::lib.schema.id/dashboard
    card-ids     :- [:set ::lib.schema.id/card]]
-  (t2/select-fn->pk :card_id :model/DashboardCard :dashboard_id [:auto/param dashboard-id] :card_id [:in card-ids]))
+  (t2/select-fn->pk :card_id :model/DashboardCard :dashboard_id [:auto/param dashboard-id] :card_id [:in [:auto/param card-ids]]))
 
 (mu/defn pulse-card-pairs-for-dashboard
   "Distinct `:pulse-id`/`:card-id` pairs for the Pulses (subscriptions) attached to the Dashboard with
@@ -55,7 +55,7 @@
   (app-db/query {:select-distinct [[:p.id :pulse-id] [:pc.card_id :card-id]]
                  :from            [[:pulse :p]]
                  :left-join       [[:pulse_card :pc] [:= :p.id :pc.pulse_id]]
-                 :where           [:= :p.dashboard_id dashboard-id]}))
+                 :where           [:= :p.dashboard_id [:auto/param dashboard-id]]}))
 
 (mu/defn dashboard-card-ids-for-dashboard
   "The distinct, non-nil Card ids shown by the DashboardCards of the Dashboard with `dashboard-id`."
@@ -63,7 +63,7 @@
   (map :card_id (app-db/query {:select-distinct [:dc.card_id]
                                :from            [[:report_dashboardcard :dc]]
                                :where           [:and
-                                                 [:= :dc.dashboard_id dashboard-id]
+                                                 [:= :dc.dashboard_id [:auto/param dashboard-id]]
                                                  [:not= :dc.card_id nil]]})))
 
 (mu/defn channel
@@ -84,7 +84,7 @@
 (mu/defn user-emails-by-id
   "A map of User id to email for the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-pk->fn :email :model/User, :id [:in user-ids]))
+  (t2/select-pk->fn :email :model/User, :id [:in [:auto/param user-ids]]))
 
 (mu/defn pulse
   "The Pulse with `pulse-id`, or nil."
@@ -268,7 +268,7 @@
 (mu/defn pulse-channels-for-pulses
   "The PulseChannels of the Pulses with `pulse-ids`."
   [pulse-ids :- [:sequential ::lib.schema.id/pulse]]
-  (t2/select :model/PulseChannel :pulse_id [:in pulse-ids]))
+  (t2/select :model/PulseChannel :pulse_id [:in [:auto/param pulse-ids]]))
 
 (mu/defn email-pulse-channel
   "The email PulseChannel of the Pulse with `pulse-id`, or nil."
@@ -300,7 +300,7 @@
 (mu/defn enabled-pulse-channel-ids
   "The ids among `channel-ids` of enabled PulseChannels, or nil."
   [channel-ids :- [:set ms/PositiveInt]]
-  (t2/select-pks-set :model/PulseChannel :id [:in channel-ids] :enabled true))
+  (t2/select-pks-set :model/PulseChannel :id [:in [:auto/param channel-ids]] :enabled true))
 
 (mu/defn active-dashboard-subscription-channels
   "The enabled PulseChannels of dashboard subscriptions whose Dashboard is not archived."
@@ -348,7 +348,7 @@
 (mu/defn delete-pulse-channels!
   "Delete the PulseChannels with `channel-ids`."
   [channel-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/PulseChannel :id [:in channel-ids]))
+  (t2/delete! :model/PulseChannel :id [:in [:auto/param channel-ids]]))
 
 (mu/defn delete-pulse-channels-for-pulse!
   "Delete the PulseChannels of the Pulse with `pulse-id`."
@@ -403,12 +403,12 @@
 (mu/defn delete-notifications!
   "Delete the Notifications with `notification-ids`."
   [notification-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/Notification :id [:in notification-ids]))
+  (t2/delete! :model/Notification :id [:in [:auto/param notification-ids]]))
 
 (mu/defn user-tenant-ids
   "A map of User ID to `:tenant_id` for `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-pk->fn :tenant_id :model/User :id [:in user-ids]))
+  (t2/select-pk->fn :tenant_id :model/User :id [:in [:auto/param user-ids]]))
 
 (defn user-name-and-email
   "The first name, last name, and email of the User with `user-id`, or nil."
@@ -418,17 +418,17 @@
 (defn users-names-and-emails
   "The first names, last names, and emails of the Users with `user-ids`."
   [user-ids]
-  (t2/select [:model/User :first_name :last_name :email] :id [:in user-ids]))
+  (t2/select [:model/User :first_name :last_name :email] :id [:in [:auto/param user-ids]]))
 
 (defn pulse-channel-kinds-for-pulse
   "The id, channel type, and details of the PulseChannels of the Pulse with `pulse-id`."
   [pulse-id]
-  (t2/select [:model/PulseChannel :id :channel_type :details] :pulse_id [:= pulse-id]))
+  (t2/select [:model/PulseChannel :id :channel_type :details] :pulse_id [:= [:auto/param pulse-id]]))
 
 (defn pulse-channel-recipient-rows
   "The `:user_id` rows of the PulseChannelRecipients of the PulseChannel with `channel-id`."
   [channel-id]
-  (t2/select [:model/PulseChannelRecipient :user_id] :pulse_channel_id channel-id))
+  (t2/select [:model/PulseChannelRecipient :user_id] :pulse_channel_id [:auto/param channel-id]))
 
 (defn dashboard-parameters
   "The id and parameters of the Dashboard with `dashboard-id`, or nil."
@@ -443,4 +443,4 @@
 (defn unarchived-pulses-for-dashboard
   "The unarchived Pulses of the Dashboard with `dashboard-id`, in id order."
   [dashboard-id]
-  (t2/select :model/Pulse :dashboard_id dashboard-id :archived false {:order-by [[:id :asc]]}))
+  (t2/select :model/Pulse :dashboard_id [:auto/param dashboard-id] :archived false {:order-by [[:id :asc]]}))

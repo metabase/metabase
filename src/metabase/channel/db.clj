@@ -77,7 +77,7 @@
                              :from   [[:permissions :p]]
                              :where  [:and
                                       [:= :p.group_id :pg.id]
-                                      [:= :p.object permission-path]]}]
+                                      [:= :p.object [:auto/param permission-path]]]}]
                  :group-by [:pgm.user_id]}))
 
 (mu/defn delete-pulse-channels-for-channel!

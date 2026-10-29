@@ -90,7 +90,7 @@
 (mu/defn persisted-infos-by-ids
   "The PersistedInfos with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/PersistedInfo :id [:in ids]))
+  (t2/select :model/PersistedInfo :id [:in [:auto/param ids]]))
 
 (mu/defn persisted-info
   "The PersistedInfo with `id`, or nil."
@@ -121,7 +121,7 @@
   "The Card ids among `card-ids` whose PersistedInfo is in one of `states`."
   [card-ids :- [:sequential ::lib.schema.id/card]
    states   :- [:set :string]]
-  (t2/select-fn-set :card_id :model/PersistedInfo :card_id [:in card-ids] :state [:in states]))
+  (t2/select-fn-set :card_id :model/PersistedInfo :card_id [:in [:auto/param card-ids]] :state [:in [:auto/param states]]))
 
 (mu/defn persisted-model-count-for-databases
   "The number of PersistedInfos of unarchived model Cards of the Databases with `database-ids`."
@@ -129,7 +129,7 @@
   (t2/count :model/PersistedInfo {:from [[:persisted_info :p]]
                                   :join [[:report_card :c] [:= :c.id :p.card_id]]
                                   :where [:and
-                                          [:in :p.database_id database-ids]
+                                          [:in :p.database_id [:auto/param database-ids]]
                                           [:= :c.type "model"]
                                           [:not :c.archived]]}))
 
@@ -195,7 +195,7 @@
   the number updated."
   [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/update! :model/PersistedInfo
-              {:active true, :card_id [:in card-ids]}
+              {:active true, :card_id [:in [:auto/param card-ids]]}
               {:active false, :state "creating", :state_change_at :%now}))
 
 (mu/defn reset-persisted-info-to-creating!
@@ -251,7 +251,7 @@
 (mu/defn databases
   "The Databases with `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select :model/Database :id [:in database-ids]))
+  (t2/select :model/Database :id [:in [:auto/param database-ids]]))
 
 (mu/defn all-databases
   "Every Database."

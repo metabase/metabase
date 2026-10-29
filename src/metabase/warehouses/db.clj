@@ -27,7 +27,7 @@
 (mu/defn databases
   "The Databases with `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
-  (t2/select :model/Database :id [:in database-ids]))
+  (t2/select :model/Database :id [:in [:auto/param database-ids]]))
 
 (mu/defn database-by-name
   "The Database named `database-name`, or nil."
@@ -86,7 +86,7 @@
                                                            :where  [:= :child_field.parent_id :metabase_field.id]}]])]
     (t2/query-one {:delete-from (t2/table-name :model/Field)
                    :where       [:and
-                                 [:in :table_id table-ids-query]
+                                 [:in :table_id (table-ids-of-database-query database-id)]
                                  extra-clause]})))
 
 (mu/defn delete-cards-for-database-returning-ids-reducible
@@ -113,7 +113,7 @@
                                                            {:join  [[table-subquery :table]
                                                                     [:= :table.id :implicit_action.table_id]]
                                                             :where [:= :table.db_id [:auto/param database-id]]})))]
-      (t2/delete! :model/Action :id [:in action-ids])
+      (t2/delete! :model/Action :id [:in [:auto/param action-ids]])
       0)))
 
 (mu/defn delete-cards-for-database!
@@ -137,7 +137,7 @@
   "The active Tables of the Databases with `database-ids`, in database then display name order."
   [database-ids :- [:sequential ::lib.schema.id/database]]
   (t2/select :model/Table
-             :db_id  [:in database-ids]
+             :db_id  [:in [:auto/param database-ids]]
              :active true
              {:from [(warehouse-schema-overlay/table-query)]
               :order-by [[:db_id :asc] [:%lower.display_name :asc]]}))
@@ -150,7 +150,7 @@
 (mu/defn pk-fields-for-tables
   "The primary-key Fields of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Field :table_id [:in table-ids] :semantic_type (mdb/isa :type/PK)
+  (t2/select :model/Field :table_id [:in [:auto/param table-ids]] :semantic_type (mdb/isa :type/PK)
              {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn databases-for-serdes-reducible
@@ -163,7 +163,7 @@
   (t2/reducible-select :model/Database
                        {:where [:and
                                 (when filter-column
-                                  [:in filter-column filter-ids])
+                                  [:in filter-column [:auto/param filter-ids]])
                                 [:= :router_database_id nil]
                                 ;; never export the sample database, regardless of its driver
                                 [:not= :is_sample true]

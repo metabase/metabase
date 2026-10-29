@@ -26,7 +26,7 @@
 (mu/defn unarchived-measure-names
   "The Table ID and name of the unarchived Measures on the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select [:model/Measure :table_id :name] :archived false :table_id [:in table-ids]))
+  (t2/select [:model/Measure :table_id :name] :archived false :table_id [:in [:auto/param table-ids]]))
 
 (mu/defn collection
   "The Collection with `collection-id`, or nil."

@@ -57,7 +57,7 @@
   "The Tables of the Database with `database-id` named one of `table-names`."
   [database-id :- ::lib.schema.id/database
    table-names :- [:or [:set :string] [:sequential :string]]]
-  (t2/select :model/Table :db_id [:auto/param database-id] :name [:in table-names] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select :model/Table :db_id [:auto/param database-id] :name [:in [:auto/param table-names]] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn tables-of-database-in-id-order
   "The `:id`, `:name`, `:schema`, and `:active` of the Tables of the Database with `database-id`, in ID order."
@@ -98,7 +98,7 @@
 (mu/defn downcase-tables!
   "Move the Tables with `table-ids` to the `public` schema and lower-case their names."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/update! :model/Table :id [:in table-ids] {:schema "public" :name [:lower :name]}))
+  (t2/update! :model/Table :id [:in [:auto/param table-ids]] {:schema "public" :name [:lower :name]}))
 
 (mu/defn field-ids-to-downcase
   "The IDs of the Fields of the Metabase-managed Tables of the Database with `database-id` that have no
@@ -130,7 +130,7 @@
 (mu/defn downcase-fields!
   "Lower-case the names of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/update! :model/Field :id [:in field-ids] {:name [:lower :name]}))
+  (t2/update! :model/Field :id [:in [:auto/param field-ids]] {:name [:lower :name]}))
 
 (mu/defn clear-table-schemas!
   "Clear the schema of the Tables of the Database with `database-id`."

@@ -46,11 +46,11 @@
                        (cond-> {:where [:and
                                         (when (seq collection-set)
                                           [:or
-                                           [:in :collection_id collection-set]
+                                           [:in :collection_id [:auto/param collection-set]]
                                            (when (some nil? collection-set)
                                              [:= :collection_id nil])])
                                         (when filter-column
-                                          [:in filter-column filter-ids])
+                                          [:in filter-column [:auto/param filter-ids]])
                                         not-in-exploration-document]}
                          (seq order-columns) (assoc :order-by (mapv (fn [column] [column :asc]) order-columns)))))
 
@@ -62,12 +62,12 @@
 (mu/defn cards
   "The Cards with `card-ids` (nil entries, e.g. from virtual dashcards, are ignored)."
   [card-ids :- [:maybe [:or [:set [:maybe ::lib.schema.id/card]] [:sequential [:maybe ::lib.schema.id/card]]]]]
-  (t2/select :model/Card :id [:in card-ids]))
+  (t2/select :model/Card :id [:in [:auto/param card-ids]]))
 
 (mu/defn timelines
   "The Timelines with `timeline-ids`; ids of deleted Timelines are skipped."
   [timeline-ids :- [:set ms/PositiveInt]]
-  (t2/select :model/Timeline :id [:in timeline-ids]))
+  (t2/select :model/Timeline :id [:in [:auto/param timeline-ids]]))
 
 (mu/defn card-query-info
   "The query-related fields of the Card with `card-id`.
@@ -128,13 +128,13 @@
 (mu/defn source-card-dependents
   "The IDs and source Card IDs of the Cards whose source Card is one of `source-card-ids`."
   [source-card-ids :- [:or [:set ::lib.schema.id/card] [:sequential ::lib.schema.id/card]]]
-  (t2/select [:model/Card :id :source_card_id] :source_card_id [:in source-card-ids]))
+  (t2/select [:model/Card :id :source_card_id] :source_card_id [:in [:auto/param source-card-ids]]))
 
 (mu/defn metric-cards-for-source-cards
   "The unarchived metric Cards built on one of `source-card-ids`, ordered by name."
   [source-card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select :model/Card
-             :source_card_id [:in source-card-ids]
+             :source_card_id [:in [:auto/param source-card-ids]]
              :archived false
              :type :metric
              {:order-by [[:name :asc]]}))
@@ -240,7 +240,7 @@
 (mu/defn databases
   "The Databases with `database-ids`."
   [database-ids :- [:set ::lib.schema.id/database]]
-  (t2/select :model/Database :id [:in database-ids]))
+  (t2/select :model/Database :id [:in [:auto/param database-ids]]))
 
 (mu/defn database-name
   "The name of the Database with `database-id`."
@@ -262,12 +262,12 @@
 (mu/defn field-table-ids
   "The set of Table IDs of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select-fn-set :table_id :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select-fn-set :table_id :model/Field :id [:in [:auto/param field-ids]] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn snippets
   "The NativeQuerySnippets with `snippet-ids`."
   [snippet-ids :- [:set ::lib.schema.id/native-query-snippet]]
-  (t2/select :model/NativeQuerySnippet :id [:in snippet-ids]))
+  (t2/select :model/NativeQuerySnippet :id [:in [:auto/param snippet-ids]]))
 
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil."
@@ -277,7 +277,7 @@
 (mu/defn dashboards
   "The Dashboards with `dashboard-ids`."
   [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
-  (t2/select :model/Dashboard :id [:in dashboard-ids]))
+  (t2/select :model/Dashboard :id [:in [:auto/param dashboard-ids]]))
 
 (mu/defn dashboard-collection-id
   "The `:collection_id` of the Dashboard with `dashboard-id`."
@@ -350,7 +350,7 @@
 (mu/defn delete-dashcard-series!
   "Delete the DashboardCardSeries with `series-ids`, returning the number deleted."
   [series-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/DashboardCardSeries :id [:in series-ids]))
+  (t2/delete! :model/DashboardCardSeries :id [:in [:auto/param series-ids]]))
 
 (mu/defn implicit-action-ids-for-model
   "The IDs of the implicit Actions of the model Card with `model-id`."
@@ -380,7 +380,7 @@
 (mu/defn delete-actions!
   "Delete the Actions with `action-ids`, returning the number deleted."
   [action-ids :- [:set ::lib.schema.id/action]]
-  (t2/delete! :model/Action :id [:in action-ids]))
+  (t2/delete! :model/Action :id [:in [:auto/param action-ids]]))
 
 (mu/defn delete-card-moderation-reviews!
   "Delete the ModerationReviews of the Card with `card-id`, returning the number deleted."
@@ -404,7 +404,7 @@
 (mu/defn delete-notifications!
   "Delete the Notifications with `notification-ids`, returning the number deleted."
   [notification-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/Notification :id [:in notification-ids]))
+  (t2/delete! :model/Notification :id [:in [:auto/param notification-ids]]))
 
 ;;; --------------------------------------------- ParameterCard ---------------------------------------------
 
@@ -418,7 +418,7 @@
   [object-type :- [:or :keyword :string]
    object-id   :- ms/PositiveInt]
   (t2/select-fn-set :card_id :model/ParameterCard
-                    :parameterized_object_type object-type
+                    :parameterized_object_type [:auto/param object-type]
                     :parameterized_object_id [:auto/param object-id]))
 
 (mu/defn parameter-card-exists?
@@ -427,7 +427,7 @@
    object-id    :- ms/PositiveInt
    parameter-id :- :string]
   (t2/exists? :model/ParameterCard
-              :parameterized_object_type object-type
+              :parameterized_object_type [:auto/param object-type]
               :parameterized_object_id [:auto/param object-id]
               :parameter_id [:auto/param parameter-id]))
 
@@ -439,7 +439,7 @@
    parameter-id :- :string
    card-id      :- ::lib.schema.id/card]
   (t2/update! :model/ParameterCard
-              {:parameterized_object_type object-type
+              {:parameterized_object_type [:auto/param object-type]
                :parameterized_object_id   [:auto/param object-id]
                :parameter_id              [:auto/param parameter-id]}
               {:card_id card-id}))
@@ -459,7 +459,7 @@
   [object-type :- [:or :keyword :string]
    object-id   :- ms/PositiveInt]
   (t2/delete! :model/ParameterCard
-              :parameterized_object_type object-type
+              :parameterized_object_type [:auto/param object-type]
               :parameterized_object_id [:auto/param object-id]))
 
 (mu/defn delete-parameter-cards-for-object-except!
@@ -469,16 +469,16 @@
    object-id      :- ms/PositiveInt
    parameter-ids  :- [:sequential :string]]
   (t2/delete! :model/ParameterCard
-              :parameterized_object_type object-type
+              :parameterized_object_type [:auto/param object-type]
               :parameterized_object_id [:auto/param object-id]
-              :parameter_id [:not-in parameter-ids]))
+              :parameter_id [:not-in [:auto/param parameter-ids]]))
 
 ;;; -------------------------------------------------- Query --------------------------------------------------
 
 (mu/defn average-execution-time
   "The recorded average execution time of the query with `query-hash`."
   [query-hash :- bytes?]
-  (t2/select-one-fn :average_execution_time :model/Query :query_hash query-hash))
+  (t2/select-one-fn :average_execution_time :model/Query :query_hash [:auto/param query-hash]))
 
 (defn- int-casting-type
   "MySQL doesn't accept `integer`, so we have to use `unsigned`; Postgres doesn't accept `unsigned` so we have to use
@@ -503,7 +503,7 @@
    c0          :- number?
    c1          :- number?]
   (t2/update! :model/Query
-              {:query_hash query-hash, :query nil}
+              {:query_hash [:auto/param query-hash], :query nil}
               {:query                  query-json
                :average_execution_time (rolling-average-expr c0 c1)}))
 
@@ -513,7 +513,7 @@
   [query-hash :- bytes?
    c0         :- number?
    c1         :- number?]
-  (t2/update! :model/Query {:query_hash query-hash} {:average_execution_time (rolling-average-expr c0 c1)}))
+  (t2/update! :model/Query {:query_hash [:auto/param query-hash]} {:average_execution_time (rolling-average-expr c0 c1)}))
 
 (mu/defn update-average-execution-times!
   "Set the average execution time of each Query identified by the `[query-hash c0 c1]` triples in `hash+coefficients`
@@ -522,7 +522,7 @@
   (t2/query {:update (t2/table-name :model/Query)
              :set    {:average_execution_time (into [:case]
                                                     (mapcat (fn [[query-hash c0 c1]]
-                                                              [[:= :query_hash query-hash] (rolling-average-expr c0 c1)]))
+                                                              [[:= :query_hash [:auto/param query-hash]] (rolling-average-expr c0 c1)]))
                                                     hash+coefficients)}
              :where  [:in :query_hash (map first hash+coefficients)]}))
 
@@ -541,7 +541,7 @@
   [query-hashes :- [:sequential bytes?]]
   (t2/reducible-query {:select [:query_hash [[:= :query nil] :missing_query]]
                        :from   [(t2/table-name :model/Query)]
-                       :where  [:in :query_hash query-hashes]}))
+                       :where  [:in :query_hash [:auto/param query-hashes]]}))
 
 ;;; ---------------------------------------------- StoredResult ----------------------------------------------
 
@@ -550,8 +550,8 @@
   [card-ids          :- [:set ::lib.schema.id/card]
    stored-result-ids :- [:set ms/PositiveInt]]
   (t2/select-fn-set :stored_result_id :model/StoredResultUse
-                    :card_id [:in card-ids]
-                    :stored_result_id [:in stored-result-ids]))
+                    :card_id [:in [:auto/param card-ids]]
+                    :stored_result_id [:in [:auto/param stored-result-ids]]))
 
 (mu/defn insert-stored-result-use!
   "Record that the Card with `card-id` uses the StoredResult with `stored-result-id`, returning the number inserted."
@@ -571,7 +571,7 @@
 (mu/defn unpublished-table-names :- [:set :string]
   "Among the Tables with `table-ids`, the names of those not published to the Library."
   [table-ids :- [:set {:min 1} ::lib.schema.id/table]]
-  (or (t2/select-fn-set :name [:model/Table :name] :id [:in table-ids] :is_published false
+  (or (t2/select-fn-set :name [:model/Table :name] :id [:in [:auto/param table-ids]] :is_published false
                         {:from [(warehouse-schema-overlay/table-query)]})
       #{}))
 
@@ -580,7 +580,7 @@
   [card-ids :- [:set {:min 1} ::lib.schema.id/card]]
   (or (t2/select-fn-set :id [:model/Card :report_card.id] {:join  [:collection [:= :collection.id :report_card.collection_id]]
                                                            :where [:and
-                                                                   [:in :report_card.id card-ids]
+                                                                   [:in :report_card.id [:auto/param card-ids]]
                                                                    [:= :report_card.type "metric"]
                                                                    [:= :collection.type collections/library-metrics-collection-type]]})
       #{}))
@@ -589,5 +589,5 @@
   "Among `card-ids`, the IDs of the cards that are not in the collection with `collection-id`."
   [card-ids collection-id]
   (t2/select-pks-set :model/Card {:where [:and
-                                          [:in :id card-ids]
-                                          [:or [:= :collection_id nil] [:not= :collection_id collection-id]]]}))
+                                          [:in :id [:auto/param card-ids]]
+                                          [:or [:= :collection_id nil] [:not= :collection_id [:auto/param collection-id]]]]}))

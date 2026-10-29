@@ -151,10 +151,10 @@
     :where    (conj (into [:and]
                           (keep identity)
                           [(when perm-type [:= :perm_type (u/qualified-name perm-type)])
-                           (when db-id [:= :db_id db-id])
-                           (when group-id [:= :group_id group-id])
-                           (when group-ids [:in :group_id group-ids])
-                           (when excluded-database-id [:not= :db_id excluded-database-id])])
+                           (when db-id [:= :db_id [:auto/param db-id]])
+                           (when group-id [:= :group_id [:auto/param group-id]])
+                           (when group-ids [:in :group_id [:auto/param group-ids]])
+                           (when excluded-database-id [:not= :db_id [:auto/param excluded-database-id]])])
                     [:not [:exists ^:allow-subquery {:select [1]
                                                      :from   [[(t2/table-name :model/Database) :router_db]]
                                                      :where  [:and
@@ -165,5 +165,5 @@
 (mu/defn tables-for-databases
   "The id, Database id, and schema of the Tables of the Databases with `database-ids`."
   [database-ids :- [:set ::lib.schema.id/database]]
-  (t2/select [:model/Table :id :db_id :schema] :db_id [:in database-ids]
+  (t2/select [:model/Table :id :db_id :schema] :db_id [:in [:auto/param database-ids]]
              {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))

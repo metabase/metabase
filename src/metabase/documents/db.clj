@@ -49,11 +49,11 @@
                        (cond-> {:where [:and
                                         (when (seq collection-set)
                                           [:or
-                                           [:in :collection_id collection-set]
+                                           [:in :collection_id [:auto/param collection-set]]
                                            (when (some nil? collection-set)
                                              [:= :collection_id nil])])
                                         (when filter-column
-                                          [:in filter-column filter-ids])
+                                          [:in filter-column [:auto/param filter-ids]])
                                         [:= :exploration_id nil]]}
                          (seq order-columns) (assoc :order-by (mapv (fn [column] [column :asc]) order-columns)))))
 
@@ -109,7 +109,7 @@
 (mu/defn unarchived-cards-for-documents
   "The unarchived Cards of the Documents with `document-ids`."
   [document-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/Card :document_id [:in document-ids] :archived false))
+  (t2/select :model/Card :document_id [:in [:auto/param document-ids]] :archived false))
 
 (mu/defn unarchived-card-in-document-exists?
   "Whether the unarchived Card with `card-id` belongs to the Document with `document-id`."
@@ -137,7 +137,7 @@
 (mu/defn user-columns
   "The id, email, and name of the Users with `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
-  (t2/select [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
+  (t2/select [:model/User :id :email :first_name :last_name] :id [:in [:auto/param user-ids]]))
 
 (mu/defn table
   "The Table with `id`, or nil."
@@ -159,7 +159,7 @@
   (t2/query {:update (t2/table-name :model/Document)
              :set    {:last_viewed_at (into [:case]
                                             (mapcat (fn [[id timestamp]]
-                                                      [[:= :id id] [:greatest [:coalesce :last_viewed_at (t/offset-date-time 0)] timestamp]])
+                                                      [[:= :id [:auto/param id]] [:greatest [:coalesce :last_viewed_at (t/offset-date-time 0)] [:auto/param timestamp]]])
                                                     document-id->timestamp))
                       :updated_at :updated_at}
              :where  [:in :id (keys document-id->timestamp)]}))

@@ -30,7 +30,7 @@
              :conversation_id [:auto/param conversation-id]
              :role "assistant"
              :deleted_at nil
-             :slack_msg_id [:in slack-msg-ids]))
+             :slack_msg_id [:in [:auto/param slack-msg-ids]]))
 
 (mu/defn deleted-assistant-slack-msg-ids
   "The Slack message ids among `slack-msg-ids` of deleted assistant MetabotMessages of `conversation-id`."
@@ -41,7 +41,7 @@
                     :conversation_id [:auto/param conversation-id]
                     :role "assistant"
                     :deleted_at [:not= nil]
-                    :slack_msg_id [:in slack-msg-ids]))
+                    :slack_msg_id [:in [:auto/param slack-msg-ids]]))
 
 (mu/defn assistant-state-messages
   "The id, role, state, error, and finished flag of the non-deleted assistant MetabotMessages of `conversation-id`,

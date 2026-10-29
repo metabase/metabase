@@ -93,7 +93,7 @@
 (mu/defn user-names-and-emails
   "A map of User ID to first name and email for `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
-  (t2/select-pk->fn #(select-keys % [:first_name :email]) [:model/User :id :first_name :email] :id [:in user-ids]))
+  (t2/select-pk->fn #(select-keys % [:first_name :email]) [:model/User :id :first_name :email] :id [:in [:auto/param user-ids]]))
 
 (mu/defn insert-user!
   "Insert `user` and return the new instance."
@@ -161,4 +161,4 @@
   "Set the expiry of the AuthIdentities with `auth-identity-ids` to `expires-at`, returning the number updated."
   [auth-identity-ids :- [:sequential ms/PositiveInt]
    expires-at        :- ms/TemporalInstant]
-  (t2/update! :model/AuthIdentity :id [:in auth-identity-ids] {:expires_at expires-at}))
+  (t2/update! :model/AuthIdentity :id [:in [:auto/param auth-identity-ids]] {:expires_at expires-at}))

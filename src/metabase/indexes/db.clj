@@ -31,7 +31,7 @@
    ids          :- [:sequential ms/PositiveInt]]
   (t2/select :model/TableIndex
              :transform_id [:auto/param transform-id]
-             :id [:in ids]
+             :id [:in [:auto/param ids]]
              :status :running
              {:order-by [[:id :asc]]}))
 
@@ -52,20 +52,20 @@
   "Whether the Transform with `transform-id` has a TableIndex in one of `statuses`."
   [transform-id :- ::lib.schema.id/transform
    statuses     :- [:set Status]]
-  (t2/exists? :model/TableIndex :transform_id [:auto/param transform-id] :status [:in statuses]))
+  (t2/exists? :model/TableIndex :transform_id [:auto/param transform-id] :status [:in [:auto/param statuses]]))
 
 (mu/defn mark-table-indexes-running!
   "Set the TableIndexes among `ids` whose status is in `from-statuses` to running."
   [ids           :- [:set ms/PositiveInt]
    from-statuses :- [:set Status]]
-  (t2/update! :model/TableIndex {:id [:in ids] :status [:in from-statuses]} {:status :running}))
+  (t2/update! :model/TableIndex {:id [:in [:auto/param ids]] :status [:in [:auto/param from-statuses]]} {:status :running}))
 
 (mu/defn mark-running-table-indexes-failed!
   "Set the running TableIndexes among `ids` to failed with `error-message`."
   [ids           :- [:set ms/PositiveInt]
    error-message :- :string]
   (t2/update! :model/TableIndex
-              {:id [:in ids] :status :running}
+              {:id [:in [:auto/param ids]] :status :running}
               {:status           :failed
                :error_message    error-message
                :last_executed_at :%now}))
@@ -73,7 +73,7 @@
 (mu/defn mark-table-indexes-update-pending!
   "Set the TableIndexes with `ids` to update-pending and clear their error."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/update! :model/TableIndex {:id [:in ids]} {:status :update-pending, :error_message nil}))
+  (t2/update! :model/TableIndex {:id [:in [:auto/param ids]]} {:status :update-pending, :error_message nil}))
 
 (mu/defn table-index-exists-for-transform?
   "Whether the Transform with `transform-id` has a TableIndex named `index-name`."

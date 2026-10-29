@@ -93,7 +93,7 @@
 (mu/defn cards-by-id
   "A map of Card id to Card for the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select-fn->fn :id identity :model/Card :id [:in card-ids]))
+  (t2/select-fn->fn :id identity :model/Card :id [:in [:auto/param card-ids]]))
 
 (mu/defn card-query
   "The query of the Card with `card-id`, or nil."
@@ -117,7 +117,7 @@
    limit :- [:maybe ms/PositiveInt]]
   (t2/select :model/Card
              :archived false
-             :display [:in display-types]
+             :display [:in [:auto/param display-types]]
              :id [:not= [:auto/param excluded-card-id]]
              (cond-> {:order-by [[:id :desc]]}
                last-cursor
@@ -127,7 +127,7 @@
                (sql.helpers/where [:not [:in :id [:auto/param exclude-ids]]])
 
                name-pattern
-               (sql.helpers/where [:like :%lower.name name-pattern])
+               (sql.helpers/where [:like :%lower.name [:auto/param name-pattern]])
 
                limit
                (assoc :limit limit))))

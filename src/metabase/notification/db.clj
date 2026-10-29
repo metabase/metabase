@@ -120,22 +120,22 @@
    :model/Notification
    (cond-> {:select-distinct [:notification.*]}
      creator-id
-     (sql.helpers/where [:= :notification.creator_id creator-id])
+     (sql.helpers/where [:= :notification.creator_id [:auto/param creator-id]])
 
      recipient-id
      (-> (sql.helpers/left-join
           :notification_handler [:= :notification_handler.notification_id :notification.id])
          (sql.helpers/left-join
           :notification_recipient [:= :notification_recipient.notification_handler_id :notification_handler.id])
-         (sql.helpers/where [:= :notification_recipient.user_id recipient-id]))
+         (sql.helpers/where [:= :notification_recipient.user_id [:auto/param recipient-id]]))
 
      creator-or-recipient-id
      (-> (sql.helpers/left-join
           :notification_handler [:= :notification_handler.notification_id :notification.id])
          (sql.helpers/left-join
           :notification_recipient [:= :notification_recipient.notification_handler_id :notification_handler.id])
-         (sql.helpers/where [:or [:= :notification_recipient.user_id creator-or-recipient-id]
-                             [:= :notification.creator_id creator-or-recipient-id]]))
+         (sql.helpers/where [:or [:= :notification_recipient.user_id [:auto/param creator-or-recipient-id]]
+                             [:= :notification.creator_id [:auto/param creator-or-recipient-id]]]))
 
      card-id
      (-> (sql.helpers/left-join
@@ -143,7 +143,7 @@
           [:and
            [:= :notification_card.id :notification.payload_id]
            [:= :notification.payload_type "notification/card"]])
-         (sql.helpers/where [:= :notification_card.card_id card-id]))
+         (sql.helpers/where [:= :notification_card.card_id [:auto/param card-id]]))
 
      (and (nil? legacy-active) (not (true? include-inactive?)))
      (sql.helpers/where [:= :notification.active true])
@@ -152,7 +152,7 @@
      (sql.helpers/where [:= :notification.payload_type (u/qualified-name payload-type)])
 
      (some? legacy-active)
-     (sql.helpers/where [:= :notification.active legacy-active])
+     (sql.helpers/where [:= :notification.active [:auto/param legacy-active]])
 
      legacy-user-id
      (-> (sql.helpers/left-join
@@ -160,18 +160,18 @@
          (sql.helpers/left-join
           :notification_recipient [:= :notification_recipient.notification_handler_id :notification_handler.id])
          (sql.helpers/where [:or
-                             [:= :notification_recipient.user_id legacy-user-id]
-                             [:= :notification.creator_id legacy-user-id]])))))
+                             [:= :notification_recipient.user_id [:auto/param legacy-user-id]]
+                             [:= :notification.creator_id [:auto/param legacy-user-id]]])))))
 
 (mu/defn notifications-by-id
   "The Notifications with `notification-ids`."
   [notification-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/Notification :id [:in notification-ids]))
+  (t2/select :model/Notification :id [:in [:auto/param notification-ids]]))
 
 (mu/defn card-notifications
   "The card Notifications among `notification-ids`."
   [notification-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/Notification :id [:in notification-ids] :payload_type :notification/card))
+  (t2/select :model/Notification :id [:in [:auto/param notification-ids]] :payload_type :notification/card))
 
 (mu/defn active-card-notifications-for-card
   "The active card Notifications attached to the Card with `card-id`."
@@ -204,7 +204,7 @@
   "Apply `changes` to the card Notifications among `notification-ids`, returning the number updated."
   [notification-ids :- [:sequential ms/PositiveInt]
    changes          :- (mut/select-keys ::notification.schema/notification.update [:active :creator_id])]
-  (t2/update! :model/Notification :id [:in notification-ids] :payload_type :notification/card changes))
+  (t2/update! :model/Notification :id [:in [:auto/param notification-ids]] :payload_type :notification/card changes))
 
 (mu/defn deactivate-notification!
   "Mark the Notification with `notification-id` inactive, returning the number updated."
@@ -219,7 +219,7 @@
 (mu/defn delete-notifications!
   "Delete the Notifications with `notification-ids`, returning the number deleted."
   [notification-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/Notification :id [:in notification-ids]))
+  (t2/delete! :model/Notification :id [:in [:auto/param notification-ids]]))
 
 (mu/defn delete-notification-by-internal-id!
   "Delete the seeded Notification with `internal-id`, returning the number deleted."
@@ -231,7 +231,7 @@
 (mu/defn notification-cards
   "The NotificationCards with `notification-card-ids`."
   [notification-card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select :model/NotificationCard :id [:in notification-card-ids]))
+  (t2/select :model/NotificationCard :id [:in [:auto/param notification-card-ids]]))
 
 (mu/defn notification-card-exists?
   "Whether a NotificationCard with `notification-card-id` exists."
@@ -263,7 +263,7 @@
 (mu/defn subscriptions-for-notifications
   "The NotificationSubscriptions of the Notifications with `notification-ids` (nil entries are ignored)."
   [notification-ids :- [:sequential [:maybe ms/PositiveInt]]]
-  (t2/select :model/NotificationSubscription :notification_id [:in notification-ids]))
+  (t2/select :model/NotificationSubscription :notification_id [:in [:auto/param notification-ids]]))
 
 (mu/defn cron-subscriptions-for-notification
   "The cron NotificationSubscriptions of the Notification with `notification-id`."
@@ -301,7 +301,7 @@
 (mu/defn handlers-for-notifications
   "The NotificationHandlers of the Notifications with `notification-ids`."
   [notification-ids :- [:sequential ms/PositiveInt]]
-  (t2/select :model/NotificationHandler :notification_id [:in notification-ids]))
+  (t2/select :model/NotificationHandler :notification_id [:in [:auto/param notification-ids]]))
 
 (mu/defn handler-notification-ids-for-email
   "The set of Notification IDs of the handlers whose recipients (joined to their user) have an exact, lower-cased
@@ -328,7 +328,7 @@
 (mu/defn recipients-for-handlers
   "The NotificationRecipients of the NotificationHandlers with `handler-ids` (nil entries are ignored)."
   [handler-ids :- [:sequential [:maybe ms/PositiveInt]]]
-  (t2/select :model/NotificationRecipient :notification_handler_id [:in handler-ids]))
+  (t2/select :model/NotificationRecipient :notification_handler_id [:in [:auto/param handler-ids]]))
 
 (mu/defn raw-value-recipients-for-handler
   "The raw-value NotificationRecipients of the NotificationHandler with `handler-id`."
@@ -369,12 +369,12 @@
 (mu/defn active-channels-by-id
   "A map of ID to active Channel for `channel-ids`."
   [channel-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-fn->fn :id identity :model/Channel :id [:in channel-ids] :active true))
+  (t2/select-fn->fn :id identity :model/Channel :id [:in [:auto/param channel-ids]] :active true))
 
 (mu/defn channel-templates-by-id
   "A map of ID to ChannelTemplate for `template-ids`."
   [template-ids :- [:sequential ms/PositiveInt]]
-  (t2/select-fn->fn :id identity :model/ChannelTemplate :id [:in template-ids]))
+  (t2/select-fn->fn :id identity :model/ChannelTemplate :id [:in [:auto/param template-ids]]))
 
 (mu/defn channel-template-channel-type
   "The `:channel_type` of the ChannelTemplate with `template-id`."
@@ -389,7 +389,7 @@
 (mu/defn delete-channel-templates!
   "Delete the ChannelTemplates with `template-ids`, returning the number deleted."
   [template-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/ChannelTemplate :id [:in template-ids]))
+  (t2/delete! :model/ChannelTemplate :id [:in [:auto/param template-ids]]))
 
 ;;; ---------------------------------------------- Task runs ----------------------------------------------
 
@@ -729,4 +729,4 @@
 (mu/defn active-users-by-id
   "A map of ID to active User for `user-ids`."
   [user-ids :- [:sequential ::lib.schema.id/user]]
-  (t2/select-fn->fn :id identity :model/User :id [:in user-ids] :is_active true))
+  (t2/select-fn->fn :id identity :model/User :id [:in [:auto/param user-ids]] :is_active true))

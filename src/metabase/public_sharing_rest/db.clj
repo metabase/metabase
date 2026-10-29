@@ -74,7 +74,7 @@
 (mu/defn active-timeline-ids
   "The ids of the non-archived Timelines among `timeline-ids`."
   [timeline-ids :- [:set ms/PositiveInt]]
-  (t2/select-pks-set :model/Timeline :id [:in timeline-ids] :archived false))
+  (t2/select-pks-set :model/Timeline :id [:in [:auto/param timeline-ids]] :archived false))
 
 (mu/defn active-timeline-events
   "The non-archived TimelineEvents of the Timelines with `timeline-ids`, restricted to the columns safe to expose
@@ -82,6 +82,6 @@
   [timeline-ids :- [:set ms/PositiveInt]]
   (t2/select [:model/TimelineEvent :id :timeline_id :name :description :icon :timestamp :timezone :time_matters
               :archived :created_at]
-             :timeline_id [:in timeline-ids]
+             :timeline_id [:in [:auto/param timeline-ids]]
              :archived false
              {:order-by [[:timestamp :asc] [:id :asc]]}))

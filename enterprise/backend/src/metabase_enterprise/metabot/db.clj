@@ -36,14 +36,14 @@
   "Whether the group with `group-id` has a MetabotPermissions row of `perm-type`."
   [group-id  :- ms/PositiveInt
    perm-type :- :keyword]
-  (t2/exists? :model/MetabotPermissions :group_id [:auto/param group-id] :perm_type perm-type))
+  (t2/exists? :model/MetabotPermissions :group_id [:auto/param group-id] :perm_type [:auto/param perm-type]))
 
 (mu/defn update-permission-value!
   "Set the value of the MetabotPermissions row of `perm-type` for the group with `group-id`."
   [group-id   :- ms/PositiveInt
    perm-type  :- :keyword
    perm-value :- :keyword]
-  (t2/update! :model/MetabotPermissions {:group_id [:auto/param group-id] :perm_type perm-type} {:perm_value perm-value}))
+  (t2/update! :model/MetabotPermissions {:group_id [:auto/param group-id] :perm_type [:auto/param perm-type]} {:perm_value perm-value}))
 
 (mu/defn insert-permission!
   "Insert the MetabotPermissions `row`."

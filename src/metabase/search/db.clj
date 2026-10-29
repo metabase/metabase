@@ -178,7 +178,7 @@
 (mu/defn index-metadata-for-engine
   "The SearchIndexMetadata rows of `engine`."
   [engine :- :keyword]
-  (t2/select :model/SearchIndexMetadata :engine engine))
+  (t2/select :model/SearchIndexMetadata :engine [:auto/param engine]))
 
 (mu/defn index-row
   "The row of the search index `table` for `model` and `model-id`, or nil."
@@ -283,7 +283,7 @@
    lang-code  :- :string
    index-name :- :string]
   (t2/delete! :model/SearchIndexMetadata
-              :engine engine
+              :engine [:auto/param engine]
               :version [:auto/param version]
               :lang_code [:auto/param lang-code]
               :index_name [:auto/param index-name]
@@ -296,7 +296,7 @@
    version   :- :string
    lang-code :- :string]
   (t2/select [:model/SearchIndexMetadata :index_name :status :created_at]
-             :engine engine
+             :engine [:auto/param engine]
              :version [:auto/param version]
              :lang_code [:auto/param lang-code]
              :status [:in [:active :pending]]))
@@ -316,7 +316,7 @@
   [engine    :- :keyword
    version   :- :string
    lang-code :- :string]
-  (t2/exists? :model/SearchIndexMetadata :engine engine :version [:auto/param version] :lang_code [:auto/param lang-code] :status :pending))
+  (t2/exists? :model/SearchIndexMetadata :engine [:auto/param engine] :version [:auto/param version] :lang_code [:auto/param lang-code] :status :pending))
 
 (mu/defn lock-pending-index-metadata!
   "Lock and return the pending SearchIndexMetadata row of `engine`, `version`, and `lang-code`, if one exists.
@@ -325,7 +325,7 @@
    version   :- :string
    lang-code :- :string]
   (t2/select-one [:model/SearchIndexMetadata :id]
-                 :engine engine
+                 :engine [:auto/param engine]
                  :version [:auto/param version]
                  :lang_code [:auto/param lang-code]
                  :status :pending
@@ -336,28 +336,28 @@
   [engine    :- :keyword
    version   :- :string
    lang-code :- :string]
-  (t2/delete! :model/SearchIndexMetadata :engine engine :version [:auto/param version] :lang_code [:auto/param lang-code] :status :retired))
+  (t2/delete! :model/SearchIndexMetadata :engine [:auto/param engine] :version [:auto/param version] :lang_code [:auto/param lang-code] :status :retired))
 
 (mu/defn retire-active-index-metadata!
   "Retire the active SearchIndexMetadata rows of `engine`, `version`, and `lang-code`."
   [engine    :- :keyword
    version   :- :string
    lang-code :- :string]
-  (t2/update! :model/SearchIndexMetadata {:engine engine :version [:auto/param version] :lang_code [:auto/param lang-code] :status :active} {:status :retired}))
+  (t2/update! :model/SearchIndexMetadata {:engine [:auto/param engine] :version [:auto/param version] :lang_code [:auto/param lang-code] :status :active} {:status :retired}))
 
 (mu/defn activate-pending-index-metadata!
   "Activate the pending SearchIndexMetadata rows of `engine`, `version`, and `lang-code`."
   [engine    :- :keyword
    version   :- :string
    lang-code :- :string]
-  (t2/update! :model/SearchIndexMetadata {:engine engine :version [:auto/param version] :lang_code [:auto/param lang-code] :status :pending} {:status :active}))
+  (t2/update! :model/SearchIndexMetadata {:engine [:auto/param engine] :version [:auto/param version] :lang_code [:auto/param lang-code] :status :pending} {:status :active}))
 
 (mu/defn active-index-name
   "The name of the active SearchIndexMetadata row of `engine`, `version`, and `lang-code`, or nil."
   [engine    :- :keyword
    version   :- :string
    lang-code :- :string]
-  (t2/select-one-fn :index_name :model/SearchIndexMetadata :engine engine :version [:auto/param version] :lang_code [:auto/param lang-code] :status :active))
+  (t2/select-one-fn :index_name :model/SearchIndexMetadata :engine [:auto/param engine] :version [:auto/param version] :lang_code [:auto/param lang-code] :status :active))
 
 (mu/defn recent-index-versions
   "The `:version`s of the `limit` most recently updated SearchIndexMetadata versions."
@@ -391,7 +391,7 @@
 (mu/defn user-common-names
   "A map of User id to common name for the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-pk->fn :common_name [:model/User :id :first_name :last_name :email] :id [:in user-ids]))
+  (t2/select-pk->fn :common_name [:model/User :id :first_name :last_name :email] :id [:in [:auto/param user-ids]]))
 
 (mu/defn card-result-metadata
   "A map of Card id to result metadata for the Cards with `card-ids`.

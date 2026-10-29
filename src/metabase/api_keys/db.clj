@@ -114,7 +114,7 @@
   [ids]
   (map :id (t2/query (cond-> {:select [:id]
                               :from   [(t2/table-name :model/ApiKey)]
-                              :where  [:in :id ids]}
+                              :where  [:in :id [:auto/param ids]]}
                        (not= :h2 (mdb/db-type)) (assoc :for [:update :skip-locked])))))
 
 (defn update-api-keys-last-used-at!
@@ -139,14 +139,14 @@
     (let [available-ids (lock-available-key-ids (keys id->timestamp))]
       (when (seq available-ids)
         (t2/query {:update [(t2/table-name :model/ApiKey)]
-                   :where  [:in :id available-ids]
+                   :where  [:in :id [:auto/param available-ids]]
                    :set    {:last_used_at (into [:case]
                                                 (mapcat (fn [id]
-                                                          [[:= :id id]
+                                                          [[:= :id [:auto/param id]]
                                                            [:greatest [:coalesce :last_used_at (t/offset-date-time 0)]
                                                             (get id->timestamp id)]])
                                                         available-ids))
                             :updated_at :updated_at}}))
       (select-keys id->timestamp
                    (when-let [busy (seq (remove (set available-ids) (keys id->timestamp)))]
-                     (t2/select-pks-set :model/ApiKey :id [:in busy]))))))
+                     (t2/select-pks-set :model/ApiKey :id [:in [:auto/param busy]]))))))

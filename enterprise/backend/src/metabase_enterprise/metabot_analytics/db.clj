@@ -155,7 +155,7 @@
   "The conversation, data, and data version of the MetabotMessages of the MetabotConversations with
   `conversation-ids`."
   [conversation-ids :- [:sequential :string]]
-  (t2/select [:model/MetabotMessage :conversation_id :data :data_version] :conversation_id [:in conversation-ids]))
+  (t2/select [:model/MetabotMessage :conversation_id :data :data_version] :conversation_id [:in [:auto/param conversation-ids]]))
 
 (mu/defn feedback-for-conversation
   "The MetabotFeedback rows on the messages of the MetabotConversation with `conversation-id`, oldest first."

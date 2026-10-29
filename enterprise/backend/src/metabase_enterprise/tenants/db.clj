@@ -54,7 +54,7 @@
 (mu/defn tenant-names-and-ids-by-collection
   "A map of root Collection ID to `[name id]` for the Tenants owning `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select-fn->fn :tenant_collection_id (juxt :name :id) :model/Tenant :tenant_collection_id [:in collection-ids]))
+  (t2/select-fn->fn :tenant_collection_id (juxt :name :id) :model/Tenant :tenant_collection_id [:in [:auto/param collection-ids]]))
 
 (mu/defn active-tenant-exists?
   "Whether the Tenant with `tenant-id` exists and is active."

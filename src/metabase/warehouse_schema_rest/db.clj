@@ -36,7 +36,7 @@
   [table-id          :- ::lib.schema.id/table
    nfc-path-pattern  :- :string
    active?           :- :boolean]
-  (t2/update! :model/Field :table_id [:auto/param table-id] :nfc_path [:like nfc-path-pattern] {:active active?}))
+  (t2/update! :model/Field :table_id [:auto/param table-id] :nfc_path [:like [:auto/param nfc-path-pattern]] {:active active?}))
 
 (mu/defn dimension-for-field
   "The Dimension of the Field with `field-id`, or nil."
@@ -128,7 +128,7 @@
 (mu/defn tables-by-ids
   "The Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select :model/Table :id [:in [:auto/param table-ids]] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn table
   "The Table with `table-id`, or nil."
@@ -164,7 +164,7 @@
 (mu/defn active-fields-targeting
   "The active Fields whose FK target, as users see it, is one of `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select :model/Field :fk_target_field_id [:in field-ids] :active true {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select :model/Field :fk_target_field_id [:in [:auto/param field-ids]] :active true {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn delete-field-values-for-fields!
   "Delete the FieldValues of the Fields with `field-ids`."
@@ -177,6 +177,6 @@
   [field-id               :- ::lib.schema.id/field
    values                 :- [:maybe ms/FieldValues]
    human-readable-values  :- [:maybe ms/FieldValues]]
-  (app-db/update-or-insert! :model/FieldValues {:field_id field-id, :type :full}
+  (app-db/update-or-insert! :model/FieldValues {:field_id [:auto/param field-id], :type :full}
                             (constantly {:values                values
                                          :human_readable_values human-readable-values})))

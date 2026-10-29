@@ -20,7 +20,7 @@
   [database-ids :- [:sequential ::lib.schema.id/database]]
   (t2/select :model/Table
              :active          true
-             :db_id           [:in database-ids]
+             :db_id           [:in [:auto/param database-ids]]
              :visibility_type nil
              {:from [(warehouse-schema-overlay/table-query)]
               :order-by [[:%lower.schema :asc]
@@ -30,7 +30,7 @@
   "The Database id, schema and published state of each active, visible Table of the Databases with `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
   (t2/select [:model/Table :db_id :schema :is_published]
-             :db_id           [:in database-ids]
+             :db_id           [:in [:auto/param database-ids]]
              :active          true
              :visibility_type nil
              {:from [(warehouse-schema-overlay/table-query)]}))
@@ -71,7 +71,7 @@
                                   (cond
                                     (nil? collection-scope)          nil
                                     (= collection-scope :root)       [:= :collection_id nil]
-                                    :else                            [:in :collection_id collection-scope])
+                                    :else                            [:in :collection_id [:auto/param collection-scope]])
                                   (collection/visible-collection-filter-clause)]
                        :order-by [[:%lower.name :asc]]}))
 
@@ -135,7 +135,7 @@
              {:from [(warehouse-schema-overlay/table-query)]
               :where    [:and [:= :db_id [:auto/param database-id]]
                          [:= :active true]
-                         [:like :%lower.name like-pattern]
+                         [:like :%lower.name [:auto/param like-pattern]]
                          [:= :visibility_type nil]
                          (when published-only?
                            [:= :is_published true])]
@@ -213,7 +213,7 @@
   ;; expressions.
   (t2/select [:model/Field :name :base_type :semantic_type :id :table_id [:table.name :table_name]]
              :metabase_field.active          true
-             :%lower.metabase_field/name     [:like like-pattern]
+             :%lower.metabase_field/name     [:like [:auto/param like-pattern]]
              :metabase_field.visibility_type [:not-in ["sensitive" "retired"]]
              :table.db_id                    [:auto/param database-id]
              {:from       [(warehouse-schema-overlay/field-query)]
@@ -235,7 +235,7 @@
   "The id, name, display name, Table id, and types of the non-sensitive Fields of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select [:model/Field :id :name :display_name :table_id :base_type :semantic_type]
-             :table_id        [:in table-ids]
+             :table_id        [:in [:auto/param table-ids]]
              :visibility_type [:not-in ["sensitive" "retired"]]
              {:from [(warehouse-schema-overlay/field-query)]}))
 
@@ -273,7 +273,7 @@
 (mu/defn mark-tables-sync-complete!
   "Mark the initial sync of the Tables with `table-ids` complete, returning the number updated."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/update! :model/Table {:id [:in table-ids]} {:initial_sync_status "complete"}))
+  (t2/update! :model/Table {:id [:in [:auto/param table-ids]]} {:initial_sync_status "complete"}))
 
 (mu/defn delete-field-values-for-database!
   "Delete the FieldValues of every Field of the Database with `database-id`, returning the number deleted."
@@ -353,11 +353,11 @@
                                 :from   [:segment]
                                 :where  [:in :table_id ^:allow-subquery {:select [:id]
                                                                          :from   [:metabase_table]
-                                                                         :where  [:= :db_id database-id]}]}
+                                                                         :where  [:= :db_id [:auto/param database-id]]}]}
               :segment]
              [^:allow-subquery {:select [[:%count.* :transform]]
                                 :from   [:transform]
                                 :where  [:or
-                                         [:= :source_database_id database-id]
-                                         [:= :target_db_id database-id]]}
+                                         [:= :source_database_id [:auto/param database-id]]
+                                         [:= :target_db_id [:auto/param database-id]]]}
               :transform]]}))

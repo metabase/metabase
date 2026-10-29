@@ -63,7 +63,7 @@
 (mu/defn database-on-demand-flags
   "A map of Database ID to its `:is_on_demand` flag for `database-ids`."
   [database-ids :- [:set ::lib.schema.id/database]]
-  (t2/select-pk->fn :is_on_demand :model/Database :id [:in database-ids]))
+  (t2/select-pk->fn :is_on_demand :model/Database :id [:in [:auto/param database-ids]]))
 
 (mu/defn synced-user-database-exists?
   "Whether any non-sample, non-audit Database has completed its initial sync."
@@ -164,7 +164,7 @@
 (mu/defn table-database-ids
   "A map of Table ID to Database ID for `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select-pk->fn :db_id :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-pk->fn :db_id :model/Table :id [:in [:auto/param table-ids]] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn table-schemas-reducible
   "Reducible `:schema` rows of the Tables of the Database with `database-id`."
@@ -210,8 +210,8 @@
                        :db_id [:auto/param database-id]
                        {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]
                         :where    [:and (sync-tables-clause :metabase_table)
-                                   (when (seq schema-names) [:in :schema schema-names])
-                                   (when (seq table-names) [:in :name table-names])]
+                                   (when (seq schema-names) [:in :schema [:auto/param schema-names]])
+                                   (when (seq table-names) [:in :name [:auto/param table-names]])]
                         :order-by [[:schema :asc] [:name :asc]]}))
 
 (mu/defn sync-tables-by-earliest-analyzed-reducible
@@ -243,12 +243,12 @@
   "Apply `changes` to the Tables with `table-ids`, returning the number updated."
   [table-ids :- [:sequential ::lib.schema.id/table]
    changes   :- ::warehouse-schema.schema/table.update]
-  (t2/update! :model/Table :id [:in table-ids] changes))
+  (t2/update! :model/Table :id [:in [:auto/param table-ids]] changes))
 
 (mu/defn deactivate-tables!
   "Mark the active Tables among `table-ids` inactive, returning the number updated."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/update! :model/Table {:id [:in table-ids] :active true} {:active false}))
+  (t2/update! :model/Table {:id [:in [:auto/param table-ids]] :active true} {:active false}))
 
 (mu/defn rename-table-schema!
   "Move the Tables of the Database with `database-id` from `schema` to `new-schema`, returning the number updated."
@@ -268,7 +268,7 @@
 (mu/defn fields
   "The Fields with `field-ids` as sync wrote them. Feeds `our-metadata`, which is diffed against the warehouse."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids]
+  (t2/select :model/Field :id [:in [:auto/param field-ids]]
              {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn fields-for-field-values
@@ -277,7 +277,7 @@
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (t2/select [:model/Field :name :id :base_type :effective_type :coercion_strategy :semantic_type :visibility_type
               :table_id :has_field_values]
-             :id [:in field-ids]
+             :id [:in [:auto/param field-ids]]
              {:from [(warehouse-schema-overlay/field-query)]}))
 
 (defn- base-types->descendants
@@ -376,7 +376,7 @@
    lower-names :- [:sequential :string]]
   (t2/select :model/Field
              :table_id [:auto/param table-id]
-             :%lower.name [:in lower-names]
+             :%lower.name [:in [:auto/param lower-names]]
              :parent_id [:auto/param parent-id]
              :active false {:from [(warehouse-schema-overlay/field-query)]}))
 
@@ -434,7 +434,7 @@
   (or (t2/select-fn-vec :id :model/Field
                         {:select   [:id]
                          :from     [(warehouse-schema-overlay/field-query)]
-                         :where    [:and (unscored-fields-clause database-id) [:> :id after-id]]
+                         :where    [:and (unscored-fields-clause database-id) [:> :id [:auto/param after-id]]]
                          :order-by [[:id :asc]]
                          :limit    limit})
       []))
@@ -448,13 +448,13 @@
 (mu/defn fields-for-interestingness-scoring :- [:sequential (ms/InstanceOf :model/Field)]
   "The Fields with `field-ids`, as users see them, for interestingness scoring."
   [field-ids :- [:sequential {:min 1} ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select :model/Field :id [:in [:auto/param field-ids]] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn top-level-field-ids-by-name
   "The IDs of the top-level Fields of the Table with `table-id` named one of `field-names`."
   [table-id    :- ::lib.schema.id/table
    field-names :- [:sequential :string]]
-  (t2/select-pks-vec :model/Field :name [:in field-names] :table_id [:auto/param table-id] :parent_id nil {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-pks-vec :model/Field :name [:in [:auto/param field-names]] :table_id [:auto/param table-id] :parent_id nil {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn top-level-field-ids-by-schema-table-and-name-reducible
   "Reducible `:id` rows of the top-level Fields of the Database with `database-id` matching one of the
@@ -465,7 +465,7 @@
                        :from      [(warehouse-schema-overlay/field-query {:alias :f})]
                        :inner-join [(warehouse-schema-overlay/table-query {:alias :t}) [:= :f.table_id :t.id]]
                        :where      [:and
-                                    [:in [:composite [:coalesce :t.schema "__null__"] :t.name :f.name] schema+table+names]
+                                    [:in [:composite [:coalesce :t.schema "__null__"] :t.name :f.name] [:auto/param schema+table+names]]
                                     [:= :t.db_id [:auto/param database-id]]
                                     [:= :parent_id nil]]}))
 
@@ -506,13 +506,13 @@
 (mu/defn reactivate-fields!
   "Mark the Fields with `field-ids` active, returning the number updated."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/update! :model/Field {:id [:in field-ids]} {:active true}))
+  (t2/update! :model/Field {:id [:in [:auto/param field-ids]]} {:active true}))
 
 (mu/defn set-fields-fingerprint-version!
   "Set the fingerprint version of the Fields with `field-ids` to `fingerprint-version`, returning the number updated."
   [field-ids           :- [:sequential ::lib.schema.id/field]
    fingerprint-version :- :int]
-  (t2/update! :model/Field :id [:in field-ids] {:fingerprint_version fingerprint-version}))
+  (t2/update! :model/Field :id [:in [:auto/param field-ids]] {:fingerprint_version fingerprint-version}))
 
 (mu/defn set-table-fields-indexed!
   "Mark the Fields of the Table with `table-id` whose id is in `indexed-field-ids` as indexed, and all its other
@@ -528,7 +528,7 @@
   "Set `database_indexed` of the top-level Fields with `field-ids` to `indexed?`, returning the number updated."
   [field-ids :- [:sequential ::lib.schema.id/field]
    indexed?  :- :boolean]
-  (t2/update! :model/Field :parent_id nil :id [:in field-ids] {:database_indexed indexed?}))
+  (t2/update! :model/Field :parent_id nil :id [:in [:auto/param field-ids]] {:database_indexed indexed?}))
 
 (mu/defn mark-incomplete-fields-analyzed-for-table!
   "Stamp `last_analyzed` on the Fields of the Table with `table-id` fingerprinted at `fingerprint-version` but not
@@ -590,11 +590,11 @@
   (let [fk-id (:id (t2/query-one (fk-field-id-subquery db-id fk-table-schema fk-table-name fk-column-name)))
         pk-id (:id (t2/query-one (fk-field-id-subquery db-id pk-table-schema pk-table-name pk-column-name)))
         field (when (and fk-id pk-id)
-                (t2/select-one [:model/Field :id :fk_target_field_id :has_field_values] :id fk-id
+                (t2/select-one [:model/Field :id :fk_target_field_id :has_field_values] :id [:auto/param fk-id]
                                {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))]
     (if (and field (not= pk-id (:fk_target_field_id field)))
-      (t2/update! :model/Field :id fk-id (cond-> {:fk_target_field_id pk-id :semantic_type :type/FK}
-                                           (= :auto-list (:has_field_values field)) (assoc :has_field_values nil)))
+      (t2/update! :model/Field :id [:auto/param fk-id] (cond-> {:fk_target_field_id pk-id :semantic_type :type/FK}
+                                                         (= :auto-list (:has_field_values field)) (assoc :has_field_values nil)))
       0)))
 
 (defn- data-sensitivity-to-scan-clause
@@ -639,8 +639,8 @@
 (mu/defn tables-by-schema-and-name-reducible
   "Reducible Tables with `table-ids`, ordered by schema and name."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/reducible-select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]
-                                                         :order-by [[:schema :asc] [:name :asc]]}))
+  (t2/reducible-select :model/Table :id [:in [:auto/param table-ids]] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]
+                                                                       :order-by [[:schema :asc] [:name :asc]]}))
 
 (mu/defn update-field-data-sensitivity!
   "Set the `data_sensitivity` of the Field with `field-id` to `data-sensitivity`, returning the number updated."
@@ -696,7 +696,7 @@
   [field-id     :- ::lib.schema.id/field
    types        :- [:set :keyword]
    max-age-days :- :int]
-  (t2/count :model/FieldValues :field_id [:auto/param field-id] :type [:in types]
+  (t2/count :model/FieldValues :field_id [:auto/param field-id] :type [:in [:auto/param types]]
             :created_at (before-max-age-value max-age-days)))
 
 (mu/defn delete-advanced-field-values-before!
@@ -704,5 +704,5 @@
   [field-id     :- ::lib.schema.id/field
    types        :- [:set :keyword]
    max-age-days :- :int]
-  (t2/delete! :model/FieldValues :field_id [:auto/param field-id] :type [:in types]
+  (t2/delete! :model/FieldValues :field_id [:auto/param field-id] :type [:in [:auto/param types]]
               :created_at (before-max-age-value max-age-days)))

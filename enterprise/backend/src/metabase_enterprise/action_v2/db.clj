@@ -28,7 +28,7 @@
 (mu/defn fields
   "The Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select :model/Field :id [:in [:auto/param field-ids]] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn pk-fields-for-table
   "The active primary key Fields of the Table with `table-id`."
@@ -39,7 +39,7 @@
   "The Fields of the Table with `table-id` named one of `field-names`."
   [table-id    :- ::lib.schema.id/table
    field-names :- [:sequential :string]]
-  (t2/select :model/Field :table_id [:auto/param table-id] :name [:in field-names] {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select :model/Field :table_id [:auto/param table-id] :name [:in [:auto/param field-names]] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn active-fields-in-position-order
   "The active Fields of the Table with `table-id`, in position order."
@@ -68,7 +68,7 @@
 (mu/defn field-values-of-fields
   "The value lists of the FieldValues of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select-fn-vec :values :model/FieldValues :field_id [:in field-ids]))
+  (t2/select-fn-vec :values :model/FieldValues :field_id [:in [:auto/param field-ids]]))
 
 (defn- scope-and-user-expr
   [scope user-id]
@@ -149,8 +149,8 @@
    row-pks   :- [:set ::action-v2.schema/undo.row-pk]
    batch-num :- ms/PositiveInt]
   (t2/exists? :model/Undo
-              :table_id [:in table-ids]
-              :row_pk [:in row-pks]
+              :table_id [:in [:auto/param table-ids]]
+              :row_pk [:in [:auto/param row-pks]]
               :batch_num [(if undo? :> :<) [:auto/param batch-num]]
               :undone (not undo?)))
 

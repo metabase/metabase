@@ -97,7 +97,7 @@
              {:from  [[:permissions_group_membership :pgm]]
               :join  [[:permissions_group :pg] [:= :pg.id :group_id]]
               :where (into [:and [:in :user_id [:auto/param user-ids]]]
-                           (map (fn [group-id] [:not= :pg.id group-id]))
+                           (map (fn [group-id] [:not= :pg.id [:auto/param group-id]]))
                            excluded-group-ids)}))
 
 (defn- manageable-group-expr

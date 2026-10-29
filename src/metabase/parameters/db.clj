@@ -83,12 +83,12 @@
 (mu/defn fields
   "The Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select :model/Field :id [:in [:auto/param field-ids]] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn fields-fk-info
   "The id, FK target, and semantic type of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :fk_target_field_id :semantic_type] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select [:model/Field :id :fk_target_field_id :semantic_type] :id [:in [:auto/param field-ids]] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn field-fk-target-field-id
   "The FK target Field id of the Field with `field-id`, or nil."
@@ -118,7 +118,7 @@
    hash-key :- :string]
   (t2/exists? :model/FieldValues
               :field_id [:auto/param field-id], :values [:not= nil], :human_readable_values nil, :has_more_values false
-              :type "advanced", :hash_key hash-key))
+              :type "advanced", :hash_key [:auto/param hash-key]))
 
 (mu/defn card
   "The Card with `card-id`, or nil."
@@ -134,7 +134,7 @@
   "The advanced FieldValues of the Field with `field-id` and `hash-key`, or nil."
   [field-id :- ::lib.schema.id/field
    hash-key :- :string]
-  (t2/select-one :model/FieldValues :field_id [:auto/param field-id], :type :advanced, :hash_key hash-key))
+  (t2/select-one :model/FieldValues :field_id [:auto/param field-id], :type :advanced, :hash_key [:auto/param hash-key]))
 
 (mu/defn find-or-insert-advanced-field-values!
   "The advanced FieldValues of the Field with `field-id` and `hash-key`, inserting one built by calling
@@ -175,7 +175,7 @@
                           (warehouse-schema-overlay/field-query {:alias :pk-field}) [:and [:= :fk-field.fk_target_field_id :pk-field.id]
                                                                                      :pk-field.active]]
               :where     [:and
-                          [:= :database.id database-id]
+                          [:= :database.id [:auto/param database-id]]
                           [:not= :fk-field.fk_target_field_id nil]
                           :fk-field.active]
               :order-by  [[:fk-field.id :desc]

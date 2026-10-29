@@ -38,7 +38,7 @@
 (defn- shift-positions-between!
   [entity collection-id lower upper plus-or-minus]
   (t2/update! entity {:collection_id       collection-id
-                      :collection_position [:between lower upper]}
+                      :collection_position [:between lower [:auto/param upper]]}
               {:collection_position [plus-or-minus :collection_position 1]}))
 
 (mu/defn shift-card-positions-after!

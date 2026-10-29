@@ -12,7 +12,7 @@
   2 months, with at least 10 Cards (2 native), and at least 1 Dashboard. When `only-superusers?` is true, only
   superusers are considered."
   [only-superusers? :- :boolean]
-  (let [created-after (h2x/add-interval-honeysql-form (mdb/db-type) :%now -2 :month)]
+  (let [db-type (mdb/db-type)]
     (t2/query {:select [[:u.email :email]
                         [:u.date_joined :created_at]
                         [:u.first_name :first_name]
@@ -23,8 +23,8 @@
                :join [[:report_card :rc] [:= :rc.creator_id :u.id]
                       [:report_dashboard :d] [:= :d.creator_id :u.id]]
                :where [:and
-                       [:>= :rc.created_at created-after]
-                       [:>= :d.created_at created-after]
+                       [:>= :rc.created_at (h2x/add-interval-honeysql-form db-type :%now -2 :month)]
+                       [:>= :d.created_at (h2x/add-interval-honeysql-form db-type :%now -2 :month)]
                        [:= :u.is_active true]
                        [:= :u.type "personal"]
                        (when only-superusers? [:= :u.is_superuser true])]
@@ -52,7 +52,7 @@
 (mu/defn unarchived-card-count
   "The number of unarchived Cards of `card-type`."
   [card-type :- [:or :keyword :string]]
-  (t2/count :model/Card :archived false :type card-type))
+  (t2/count :model/Card :archived false :type [:auto/param card-type]))
 
 (mu/defn oldest-active-admin
   "The earliest-joined active superuser, or nil."

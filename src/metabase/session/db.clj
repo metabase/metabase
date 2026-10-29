@@ -94,10 +94,10 @@
   "Delete the Sessions whose recorded ending is more than [[ended-session-retention-days]] old, returning the number
   deleted. A live session is never deleted, whatever its age."
   []
-  (let [db-type (mdb/db-type)
-        cutoff  (h2x/add-interval-honeysql-form db-type (h2x/current-datetime-honeysql-form db-type)
-                                                (- ended-session-retention-days) :day)]
-    (t2/delete! :model/Session :ended_at [:< cutoff])))
+  (let [db-type (mdb/db-type)]
+    (t2/delete! :model/Session :ended_at [:< (h2x/add-interval-honeysql-form db-type
+                                                                             (h2x/current-datetime-honeysql-form db-type)
+                                                                             (- ended-session-retention-days) :day)])))
 
 (mu/defn delete-expired-mcp-sessions! :- ms/IntGreaterThanOrEqualToZero
   "Delete the MCP-backed `core_session` rows older than `max-age-minutes`, past their own `expires_at`, or (when

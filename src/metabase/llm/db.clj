@@ -52,7 +52,7 @@
                                {:perms/view-data      :unrestricted
                                 :perms/create-queries :query-builder-and-native})]
     (t2/select :model/Table
-               :id [:in table-ids]
+               :id [:in [:auto/param table-ids]]
                :db_id [:auto/param database-id]
                :active true
                :visibility_type nil
@@ -63,9 +63,9 @@
 (mu/defn unarchived-cards
   "The unarchived Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select :model/Card :id [:in card-ids] :archived false))
+  (t2/select :model/Card :id [:in [:auto/param card-ids]] :archived false))
 
 (mu/defn field-names-and-tables
   "The id, name, and Table id of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :name :table_id] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select [:model/Field :id :name :table_id] :id [:in [:auto/param field-ids]] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))

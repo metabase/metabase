@@ -39,17 +39,17 @@
 (mu/defn advisories-with-statuses-reducible
   "Reducible severity and acknowledgement time of the SecurityAdvisories whose match status is one of `statuses`."
   [statuses :- [:set [:or :keyword :string]]]
-  (t2/reducible-select [:model/SecurityAdvisory :severity :acknowledged_at] :match_status [:in statuses]))
+  (t2/reducible-select [:model/SecurityAdvisory :severity :acknowledged_at] :match_status [:in [:auto/param statuses]]))
 
 (mu/defn unacknowledged-advisories-with-statuses
   "The unacknowledged SecurityAdvisories whose match status is one of `statuses`."
   [statuses :- [:sequential [:or :keyword :string]]]
-  (t2/select :model/SecurityAdvisory :acknowledged_at nil :match_status [:in statuses]))
+  (t2/select :model/SecurityAdvisory :acknowledged_at nil :match_status [:in [:auto/param statuses]]))
 
 (mu/defn unacknowledged-advisories-by-advisory-ids
   "The unacknowledged SecurityAdvisories with the external `advisory-ids`."
   [advisory-ids :- [:set :string]]
-  (t2/select :model/SecurityAdvisory :advisory_id [:in advisory-ids] :acknowledged_at nil))
+  (t2/select :model/SecurityAdvisory :advisory_id [:in [:auto/param advisory-ids]] :acknowledged_at nil))
 
 (mu/defn update-advisory!
   "Apply `changes` to the SecurityAdvisory with `id`, returning the number updated."
@@ -84,4 +84,4 @@
 (mu/defn user-summaries-by-id
   "A map of ID to the ID, names, and email of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-fn->fn :id identity [:model/User :id :first_name :last_name :email] :id [:in user-ids]))
+  (t2/select-fn->fn :id identity [:model/User :id :first_name :last_name :email] :id [:in [:auto/param user-ids]]))

@@ -8,7 +8,7 @@
 (mu/defn database-with-engine-exists?
   "Whether a Database whose engine is one of `engines` exists."
   [engines :- [:sequential :keyword]]
-  (t2/exists? :model/Database :engine [:in engines]))
+  (t2/exists? :model/Database :engine [:in [:auto/param engines]]))
 
 (mu/defn sandbox-exists?
   "Whether any Sandbox exists."

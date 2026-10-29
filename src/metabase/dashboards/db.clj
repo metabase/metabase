@@ -50,7 +50,7 @@
   "The DashboardTabs of the Dashboards with `dashboard-ids`, in dashboard then position order."
   [dashboard-ids :- [:sequential ::lib.schema.id/dashboard]]
   (t2/select :model/DashboardTab
-             :dashboard_id [:in dashboard-ids]
+             :dashboard_id [:in [:auto/param dashboard-ids]]
              {:order-by [[:dashboard_id :asc] [:position :asc] [:id :asc]]}))
 
 (mu/defn dashboard-collection-authority-levels
@@ -59,7 +59,7 @@
   (mdb/query {:select    [:dashboard.id :collection.authority_level]
               :from      [[:report_dashboard :dashboard]]
               :left-join [[:collection :collection] [:= :collection.id :dashboard.collection_id]]
-              :where     [:in :dashboard.id dashboard-ids]}))
+              :where     [:in :dashboard.id [:auto/param dashboard-ids]]}))
 
 (mu/defn dashcards-with-visible-cards-for-dashboards
   "The DashboardCards of the Dashboards with `dashboard-ids` whose Card is visible (unarchived, a dashboard question
@@ -92,7 +92,7 @@
   "Set the archived flags of the Cards with `card-ids`, returning the number updated."
   [card-ids  :- [:sequential ::lib.schema.id/card]
    archived? :- :boolean]
-  (t2/update! :model/Card :id [:in card-ids] {:archived archived? :archived_directly archived?}))
+  (t2/update! :model/Card :id [:in [:auto/param card-ids]] {:archived archived? :archived_directly archived?}))
 
 (mu/defn archive-dashboard-questions!
   "Archive the unarchived Cards internal to the Dashboard with `dashboard-id`, not directly, returning the number
@@ -126,12 +126,12 @@
 (mu/defn card-queries
   "A map of Card id to query for the Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select-pk->fn :dataset_query :model/Card :id [:in card-ids]))
+  (t2/select-pk->fn :dataset_query :model/Card :id [:in [:auto/param card-ids]]))
 
 (mu/defn document-cards-among
   "The Cards among `card-ids` that belong to a Document."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select :model/Card :id [:in card-ids] :document_id [:<> nil]))
+  (t2/select :model/Card :id [:in [:auto/param card-ids]] :document_id [:<> nil]))
 
 (mu/defn insert-card!
   "Insert the Card `row` and return the inserted instance."
@@ -141,21 +141,21 @@
 (defn dashboard-question-exists?
   "Does the Dashboard with `dashboard-id` hold an unarchived Card saved inside it?"
   [dashboard-id]
-  (t2/exists? :model/Card :dashboard_id dashboard-id :archived false))
+  (t2/exists? :model/Card :dashboard_id [:auto/param dashboard-id] :archived false))
 
 (defn card-internal-to-other-dashboard?
   "Is any Card among `card-ids` saved inside a dashboard other than the one with `dashboard-id`?"
   [dashboard-id card-ids]
   (t2/exists? :model/Card
               {:where [:and
-                       [:not= :dashboard_id dashboard-id]
+                       [:not= :dashboard_id [:auto/param dashboard-id]]
                        [:not= :dashboard_id nil]
-                       [:in :id card-ids]]}))
+                       [:in :id [:auto/param card-ids]]]}))
 
 (mu/defn action-entity-ids-in
   "The entity ids among `entity-ids` that name an existing Action."
   [entity-ids :- [:set :string]]
-  (t2/select-fn-set :entity_id [:model/Action :entity_id] :entity_id [:in entity-ids]))
+  (t2/select-fn-set :entity_id [:model/Action :entity_id] :entity_id [:in [:auto/param entity-ids]]))
 
 (mu/defn dashcard-serdes-columns
   "The id, Card, Action, parameter mappings, and visualization settings of the DashboardCards of the Dashboard with
@@ -167,7 +167,7 @@
 (mu/defn dashcard-series-columns
   "The id, Card id, and DashboardCard id of the DashboardCardSeries of the DashboardCards with `dashcard-ids`."
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
-  (t2/select [:model/DashboardCardSeries :id :card_id :dashboardcard_id] :dashboardcard_id [:in dashcard-ids]))
+  (t2/select [:model/DashboardCardSeries :id :card_id :dashboardcard_id] :dashboardcard_id [:in [:auto/param dashcard-ids]]))
 
 (mu/defn series-cards-for-dashcards
   "The series Cards of the DashboardCards with `dashcard-ids`, each with its `:dashboardcard_id`, in series order."
@@ -195,18 +195,18 @@
                           [:= :dashcardseries.card_id :newcard.id]]
               :where     [:and
                           [:= :newcard.archived false]
-                          [:= :dashcard.id dashcard-id]]}))
+                          [:= :dashcard.id [:auto/param dashcard-id]]]}))
 
 (mu/defn dashcards-by-ids
   "The DashboardCards with `dashcard-ids`."
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
-  (t2/select :model/DashboardCard :id [:in dashcard-ids]))
+  (t2/select :model/DashboardCard :id [:in [:auto/param dashcard-ids]]))
 
 (mu/defn dashcards-in-tabs
   "The DashboardCards of the Dashboard with `dashboard-id` on the DashboardTabs with `tab-ids`."
   [dashboard-id :- ::lib.schema.id/dashboard
    tab-ids      :- [:sequential ms/PositiveInt]]
-  (t2/select :model/DashboardCard :dashboard_id [:auto/param dashboard-id] :dashboard_tab_id [:in tab-ids]))
+  (t2/select :model/DashboardCard :dashboard_id [:auto/param dashboard-id] :dashboard_tab_id [:in [:auto/param tab-ids]]))
 
 (mu/defn insert-dashcards!
   "Insert the DashboardCard `rows` and return their ids."
@@ -223,17 +223,17 @@
 (mu/defn delete-dashcards!
   "Delete the DashboardCards with `dashcard-ids`, returning the number deleted."
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
-  (t2/delete! :model/DashboardCard :id [:in dashcard-ids]))
+  (t2/delete! :model/DashboardCard :id [:in [:auto/param dashcard-ids]]))
 
 (mu/defn delete-pulse-cards-for-dashcards!
   "Delete the PulseCards of the DashboardCards with `dashcard-ids`, returning the number deleted."
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
-  (t2/delete! :model/PulseCard :dashboard_card_id [:in dashcard-ids]))
+  (t2/delete! :model/PulseCard :dashboard_card_id [:in [:auto/param dashcard-ids]]))
 
 (mu/defn delete-series-for-dashcards!
   "Delete the DashboardCardSeries of the DashboardCards with `dashcard-ids`, returning the number deleted."
   [dashcard-ids :- [:sequential ::lib.schema.id/dashcard]]
-  (t2/delete! :model/DashboardCardSeries :dashboardcard_id [:in dashcard-ids]))
+  (t2/delete! :model/DashboardCardSeries :dashboardcard_id [:in [:auto/param dashcard-ids]]))
 
 (mu/defn insert-dashcard-series!
   "Insert the DashboardCardSeries `rows`, returning the number inserted."
@@ -246,12 +246,12 @@
   [dashboard-id]
   (t2/select-fn-vec :card_id :model/ParameterCard
                     :parameterized_object_type "dashboard"
-                    :parameterized_object_id   dashboard-id))
+                    :parameterized_object_id   [:auto/param dashboard-id]))
 
 (defn dashcard-card-ids
   "The Card ids of the DashboardCards of the Dashboard with `dashboard-id`."
   [dashboard-id]
-  (t2/select-fn-vec :card_id :model/DashboardCard :dashboard_id dashboard-id))
+  (t2/select-fn-vec :card_id :model/DashboardCard :dashboard_id [:auto/param dashboard-id]))
 
 (defn dashcard-series-card-ids
   "The Card ids of the DashboardCardSeries of the Dashboard with `dashboard-id`."
@@ -260,25 +260,25 @@
                     {:where [:in :dashboardcard_id
                              ^:allow-subquery {:select [:id]
                                                :from   [(t2/table-name :model/DashboardCard)]
-                                               :where  [:= :dashboard_id dashboard-id]}]}))
+                                               :where  [:= :dashboard_id [:auto/param dashboard-id]]}]}))
 
 (defn dashcard-action-ids
   "The Action ids of the DashboardCards of the Dashboard with `dashboard-id`."
   [dashboard-id]
-  (t2/select-fn-vec :action_id :model/DashboardCard :dashboard_id dashboard-id))
+  (t2/select-fn-vec :action_id :model/DashboardCard :dashboard_id [:auto/param dashboard-id]))
 
 (defn dashcard-parameter-mappings
   "A map of DashboardCard id to parameter mappings for the DashboardCards of the Dashboard with `dashboard-id`."
   [dashboard-id]
-  (t2/select-pk->fn :parameter_mappings :model/DashboardCard :dashboard_id dashboard-id))
+  (t2/select-pk->fn :parameter_mappings :model/DashboardCard :dashboard_id [:auto/param dashboard-id]))
 
 (defn dashcard-card-ids-by-dashcard-id
   "A map of DashboardCard id to Card id for the DashboardCards with `dashcard-ids` on the Dashboard with
   `dashboard-id`."
   [dashboard-id dashcard-ids]
   (t2/select-pk->fn :card_id :model/DashboardCard
-                    :dashboard_id dashboard-id
-                    :id           [:in dashcard-ids]))
+                    :dashboard_id [:auto/param dashboard-id]
+                    :id           [:in [:auto/param dashcard-ids]]))
 
 ;;; ----------------------------------------------- Link cards ----------------------------------------------------
 
@@ -397,4 +397,4 @@
 (mu/defn delete-dashboard-tabs!
   "Delete the DashboardTabs with `tab-ids`, returning the number deleted."
   [tab-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/DashboardTab :id [:in tab-ids]))
+  (t2/delete! :model/DashboardTab :id [:in [:auto/param tab-ids]]))

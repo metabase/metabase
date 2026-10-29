@@ -24,7 +24,7 @@
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select :model/Table :id [:in [:auto/param table-ids]] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn tables-in-schema
   "The Tables in `schema` of the Database with `database-id`. `schema` may be nil (some drivers have no
@@ -101,7 +101,7 @@
 (mu/defn fk-fields-for-tables
   "The FK Fields of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Field :fk_target_field_id [:not= nil] :table_id [:in table-ids] {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select :model/Field :fk_target_field_id [:not= nil] :table_id [:in [:auto/param table-ids]] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn active-fk-fields-for-table
   "The active FK Fields of the Table with `table-id`."
@@ -125,13 +125,13 @@
 (mu/defn table-ids-of-fields-targeting
   "The Table ids of the active Fields whose FK target is one of `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select-fn-set :table_id :model/Field :fk_target_field_id [:in field-ids] :active true {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-fn-set :table_id :model/Field :fk_target_field_id [:in [:auto/param field-ids]] :active true {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn visible-fields-for-tables
   "The active, normally visible, previewable Fields of the Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select :model/Field
-             :table_id [:in table-ids]
+             :table_id [:in [:auto/param table-ids]]
              :visibility_type "normal"
              :preview_display true
              :active true
@@ -168,7 +168,7 @@
   (a native-query or nested-query Card has no resolved table id)."
   [table-id   :- [:maybe ::lib.schema.id/table]
    card-types :- [:sequential :keyword]]
-  (t2/select :model/Card :table_id [:auto/param table-id] :type [:in card-types] :archived false))
+  (t2/select :model/Card :table_id [:auto/param table-id] :type [:in [:auto/param card-types]] :archived false))
 
 (mu/defn unarchived-metrics-for-table
   "The unarchived metric Cards of the Table with `table-id`. `table-id` may be nil (the caller's Table is
@@ -234,7 +234,7 @@
 (mu/defn dashboards
   "The Dashboards with `dashboard-ids`."
   [dashboard-ids :- [:set ::lib.schema.id/dashboard]]
-  (t2/select :model/Dashboard :id [:in dashboard-ids]))
+  (t2/select :model/Dashboard :id [:in [:auto/param dashboard-ids]]))
 
 (mu/defn recently-edited-dashboard-ids-for-user
   "The ids of the Dashboards the User with `user-id` has revised, most recent first."
@@ -259,7 +259,7 @@
   "The Card ids other than `card-id` of the DashboardCards of the Dashboards with `dashboard-ids`."
   [dashboard-ids :- [:set ::lib.schema.id/dashboard]
    card-id       :- ::lib.schema.id/card]
-  (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id [:in dashboard-ids] :card_id [:not= [:auto/param card-id]]))
+  (t2/select-fn-set :card_id :model/DashboardCard :dashboard_id [:in [:auto/param dashboard-ids]] :card_id [:not= [:auto/param card-id]]))
 
 (mu/defn dashcard-card-and-dashboard-ids
   "The Card and Dashboard ids of the DashboardCards, optionally narrowed to `card-ids` and/or excluding

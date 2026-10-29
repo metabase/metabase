@@ -14,6 +14,6 @@
              {:where (into [:or]
                            (map (fn [[entity-type entity-local-id]]
                                   [:and
-                                   [:= :entity_type entity-type]
-                                   [:= :entity_local_id entity-local-id]]))
+                                   [:= :entity_type [:auto/param entity-type]]
+                                   [:= :entity_local_id [:auto/param entity-local-id]]]))
                            entity-type+ids)}))

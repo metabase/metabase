@@ -33,17 +33,17 @@
 (mu/defn fields
   "The Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select :model/Field :id [:in [:auto/param field-ids]] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn fields-by-id
   "A map of ID to ::warehouse-schema.schema/field for `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select-fn->fn :id identity :model/Field :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select-fn->fn :id identity :model/Field :id [:in [:auto/param field-ids]] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn field-table-id-rows
   "The ID and ::warehouse-schema.schema/table ID of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :table_id] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select [:model/Field :id :table_id] :id [:in [:auto/param field-ids]] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn field-table-id
   "The ::warehouse-schema.schema/table ID of the ::warehouse-schema.schema/field with `field-id`."
@@ -101,7 +101,7 @@
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Field
              :active true
-             :table_id [:in table-ids]
+             :table_id [:in [:auto/param table-ids]]
              :visibility_type [:not= "retired"]
              {:from [(warehouse-schema-overlay/field-query)]
               :order-by field-order-rule}))
@@ -110,7 +110,7 @@
   "A map of ::warehouse-schema.schema/table ID to the ID of its visible primary key ::warehouse-schema.schema/field for `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select-fn->fn :table_id :id :model/Field
-                    :table_id [:in table-ids]
+                    :table_id [:in [:auto/param table-ids]]
                     :semantic_type (app-db/isa :type/PK)
                     :visibility_type [:not-in ["sensitive" "retired"]]
                     {:from [(warehouse-schema-overlay/field-query {:alias :f})]}))
@@ -141,7 +141,7 @@
   "Delete the implicit Actions that write to the Table with `table-id`, returning the number deleted."
   [table-id :- ::lib.schema.id/table]
   (if-let [action-ids (not-empty (t2/select-fn-set :action_id :model/ImplicitAction :table_id [:auto/param table-id]))]
-    (t2/delete! :model/Action :id [:in action-ids])
+    (t2/delete! :model/Action :id [:in [:auto/param action-ids]])
     0))
 
 (mu/defn user-renamed-field-names :- [:set :string]
@@ -157,7 +157,7 @@
                       :left-join [[(t2/table-name :model/FieldUserSettings) :u] [:= :u.field_id :f.id]]
                       :where     [:and
                                   [:= :f.table_id [:auto/param table-id]]
-                                  [:in [:lower :f.name] names]
+                                  [:in [:lower :f.name] [:auto/param names]]
                                   [:not= :u.display_name nil]]})))
 
 (mu/defn field-names-reducible
@@ -232,7 +232,7 @@
 (mu/defn field-ids-with-user-settings :- [:set ::lib.schema.id/field]
   "The ids, among `field-ids`, of the Fields that have a FieldUserSettings row."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (set (t2/select-fn-set :field_id :model/FieldUserSettings :field_id [:in field-ids])))
+  (set (t2/select-fn-set :field_id :model/FieldUserSettings :field_id [:in [:auto/param field-ids]])))
 
 (mu/defn update-field-user-settings-custom-positions!
   "Set the `custom_position` of the FieldUserSettings of each Field in `field-id->position`, returning the number
@@ -276,13 +276,13 @@
 (mu/defn table-ids-with-user-settings :- [:set ::lib.schema.id/table]
   "The ids, among `table-ids`, of the Tables that already have a TableUserSettings row."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (set (t2/select-fn-set :table_id :model/TableUserSettings :table_id [:in table-ids])))
+  (set (t2/select-fn-set :table_id :model/TableUserSettings :table_id [:in [:auto/param table-ids]])))
 
 (mu/defn update-table-user-settings-for-tables!
   "Apply `changes` to the TableUserSettings of the Tables with `table-ids`, returning the number updated."
   [table-ids :- [:set ::lib.schema.id/table]
    changes   :- (mut/select-keys ::warehouse-schema.schema/table-user-settings.update table-user-settings-update-keys)]
-  (t2/update! :model/TableUserSettings :table_id [:in table-ids] changes))
+  (t2/update! :model/TableUserSettings :table_id [:in [:auto/param table-ids]] changes))
 
 (mu/defn insert-table-user-settings!
   "Insert one TableUserSettings map or a sequence of them, returning the number inserted."
@@ -315,7 +315,7 @@
   "The TableUserSettings of the Tables with `table-ids`, or every TableUserSettings when nil."
   [table-ids :- [:maybe [:sequential ::lib.schema.id/table]]]
   (if table-ids
-    (t2/select :model/TableUserSettings :table_id [:in table-ids])
+    (t2/select :model/TableUserSettings :table_id [:in [:auto/param table-ids]])
     (t2/select :model/TableUserSettings)))
 
 ;;; ---------------------------------------------- FieldValues ----------------------------------------------
@@ -325,12 +325,12 @@
   [field-id :- ::lib.schema.id/field
    type     :- [:enum :full :sandbox :impersonation :linked-filter :advanced]
    hash-key :- [:maybe :string]]
-  (t2/select :model/FieldValues :field_id [:auto/param field-id] :type type :hash_key hash-key))
+  (t2/select :model/FieldValues :field_id [:auto/param field-id] :type [:auto/param type] :hash_key [:auto/param hash-key]))
 
 (mu/defn full-field-values-for-fields
   "The full FieldValues of the Fields with `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
-  (t2/select :model/FieldValues :field_id [:in field-ids] :type :full :hash_key nil))
+  (t2/select :model/FieldValues :field_id [:in [:auto/param field-ids]] :type :full :hash_key nil))
 
 (mu/defn full-field-values-rows
   "The ::warehouse-schema.schema/field ID and values of the full FieldValues of the ::warehouse-schema.schema/field with `field-id`."
@@ -379,7 +379,7 @@
 (mu/defn dimensions-for-fields
   "The Dimensions of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select :model/Dimension :field_id [:in field-ids]))
+  (t2/select :model/Dimension :field_id [:in [:auto/param field-ids]]))
 
 (mu/defn update-field-values!
   "Apply `changes` to the FieldValues with `field-values-id`, returning the number updated."
@@ -406,7 +406,7 @@
 (mu/defn delete-field-values!
   "Delete the FieldValues with `field-values-ids`, returning the number deleted."
   [field-values-ids :- [:sequential ms/PositiveInt]]
-  (t2/delete! :model/FieldValues :id [:in field-values-ids]))
+  (t2/delete! :model/FieldValues :id [:in [:auto/param field-values-ids]]))
 
 (mu/defn delete-field-values-for-field!
   "Delete every FieldValues of the ::warehouse-schema.schema/field with `field-id`, returning the number deleted."
@@ -417,7 +417,7 @@
   "Delete the FieldValues of `types` of the ::warehouse-schema.schema/field with `field-id`, returning the number deleted."
   [field-id :- ::lib.schema.id/field
    types    :- [:set :keyword]]
-  (t2/delete! :model/FieldValues :field_id [:auto/param field-id] :type [:in types]))
+  (t2/delete! :model/FieldValues :field_id [:auto/param field-id] :type [:in [:auto/param types]]))
 
 ;;; ------------------------------------------------- ::warehouse-schema.schema/table -------------------------------------------------
 
@@ -429,7 +429,7 @@
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:or [:set ::lib.schema.id/table] [:sequential ::lib.schema.id/table]]]
-  (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select :model/Table :id [:in [:auto/param table-ids]] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn table-by-name
   "The ::warehouse-schema.schema/table named `table-name` in `schema` of the ::warehouses.schema/database with `database-id`, or nil."
@@ -451,7 +451,7 @@
 (defn active-tables-for-database
   "The active Tables of the Database with `database-id`."
   [database-id]
-  (t2/select :model/Table :db_id database-id :active true {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select :model/Table :db_id [:auto/param database-id] :active true {:from [(warehouse-schema-overlay/table-query)]}))
 
 (defn active-table-schemas
   "The distinct schemas of the active Tables of the Database with `database-id`, in schema order. When
@@ -460,7 +460,7 @@
   [database-id include-hidden?]
   (let [clauses (cond-> []
                   (not include-hidden?) (conj [:= :visibility_type nil]))]
-    (t2/select-fn-set :schema :model/Table :db_id database-id :active true
+    (t2/select-fn-set :schema :model/Table :db_id [:auto/param database-id] :active true
                       (merge {:from     [(warehouse-schema-overlay/table-query)]
                               :order-by [[:%lower.schema :asc]]}
                              (when clauses
@@ -470,8 +470,8 @@
   "The active Tables in `schema` of the Database with `database-id`, in display name order."
   [database-id schema]
   (t2/select :model/Table
-             :db_id database-id
-             :schema schema
+             :db_id [:auto/param database-id]
+             :schema [:auto/param schema]
              :active true
              {:from [(warehouse-schema-overlay/table-query)]
               :order-by [[:display_name :asc]]}))
@@ -480,8 +480,8 @@
   "The active, visible Tables in `schema` of the Database with `database-id`, in display name order."
   [database-id schema]
   (t2/select :model/Table
-             :db_id database-id
-             :schema schema
+             :db_id [:auto/param database-id]
+             :schema [:auto/param schema]
              :active true
              :visibility_type nil
              {:from [(warehouse-schema-overlay/table-query)]
@@ -490,7 +490,7 @@
 (mu/defn unarchived-segments-for-tables
   "The unarchived Segments of the Tables with `table-ids`, ordered by name."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Segment :table_id [:in table-ids] :archived false {:order-by [[:name :asc]]}))
+  (t2/select :model/Segment :table_id [:in [:auto/param table-ids]] :archived false {:order-by [[:name :asc]]}))
 
 (mu/defn segment-ids-for-table
   "The IDs of the Segments of the ::warehouse-schema.schema/table with `table-id`, excluding archived ones when `skip-archived?`."
@@ -501,7 +501,7 @@
 (mu/defn unarchived-measures-for-tables
   "The unarchived Measures of the Tables with `table-ids`, ordered by name."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Measure :table_id [:in table-ids] :archived false {:order-by [[:name :asc]]}))
+  (t2/select :model/Measure :table_id [:in [:auto/param table-ids]] :archived false {:order-by [[:name :asc]]}))
 
 (mu/defn measure-ids-for-table
   "The IDs of the Measures of the ::warehouse-schema.schema/table with `table-id`, excluding archived ones when `skip-archived?`."
@@ -512,12 +512,12 @@
 (mu/defn unarchived-metric-cards-for-tables
   "The unarchived metric Cards of the Tables with `table-ids`, ordered by name."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select :model/Card :table_id [:in table-ids] :archived false :type :metric {:order-by [[:name :asc]]}))
+  (t2/select :model/Card :table_id [:in [:auto/param table-ids]] :archived false :type :metric {:order-by [[:name :asc]]}))
 
 (mu/defn transforms-by-id
   "A map of ID to Transform for `transform-ids`."
   [transform-ids :- [:sequential ::lib.schema.id/transform]]
-  (t2/select-fn->fn :id identity :model/Transform :id [:in transform-ids]))
+  (t2/select-fn->fn :id identity :model/Transform :id [:in [:auto/param transform-ids]]))
 
 (mu/defn table-names-reducible
   "A reducible of the id, name, and display name of every ::warehouse-schema.schema/table, plus the user's own
@@ -545,7 +545,7 @@
 (mu/defn databases-by-id
   "A map of ID to ::warehouses.schema/database for `database-ids`."
   [database-ids :- [:set ::lib.schema.id/database]]
-  (t2/select-pk->fn identity :model/Database :id [:in database-ids]))
+  (t2/select-pk->fn identity :model/Database :id [:in [:auto/param database-ids]]))
 
 (mu/defn database-engine
   "The engine of the ::warehouses.schema/database with `database-id`."
@@ -567,12 +567,12 @@
 (mu/defn collections
   "The Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select :model/Collection :id [:in collection-ids]))
+  (t2/select :model/Collection :id [:in [:auto/param collection-ids]]))
 
 (mu/defn user-summaries-by-id
   "A map of ID to the ID, email, and names of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
+  (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in [:auto/param user-ids]]))
 
 (mu/defn cards-with-moderated-status
   "The query-metadata columns of the Cards with `card-ids`, with their latest moderation status."
@@ -593,4 +593,4 @@
                                              :order-by [[:id :desc]]
                                              :limit    1} :r]
                           [:= :r.moderated_item_id :c.id]]
-              :where     [:in :c.id card-ids]}))
+              :where     [:in :c.id [:auto/param card-ids]]}))

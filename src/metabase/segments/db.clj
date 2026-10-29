@@ -36,7 +36,7 @@
 (mu/defn table-database-ids
   "The set of Database ids of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
-  (t2/select-fn-set :db_id :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+  (t2/select-fn-set :db_id :model/Table :id [:in [:auto/param table-ids]] {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn update-segment!
   "Apply `changes` to the Segment with `id`."
@@ -62,4 +62,4 @@
 (mu/defn collections
   "The Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select :model/Collection :id [:in collection-ids]))
+  (t2/select :model/Collection :id [:in [:auto/param collection-ids]]))

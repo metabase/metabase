@@ -39,7 +39,7 @@
 (mu/defn timelines-by-id
   "A map of id to Timeline for the Timelines with `ids`."
   [ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pk->fn identity :model/Timeline :id [:in ids]))
+  (t2/select-pk->fn identity :model/Timeline :id [:in [:auto/param ids]]))
 
 (mu/defn timelines-for-collection
   "The Timelines of the Collection with `collection-id` whose archived flag is `archived`."

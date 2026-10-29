@@ -35,7 +35,7 @@
   "The Sandboxes of the groups with `group-ids` on the Table with `table-id`."
   [group-ids :- [:set ms/PositiveInt]
    table-id  :- ::lib.schema.id/table]
-  (t2/select :model/Sandbox :group_id [:in group-ids] :table_id [:auto/param table-id]))
+  (t2/select :model/Sandbox :group_id [:in [:auto/param group-ids]] :table_id [:auto/param table-id]))
 
 (mu/defn sandboxes-using-card
   "The `:id` and `:table_id` of the Sandboxes built on the Card with `card-id`."
@@ -86,8 +86,8 @@
     :left-join [(warehouse-schema-overlay/table-query {:alias :table, :user-settings? false})
                 [:= :sandboxes.table_id :table.id]]
     :where     [:and
-                [:in :sandboxes.group_id group-ids]
-                [:in :table.db_id db-ids]]}))
+                [:in :sandboxes.group_id [:auto/param group-ids]]
+                [:in :table.db_id [:auto/param db-ids]]]}))
 
 (mu/defn insert-sandbox!
   "Insert `sandbox` and return the new instance."
@@ -113,12 +113,12 @@
 (mu/defn delete-sandboxes!
   "Delete the Sandboxes with `sandbox-ids`, returning the number deleted."
   [sandbox-ids :- [:set ::lib.schema.id/sandbox]]
-  (t2/delete! :model/Sandbox :id [:in sandbox-ids]))
+  (t2/delete! :model/Sandbox :id [:in [:auto/param sandbox-ids]]))
 
 (mu/defn impersonations-for-groups
   "The ConnectionImpersonations of the groups with `group-ids`."
   [group-ids :- [:set ms/PositiveInt]]
-  (t2/select :model/ConnectionImpersonation :group_id [:in group-ids]))
+  (t2/select :model/ConnectionImpersonation :group_id [:in [:auto/param group-ids]]))
 
 (mu/defn user-group-ids
   "The IDs of the groups of the User with `user-id`."
@@ -180,7 +180,7 @@
   "The `:id` and `:name` of the Fields of the Table with `table-id` named one of `field-names`."
   [table-id    :- ::lib.schema.id/table
    field-names :- [:set :string]]
-  (t2/select [:model/Field :id :name] :table_id [:auto/param table-id] :name [:in field-names] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
+  (t2/select [:model/Field :id :name] :table_id [:auto/param table-id] :name [:in [:auto/param field-names]] {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn cards-by-id
   "A map of Card ID to the query-related columns of the Cards with `card-ids`."

@@ -22,7 +22,7 @@
 (mu/defn group-ids-by-name
   "The IDs of the PermissionsGroups named one of `group-names`."
   [group-names :- [:set :string]]
-  (t2/select-pks-set :model/PermissionsGroup :name [:in group-names]))
+  (t2/select-pks-set :model/PermissionsGroup :name [:in [:auto/param group-names]]))
 
 (mu/defn insert-relay-state!
   "Insert the SsoRelayState `row`, returning the number inserted."

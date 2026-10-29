@@ -46,12 +46,12 @@
 (mu/defn cards
   "The Cards with `card-ids`."
   [card-ids :- [:set ::lib.schema.id/card]]
-  (t2/select :model/Card :id [:in card-ids]))
+  (t2/select :model/Card :id [:in [:auto/param card-ids]]))
 
 (mu/defn cards-by-id
   "A map of Card id to Card for the Cards with `card-ids`."
   [card-ids :- [:sequential ::lib.schema.id/card]]
-  (t2/select-pk->fn identity :model/Card :id [:in card-ids]))
+  (t2/select-pk->fn identity :model/Card :id [:in [:auto/param card-ids]]))
 
 (mu/defn card-type
   "The type of the Card with `card-id`, or nil."
@@ -109,7 +109,7 @@
 (mu/defn tables
   "The Tables with `table-ids`."
   [table-ids :- [:sequential ::lib.schema.id/table]]
-  (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
+  (t2/select :model/Table :id [:in [:auto/param table-ids]] {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn database
   "The Database with `database-id`, or nil."
@@ -188,7 +188,7 @@
 (mu/defn query-actions
   "The QueryActions of the Actions with `action-ids`."
   [action-ids :- [:sequential ::lib.schema.id/action]]
-  (t2/select :model/QueryAction :action_id [:in action-ids]))
+  (t2/select :model/QueryAction :action_id [:in [:auto/param action-ids]]))
 
 (mu/defn query-action
   "The QueryAction of the Action with `action-id`, or nil."
@@ -214,7 +214,7 @@
 (mu/defn implicit-actions
   "The ImplicitActions of the Actions with `action-ids`."
   [action-ids :- [:sequential ::lib.schema.id/action]]
-  (t2/select :model/ImplicitAction :action_id [:in action-ids]))
+  (t2/select :model/ImplicitAction :action_id [:in [:auto/param action-ids]]))
 
 (mu/defn actions-with-id
   "The Actions with `action-id` (usually a single Action, since ids are unique)."
@@ -224,7 +224,7 @@
 (mu/defn actions-with-ids
   "The Actions whose `:id` is in `action-ids`."
   [action-ids :- [:sequential ::lib.schema.id/action]]
-  (t2/select :model/Action :id [:in action-ids]))
+  (t2/select :model/Action :id [:in [:auto/param action-ids]]))
 
 (mu/defn unarchived-action-with-id
   "The unarchived Actions with `action-id` (usually a single Action, since ids are unique)."
@@ -239,7 +239,7 @@
 (mu/defn fields-for-parameters
   "The id, base type, display name, and description of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
-  (t2/select [:model/Field :id :base_type :display_name :description] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
+  (t2/select [:model/Field :id :base_type :display_name :description] :id [:in [:auto/param field-ids]] {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn action-database-settings
   "The id and Database settings of the Actions with `action-ids`."

@@ -17,8 +17,8 @@
              (cond-> {:order-by [[:term :asc]]}
                search (assoc :where (let [pattern (h2x/like-substring search)]
                                       [:or
-                                       [:like [:lower :term] pattern]
-                                       [:like [:lower :definition] pattern]])))))
+                                       [:like [:lower :term] [:auto/param pattern]]
+                                       [:like [:lower :definition] [:auto/param pattern]]])))))
 
 (mu/defn insert-glossary-entry!
   "Insert the Glossary `row` and return the inserted instance."
@@ -45,7 +45,7 @@
 (mu/defn users-by-id
   "A map of User id to the id, email, and name of the Users with `user-ids`."
   [user-ids :- [:set ::lib.schema.id/user]]
-  (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in user-ids]))
+  (t2/select-pk->fn identity [:model/User :id :email :first_name :last_name] :id [:in [:auto/param user-ids]]))
 
 (mu/defn glossary-entry-by-term
   "The Glossary entry for `term`, or nil."
