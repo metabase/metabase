@@ -6,7 +6,7 @@ cd "$I18N_ROOT"
 
 pin=$(i18n_pin)
 snapshot=$(./bin/i18n/fetch-translations "$pin")
-checkout=$(mktemp -d "$I18N_CACHE/update.XXXXXX")
+checkout=$(mktemp -d "locales/metabase-i18n/update.XXXXXX")
 cp -R "$snapshot" "$checkout/locales"
 chmod -R u+w "$checkout/locales"
 printf '%s\n' "$pin" > "$checkout/base"
