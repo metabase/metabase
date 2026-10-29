@@ -25,6 +25,7 @@ import {
   getSummarySession,
   isSummaryShown,
   rememberSummarySession,
+  setSummaryDefinition,
 } from "./summary-session";
 import {
   SUMMARY_WELL_IDS,
@@ -200,7 +201,7 @@ export function SummarySidebar({
   );
 
   const handleChange = (nextDefinition: SummaryDefinition) => {
-    const nextSession = { ...session, definition: nextDefinition };
+    const nextSession = setSummaryDefinition(session, nextDefinition);
     setSession(nextSession);
     if (isHoldingStartingCount && !hasSummaryToRun(nextDefinition)) {
       return;

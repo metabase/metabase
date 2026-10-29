@@ -35,7 +35,10 @@ import { useVisualizationResultQBProps } from "../../../../hooks";
 import { getLastRunCard, getQueryResults } from "../../../../store/selectors";
 import { ObjectDetailSidesheet } from "../../../ObjectDetailSidesheet";
 import { useColumnFormulaBar } from "../../ColumnFormulaBar";
-import { readsSlowTable } from "../../FilterAutoApply/utils";
+import {
+  getQueryUpdateOptions,
+  readsSlowTable,
+} from "../../FilterAutoApply/utils";
 import { ViewFooter } from "../../ViewFooter";
 import { ViewNativeQueryEditor } from "../ViewNativeQueryEditor";
 
@@ -137,9 +140,10 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
   const columnFormula = useColumnFormulaBar({
     question,
     onQuestionChange: (nextQuestion) =>
-      updateQuestion(nextQuestion, {
-        run: !readsSlowTable(nextQuestion.query(), prototypeData),
-      }),
+      updateQuestion(
+        nextQuestion,
+        getQueryUpdateOptions(nextQuestion.query(), prototypeData),
+      ),
   });
   const { isNative, isEditable } = Lib.queryDisplayInfo(question.query());
   const onAddColumn = !isNative && isEditable ? columnFormula.open : undefined;
@@ -196,9 +200,10 @@ export const ViewMainContainer = (props: ViewMainContainerProps) => {
         <IntegrationLegendFilters
           query={question.query()}
           onChange={(nextQuery) =>
-            updateQuestion(question.setQuery(nextQuery), {
-              run: !readsSlowTable(nextQuery, prototypeData),
-            })
+            updateQuestion(
+              question.setQuery(nextQuery),
+              getQueryUpdateOptions(nextQuery, prototypeData),
+            )
           }
         />
       )}

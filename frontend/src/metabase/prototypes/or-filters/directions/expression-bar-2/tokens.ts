@@ -305,6 +305,54 @@ export function writeTokens(
   );
 }
 
+/**
+ * The stage with only the filters that `clause` is AND-ed with in the expression the tokens spell:
+ * the rows `clause` narrows down. The other branches of an OR, or anything under a NOT, are left
+ * out. `undefined` when the tokens don't parse or don't contain `clause`.
+ */
+export function writeAndContext(
+  query: Lib.Query,
+  stageIndex: number,
+  tokens: readonly ExpressionToken[],
+  clause: Lib.FilterClause,
+): Lib.Query | undefined {
+  const result = parseTokens(tokens);
+  if (!result.ok || result.tree == null) {
+    return undefined;
+  }
+  const context = getAndContext(result.tree, clause);
+  if (context == null) {
+    return undefined;
+  }
+  return context.reduce(
+    (nextQuery, tree) => Lib.filter(nextQuery, stageIndex, toClause(tree)),
+    clearFilters(query, stageIndex),
+  );
+}
+
+function getAndContext(
+  tree: Tree,
+  clause: Lib.FilterClause,
+): Tree[] | undefined {
+  switch (tree.type) {
+    case "leaf":
+      return tree.clause === clause ? [] : undefined;
+    case "not":
+      return getAndContext(tree.arg, clause) != null ? [] : undefined;
+    case "node": {
+      const contexts = tree.args.map((arg) => getAndContext(arg, clause));
+      const index = contexts.findIndex((context) => context != null);
+      if (index < 0) {
+        return undefined;
+      }
+      const innerContext = contexts[index] ?? [];
+      const siblings =
+        tree.op === "and" ? tree.args.filter((_, i) => i !== index) : [];
+      return [...siblings, ...innerContext];
+    }
+  }
+}
+
 function toClause(tree: Tree): Lib.FilterClause | Lib.ExpressionClause {
   switch (tree.type) {
     case "leaf":

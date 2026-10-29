@@ -64,3 +64,15 @@ export function readsSlowTable(
     (item) => item.type === "table" && slowTableIds.has(item.id),
   );
 }
+
+/**
+ * How the query builder's editors update the question: fast data runs right away, slow data
+ * waits for Run, with the URL kept in step with the unrun question.
+ */
+export function getQueryUpdateOptions(
+  query: Lib.Query,
+  prototypeData: PrototypeDataInfo | null | undefined,
+): { run: boolean; shouldUpdateUrl: boolean } {
+  const isSlow = readsSlowTable(query, prototypeData);
+  return { run: !isSlow, shouldUpdateUrl: isSlow };
+}

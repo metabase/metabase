@@ -17,7 +17,7 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
 
-import { readsSlowTable } from "../FilterAutoApply/utils";
+import { getQueryUpdateOptions } from "../FilterAutoApply/utils";
 import { FormulaBarSlotTarget } from "../FormulaBar";
 import { ViewSection } from "../ViewSection";
 
@@ -244,9 +244,10 @@ export function ViewTitleHeader({
               <IntegrationFilters
                 query={query}
                 onChange={(nextQuery) => {
-                  updateQuestion(question.setQuery(nextQuery), {
-                    run: !readsSlowTable(nextQuery, prototypeData),
-                  });
+                  updateQuestion(
+                    question.setQuery(nextQuery),
+                    getQueryUpdateOptions(nextQuery, prototypeData),
+                  );
                 }}
               />
             )
