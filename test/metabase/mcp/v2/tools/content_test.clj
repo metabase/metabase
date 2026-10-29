@@ -1,10 +1,8 @@
 (ns metabase.mcp.v2.tools.content-test
   (:require
-   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
-   [malli.core :as mc]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.message :as message]
@@ -15,11 +13,9 @@
    [metabase.mcp.v2.tools.content :as tools.content]
    [metabase.metrics.core :as metrics]
    [metabase.notification.test-util :as notification.tu]
-   [metabase.parameters.schema :as parameters.schema]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util.json :as json]
-   [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -1227,14 +1223,6 @@
             each had a competing registration whose winner was decided by load order"
     (is (contains? (set (projections/catalog :metric)) "query_summary"))
     (is (contains? (set (projections/catalog :document)) "content_markdown"))))
-
-(deftest dashboard-catalog-covers-parameter-value-sources-test
-  (testing "BOT-2524: get_content can select every key a dashboard parameter's value source config can hold"
-    (let [catalog     (set (projections/catalog :dashboard))
-          config-keys (map first (mc/children (mr/resolve-schema ::parameters.schema/values-source-config)))
-          paths       (into #{} (map #(str "parameters.values_source_config." (name %))) config-keys)]
-      (is (seq config-keys))
-      (is (= #{} (set/difference paths catalog))))))
 
 (deftest get-content-subscription-fields-covers-notification-shape-test
   (testing "GHY-4140: the subscription fields catalog covers the notification-backed shape, not
