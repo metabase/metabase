@@ -21,6 +21,10 @@
      (message/msg ["invalid op: %s — see the tool description for each op's arguments."]
                   (common/humanize-detail explanation)))
 
+   :invalid-payload
+   (fn [{:keys [explanation]}]
+     (message/msg ["The requested ops produce an invalid dashboard: %s"] (common/humanize-detail explanation)))
+
    :duplicate-new-id
    (fn [{:keys [id]}]
      (message/msg ["id %s is already used in this batch — give each new row its own negative id."] id))
