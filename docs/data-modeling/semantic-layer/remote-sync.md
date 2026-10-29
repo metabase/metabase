@@ -13,7 +13,7 @@ Remote sync stores your [Library](./library.md) and [transforms](../transforms/t
 
 Remote sync syncs:
 
-- The Library: published tables with their segments and measures, metrics, dashboards, documents, data apps, SQL snippets, data actions, and the glossary.
+- The Library: published tables with their segments and measures, metrics, dashboards, documents, [data apps](../../data-apps/build.md#what-syncs-with-a-data-app), SQL snippets, [data actions](../data-actions.md), and the glossary.
 - Transforms: their tags, tests, folders, and Python libraries.
 
 Metabase doesn't sync any of your data. All Metabase stores in Git are [YAML files](../../installation-and-operation/serialization.md#example-of-a-serialized-question) that describe your analytics content. Your actual data stays in your databases and never leaves your Metabase.
@@ -43,7 +43,7 @@ Your repository can't change users, groups, or permissions, because those [don't
 ### Remote sync has two modes for different roles
 
 - **Read-write mode for your development Metabase**: Create and edit Library content and transforms. You can [push](#pushing-changes-to-git) and [pull](#pulling-changes-from-git) changes to and from your repository. Multiple Metabases can connect in Read-write mode, each working on [different branches](#branch-management).
-- **Read-only mode for your production Metabase**: Read-only Metabases only [pull](#pulling-changes-from-git) changes, typically from your main branch. In Read-only mode, you can't edit Library content, create segments or measures on published tables, or edit transforms. You can set up [auto-sync](#pulling-changes-automatically) to pull approved changes every five minutes. Keep your production Metabase in Read-only mode so that every change goes through Git.
+- **Read-only mode for your production Metabase**: Read-only Metabases only [pull](#pulling-changes-from-git) changes, typically from your main branch. In Read-only mode, you can't edit Library content, create segments or measures on published tables, edit transforms, or create, edit, or delete [data apps](../../data-apps/build.md#ship-the-app-to-production-with-remote-sync). You can set up [auto-sync](#pulling-changes-automatically) to pull approved changes every five minutes. Keep your production Metabase in Read-only mode so that every change goes through Git.
 
 ### Content is stored as YAML files
 
@@ -313,9 +313,9 @@ Remote sync uses the same serialization format as the [Metabase CLI serializatio
 - Metrics
 - Dashboards and their cards
 - Documents
-- Data apps. Metabase syncs the app's bundle and the Metabase items the app needs to run, not the app's source code. Keep the source code in your own repository so you can edit the app.
+- [Data apps](../../data-apps/build.md#what-syncs-with-a-data-app). Metabase syncs the app's bundle and the Metabase items the app needs to run, not the app's source code. Keep the source code in your own repository so you can edit the app.
 - SQL snippets
-- Data actions
+- [Data actions](../data-actions.md)
 - The glossary
 - Timelines and events
 - Transforms, including tags, tests, folders, and Python libraries
