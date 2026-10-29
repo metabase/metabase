@@ -29,10 +29,13 @@
    [clojure.walk :as walk]
    [methodical.core :as methodical]
    [toucan2.honeysql2 :as t2.honeysql]
-   [toucan2.pipeline :as t2.pipeline])
+   [toucan2.pipeline :as t2.pipeline]
+   [toucan2.query :as t2.query]
+   [toucan2.tools.transformed])
   (:import
    (clojure.lang MapEntry)
-   (java.util.concurrent ThreadLocalRandom)))
+   (java.util.concurrent ThreadLocalRandom)
+   (toucan2.tools.transformed RecordTypeForInterceptingApplyKVArgCalls)))
 
 (set! *warn-on-reflection* true)
 
@@ -265,6 +268,38 @@
     (throw (ex-info "[:auto/param ...] would reach SQL unlifted. It belongs in a value slot of a query map."
                     {:type ::marker-reached-sql, :query query}))))
 
+(defn- transform-marked-condition
+  "Kv-arg condition `v` with transform `f` applied the way Toucan applies a column's `:in` transform, but to a
+  marker's payload, element by element for a collection, rather than to the marker vector itself."
+  [f v]
+  (letfn [(marker [[_ payload]]
+            [:auto/param (if (and (coll? payload) (not (map? payload)))
+                           (into (empty payload) (map f) payload)
+                           (f payload))])
+          (arg [x]
+            (cond
+              (marker-form? x)              (marker x)
+              (or (sequential? x) (set? x)) (mapv arg x)
+              :else                         (f x)))]
+    (cond
+      (marker-form? v) (marker v)
+      (sequential? v)  (into [(first v)] (map arg) (rest v))
+      :else            (f v))))
+
+(methodical/defmethod t2.query/apply-kv-arg :around [:default RecordTypeForInterceptingApplyKVArgCalls :default]
+  [model query k v]
+  (if-not (contains-marker? v)
+    (next-method model query k v)
+    [k (transform-marked-condition (fn [x] (if (some? x) (second (next-method model query k x)) x)) v)]))
+
+(defn lift
+  "Rewrite the markers in query map `query` into `[:param k]` forms, returning `[rewritten-query params-map]`."
+  [query]
+  (check-marker-placement query)
+  (let [[query params] (auto-param query)]
+    (assert-no-marker-survived! query)
+    [query params]))
+
 (methodical/defmethod t2.pipeline/compile :around :default
   [query-type model built-query]
   ;; Toucan re-enters `compile` with the `[sql & args]` vector it produced, so only a map is worth
@@ -272,9 +307,7 @@
   (if-not (map? built-query)
     (do (assert-no-marker-survived! built-query)
         (next-method query-type model built-query))
-    (let [_              (check-marker-placement built-query)
-          [query params] (auto-param built-query)]
-      (assert-no-marker-survived! query)
+    (let [[query params] (lift built-query)]
       (if-not (seq params)
         (next-method query-type model query)
         ;; HoneySQL takes params as a format option rather than a query clause. Merge so that an

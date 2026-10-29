@@ -178,27 +178,35 @@
       (when (and (contains? changes :values) (= :full (:type <>)))
         (clear-advanced-field-values-for-field! (:field_id field-values))))))
 
-(defn- assert-coherent-query [{:keys [type hash_key] :as field-values}]
-  (cond
-    (nil? type)
-    (when (some? hash_key)
-      (throw (ex-info "Invalid query - cannot specify a hash_key without specifying the type"
-                      {:field-values field-values})))
+(defn- unmarked
+  "The payload of an `[:auto/param v]` marker, or `v` itself."
+  [v]
+  (if (and (vector? v) (= :auto/param (first v))) (second v) v))
 
-    (= :full (keyword type))
-    (when (some? hash_key)
-      (throw (ex-info "Invalid query - :full FieldValues cannot have a hash_key"
-                      {:field-values field-values})))
+(defn- assert-coherent-query [field-values]
+  (let [type     (unmarked (:type field-values))
+        hash_key (unmarked (:hash_key field-values))]
+    (cond
+      (nil? type)
+      (when (some? hash_key)
+        (throw (ex-info "Invalid query - cannot specify a hash_key without specifying the type"
+                        {:field-values field-values})))
 
-    (and (contains? field-values :hash_key) (nil? hash_key))
-    (throw (ex-info "Invalid query - Advanced FieldValues can only specify a non-empty hash_key"
-                    {:field-values field-values}))))
+      (= :full (keyword type))
+      (when (some? hash_key)
+        (throw (ex-info "Invalid query - :full FieldValues cannot have a hash_key"
+                        {:field-values field-values})))
 
-(defn- add-mismatched-hash-filter [{:keys [type] :as field-values}]
-  (cond
-    (= :full (keyword type)) (assoc field-values :hash_key nil)
-    (some? type)             (update field-values :hash_key #(or % [:not= nil]))
-    :else                    field-values))
+      (and (contains? field-values :hash_key) (nil? hash_key))
+      (throw (ex-info "Invalid query - Advanced FieldValues can only specify a non-empty hash_key"
+                      {:field-values field-values})))))
+
+(defn- add-mismatched-hash-filter [field-values]
+  (let [type (unmarked (:type field-values))]
+    (cond
+      (= :full (keyword type)) (assoc field-values :hash_key nil)
+      (some? type)             (update field-values :hash_key #(or % [:not= nil]))
+      :else                    field-values)))
 
 (t2/define-before-select :model/FieldValues
   [{:keys [kv-args] :as query}]

@@ -26,3 +26,11 @@
         ;; an operator the check does not have to know by name
         [:auto/param [:not-between 1 5]]
         [:auto/param [:regexp "x"]]))))
+
+(deftest marked-kv-arg-on-transformed-column-test
+  (testing "a column's :in transform applies to a marker's payload, so a marked kv-arg compiles as the unmarked one does"
+    (are [marked unmarked] (= (t2/compile (t2/select :model/FieldValues :type unmarked))
+                              (t2/compile (t2/select :model/FieldValues :type marked)))
+      [:auto/param :full]                  :full
+      [:in [:auto/param [:full :sandbox]]] [:in [:full :sandbox]]
+      [:not= [:auto/param :full]]          [:not= :full])))
