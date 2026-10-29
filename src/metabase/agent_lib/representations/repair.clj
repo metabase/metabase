@@ -2734,12 +2734,14 @@
      :desired-alias     <alias>
      :deduplicated-name <name>
      :display-name      <display name>
+     :join-alias        <alias of the join the column came through> | nil
      :id                <field id> | nil
      :types             {\"base-type\" …} | nil}
 
   The desired alias and the deduplicated name are the names lib resolves a by-name ref against.
   The display name lets [[match-cross-stage-column]] recover a ref the LLM wrote with the UI label, such as
   `\"Max of Instance Has SC\"`, instead of the machine name `max`.
+  The join alias says which of the previous stage's joins the column came through.
   The types are nil when the column has no usable `base-type`."
   [cols]
   (mapv (fn [col]
@@ -2747,6 +2749,7 @@
            :desired-alias     (:lib/desired-column-alias col)
            :deduplicated-name (:lib/deduplicated-name col)
            :display-name      (:display-name col)
+           :join-alias        (:lib/original-join-alias col)
            :id                (:id col)
            :types             (types-from-column col)})
         cols))
@@ -2853,15 +2856,23 @@
         (assoc 1 (merge opts types)))
       clause)))
 
+(defn- previous-stage-alias?
+  "True if `field-ref` has no join alias, or one that some column in `cols` came through."
+  [cols field-ref]
+  (let [alias (get (nth field-ref 1) "join-alias")]
+    (or (nil? alias) (some #(= alias (:join-alias %)) cols))))
+
 (defn- infer-cross-stage-field-types-in-stage
   "Stamp types from `cols` on every by-name field ref in `stage` that lacks `\"base-type\"`, including the
   refs in its joins' `conditions`.
+  Leaves alone a ref through a join alias that no column in `cols` came through, for validation to reject.
   Skips each join's own `stages`, which resolve on their own and can't reach this stage's columns."
   [stage cols]
   (let [aliases (stage-join-aliases stage)]
     (postwalk-outside-join-stages
      (fn [node]
-       (if (string-cross-stage-field-clause? aliases node)
+       (if (and (string-cross-stage-field-clause? aliases node)
+                (previous-stage-alias? cols node))
          (maybe-fill-cross-stage-types node cols)
          node))
      stage)))
@@ -3101,11 +3112,12 @@
 
 (defn- first-unresolved-cross-stage-ref
   "Return the first [[unstamped-cross-stage-ref?]] clause in `stage` that matches no column in `cols`, or nil.
-  Skips each join's own `stages`, which resolve on their own."
+  Skips each join's own `stages`, which resolve on their own, and refs that aren't [[previous-stage-alias?]]."
   [stage cols]
   (let [aliases (stage-join-aliases stage)]
     (match/match-one (without-join-stages stage)
       (node :guard (and (unstamped-cross-stage-ref? aliases node)
+                        (previous-stage-alias? cols node)
                         (nil? (match-cross-stage-column cols (nth node 2)))))
       node)))
 
