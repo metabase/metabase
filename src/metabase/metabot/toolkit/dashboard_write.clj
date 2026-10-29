@@ -87,9 +87,14 @@
       (dashboards.write/update-dashboard! (u/the-id dash) (merge attrs payload)))
     (dashboards.write/update-dashboard! (u/the-id dash) attrs)))
 
+(defn- saved-dashboard
+  "The saved dashboard `id`, read back and hydrated with `[:dashcards :series :card] :tabs`."
+  [id]
+  (t2/hydrate (toolkit.db/dashboard id) [:dashcards :series :card] :tabs))
+
 (defn- create-dashboard!
-  "Creates a dashboard from `attrs` with `ops` applied, and returns the saved row.
-   Nothing is written if an op is invalid or the save fails."
+  "Creates a dashboard from `attrs` with `ops` applied, and returns it read back and hydrated.
+   Nothing is written if an op is invalid, or if the save or the read back fails."
   [attrs ops]
   (if (seq ops)
     (do
@@ -100,16 +105,15 @@
       ;; ...and the two writes share a transaction, because the compile above only proves the ops are good. Anything
       ;; else that throws after the row exists (a schema check, a permission check, a failing save) would otherwise
       ;; strand an empty dashboard, and every retry would add another (GHY-4501).
+      ;; The read back runs inside the transaction too, so a failure there doesn't report an error for a dashboard
+      ;; that was in fact created.
       (t2/with-transaction [_conn]
-        (update-dashboard! (t2/hydrate (dashboards.write/create-dashboard! attrs) [:dashcards :series :card] :tabs)
-                           {}
-                           ops)))
-    (dashboards.write/create-dashboard! attrs)))
-
-(defn- saved-dashboard
-  "The saved dashboard `id`, read back and hydrated with `[:dashcards :series :card] :tabs`."
-  [id]
-  (t2/hydrate (toolkit.db/dashboard id) [:dashcards :series :card] :tabs))
+        (-> (dashboards.write/create-dashboard! attrs)
+            (t2/hydrate [:dashcards :series :card] :tabs)
+            (update-dashboard! {} ops)
+            :id
+            saved-dashboard)))
+    (saved-dashboard (:id (dashboards.write/create-dashboard! attrs)))))
 
 (defn write!
   "Creates or updates a dashboard with the attributes `attrs` and the ops `ops`, and returns it.
@@ -134,7 +138,7 @@
         (dry-run-dashboard dashboard attrs nil nil))
 
     (nil? dashboard)
-    (saved-dashboard (:id (create-dashboard! attrs ops)))
+    (create-dashboard! attrs ops)
 
     :else
     (saved-dashboard (:id (update-dashboard! dashboard attrs ops)))))

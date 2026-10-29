@@ -6,6 +6,7 @@
    [clojure.test :refer :all]
    [metabase.metabot.toolkit.dashboard-ops :as dashboard-ops]
    [metabase.metabot.toolkit.dashboard-write :as dashboard-write]
+   [metabase.metabot.toolkit.db :as toolkit.db]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -63,6 +64,17 @@
         (is (=? {::dashboard-ops/error :invalid-op, :op-index 0}
                 (error-data #(dashboard-write/write! {:attrs {:name dash-name} :ops [{:op "frobnicate"}]}))))
         (is (not (t2/exists? :model/Dashboard :name dash-name)))))))
+
+(deftest create-read-back-failure-test
+  (testing "a create whose read back fails leaves nothing behind, so the error it reports is true"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Card card {}]
+        (let [dash-name "Created then read back by the toolkit"]
+          (mt/with-dynamic-fn-redefs [toolkit.db/dashboard (fn [_] (throw (ex-info "read back failed" {})))]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"read back failed"
+                                  (dashboard-write/write! {:attrs {:name dash-name}
+                                                           :ops   [{:op "add_card" :id -1 :card_id (:id card)}]}))))
+          (is (not (t2/exists? :model/Dashboard :name dash-name))))))))
 
 (deftest invalid-payload-test
   (testing "ops that compile to a payload the save would reject fail with :invalid-payload, before any write"
