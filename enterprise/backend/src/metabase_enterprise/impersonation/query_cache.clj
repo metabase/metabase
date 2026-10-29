@@ -37,14 +37,13 @@
       nil)))
 
 (mu/defn- save-result! :- :nil
-  "Cache `result` for `input`, leaving the cache as it is when the insert fails, e.g. because another node cached
-  the same result first."
+  "Cache `result` for `input`, replacing a row with the same lookup key, or log why the cache cannot be written."
   [input  :- ::impersonation.schema/impersonation-query-cache.update
    result :- ::impersonation.schema/impersonation-query-cache.update]
   (try
-    (impersonation.db/insert-query-cache! (merge input result))
+    (impersonation.db/update-or-insert-query-cache! (merge input result))
     (catch Throwable e
-      (log/debugf "Not caching an impersonated query validation result: %s" (ex-message e))))
+      (log/errorf "Error writing the impersonation query cache: %s" (ex-message e))))
   nil)
 
 (mu/defn- replay-result :- :string

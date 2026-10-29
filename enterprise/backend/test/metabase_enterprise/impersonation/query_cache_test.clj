@@ -65,13 +65,15 @@
       (t2/update! :model/ImpersonationQueryCache :input_query native {:input_version "v0.0.0 (other)"})
       (is (= "SELECT 2" (query-cache/validated-query :postgres false false native (constantly "SELECT 2")))))))
 
-(deftest hash-collision-is-cache-miss-test
+(deftest hash-collision-is-replaced-test
   (mt/with-model-cleanup [:model/ImpersonationQueryCache]
     (let [native (mt/random-name)]
       (query-cache/validated-query :postgres false false native (constantly "SELECT 1"))
       (t2/update! :impersonation_query_cache :input_query native {:input_query "SELECT 'colliding'"})
-      (testing "row whose input_query differs is not used, and failing to insert over it does not fail query"
-        (is (= "SELECT 2" (query-cache/validated-query :postgres false false native (constantly "SELECT 2"))))))))
+      (testing "row whose input_query differs is not used, and replacing it keeps surrounding transaction usable"
+        (t2/with-transaction [_conn]
+          (is (= "SELECT 2" (query-cache/validated-query :postgres false false native (constantly "SELECT 2"))))
+          (is (= "SELECT 2" (t2/select-one-fn :result_query :model/ImpersonationQueryCache :input_query native))))))))
 
 (deftest hash-follows-input-query-test
   (mt/with-model-cleanup [:model/ImpersonationQueryCache]
