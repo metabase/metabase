@@ -132,12 +132,12 @@
   (update state coll (partial filterv #(not= id (:id %)))))
 
 (defn- move-row
-  "Move the row with `id` so it sits at `index` among the remaining rows; nil when `index` falls
-   outside `[0, count-after-removal]`."
+  "Move the row with `id` so it sits at `index` among the remaining rows; nil when `index` is not an integer in
+   `[0, count-after-removal]`."
   [state coll id index]
   (let [row   (find-row state coll id)
         rest* (filterv #(not= id (:id %)) (get state coll))]
-    (when (<= 0 index (count rest*))
+    (when (and (int? index) (<= 0 index (count rest*)))
       (assoc state coll (vec (concat (subvec rest* 0 index) [row] (subvec rest* index)))))))
 
 (defn- map-rows
@@ -537,6 +537,8 @@
 
 (defmethod apply-op "add_parameter"
   [state {:keys [parameter_id] :as op}]
+  (when (nil? parameter_id)
+    (fail! :missing-parameter-id))
   (when (find-row state :parameters parameter_id)
     (fail! :parameter-exists {:parameter-id parameter_id}))
   (insert-row state :parameters

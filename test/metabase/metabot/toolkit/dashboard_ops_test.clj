@@ -119,13 +119,18 @@
     (is (=? {::dashboard-ops/error :missing-tab-id, :op-name "remove_tab"}
             (op-error empty-dash [{:op "remove_tab"}])))
     (is (=? {::dashboard-ops/error :missing-parameter-id, :op-name "remove_parameter"}
-            (op-error empty-dash [{:op "remove_parameter"}])))))
+            (op-error empty-dash [{:op "remove_parameter"}])))
+    (is (=? {::dashboard-ops/error :missing-parameter-id, :op-name "add_parameter"}
+            (op-error empty-dash [{:op "add_parameter" :name "Country" :type "string/="}])))))
 
 (deftest ^:parallel out-of-range-index-test
-  (testing "move_tab and move_parameter report an index past the end with the count it must stay within"
+  (testing "move_tab and move_parameter report a missing index, or one past the end, with the count it must stay within"
     (is (=? {::dashboard-ops/error :tab-index-out-of-range, :index 3, :tab-count 1}
             (op-error (assoc empty-dash :tabs [{:id 1 :name "A"}])
                       [{:op "move_tab" :tab_id 1 :index 3}])))
+    (is (=? {::dashboard-ops/error :tab-index-out-of-range, :index nil, :tab-count 1}
+            (op-error (assoc empty-dash :tabs [{:id 1 :name "A"}])
+                      [{:op "move_tab" :tab_id 1}])))
     (is (=? {::dashboard-ops/error :parameter-index-out-of-range, :index 4, :parameter-count 1}
             (op-error (assoc empty-dash :parameters [{:id "p1"}])
                       [{:op "move_parameter" :parameter_id "p1" :index 4}])))))
