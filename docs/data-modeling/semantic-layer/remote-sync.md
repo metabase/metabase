@@ -24,11 +24,11 @@ Metabase doesn't sync any of your data. All Metabase stores in Git are [YAML fil
 
 Here's a basic Remote sync workflow:
 
-1. Publish a table, create a metric, or build a dashboard in the Library of a **Metabase in Read-write mode**.
-2. Push the change to a Git branch.
+1. In your development Metabase (Read-write mode), publish a table, create a metric, or build a dashboard in the Library.
+2. From the development Metabase, push the change to a Git branch.
 3. Open a pull request for review.
 4. Merge the pull request to your main branch.
-5. Your **Metabase in Read-only mode** pulls in the change.
+5. Your production Metabase (Read-only mode) pulls in the change.
 
 Two Metabases that point at the same branch share the same Library. A new Metabase has nothing to push, so its first pull doesn’t conflict.
 
@@ -42,8 +42,8 @@ Your repository can't change users, groups, or permissions, because those [don't
 
 ### Remote sync has two modes for different roles
 
-- **Read-write mode**: Create and edit Library content and transforms. You can [push](#pushing-changes-to-git) and [pull](#pulling-changes-from-git) changes to and from your repository. Multiple Metabases can connect in Read-write mode, each working on [different branches](#branch-management).
-- **Read-only mode**: Read-only Metabases only [pull](#pulling-changes-from-git) changes, typically from your main branch. In Read-only mode, you can't edit Library content, create segments or measures on published tables, or edit transforms. You can set up [auto-sync](#pulling-changes-automatically) to pull approved changes every five minutes.
+- **Read-write mode for your development Metabase**: Create and edit Library content and transforms. You can [push](#pushing-changes-to-git) and [pull](#pulling-changes-from-git) changes to and from your repository. Multiple Metabases can connect in Read-write mode, each working on [different branches](#branch-management).
+- **Read-only mode for your production Metabase**: Read-only Metabases only [pull](#pulling-changes-from-git) changes, typically from your main branch. In Read-only mode, you can't edit Library content, create segments or measures on published tables, or edit transforms. You can set up [auto-sync](#pulling-changes-automatically) to pull approved changes every five minutes. Keep your production Metabase in Read-only mode so that every change goes through Git.
 
 ### Content is stored as YAML files
 
@@ -62,10 +62,10 @@ You can only have [one branch at a time per Metabase](#branching-limitations).
 You'll need to be an admin to set up Remote sync.
 
 1. [Set up a repository to store your content](#1-set-up-a-repository-to-store-your-content)
-2. [Create a token for your read-write Metabase](#2-create-a-token-for-your-read-write-metabase)
+2. [Create a token for your development Metabase](#2-create-a-token-for-your-development-metabase)
 3. [Connect your development Metabase to your repository](#3-connect-your-development-metabase-to-your-repository)
 4. [Push your changes to your repository](#4-push-your-changes-to-your-repository)
-5. [Create a token for your read-only Metabase](#5-create-a-token-for-your-read-only-metabase)
+5. [Create a token for your production Metabase](#5-create-a-token-for-your-production-metabase)
 6. [Connect your production Metabase to your repository](#6-connect-your-production-metabase-to-your-repository)
 
 ### 1. Set up a repository to store your content
@@ -81,7 +81,7 @@ Initialize the repo with a README.md.
 
 Anyone who can push to this repository can change content in your synced Metabases, so [limit who has write access](#treat-write-access-to-your-repository-like-admin-access).
 
-### 2. Create a token for your read-write Metabase
+### 2. Create a token for your development Metabase
 
 > Skip this step if you're using a [local repo](#local-file-repositories).
 
@@ -117,7 +117,7 @@ In the Metabase that you use for development:
 3. Select **Read-write mode**.
 
 4. Add your access token:
-   - Paste the personal access token (PAT) you created earlier. Make sure the token has [read and write permissions](#2-create-a-token-for-your-read-write-metabase). Metabase encrypts your token before storing it.
+   - Paste the personal access token (PAT) you created earlier. Make sure the token has [read and write permissions](#2-create-a-token-for-your-development-metabase). Metabase encrypts your token before storing it.
 
 5. Test the connection:
    - Click **Test connection** to check whether Metabase can reach your repository. If the connection fails, make sure your token has the appropriate permissions and hasn't expired. If you copied the token incorrectly, generate a new one.
@@ -141,7 +141,7 @@ Check your repository. You should see a `collections` folder with the Library an
 
 By default, you push to your repository's main branch. You can choose (or create) a different branch so you can open pull requests for review. See [Branch management](#branch-management) for details on creating and switching branches.
 
-### 5. Create a token for your read-only Metabase
+### 5. Create a token for your production Metabase
 
 Create a personal access token with read-only repository access. Copy the token immediately; you won't be able to see the token again.
 
@@ -313,7 +313,7 @@ Remote sync uses the same serialization format as the [Metabase CLI serializatio
 - Metrics
 - Dashboards and their cards
 - Documents
-- Data apps
+- Data apps. Metabase syncs the app's bundle and the Metabase items the app needs to run, not the app's source code. Keep the source code in your own repository so you can edit the app.
 - SQL snippets
 - Data actions
 - The glossary
@@ -441,6 +441,8 @@ With custom collections turned off:
 Your setup keeps working. On the first startup after you upgrade, if your Metabase already syncs a collection outside the Library, Metabase turns on custom collections for you. Metabase Cloud sets the environment variable for you.
 
 You can't turn custom collections off while any collection outside the Library is synced. Metabase refuses to start with `MB_REMOTE_SYNC_CUSTOM_COLLECTIONS_ENABLED=false` while a custom collection is synced. To turn custom collections off, first stop syncing those collections.
+
+If you can, move the content you want to version into the Library instead. Remote sync is built around the Library, and syncing other collections is a legacy path.
 
 ### Items in synced collections must be self-contained
 
