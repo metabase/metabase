@@ -199,6 +199,8 @@ categories:
             url: "data-modeling/transforms/jobs-and-runs"
           - name: "Transform inspector"
             url: "data-modeling/transforms/inspector"
+          - name: "Transform tests"
+            url: "data-modeling/transforms/tests"
           - name: "Add-ons"
             url: "data-modeling/transforms/addons"
       - name: "Metadata"
