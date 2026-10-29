@@ -11,6 +11,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
@@ -302,3 +303,13 @@
             :database-position 0
             :field-comment "foo comment"}
            (#'presto-jdbc/column->field 0 {:column "foo" :type "integer" :comment "foo comment"})))))
+
+(deftest ^:parallel url-building-details-reject-separators-test
+  (doseq [details [{:host "localhost" :port 8080 :catalog "c" :schema "a?b"}
+                   {:host "localhost" :port 8080 :catalog "c" :schema "a%26b"}]]
+    (testing (pr-str details)
+      (is (=? {:status-code 400}
+              (try (driver.u/validate-connection-parameters! :presto-jdbc details)
+                   nil
+                   (catch clojure.lang.ExceptionInfo e
+                     (ex-data e))))))))
