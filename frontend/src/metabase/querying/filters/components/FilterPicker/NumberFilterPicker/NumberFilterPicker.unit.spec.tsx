@@ -328,7 +328,6 @@ describe("NumberFilterPicker", () => {
         async ({ placeholder, operator }) => {
           const { getNextFilterParts } = setup();
 
-          await setOperator("Between");
           await userEvent.type(screen.getByPlaceholderText(placeholder), "50");
           await userEvent.click(screen.getByText("Add filter"));
 
@@ -385,7 +384,10 @@ describe("NumberFilterPicker", () => {
         const query = createQuery();
         const columns = Lib.filterableColumns(query, 0);
         const column = columnFinder(query, columns)("ORDERS", "ID");
-        const { getNextFilterParts } = setup({ query, column });
+        const { getNextFilterParts, getNextFilterColumnName } = setup({
+          query,
+          column,
+        });
 
         await userEvent.type(screen.getByLabelText("Filter value"), "17,18");
         await userEvent.click(screen.getByText("Add filter"));
@@ -395,6 +397,7 @@ describe("NumberFilterPicker", () => {
           column: expect.anything(),
           values: [17, 18],
         });
+        expect(getNextFilterColumnName()).toBe("ID");
       });
     });
 

@@ -1,7 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
-import { fireEvent, renderWithProviders, screen, within } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
+import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import { DEFAULT_TEST_QUERY, SAMPLE_PROVIDER } from "metabase-lib/test-helpers";
 import {
@@ -9,6 +10,8 @@ import {
   REVIEWS_ID,
   SAMPLE_DB_FIELD_VALUES,
 } from "metabase-types/api/mocks/presets";
+
+import type { ColumnListItem } from "../types";
 
 import type { ColumnListItem } from "../types";
 
@@ -49,7 +52,7 @@ describe("FilterColumnPicker", () => {
     const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
     setup({ query, stageIndexes: [0] });
 
-    fireEvent.mouseEnter(
+    await userEvent.hover(
       within(screen.getByLabelText("Created At")).getByLabelText("More info"),
     );
 
@@ -61,7 +64,7 @@ describe("FilterColumnPicker", () => {
 
   it("should filter columns by the search text", async () => {
     const query = Lib.createTestQuery(SAMPLE_PROVIDER, DEFAULT_TEST_QUERY);
-    setup({ query, stageIndexes: [0] });
+    const { onColumnSelect } = setup({ query, stageIndexes: [0] });
 
     await userEvent.click(screen.getByText("Product"));
     expect(
@@ -80,12 +83,17 @@ describe("FilterColumnPicker", () => {
 
     await userEvent.clear(searchInput);
     await userEvent.type(searchInput, "price");
-    expect(
-      await screen.findByRole("option", { name: "Price" }),
-    ).toBeInTheDocument();
+    const priceOption = await screen.findByRole("option", { name: "Price" });
     expect(
       screen.queryByRole("option", { name: "Category" }),
     ).not.toBeInTheDocument();
+
+    await userEvent.click(within(priceOption).getByText("Price"));
+    expect(onColumnSelect).toHaveBeenCalledTimes(1);
+    const [{ column }] = checkNotNull(onColumnSelect.mock.lastCall);
+    expect(Lib.displayInfo(query, 0, column).longDisplayName).toBe(
+      "Product → Price",
+    );
   });
 
   it("Searching by displayName should work (#39622)", async () => {
