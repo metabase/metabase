@@ -19,6 +19,15 @@
 
 (methodical/defmethod t2/table-name :model/ConnectionImpersonation [_model] :connection_impersonations)
 
+(methodical/defmethod t2/table-name :model/ImpersonationQueryCache [_model] :impersonation_query_cache)
+
+(doto :model/ImpersonationQueryCache
+  (derive :metabase/model)
+  (derive :hook/created-at-timestamped?))
+
+(t2/deftransforms :model/ImpersonationQueryCache
+  {:result mi/transform-keyword})
+
 (defenterprise add-impersonations-to-permissions-graph
   "Augment a provided permissions graph with active connection impersonation policies."
   :feature :advanced-permissions

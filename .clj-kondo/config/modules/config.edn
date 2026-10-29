@@ -4283,7 +4283,7 @@
   enterprise/permissions.impersonation
   {:team "Graphy"
    :ns-prefix "metabase-enterprise.impersonation"
-   :api #{metabase-enterprise.impersonation.api}
+   :api #{metabase-enterprise.impersonation.api metabase-enterprise.impersonation.init}
    :uses #{api
            audit-app
            driver
@@ -4293,7 +4293,9 @@
            models
            premium-features
            query-processor
+           task
            util
+           util.config
            warehouses.schema
            enterprise/permissions.sandbox}
    :model-exports #{:model/ConnectionImpersonation}

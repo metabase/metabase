@@ -18,3 +18,31 @@
    [:db_id     {:optional true} [:maybe ::lib.schema.id/database]]
    [:group_id  {:optional true} [:maybe ms/PositiveInt]]
    [:attribute {:optional true} [:maybe :string]]])
+
+(mr/def ::query-cache.input
+  "The `input_` columns that look up an ImpersonationQueryCache row."
+  [:map {:closed true}
+   [:input_version     :string]
+   [:input_engine      :string]
+   [:input_allow_write :boolean]
+   [:input_admin       :boolean]
+   [:input_query_hash  :string]
+   [:input_query       :string]])
+
+(mr/def ::query-cache.result
+  "The `result` columns of an ImpersonationQueryCache row."
+  [:map {:closed true}
+   [:result        [:enum :valid :unparseable :unvalidatable :invalid]]
+   [:result_query  {:optional true} [:maybe :string]]
+   [:result_reason {:optional true} [:maybe :string]]])
+
+(mr/def ::query-cache.row
+  "What an insert of an ImpersonationQueryCache row accepts."
+  [:merge ::query-cache.input ::query-cache.result])
+
+(mr/def ::query-cache.cached
+  "An ImpersonationQueryCache row as looked up: its `input_query` and its results."
+  [:merge
+   [:map {:closed true}
+    [:input_query :string]]
+   ::query-cache.result])

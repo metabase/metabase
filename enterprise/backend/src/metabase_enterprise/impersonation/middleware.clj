@@ -1,8 +1,10 @@
 (ns metabase-enterprise.impersonation.middleware
   (:require
    [metabase-enterprise.impersonation.driver :as impersonation.driver]
+   [metabase-enterprise.impersonation.query-cache :as query-cache]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -28,14 +30,33 @@
     (throw (ex-info (tru "Connection impersonation does not support native queries on this database.")
                     {:type qp.error-type/invalid-query}))))
 
+(defn- validate-native-stage
+  "Validate the native `stage` of `query` for `driver` on its own, through the impersonation query cache."
+  [driver query stage]
+  (let [admin? api/*is-superuser?*]
+    (assoc stage :native
+           (query-cache/validated-query
+            driver
+            driver.settings/*impersonation-allow-write?*
+            admin?
+            (:native stage)
+            #(-> (driver/validate-impersonated-query
+                  driver
+                  (cond-> (assoc query :stages [stage]) admin? (assoc :impersonation/admin? true)))
+                 :stages
+                 first
+                 :native)))))
+
 (defn- validate-impersonated-query
-  "Enforce the single-statement rule on `query` for `driver`."
+  "Enforce the single-statement rule on every native stage of `query` for `driver`, including stages nested in joins."
   [driver database query]
   (if (driver.u/supports? driver :connection-impersonation database)
     (do (assert-native-validation-supported driver query)
-        (driver/validate-impersonated-query
-         driver
-         (cond-> query api/*is-superuser?* (assoc :impersonation/admin? true))))
+        (lib/walk-stages
+         query
+         (fn [_query _path stage]
+           (when (lib/native-stage? stage)
+             (validate-native-stage driver query stage)))))
     query))
 
 (defenterprise apply-impersonation
