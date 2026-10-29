@@ -267,7 +267,7 @@ describe("issue 35954", () => {
         assertFilterIsDisconnected();
       });
 
-      it("should work for embedding with the locked parameter", function () {
+      it("should show an error for embedding with the locked parameter", function () {
         const id = this.dashboardId;
 
         cy.request("PUT", `/api/dashboard/${id}`, {
@@ -283,7 +283,11 @@ describe("issue 35954", () => {
         };
 
         H.visitEmbeddedPage(payload);
-        assertFilterIsDisconnected();
+        // a locked parameter that can't be applied fails the query instead of being ignored
+        H.getDashboardCard()
+          .findByText("There was a problem displaying this chart.")
+          .should("be.visible");
+        cy.findByTestId("cell-data").should("not.exist");
       });
     },
   );

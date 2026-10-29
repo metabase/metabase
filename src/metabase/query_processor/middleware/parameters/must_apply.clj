@@ -41,9 +41,9 @@
                           :dashboard-id (:dashboard-id info))]
     (if-not (and (::failure (ex-data e)) (seq ids))
       e
-      (doto (ex-info (ex-message e)
-                     (-> (ex-data e)
-                         (merge ids)
-                         (update :log/keys into (keys ids)))
-                     (ex-cause e))
+      (doto ^Throwable (ex-info (ex-message e)
+                                (-> (ex-data e)
+                                    (merge ids)
+                                    (update :log/keys into (keys ids)))
+                                (ex-cause e))
         (.setStackTrace (.getStackTrace e))))))
