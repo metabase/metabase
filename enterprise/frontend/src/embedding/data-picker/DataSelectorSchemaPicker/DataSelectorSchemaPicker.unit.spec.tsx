@@ -84,4 +84,33 @@ describe("DataSelectorSchemaPicker", () => {
     expect(onBack).toHaveBeenCalledTimes(1);
     expect(onChangeSchema).not.toHaveBeenCalled();
   });
+
+  it("goes back once with Enter from the back link after the arrow keys moved the list cursor", async () => {
+    const onBack = jest.fn();
+    const { onChangeSchema } = setup({
+      schemaNames: ["Accounting", "Finance"],
+      onBack,
+    });
+
+    await userEvent.keyboard("{ArrowDown}{ArrowDown}");
+    await userEvent.tab();
+    await userEvent.keyboard("{Enter}");
+
+    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(onChangeSchema).not.toHaveBeenCalled();
+  });
+
+  it("goes back once with Space from the back link", async () => {
+    const onBack = jest.fn();
+    const { onChangeSchema } = setup({
+      schemaNames: ["Accounting", "Finance"],
+      onBack,
+    });
+
+    await userEvent.tab();
+    await userEvent.keyboard(" ");
+
+    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(onChangeSchema).not.toHaveBeenCalled();
+  });
 });

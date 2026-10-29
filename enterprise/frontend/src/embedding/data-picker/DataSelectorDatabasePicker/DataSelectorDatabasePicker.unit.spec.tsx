@@ -31,6 +31,7 @@ const setup = ({ databases = [TEST_DATABASE], onBack }: SetupOpts = {}) => {
       databases={databases.map((database) =>
         checkNotNull(lookups.database(database.id)),
       )}
+      hasInitialFocus
       onBack={onBack}
       onChangeDatabase={onChangeDatabase}
     />,
@@ -76,5 +77,34 @@ describe("DataSelectorDatabasePicker", () => {
     expect(onBack).toHaveBeenCalledTimes(1);
     expect(onChangeDatabase).not.toHaveBeenCalled();
     expect(screen.getByText("Sample Database")).toBeInTheDocument();
+  });
+
+  it("goes back once with Enter from the Raw Data back link after the arrow keys moved the list cursor", async () => {
+    const onBack = jest.fn();
+    const { onChangeDatabase } = setup({
+      databases: [SAMPLE_DATABASE, WAREHOUSE_DATABASE],
+      onBack,
+    });
+
+    await userEvent.keyboard("{ArrowDown}{ArrowDown}");
+    await userEvent.tab();
+    await userEvent.keyboard("{Enter}");
+
+    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(onChangeDatabase).not.toHaveBeenCalled();
+  });
+
+  it("goes back once with Space from the Raw Data back link", async () => {
+    const onBack = jest.fn();
+    const { onChangeDatabase } = setup({
+      databases: [SAMPLE_DATABASE, WAREHOUSE_DATABASE],
+      onBack,
+    });
+
+    await userEvent.tab();
+    await userEvent.keyboard(" ");
+
+    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(onChangeDatabase).not.toHaveBeenCalled();
   });
 });

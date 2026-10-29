@@ -11,7 +11,7 @@ import type {
   DataSelectorDatabase,
   DataSelectorSchema,
 } from "metabase/querying/common/components/DataSelector";
-import { Icon } from "metabase/ui";
+import { Icon, UnstyledButton } from "metabase/ui";
 
 import { DataSelectorLoading } from "../DataSelectorLoading";
 import { RawDataBackButton } from "../RawDataBackButton";
@@ -54,7 +54,19 @@ export const DataSelectorDatabasePicker = ({
     };
 
     if (onBack) {
-      section.name = <RawDataBackButton />;
+      section.name = (
+        <UnstyledButton
+          display="flex"
+          fz="inherit"
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.stopPropagation();
+            }
+          }}
+        >
+          <RawDataBackButton />
+        </UnstyledButton>
+      );
       section.type = "back";
     }
 
