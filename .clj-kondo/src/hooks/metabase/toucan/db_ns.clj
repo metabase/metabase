@@ -90,15 +90,13 @@
     :else                     nil))
 
 (defn- expression-entry-value-nodes
-  "The value slots of an [[expression-entry-clauses]] clause: index 0 of each `[expr alias]` entry."
+  "The value slots inside index 0 of each `[expr alias]` entry of an [[expression-entry-clauses]] clause."
   [node]
   (when (hooks/vector-node? node)
     (mapcat (fn [entry]
               (when (hooks/vector-node? entry)
                 (when-let [expr (first (:children entry))]
-                  ;; Keep the expression AND descend, so a bare symbol is reported and a computed
-                  ;; projection or a subquery sitting there has its own values checked.
-                  (cons expr (value-nodes expr)))))
+                  (value-nodes expr))))
             (:children node))))
 
 (defn- clause-value-nodes
@@ -108,6 +106,53 @@
     (contains? expression-entry-clauses clause) (expression-entry-value-nodes node)
     (contains? identifier-clauses clause)       (identifier-clause-value-nodes node)
     :else                                       (value-nodes node)))
+
+(def ^:private binding-macros
+  "Forms whose second child is a binding vector, which names locals and computes them rather than holding values."
+  '#{let let* for doseq if-let when-let if-some when-some loop binding})
+
+(def ^:private fn-macros
+  "Forms whose argument vectors name parameters rather than holding values."
+  '#{fn fn*})
+
+(defn- head-name
+  "The unqualified name of the symbol heading list `node`, or nil."
+  [node]
+  (let [head (some-> node :children first hooks/sexpr)]
+    (when (symbol? head)
+      (symbol (name head)))))
+
+(defn- binding-form?
+  "Whether list `node` is a binding macro or a fn form."
+  [node]
+  (let [f (head-name node)]
+    (or (contains? binding-macros f) (contains? fn-macros f))))
+
+(defn- fn-arity-bodies
+  "The body forms of each arity among `forms`, the children of a `fn` after its name."
+  [forms]
+  (if (hooks/vector-node? (first forms))
+    (rest forms)
+    (mapcat #(some-> % :children rest) (filter hooks/list-node? forms))))
+
+(defn- binding-inits
+  "The forms computing the locals of binding vector `node`, with `for` modifiers like `:when` and `:let` followed."
+  [node]
+  (mapcat (fn [[k v]]
+            (if (and (hooks/keyword-node? k) (= :let (hooks/sexpr k)) (hooks/vector-node? v))
+              (binding-inits v)
+              (when v [v])))
+          (partition-all 2 (:children node))))
+
+(defn- binding-form-body
+  "The children of binding-form `node` that can hold value slots: the forms computing its bindings and its body,
+  without the names it binds or its parameters."
+  [node]
+  (let [[_ & forms] (:children node)]
+    (if (contains? fn-macros (head-name node))
+      (fn-arity-bodies (if (hooks/token-node? (first forms)) (rest forms) forms))
+      (concat (when (hooks/vector-node? (first forms)) (binding-inits (first forms)))
+              (rest forms)))))
 
 (defn- value-nodes
   "The nodes sitting in a value slot of `node`, following the clause shapes a query map uses."
@@ -129,6 +174,13 @@
         ;; A marker IS the value slot -- never descend into its payload, or the marked value
         ;; gets reported as though it were bare.
         (marked? node)
+        nil
+
+        (or (hooks/string-node? head)
+            (and (hooks/list-node? head) (contains? '#{str format} (head-name head))))
+        nil
+
+        (= :inline op)
         nil
 
         (contains? #{:and :or :not} op)
@@ -155,6 +207,9 @@
     ;; clause as `{:order-by [[col dir]]}`, but written outside a map literal, where the walk would
     ;; otherwise fall back to shape alone and report the column and the direction as values.
     ;; `cond->` is covered because the walk descends into the nested `assoc`.
+    (and (hooks/list-node? node) (binding-form? node))
+    (mapcat value-nodes (binding-form-body node))
+
     (hooks/list-node? node)
     (let [children (vec (:children node))
           assoc?   (= 'assoc (some-> (first children) hooks/sexpr))
@@ -289,29 +344,9 @@
 
                            :else (cons v (value-nodes v)))))))))))
 
-(defn- lint-unmarked-values!
-  "Register a finding for each argument of the enclosing function that reaches a value slot unmarked.
-
-  Only a symbol is reported. A literal cannot carry a request value, and a value built inside the
-  function is out of reach of a check that does not follow it across a call."
-  [node]
-  (doseq [value (let [args (rest (:children node))
-                      f    (some-> (first (:children node)) hooks/sexpr)]
-                  ;; The three walkers overlap on some shapes -- a multi-arg operator in a kv-arg
-                  ;; reaches both `value-nodes` and `kv-arg-value-nodes` -- so dedupe by source
-                  ;; position rather than trying to keep them disjoint.
-                  (->> (concat (mapcat value-nodes args)
-                               (kv-arg-value-nodes args)
-                               (conditions-map-value-nodes f args))
-                       (distinct-by #(select-keys (meta %) [:row :col]))))
-          :when (and (hooks/token-node? value)
-                     (symbol? (hooks/sexpr value))
-                     (not (marked? value)))]
-    (hooks/reg-finding!
-     (assoc (meta value)
-            :message (format "`%s` reaches a SQL value slot unmarked. Write it as [:auto/param %s] so it is bound as a parameter."
-                             (hooks/sexpr value) (hooks/sexpr value))
-            :type :metabase/unsafe-app-db-query))))
+(def ^:private trailing-changes-fns
+  "Fns whose arglist ends in a changes map, so the bare primary key is the second-to-last argument."
+  '#{update! update-returning-pks! reducible-update reducible-update-returning-pks})
 
 (def ^:private model-index
   "For each Toucan 2 fn that accepts a bare primary key, the index of the model among its arguments."
@@ -336,9 +371,43 @@
     select-fn->pk                  1
     select-fn->fn                  2})
 
-(def ^:private trailing-changes-fns
-  "Fns whose arglist ends in a changes map, so the bare primary key is the second-to-last argument."
-  '#{update! update-returning-pks! reducible-update reducible-update-returning-pks})
+(defn- var-symbol?
+  "Whether `sym` names a var rather than a local, so it holds code rather than a request value."
+  [sym]
+  (or (some? (namespace sym))
+      (some? (try (hooks/resolve {:name sym}) (catch Exception _ nil)))))
+
+(defn- lint-unmarked-values!
+  "Register a finding for each argument of the enclosing function that reaches a value slot unmarked.
+
+  Only a symbol is reported. A literal cannot carry a request value, and a value built inside the
+  function is out of reach of a check that does not follow it across a call."
+  [node]
+  (doseq [value (let [args  (rest (:children node))
+                      f     (some-> (first (:children node)) hooks/sexpr)
+                      verb  (some-> f name symbol)
+                      query (cond->> args
+                              (contains? model-index verb)
+                              (drop (inc (get model-index verb)))
+
+                              (or (contains? trailing-changes-fns verb) (contains? changes-map-fns verb))
+                              butlast)]
+                  ;; The three walkers overlap on some shapes -- a multi-arg operator in a kv-arg
+                  ;; reaches both `value-nodes` and `kv-arg-value-nodes` -- so dedupe by source
+                  ;; position rather than trying to keep them disjoint.
+                  (->> (concat (mapcat value-nodes query)
+                               (kv-arg-value-nodes args)
+                               (conditions-map-value-nodes f args))
+                       (distinct-by #(select-keys (meta %) [:row :col]))))
+          :when (and (hooks/token-node? value)
+                     (symbol? (hooks/sexpr value))
+                     (not (marked? value))
+                     (not (var-symbol? (hooks/sexpr value))))]
+    (hooks/reg-finding!
+     (assoc (meta value)
+            :message (format "`%s` reaches a SQL value slot unmarked. Write it as [:auto/param %s] so it is bound as a parameter."
+                             (hooks/sexpr value) (hooks/sexpr value))
+            :type :metabase/unsafe-app-db-query))))
 
 (def ^:private map-returning-fns
   "Fns whose call returns a map -- or throws, given a string -- so a call to one can never carry a string into
