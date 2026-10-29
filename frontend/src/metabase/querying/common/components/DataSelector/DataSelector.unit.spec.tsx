@@ -478,6 +478,24 @@ describe("DataSelector", () => {
     expect(screen.getByText("Table in First Schema")).toBeInTheDocument();
   });
 
+  it("should not show a search box on the schema step of a database with 2 schemas", async () => {
+    render(
+      <DataSelector
+        {...defaultProps}
+        steps={["SCHEMA", "TABLE", "FIELD"]}
+        selectedDatabaseId={MULTI_SCHEMA_DATABASE.id}
+        databases={[MULTI_SCHEMA_DATABASE]}
+        triggerElement={<div />}
+        entityLookups={entityLookups}
+        isOpen={true}
+      />,
+    );
+
+    expect(await screen.findByText("First Schema")).toBeInTheDocument();
+    expect(screen.getByText("Second Schema")).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Find...")).not.toBeInTheDocument();
+  });
+
   it("should open database picker with correct database selected", async () => {
     render(
       <DataSelector
