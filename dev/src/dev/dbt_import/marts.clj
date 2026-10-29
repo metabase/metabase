@@ -15,10 +15,10 @@
 
   Run from a REPL at the repo root, with a Postgres to build in. The connection defaults to the one the test suite
   uses for the `:postgres` driver (the `MB_POSTGRESQL_TEST_*` env vars), building in database `dbt_bi`, which has to
-  exist:
+  exist. The password is a separate argument, see [[regenerate!]]:
 
     (dev.dbt-import.marts/regenerate!)
-    (dev.dbt-import.marts/regenerate! {:connection {:port 15432, :user \"postgres\", :password \"password\"}})"
+    (dev.dbt-import.marts/regenerate! {:connection {:port 15432, :user \"postgres\"}} \"password\")"
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
@@ -61,13 +61,13 @@
                                                        "order_key"    "dim_order"}}])
 
 (mr/def ::connection-overrides
-  "How to reach the Postgres to build the project in. Every key defaults to the test suite's `:postgres` connection."
+  "How to reach the Postgres to build the project in. Every key defaults to the test suite's `:postgres` connection.
+  The password is not among them: it is a separate argument of [[regenerate!]]."
   [:map {:closed true}
-   [:host     {:optional true} :string]
-   [:port     {:optional true} :int]
-   [:dbname   {:optional true} :string]
-   [:user     {:optional true} :string]
-   [:password {:optional true} [:maybe :string]]])
+   [:host   {:optional true} :string]
+   [:port   {:optional true} :int]
+   [:dbname {:optional true} :string]
+   [:user   {:optional true} :string]])
 
 (mr/def ::field-definition
   "A column of a mart table in the dataset definition format: its name, base type, and whether it is the primary key
@@ -95,14 +95,24 @@
   "The JDBC data source for the Postgres the project was built in."
   (ms/InstanceOfClass javax.sql.DataSource))
 
+(mr/def ::options
+  "What [[regenerate!]] takes: the checkout to build, where to write the dataset, how to reach Postgres."
+  [:map {:closed true}
+   [:project    {:optional true} :string]
+   [:out        {:optional true} :string]
+   [:connection {:optional true} ::connection-overrides]])
+
 (mu/defn- with-defaults :- ::fixture/connection
-  [{:keys [host port dbname user password]} :- ::connection-overrides]
+  "The connection to build in: `overrides` over the test suite's `:postgres` settings, with `password` wrapped so that it
+  prints redacted (see [[fixture/secret]])."
+  [{:keys [host port dbname user]} :- ::connection-overrides
+   password                        :- [:maybe :string]]
   (let [env (fn [k default] (or (System/getenv (str "MB_POSTGRESQL_TEST_" k)) default))]
     {:host     (or host (env "HOST" "localhost"))
      :port     (or port (parse-long (env "PORT" "5432")))
      :dbname   (or dbname "dbt_bi")
      :user     (or user (env "USER" "postgres"))
-     :password (or password (env "PASSWORD" nil))}))
+     :password (some-> (or password (env "PASSWORD" nil)) fixture/secret)}))
 
 (mu/defn- build! :- :nil
   "Build the checkout at `project` in a scratch copy against `connection`: `dbt seed`, then `dbt run` of the project's
@@ -171,19 +181,23 @@
 
 (mu/defn regenerate! :- :string
   "Regenerate the dataset (see the namespace docstring) from the checkout at `:project` (default
-  `~/dbt-business-intelligence`), building it in `:connection`, and write it to `:out` (default the dataset file).
-  Returns a one-line summary of what was written."
+  `~/dbt-business-intelligence`), building it in `:connection` with `password` (default `MB_POSTGRESQL_TEST_PASSWORD`),
+  and write it to `:out` (default the dataset file). Returns a one-line summary of what was written.
+
+  The password is its own argument rather than a key of `:connection` so that a mistake in the options does not put it
+  on the screen: a schema check that fails reports the whole value it was given."
   ([]
    (regenerate! {}))
 
+  ([options :- ::options]
+   (regenerate! options nil))
+
   ([{:keys [project out connection]
      :or   {project (str (System/getProperty "user.home") "/dbt-business-intelligence")
-            out     dataset-filename}}
-    :- [:map {:closed true}
-        [:project    {:optional true} :string]
-        [:out        {:optional true} :string]
-        [:connection {:optional true} ::connection-overrides]]]
-   (let [connection (with-defaults (or connection {}))]
+            out     dataset-filename}} :- ::options
+    password                           :- [:maybe :string]]
+   (fixture/check-repo-root!)
+   (let [connection (with-defaults (or connection {}) password)]
      (build! (io/file project) connection)
      (let [ds          (jdbc/get-datasource (assoc connection :dbtype "postgresql"))
            definitions (vec (for [table tables

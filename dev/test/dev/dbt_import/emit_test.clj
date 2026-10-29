@@ -45,6 +45,20 @@
            (map #(select-keys % [:model]) (-> files first :entity :serdes/meta))))
     (is (every? #(= "Card" (-> % :entity :serdes/meta last :model)) (rest files)))))
 
+(deftest ^:parallel collection-name-test
+  (let [resolved (tu/resolve-manifest-map (tu/build-manifest {}))
+        paths    (fn [collection-name]
+                   (map :path (emit/files tu/default-config (assoc-in resolved [:collection :name] collection-name))))]
+    (testing "a name that slugifies to `..` or `.` would put the files, and the delete of the previous run, outside the
+              collection's directory; one that slugifies to nothing has no directory at all. All are refused."
+      (doseq [collection-name [".." "." ""]]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"is not a usable collection name"
+                              (paths collection-name))
+            (pr-str collection-name))))
+    (testing "dots inside a name are fine"
+      (is (= ["collections/main/v1.2_metrics.yaml" "collections/main/v1.2_metrics/m.yaml"]
+             (paths "v1.2 metrics"))))))
+
 (deftest write-test
   (mt/with-temp-dir [out-dir nil]
     (let [resolved    (tu/flexanalytics-resolved)

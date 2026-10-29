@@ -107,12 +107,23 @@
     :card_schema            card/current-card-schema-version}
    (dimensions resolved-metric)))
 
+(mu/defn- collection-slug :- :string
+  "The collection's directory and file name: its name slugified the way a real export does it. [[storage.util/slugify-name]]
+  leaves `.` and `..` as they are, and `..` would put the cards, and [[clear-previous-run!]]'s delete, one level up
+  from `collections/main/`; a name that slugifies to nothing has nowhere to go either."
+  [collection-name :- :string]
+  (let [slug (storage.util/slugify-name collection-name)]
+    (when (or (str/blank? slug) (#{"." ".."} slug))
+      (throw (ex-info (format "%s is not a usable collection name" (pr-str collection-name))
+                      {:collection-name collection-name})))
+    slug))
+
 (mu/defn files :- [:sequential ::file]
   "The files of the serdes tree for a resolved manifest: the collection first, then one card per metric. Card file
   names are slugified labels, deduplicated the way a real export does it."
   [config :- ::resolved/config
    {:keys [collection metrics]} :- ::resolved/manifest]
-  (let [collection-slug (storage.util/slugify-name (:name collection))
+  (let [collection-slug (collection-slug (:name collection))
         unique-name     (lib/non-truncating-unique-name-generator)]
     (into [{:path   (str "collections/main/" collection-slug ".yaml")
             :entity (collection-entity collection)}]

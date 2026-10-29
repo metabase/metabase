@@ -1631,13 +1631,17 @@
    (^:once fn* [path]
      (let [file (io/file path)]
        (when (.exists file)
-         (org.apache.commons.io.FileUtils/deleteDirectory file)))
-     (u.files/create-dir-if-not-exists! (u.files/get-path path))
-     (f path))))
+         (org.apache.commons.io.FileUtils/deleteDirectory file))
+       (u.files/create-dir-if-not-exists! (u.files/get-path path))
+       (try
+         (f path)
+         (finally
+           ;; [[do-with-temp-file]]'s own `delete-file` cannot remove a directory with anything in it
+           (org.apache.commons.io.FileUtils/deleteDirectory file)))))))
 
 (defmacro with-temp-dir
   "Like [[with-temp-file]], but creates a new temporary directory in the system temp dir. Deletes existing directory if
-  it already exists."
+  it already exists, and deletes the directory and whatever `body` put in it afterwards."
   [[directory-binding dir-name] & body]
   `(do-with-temp-dir ~dir-name (^:once fn* [~directory-binding] ~@body)))
 
