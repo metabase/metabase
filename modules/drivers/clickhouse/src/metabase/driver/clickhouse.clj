@@ -69,6 +69,9 @@
                               :index/fetch                      true
                               :index/inline-create              true
                               :index/standalone-create          true
+                              ;; The JDBC driver sends the statement timeout as the `max_execution_time` server setting.
+                              ;; A `readonly = 1` user cannot change that setting, so every query fails.
+                              :jdbc/set-query-timeout           false
                               :left-join                        true
                               :metadata/key-constraints         false
                               :native-pivot-tables              true
