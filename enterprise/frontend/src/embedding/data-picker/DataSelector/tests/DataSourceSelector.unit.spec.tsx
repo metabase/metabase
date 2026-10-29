@@ -24,6 +24,29 @@ import { DataSourceSelector } from "../DataSelector";
 
 const DATABASES = [createSampleDatabase()];
 
+const WAREHOUSE_DB_ID = 100;
+const WAREHOUSE_PAYMENTS_TABLE_ID = 1000;
+const WAREHOUSE_INVOICES_TABLE_ID = 1001;
+
+const WAREHOUSE_DATABASE = createMockDatabase({
+  id: WAREHOUSE_DB_ID,
+  name: "Warehouse",
+  tables: [
+    createMockTable({
+      id: WAREHOUSE_PAYMENTS_TABLE_ID,
+      db_id: WAREHOUSE_DB_ID,
+      schema: "Accounting",
+      display_name: "Payments",
+    }),
+    createMockTable({
+      id: WAREHOUSE_INVOICES_TABLE_ID,
+      db_id: WAREHOUSE_DB_ID,
+      schema: "Finance",
+      display_name: "Invoices",
+    }),
+  ],
+});
+
 const storeInitialState = createMockState({
   settings: createMockSettingsState({
     "enable-nested-queries": true,
@@ -217,6 +240,51 @@ describe("DataSourceSelector", () => {
       // We're at the database step
       expect(await screen.findByText("Raw Data")).toBeInTheDocument();
       expect(screen.getByText("Many tables Database")).toBeInTheDocument();
+      expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
+    });
+
+    it("drills down from Raw Data to the databases, Warehouse's schemas and Finance's tables, then back up one step at a time to the data types", async () => {
+      setup({
+        ...setupOpts,
+        databases: [createSampleDatabase(), WAREHOUSE_DATABASE],
+      });
+
+      await userEvent.click(await screen.findByText("Raw Data"));
+      expect(await screen.findByText("Sample Database")).toBeInTheDocument();
+      expect(screen.getByText("Warehouse")).toBeInTheDocument();
+      expect(screen.queryByText("Accounting")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByText("Warehouse"));
+      expect(await screen.findByText("Accounting")).toBeInTheDocument();
+      expect(screen.getByText("Finance")).toBeInTheDocument();
+      expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByText("Finance"));
+      expect(await screen.findByText("Invoices")).toBeInTheDocument();
+      expect(screen.queryByText("Accounting")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByTestId("source-database"));
+      expect(await screen.findByText("Accounting")).toBeInTheDocument();
+      expect(screen.getByText("Finance")).toBeInTheDocument();
+      expect(screen.queryByText("Invoices")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByText("Warehouse"));
+      const sampleDatabase = await screen.findByText("Sample Database");
+      const rawData = screen.getByText("Raw Data");
+      const warehouse = screen.getByText("Warehouse");
+      expect(
+        rawData.compareDocumentPosition(sampleDatabase) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(
+        sampleDatabase.compareDocumentPosition(warehouse) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(screen.queryByText("Accounting")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByText("Raw Data"));
+      expect(await screen.findByText("Models")).toBeInTheDocument();
+      expect(screen.getByText("Raw Data")).toBeInTheDocument();
       expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
     });
 
