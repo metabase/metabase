@@ -2,19 +2,19 @@
   "Review of the pending AI proposals of a database or its tables: counts per table, the proposals, and apply. The
   review UI keeps the selection and the edits until apply, which takes the accepted proposals and the edited values
   in one request. Apply writes the accepted proposals as AI values, which readers see over the deterministic value
-  and under a person's value, and deletes their rows. Apply with `reject_all` deletes every pending proposal of a
-  database.
+  and under a person's value, and deletes their rows. Apply with `reject_all` deletes every pending proposal of the
+  visible fields of the visible tables of a database.
 
-  `source` and `current_value` are computed when a proposal is read or applied, from the value readers see now. A
-  proposal with source `human` would replace a value a person set; apply of such a proposal clears the person's
-  value.
+  `source` and `current_value` are computed when a proposal is read, from the value readers see now. A proposal with
+  source `human` would replace a value a person set; apply of such a proposal clears the person's value.
 
   An edited value replaces the proposed value of a proposal at apply. Apply writes it as the person's value, not as
   an AI value, because a person chose it.
 
-  A run can replace or delete a proposal after the client read it. The request gives the proposed values that the
-  client saw, and apply skips a proposal whose value is not that value any more, or that is gone, with reason
-  `changed`."
+  A run can replace or delete a proposal after the client read it, and a person can set the field's value. The request
+  gives the proposed values and the sources that the client saw, and apply skips with reason `changed` a proposal
+  whose value is not that value any more, that is gone, or that is not edited and is over a human value now that the
+  client did not see."
   (:require
    [clojure.string :as str]
    [medley.core :as m]
@@ -161,11 +161,13 @@
 (mr/def ::apply-request
   "Give `accept` (ids) and `edits`, or `reject_all` with `database_id`. `edits` maps a proposal id to the value that
   replaces its proposed value; an edit also accepts its proposal. `proposed_values` maps a proposal id to the
-  proposed value that the client saw. `reject_all` deletes every pending proposal of the database `database_id`."
+  proposed value that the client saw, and `sources` maps it to the source that the client saw. `reject_all` deletes
+  every pending proposal of the visible fields of the visible tables of the database `database_id`."
   [:map {:closed true}
    [:accept          {:optional true} [:maybe [:sequential ms/PositiveInt]]]
    [:edits           {:optional true} [:maybe [:map-of ms/PositiveInt :string]]]
    [:proposed_values {:optional true} [:maybe [:map-of ms/PositiveInt :string]]]
+   [:sources         {:optional true} [:maybe [:map-of ms/PositiveInt ::source]]]
    [:reject_all      {:optional true} [:maybe :boolean]]
    [:database_id     {:optional true} [:maybe ms/PositiveInt]]])
 
@@ -207,22 +209,28 @@
 (defn- write-table!
   "Write the accepted proposals `proposals` of one table in one transaction and delete their rows; a proposal that
   fails keeps its row. The rows are locked first, and a proposal whose row is gone or whose value is not the one in
-  `proposals` fails as `changed`. An edited proposal is written as the person's value; any other is
-  written as an AI value, and when it is over a human value now, the person's value is cleared. Returns the outcome
-  of each proposal and the ids of the written fields."
+  `proposals` fails as `changed`, as does an unedited proposal with a `::seen-source` that is over a human value now
+  that the client did not see. An edited proposal is written as the person's value; any other is written as an AI
+  value, and when it is over a human value now, the person's value is cleared. Returns the outcome of each proposal
+  and the ids of the written fields."
   [proposals]
   (t2/with-transaction [_conn]
     (let [rows      (db/lock-proposals (mapv :id proposals))
           field-ids (vec (distinct (map :field_id proposals)))
           fields    (db/visible-fields-by-id field-ids)
           settings  (db/user-settings-by-field field-ids)
-          outcomes  (mapv (fn [{:keys [id field_id attribute] :as s}]
-                            (let [field (get fields field_id)]
+          outcomes  (mapv (fn [{:keys [id field_id attribute edited_value] :as s}]
+                            (let [field  (get fields field_id)
+                                  source (when field (current-source (get settings field_id) field attribute))]
                               (assoc s
-                                     ::outcome (if (= (rows id) (:proposed_value s))
-                                                 (outcome field s)
-                                                 :changed)
-                                     :source   (when field (current-source (get settings field_id) field attribute)))))
+                                     ::outcome (if (or (not= (rows id) (:proposed_value s))
+                                                       (and (contains? s ::seen-source)
+                                                            (not edited_value)
+                                                            (= :human source)
+                                                            (not= :human (::seen-source s))))
+                                                 :changed
+                                                 (outcome field s))
+                                     :source   source)))
                           proposals)
           writes    (filter #(= :write (::outcome %)) outcomes)
           by-field  (group-by :field_id writes)
@@ -318,16 +326,17 @@
 (mu/defn apply! :- ::apply-result
   "Apply the review that `request` gives, as `user-id`: write the accepted proposals, the edited ones as the person's
   values and the others as AI values, and delete their rows; or, with `reject_all`, delete every pending proposal of
-  the database. Ids that name no proposal are ignored, unless `proposed_values` has them: then they are listed in
-  `failures` as `changed`, as is a proposal whose value is not the one in `proposed_values`. An invalid edit is a 400
-  and nothing is written. Each table is one transaction. A proposal that cannot be written keeps its row and is
-  listed in `failures`."
+  the visible fields of the visible tables of the database. Ids that name no proposal are ignored, unless
+  `proposed_values` has them: then they are listed in `failures` as `changed`, as is a proposal whose value is not the
+  one in `proposed_values`, and an unedited proposal with a seen value that is over a human value now whose source in
+  `sources` is not `human`. An invalid edit is a 400 and nothing is written. Each table is one transaction. A proposal
+  that cannot be written keeps its row and is listed in `failures`."
   [request :- ::apply-request
    user-id :- ms/PositiveInt]
   (check-request request)
   (if (:reject_all request)
     (reject-all! (:database_id request))
-    (let [{:keys [accept edits proposed_values]} request
+    (let [{:keys [accept edits proposed_values sources]} request
           seen      (or proposed_values {})
           ids       (vec (distinct (concat accept (keys edits))))
           by-id     (m/index-by :id (db/proposals-by-id ids))
@@ -337,7 +346,9 @@
           changed   (filter changed? candidate)
           skip      (into #{} (map :id) changed)
           accepted  (->> (remove #(skip (:id %)) candidate)
-                         (map #(assoc % :edited_value (get edits (:id %))))
+                         (map (fn [{:keys [id] :as p}]
+                                (cond-> (assoc p :edited_value (get edits id))
+                                  (contains? seen id) (assoc ::seen-source (get sources id)))))
                          check-edits!)
           failures  (mapv #(failure % :changed) (sort-by :id (concat gone changed)))]
       (transduce (map (fn [[table-id ps]] (apply-table! table-id ps user-id)))

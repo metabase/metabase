@@ -45,7 +45,11 @@ export function RunProgress({ runId, onRetry, onReview }: RunProgressProps) {
   const { data: run, error } = useGetMetadataGenerationRunQuery(runId, {
     pollingInterval: isPolling ? RUN_POLLING_INTERVAL : 0,
   });
-  useRunPolling(run == null || isRunActive(run), setIsPolling);
+  const isLoading = run == null && error == null;
+  useRunPolling(
+    isLoading ? undefined : run != null && isRunActive(run),
+    setIsPolling,
+  );
 
   if (error) {
     return <Text c="feedback-negative">{getErrorMessage(error)}</Text>;

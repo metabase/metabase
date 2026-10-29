@@ -408,12 +408,18 @@
   [{:keys [name display_name description sample_values cached_values]}]
   (str/join "\n" (remove nil? (concat [name display_name description] sample_values cached_values))))
 
+(defn- strip-control-chars
+  "`s` without control characters other than tab, line feed and carriage return. The app DB can refuse them: Postgres
+  does not store U+0000 in text."
+  [s]
+  (some-> s (str/replace #"[\p{Cc}&&[^\t\n\r]]" "")))
+
 (defn- proposed-description
   "The description the model proposed for `field`, on one line, or nil when it proposed none or the proposal is not
   allowed: the field's description is human-set, the text is over [[description-cap]], it holds [[markup?]], or it
   holds a link that is not in the field's own data. `count!` counts each refusal."
   [field s count!]
-  (let [s (some-> s (str/replace #"\s+" " ") str/trim)]
+  (let [s (some-> s (str/replace #"\s+" " ") strip-control-chars str/trim)]
     (cond
       (str/blank? s)
       nil
@@ -482,7 +488,7 @@
                                                   (keyword semantic_type))
                                   base          (cond-> {:confidence    confidence
                                                          :semantic-type semantic-type
-                                                         :reasoning     reasoning}
+                                                         :reasoning     (strip-control-chars reasoning)}
                                                   description? (assoc :description
                                                                       (proposed-description field description count!)))]
                               (assoc acc (:name field)

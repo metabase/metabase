@@ -157,10 +157,16 @@
                      (or (str/includes? (pr-str packet) marker)
                          (str/includes? (llm/user-message packet (:fields packet) #{:data_sensitivity}) marker)))]
     (testing "the packet and the user message do not name a hidden table that a foreign key points to"
-      (mt/with-temp-vals-in-db :model/Table (mt/id :people) {:visibility_type "hidden" :name "PEOPLE_HIDDEN_MARKER"}
+      (mt/with-temp [:model/Table {hidden-table-id :id} {:db_id (mt/id) :name "HIDDEN_TABLE_MARKER"
+                                                         :visibility_type :hidden}
+                     :model/Field {hidden-pk-id :id}    {:table_id hidden-table-id :name "id"
+                                                         :base_type :type/Integer :semantic_type :type/PK}
+                     :model/Field _                     {:table_id (mt/id :orders) :name "fk_to_hidden_table"
+                                                         :base_type :type/Integer :semantic_type :type/FK
+                                                         :fk_target_field_id hidden-pk-id}]
         (let [packet (schema-only-packet (orders))]
-          (is (some? (field-by-name packet (t2/select-one-fn :name :model/Field :id (mt/id :orders :user_id)))))
-          (is (not (names-in? packet "PEOPLE_HIDDEN_MARKER"))))))
+          (is (some? (field-by-name packet "fk_to_hidden_table")))
+          (is (not (names-in? packet "HIDDEN_TABLE_MARKER"))))))
     (mt/with-temp [:model/Field {sensitive-id :id} {:table_id (mt/id :people) :name "sensitive_target_marker"
                                                     :base_type :type/Integer :visibility_type :sensitive}
                    :model/Field {retired-id :id}   {:table_id (mt/id :people) :name "retired_target_marker"
@@ -260,6 +266,16 @@
           (is (every? #(nil? (:sample_values %)) (:fields packet))))
         (testing "cached values are unaffected by the sample failure"
           (is (= ["cached-marker"] (:cached_values (field-by-name packet "cached_f")))))))))
+
+(deftest sample-error-log-omits-warehouse-values-test
+  (testing "a failed row sample whose error quotes a row value does not write that value to the log"
+    (with-redefs [driver/table-rows-sample
+                  (fn [& _] (throw (ex-info "Cannot parse \"TIMESTAMP\" constant \"ROW-VALUE-MARKER\"" {})))]
+      (mt/with-log-messages-for-level [messages [metabase-enterprise.data-sensitivity.context :info]]
+        (is (some? (get-in (table-packet (people-table)) [:sample :error])))
+        (is (not-any? (fn [{:keys [message e]}]
+                        (str/includes? (str message (some-> e Throwable->map pr-str)) "ROW-VALUE-MARKER"))
+                      (messages)))))))
 
 (deftest nil-option-uses-default-test
   (let [sample-opts (atom nil)]

@@ -24,7 +24,17 @@ import { ReviewModal } from "./ReviewModal";
 const DATABASE_ID = 1;
 const APPLY_PATH = "path:/api/ee/data-sensitivity/proposals/apply";
 
-function setup({ onDiscard }: { onDiscard?: () => void } = {}) {
+type SetupOpts = {
+  onClose?: () => void;
+  onDiscard?: () => void;
+  isEmptyAfterApply?: boolean;
+};
+
+function setup({
+  onClose = jest.fn(),
+  onDiscard,
+  isEmptyAfterApply = false,
+}: SetupOpts = {}) {
   const tables = [
     createMockMetadataGenerationProposalTable({
       table_id: 10,
@@ -84,7 +94,15 @@ function setup({ onDiscard }: { onDiscard?: () => void } = {}) {
     id: DATABASE_ID,
     tables: [],
   });
-  setupListMetadataGenerationProposalTablesEndpoint(tables);
+  if (isEmptyAfterApply) {
+    fetchMock.get("path:/api/ee/data-sensitivity/proposals/tables", () =>
+      fetchMock.callHistory.called(APPLY_PATH, { method: "POST" })
+        ? []
+        : tables,
+    );
+  } else {
+    setupListMetadataGenerationProposalTablesEndpoint(tables);
+  }
   setupListMetadataGenerationProposalsEndpoint(10, proposals);
   setupListMetadataGenerationProposalsEndpoint(20, peopleProposals);
   fetchMock.get(
@@ -120,7 +138,7 @@ function setup({ onDiscard }: { onDiscard?: () => void } = {}) {
     <ReviewModal
       databaseId={DATABASE_ID}
       opened
-      onClose={jest.fn()}
+      onClose={onClose}
       onDiscard={onDiscard}
     />,
   );
@@ -212,6 +230,7 @@ describe("ReviewModal", () => {
     expect(await getApplyBody()).toEqual({
       accept: [1, 4],
       proposed_values: { 1: "PII", 4: "PII" },
+      sources: { 1: "none", 4: "none" },
     });
   });
 
@@ -237,6 +256,7 @@ describe("ReviewModal", () => {
     expect(await getApplyBody()).toEqual({
       accept: [1, 3],
       proposed_values: { 1: "PII", 3: "Free-text notes" },
+      sources: { 1: "none", 3: "none" },
     });
     expect(getMutationCalls()).toHaveLength(1);
   });
@@ -261,6 +281,7 @@ describe("ReviewModal", () => {
       accept: [3],
       edits: { 3: "Order notes" },
       proposed_values: { 3: "Free-text notes" },
+      sources: { 3: "none" },
     });
   });
 
@@ -283,6 +304,7 @@ describe("ReviewModal", () => {
     expect(await getApplyBody()).toEqual({
       accept: [1],
       proposed_values: { 1: "PII" },
+      sources: { 1: "none" },
     });
   });
 
@@ -310,6 +332,7 @@ describe("ReviewModal", () => {
     expect(await getApplyBody()).toEqual({
       accept: [3],
       proposed_values: { 3: "Free-text notes" },
+      sources: { 3: "none" },
     });
   });
 
@@ -342,6 +365,46 @@ describe("ReviewModal", () => {
     expect(
       await screen.findByRole("button", { name: "Apply 0 suggestions" }),
     ).toBeDisabled();
+  });
+
+  it("keeps the modal open and drops the draft on Escape in the description editor", async () => {
+    const onClose = jest.fn();
+    setup({ onClose });
+
+    const textarea = await screen.findByRole("textbox", {
+      name: "Suggested Description of Notes",
+    });
+    await userEvent.clear(textarea);
+    await userEvent.type(textarea, "Order notes{Escape}");
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(textarea).toHaveValue("Free-text notes");
+    expect(
+      await getRowCheckbox("Accept Description of Notes"),
+    ).not.toBeChecked();
+    expect(
+      screen.getByRole("button", { name: "Apply 0 suggestions" }),
+    ).toBeDisabled();
+  });
+
+  it("shows the apply result when apply leaves no suggestions to review", async () => {
+    setup({ isEmptyAfterApply: true });
+
+    await userEvent.click(
+      await getRowCheckbox("Accept Data sensitivity of Email"),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Apply 1 suggestion" }),
+    );
+
+    expect(
+      await screen.findByTestId("metadata-generation-review-empty"),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("metadata-generation-apply-result")).getByText(
+        "1 value written. 2 suggestions failed.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("starts with nothing selected after a reload", async () => {
