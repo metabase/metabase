@@ -18,7 +18,7 @@
 (mu/defn card-table-and-database-id
   "The `:table_id` and `:database_id` of the Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one [:model/Card :table_id :database_id] card-id))
+  (t2/select-one [:model/Card :table_id :database_id] :id [:auto/param card-id]))
 
 (mu/defn table-database-id
   "The Database id of the Table with `table-id`, or nil."
