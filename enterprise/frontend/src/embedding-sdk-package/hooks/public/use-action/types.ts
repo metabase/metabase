@@ -155,19 +155,6 @@ export type ActionParameterSchema = {
 };
 
 /**
- * The kind of a table action, which a data app typed schema gives as `implicitKind`.
- *
- * @category useAction
- */
-export type ImplicitActionKind =
-  | "row/create"
-  | "row/update"
-  | "row/delete"
-  | "bulk/create"
-  | "bulk/update"
-  | "bulk/delete";
-
-/**
  * Shape of a single action entry in a data app typed schema.
  * The entry is what `defineAction` wraps; `parameters` drives
  * `ActionParametersFromDataAppSchema`, and `type` and `implicitKind` drive
@@ -180,7 +167,7 @@ export type ActionSchema = {
   id: number | string;
   name?: string;
   type?: "query" | "implicit";
-  implicitKind?: ImplicitActionKind;
+  implicitKind?: string;
   parameters: readonly ActionParameterSchema[];
   description?: string;
   entityId?: string;
