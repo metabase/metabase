@@ -174,7 +174,7 @@ export const RemoteSyncSettingsForm = ({
 const SetupGuideLink = () => {
   // eslint-disable-next-line metabase/no-unconditional-metabase-links-render -- This links only shows for admins.
   const { url: docsUrl } = useDocsUrl(
-    "installation-and-operation/remote-sync",
+    "data-modeling/semantic-layer/remote-sync",
     {
       anchor: "remote-sync",
     },
