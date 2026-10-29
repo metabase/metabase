@@ -250,7 +250,7 @@
   [field-or-field-id]
   (if-not (map? field-or-field-id)
     (let [field-id (u/the-id field-or-field-id)]
-      (recur (or (warehouse-schema.db/field-values-eligibility field-id)
+      (recur (or (warehouse-schema.db/field field-id)
                  (throw (ex-info (tru "Field {0} does not exist." field-id)
                                  {:field-id field-id, :status-code 404})))))
     (let [{base-type        :base_type

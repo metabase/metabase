@@ -6,6 +6,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.core :as collections]
+   [metabase.collections.db :as collections.db]
    [metabase.data-apps.core :as data-apps]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
@@ -33,9 +34,11 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.quick-task :as quick-task]
    [metabase.warehouse-schema-rest.db :as warehouse-schema-rest.db]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.table :as table]
    [metabase.warehouse-schema.models.table-user-settings :as schema.table-user-settings]
    [metabase.warehouse-schema.table :as schema.table]
+   [metabase.warehouses.db :as warehouses.db]
    [metabase.xrays.core :as xrays]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
@@ -147,7 +150,7 @@
   (let [api-perm-check-fn (if include_editable_data_model
                             schema.table/check-data-model-perms
                             api/read-check)]
-    (-> (api/check-404 (warehouse-schema-rest.db/table id))
+    (-> (api/check-404 (warehouse-schema.db/table id))
         api-perm-check-fn
         (t2/hydrate :db :pk_field :collection)
         schema.table/present-table)))
@@ -159,7 +162,7 @@
 (api.macros/defendpoint :get "/:table-id/data"
   "Get the data for the given table"
   [{:keys [table-id]} :- [:map {:closed true} [:table-id ms/PositiveInt]]]
-  (let [table (warehouse-schema-rest.db/table table-id)
+  (let [table (warehouse-schema.db/table table-id)
         db-id (:db_id table)]
     (api/query-check table)
     (qp.store/with-metadata-provider db-id
@@ -184,10 +187,9 @@
                                (fn [response]
                                  (dissoc response :json_query :context :cached :average_execution_time))))))))))
 
-(def ^:private TableUpdateBodySingle
-  "Body of `PUT /api/table/:id`."
-  [:map {:closed true}
-   [:display_name            {:optional true} [:maybe ms/NonBlankString]]
+(def ^:private table-update-entries
+  "User-settable Table columns, as optional `:map` entries."
+  [[:display_name            {:optional true} [:maybe ms/NonBlankString]]
    [:entity_type             {:optional true} [:maybe EntityType]]
    [:visibility_type         {:optional true} [:maybe TableVisibilityType]]
    [:description             {:optional true} [:maybe :string]]
@@ -202,22 +204,15 @@
    [:owner_user_id           {:optional true} [:maybe :int]]
    [:collection_id           {:optional true} [:maybe ms/PositiveInt]]])
 
+(def ^:private TableUpdateBodySingle
+  "Body of `PUT /api/table/:id`."
+  (into [:map {:closed true}] table-update-entries))
+
 (def ^:private TableUpdateBodyBulk
   "Body of the deprecated `PUT /api/table/`."
-  [:map {:closed true}
-   [:ids                                      [:sequential ms/PositiveInt]]
-   [:display_name            {:optional true} [:maybe ms/NonBlankString]]
-   [:entity_type             {:optional true} [:maybe EntityType]]
-   [:visibility_type         {:optional true} [:maybe TableVisibilityType]]
-   [:description             {:optional true} [:maybe :string]]
-   [:caveats                 {:optional true} [:maybe :string]]
-   [:points_of_interest      {:optional true} [:maybe :string]]
-   [:show_in_getting_started {:optional true} [:maybe :boolean]]
-   [:data_authority          {:optional true} [:maybe ::data-authority-write]]
-   [:data_source             {:optional true} [:maybe :string]]
-   [:data_layer              {:optional true} [:maybe :string]]
-   [:owner_email             {:optional true} [:maybe :string]]
-   [:owner_user_id           {:optional true} [:maybe :int]]])
+  (into [:map {:closed true}
+         [:ids [:sequential ms/PositiveInt]]]
+        table-update-entries))
 
 (mu/defn ^:private update-table!*
   "Takes an existing table and the changes, updates in the database and optionally calls `table/update-field-positions!`
@@ -233,7 +228,7 @@
                          (u/update-some :data_source keyword)
                          not-empty)]
     (schema.table-user-settings/upsert-user-settings existing-table changes))
-  (let [updated-table        (warehouse-schema-rest.db/table id)
+  (let [updated-table        (warehouse-schema.db/table id)
         changed-field-order? (not= (:field_order updated-table) (:field_order existing-table))]
     (if changed-field-order?
       (do
@@ -250,7 +245,7 @@
     (quick-task/submit-task!
      (fn []
        (doseq [[db-id tables] (group-by :db_id newly-unhidden)]
-         (let [database (warehouse-schema-rest.db/database db-id)]
+         (let [database (warehouses.db/database db-id)]
            ;; it's okay to allow testing H2 connections during sync. We only want to disallow you from testing them for the
            ;; purposes of creating a new H2 database.
            (if (binding [driver.settings/*allow-testing-h2-connections* true
@@ -265,7 +260,7 @@
 (defn- check-can-publish-tables-to-collection!
   [tables collection-id]
   (api/check-data-studio-access)
-  (let [collection (api/check-404 (warehouse-schema-rest.db/collection collection-id))]
+  (let [collection (api/check-404 (collections.db/collection collection-id))]
     (api/check-400 (= (:type collection) collections/library-data-collection-type)
                    (tru "Tables can only be published to Semantic layer/Data collections."))
     (api/check-403 (every? mi/can-query? tables))))
@@ -305,7 +300,7 @@
 (api.macros/defendpoint :put "/"
   "Update all `Table` in `ids`.
 
-  Deprecated, should use PUT /table/edit from now on."
+  Deprecated: use `POST /api/data-studio/table/edit`."
   [_route-params
    _query-params
    {:keys [ids], :as body} :- TableUpdateBodyBulk]
@@ -412,7 +407,7 @@
        :origin_id      (:id origin-field)
        :origin         origin-field
        :destination_id (:fk_target_field_id origin-field)
-       :destination    (t2/hydrate (warehouse-schema-rest.db/field (:fk_target_field_id origin-field)) :table)})))
+       :destination    (t2/hydrate (warehouse-schema.db/field (:fk_target_field_id origin-field)) :table)})))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;
@@ -426,7 +421,7 @@
    are eligible for FieldValues."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (let [table (api/write-check (warehouse-schema-rest.db/table id))]
+  (let [table (api/write-check (warehouse-schema.db/table id))]
     (events/publish-event! :event/table-manual-scan {:object table :user-id api/*current-user-id*})
     ;; Grant full permissions so that permission checks pass during sync. If a user has DB detail perms
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
@@ -450,7 +445,7 @@
    this Table's Database is set up to automatically sync FieldValues, they will be recreated during the next cycle."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (api/write-check (warehouse-schema-rest.db/table id))
+  (api/write-check (warehouse-schema.db/table id))
   (when-let [field-ids (warehouse-schema-rest.db/field-ids-for-table id)]
     (warehouse-schema-rest.db/delete-field-values-for-fields! field-ids))
   {:status :success})
@@ -463,7 +458,7 @@
   "Return related entities."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (-> (warehouse-schema-rest.db/table id) api/read-check xrays/related))
+  (-> (warehouse-schema.db/table id) api/read-check xrays/related))
 
 (api.macros/defendpoint :put "/:id/fields/order" :- [:map
                                                      [:success [:= true]]]
@@ -476,8 +471,8 @@
             [:sequential ms/PositiveInt]
             [:map {:closed true} [:field_order [:sequential ms/PositiveInt]]]]]
   (let [field-order (if (map? body) (:field_order body) body)]
-    (-> (warehouse-schema-rest.db/table id) api/write-check (schema.table-user-settings/custom-order-fields! field-order))
-    (events/publish-event! :event/table-update {:object  (warehouse-schema-rest.db/table id)
+    (-> (warehouse-schema.db/table id) api/write-check (schema.table-user-settings/custom-order-fields! field-order))
+    (events/publish-event! :event/table-update {:object  (warehouse-schema.db/table id)
                                                 :user-id api/*current-user-id*}))
   {:success true})
 
@@ -568,8 +563,10 @@
   "Trigger a manual update of the schema metadata for this `Table`."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (let [table    (api/check-404 (warehouse-schema-rest.db/table id))
-        database (api/check-404 (warehouse-schema-rest.db/non-destination-database (:db_id table)))]
+  (let [table    (api/check-404 (warehouse-schema.db/table id))
+        database (api/check-404 (let [database (warehouses.db/database (:db_id table))]
+                                  (when (nil? (:router_database_id database))
+                                    database)))]
     (api/check-403
      (perms/user-has-permission-for-table?
       api/*current-user-id*

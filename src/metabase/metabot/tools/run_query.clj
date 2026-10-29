@@ -21,6 +21,7 @@
    [metabase.metabot.tools.sql.common :as sql.common]
    [metabase.metabot.tools.util :as tools.u]
    [metabase.models.interface :as mi]
+   [metabase.queries.db :as queries.db]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.catch-exceptions :as qp.catch-exceptions]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -220,7 +221,7 @@
    can't read the source card or query the base table."
   [metric]
   (let [{:keys [kind card-id table-id]} (tools.u/metric-required-source metric)
-        source-card (when (= :card kind) (metabot.db/card card-id))]
+        source-card (when (= :card kind) (queries.db/card card-id))]
     (cond
       (some-> source-card mi/can-read?)
       {:card-type (:type source-card)
@@ -248,7 +249,7 @@
                        (when (and (pos-int? parsed) (= query-id (str parsed)))
                          parsed))]
     ;; A question the user can't read is treated like one that doesn't exist, so its id tells them nothing.
-    (let [card (metabot.db/card card-id)]
+    (let [card (queries.db/card card-id)]
       (when (some-> card mi/can-read?)
         (when (= :metric (:type card))
           (metric-not-runnable! {:query-id query-id, :source (metric-source card)}))
@@ -434,7 +435,7 @@
    through another saved question.
    Holds a nil for each question that no longer exists."
   [query]
-  (map metabot.db/card (:card (lib/all-referenced-entity-ids-recursive query))))
+  (map queries.db/card (:card (lib/all-referenced-entity-ids-recursive query))))
 
 (defn- metabot-sql-card?
   "Whether `card` is a SQL question that Metabot saved and nobody has edited since.

@@ -8,7 +8,8 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [methodical.core :as methodical]
-   [toucan2.core :as t2])
+   [toucan2.core :as t2]
+   [toucan2.tools.default-fields :as t2.default-fields])
   (:import
    (java.sql Blob)))
 
@@ -36,11 +37,8 @@
   (derive :metabase/model)
   (derive :hook/timestamped?))
 
-(def non-blob-columns
-  "Columns to select for normal plugin metadata reads, excluding the raw bundle blob."
-  [:id :identifier :display_name :icon :status :error_message :enabled
-   :manifest :metabase_version :bundle_hash :dev_bundle_url
-   :created_at :updated_at])
+(t2.default-fields/define-default-fields :model/CustomVizPlugin
+  custom-viz-plugin.db/non-blob-columns)
 
 (defmethod mi/can-read? :model/CustomVizPlugin
   ([_instance]   (some? api/*current-user-id*))
@@ -91,6 +89,11 @@
       {:status        :error
        :error_message (ex-message e)})))
 
+(defmethod serdes/extract-query "CustomVizPlugin"
+  [model-name {:keys [filter-column filter-ids] :as opts}]
+  (custom-viz-plugin.db/reducible-plugins-with-bundles filter-column filter-ids
+                                                       (serdes/extract-order-columns model-name opts)))
+
 (defmethod serdes/load-insert! "CustomVizPlugin"
   [_model-name ingested]
   (custom-viz-plugin.db/insert-plugin! (merge ingested (bundle-columns ingested))))
@@ -99,7 +102,7 @@
   [_model-name ingested {:keys [id]}]
   (custom-viz-plugin.db/update-plugin! id (merge ingested (bundle-columns ingested)))
   (cache/purge-plugin-cache! {:id id})
-  (custom-viz-plugin.db/non-blob-plugin id))
+  (custom-viz-plugin.db/custom-viz-plugin id))
 
 (defmethod serdes/entity-id "CustomVizPlugin" [_ {:keys [identifier]}]
   identifier)

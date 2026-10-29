@@ -20,6 +20,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.metrics.core :as metrics]
+   [metabase.queries.db :as queries.db]
    [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
@@ -348,7 +349,7 @@
   `ExplorationBlock`, reached via the row's `ExplorationPage`, not from
   per-thread metric/dimension tables. The runner calls this per claimed row."
   [{:keys [card_id dimension_id segment_id params page_id]}]
-  (let [card       (explorations.db/card card_id)
+  (let [card       (queries.db/card card_id)
         block      (when page_id
                      (explorations.db/block-for-page page_id))
         metric     (some #(when (= card_id (:card_id %)) %) (:metrics block))
