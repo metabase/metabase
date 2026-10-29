@@ -60,7 +60,7 @@
   "Apply `changes` to the Dashboard with `dashboard-id`."
   [dashboard-id :- ::lib.schema.id/dashboard
    changes      :- ::dashboards.schema/dashboard.update]
-  (t2/update! :model/Dashboard dashboard-id changes))
+  (t2/update! :model/Dashboard :id dashboard-id changes))
 
 (mu/defn delete-dashboard!
   "Delete the Dashboard with `dashboard-id`."

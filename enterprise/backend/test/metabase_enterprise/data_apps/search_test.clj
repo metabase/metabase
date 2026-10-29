@@ -210,5 +210,5 @@
   (mt/with-premium-features #{:data-apps}
     (mt/with-temp [:model/DataApp {app-id :id} {:name "sandpiper-sightings" :display_name "Shorebirds"}]
       (is (contains? (found-data-apps :crowberto :models "data-app") app-id))
-      (t2/delete! :model/DataApp app-id)
+      (t2/delete! :model/DataApp :id app-id)
       (is (= {} (found-data-apps :crowberto :models "data-app"))))))

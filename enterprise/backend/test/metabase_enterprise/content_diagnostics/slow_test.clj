@@ -515,7 +515,7 @@
                 (is (contains? by-type "transform"))
                 (is (not (contains? (get-in by-type ["transform" :details]) :view_count))))
               (testing "view_count is hydrated live at read time, not frozen at scan time"
-                (t2/update! :model/Card card-id {:view_count 99})
+                (t2/update! :model/Card :id card-id {:view_count 99})
                 (let [card-f (some #(when (= "card" (:entity_type %)) %)
                                    (:data (mt/user-http-request :crowberto :get 200
                                                                 "ee/content-diagnostics/slow" :query prefix)))]

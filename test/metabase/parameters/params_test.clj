@@ -55,7 +55,7 @@
   (testing "Inactive Entity Name fields should not be hydrated (#65207)"
     (let [name-field-id (mt/id :venues :name)]
       (try
-        (t2/update! :model/Field name-field-id {:active false})
+        (t2/update! :model/Field :id name-field-id {:active false})
         (is (= {:name          "ID"
                 :table_id      (mt/id :venues)
                 :semantic_type :type/PK
@@ -64,7 +64,7 @@
                    (t2/hydrate :name_field)
                    mt/derecordize)))
         (finally
-          (t2/update! :model/Field name-field-id {:active true}))))))
+          (t2/update! :model/Field :id name-field-id {:active true}))))))
 
 ;;; -------------------------------------------------- param_fields --------------------------------------------------
 

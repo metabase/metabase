@@ -49,7 +49,7 @@
       (is (thrown-with-msg?
            Exception
            #"does not exist"
-           (t2/update! :model/Measure measure-id {:definition (measure-definition-referencing 99999)})))))
+           (t2/update! :model/Measure :id measure-id {:definition (measure-definition-referencing 99999)})))))
   (testing "Updating a measure to reference itself should fail"
     (mt/with-temp [:model/Measure {measure-id :id} {:name "Measure"
                                                     :table_id (mt/id :venues)
@@ -58,7 +58,7 @@
       (is (thrown-with-msg?
            Exception
            #"[Cc]ycle"
-           (t2/update! :model/Measure measure-id {:definition (measure-definition-referencing measure-id)})))))
+           (t2/update! :model/Measure :id measure-id {:definition (measure-definition-referencing measure-id)})))))
   (testing "Updating a measure to create an indirect cycle should fail"
     (mt/with-temp [:model/Measure {measure-1-id :id} {:name "Measure 1"
                                                       :table_id (mt/id :venues)
@@ -71,7 +71,7 @@
       (is (thrown-with-msg?
            Exception
            #"[Cc]ycle"
-           (t2/update! :model/Measure measure-1-id {:definition (measure-definition-referencing measure-2-id)})))))
+           (t2/update! :model/Measure :id measure-1-id {:definition (measure-definition-referencing measure-2-id)})))))
 ;;; ------------------------------------------------ Metric Reference Tests ------------------------------------------------
 
   (defn- metric-query
@@ -128,7 +128,7 @@
           (is (thrown-with-msg?
                Exception
                #"[Mm]easures cannot reference metrics"
-               (t2/update! :model/Measure measure-id
+               (t2/update! :model/Measure :id measure-id
                            {:definition (measure-definition (lib.metadata/metric mp metric-id))}))))))))
 
 ;;; ------------------------------------------------ MBQL4 Rejection Tests ------------------------------------------------
@@ -169,14 +169,14 @@
         (is (thrown-with-msg?
              Exception
              #"Invalid measure definition"
-             (t2/update! :model/Measure measure-id
+             (t2/update! :model/Measure :id measure-id
                          {:definition {:source-table (mt/id :venues)
                                        :aggregation [[:count]]}}))))
       (testing "MBQL4 full query"
         (is (thrown-with-msg?
              Exception
              #"Invalid measure definition"
-             (t2/update! :model/Measure measure-id
+             (t2/update! :model/Measure :id measure-id
                          {:definition {:database (mt/id)
                                        :type :query
                                        :query {:source-table (mt/id :venues)

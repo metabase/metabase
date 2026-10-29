@@ -211,7 +211,7 @@
         (let [doc-id (:id (created! (call {:method           "create"
                                            :name             "Old name"
                                            :content_markdown "Stable body."})))]
-          (t2/update! :model/Document doc-id {:document unrenderable-body})
+          (t2/update! :model/Document :id doc-id {:document unrenderable-body})
           (testing "a metadata-only update lands and is reported as the success it is — the write
                    commits before the response is built, so a body this tool can't render must not
                    turn a completed write into a failed call"
