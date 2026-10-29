@@ -113,36 +113,6 @@
   [id :- ms/PositiveInt]
   (t2/exists? :model/Document :id id))
 
-(mu/defn card
-  "The Card with `id`, or nil."
-  [id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id id))
-
-(mu/defn table
-  "The Table with `id`, or nil."
-  [id :- [:maybe ::lib.schema.id/table]]
-  (t2/select-one :model/Table :id id {:from [(warehouse-schema-overlay/table-query)]}))
-
-(mu/defn collection
-  "The Collection with `id`, or nil."
-  [id :- ::lib.schema.id/collection]
-  (t2/select-one :model/Collection :id id))
-
-(mu/defn document
-  "The Document with `id`, or nil."
-  [id :- ms/PositiveInt]
-  (t2/select-one :model/Document :id id))
-
-(mu/defn dashboard
-  "The Dashboard with `dashboard-id`, or nil."
-  [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/Dashboard :id dashboard-id))
-
-(mu/defn card-document-id
-  "The Document id of the Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one-fn :document_id :model/Card :id card-id))
-
 (mu/defn recent-views-for-user-context
   "The RecentViews of the User with `user-id` in `context`, newest first."
   [user-id :- ::lib.schema.id/user

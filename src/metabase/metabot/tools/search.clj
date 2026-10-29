@@ -22,7 +22,8 @@
    [metabase.transforms.core :as transforms]
    [metabase.util :as u]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.warehouses.db :as warehouses.db]))
 
 (set! *warn-on-reflection* true)
 
@@ -705,7 +706,7 @@
 (defn- check-search-database!
   [database-id]
   (when-not (and (pos-int? database-id)
-                 (when-let [database (metabot.db/database-summary database-id)]
+                 (when-let [database (warehouses.db/database database-id)]
                    (mi/can-read? database)))
     (unavailable-database! {:database-id database-id})))
 

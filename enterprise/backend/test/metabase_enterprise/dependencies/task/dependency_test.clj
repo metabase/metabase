@@ -1248,18 +1248,17 @@
     (data-apps.tu/with-published-tables! [(mt/id :venues)]
       (deps.test/run-with-dependencies-setup!
        (fn [mp]
-         (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id}
-                        {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
-                        :model/Collection {given-collection-id :id} {:namespace "data-apps"}
-                        :model/Card {card-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                                                   :collection_id given-collection-id}]
-           (t2/delete! :model/Collection collection-id)
+         (mt/with-temp [:model/DataApp    app        {}
+                        :model/Collection collection {:namespace "data-apps"}
+                        :model/Card       card       {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                      :collection_id (:id collection)}]
+           (t2/delete! :model/Collection (:resource_collection_id app))
            (deps.test/synchronously-run-dependency-job!)
-           (is (empty? (data-app-deps app-id)))
-           (t2/update! :model/DataApp app-id {:resource_collection_id given-collection-id})
-           (assert-pending :data-app app-id)
+           (is (empty? (data-app-deps (:id app))))
+           (t2/update! :model/DataApp (:id app) {:resource_collection_id (:id collection)})
+           (assert-pending :data-app (:id app))
            (deps.test/synchronously-run-dependency-job!)
-           (is (= #{[:card card-id]} (data-app-deps app-id)))))))))
+           (is (= #{[:card (:id card)]} (data-app-deps (:id app))))))))))
 
 (deftest ^:synchronized data-app-dependency-job-skips-the-bundle-test
   (testing "the dependency job computes an app's dependencies without reading its bundle"

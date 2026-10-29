@@ -15,6 +15,7 @@
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :as premium-features]
    [metabase.queries.core :as queries]
+   [metabase.queries.db :as queries.db]
    [metabase.request.core :as request]
    [metabase.system.core :as system]
    [metabase.util :as u]
@@ -22,6 +23,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouses.db :as warehouses.db]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -72,7 +74,7 @@
                                    [:persisted-info-id ms/PositiveInt]]]
   (api/let-404 [persisted-info (first (fetch-persisted-info {:persisted-info-id persisted-info-id} nil nil))]
     (api/read-check :model/Card (:card_id persisted-info))
-    (api/write-check (model-persistence.db/database (:database_id persisted-info)))
+    (api/write-check (warehouses.db/database (:database_id persisted-info)))
     persisted-info))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -85,7 +87,7 @@
                          [:card-id ms/PositiveInt]]]
   (api/let-404 [persisted-info (first (fetch-persisted-info {:card-id card-id} nil nil))]
     (api/read-check :model/Card card-id)
-    (api/read-check (model-persistence.db/database (:database_id persisted-info)))
+    (api/read-check (warehouses.db/database (:database_id persisted-info)))
     persisted-info))
 
 (def ^:private CronSchedule
@@ -177,9 +179,9 @@
   [{:keys [card-id]} :- [:map {:closed true}
                          [:card-id ms/PositiveInt]]]
   (premium-features/assert-has-feature :cache-granular-controls (tru "Granular cache controls"))
-  (api/let-404 [{:keys [database_id] :as card} (model-persistence.db/card card-id)]
+  (api/let-404 [{:keys [database_id] :as card} (queries.db/card card-id)]
     (api/write-check card)
-    (let [database (model-persistence.db/database database_id)]
+    (let [database (warehouses.db/database database_id)]
       (api/write-check database)
       (when-not (driver.u/supports? (:engine database) :persist-models database)
         (throw (ex-info (tru "Database does not support persisting")
@@ -203,14 +205,14 @@
   "Refresh the persisted model caching `card-id`."
   [{:keys [card-id]} :- [:map {:closed true}
                          [:card-id ms/PositiveInt]]]
-  (api/let-404 [card           (model-persistence.db/card card-id)
+  (api/let-404 [card           (queries.db/card card-id)
                 persisted-info (model-persistence.db/persisted-info-for-card card-id)]
     (when (not (queries/model? card))
       (throw (ex-info (trs "Cannot refresh a non-model question") {:status-code 400})))
     (when (:archived card)
       (throw (ex-info (trs "Cannot refresh an archived model") {:status-code 400})))
     (api/write-check card)
-    (api/write-check (model-persistence.db/database (:database_id persisted-info)))
+    (api/write-check (warehouses.db/database (:database_id persisted-info)))
     (task.persist-refresh/schedule-refresh-for-individual! persisted-info)
     api/generic-204-no-content))
 
@@ -224,10 +226,10 @@
   [{:keys [card-id]} :- [:map {:closed true}
                          [:card-id ms/PositiveInt]]]
   (premium-features/assert-has-feature :cache-granular-controls (tru "Granular cache controls"))
-  (api/let-404 [card (model-persistence.db/card card-id)]
+  (api/let-404 [card (queries.db/card card-id)]
     (api/write-check card)
     (when-let [persisted-info (model-persistence.db/persisted-info-for-card card-id)]
-      (api/write-check (model-persistence.db/database (:database_id persisted-info)))
+      (api/write-check (warehouses.db/database (:database_id persisted-info)))
       (persisted-info/mark-for-pruning! {:id (:id persisted-info)} "off"))
     api/generic-204-no-content))
 
@@ -246,7 +248,7 @@
   (api/check (model-persistence.settings/persisted-models-enabled)
              400
              (tru "Persisting models is not enabled."))
-  (api/let-404 [database (model-persistence.db/database id)]
+  (api/let-404 [database (warehouses.db/database id)]
     (api/write-check database)
     (if (-> database :settings :persist-models-enabled)
       ;; todo: some other response if already persisted?
@@ -273,7 +275,7 @@
   "Attempt to disable model persistence for a database. If already not enabled, just returns a generic 204."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (api/let-404 [database (model-persistence.db/database id)]
+  (api/let-404 [database (warehouses.db/database id)]
     (api/write-check database)
     (if (-> database :settings :persist-models-enabled)
       (do (model-persistence.db/update-database! id {:settings (dissoc (:settings database) :persist-models-enabled)})

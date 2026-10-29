@@ -23,6 +23,7 @@
    [metabase.premium-features.core :as premium-features]
    [metabase.request.core :as request]
    [metabase.sso.core :as sso]
+   [metabase.users.db :as users.db]
    [metabase.util.encryption :as encryption]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -71,7 +72,7 @@
            ;; an unreachable directory fails closed: re-auth is denied (the user retries when the
            ;; directory is back; admin/remove needs no re-auth), never an unhandled 500
            (try
-             (when-let [user-email (mfa.db/user-email user-id)]
+             (when-let [user-email (:email (users.db/user user-id))]
                (when-let [user-info (sso/find-user user-email)]
                  (sso/verify-password user-info password)))
              (catch Exception e
@@ -126,7 +127,7 @@
                                             (fn []
                                               (or (enrollment/confirm-enrollment! api/*current-user-id* code)
                                                   (throw (invalid-code-ex)))))
-        user  (mfa.db/user api/*current-user-id*)]
+        user  (users.db/user api/*current-user-id*)]
     (messages/send-mfa-enabled-email! (:email user))
     (events/publish-event! :event/mfa-enrolled {:object user})
     {:recovery_codes recovery-codes}))
@@ -144,7 +145,7 @@
                  (when-not (verification/verify-attempt! api/*current-user-id* code nil)
                    (throw (invalid-code-ex)))
                  (enrollment/disable! api/*current-user-id*))))
-  (let [user (mfa.db/user api/*current-user-id*)]
+  (let [user (users.db/user api/*current-user-id*)]
     (messages/send-mfa-disabled-email! (:email user))
     (events/publish-event! :event/mfa-disabled {:object user}))
   api/generic-204-no-content)
@@ -186,7 +187,7 @@
     (throw (ex-info (tru "You cannot administratively remove your own two-factor authentication. Please use the normal removal method in your account settings.")
                     {:status-code 400})))
   (when (enrollment/disable! user-id)
-    (let [user (mfa.db/user user-id)]
+    (let [user (users.db/user user-id)]
       (messages/send-mfa-removed-by-admin-email! (:email user))
       (events/publish-event! :event/mfa-disabled {:object user})))
   api/generic-204-no-content)

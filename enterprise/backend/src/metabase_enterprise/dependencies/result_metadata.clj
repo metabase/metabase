@@ -14,6 +14,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.queries.core :as queries]
+   [metabase.queries.db :as queries.db]
    [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -128,7 +129,7 @@
   "Re-derive the result metadata of the MBQL Card with `card-id` and store it when it changed."
   [card-id :- ::lib.schema.id/card]
   (let [state    (dependencies.db/card-state card-id false)
-        card     (dependencies.db/card card-id)
+        card     (queries.db/card card-id)
         metadata (lib-be/with-metadata-provider-cache
                    (when (and card (not= :native (:query_type card)) (seq (:dataset_query card)))
                      (rederived-result-metadata card)))]

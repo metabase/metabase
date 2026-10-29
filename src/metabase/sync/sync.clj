@@ -15,7 +15,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.sync.analyze :as analyze]
    [metabase.sync.analyze.fingerprint :as sync.fingerprint]
-   [metabase.sync.db :as sync.db]
    [metabase.sync.field-values :as sync.field-values]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata :as sync-metadata]
@@ -23,7 +22,8 @@
    [metabase.tracing.core :as tracing]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouse-schema.models.field :as field])
+   [metabase.warehouse-schema.models.field :as field]
+   [metabase.warehouses.db :as warehouses.db])
   (:import
    (java.time.temporal Temporal)))
 
@@ -84,7 +84,7 @@
    (let [database (driver.u/lib-database database-id)]
      (tracing/with-span :sync "sync.database" {:db/id database-id}
        (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
-         (->> (scan-phases scan (= "complete" (sync.db/database-initial-sync-status database-id)))
+         (->> (scan-phases scan (= "complete" (:initial_sync_status (warehouses.db/database database-id))))
               (keep (partial do-phase! database-id))
               (doall)))))))
 

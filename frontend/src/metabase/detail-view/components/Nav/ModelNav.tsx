@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { type ReactNode, useMemo } from "react";
 
 import {
@@ -6,7 +7,10 @@ import {
   useGetCollectionQuery,
 } from "metabase/api";
 import { CollectionBadge } from "metabase/common/collections/components/CollectionBadge";
-import { Breadcrumb } from "metabase/common/components/Breadcrumb";
+import {
+  BREADCRUMB_TRAIL_CLASS_NAME,
+  Breadcrumb,
+} from "metabase/common/components/Breadcrumb";
 import { Group, type GroupProps } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { getQuestionIdFromVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -21,7 +25,7 @@ interface Props extends GroupProps {
   table: Table;
 }
 
-export const ModelNav = ({ rowName, table, ...props }: Props) => {
+export const ModelNav = ({ rowName, table, className, ...props }: Props) => {
   const modelId = getQuestionIdFromVirtualTableId(table.id);
 
   const { data: card } = useGetCardQuery(
@@ -37,7 +41,14 @@ export const ModelNav = ({ rowName, table, ...props }: Props) => {
   }, [collection]);
 
   return (
-    <Group align="center" gap="sm" miw={0} wrap="nowrap" {...props}>
+    <Group
+      align="center"
+      className={cx(BREADCRUMB_TRAIL_CLASS_NAME, className)}
+      gap="sm"
+      miw={0}
+      wrap="nowrap"
+      {...props}
+    >
       {collections.map((collection) => (
         <CollectionBreadcrumb
           collectionId={collection.id}
@@ -47,7 +58,7 @@ export const ModelNav = ({ rowName, table, ...props }: Props) => {
 
       {collection && (
         <>
-          <CollectionBadge collectionId={collection.id} />
+          <CollectionBadge collectionId={collection.id} showTooltip />
 
           <Separator />
         </>

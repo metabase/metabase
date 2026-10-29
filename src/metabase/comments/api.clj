@@ -12,7 +12,9 @@
    [metabase.comments.models.comment-reaction :as comment-reaction]
    [metabase.comments.render :as comments.render]
    [metabase.comments.schema :as comments.schema]
+   [metabase.documents.db :as documents.db]
    [metabase.events.core :as events]
+   [metabase.explorations.db :as explorations.db]
    [metabase.models.interface :as mi]
    [metabase.request.core :as request]
    [metabase.util :as u]
@@ -153,10 +155,10 @@
    & [{:keys [entity parent]
        ;; if you don't pass them we'll try to fetch them
        :or   {entity (case target_type
-                       "document"    (comments.db/document target_id)
-                       "exploration" (comments.db/exploration target_id))
+                       "document"    (documents.db/document target_id)
+                       "exploration" (explorations.db/exploration target_id))
               parent (when parent_comment_id
-                       (comments.db/comment-by-id parent_comment_id))}}]]
+                       (comments.db/comment parent_comment_id))}}]]
   (let [mentions   (->> (comment/mentions (:content comment))
                         (mentioned-ids-who-can-read entity))
         ;; TODO: when we expand to more entity types, add dispatch here if not everyone has `creator_id`
@@ -180,7 +182,7 @@
 (defn notify-comment-id!
   "Send a notification using only comment id"
   [comment-id]
-  (notify-comment! (-> (comments.db/comment-by-id comment-id)
+  (notify-comment! (-> (comments.db/comment comment-id)
                        (t2/hydrate :creator :reactions))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -197,7 +199,7 @@
                                                "Cannot comment on archived entities")))
         ;; If this is a reply, validate the parent comment exists and belongs to same entity
         parent     (when parent_comment_id
-                     (-> (api/check-404 (comments.db/comment-by-id parent_comment_id))
+                     (-> (api/check-404 (comments.db/comment parent_comment_id))
                          (u/prog1 (api/check-400 (and (= (:target_type <>) target_type)
                                                       (= (:target_id <>) target_id)
                                                       (= (:child_target_id <>) child_target_id))
@@ -228,7 +230,7 @@
   [{:keys [comment-id]} :- [:map {:closed true} [:comment-id ms/PositiveInt]]
    _query-params
    {:keys [content is_resolved]} :- UpdateComment]
-  (let [comment (api/check-404 (comments.db/comment-by-id comment-id))
+  (let [comment (api/check-404 (comments.db/comment comment-id))
         entity  (-> (api/read-check (type->model (:target_type comment)) (:target_id comment))
                     (u/prog1 (api/check-400 (not (entity-archived? <>))
                                             "Cannot edit comments on archived entities")))]
@@ -246,7 +248,7 @@
                            u/remove-nils
                            not-empty)]
       (comments.db/update-comment! comment-id updates))
-    (let [updated-comment (-> (comments.db/comment-by-id comment-id)
+    (let [updated-comment (-> (comments.db/comment comment-id)
                               (t2/hydrate :creator :reactions))]
       (events/publish-event! :event/comment-update
                              {:object updated-comment
@@ -261,7 +263,7 @@
   "Soft delete a comment"
   [{:keys [comment-id]} :- [:map {:closed true} [:comment-id ms/PositiveInt]]
    _query-params]
-  (let [comment (api/check-404 (comments.db/comment-by-id comment-id))]
+  (let [comment (api/check-404 (comments.db/comment comment-id))]
     (-> (api/read-check (type->model (:target_type comment)) (:target_id comment))
         (u/prog1 (api/check-400 (not (entity-archived? <>))
                                 "Cannot delete comments on archived entities")))
@@ -286,7 +288,7 @@
   [{:keys [comment-id]} :- [:map {:closed true} [:comment-id ms/PositiveInt]]
    _query-params
    {:keys [emoji]} :- [:map {:closed true} [:emoji ::comments.schema/reaction-emoji]]]
-  (let [comment (api/check-404 (comments.db/comment-by-id comment-id))]
+  (let [comment (api/check-404 (comments.db/comment comment-id))]
     (api/check-400 (not (:deleted_at comment))
                    "Cannot react to deleted comments")
     (-> (api/read-check (type->model (:target_type comment)) (:target_id comment))

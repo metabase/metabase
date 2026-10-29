@@ -14,6 +14,7 @@
    [metabase.notification.core :as notification]
    [metabase.notification.db :as notification.db]
    [metabase.notification.models :as models.notification]
+   [metabase.users.db :as users.db]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -159,7 +160,7 @@
        (filter #(#{:notification-recipient/user :notification-recipient/raw-value} ((comp keyword :type) %)))
        (map (fn [recipient]
               (if (= :notification-recipient/user ((comp keyword :type) recipient))
-                (or (-> recipient :user :email) (notification.db/user-email (:user_id recipient)))
+                (or (-> recipient :user :email) (:email (users.db/user (:user_id recipient))))
                 (-> recipient :details :value))))
        (remove nil?)
        set))

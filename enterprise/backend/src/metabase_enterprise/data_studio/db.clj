@@ -86,11 +86,6 @@
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
 
-(mu/defn collection
-  "The Collection with `collection-id`, or nil."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one :model/Collection collection-id))
-
 (mu/defn latest-table-publishing-event
   "The most recent publish or unpublish AuditLog event for `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
@@ -99,11 +94,6 @@
                  :model "Table"
                  :model_id table-id
                  {:order-by [[:timestamp :desc] [:id :desc]]}))
-
-(mu/defn user-name-and-email
-  "The id, first name, last name, and email of the User with `user-id`, or nil."
-  [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :id :first_name :last_name :email] user-id))
 
 (mu/defn publish-tables!
   "Publish the Tables with `table-ids` into the Collection with `collection-id`, returning the number updated."

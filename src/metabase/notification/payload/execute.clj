@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.channel.urls :as urls]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.models.dashboard-card :as dashboard-card]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
@@ -12,6 +13,7 @@
    [metabase.notification.payload.temp-storage :as notification.temp-storage]
    [metabase.parameters.schema :as parameters.schema]
    [metabase.parameters.shared :as shared.params]
+   [metabase.queries.db :as queries.db]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.core :as qp]
    [metabase.query-processor.dashboard :as qp.dashboard]
@@ -200,13 +202,14 @@
      :or   {spill-budget (new-spill-budget)}}]
    (log/with-context {:card_id card_id}
      (try
-       (when-let [card (notification.db/unarchived-card card_id)]
-         (let [dashboard      (notification.db/dashboard dashboard_id)
+       (when-let [card (let [card (queries.db/card card_id)]
+                         (when-not (:archived card) card))]
+         (let [dashboard      (dashboards.db/dashboard dashboard_id)
                multi-cards    (dashboard-card/dashcard->multi-cards dashcard)
                result-fn      (fn [card-id]
                                 (let [card (if (= card-id (:id card))
                                              card
-                                             (notification.db/card card-id))
+                                             (queries.db/card card-id))
                                       attached-result? (and attached? (= card-id card_id))]
                                   {:card     card
                                    :dashcard dashcard
@@ -375,7 +378,7 @@
   "Returns the result for a card."
   [creator-id :- pos-int?
    card-id :- pos-int?]
-  (let [card   (notification.db/card card-id)
+  (let [card   (queries.db/card card-id)
         result (request/with-current-user creator-id
                  (-> (qp.card/process-query-for-card card :api
                                                      ;; TODO rename to :notification?
