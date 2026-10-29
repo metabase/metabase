@@ -17,7 +17,14 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { Button, Flex, Group, Icon, Stack, TimeInput } from "metabase/ui";
+import {
+  Button,
+  DefaultSelectItem,
+  Flex,
+  Icon,
+  Stack,
+  TimeInput,
+} from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import type {
@@ -180,11 +187,12 @@ const EventForm = ({
               data={iconOptions}
               leftSection={values.icon ? <Icon name={values.icon} /> : null}
               renderOption={({ option }) => (
-                <Group p="sm" fw="bold">
-                  {/* Unjustified type cast. FIXME */}
-                  {option.value && <Icon name={option.value as IconName} />}
-                  <span>{option.label}</span>
-                </Group>
+                <DefaultSelectItem
+                  value={option.value}
+                  label={option.label}
+                  // Unjustified type cast. FIXME
+                  icon={option.value as IconName}
+                />
               )}
             />
             {timelines?.length > 1 && (

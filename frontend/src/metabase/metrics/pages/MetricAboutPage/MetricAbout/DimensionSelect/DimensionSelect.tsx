@@ -62,8 +62,7 @@ export function DimensionSelect({
             <Combobox.Option
               key={option.value}
               value={option.value}
-              selected={option.value === value}
-              p={0}
+              active={option.value === value}
             >
               <DefaultSelectItem
                 value={option.value}

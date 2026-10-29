@@ -480,6 +480,7 @@ describe("issue 20229", () => {
     H.popover().within(() => {
       unselectColumn("Tax");
     });
+    cy.realPress("Escape");
 
     H.visualize();
 

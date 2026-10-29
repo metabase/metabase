@@ -191,7 +191,7 @@ function Option(props: OptionProps) {
   const { value, selected, iconName, iconUrl, label } = props;
 
   return (
-    <Combobox.Option px="sm" py="xxs" value={value} selected={selected}>
+    <Combobox.Option value={value} active={selected}>
       <Flex align="center" gap="sm">
         {iconUrl ? (
           <img

@@ -22,6 +22,8 @@ import {
 
 import { trackBranchCreated } from "../../analytics";
 
+import S from "./BranchDropdown.module.css";
+
 export interface BranchDropdownProps {
   allowCreate?: boolean;
   baseBranch?: string;
@@ -142,29 +144,20 @@ export const BranchDropdown = ({
                 {filteredBranches.length > 0 && (
                   <>
                     <Combobox.Options>
-                      <Box px="sm" py="sm">
-                        <Text
-                          size="xs"
-                          c="text-disabled"
-                          tt="uppercase"
-                          fw="bold"
-                        >
-                          {t`Branches`}
-                        </Text>
-                      </Box>
-                      {filteredBranches.map((branch) => (
-                        <Combobox.Option
-                          key={branch}
-                          value={branch}
-                          onClick={() => handleBranchSelect(branch)}
-                          data-testid={`branch-item-${branch}`}
-                          py="sm"
-                        >
-                          <Group gap="xxs" wrap="nowrap">
-                            <Text>{branch}</Text>
-                          </Group>
-                        </Combobox.Option>
-                      ))}
+                      <Combobox.Group label={t`Branches`}>
+                        {filteredBranches.map((branch) => (
+                          <Combobox.Option
+                            key={branch}
+                            value={branch}
+                            onClick={() => handleBranchSelect(branch)}
+                            data-testid={`branch-item-${branch}`}
+                          >
+                            <Group gap="xxs" wrap="nowrap">
+                              <div>{branch}</div>
+                            </Group>
+                          </Combobox.Option>
+                        ))}
+                      </Combobox.Group>
                     </Combobox.Options>
                     {showCreateOption && <Divider />}
                   </>
@@ -173,7 +166,6 @@ export const BranchDropdown = ({
                 {showCreateOption && (
                   <Box p="sm">
                     <Combobox.Option
-                      py="sm"
                       value="__create__"
                       onClick={handleCreateBranch}
                       data-testid="create-branch-button"
@@ -181,8 +173,8 @@ export const BranchDropdown = ({
                       <Group gap="xxs" wrap="nowrap">
                         <Icon name="add" size={16} />
                         <Box>
-                          <Text lh="md">{t`Create branch "${searchValue}"`}</Text>
-                          <Text size="xs" c="text-disabled">
+                          <div>{t`Create branch "${searchValue}"`}</div>
+                          <Text size="xs" className={S.branchSource}>
                             {t`from ${baseBranch || value}`}
                           </Text>
                         </Box>

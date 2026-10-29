@@ -85,10 +85,10 @@ export const TableActionInputBoolean = ({
       </Combobox.Target>
 
       <Combobox.Dropdown mah="none" miw={150}>
-        <Combobox.Options p="0.5rem">
+        <Combobox.Options>
           {options.map((item) => (
             <Combobox.Option
-              selected={value === item.value}
+              active={value === item.value}
               value={item.value}
               key={item.value}
             >

@@ -6,7 +6,6 @@ import {
   Combobox,
   FixedSizeIcon,
   Group,
-  Text,
   TextInput,
   useCombobox,
 } from "metabase/ui";
@@ -132,24 +131,14 @@ export function SchemaViewerNodeSearch({ nodes }: SchemaViewerNodeSearchProps) {
         {filteredItems.length === 0 ? (
           <Combobox.Empty>{t`No tables found`}</Combobox.Empty>
         ) : (
-          <Combobox.Options className={S.options}>
+          <Combobox.Options>
             {filteredItems.map((item) => (
-              <Combobox.Option
-                value={item.id}
-                key={item.id}
-                className={S.listItem}
-              >
+              <Combobox.Option value={item.id} key={item.id}>
                 <Group gap="sm" wrap="nowrap" justify="space-between" w="100%">
-                  <Text className={S.label}>{item.label}</Text>
+                  <div className={S.label}>{item.label}</div>
                   <Group gap="xxs" wrap="nowrap" className={S.fieldCount}>
-                    <Text c="text-disabled" fz="xs">
-                      {item.fkCount}
-                    </Text>
-                    <FixedSizeIcon
-                      name="connections"
-                      c="text-disabled"
-                      size={12}
-                    />
+                    <span>{item.fkCount}</span>
+                    <FixedSizeIcon name="connections" size={12} />
                   </Group>
                 </Group>
               </Combobox.Option>

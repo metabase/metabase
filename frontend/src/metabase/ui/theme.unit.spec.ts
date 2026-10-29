@@ -186,7 +186,7 @@ describe("theme scales", () => {
       const components = getThemeOverrides().components ?? {};
       const expectedShadowDefaults = {
         Card: "xs",
-        Combobox: "xs",
+        Combobox: "sm_outline",
         Dialog: "sm_outline",
         DrawerRoot: "xs_outline",
         Menu: "sm_outline",

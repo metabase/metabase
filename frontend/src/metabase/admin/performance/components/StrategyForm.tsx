@@ -29,6 +29,7 @@ import {
   Group,
   Icon,
   Select,
+  SelectItemWithDescription,
   Stack,
   Text,
   Tooltip,
@@ -572,21 +573,20 @@ const StrategySelector = ({
         allowDeselect={false}
         aria-labelledby={headingId}
         data-testid="cache-strategy-select"
-        classNames={{ option: S.option }}
         renderOption={({ option }) => {
           const strategy = availableStrategies[option.value];
           if (!strategy) {
             return option.label;
           }
           return (
-            <Stack gap="xxs">
-              <Text fw="bold">{getLabelString(strategy.label, model)}</Text>
-              {strategy.description && (
-                <Text size="sm" c="text-secondary">
-                  {getLabelString(strategy.description, model)}
-                </Text>
-              )}
-            </Stack>
+            <SelectItemWithDescription
+              showCheckIcon={false}
+              label={getLabelString(strategy.label, model)}
+              description={
+                strategy.description &&
+                getLabelString(strategy.description, model)
+              }
+            />
           );
         }}
       />

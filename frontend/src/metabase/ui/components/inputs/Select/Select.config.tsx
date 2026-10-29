@@ -1,5 +1,8 @@
 import { Select } from "@mantine/core";
+import cx from "classnames";
 import { t } from "ttag";
+
+import CS from "../Combobox/Combobox.module.css";
 
 import S from "./Select.module.css";
 import { DefaultSelectItem } from "./SelectItem";
@@ -31,12 +34,12 @@ export const selectOverrides = {
       input: S.SelectInput,
       wrapper: S.SelectWrapper,
       section: S.SelectInputSection,
-      option: S.SelectItems_Item,
-      options: S.SelectItems_Options,
-      group: S.SelectItems_Group,
-      groupLabel: S.SelectItems_GroupLabel,
-      empty: S.SelectItemsNothingFound,
-      dropdown: S.Dropdown,
+      dropdown: CS.dropdown,
+      options: cx(CS.options, S.SelectOptions),
+      option: cx(CS.option, S.SelectItems_Item),
+      group: CS.group,
+      groupLabel: CS.groupLabel,
+      empty: CS.empty,
     },
   }),
 };
