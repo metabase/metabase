@@ -1786,7 +1786,6 @@
   [[:parameters                    {:optional true} [:maybe [:ref ::lib.schema.parameter/parameters]]]
    [:qp/stage-is-from-source-card  {:optional true} [:ref ::lib.schema.id/card]]
    [:qp/stage-had-source-card      {:optional true} [:ref ::lib.schema.id/card]]
-   [:qp/skip-persisted-cache       {:optional true} :boolean]
    [:qp.pivot/forced-shape         {:optional true} [:enum :native-pivot-query :union-all]]
    [:persisted-info/native         {:optional true} ::lib.schema.common/non-blank-string]
    [:source-query/model?           {:optional true} :boolean]
