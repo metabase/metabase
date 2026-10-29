@@ -91,21 +91,30 @@ export function PrototypesPage() {
         </NavLink>
         <Divider my="sm" />
 
-        <Text fw="bold" px="sm">{t`Iteration 3`}</Text>
-        <PrototypeLinks prototypes={iteration3} activeId={prototype?.id} />
-        {iteration3Drafts.length > 0 && (
-          <NavLink
-            label={t`Other drafts`}
-            childrenOffset="sm"
-            defaultOpened={false}
-          >
-            <PrototypeLinks
-              prototypes={iteration3Drafts}
-              activeId={prototype?.id}
-              mt="xs"
-            />
-          </NavLink>
-        )}
+        <NavLink
+          label={t`Iteration 3`}
+          childrenOffset="sm"
+          defaultOpened={false}
+        >
+          <PrototypeLinks
+            prototypes={iteration3}
+            activeId={prototype?.id}
+            mt="xs"
+          />
+          {iteration3Drafts.length > 0 && (
+            <NavLink
+              label={t`Other drafts`}
+              childrenOffset="sm"
+              defaultOpened={false}
+            >
+              <PrototypeLinks
+                prototypes={iteration3Drafts}
+                activeId={prototype?.id}
+                mt="xs"
+              />
+            </NavLink>
+          )}
+        </NavLink>
 
         <Divider my="sm" />
 

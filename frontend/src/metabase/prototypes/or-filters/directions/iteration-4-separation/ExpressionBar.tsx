@@ -555,6 +555,14 @@ export function ExpressionBar({
               onClick={() => moveCaret(tokens.length)}
             />
           ),
+          // Before the summary's filters, so it stays at the left while they keep to the right.
+          ...(tokens.length === 0 && text === "" && draftColumn == null
+            ? [
+                <span key="placeholder" className={S.placeholder}>
+                  {t`Type to filter…`}
+                </span>,
+              ]
+            : []),
           // After the end slot: the caret never gets past the summary's filters.
           ...(trailing
             ? [
@@ -571,9 +579,6 @@ export function ExpressionBar({
               ]
             : []),
         ]}
-        {tokens.length === 0 && text === "" && draftColumn == null && (
-          <span className={S.placeholder}>{t`Type to filter…`}</span>
-        )}
         {/* The summary's filters take the free space when present, so these only push right without them. */}
         <Group
           gap="sm"
