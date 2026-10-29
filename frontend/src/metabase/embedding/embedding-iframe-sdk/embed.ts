@@ -967,9 +967,19 @@ export type MetabaseQuestionElement = InstanceType<
   typeof MetabaseQuestionElement
 >;
 
-export const MetabaseDataAppElement = createCustomElement("metabase-data-app", [
-  "path",
-]);
+export const MetabaseDataAppElement = createCustomElement(
+  "metabase-data-app",
+  ["path"],
+  (Base) =>
+    class extends Base {
+      get path(): string {
+        return this.getAttribute("path") ?? "";
+      }
+      set path(value: string) {
+        this.setAttribute("path", value);
+      }
+    },
+);
 
 export type MetabaseDataAppElement = InstanceType<
   typeof MetabaseDataAppElement

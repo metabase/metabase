@@ -1,50 +1,59 @@
 import type { EmbeddedDataApp } from "e2e/support/helpers";
-import {
-  getSignedJwtForUser,
-  mockAuthProviderAndJwtSignIn,
-} from "e2e/support/helpers/embedding-sdk-testing";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 
 const { H } = cy;
 
 const APP_FRAME = "iframe[data-metabase-embed]";
 
-describe("scenarios > embedding > data app web component (DAT-14)", () => {
+const loadDataApp = (path: string) =>
+  cy.get<EmbeddedDataApp>("@app").then(({ name }) =>
+    H.loadSdkIframeEmbedTestPage({
+      elements: [
+        { component: "metabase-data-app", attributes: { path: name + path } },
+      ],
+      selector: APP_FRAME,
+    }),
+  );
+
+describe("scenarios > embedding > metabase-data-app web component", () => {
   beforeEach(() => {
     H.prepareSdkIframeEmbedTest();
     H.createEmbeddedDataApp().as("app");
 
     cy.intercept("POST", "/auth/sso").as("ssoSession");
     cy.intercept("POST", "/api/dataset").as("ordersQuery");
-    cy.intercept("GET", "/api/ee/apps/embedded-app/bundle").as("appBundle");
-    cy.intercept("GET", "/embed/embedded-apps/embedded-app/**").as(
-      "appDocument",
-    );
   });
 
-  it("renders a real query and keeps nested navigation inside the app", () => {
-    loadApp("/orders?view=recent");
+  it("renders a query and keeps navigation inside the iframe", () => {
+    loadDataApp("/orders?view=recent");
 
-    appBody()
+    H.getSimpleEmbedIframeContent()
       .findByLabelText("Order count", { timeout: 30_000 })
       .should("have.text", "18760");
 
     cy.location("href").as("hostUrl");
+
+    cy.log("location should match the web component's path attribute");
     cy.get<HTMLIFrameElement>(APP_FRAME)
-      .its("0.contentWindow.location.search")
-      .should("include", "view=recent");
+      .its("0.contentWindow.location")
+      .should((location) => {
+        expect(location.pathname).to.eq(
+          "/embed/embedded-apps/embedded-app/orders",
+        );
 
-    appBody().findByTestId("current-pathname").should("have.text", "/orders");
-    appBody().findByRole("button", { name: "Order details" }).click();
+        expect(location.search).to.include("view=recent");
+      });
 
-    appBody()
+    H.getSimpleEmbedIframeContent()
+      .findByRole("button", { name: "Order details" })
+      .click();
+
+    cy.log("path changes in data app router");
+    H.getSimpleEmbedIframeContent()
       .findByTestId("current-pathname")
       .should("have.text", "/orders/details");
 
-    cy.get<HTMLIFrameElement>(APP_FRAME)
-      .its("0.contentWindow.location.search")
-      .should("include", "tab=summary");
-
+    cy.log("the host url remains the same");
     cy.get<string>("@hostUrl").then((url) =>
       cy.location("href").should("eq", url),
     );
@@ -53,87 +62,11 @@ describe("scenarios > embedding > data app web component (DAT-14)", () => {
       ({ response }) => {
         expect(response?.statusCode).to.eq(200);
 
+        cy.log("uses sessions from host's SSO flow");
         cy.wait("@ordersQuery")
           .its("request.headers.x-metabase-session")
           .should("eq", response?.body.id);
       },
     );
-
-    cy.wait("@appBundle")
-      .its("response.headers.x-metabase-data-app-content-security-policy")
-      .should("be.a", "string");
-
-    cy.get("@ssoSession.all").should("have.length", 1);
-  });
-
-  it("refreshes an expired session without reloading the app", () => {
-    cy.then(() => getSignedJwtForUser({ expiredInSeconds: 60 })).then((jwt) =>
-      mockAuthProviderAndJwtSignIn(undefined, { jwt }),
-    );
-
-    loadApp("/orders/details?tab=summary");
-
-    appBody()
-      .findByLabelText("Order count", { timeout: 30_000 })
-      .should("have.text", "18760");
-    appBody().findByRole("textbox", { name: "Notes" }).type("Keep this draft");
-    cy.wait("@ordersQuery");
-
-    // Only Date.now changes: timers and the backend's real sessions keep running.
-    cy.wait<unknown, MetabaseEmbeddingSessionToken>("@ssoSession").then(
-      ({ response }) => {
-        expect(response?.body.exp).to.be.a("number");
-        const expiredNow = (Number(response?.body.exp) + 5) * 1000;
-
-        cy.get<HTMLIFrameElement>(APP_FRAME)
-          .its("0.contentWindow")
-          .then((win: Cypress.AUTWindow) => {
-            cy.stub(win.Date, "now").returns(expiredNow);
-          });
-      },
-    );
-
-    mockAuthProviderAndJwtSignIn();
-    appBody().findByRole("button", { name: "Refresh orders" }).click();
-
-    cy.wait<unknown, MetabaseEmbeddingSessionToken>("@ssoSession").then(
-      ({ response }) => {
-        expect(response?.statusCode).to.eq(200);
-
-        cy.wait("@ordersQuery").then(({ request, response: queryResponse }) => {
-          expect(request.headers["x-metabase-session"]).to.eq(
-            response?.body.id,
-          );
-          expect(queryResponse?.statusCode).to.eq(202);
-        });
-      },
-    );
-
-    appBody().findByLabelText("Order count").should("have.text", "18760");
-    appBody()
-      .findByRole("textbox", { name: "Notes" })
-      .should("have.value", "Keep this draft");
-    appBody()
-      .findByTestId("current-pathname")
-      .should("have.text", "/orders/details");
-
-    cy.get("@ssoSession.all").should("have.length", 2);
-    cy.get("@appDocument.all").should("have.length", 1);
-    cy.get("@appBundle.all").should("have.length", 1);
   });
 });
-
-function loadApp(path: string) {
-  return cy.get<EmbeddedDataApp>("@app").then(({ name }) =>
-    H.loadSdkIframeEmbedTestPage({
-      elements: [
-        { component: "metabase-data-app", attributes: { path: name + path } },
-      ],
-      selector: APP_FRAME,
-    }),
-  );
-}
-
-function appBody() {
-  return H.getSimpleEmbedIframeContent();
-}

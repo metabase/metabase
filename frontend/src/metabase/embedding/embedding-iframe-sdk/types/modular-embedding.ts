@@ -353,6 +353,22 @@ export interface MetabaseMetabotAttributes {
 }
 
 /**
+ * Attributes for the `<metabase-data-app>` web component.
+ *
+ * Embeds a Metabase data app. Only available for authenticated (SSO) modular embeds.
+ *
+ * @remarks Pro/Enterprise
+ **/
+export interface MetabaseDataAppAttributes {
+  /**
+   * App slug, optionally followed by routes and query parameters.
+   *
+   * For example, `my-app` or `my-app/orders/details?tab=summary`.
+   **/
+  path: string;
+}
+
+/**
  * Settings for `defineMetabaseConfig()`.
  *
  * Page-level configuration shared by every web component on the page.
@@ -449,12 +465,6 @@ export interface MetabaseConfig {
    * [Preview embeds during development](https://www.metabase.com/docs/latest/embedding/config#preview-embeds-during-development).
    */
   apiKey?: string;
-}
-
-/** Attributes for an isolated data app using modular embedding SSO. */
-export interface MetabaseDataAppAttributes {
-  /** App slug, optionally followed by a route, query parameters and hash. */
-  path: string;
 }
 
 /**

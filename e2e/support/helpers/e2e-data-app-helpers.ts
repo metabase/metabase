@@ -1,7 +1,6 @@
 import yaml from "js-yaml";
 
-import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { SAMPLE_DB_TABLES, USERS, USER_GROUPS } from "e2e/support/cypress_data";
 import * as Urls from "metabase/urls/data-apps";
 import type {
   Card,
@@ -13,8 +12,12 @@ import type {
   TableId,
 } from "metabase-types/api";
 
-import { createLibrary, createQuestion, publishTables, updateSetting } from "./api";
-import type { DataAppTestEnv } from "./data-app-test-env";
+import {
+  createLibrary,
+  createQuestion,
+  publishTables,
+  updateSetting,
+} from "./api";
 import { getIframeBody } from "./e2e-embedding-helpers";
 import {
   LOCAL_GIT_PATH,
@@ -35,6 +38,9 @@ export type EmbeddedDataApp = DataApp & { questionId: number };
 export function createEmbeddedDataApp(): Cypress.Chainable<EmbeddedDataApp> {
   const slug = "embedded-app";
 
+  createLibrary();
+  publishTables({ table_ids: [SAMPLE_DB_TABLES.STATIC_ORDERS_ID] });
+
   cy.request<DataApp>("POST", "/api/ee/apps", {
     name: slug,
     display_name: "Embedded Orders",
@@ -48,7 +54,7 @@ export function createEmbeddedDataApp(): Cypress.Chainable<EmbeddedDataApp> {
         name: "Embedded order count",
         collection_id: resource_collection_id,
         query: {
-          "source-table": SAMPLE_DATABASE.ORDERS_ID,
+          "source-table": SAMPLE_DB_TABLES.STATIC_ORDERS_ID,
           aggregation: [["count"]],
         },
         display: "scalar",
@@ -58,9 +64,8 @@ export function createEmbeddedDataApp(): Cypress.Chainable<EmbeddedDataApp> {
     .as("embeddedAppQuestion");
 
   cy.get<Card>("@embeddedAppQuestion").then(({ entity_id }) => {
-    const testEnv: DataAppTestEnv = {
+    const testEnv = {
       scalarQuery: { source: { type: "card", entityId: entity_id } },
-      questionQuery: { source: { type: "card", entityId: entity_id } },
     };
 
     return cy.task<string>("buildDataApp", { appName: slug }).then((bundle) =>

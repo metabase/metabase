@@ -8,17 +8,25 @@ import {
 } from "@metabase/embedding-sdk-react/data-app";
 import { useState } from "react";
 
-import { getTestEnv } from "../../kitchen-sink/src/test-env";
+// Injected by createEmbeddedDataApp after creating the saved question.
+declare const __METABASE_DATA_APP_TEST_ENV__: {
+  scalarQuery: { source: { type: "card"; entityId: string } };
+};
 
 function Orders() {
   const { pathname } = useDataAppLocation();
-  const orders = useMetabaseQuery(defineQuery(getTestEnv().scalarQuery));
+
+  const orders = useMetabaseQuery(
+    defineQuery(__METABASE_DATA_APP_TEST_ENV__.scalarQuery),
+  );
+
   const [notes, setNotes] = useState("");
   const total = orders.data?.rawRows?.[0]?.[0];
 
   return (
     <main>
       <h1>Embedded orders</h1>
+
       <nav>
         <DataAppLink to="/orders">Orders</DataAppLink>
         <DataAppLink to="/orders/details?tab=summary">
@@ -27,10 +35,12 @@ function Orders() {
       </nav>
 
       <p data-testid="current-pathname">{pathname}</p>
+
       <output aria-label="Order count">
         {total === undefined ? "Loading orders" : String(total)}
       </output>
-      {orders.error && <p role="alert">Could not load orders</p>}
+
+      {!!orders.error && <p role="alert">Could not load orders</p>}
 
       <label>
         Notes
@@ -39,6 +49,7 @@ function Orders() {
           onChange={(event) => setNotes(event.target.value)}
         />
       </label>
+
       <button type="button" onClick={() => orders.refetch()}>
         Refresh orders
       </button>

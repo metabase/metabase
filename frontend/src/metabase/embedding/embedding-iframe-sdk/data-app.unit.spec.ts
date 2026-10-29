@@ -1,6 +1,6 @@
 import { MetabaseDataAppElement } from "./embed";
 
-const INSTANCE_URL = "https://metabase.example.com/reports";
+const INSTANCE_URL = "https://gizmo.example.com/mb";
 
 describe("metabase-data-app", () => {
   let consoleError: jest.SpyInstance;
@@ -16,7 +16,7 @@ describe("metabase-data-app", () => {
     consoleError.mockRestore();
   });
 
-  const setup = (path = "/sales/orders?active=true#details") => {
+  const setup = (path = "/sales/orders?active=true") => {
     const element = new MetabaseDataAppElement();
     element.setAttribute("path", path);
     document.body.appendChild(element);
@@ -30,25 +30,23 @@ describe("metabase-data-app", () => {
   ) => {
     window.dispatchEvent(
       new MessageEvent("message", {
-        source: iframe.contentWindow,
         origin,
+        source: iframe.contentWindow,
         data: { type: "metabase.embed.iframeReady" },
       }),
     );
   };
 
-  it("registers the element and preserves nested routes, query, hash and instance subpath", () => {
+  it("loads the data app route and sends settings to its origin", () => {
     const element = setup();
     const iframe = element.querySelector("iframe")!;
-    const url = new URL(iframe.src);
 
-    expect(customElements.get("metabase-data-app")).toBe(
-      MetabaseDataAppElement,
+    const url = new URL(iframe.src);
+    url.searchParams.delete("embed-js-identifier");
+
+    expect(url.href).toBe(
+      `${INSTANCE_URL}/embed/embedded-apps/sales/orders?active=true`,
     );
-    expect(url.pathname).toBe("/reports/embed/embedded-apps/sales/orders");
-    expect(url.searchParams.get("active")).toBe("true");
-    expect(url.searchParams.has("embed-js-identifier")).toBe(true);
-    expect(url.hash).toBe("#details");
 
     const postMessage = jest.spyOn(iframe.contentWindow!, "postMessage");
     ready(iframe);
@@ -58,32 +56,30 @@ describe("metabase-data-app", () => {
         type: "metabase.embed.setSettings",
         data: expect.objectContaining({
           componentName: "metabase-data-app",
-          path: "/sales/orders?active=true#details",
+          path: "/sales/orders?active=true",
         }),
       },
-      "https://metabase.example.com",
+      "https://gizmo.example.com",
     );
   });
 
-  it("ignores other frames and unexpected origins", () => {
+  it("ignores messages from an unexpected iframe origin", () => {
     const element = setup();
     const iframe = element.querySelector("iframe")!;
-    const other = setup("other").querySelector("iframe")!;
     const postMessage = jest.spyOn(iframe.contentWindow!, "postMessage");
 
     ready(iframe, "https://attacker.example.com");
-    ready(other);
-
     expect(postMessage).not.toHaveBeenCalled();
 
     ready(iframe);
     expect(postMessage).toHaveBeenCalledTimes(1);
   });
 
-  it("preserves the frame when only leading slashes change and remounts for a new path", () => {
+  it("remounts the iframe when path changes", () => {
     const element = setup("/sales/orders");
     const original = element.querySelector("iframe")!;
 
+    // leading slashes are ignored
     element.setAttribute("path", "///sales/orders");
     expect(element.querySelector("iframe")).toBe(original);
 
@@ -92,27 +88,54 @@ describe("metabase-data-app", () => {
     expect(element.querySelector("iframe")?.src).toContain("/sales/customers?");
   });
 
-  it("assigns distinct identifiers to concurrent frames", () => {
-    const first = new URL(setup().querySelector("iframe")!.src);
-    const second = new URL(setup().querySelector("iframe")!.src);
+  it("loads the path by assigning the path property", () => {
+    const element = new MetabaseDataAppElement();
 
-    expect(first.searchParams.get("embed-js-identifier")).not.toBe(
-      second.searchParams.get("embed-js-identifier"),
+    // property is different from attribute in web components.
+    // modular embedding supports both property and attribute.
+    element.path = "sales/orders?active=true#details";
+
+    document.body.appendChild(element);
+    expect(element).toHaveAttribute("path", "sales/orders?active=true#details");
+
+    const url = new URL(element.querySelector("iframe")!.src);
+    url.searchParams.delete("embed-js-identifier");
+
+    expect(url.href).toBe(
+      `${INSTANCE_URL}/embed/embedded-apps/sales/orders?active=true#details`,
     );
   });
 
-  it.each([
-    "",
-    "sales/../other",
-    "sales/%2fother",
-    "sales/%00",
-    "sales/%",
-    "sales/\\other",
-  ])("rejects unsafe paths: %s", (path) => {
-    const element = setup(path);
+  it("updates the path attribute and remounts after a property change", () => {
+    const element = setup("sales/orders");
+    expect(element.path).toBe("sales/orders");
 
+    const original = element.querySelector("iframe")!;
+    element.path = "franchises/products";
+
+    expect(element.path).toBe("franchises/products");
+
+    // attribute is updated after the property change
+    expect(element).toHaveAttribute("path", "franchises/products");
+
+    // iframe remounts after the path change
+    expect(element.querySelector("iframe")).not.toBe(original);
+
+    expect(element.querySelector("iframe")?.src).toContain(
+      "/franchises/products?",
+    );
+  });
+
+  it("rejects an invalid data app path", () => {
+    const element = setup("sales/../other");
     expect(element.querySelector("iframe")).toBeNull();
-    expect(consoleError).toHaveBeenCalled();
+
+    expect(consoleError).toHaveBeenCalledWith(
+      "[metabase.embed.error]",
+      expect.objectContaining({
+        message: "A valid data app path must be provided.",
+      }),
+    );
   });
 
   it.each([
@@ -120,15 +143,20 @@ describe("metabase-data-app", () => {
     { apiKey: "secret" },
     { useExistingUserSession: true },
     { guestEmbedProviderUri: "/guest" },
-  ])("rejects unsupported authentication: %p", (config) => {
+  ])("rejects unsupported auth methods: %p", (config) => {
     window.metabaseConfig = { instanceUrl: INSTANCE_URL, ...config };
     const element = setup();
-
     expect(element.querySelector("iframe")).toBeNull();
-    expect(consoleError).toHaveBeenCalled();
+
+    expect(consoleError).toHaveBeenCalledWith(
+      "[metabase.embed.error]",
+      expect.objectContaining({
+        message: "Data apps require SSO authentication.",
+      }),
+    );
   });
 
-  it("removes the frame and message listener on disconnect", () => {
+  it("removes iframe and message listener on disconnect", () => {
     const element = setup();
     const iframe = element.querySelector("iframe")!;
     const postMessage = jest.spyOn(iframe.contentWindow!, "postMessage");

@@ -6,6 +6,16 @@ import {
   validateDataAppPath,
 } from "./embedded-data-app-path";
 
+const UNSAFE_PATHS = [
+  "sales/../other",
+  "sales/%2e%2e/other",
+  "sales/%2fother",
+  "sales/%",
+  "sales\\other",
+  "sales/\nother",
+  "sales/%00other",
+];
+
 describe("embedded data app route", () => {
   const originalRoot = window.MetabaseRoot;
 
@@ -34,21 +44,13 @@ describe("embedded data app route", () => {
     },
   );
 
-  it.each([
-    "sales/../other",
-    "sales/%2e%2e/other",
-    "sales/%2fother",
-    "sales/%",
-    "sales\\other",
-    "sales/\nother",
-    "sales/%00other",
-  ])("rejects unsafe paths: %s", (path) => {
+  it.each(UNSAFE_PATHS)("rejects unsafe paths: %s", (path) => {
     expect(getEmbeddedAppNameFromPath(path)).toBeUndefined();
   });
 });
 
-describe("data app embed URL", () => {
-  it("preserves the installation subpath and initial route", () => {
+describe("data app embed urls", () => {
+  it("preserves subpath and route", () => {
     const url = getDataAppEmbedUrl(
       "https://metabase.example.com/mb/",
       "///sales/orders?active=true#details",
@@ -57,24 +59,23 @@ describe("data app embed URL", () => {
     expect(url.href).toBe(
       "https://metabase.example.com/mb/embed/embedded-apps/sales/orders?active=true#details",
     );
-
-    expect(normalizeDataAppPath("///sales/orders")).toBe("sales/orders");
   });
 });
 
-describe("data app path validation", () => {
-  it("accepts leading slashes, nested routes, query parameters and hashes", () => {
+describe("data app paths", () => {
+  it("strips leading slashes", () => {
+    expect(normalizeDataAppPath("///sales/orders")).toBe("sales/orders");
+  });
+
+  it("accepts leading slashes, nested routes, query params and hashes", () => {
     expect(() =>
       validateDataAppPath("///sales/orders?active=true#details"),
     ).not.toThrow();
   });
 
-  it.each(["sales/../other", "sales/%2fother", "sales/%"])(
-    "rejects unsafe paths: %s",
-    (path) => {
-      expect(() => validateDataAppPath(path)).toThrow(
-        "A valid data app path must be provided.",
-      );
-    },
-  );
+  it.each(UNSAFE_PATHS)("rejects unsafe paths: %s", (path) => {
+    expect(() => validateDataAppPath(path)).toThrow(
+      "A valid data app path must be provided.",
+    );
+  });
 });
