@@ -439,23 +439,27 @@
 
 (deftest native-sandboxes-still-block-other-joined-tables
   (mt/with-premium-features #{:advanced-permissions :sandboxes}
-    (mt/with-no-data-perms-for-all-users!
-      (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/native-query {:query "SELECT ID FROM CHECKINS"})}
-                     :model/Sandbox _ {:group_id             (u/the-id (perms/all-users-group))
-                                       :table_id             (mt/id :checkins)
-                                       :card_id              card-id
-                                       :attribute_remappings {}}
-                     :model/Card {query-card-id :id} {:dataset_query (mt/mbql-query checkins
-                                                                       {:aggregation [[:count]]
-                                                                        :joins       [{:source-table $$venues
-                                                                                       :alias        "v"
-                                                                                       :strategy     :left-join
-                                                                                       :condition    [:= $venue_id &v.venues.id]}]})}]
-        (data-perms/set-table-permissions! (perms-group/all-users) :perms/view-data {(mt/id 'venues) :blocked})
-        (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
-             #"You do not have permissions to run this query"
-             (mt/rows (mt/user-http-request :rasta :post (format "card/%d/query" query-card-id)))))))))
+    (doseq [[sandbox-sql expected-msg] [["SELECT ID, VENUE_ID FROM CHECKINS" #"You do not have permissions to run this query"]
+                                        ;; the join condition uses a column the sandbox leaves out
+                                        ["SELECT ID FROM CHECKINS" #"Your query references a column you do not have permission to use"]]]
+      (testing sandbox-sql
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-temp [:model/Card {card-id :id} {:dataset_query (mt/native-query {:query sandbox-sql})}
+                         :model/Sandbox _ {:group_id             (u/the-id (perms/all-users-group))
+                                           :table_id             (mt/id :checkins)
+                                           :card_id              card-id
+                                           :attribute_remappings {}}
+                         :model/Card {query-card-id :id} {:dataset_query (mt/mbql-query checkins
+                                                                           {:aggregation [[:count]]
+                                                                            :joins       [{:source-table $$venues
+                                                                                           :alias        "v"
+                                                                                           :strategy     :left-join
+                                                                                           :condition    [:= $venue_id &v.venues.id]}]})}]
+            (data-perms/set-table-permissions! (perms-group/all-users) :perms/view-data {(mt/id 'venues) :blocked})
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 expected-msg
+                 (mt/rows (mt/user-http-request :rasta :post (format "card/%d/query" query-card-id)))))))))))
 
 (deftest e2e-card-source-table-join-no-permissions-test
   (testing "User cannot run query with card as source table joined to table when they have no permissions to the table"
