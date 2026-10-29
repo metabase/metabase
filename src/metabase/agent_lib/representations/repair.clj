@@ -2668,8 +2668,8 @@
 ;;;   * Walk stages left-to-right.
 ;;;   * Before processing stage `i` (i ≥ 1), build a mini-query consisting of stages[0..i-1]
 ;;;     and resolve it. Match refs to its `lib/returned-columns` by the names lib resolves.
-;;;   * Walk stage[i], including its joins' `conditions` but not their own `stages` - those
-;;;     have their own resolution context. For every `["field" opts <string>]` clause:
+;;;   * Walk stage[i], including its joins' `conditions` but not their [[hidden-join-keys]]: a
+;;;     join's own `stages` have their own resolution context. For every `["field" opts <string>]` clause:
 ;;;       - If `opts` already has `"base-type"`, leave it alone (idempotent).
 ;;;       - If the name is unknown to the previous stage, leave it alone (the resolver will
 ;;;         report the real error with a better message).
@@ -2878,7 +2878,7 @@
   "Stamp types from `cols` on every by-name field ref in `stage` that lacks `\"base-type\"`, including the
   refs in its joins' `conditions`.
   A ref through a join alias matches only the columns that came through it, and is left for validation when none did.
-  Skips each join's own `stages`, which resolve on their own and can't reach this stage's columns."
+  Skips each join's [[hidden-join-keys]]; its own `stages` resolve on their own and can't reach this stage's columns."
   [stage cols]
   (let [aliases (stage-join-aliases stage)]
     (postwalk-outside-join-stages
@@ -2971,7 +2971,7 @@
 
 (defn- join-alias-refs
   "`stage`'s join-alias string refs (`:named`) and concrete-column join-alias refs (`:path`), each
-  grouped by alias, outside the joins' own `stages`."
+  grouped by alias, outside the joins' [[hidden-join-keys]]."
   [stage]
   (let [stage' (without-join-stages stage)
         alias  #(get (nth % 1) "join-alias")]
@@ -3115,7 +3115,7 @@
        (not (contains? (nth node 1) "base-type"))))
 
 (defn- stage-has-unstamped-cross-stage-ref?
-  "Cheap structural pre-scan: does `stage` contain any [[unstamped-cross-stage-ref?]] outside its joins' own `stages`?
+  "True if `stage` has an [[unstamped-cross-stage-ref?]] outside its joins' [[hidden-join-keys]].
   Lets the assert pass skip the resolving confirmation step on the happy path, where every ref is already typed."
   [stage]
   (let [aliases (stage-join-aliases stage)]
@@ -3125,7 +3125,7 @@
 (defn- first-unresolved-cross-stage-ref
   "Return the first [[unstamped-cross-stage-ref?]] clause in `stage` that matches no column in `cols`, or nil.
   A ref through a join alias matches only the columns that came through it, and is skipped when none did.
-  Skips each join's own `stages`, which resolve on their own."
+  Skips each join's [[hidden-join-keys]]."
   [stage cols]
   (let [aliases (stage-join-aliases stage)]
     (match/match-one (without-join-stages stage)

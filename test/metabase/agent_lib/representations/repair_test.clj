@@ -4184,15 +4184,19 @@
              (base-type (first (join-fields (orders-stage {"aggregation" [["count" {}]]
                                                            "breakout"    [(orders-col "USER_ID")]})))))))))
 
-(deftest ^:parallel join-without-alias-fields-test
-  (testing "a by-name ref in the fields of a join with no alias is left for validation"
-    (let [no-alias (-> (join "First" [first-orders-stage] :lhs user-id-by-name)
-                       (dissoc "alias")
-                       (assoc "fields" [["field" {} "min"]]))
-          q        (query (orders-stage {"aggregation" [["count" {}]]
-                                         "breakout"    [(orders-col "USER_ID")]})
-                          (stage {"joins" [no-alias]}))]
-      (is (= [["field" {} "min"]] (get-in (repair* q) ["stages" 1 "joins" 0 "fields"]))))))
+(deftest ^:parallel alias-less-join-fields-left-for-validation-test
+  (let [fields-of (fn [column]
+                    (let [no-alias {"strategy"   "left-join"
+                                    "stages"     [first-orders-stage]
+                                    "conditions" [["=" {} user-id-by-name (orders-col "USER_ID")]]
+                                    "fields"     [["field" {} column]]}]
+                      (get-in (repair* (query (orders-stage {"aggregation" [["count" {}]]
+                                                             "breakout"    [(orders-col "USER_ID")]})
+                                              (stage {"joins" [no-alias]})))
+                              ["stages" 1 "joins" 0 "fields"])))]
+    (testing "a by-name ref in an alias-less join's fields stays untyped, whether or not the previous stage has it"
+      (doseq [column ["count" "min"]]
+        (is (= [["field" {} column]] (fields-of column)))))))
 
 (def ^:private prev-joined-stage
   "Orders with a `Prev` join of each user's first order, returning all its columns."
