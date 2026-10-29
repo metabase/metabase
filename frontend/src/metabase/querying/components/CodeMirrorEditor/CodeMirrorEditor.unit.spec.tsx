@@ -271,6 +271,25 @@ describe("CodemirrorEditor", () => {
     expect(onRunQuery).toHaveBeenCalledTimes(1);
   });
 
+  it("reports the card id when the cursor moves into a card tag", async () => {
+    const { onCursorMoveOverCardTag } = setup({
+      text: "SELECT {{#42-foo}} FROM t",
+    });
+
+    await waitForRequestsToSettle();
+    await userEvent.click(screen.getByRole("textbox"));
+    await userEvent.keyboard("{ArrowRight>3/}");
+    expect(onCursorMoveOverCardTag).not.toHaveBeenCalled();
+
+    await userEvent.keyboard("{ArrowRight>8/}");
+    expect(onCursorMoveOverCardTag).toHaveBeenLastCalledWith(42);
+
+    await userEvent.keyboard("{ArrowRight>9/}");
+    const callsUntilAfterTag = onCursorMoveOverCardTag.mock.calls.length;
+    await userEvent.keyboard("{ArrowRight>3/}");
+    expect(onCursorMoveOverCardTag).toHaveBeenCalledTimes(callsUntilAfterTag);
+  });
+
   it("keeps read-only proposals read-only", async () => {
     setup({ text: "SELECT 1", proposedText: "SELECT 2", readOnly: true });
 
