@@ -1992,10 +1992,11 @@ def _dynamic_function_call(stmt: exp.Expression) -> bool:
     return any("expressions" in node.args for node in stmt.find_all(exp.DynamicIdentifier))
 
 
-# SQL Server table hints that take update or exclusive locks, or hold shared ones to the end of the transaction.
-# `NOLOCK`, `INDEX(...)` and the rest only steer how a plain read runs.
+# SQL Server table hints that take update or exclusive locks, hold shared ones to the end of the transaction, or set
+# the granularity of the locks taken (`ROWLOCK`, `PAGLOCK`). `NOLOCK`, `INDEX(...)` and the rest only steer how a plain
+# read runs.
 _LOCKING_TABLE_HINTS = frozenset(
-    {"UPDLOCK", "XLOCK", "TABLOCK", "TABLOCKX", "HOLDLOCK", "SERIALIZABLE", "REPEATABLEREAD"}
+    {"UPDLOCK", "XLOCK", "TABLOCK", "TABLOCKX", "HOLDLOCK", "SERIALIZABLE", "REPEATABLEREAD", "ROWLOCK", "PAGLOCK"}
 )
 
 
@@ -2019,6 +2020,12 @@ def _writes_or_locks(node: exp.Expression) -> bool:
         return any(
             isinstance(arg, exp.Column) and not arg.table and arg.name.upper() in _LOCKING_TABLE_HINTS
             for arg in node.this.expressions
+        )
+    # After an alias, `FROM t a (XLOCK)` parses as a column list on the alias, and SQL Server reads it as a hint.
+    # Only a plain table's alias counts: a derived table's column list, `(SELECT ...) d(a)`, names real columns.
+    if isinstance(node, exp.Table) and isinstance(node.args.get("alias"), exp.TableAlias):
+        return any(
+            column.name.upper() in _LOCKING_TABLE_HINTS for column in node.args["alias"].args.get("columns") or []
         )
     return False
 

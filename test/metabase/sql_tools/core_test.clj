@@ -568,6 +568,27 @@
       (testing driver
         (is (true? (sql-tools/read-only-select? driver "select 1 -- note\r\nfrom t\r\nwhere 1 = 1\r\n")))))))
 
+(deftest ^:parallel read-only-select?-tsql-alias-lock-hint-test
+  (testing "a locking hint after a table alias, without WITH, is not read-only"
+    (are [sql] (= {:reason :writes-or-locks, :detail nil}
+                  (sql-tools/read-only-select-problem :sqlserver sql))
+      "select * from dbo.t a (tablockx, holdlock)"
+      "select * from t as a (xlock)"
+      "select * from t join u b (updlock) on 1=1"
+      "select * from t a (paglock)"
+      "select * from t a (nolock, xlock)"
+      "select * from t (rowlock)"
+      "select * from t (paglock)"))
+  (testing "a non-locking hint, and a derived table's column list, are read-only"
+    (are [sql] (true? (sql-tools/read-only-select? :sqlserver sql))
+      "select * from t a (nolock)"
+      "select * from t as a (nolock)"
+      "select * from t with (nolock)"
+      "select * from t a with (nolock)"
+      "select * from (select 1 as a) d(a)"
+      "select * from (select 1 as xlock) d(xlock)"
+      "select top 10 a.id, b.name from dbo.t a join dbo.u b on a.id = b.id where a.x > 1 order by a.id")))
+
 (deftest ^:parallel read-only-select-problem-test
   (testing "SQL that is a read-only select has no problem"
     (is (nil? (sql-tools/read-only-select-problem :postgres "SELECT 1"))))
