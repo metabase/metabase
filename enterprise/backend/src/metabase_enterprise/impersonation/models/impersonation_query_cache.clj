@@ -30,6 +30,6 @@
 
 (t2/define-before-update :model/ImpersonationQueryCache
   [row]
-  (let [{:keys [input_query]} (t2/changes row)]
+  (let [changes (t2/changes row)]
     (cond-> row
-      input_query (assoc :input_query_hash (query-hash input_query)))))
+      (contains? changes :input_query) (assoc :input_query_hash (query-hash (:input_query changes))))))
