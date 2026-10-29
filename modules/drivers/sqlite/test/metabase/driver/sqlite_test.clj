@@ -539,3 +539,8 @@
                        {:db "file:/tmp/x.db?mode=ro"}]]
         (testing (pr-str details)
           (is (nil? (driver.u/validate-connection-hosts! :sqlite details))))))))
+
+(deftest ^:parallel url-building-details-allow-db-file-path-test
+  (testing ":db is a file path, not part of a URL, so URL separators in it are allowed"
+    (is (not-any? #{:db} (driver/url-building-detail-keys :sqlite)))
+    (is (nil? (driver.u/validate-connection-parameters! :sqlite {:db "/tmp/my data#1.db"})))))

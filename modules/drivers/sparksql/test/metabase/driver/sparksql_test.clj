@@ -6,6 +6,7 @@
    [metabase.driver.sparksql :as sparksql]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]))
@@ -120,3 +121,13 @@
              (testing "Rows should come back as expected Java types"
                (is (= [[#t "2024-03-22"]]
                       (into [] (sql-jdbc.execute/reducible-rows :sparksql rset rsmeta))))))))))))
+
+(deftest ^:parallel url-building-details-reject-separators-test
+  (doseq [details [{:host "localhost" :port 10000 :dbname "a;b"}
+                   {:host "localhost" :port 10000 :dbname "a%3Bb"}]]
+    (testing (pr-str details)
+      (is (=? {:status-code 400}
+              (try (driver.u/validate-connection-parameters! :sparksql details)
+                   nil
+                   (catch clojure.lang.ExceptionInfo e
+                     (ex-data e))))))))

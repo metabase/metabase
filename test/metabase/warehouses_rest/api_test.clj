@@ -628,7 +628,7 @@
     (letfn [(update! [db request-body]
               (mt/user-http-request :crowberto :put 400 (str "database/" (u/the-id db)) request-body))]
       (mt/with-temp [:model/Database db {:name    (mt/random-name)
-                                         :details (:details (mt/db))
+                                         :details {:host "localhost" :port 5432 :db "test-data"}
                                          :engine  :postgres}]
         (testing "Don't allow changing engine to H2"
           (is (= {:message "H2 is not supported as a data warehouse"}
