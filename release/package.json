@@ -15,11 +15,14 @@
     "release-offline": "tsx release-offline.ts",
     "test:unit": "jest --testPathPattern unit",
     "test:integration": "jest --testPathPattern integration",
+    "test:embedding-sdk-release-checklist": "bun test ./embedding-sdk-release-checklist",
     "type-check": "tsc --noEmit"
   },
   "author": "Metabase",
   "license": "AGPL-3.0-or-later",
   "dependencies": {
+    "@inquirer/confirm": "6.3.3",
+    "@inquirer/core": "12.0.4",
     "@octokit/plugin-paginate-graphql": "^6.0.0",
     "@octokit/rest": "^21.1.1",
     "@slack/web-api": "^8.0.0",
