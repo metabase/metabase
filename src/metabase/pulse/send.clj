@@ -3,10 +3,9 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.channel.db :as channel.db]
-   [metabase.dashboards.db :as dashboards.db]
    [metabase.models.interface :as mi]
    [metabase.notification.core :as notification]
+   [metabase.pulse.db :as pulse.db]
    [metabase.pulse.models.pulse :as models.pulse]
    [metabase.task-history.core :as task-history]
    [metabase.util :as u]
@@ -53,7 +52,7 @@
   "The Channel row of an HTTP pulse channel, or nil for email and Slack pulse channels, which have none."
   [{channel-type :channel_type :as pulse-channel}]
   (when (= :http (keyword channel-type))
-    (channel.db/channel (:channel_id pulse-channel))))
+    (pulse.db/channel (:channel_id pulse-channel))))
 
 (defn- get-notification-handler
   [pulse-channel]
@@ -189,7 +188,7 @@
   ;; with-task-run is a no-op if already nested (e.g., from scheduler)
   (task-history/with-task-run (some-> (pulse->task-run-info pulse)
                                       (assoc :auto-complete (not async?)))
-    (let [dashboard (some-> dashboard_id dashboards.db/dashboard)
+    (let [dashboard (pulse.db/dashboard dashboard_id)
           pulse     (-> (mi/instance :model/Pulse pulse)
                         ;; This is usually already done by this step, in the `send-pulses` task which uses `retrieve-pulse`
                         ;; to fetch the Pulse.

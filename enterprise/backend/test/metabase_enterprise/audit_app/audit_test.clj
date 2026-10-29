@@ -234,7 +234,7 @@
             syncs    (atom 0)]
         (ee.audit.settings/last-analytics-views-checksum! 0)
         ;; any engine other than the host's takes the ::updated path
-        (t2/update! :model/Database (:id audit-db) {:engine (if (= :postgres (mdb/db-type)) "h2" "postgres")})
+        (t2/update! :model/Database :id (:id audit-db) {:engine (if (= :postgres (mdb/db-type)) "h2" "postgres")})
         (mt/with-dynamic-fn-redefs [ee-audit/views-checksum (constantly 12345)
                                     sync.core/sync-database! (fn [& _] (swap! syncs inc))]
           (is (= ::ee-audit/updated (#'ee-audit/maybe-install-audit-db!)))
@@ -346,7 +346,7 @@
                                         :query    {:source-table orig-id}}}]
           (testing "precondition: an interrupted host-adjust + schema sync duplicates the view row"
             ;; flip the schema to a value the host driver will not report, so the sync diff mismatches
-            (t2/update! :model/Table orig-id {:schema (if (nil? (:schema v-content)) "public" nil)})
+            (t2/update! :model/Table :id orig-id {:schema (if (nil? (:schema v-content)) "public" nil)})
             (sync/sync-database! (:id (t2/select-one :model/Database :is_audit true)) {:scan :schema})
             (is (= 2 (t2/count :model/Table :db_id audit/audit-db-id :name (:name v-content)))
                 "stale-schema sync should produce a duplicate pair")
@@ -384,7 +384,7 @@
                         :table_id      orig-id
                         :dataset_query {:database audit/audit-db-id :type :query :query {:source-table orig-id}}}]
           (testing "precondition: a real Mode A duplicate pair, customer card on the new/active row"
-            (t2/update! :model/Table orig-id {:schema (if (nil? (:schema v-content)) "public" nil)})
+            (t2/update! :model/Table :id orig-id {:schema (if (nil? (:schema v-content)) "public" nil)})
             (sync/sync-database! (:id (t2/select-one :model/Database :is_audit true)) {:scan :schema})
             (let [rows   (t2/select [:model/Table :id :active] :db_id audit/audit-db-id
                                     {:where [:= [:lower :name] "v_content"]})

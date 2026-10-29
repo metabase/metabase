@@ -1023,7 +1023,7 @@
        (let [task (pull!)]
          (is (remote-sync.task/successful? task))
          (is (= "pulled" (get-in task [:outcome :kind]))))
-       (is (not (t2/exists? :model/Card (:id model))))
+       (is (not (t2/exists? :model/Card :id (:id model))))
        (is (false? (remote-sync.object/dirty?)))
        (is (not (t2/exists? :model/RemoteSyncObject :model_type "Action")))))))
 
@@ -1036,7 +1036,7 @@
        (let [task (pull!)]
          (is (remote-sync.task/successful? task))
          (is (= "pulled" (get-in task [:outcome :kind]))))
-       (is (= :question (t2/select-one-fn :type :model/Card (:id model))))
+       (is (= :question (t2/select-one-fn :type :model/Card :id (:id model))))
        (is (false? (remote-sync.object/dirty?)))
        (is (not (t2/exists? :model/RemoteSyncObject :model_type "Action")))))))
 
@@ -1088,8 +1088,8 @@
          (testing "a normal pull after another instance's change keeps the action"
            (commit-remote! {:upsert {model-path (str/replace (repo-file model-path) "name: Venues Model" "name: Renamed Model")}})
            (is (remote-sync.task/successful? (pull!)))
-           (is (= "Renamed Model" (t2/select-one-fn :name :model/Card (:id model))))
-           (is (t2/exists? :model/Action action-id))))))))
+           (is (= "Renamed Model" (t2/select-one-fn :name :model/Card :id (:id model))))
+           (is (t2/exists? :model/Action :id action-id))))))))
 
 ;;; ------------------------------------------------- Current Task Endpoint -------------------------------------------------
 

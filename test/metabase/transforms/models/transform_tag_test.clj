@@ -17,7 +17,7 @@
                        ["monthly" (i18n/trs "monthly")]]]
     (mt/with-temp [:model/TransformTag tag {:name "default" :built_in_type type}]
       (is (= name
-             (str (:name (t2/select-one :model/TransformTag (:id tag)))))))))
+             (str (:name (t2/select-one :model/TransformTag :id (:id tag)))))))))
 
 (deftest initial-tags-translated-on-update
   (doseq [type ["hourly" "daily" "weekly" "monthly"]]
@@ -25,15 +25,15 @@
       (t2/update! :model/TransformTag :id (:id tag)
                   {:name "default2"})
       (is (= "default2"
-             (:name (t2/select-one :model/TransformTag (:id tag)))))
-      (is (nil? (t2/select-one-fn :built_in_type :model/TransformTag (:id tag)))))))
+             (:name (t2/select-one :model/TransformTag :id (:id tag)))))
+      (is (nil? (t2/select-one-fn :built_in_type :model/TransformTag :id (:id tag)))))))
 
 (deftest initial-tags-kept-on-noop-update-test
   (testing "An update that only touches the timestamp leaves a tag built in"
     (doseq [type ["hourly" "daily" "weekly" "monthly"]]
       (mt/with-temp [:model/TransformTag tag {:name "default" :built_in_type type}]
         (t2/update! :model/TransformTag :id (:id tag) {:updated_at (mi/now)})
-        (is (= type (t2/select-one-fn :built_in_type :model/TransformTag (:id tag))))))))
+        (is (= type (t2/select-one-fn :built_in_type :model/TransformTag :id (:id tag))))))))
 
 (deftest data-analyst-tag-access-follows-the-advanced-permissions-feature-test
   (testing "a data analyst reads, writes and creates transform tags only while advanced-permissions is available"
