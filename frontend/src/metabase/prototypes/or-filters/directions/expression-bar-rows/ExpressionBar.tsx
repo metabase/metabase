@@ -182,8 +182,16 @@ export function ExpressionBar({
     return [];
   };
 
+  // Two operators can't sit side by side, so next to one the logic row offers none.
+  const isOp = (token?: Token) => token?.type === "op";
+  const isTokenAllowed = (token: Token) =>
+    !isOp(token) ||
+    (!isOp(tokens[caretIndex - 1]) && !isOp(tokens[caretIndex]));
+
   // Typing toward a keyword highlights it in the logic row, not a column.
-  const logicMatch = hasNavigated ? undefined : matchLogic(text);
+  const typedMatch = hasNavigated ? undefined : matchLogic(text);
+  const logicMatch =
+    typedMatch && isTokenAllowed(typedMatch.token) ? typedMatch : undefined;
   useSearchSync(listRef, text, isOpen && draftColumn == null, !logicMatch);
 
   const resetDraft = () => {
@@ -231,6 +239,9 @@ export function ExpressionBar({
   }, [focusKey, focusAtEndRef]);
 
   const insert = (token: Token) => {
+    if (!isTokenAllowed(token)) {
+      return;
+    }
     const next = insertToken(tokens, caretIndex, token);
     setTokens(next.tokens);
     setCaret(next.caret);
@@ -431,6 +442,7 @@ export function ExpressionBar({
             onFocusSteal={() => inputRef.current?.focus()}
             text={text}
             isLogicHighlightable={logicMatch != null}
+            isTokenAllowed={isTokenAllowed}
             onPickToken={insert}
             onPickColumn={(column) => {
               setText("");

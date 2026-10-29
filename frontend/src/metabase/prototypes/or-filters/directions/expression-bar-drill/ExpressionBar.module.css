@@ -210,6 +210,15 @@
   border-color: var(--mb-color-core-filter);
 }
 
+/* Not allowed at the caret (an operator right next to another). */
+.logicKeyword:disabled,
+.logicKeyword:disabled:hover {
+  border-color: var(--mb-color-border-neutral);
+  color: var(--mb-color-text-tertiary);
+  cursor: default;
+  opacity: 0.5;
+}
+
 .logicKeywordOr {
   color: var(--mb-color-core-filter);
 }

@@ -65,6 +65,8 @@ type LogicColumnListProps = {
   stageIndex: number;
   text: string;
   isLogicHighlightable: boolean;
+  /** Keywords this returns false for are shown grayed out and can't be picked. */
+  isTokenAllowed?: (token: Token) => boolean;
   onFocusSteal: () => void;
   onPickToken: (token: Token) => void;
   onPickColumn: (column: Lib.ColumnMetadata) => void;
@@ -82,6 +84,7 @@ export function LogicColumnList({
   stageIndex,
   text,
   isLogicHighlightable,
+  isTokenAllowed = () => true,
   onFocusSteal,
   onPickToken,
   onPickColumn,
@@ -125,21 +128,25 @@ export function LogicColumnList({
           <Text size="sm" fw="bold" c="text-secondary" mr="auto">
             {t`Logic`}
           </Text>
-          {LOGIC_KEYWORDS.map((keyword) => (
-            <button
-              key={keyword.label}
-              type="button"
-              className={cx(S.logicKeyword, {
-                [S.logicKeywordOr]: keyword.label === "OR",
-                [S.logicKeywordParen]: keyword.token.type === "paren",
-                [S.logicKeywordActive]:
-                  isLogicHighlightable && keyword === match,
-              })}
-              onClick={() => onPickToken(keyword.token)}
-            >
-              {keyword.label}
-            </button>
-          ))}
+          {LOGIC_KEYWORDS.map((keyword) => {
+            const isAllowed = isTokenAllowed(keyword.token);
+            return (
+              <button
+                key={keyword.label}
+                type="button"
+                disabled={!isAllowed}
+                className={cx(S.logicKeyword, {
+                  [S.logicKeywordOr]: keyword.label === "OR",
+                  [S.logicKeywordParen]: keyword.token.type === "paren",
+                  [S.logicKeywordActive]:
+                    isAllowed && isLogicHighlightable && keyword === match,
+                })}
+                onClick={() => onPickToken(keyword.token)}
+              >
+                {keyword.label}
+              </button>
+            );
+          })}
         </Group>
       )}
       <DelayGroup>
