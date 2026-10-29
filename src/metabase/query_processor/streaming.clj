@@ -87,6 +87,11 @@
   [cols]
   (some #(= (:name %) "pivot-grouping") cols))
 
+(defn- hidden-in-table?
+  "The table viz never shows `:details-only` columns, whatever `table.columns` says; exports match it (#70909)."
+  [col]
+  (= (:visibility_type col) :details-only))
+
 (defn- export-column-order
   "For each entry in `table-columns` that is enabled, finds the index of the corresponding
   entry in `cols` by name or id. If a col has been remapped, uses the index of the new column.
@@ -133,6 +138,9 @@
                     remapped-to-name   (:remapped_to col)
                     remapped-from-name (:remapped_from col)]
                 (cond
+                  (hidden-in-table? col)
+                  nil
+
                   remapped-to-name
                   (get cols-index remapped-to-name)
 
