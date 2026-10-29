@@ -34,21 +34,21 @@ export type ActionResultForCreate = {
 };
 
 /**
- * Response from a single-row update — the affected primary keys.
+ * Response from a single-row update — the number of rows updated.
  *
  * @category useAction
  */
 export type ActionResultForUpdate = {
-  "rows-updated": readonly RowValue[];
+  "rows-updated": number;
 };
 
 /**
- * Response from a single-row delete — the affected primary keys.
+ * Response from a single-row delete — the number of rows deleted.
  *
  * @category useAction
  */
 export type ActionResultForDelete = {
-  "rows-deleted": readonly RowValue[];
+  "rows-deleted": number;
 };
 
 /**
@@ -155,9 +155,22 @@ export type ActionParameterSchema = {
 };
 
 /**
+ * The kind of a table action, which a data app typed schema gives as `implicitKind`.
+ *
+ * @category useAction
+ */
+export type ImplicitActionKind =
+  | "row/create"
+  | "row/update"
+  | "row/delete"
+  | "bulk/create"
+  | "bulk/update"
+  | "bulk/delete";
+
+/**
  * Shape of a single action entry in a data app typed schema.
  * The entry is what `defineAction` wraps; `parameters` drives
- * `ActionParametersFromDataAppSchema`, and `type` drives
+ * `ActionParametersFromDataAppSchema`, and `type` and `implicitKind` drive
  * `ActionKindFromDataAppSchema`.
  *
  * @category useAction
@@ -166,7 +179,8 @@ export type ActionSchema = {
   kind?: "action";
   id: number | string;
   name?: string;
-  type?: "query";
+  type?: "query" | "implicit";
+  implicitKind?: ImplicitActionKind;
   parameters: readonly ActionParameterSchema[];
   description?: string;
   entityId?: string;
@@ -210,8 +224,8 @@ export type ActionParametersFromDataAppSchema<TAction> = TAction extends {
   : Record<string, unknown>;
 
 /**
- * Maps a schema entry to the flat `ActionKind` union: a data app's actions
- * are query actions, so `type: "query"` gives `"sql"`. Feeds the hook's
+ * Maps a schema entry to the flat `ActionKind` union: `type: "query"` gives
+ * `"sql"`, and a table action's `implicitKind` gives its row or bulk kind. Feeds the hook's
  * `TKind` generic so `result` is typed via `ActionResultForKind<TKind>`.
  * Falls back to the full `ActionKind` union if `TAction` is not a schema
  * entry (e.g. a bare numeric id).
@@ -222,7 +236,20 @@ export type ActionKindFromDataAppSchema<TAction> = TAction extends {
   type: "query";
 }
   ? "sql"
-  : ActionKind;
+  : TAction extends { implicitKind: infer TImplicitKind }
+    ? ImplicitActionKindToActionKind<TImplicitKind>
+    : ActionKind;
+
+type ImplicitActionKindToActionKind<TImplicitKind> =
+  TImplicitKind extends "row/create"
+    ? "create"
+    : TImplicitKind extends "row/update"
+      ? "update"
+      : TImplicitKind extends "row/delete"
+        ? "delete"
+        : TImplicitKind extends `bulk/${string}`
+          ? "bulk"
+          : ActionKind;
 
 /**
  * @interface

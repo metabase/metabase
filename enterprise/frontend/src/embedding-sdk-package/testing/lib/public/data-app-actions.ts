@@ -4,7 +4,6 @@ import type {
   ActionParametersFromDataAppSchema,
   ActionResultForKind,
   ActionSchema,
-  DefinedAction,
 } from "embedding-sdk-package/hooks/public/use-action/types";
 import type { MetabaseActionMock } from "embedding-sdk-package/testing/lib/private/actions";
 
@@ -30,7 +29,7 @@ export type DataAppActionMockError<TAction extends { action: ActionSchema }> = {
   >;
 };
 
-type MockedAction = DefinedAction & { action: ActionSchema };
+type MockedAction = { action: ActionSchema };
 
 type MockedActionParameters<TAction extends MockedAction> =
   ActionParametersFromDataAppSchema<TAction["action"]>;

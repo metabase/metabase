@@ -488,8 +488,24 @@
               (testing "an action is addressed by its entity ID and typed by its parameters"
                 (is (str/includes? body "export const actions = {\n  renameVenue: defineAction({"))
                 (is (str/includes? body (str "id: \"" action-entity-id "\"")))
+                (is (not (str/includes? body "implicitKind")))
                 (is (str/includes? body "slug: \"name\",\n          displayName: \"name\",\n          jsType: \"string\",\n          required: true,"))
                 (is (str/includes? body "slug: \"id\",\n          displayName: \"id\",\n          jsType: \"number\","))))))))))
+
+(deftest typed-schema-table-action-kind-test
+  (mt/with-premium-features #{:data-apps}
+    (data-apps.tu/with-published-tables! [(mt/id :venues)]
+      (mt/with-actions-enabled
+        (mt/with-model-cleanup [:model/DataApp :model/Collection :model/Action]
+          (let [{collection-id :resource_collection_id} (mt/user-http-request :crowberto :post 200 "ee/apps" {:name "demo"})]
+            (mt/user-http-request :crowberto :post 200 "action" {:name          "Update venue"
+                                                                 :type          "implicit"
+                                                                 :kind          "row/update"
+                                                                 :table_id      (mt/id :venues)
+                                                                 :collection_id collection-id})
+            (testing "a table action carries its kind, which types its result"
+              (is (str/includes? (:body (mt/user-http-request-full-response :crowberto :get 200 "ee/apps/demo/typed-schema"))
+                                 "implicitKind: \"row/update\"")))))))))
 
 (defn- create-question!
   "A table question named `card-name` in the collection with `collection-id`, reading `query`, created by an admin."

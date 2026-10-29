@@ -188,6 +188,21 @@ export const TEST_SCHEMA = {
         },
       ],
     },
+    refundOrder: {
+      kind: "action" as const,
+      id: 53,
+      name: "Refund Order",
+      type: "implicit" as const,
+      implicitKind: "row/update" as const,
+      parameters: [
+        {
+          slug: "id",
+          displayName: "ID",
+          jsType: "number" as const,
+          required: true,
+        },
+      ],
+    },
   },
   questions: {
     // Generated question columns carry only `type`, `name`, and `jsType`; the

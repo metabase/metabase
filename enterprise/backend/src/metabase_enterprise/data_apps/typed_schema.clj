@@ -91,8 +91,8 @@
   (into #{} (keep #(when (:hidden %) (:id %))) (vals (:fields visualization_settings))))
 
 (defn- action-definition
-  "The `defineAction` argument of the query `action`: its entity ID and parameters."
-  [{:keys [entity_id name description type parameters] :as action}]
+  "The `defineAction` argument of `action`: its entity ID and parameters, and a table action's kind."
+  [{:keys [entity_id name description type kind parameters] :as action}]
   (let [tag-types (template-tag-types action)
         hidden?   (hidden-parameter-ids action)]
     {:action (m/assoc-some
@@ -103,6 +103,7 @@
                :parameters (into [] (comp (remove (comp hidden? :id))
                                           (map #(parameter-schema tag-types %)))
                                  parameters)}
+              :implicitKind (when (= :implicit (keyword type)) (some-> kind u/qualified-name))
               :description description)}))
 
 (defn- identifier-part

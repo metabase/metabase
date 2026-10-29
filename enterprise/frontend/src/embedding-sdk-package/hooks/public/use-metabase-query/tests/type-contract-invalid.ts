@@ -61,6 +61,10 @@ const UpdateOrder = defineAction({
   action: TEST_SCHEMA.actions.updateOrder,
 });
 
+const RefundOrder = defineAction({
+  action: TEST_SCHEMA.actions.refundOrder,
+});
+
 // --------
 // Compile-time contracts that must **fail** type-checking.
 //
@@ -262,6 +266,9 @@ function InvalidTypeFixtures() {
 
   // @ts-expect-error `result` is discriminated by the action's kind
   void useAction(CreateOrder).result?.["rows-updated"];
+
+  // @ts-expect-error a table update answers `rows-updated`, not `rows-affected`
+  void useAction(RefundOrder).result?.["rows-affected"];
 
   const scalarAggregationResult = useMetabaseQuery(
     defineQuery({
