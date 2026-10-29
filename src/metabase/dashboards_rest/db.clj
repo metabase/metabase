@@ -29,12 +29,12 @@
 (mu/defn dashboard-parameters
   "The id and parameters of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one [:model/Dashboard :id :parameters] dashboard-id))
+  (t2/select-one [:model/Dashboard :id :parameters] :id dashboard-id))
 
 (mu/defn dashboard-name-columns
   "The name, description, and creator of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one [:model/Dashboard :name :description :creator_id] dashboard-id))
+  (t2/select-one [:model/Dashboard :name :description :creator_id] :id dashboard-id))
 
 (mu/defn dashboard-public-uuid
   "The public uuid of the Dashboard with `dashboard-id`, or nil."
@@ -181,7 +181,7 @@
 (mu/defn dashcard
   "The DashboardCard with `dashcard-id`, or nil."
   [dashcard-id :- ::lib.schema.id/dashcard]
-  (t2/select-one :model/DashboardCard dashcard-id))
+  (t2/select-one :model/DashboardCard :id dashcard-id))
 
 (mu/defn dashcard-in-dashboard
   "The DashboardCard with `dashcard-id` on the Dashboard with `dashboard-id`, or nil."
@@ -209,7 +209,7 @@
 (mu/defn user-name-and-email
   "The name and email of the User with `user-id`, or nil."
   [user-id :- ::lib.schema.id/user]
-  (t2/select-one [:model/User :first_name :last_name :email] user-id))
+  (t2/select-one [:model/User :first_name :last_name :email] :id user-id))
 
 (mu/defn user-names-and-emails
   "The names and emails of the Users with `user-ids`."

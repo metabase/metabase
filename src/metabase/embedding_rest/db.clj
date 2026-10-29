@@ -12,7 +12,7 @@
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card card-id))
+  (t2/select-one :model/Card :id card-id))
 
 (mu/defn active-card
   "The non-archived Card with `card-id`, or nil. A trashed Card keeps its DashboardCard rows, so the dashcard routes
@@ -33,7 +33,7 @@
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/Dashboard dashboard-id))
+  (t2/select-one :model/Dashboard :id dashboard-id))
 
 (mu/defn dashboard-embedding-params
   "The embedding parameters of the Dashboard with `dashboard-id`, or nil."
@@ -48,7 +48,7 @@
 (mu/defn dashcard
   "The DashboardCard with `dashcard-id`, or nil."
   [dashcard-id :- ::lib.schema.id/dashcard]
-  (t2/select-one :model/DashboardCard dashcard-id))
+  (t2/select-one :model/DashboardCard :id dashcard-id))
 
 (mu/defn embedding-themes
   "The id, entity id, name, settings, default flag, and timestamps of every EmbeddingTheme, oldest first."

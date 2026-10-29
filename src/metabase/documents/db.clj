@@ -91,7 +91,7 @@
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card card-id))
+  (t2/select-one :model/Card :id card-id))
 
 (mu/defn cards-not-in-document
   "The Cards with `card-ids` that do not belong to the Document with `document-id`."

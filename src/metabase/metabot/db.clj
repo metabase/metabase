@@ -421,7 +421,7 @@
 (mu/defn database-summary
   "The ID, name, description, and engine of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one [:model/Database :id :name :description :engine] database-id))
+  (t2/select-one [:model/Database :id :name :description :engine] :id database-id))
 
 (mu/defn database-with-columns
   "The `columns` of the Database with `database-id`."
@@ -949,12 +949,12 @@
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one :model/Dashboard dashboard-id))
+  (t2/select-one :model/Dashboard :id dashboard-id))
 
 (mu/defn dashboard-summary
   "The ID, description, name, Collection ID, and parameters of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id :- ::lib.schema.id/dashboard]
-  (t2/select-one [:model/Dashboard :id :description :name :collection_id :parameters] dashboard-id))
+  (t2/select-one [:model/Dashboard :id :description :name :collection_id :parameters] :id dashboard-id))
 
 (mu/defn dashboard-name
   "The name of the Dashboard with `dashboard-id`."
@@ -1054,7 +1054,7 @@
   "The ID, email, and names of the User with `user-id`, or nil if `user-id` is nil or matches no User."
   [user-id :- [:maybe ::lib.schema.id/user]]
   (when user-id
-    (t2/select-one [:model/User :id :email :first_name :last_name] user-id)))
+    (t2/select-one [:model/User :id :email :first_name :last_name] :id user-id)))
 
 (mu/defn user-summaries-by-id
   "A map of ID to the ID, email, and names of the Users with `user-ids`."

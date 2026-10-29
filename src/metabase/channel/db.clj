@@ -36,7 +36,7 @@
 (mu/defn channel
   "The Channel with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/Channel id))
+  (t2/select-one :model/Channel :id id))
 
 (mu/defn update-channel!
   "Apply `changes` to the Channel with `id`, returning the number updated."

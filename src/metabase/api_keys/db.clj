@@ -31,7 +31,7 @@
 (mu/defn api-key
   "The ApiKey with `id`, or nil."
   [id :- ms/PositiveInt]
-  (t2/select-one :model/ApiKey id))
+  (t2/select-one :model/ApiKey :id id))
 
 (def ^:private ApiKeyWithGroupId
   "An ApiKey instance possibly carrying the `::api-keys/group-id` the before-update hook consumes."

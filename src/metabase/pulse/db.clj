@@ -12,7 +12,7 @@
 (mu/defn card
   "The Card with `card-id`, or nil."
   [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card card-id))
+  (t2/select-one :model/Card :id card-id))
 
 (mu/defn card-query
   "The query of the Card with `card-id`, or nil."
@@ -23,7 +23,7 @@
   (t2/select-one-fn :dataset_query
                     [:model/Card :id :dataset_query :card_schema :type :entity_id
                      :result_metadata :dimensions :dimension_mappings]
-                    card-id))
+                    :id card-id))
 
 (mu/defn dashboard
   "The Dashboard with `dashboard-id`, or nil. `dashboard-id` may be nil (e.g. a legacy Pulse with no Dashboard), in
@@ -413,7 +413,7 @@
 (defn user-name-and-email
   "The first name, last name, and email of the User with `user-id`, or nil."
   [user-id]
-  (t2/select-one [:model/User :first_name :last_name :email] user-id))
+  (t2/select-one [:model/User :first_name :last_name :email] :id user-id))
 
 (defn users-names-and-emails
   "The first names, last names, and emails of the Users with `user-ids`."
@@ -433,12 +433,12 @@
 (defn dashboard-parameters
   "The id and parameters of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id]
-  (t2/select-one [:model/Dashboard :id :parameters] dashboard-id))
+  (t2/select-one [:model/Dashboard :id :parameters] :id dashboard-id))
 
 (defn dashboard-name-description-creator
   "The name, description, and creator id of the Dashboard with `dashboard-id`, or nil."
   [dashboard-id]
-  (t2/select-one [:model/Dashboard :name :description :creator_id] dashboard-id))
+  (t2/select-one [:model/Dashboard :name :description :creator_id] :id dashboard-id))
 
 (defn unarchived-pulses-for-dashboard
   "The unarchived Pulses of the Dashboard with `dashboard-id`, in id order."
