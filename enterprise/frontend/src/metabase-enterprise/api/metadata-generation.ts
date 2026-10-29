@@ -113,7 +113,10 @@ export const metadataGenerationApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/data-sensitivity/proposals/tables",
         params: getProposalsParams(request),
       }),
-      providesTags: () => [listTag("metadata-generation-proposal")],
+      providesTags: () => [
+        listTag("metadata-generation-proposal"),
+        listTag("field"),
+      ],
     }),
     listMetadataGenerationProposals: builder.query<
       MetadataGenerationProposal[],
@@ -124,7 +127,11 @@ export const metadataGenerationApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/data-sensitivity/proposals",
         params: getProposalsParams(request),
       }),
-      providesTags: () => [listTag("metadata-generation-proposal")],
+      providesTags: (proposals = []) => [
+        listTag("metadata-generation-proposal"),
+        listTag("field"),
+        ...proposals.map(({ field_id }) => idTag("field", field_id)),
+      ],
     }),
     applyMetadataGenerationProposals: builder.mutation<
       MetadataGenerationApplyResult,

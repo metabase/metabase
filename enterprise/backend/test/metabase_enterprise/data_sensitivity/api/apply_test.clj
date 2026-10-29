@@ -216,6 +216,33 @@
            (is (=? {:semantic_type :type/Email} (effective a-text)))
            (is (=? {:description "A plain text field."} (effective a-plain)))))))))
 
+(deftest apply-keeps-human-value-set-after-the-review-read-test
+  (mt/with-premium-features #{:data-sensitivity}
+    (do-with-run
+     (fn [run-id {:keys [a a-plain]}]
+       (let [desc (suggestion! run-id a a-plain :attribute :description :proposed_value "AI description")]
+         (is (=? [{:id desc :source "none"}]
+                 (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/proposals" :table-id a)))
+         (mt/user-http-request :crowberto :put 200 (format "field/%d" a-plain) {:description "Human description"})
+         (let [result (apply! {:accept [desc] :proposed_values {desc "AI description"}})]
+           (testing "an unedited accept does not clear a human value the client did not see"
+             (is (=? {:description "Human description"} (effective a-plain)))
+             (is (=? {:description "Human description" :description_set true} (settings a-plain))))
+           (testing "the proposal is reported as changed"
+             (is (=? {:written  0
+                      :failed   1
+                      :failures [{:proposal_id desc :reason "changed"}]}
+                     result))))
+         (testing "the review shows the human value"
+           (is (=? [{:id desc :source "human" :current_value "Human description"}]
+                   (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/proposals" :table-id a))))
+         (testing "an accept with the human source the client saw clears the human value"
+           (is (=? {:written 1 :failed 0}
+                   (apply! {:accept [desc] :proposed_values {desc "AI description"} :sources {desc "human"}})))
+           (is (=? {:description "AI description"} (effective a-plain)))
+           (is (=? {:description nil :description_set false :ai_description "AI description"}
+                   (settings a-plain)))))))))
+
 (deftest apply-over-unflagged-human-data-sensitivity-test
   (mt/with-premium-features #{:data-sensitivity}
     (do-with-run

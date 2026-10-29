@@ -212,6 +212,7 @@ describe("ReviewModal", () => {
     expect(await getApplyBody()).toEqual({
       accept: [1, 4],
       proposed_values: { 1: "PII", 4: "PII" },
+      sources: { 1: "none", 4: "none" },
     });
   });
 
@@ -237,6 +238,7 @@ describe("ReviewModal", () => {
     expect(await getApplyBody()).toEqual({
       accept: [1, 3],
       proposed_values: { 1: "PII", 3: "Free-text notes" },
+      sources: { 1: "none", 3: "none" },
     });
     expect(getMutationCalls()).toHaveLength(1);
   });
@@ -261,6 +263,7 @@ describe("ReviewModal", () => {
       accept: [3],
       edits: { 3: "Order notes" },
       proposed_values: { 3: "Free-text notes" },
+      sources: { 3: "none" },
     });
   });
 
@@ -283,6 +286,7 @@ describe("ReviewModal", () => {
     expect(await getApplyBody()).toEqual({
       accept: [1],
       proposed_values: { 1: "PII" },
+      sources: { 1: "none" },
     });
   });
 
@@ -310,6 +314,7 @@ describe("ReviewModal", () => {
     expect(await getApplyBody()).toEqual({
       accept: [3],
       proposed_values: { 3: "Free-text notes" },
+      sources: { 3: "none" },
     });
   });
 

@@ -16,6 +16,9 @@ import {
   setEdit,
   setSelected,
 } from "./utils";
+import type { SeenProposal } from "./utils";
+
+const pii: SeenProposal = { proposed_value: "PII", source: "none" };
 
 describe("getHumanSetPendingCount", () => {
   it("sums the human-set conflicts of all tables", () => {
@@ -61,7 +64,7 @@ describe("getTableCheckboxState", () => {
           createMockMetadataGenerationProposal({ id: 1 }),
           createMockMetadataGenerationProposal({ id: 2 }),
         ],
-        new Map([[1, "PII"]]),
+        new Map([[1, pii]]),
       ),
     ).toEqual({ checked: false, indeterminate: true, disabled: false });
   });
@@ -73,7 +76,7 @@ describe("getTableCheckboxState", () => {
           createMockMetadataGenerationProposal({ id: 1 }),
           createMockMetadataGenerationProposal({ id: 2, source: "human" }),
         ],
-        new Map([[1, "PII"]]),
+        new Map([[1, pii]]),
       ),
     ).toEqual({ checked: true, indeterminate: false, disabled: false });
   });
@@ -89,8 +92,8 @@ describe("getTableCheckboxState", () => {
 });
 
 describe("review draft", () => {
-  it("adds and removes suggestions with their proposed values without changing the input", () => {
-    const selection = new Map([[1, "PII"]]);
+  it("adds and removes suggestions with their proposed values and sources without changing the input", () => {
+    const selection = new Map([[1, pii]]);
     const added = setSelected(
       selection,
       [
@@ -98,14 +101,15 @@ describe("review draft", () => {
         createMockMetadataGenerationProposal({
           id: 3,
           proposed_value: "BIZ_CONF",
+          source: "human",
         }),
       ],
       true,
     );
     expect([...added]).toEqual([
-      [1, "PII"],
-      [2, "NONE"],
-      [3, "BIZ_CONF"],
+      [1, pii],
+      [2, { proposed_value: "NONE", source: "none" }],
+      [3, { proposed_value: "BIZ_CONF", source: "human" }],
     ]);
     expect([
       ...setSelected(
@@ -114,7 +118,7 @@ describe("review draft", () => {
         false,
       ),
     ]).toEqual([]);
-    expect([...selection]).toEqual([[1, "PII"]]);
+    expect([...selection]).toEqual([[1, pii]]);
   });
 
   it("sets and clears an edit, and the value shown follows it", () => {
@@ -127,16 +131,16 @@ describe("review draft", () => {
     expect(getProposalValue(suggestion, setEdit(edits, 1, null))).toBe("PII");
   });
 
-  it("sends the selected ids with the proposed values seen, and only the edits of selected suggestions", () => {
+  it("sends the selected ids with the proposed values and sources seen, and only the edits of selected suggestions", () => {
     const edits = new Map([
       [3, "type/Score"],
       [4, "Not selected"],
     ]);
     expect(
       getApplyRequestBody(
-        new Map([
-          [3, "type/Category"],
-          [1, "PII"],
+        new Map<number, SeenProposal>([
+          [3, { proposed_value: "type/Category", source: "human" }],
+          [1, pii],
         ]),
         edits,
       ),
@@ -144,10 +148,12 @@ describe("review draft", () => {
       accept: [1, 3],
       edits: { 3: "type/Score" },
       proposed_values: { 1: "PII", 3: "type/Category" },
+      sources: { 1: "none", 3: "human" },
     });
-    expect(getApplyRequestBody(new Map([[1, "PII"]]), edits)).toEqual({
+    expect(getApplyRequestBody(new Map([[1, pii]]), edits)).toEqual({
       accept: [1],
       proposed_values: { 1: "PII" },
+      sources: { 1: "none" },
     });
   });
 });
