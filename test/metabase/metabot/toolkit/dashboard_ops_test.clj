@@ -23,8 +23,11 @@
   [ops]
   (into {} (map (fn [id] [id {:id id}])) (mapcat dashboard-ops/card-refs ops)))
 
+;; TODO (Chris 2026-10-29) -- a name unique to this helper would be less ambiguous. It shares its name with
+;; [[dashboard-ops/compile-ops]], but also resolves a stub row for every card the ops name.
 (defn- compile-ops
-  "[[dashboard-ops/compile-ops]], with every card `ops` name resolved. `cards` adds or replaces card rows."
+  "Runs [[dashboard-ops/compile-ops]] with every card `ops` name resolved.
+   The optional `cards` adds or replaces card rows."
   ([current ops] (compile-ops current ops {}))
   ([current ops cards] (dashboard-ops/compile-ops current ops (merge (resolved-cards ops) cards))))
 
@@ -135,7 +138,7 @@
             (op-error empty-dash [{:op "add_parameter" :name "Country" :type "string/="}])))))
 
 (deftest ^:parallel out-of-range-index-test
-  (testing "move_tab and move_parameter report a missing index, or one past the end, with the count it must stay within"
+  (testing "move_tab and move_parameter reject a missing or out-of-range index, giving the count"
     (is (=? {::dashboard-ops/error :tab-index-out-of-range, :index 3, :tab-count 1}
             (op-error (assoc empty-dash :tabs [{:id 1 :name "A"}])
                       [{:op "move_tab" :tab_id 1 :index 3}])))
@@ -999,7 +1002,7 @@
              (compile-ops current [{:op "remove_parameter" :parameter_id "p1"}] {}))))))
 
 (deftest ^:parallel unresolved-card-test
-  (testing "an op naming a card the caller did not resolve is an error naming that card, wherever the op names it"
+  (testing "an op naming a card the caller did not resolve fails, naming that card, wherever the op names it"
     (is (= {::dashboard-ops/error :unknown-card, :card-id 42, :op-index 0, :op-name "add_card"}
            (op-error empty-dash [{:op "add_card" :id -1 :card_id 42}] {})))
     (is (=? {::dashboard-ops/error :unknown-card, :card-id 43, :op-name "add_card"}

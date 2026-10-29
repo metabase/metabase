@@ -54,8 +54,9 @@
         ops))
 
 (defn- fetch-cards
-  "`{card-id card}` for `ids`, behind read checks. A card the caller cannot read is omitted, so an op naming it
-   fails the compiler's `:unknown-card` check, the same error as a card that does not exist."
+  "The `{card-id card}` map for `ids`, behind read checks.
+   It omits a card the caller cannot read, so an op naming one fails the compiler's `:unknown-card` check.
+   That is the same error as for a card that does not exist."
   [ids]
   (let [ids (into #{} (filter int?) ids)]
     (when (seq ids)
