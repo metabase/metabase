@@ -5,6 +5,7 @@
   reason when it does not), the implicit joins through entities, the relation and database mapping, the notes on a
   metric, and how a metric the stage fails on is reported apart from the unsupported ones."
   (:require
+   [clojure.set :as set]
    [clojure.test :refer [are deftest is testing]]
    [dev.dbt-import.emit :as emit]
    [dev.dbt-import.ids :as ids]
@@ -38,7 +39,23 @@
       (is (= 5000 (count (set ids))))))
   (testing "the same metric name in two projects gets two entity ids"
     (is (not= (ids/entity-id "dbt-import/metric/metric.a.sales")
-              (ids/entity-id "dbt-import/metric/metric.b.sales")))))
+              (ids/entity-id "dbt-import/metric/metric.b.sales"))))
+  (let [sales (tu/metric-named (:metrics (tu/flexanalytics-ir)) "sales")]
+    (testing "a metric's entity id hashes the Metabase database name with the unique_id"
+      (is (= (ids/entity-id (str "dbt-import/metric/Sales DB/" (:unique-id sales)))
+             (ids/metric-entity-id "Sales DB" sales)))
+      (is (not= (ids/metric-entity-id "Sales DB" sales)
+                (ids/metric-entity-id "Other DB" sales))))
+    (testing "the collection's entity id hashes the sorted, distinct database names with the project"
+      (is (= (ids/entity-id "dbt-import/collection/CRM DB,Sales DB/flexanalytics")
+             (ids/collection-entity-id ["Sales DB" "CRM DB" "Sales DB"] "flexanalytics")
+             (ids/collection-entity-id ["CRM DB" "Sales DB"] "flexanalytics")))
+      (is (not= (ids/collection-entity-id ["Sales DB"] "flexanalytics")
+                (ids/collection-entity-id ["Sales DB" "CRM DB"] "flexanalytics")
+                (ids/collection-entity-id ["Sales DB"] "other_project")))
+      (testing "a project the manifest does not name"
+        (is (= (ids/entity-id "dbt-import/collection/Sales DB/")
+               (ids/collection-entity-id ["Sales DB"] nil)))))))
 
 (deftest ^:parallel resolve-manifest-test
   (let [resolved (tu/flexanalytics-resolved)]
@@ -1518,3 +1535,19 @@
     (testing "the entity itself is still usable in a filter, as its SQL inlined (see the README under \"Filters\")"
       (is (= [[:= {} [:lower {} (fld "order_key" :type/Text)] "x"]]
              (tu/filters {:edit sql-order, :metric {:filter (tu/where-filters "{{ Entity('order') }} = 'x'")}}))))))
+
+(deftest ^:parallel entity-ids-per-database-test
+  (testing "one project converted for two Metabase databases is two sets of cards in two collections"
+    (let [ir       (tu/flexanalytics-ir)
+          resolved (resolve/resolve-manifest tu/default-config ir)
+          other    (resolve/resolve-manifest (assoc tu/default-config :databases {"dbt_bi" "Other DB"}) ir)]
+      (is (= (map (comp :name :ir) (:metrics resolved))
+             (map (comp :name :ir) (:metrics other))))
+      (is (empty? (set/intersection (set (map :entity-id (:metrics resolved)))
+                                    (set (map :entity-id (:metrics other))))))
+      (is (= (ids/collection-entity-id ["Sales DB"] "dbt_business_intelligence") (-> resolved :collection :entity-id)))
+      (is (= (ids/collection-entity-id ["Other DB"] "dbt_business_intelligence") (-> other :collection :entity-id)))
+      (testing "the cards refer to the metrics of their own database"
+        (is (= (:entity-id (tu/resolved-metric-named other "sales"))
+               (-> (tu/stage (tu/resolved-metric-named other "sales_to_target_ratio_2"))
+                   :aggregation first (nth 2) last)))))))

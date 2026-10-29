@@ -1,9 +1,13 @@
 (ns dev.dbt-import.emit
   "Stage 3 of the converter: turn resolved metrics into Metabase serdes entities and write them as a YAML tree.
 
-  Each metric becomes a Card of `type: metric` whose query is the resolve stage's Lib query, written the way
-  [[metabase-enterprise.serialization.dump]] exports it: portable refs, no clause UUIDs (import regenerates them) and
-  no `result_metadata` (import infers it). The layout matches a real export,
+  Each metric becomes a Card of `type: metric` whose query is the resolve stage's Lib query. The entities are what
+  serdes' own [[serdes/extract-one]] makes of a Card row and a Collection row built here, with the Card and Collection
+  specs' transforms turning the row's ids into portable refs (see [[with-portable-refs]]) and leaving out the columns
+  at their default value, exactly as [[metabase-enterprise.serialization.v2.extract]] does with a row from the app DB:
+  the keys written are the specs', and a column the spec starts to export fails the run until the row carries it. The
+  query is written with no clause UUIDs (import regenerates them) and no `result_metadata` (import infers it). The
+  layout matches a real export,
 
       collections/main/<collection>.yaml
       collections/main/<collection>/<metric>.yaml
@@ -17,8 +21,8 @@
    [metabase-enterprise.serialization.dump :as dump]
    [metabase-enterprise.serialization.v2.storage.util :as storage.util]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.metrics.core :as metrics]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -35,13 +39,14 @@
 (set! *warn-on-reflection* true)
 
 (def card-schema
-  "The `card_schema` the emitted cards declare: 24, the version whose shape [[card-entity]] builds by hand, its
-  `:dimensions` and `:dimension_mappings` in particular. It is a constant rather than
+  "The `card_schema` the emitted cards declare: 24, the version whose `:dimensions` and `:dimension_mappings` shape
+  the resolve stage builds by hand and [[card-entity]] puts on the Card row. It is a constant rather than
   [[metabase.queries.models.card/current-card-schema-version]] on purpose: an instance whose current version is newer
   upgrades a card that declares 24 when it reads it, where a card declaring the current version is taken to have the
-  current shape already, so a hand-built shape that lagged behind would be stored as it is. When the current version
-  moves past 24, check the hand-built shape against what changed and bump this; the test
-  [[dev.dbt-import.emit-test/card-schema-test]] fails until then."
+  current shape already, so a hand-built shape that lagged behind would be stored as it is. The rest of the card is
+  the Card spec's own export, so only the dimension shape is at stake. When the current version moves past 24, check
+  that shape against what changed and bump this; the test [[dev.dbt-import.emit-test/card-schema-test]] fails until
+  then."
   24)
 
 (mr/def ::entity
@@ -58,70 +63,96 @@
    [:entity ::entity]
    [:metric {:optional true} ::resolved/metric]])
 
+(mu/defn- portable-fk :- [:maybe :string]
+  "What [[serdes/*export-fk*]] returns under [[with-portable-refs]]: for a ratio or derived metric's `[:metric id]`
+  reference, the referenced metric's `entity_id` from the provider; for a card's `collection_id`, which is the
+  collection's `entity_id` already, the id as it is; nothing for a nil id (a card's `dashboard_id`, say)."
+  [metadata-provider :- ::lib.schema.metadata/metadata-provider
+   id                :- [:maybe [:or ::lib.schema.id/card :string]]
+   model             :- [:or :symbol :keyword]]
+  (cond
+    (nil? id)                    nil
+    (#{'Card :model/Card} model) (metadata/portable-card-ref metadata-provider id)
+    (= :model/Collection model)  id
+    :else                        (throw (ex-info (format "unexpected foreign key to %s" model)
+                                                 {:id id, :model model}))))
+
 (mu/defn- with-portable-refs :- :map
   "Run `thunk` with serdes' id lookups bound to `metadata-provider`, so what it exports names the provider's made-up
-  database, table and field ids the way a real export names an instance's."
+  database, table, field and metric card ids the way a real export names an instance's. The two references the
+  provider does not number, a card's creator and its collection, are put on the Card row in their portable form
+  already, the creator's email and the collection's `entity_id`, and come out as they went in."
   [metadata-provider :- ::lib.schema.metadata/metadata-provider
    thunk             :- ifn?]
   (binding [serdes/*export-database-fk* (fn [_id] (metadata/database-name metadata-provider))
             serdes/*export-table-fk*    (fn [table-id] (metadata/portable-table-ref metadata-provider table-id))
             serdes/*export-field-fk*    (fn [field-id] (metadata/portable-field-ref metadata-provider field-id))
-            ;; the only other ids in a metric's query are the `[:metric id]` references of a ratio or derived metric
-            serdes/*export-fk*          (fn [card-id model]
-                                          (when-not (#{'Card :model/Card} model)
-                                            (throw (ex-info (format "unexpected foreign key to %s" model)
-                                                            {:id card-id})))
-                                          (metadata/portable-card-ref metadata-provider card-id))]
+            serdes/*export-user*        identity
+            serdes/*export-fk*          (fn [id model] (portable-fk metadata-provider id model))]
     (thunk)))
 
 (mu/defn dataset-query :- :map
-  "A resolved metric's query as serdes writes it: [[serdes/export-mbql]] strips the clause ids and turns the provider's
-  ids into names, and a `[:metric id]` reference into the referenced metric's `entity_id`."
+  "A resolved metric's query as serdes writes it in the card's `dataset_query`: [[serdes/export-mbql]] strips the
+  clause ids and turns the provider's ids into names, and a `[:metric id]` reference into the referenced metric's
+  `entity_id`."
   [{:keys [metadata-provider query]} :- ::resolved/metric]
   (with-portable-refs metadata-provider #(serdes/export-mbql query)))
 
-(mu/defn dimensions :- [:map {:closed true}
-                        [:dimensions         [:sequential :map]]
-                        [:dimension_mappings [:sequential :map]]]
-  "A resolved metric's curated dimensions and mappings as serdes writes them on a Card, through the metrics module's
-  own export, which turns the field ids in a dimension's `:sources` and a mapping's `:table-id` and `:target` into
-  names."
-  [{:keys [metadata-provider dimension-mappings], persisted-dimensions :dimensions} :- ::resolved/metric]
-  (with-portable-refs metadata-provider
-    #(do {:dimensions         (metrics/export-dimensions persisted-dimensions)
-          :dimension_mappings (metrics/export-dimension-mappings dimension-mappings)})))
-
 (mu/defn- collection-entity :- ::entity
+  "The serdes entity for the collection the metrics go in: a top-level Collection row, as the app DB would hold one,
+  through [[serdes/extract-one]]. Its only references, the parent collection and the personal owner, are nil, so
+  nothing is looked up."
   [{collection-name :name, :keys [entity-id]} :- ::resolved/collection]
-  {:serdes/meta [{:model "Collection" :id entity-id :label collection-name}]
-   :name        collection-name
-   :entity_id   entity-id
-   :slug        (u/slugify collection-name)
-   :description "Metrics imported from dbt."
-   :archived    false})
+  (serdes/extract-one "Collection" {}
+                      {:name                collection-name
+                       :entity_id           entity-id
+                       :slug                (u/slugify collection-name)
+                       :description         "Metrics imported from dbt."
+                       :location            "/"
+                       :personal_owner_id   nil
+                       :namespace           nil
+                       :type                nil
+                       :authority_level     nil
+                       :archive_operation_id nil
+                       :archived            false
+                       :archived_directly   false
+                       :is_sample           false
+                       :is_remote_synced    false}))
 
 (mu/defn- card-entity :- ::entity
+  "The serdes entity for a metric: a Card row, as the app DB would hold one, with every column the Card spec exports,
+  through [[serdes/extract-one]] with the row's ids made portable by [[with-portable-refs]]. The query is the resolve
+  stage's Lib query against the provider, and the curated dimensions and mappings are the shape the resolve stage
+  built (see [[card-schema]]); `result_metadata` is nil, since the import infers it."
   [config     :- ::resolved/config
    collection :- ::resolved/collection
-   {:keys [ir entity-id] :as resolved-metric} :- ::resolved/metric]
-  (merge
-   {:serdes/meta            [{:model "Card" :id entity-id :label (:label ir)}]
-    :name                   (:label ir)
-    :description            (:description ir)
-    :entity_id              entity-id
-    :type                   :metric
-    :display                :scalar
-    :collection_id          (:entity-id collection)
-    :creator_id             (:creator-email config)
-    :dataset_query          (dataset-query resolved-metric)
-    :parameters             []
-    :parameter_mappings     []
-    :visualization_settings {}
-    :archived               false
-    :enable_embedding       false
-    :collection_preview     true
-    :card_schema            card-schema}
-   (dimensions resolved-metric)))
+   {:keys [ir entity-id metadata-provider query dimension-mappings], persisted-dimensions :dimensions}
+   :- ::resolved/metric]
+  (with-portable-refs metadata-provider
+    #(serdes/extract-one "Card" {}
+                         {:name                   (:label ir)
+                          :description            (:description ir)
+                          :entity_id              entity-id
+                          :type                   :metric
+                          :display                :scalar
+                          :collection_id          (:entity-id collection)
+                          :creator_id             (:creator-email config)
+                          :made_public_by_id      nil
+                          :dashboard_id           nil
+                          :document_id            nil
+                          :database_id            (:database query)
+                          :dataset_query          query
+                          :result_metadata        nil
+                          :parameters             []
+                          :parameter_mappings     []
+                          :visualization_settings {}
+                          :dimensions             persisted-dimensions
+                          :dimension_mappings     dimension-mappings
+                          :archived               false
+                          :archived_directly      false
+                          :enable_embedding       false
+                          :collection_preview     true
+                          :card_schema            card-schema})))
 
 (mu/defn- slugify :- :string
   "`s`, a collection name or a metric label, as a file name: slugified the way a real export does it, after Unicode

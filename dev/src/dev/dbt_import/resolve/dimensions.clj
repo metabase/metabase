@@ -33,7 +33,10 @@
 (mu/defn- dimension-group :- ::lib.schema.metadata/dimension-group
   "The group of the dimensions of `semantic-model`: the metric's own table (`main`) or one joined to (`connection`),
   named after the semantic model's label, or its table when it has none. The id is derived from that name (see
-  [[ids/group-id]]), so a re-run writes the same ids; same-named groups are stable, not identical to the instance's."
+  [[ids/group-id]]), so a re-run writes the same ids. The groups carry dbt's labels by design: they are the names the
+  project gives its models, and they are stable across re-imports. The instance names the groups it computes for the
+  same table after the table's and the foreign key's display names, so a dimension added later in the UI sits in a
+  sibling group next to the imported one."
   [group-type               :- [:enum "main" "connection"]
    {:keys [label relation]} :- ::ir/semantic-model]
   (let [group-name (or label (:table relation))]
