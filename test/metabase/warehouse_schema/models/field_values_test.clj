@@ -175,7 +175,7 @@
 
 (defn distinct-field-values
   [id]
-  (field-values/distinct-values (t2/select-one :model/Field id)))
+  (field-values/distinct-values (t2/select-one :model/Field :id id)))
 
 (deftest distinct-values-test
   (testing "Correctly get distinct field values for text fields"
@@ -201,7 +201,7 @@
       (select-keys [:values :human_readable_values])))
 
 (defn- sync-and-find-values! [db field-values-id]
-  (sync/sync-database! (:id (t2/select-one :model/Database (u/the-id db))))
+  (sync/sync-database! (:id (t2/select-one :model/Database :id (u/the-id db))))
   (find-values field-values-id))
 
 (deftest implicit-deduplication-test
@@ -464,7 +464,7 @@
                _               (field-values/get-or-create-full-field-values! (t2/select-one :model/Field :id field-id))
                field-values-id (t2/select-one-fn :id :model/FieldValues :field_id field-id)]
            ;; Add in human readable values for remapping
-           (is (t2/update! :model/FieldValues field-values-id {:human_readable_values ["a" "b" "c"]}))
+           (is (t2/update! :model/FieldValues :id field-values-id {:human_readable_values ["a" "b" "c"]}))
            (let [expected-original-values {:values                [1 2 3]
                                            :human_readable_values ["a" "b" "c"]}
                  expected-updated-values  {:values                [-2 -1 0 1 2 3]
@@ -501,7 +501,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Invalid human-readable-values"
-             (t2/update! :model/FieldValues id {:human_readable_values {"1" "A", "2", "B"}})))))))
+             (t2/update! :model/FieldValues :id id {:human_readable_values {"1" "A", "2", "B"}})))))))
 
 (deftest rescanned-human-readable-values-test
   (testing "Make sure FieldValues are calculated and saved correctly when remapping is in place (#13235)"
@@ -568,7 +568,7 @@
                                [full-id {:type :sandbox, :hash_key "random-hash"}]]]
         (is (thrown-with-msg? ExceptionInfo
                               #"Can't update field_id, type, or hash_key for a FieldValues."
-                              (t2/update! :model/FieldValues id update-map)))))
+                              (t2/update! :model/FieldValues :id id update-map)))))
     (testing "The model hooks permits mention of the existing values"
       (doseq [[id update-map] [[full-id {:field_id (mt/id :venues :id)}]
                                [sandbox-id {:type :sandbox}]
@@ -577,7 +577,7 @@
                                [full-id {:hash_key nil}]
                                [full-id {:type :full, :hash_key nil}]
                                [sandbox-id {:type :sandbox, :hash_key "random-hash"}]]]
-        (is (some? (t2/update! :model/FieldValues id update-map)))))))
+        (is (some? (t2/update! :model/FieldValues :id id update-map)))))))
 
 (deftest insert-full-field-values-should-remove-all-cached-field-values
   (doseq [explicitly-full? [false true]]
@@ -593,7 +593,7 @@
                  :model/FieldValues sandbox-fv {:field_id (mt/id :venues :id)
                                                 :type     :sandbox
                                                 :hash_key "random-hash"}]
-    (t2/update! :model/FieldValues (:id fv) {:values [1 2 3]})
+    (t2/update! :model/FieldValues :id (:id fv) {:values [1 2 3]})
     (is (not (t2/exists? :model/FieldValues :id (:id sandbox-fv))))))
 
 (deftest update-full-field-without-values-should-remove-not-all-cached-field-values
@@ -602,7 +602,7 @@
                  :model/FieldValues sandbox-fv {:field_id (mt/id :venues :id)
                                                 :type     :sandbox
                                                 :hash_key "random-hash"}]
-    (t2/update! :model/FieldValues (:id fv) {:updated_at (t/zoned-date-time)})
+    (t2/update! :model/FieldValues :id (:id fv) {:updated_at (t/zoned-date-time)})
     (is (t2/exists? :model/FieldValues :id (:id sandbox-fv)))))
 
 (deftest select-coherence-test

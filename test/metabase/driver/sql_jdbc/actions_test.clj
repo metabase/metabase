@@ -98,7 +98,7 @@
     (catch Exception e
       (ex-data e))))
 
-(defn- field-id->name [id] (t2/select-one-fn :name :model/Field id))
+(defn- field-id->name [id] (t2/select-one-fn :name :model/Field :id id))
 
 (mu/defn- test-action-error-handling! [f :- fn?]
   (mt/test-drivers (filter #(isa? driver/hierarchy % :sql-jdbc) (mt/normal-drivers-with-feature :actions))

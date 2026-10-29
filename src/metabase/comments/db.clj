@@ -10,6 +10,7 @@
    [metabase.users.core :as users]
    [metabase.users.models.user :as user]
    [metabase.users.settings :as users.settings]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -92,12 +93,12 @@
   "Apply `changes` to the Comment with `id`, returning the number updated."
   [id      :- ms/PositiveInt
    changes :- (mut/select-keys ::comments.schema/comment.update [:content :is_resolved])]
-  (t2/update! :model/Comment id changes))
+  (t2/update! :model/Comment :id id changes))
 
 (mu/defn soft-delete-comment!
   "Mark the Comment with `id` deleted now, returning the number updated."
   [id :- ms/PositiveInt]
-  (t2/update! :model/Comment id {:deleted_at [:now]}))
+  (t2/update! :model/Comment :id id {:deleted_at [:now]}))
 
 (defn- restrict-to-visible-users
   "Narrow `clauses` (from `user/filter-clauses`) to the users the current user should see: superusers see
@@ -120,11 +121,12 @@
   [limit  :- [:maybe ms/PositiveInt]
    offset :- [:maybe ms/IntGreaterThanOrEqualToZero]]
   (t2/select [:model/User :id :first_name :last_name :email]
-             (-> (user/filter-clauses {:limit limit :offset offset})
-                 restrict-to-visible-users
-                 (sql.helpers/order-by [:%lower.first_name :asc]
-                                       [:%lower.last_name :asc]
-                                       [:id :asc]))))
+             (h2x/assert-map-or-nil!
+              (-> (user/filter-clauses {:limit limit :offset offset})
+                  restrict-to-visible-users
+                  (sql.helpers/order-by [:%lower.first_name :asc]
+                                        [:%lower.last_name :asc]
+                                        [:id :asc])))))
 
 (mu/defn mentionable-user-count
   "The `:count` of the active Users the current user may @mention."

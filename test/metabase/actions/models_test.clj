@@ -346,10 +346,10 @@
       (mt/with-model-cleanup [:model/Action]
         (let [of-table    (action/insert! {:type :implicit :name "T" :kind :row/create :table_id table-id})
               of-database (action/insert! {:type :implicit :name "U" :kind :row/create :table_id other-id})]
-          (t2/delete! :model/Table table-id)
+          (t2/delete! :model/Table :id table-id)
           (is (not (t2/exists? :model/Action :id of-table)))
           (is (t2/exists? :model/Action :id of-database))
-          (t2/delete! :model/Database db-id)
+          (t2/delete! :model/Database :id db-id)
           (is (not (t2/exists? :model/Action :id of-database))))))))
 
 (deftest model-less-implicit-action-fields-test
@@ -381,9 +381,9 @@
           (is (= coll-id (t2/select-one-fn :collection_id :model/Action :id action-id))))
         (testing "and can't be moved out of it"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A model's action goes in the model's collection"
-                                (t2/update! :model/Action action-id {:collection_id other-id})))
+                                (t2/update! :model/Action :id action-id {:collection_id other-id})))
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A model's action goes in the model's collection"
-                                (t2/update! :model/Action action-id {:collection_id nil}))))
+                                (t2/update! :model/Action :id action-id {:collection_id nil}))))
         (testing "nor be inserted in another collection"
           (mt/with-model-cleanup [:model/Action]
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A model's action goes in the model's collection"
@@ -394,7 +394,7 @@
                                                    :database_id   (mt/id)
                                                    :dataset_query (lib/native-query (mt/metadata-provider) "select 1")})))))
         (testing "moving the model moves its actions"
-          (t2/update! :model/Card model-id {:collection_id other-id})
+          (t2/update! :model/Card :id model-id {:collection_id other-id})
           (is (= other-id (t2/select-one-fn :collection_id :model/Action :id action-id))))))))
 
 (deftest model-action-has-no-table-test
@@ -414,7 +414,7 @@
       (mt/with-actions [_                   {:type :model :dataset_query (table-query :categories)}
                         {:keys [action-id]} {:type :query}]
         (binding [mi/*deserializing?* true]
-          (t2/update! :model/Action action-id {:model_id other-id :collection_id other-coll}))
+          (t2/update! :model/Action :id action-id {:model_id other-id :collection_id other-coll}))
         (is (= {:model_id other-id :collection_id other-coll}
                (t2/select-one [:model/Action :model_id :collection_id] :id action-id)))))))
 
@@ -446,15 +446,15 @@
         (mt/with-actions [{:keys [action-id model-id]} {:type :query}]
           (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
                          :model/DashboardCard {dashcard-id :id}  {:action_id action-id :dashboard_id dashboard-id}]
-            (is (false? (t2/select-one-fn :archived :model/Action action-id)))
-            (t2/update! :model/Card model-id {:type :question})
+            (is (false? (t2/select-one-fn :archived :model/Action :id action-id)))
+            (t2/update! :model/Card :id model-id {:type :question})
             (is (not (t2/exists? :model/Action :id action-id)))
             (is (not (t2/exists? :model/DashboardCard :id dashcard-id))))))
       (testing "Implicit actions are deleted if their model is converted to a saved question"
         (mt/with-actions [{:keys [action-id model-id]} {:type :implicit}]
-          (is (false? (t2/select-one-fn :archived :model/Action action-id)))
-          (t2/update! :model/Card model-id {:type :question})
-          (is (false? (t2/exists? :model/Action action-id))))))))
+          (is (false? (t2/select-one-fn :archived :model/Action :id action-id)))
+          (t2/update! :model/Card :id model-id {:type :question})
+          (is (false? (t2/exists? :model/Action :id action-id))))))))
 
 (deftest model-to-saved-question-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
@@ -464,9 +464,9 @@
       ;; here to make sure we don't made that mistake again
       (testing "Don't archive actions if updates a model dataset_query"
         (mt/with-actions [{:keys [action-id model-id]} {}]
-          (is (false? (t2/select-one-fn :archived :model/Action action-id)))
-          (t2/update! :model/Card model-id {:dataset_query (mt/mbql-query users {:limit 1})})
-          (is (false? (t2/select-one-fn :archived :model/Action action-id))))))))
+          (is (false? (t2/select-one-fn :archived :model/Action :id action-id)))
+          (t2/update! :model/Card :id model-id {:dataset_query (mt/mbql-query users {:limit 1})})
+          (is (false? (t2/select-one-fn :archived :model/Action :id action-id))))))))
 
 (deftest exclude-auto-increment-fields-for-create-implicit-actions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)

@@ -356,7 +356,8 @@
                                                sql)]
       (when-not (read-only-statements? query-classification)
         (throw (ex-info "Only SELECT statements are allowed in a native query."
-                        {:classification query-classification}))))))
+                        {:type           driver-api/qp.error-type.invalid-query
+                         :classification query-classification}))))))
 
 (defmethod driver/execute-reducible-query :h2
   [driver query chans respond]
@@ -722,8 +723,8 @@
   [driver db-id table-name column-definitions & opts]
   ;; H2 doesn't support altering multiple columns at a time, so we break it up into individual ALTER TABLE statements
   (let [f (get-method driver/alter-table-columns! :sql-jdbc)]
-    (doseq [[k v] column-definitions]
-      (apply f driver db-id table-name {k v} opts))))
+    (perf/run! (fn [[k v]] (apply f driver db-id table-name {k v} opts))
+               column-definitions)))
 
 (defmethod driver/allowed-promotions :h2
   [_driver]

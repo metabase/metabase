@@ -23,7 +23,7 @@
                                        (seq db-settings) (assoc :settings db-settings))
                   :model/Table table (assoc table :db_id (u/the-id db))]
      (let [update-operations (atom [])]
-       (mt/with-dynamic-fn-redefs [t2/update! (fn [model id updates]
+       (mt/with-dynamic-fn-redefs [t2/update! (fn [model _pk-column id updates]
                                                 (swap! update-operations conj [(name model) id updates])
                                                 (count updates))]
          (#'sync-metadata/update-field-metadata-if-needed!
@@ -333,8 +333,8 @@
                                   :base-type  :type/Text}]
                                 [["ngoc@metabase.com"]]]]
         (try
-          (sync/sync-table! (t2/select-one :model/Table (mt/id :table)))
-          (let [original-field (t2/select-one :model/Field (mt/id :table :field))]
+          (sync/sync-table! (t2/select-one :model/Table :id (mt/id :table)))
+          (let [original-field (t2/select-one :model/Field :id (mt/id :table :field))]
             (testing "sanity check: the original state"
               (is (=? {:semantic_type  :type/Email
                        :fingerprint    (mt/malli=? :map)
@@ -351,8 +351,8 @@
                             "ALTER TABLE \"TABLE\" ADD COLUMN \"FIELD\" INTEGER;"
                             "INSERT INTO \"TABLE\"(field) VALUES(1);"]]
                  (next.jdbc/execute! conn [sql]))))
-            (sync/sync-table! (t2/select-one :model/Table (mt/id :table)))
-            (let [new-field (t2/select-one :model/Field (mt/id :table :field))]
+            (sync/sync-table! (t2/select-one :model/Table :id (mt/id :table)))
+            (let [new-field (t2/select-one :model/Field :id (mt/id :table :field))]
               (testing "updated field is re-fingerprinted and analyzed"
                 (is (=? {:semantic_type  nil
                          :fingerprint    (mt/malli=? :map)
@@ -361,7 +361,7 @@
                         new-field))
                 (is (not= (:fingerprint original-field) (:fingerprint new-field))))))
           (finally
-            (t2/delete! :model/Database (mt/id))))))))
+            (t2/delete! :model/Database :id (mt/id))))))))
 
 (deftest untyped-field-getting-its-base-type-keeps-user-settings-test
   (testing "A Field that never had a real base type, like one serdes synthesized for a stub database, keeps its user settings"
@@ -452,7 +452,7 @@
                               [["100"] ["200"] ["300"]]]]
       (try
         (sync/sync-database! (mt/id))
-        (let [original-field (t2/select-one :model/Field (mt/id :my_table :text_column))]
+        (let [original-field (t2/select-one :model/Field :id (mt/id :my_table :text_column))]
           (testing "sanity check: original column is text"
             (is (=? {:base_type      :type/Text
                      :effective_type :type/Text}
@@ -471,7 +471,7 @@
                           "INSERT INTO \"MY_TABLE\"(text_column) VALUES(100.00),(200.00),(300.00);"]]
                (next.jdbc/execute! conn [sql]))))
           (sync/sync-database! (mt/id))
-          (let [new-field (t2/select-one :model/Field (mt/id :my_table :text_column))]
+          (let [new-field (t2/select-one :model/Field :id (mt/id :my_table :text_column))]
             (testing "after sync, base_type and effective_type both reflect the new numeric column
                      and stale coercion/semantic type are cleared"
               (is (=? {:id                (:id original-field)
@@ -487,7 +487,7 @@
            (fn [conn]
              (doseq [sql ["DROP TABLE \"MY_TABLE\";"]]
                (next.jdbc/execute! conn [sql]))))
-          (t2/delete! :model/Table (:table_id original-field))
+          (t2/delete! :model/Table :id (:table_id original-field))
           (t2/delete! :model/Field :table_id (:table_id original-field))
           (sql-jdbc.execute/do-with-connection-with-options
            :h2
@@ -517,7 +517,7 @@
                        :semantic_type     nil}
                       new-field)))))
         (finally
-          (t2/delete! :model/Database (mt/id)))))))
+          (t2/delete! :model/Database :id (mt/id)))))))
 
 (deftest sync-self-heals-effective-type-drift-test
   (testing "GHY-3388: when a field is in the broken state (effective_type ≠ base_type with no
@@ -591,7 +591,7 @@
                                 :base-type  :type/Text}]
                               [["ngoc@metabase.com"]]]]
       (try
-        (sync/sync-table! (t2/select-one :model/Table (mt/id :table)))
+        (sync/sync-table! (t2/select-one :model/Table :id (mt/id :table)))
         (let [field-id (mt/id :table :field)]
           (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:data_sensitivity "PII"})
           (sql-jdbc.execute/do-with-connection-with-options
@@ -603,7 +603,7 @@
                           "ALTER TABLE \"TABLE\" ADD COLUMN \"FIELD\" INTEGER;"
                           "INSERT INTO \"TABLE\"(field) VALUES(1);"]]
                (next.jdbc/execute! conn [sql]))))
-          (sync/sync-table! (t2/select-one :model/Table (mt/id :table)))
+          (sync/sync-table! (t2/select-one :model/Table :id (mt/id :table)))
           (is (=? {:base_type        :type/Integer
                    :effective_type   :type/Integer
                    :data_sensitivity nil}
@@ -612,4 +612,4 @@
                    :data_sensitivity :PII}
                   (t2/select-one :model/FieldUserSettings :field_id field-id))))
         (finally
-          (t2/delete! :model/Database (mt/id)))))))
+          (t2/delete! :model/Database :id (mt/id)))))))

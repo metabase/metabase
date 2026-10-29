@@ -486,7 +486,7 @@
     (round-to-decimals 2 35.5058998M) -> 35.51"
   ^Double [^Integer decimal-place, ^Number number]
   {:pre [(integer? decimal-place) (number? number)]}
-  #?(:clj  (double (.setScale (bigdec number) decimal-place BigDecimal/ROUND_HALF_UP))
+  #?(:clj  (double (.setScale (bigdec number) decimal-place java.math.RoundingMode/HALF_UP))
      :cljs (parse-double (.toFixed number decimal-place))))
 
 (defn real-number?
@@ -1303,7 +1303,7 @@
    Returns the number of items processed."
   [proc reducible]
   (let [cnt (volatile! 0)]
-    (reduce (fn [_ item] (vswap! cnt inc) (proc item)) nil reducible)
+    (run! (fn [item] (vswap! cnt inc) (proc item)) reducible)
     @cnt))
 
 (defn generate-nano-id

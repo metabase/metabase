@@ -81,7 +81,7 @@
                          [:id ms/PositiveInt]]
    _query-params
    body]
-  (t2/update! (prototype-table) id
+  (t2/update! (prototype-table) :id id
               {:type    type
                :content (json/encode body)})
   (assoc body :id id))
@@ -93,7 +93,7 @@
                          [:id ms/PositiveInt]]
    _query-params
    body]
-  (api/check-404 (t2/delete! (prototype-table) id))
+  (api/check-404 (t2/delete! (prototype-table) :id id))
   {:id id})
 
 (api.macros/defendpoint :delete "/:type/all"
