@@ -11,20 +11,30 @@
    [dev.dbt-import.schemas.dbt-manifest :as dbt-manifest]
    [metabase.util.malli.registry :as mr]))
 
+(mr/def ::relation-part
+  "One of the three parts of a relation's name."
+  [:enum :database :schema :table])
+
 (mr/def ::relation
-  "The physical table a semantic model is built on."
+  "The physical table a semantic model is built on, named as the source project spells it. `quoted` holds the parts
+  the project wrote in quotes when it built the table, so the warehouse kept their spelling; the others it wrote
+  bare, and a warehouse that folds the case of a bare identifier stores them folded (see
+  [[dev.dbt-import.metadata]]). Empty when the project does not say, which is read as nothing quoted."
   [:map {:closed true}
    [:database [:maybe :string]]
    [:schema   :string]
-   [:table    :string]])
+   [:table    :string]
+   [:quoted   [:set ::relation-part]]])
 
 (mr/def ::column
   "A column of the relation, as the source project documents it. `data-type` is the warehouse type string and may be
-  missing when the project does not declare it."
+  missing when the project does not declare it. `quoted?` is whether the project writes the column's name in quotes,
+  so the warehouse kept its spelling, as `quoted` on `::relation`."
   [:map {:closed true}
    [:name        :string]
    [:data-type   [:maybe :string]]
-   [:description [:maybe :string]]])
+   [:description [:maybe :string]]
+   [:quoted?     :boolean]])
 
 (mr/def ::entity
   "A join key. `expr` is always set: a bare column name or SQL. `type` is dbt's: `primary`, `unique` or `foreign`, or

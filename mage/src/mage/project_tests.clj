@@ -39,6 +39,7 @@
     dev.dbt-import.sql-test
     dev.dbt-import.adapter-test
     dev.dbt-import.preflight-test
+    dev.dbt-import.identifiers-test
     dev.dbt-import.generative-test])
 
 (def ^:private backend-check-namespaces

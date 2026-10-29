@@ -68,11 +68,55 @@
                         (assoc (ex-data e) :path manifest-filename)
                         e))))))
 
+(def ^:private relation-name-part-re
+  "One part of a relation name as dbt renders it, with the dot after it when there is one: in double quotes
+  (`\"dbt_bi\"`, dbt-postgres, dbt-snowflake, dbt-redshift, dbt-oracle, dbt-trino), in backticks (`` `dbt_bi` ``,
+  dbt-mysql, dbt-bigquery, dbt-spark, dbt-databricks, dbt-hive), in square brackets (`[dbt_bi]`, dbt-sqlserver) or
+  bare (`dbt_bi`). A closing quote doubled inside a quoted part stands for itself. The groups, in that order, say how
+  the part was quoted."
+  #"(?:\"((?:[^\"]|\"\")*)\"|`((?:[^`]|``)*)`|\[((?:[^\]]|\]\])*)\]|([^.\"`\[\]]+))\.?")
+
+(mu/defn- relation-name-parts :- [:maybe [:sequential [:map {:closed true}
+                                                        [:name    :string]
+                                                        [:quoted? :boolean]]]]
+  "The parts of `relation-name` in order, each with its quotes stripped (a doubled closing quote undoubled) and
+  whether it had any; nil when the name is not a dotted list of parts [[relation-name-part-re]] reads."
+  [relation-name :- :string]
+  (let [matches (re-seq relation-name-part-re relation-name)]
+    (when (= relation-name (apply str (map first matches)))
+      (for [[_ double-quoted backticked bracketed bare] matches]
+        (cond
+          double-quoted {:name (str/replace double-quoted "\"\"" "\""), :quoted? true}
+          backticked    {:name (str/replace backticked "``" "`"), :quoted? true}
+          bracketed     {:name (str/replace bracketed "]]" "]"), :quoted? true}
+          :else         {:name bare, :quoted? false})))))
+
+(mu/defn quoted-parts :- [:set ::ir/relation-part]
+  "The parts of `node-relation` that dbt quoted when it built the table, read off `relation_name`, the relation as dbt
+  renders it in SQL (`\"dbt_bi\".\"public\".\"fact_sales\"`, `analytics.dbt_alice.dim_customers`,
+  `` `mydb`.`orders` ``): its last part is the table, the one before the schema and the one before that the database,
+  and a part counts as quoted when it is in quotes and names what `node_relation` says. Empty when `relation_name` is
+  missing (dbt writes none for an ephemeral model), is not in a form this reads, or names another relation: every
+  part is then taken as unquoted, and a warehouse that folds the case of an unquoted identifier is taken to have folded
+  it (see [[dev.dbt-import.metadata]])."
+  [{:keys [database], schema-name :schema_name, table-alias :alias, relation-name :relation_name}
+   :- ::dbt-manifest/node-relation]
+  (into #{}
+        (keep (fn [[part expected {part-name :name, :keys [quoted?]}]]
+                (when (and quoted? (= part-name expected))
+                  part)))
+        (map vector
+             [:table :schema :database]
+             [table-alias schema-name database]
+             (reverse (some-> relation-name relation-name-parts)))))
+
 (mu/defn- parse-relation :- ::ir/relation
-  [{:keys [database], schema-name :schema_name, table-alias :alias} :- ::dbt-manifest/node-relation]
+  [{:keys [database], schema-name :schema_name, table-alias :alias, :as node-relation}
+   :- ::dbt-manifest/node-relation]
   {:database database
    :schema   schema-name
-   :table    table-alias})
+   :table    table-alias
+   :quoted   (quoted-parts node-relation)})
 
 (mu/defn- source-node :- [:maybe ::dbt-manifest/node]
   "The node a semantic model is built on: of the `nodes` it depends on, the one (model, seed or snapshot) whose
@@ -91,10 +135,11 @@
   Empty when the manifest has no such node."
   [node :- [:maybe ::dbt-manifest/node]]
   (into {}
-        (map (fn [[column-name {data-type :data_type, :keys [description]}]]
+        (map (fn [[column-name {data-type :data_type, quoted? :quote, :keys [description]}]]
                [column-name {:name        column-name
                              :data-type   data-type
-                             :description description}]))
+                             :description description
+                             :quoted?     (boolean quoted?)}]))
         (:columns node)))
 
 (mu/defn- parse-entity :- ::ir/entity

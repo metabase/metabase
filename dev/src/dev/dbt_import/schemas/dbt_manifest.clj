@@ -147,7 +147,10 @@
 
 (mr/def ::node-relation
   "The physical table a semantic model is built on, already resolved from `ref()` plus the profile and `+schema` /
-  `+alias` configs. This is the source for serdes portable table refs."
+  `+alias` configs. This is the source for serdes portable table refs. `relation_name` is the relation as dbt renders
+  it in SQL, each part quoted the way the adapter quotes it (`\"dbt_bi\".\"public\".\"fact_sales\"` from
+  dbt-postgres, which quotes by default; `analytics.dbt_alice.dim_customers` from dbt-snowflake, which does not): the
+  one record of which parts the warehouse saw quoted (see [[dev.dbt-import.parse/quoted-parts]])."
   [:map
    [:database      {:optional true} [:maybe :string]]
    [:schema_name   :string]
@@ -305,11 +308,14 @@
 
 (mr/def ::column
   "One entry of a node's `columns` map. `data_type` comes from the project's `schema.yml` and is often absent, in
-  which case base types have to come from Metabase's own synced metadata."
+  which case base types have to come from Metabase's own synced metadata. `quote` is the column's `quote` config:
+  true when dbt writes the column's name in quotes, so the warehouse keeps its spelling; nil or false when it writes
+  it bare, which the warehouse may fold (see [[dev.dbt-import.metadata]])."
   [:map
    [:name        :string]
    [:description {:optional true} [:maybe :string]]
-   [:data_type   {:optional true} [:maybe :string]]])
+   [:data_type   {:optional true} [:maybe :string]]
+   [:quote       {:optional true} [:maybe :boolean]]])
 
 (mr/def ::node
   "One entry of the top-level `nodes` map. `nodes` mixes models, seeds, snapshots, tests and operations; all of them

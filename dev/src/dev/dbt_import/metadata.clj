@@ -14,7 +14,16 @@
 
   Base types come from the project's declared `data_type` through the driver's own type mapping; see [[base-type]].
   The provider's Database carries the driver's features (see [[driver-features]]), so the resolve stage can tell which
-  clauses the warehouse could not run."
+  clauses the warehouse could not run.
+
+  The Tables and Fields are named as sync sees them, not as the project spells them: serdes import matches the names
+  the YAML writes exactly, letter case and schema included, and makes up an inactive stub for a miss. dbt writes
+  `node_relation` and the column names from the project's spelling, and only the parts it quoted when it built the
+  table reach the warehouse as written (the IR records which, see `::ir/relation` and `::ir/column`); a warehouse
+  folds the others, to upper case when the driver has the `:upper-case-unquoted-identifiers` feature and to lower case
+  otherwise, which the config's `:identifier-case` overrides (see [[identifier-case]]). A driver without the `:schemas`
+  feature syncs its tables with no schema, and the config's `:schema-mapping` says otherwise per schema (see
+  [[physical-table]])."
   (:require
    [clojure.string :as str]
    [dev.dbt-import.schemas.ir :as ir]
@@ -94,9 +103,76 @@
   outside it, where [[portable-table-ref]], [[portable-field-ref]] and [[portable-card-ref]] turn it back into names."
   ms/PositiveInt)
 
+(mu/defn- fold :- :string
+  "`identifier`, written without quotes, as a warehouse that treats a bare identifier as `identifier-case` says stores
+  it."
+  [identifier-case :- ::resolved/identifier-case
+   identifier      :- :string]
+  (case identifier-case
+    :upper (u/upper-case-en identifier)
+    :lower (u/lower-case-en identifier)
+    :as-is identifier))
+
+(mu/defn identifier-case :- ::resolved/identifier-case
+  "How the warehouse stores an identifier dbt wrote without quotes, which is how sync sees it: the config's
+  `:identifier-case` when it has one, else `:upper` when `features`, the driver's, has
+  `:upper-case-unquoted-identifiers` (Snowflake, Oracle, H2) and `:lower` otherwise, which is what Postgres, Redshift
+  and the Trino family do. A warehouse that keeps the spelling (MySQL, SQL Server, SQLite, BigQuery) whose dbt adapter
+  writes mixed-case names unquoted, or a Snowflake account with `QUOTED_IDENTIFIERS_IGNORE_CASE`, needs the config to
+  say so."
+  [config   :- ::resolved/config
+   features :- [:set :keyword]]
+  (or (:identifier-case config)
+      (if (contains? features :upper-case-unquoted-identifiers) :upper :lower)))
+
+(mr/def ::naming
+  "How the warehouse behind a provider names what the project wrote: the case it stores a bare identifier in, whether
+  it has schemas at all (the driver's `:schemas` feature), and the config's `:schema-mapping`."
+  [:map {:closed true}
+   [:identifier-case ::resolved/identifier-case]
+   [:schemas?        :boolean]
+   [:schema-mapping  [:map-of :string [:maybe :string]]]])
+
+(mu/defn- naming :- ::naming
+  "The `::naming` of the warehouse `config`'s driver connects to, from its `features`."
+  [config   :- ::resolved/config
+   features :- [:set :keyword]]
+  {:identifier-case (identifier-case config features)
+   :schemas?        (contains? features :schemas)
+   :schema-mapping  (or (:schema-mapping config) {})})
+
+(mr/def ::physical-table
+  "A table as sync named it: its schema, nil for a schemaless table, and its name."
+  [:map {:closed true}
+   [:schema [:maybe :string]]
+   [:name   :string]])
+
+(mu/defn physical-table :- ::physical-table
+  "The Table sync made of `relation`: each part as written when dbt quoted it, folded as `naming` says otherwise. The
+  schema is what `:schema-mapping` says when it has an entry for it, else nil for a warehouse without schemas."
+  [{:keys [identifier-case schemas? schema-mapping]} :- ::naming
+   {:keys [schema table quoted]}                      :- ::ir/relation]
+  {:schema (cond
+             (contains? schema-mapping schema) (get schema-mapping schema)
+             (not schemas?)                    nil
+             (contains? quoted :schema)        schema
+             :else                             (fold identifier-case schema))
+   :name   (if (contains? quoted :table)
+             table
+             (fold identifier-case table))})
+
+(mu/defn physical-column :- :string
+  "The name sync gave `column`: as written when dbt quotes it, folded as `naming` says otherwise."
+  [{:keys [identifier-case]}            :- ::naming
+   {column-name :name, :keys [quoted?]} :- ::ir/column]
+  (if quoted?
+    column-name
+    (fold identifier-case column-name)))
+
 (mr/def ::state
   "Everything a provider knows, see [[ManifestMetadata]]."
   [:map {:closed true}
+   [:naming   ::naming]
    [:database ::lib.schema.metadata/database]
    [:tables   [:sequential ::lib.schema.metadata/table]]
    [:fields   [:sequential ::lib.schema.metadata/column]]
@@ -182,28 +258,33 @@
   [{:keys [driver] :as config} :- ::resolved/config
    {:keys [semantic-models]}   :- ::ir/manifest
    database-name               :- :string]
-  (let [in-database (filter #(= database-name (semantic-model-database config %)) (vals semantic-models))
+  (let [features    (driver-features driver database-name)
+        the-naming  (naming config features)
+        in-database (filter #(= database-name (semantic-model-database config %)) (vals semantic-models))
         tables      (map-indexed (fn [i {:keys [relation]}]
-                                   {:lib/type     :metadata/table
-                                    :id           (inc i)
-                                    :db-id        1
-                                    :name         (:table relation)
-                                    :display-name (:table relation)
-                                    :schema       (:schema relation)})
+                                   (let [{:keys [schema], table-name :name} (physical-table the-naming relation)]
+                                     {:lib/type     :metadata/table
+                                      :id           (inc i)
+                                      :db-id        1
+                                      :name         table-name
+                                      :display-name table-name
+                                      :schema       schema}))
                                  in-database)
-        fields      (map-indexed (fn [i [table-id {column-name :name, :keys [data-type]}]]
-                                   (field-metadata (+ (count tables) (inc i)) table-id column-name
+        fields      (map-indexed (fn [i [table-id {:keys [data-type] :as column}]]
+                                   (field-metadata (+ (count tables) (inc i)) table-id
+                                                   (physical-column the-naming column)
                                                    (or (base-type driver data-type) :type/*)))
                                  (for [[table-id {:keys [columns]}] (map vector (map :id tables) in-database)
                                        column                       (vals columns)]
                                    [table-id column]))]
     (lib.metadata.cached-provider/cached-metadata-provider
      (->ManifestMetadata
-      (atom {:database {:lib/type :metadata/database
+      (atom {:naming   the-naming
+             :database {:lib/type :metadata/database
                         :id       1
                         :name     database-name
                         :engine   driver
-                        :features (driver-features driver database-name)}
+                        :features features}
              :tables   (vec tables)
              :fields   (vec fields)
              :cards    []
@@ -217,29 +298,41 @@
         (map (fn [database-name] [database-name (metadata-provider config ir database-name)]))
         (distinct (vals (:databases config)))))
 
+(mu/defn- provider-naming :- ::naming
+  "The `::naming` `provider` named its Tables and Fields by."
+  [provider :- ::lib.schema.metadata/metadata-provider]
+  (:naming @(state provider)))
+
 (mu/defn semantic-model-table :- [:maybe ::lib.schema.metadata/table]
-  "The Table in `provider` for `semantic-model`'s relation, by schema and name: matched exactly, or failing that
-  ignoring case, as [[find-named]] matches a column."
+  "The Table in `provider` for `semantic-model`'s relation, by schema and name as sync names them (see
+  [[physical-table]]): matched exactly, or failing that ignoring case, as [[find-named]] matches a column."
   [provider           :- ::lib.schema.metadata/metadata-provider
    {:keys [relation]} :- ::ir/semantic-model]
-  (let [tables   (lib.metadata/tables provider)
-        matches? (fn [same?]
-                   (fn [table]
-                     (and (same? (:schema relation) (:schema table))
-                          (same? (:table relation) (:name table)))))]
+  (let [tables                             (lib.metadata/tables provider)
+        {:keys [schema], table-name :name} (physical-table (provider-naming provider) relation)
+        matches?                           (fn [same?]
+                                             (fn [table]
+                                               (and (same? schema (:schema table))
+                                                    (same? table-name (:name table)))))]
     (or (m/find-first (matches? =) tables)
         (m/find-first (matches? #(= (some-> %1 u/lower-case-en) (some-> %2 u/lower-case-en))) tables))))
 
 (mu/defn column :- ::lib.schema.metadata/column
-  "The Field named `column-name` on `table-id`, matched exactly or ignoring case (see [[find-named]]). A column the
-  project did not document is added, with no known type, so the instance supplies it when the import binds the field.
-  A column that does not exist in the warehouse does not fail the import, which makes up an inactive Field for it;
-  [[dev.dbt-import.preflight/check]] reports it before the import, and the card fails when run otherwise."
+  "The Field named `column-name` on `table-id`, matched exactly or ignoring case (see [[find-named]]), so the name
+  the project writes in an `expr` finds the Field under the name sync gave it. A column the project did not document
+  is added, with no known type, so the instance supplies it when the import binds the field; its name is taken as
+  written without quotes and folded as the warehouse would (see [[physical-column]]), since an `expr` writes a column
+  bare. A column that does not exist in the warehouse does not fail the import, which makes up an inactive Field for
+  it; [[dev.dbt-import.preflight/check]] reports it before the import, and the card fails when run otherwise."
   [provider    :- ::lib.schema.metadata/metadata-provider
    table-id    :- ::lib.schema.id/table
    column-name :- :string]
   (or (find-named (lib.metadata/fields provider table-id) column-name)
-      (add! provider :fields (field-metadata (next-id! provider) table-id column-name :type/*))))
+      (add! provider :fields (field-metadata (next-id! provider) table-id
+                                             (physical-column (provider-naming provider)
+                                                              {:name column-name, :data-type nil, :description nil
+                                                               :quoted? false})
+                                             :type/*))))
 
 (mu/defn add-metric! :- ::lib.schema.id/card
   "Add a Metric card for a converted metric to `provider`, so a `[:metric id]` reference to it resolves (Lib types it

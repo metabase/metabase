@@ -144,8 +144,9 @@
                               :transforms/python                      true
                               :transforms/table                       true
                               :transforms/testing                     false
-                              :stage-ctes                             true
-                              :workspace                              false}]
+                              ;; "Unquoted object identifiers ... are stored and resolved as uppercase characters",
+                              ;; https://docs.snowflake.com/en/sql-reference/identifiers-syntax
+                              :upper-case-unquoted-identifiers        true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
 (mu/defn- quote-schema ^String [s :- :string] (sql.u/quote-name :snowflake :schema s))
