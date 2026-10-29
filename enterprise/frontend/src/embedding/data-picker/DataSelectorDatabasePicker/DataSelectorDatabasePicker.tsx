@@ -45,24 +45,20 @@ export const DataSelectorDatabasePicker = ({
 }: DataSelectorDatabasePickerProps) => {
   const tc = useTranslateContent();
   const sections = useMemo(() => {
-    const sections: Section<Item>[] = [];
-
-    if (onBack) {
-      sections.push({
-        name: <RawDataBackButton />,
-        items: [],
-      });
-    }
-
-    sections.push({
+    const section: Section<Item> = {
       items: databases.map((database, index) => ({
         name: tc(database.name),
         index,
         database,
       })),
-    });
+    };
 
-    return sections;
+    if (onBack) {
+      section.name = <RawDataBackButton />;
+      section.type = "back";
+    }
+
+    return [section];
   }, [databases, onBack, tc]);
 
   const handleChangeSection = useCallback(
@@ -89,6 +85,7 @@ export const DataSelectorDatabasePicker = ({
       sections={sections}
       onChange={(item) => onChangeDatabase(item.database)}
       onChangeSection={handleChangeSection}
+      alwaysTogglable
       itemIsSelected={(item) =>
         selectedDatabase != null && item.database.id === selectedDatabase.id
       }
