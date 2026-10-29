@@ -26,10 +26,10 @@
     (transpile-sql [_ sql from-dialect to-dialect] (f :transpile-sql [sql from-dialect to-dialect]))))
 
 (defn- shadow-parser
-  [primary shadow & {:keys [sample?] :or {sample? (constantly true)}}]
+  [primary shadow & {:keys [sample? log-difference!] :or {sample? (constantly true), log-difference! (fn [_])}}]
   (shadow/parser {:primary-backend :sqlglot, :primary primary
                   :shadow-backend :sqlglot-java, :shadow shadow
-                  :sample? sample?}))
+                  :sample? sample?, :log-difference! log-difference!}))
 
 (defn- comparisons
   [system method outcome]
@@ -129,6 +129,26 @@
                     (< (System/currentTimeMillis) deadline))
           (Thread/sleep 10)))
       (is (== 1 (comparisons system "returned-columns-lineage" "comparison-failed"))))))
+
+(deftest difference-logs-method-dialect-and-caller-thread-test
+  (testing "a difference logs the method, dialect and caller's thread, never the SQL, at most once a minute per method"
+    (mt/with-prometheus-system! [_ system]
+      (let [messages (atom [])
+            parser   (shadow-parser (stub-parser (fn [_ _] [[nil nil "a"]]))
+                                    (stub-parser (fn [_ _] [[nil nil "b"]]))
+                                    :log-difference! #(swap! messages conj %))
+            sql      "SELECT secret_column FROM secret_table"]
+        (dotimes [_ 3]
+          (protocol/referenced-tables parser "postgres" sql))
+        (protocol/referenced-fields parser "postgres" sql)
+        (wait-for-comparisons system "referenced-tables" 3)
+        (wait-for-comparisons system "referenced-fields" 1)
+        (is (= [(str "SQL parsing shadow: mismatch on referenced-tables (postgres) between sqlglot and sqlglot-java, "
+                     "caller thread " (.getName (Thread/currentThread)))
+                (str "SQL parsing shadow: mismatch on referenced-fields (postgres) between sqlglot and sqlglot-java, "
+                     "caller thread " (.getName (Thread/currentThread)))]
+               @messages))
+        (is (not-any? #(re-find #"secret" %) @messages))))))
 
 (defn- outcome [value] {:value value})
 (defn- thrown [error] {:thrown (common/call-failed-ex error)})

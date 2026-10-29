@@ -4,8 +4,9 @@
 
   The caller gets the primary parser's value, or its exception, unchanged, and never waits for the shadow parser:
   everything else here, sampling and metrics included, runs on the background thread or cannot throw. The comparison
-  produces Prometheus counts only. Nothing here logs SQL or a parser's error message, since both can hold customer
-  SQL.
+  produces Prometheus counts, and a log line when the parsers differ that names the method, the dialect and the
+  caller's thread, so the logs around it show what was being parsed. Nothing here logs SQL or a parser's error
+  message, since both can hold customer SQL.
 
   The parsers are compared on what callers get from [[metabase.sql-parsing.core]] (the tables, the fields, the
   verdict, the SQL as tokens), not on the raw values a parser returns: two parsers that differ only in shape, layout
@@ -113,6 +114,16 @@
   (locking in-flight
     (analytics/set-gauge! :metabase-sql-parsing/shadow-in-flight {:parser (name backend)} (.get in-flight))))
 
+(def ^:private difference-log-interval-ms
+  "At most one difference log line per method in this many milliseconds; Prometheus has every count."
+  60000)
+
+(defn- difference-message
+  [result method dialect primary-backend shadow-backend caller-thread]
+  (format "SQL parsing shadow: %s on %s (%s) between %s and %s, caller thread %s"
+          (name result) (name method) (or dialect "default") (name primary-backend) (name shadow-backend)
+          caller-thread))
+
 (defn- quietly
   "Call `f`, ignoring any exception: a metric that cannot be written must not change what the caller sees."
   [f]
@@ -138,24 +149,41 @@
   in the background and compares the two. Each comparison counts one `metabase-sql-parsing/shadow-comparisons`
   outcome (see [[classify]]); one that finds no room in the background queue counts as `dropped`, and one that
   throws as `comparison-failed`. The gauge `metabase-sql-parsing/shadow-in-flight` counts the comparisons running
-  or waiting. The backend keywords label the metrics. A `sample?` that throws means no comparison.
+  or waiting. A comparison that is not a match also logs one INFO line (see [[difference-message]]), at most one per
+  method a minute, through `log-difference!` (default: `log/info`). The backend keywords label the metrics. A
+  `sample?` that throws means no comparison.
 
   Each call makes a thread pool, so callers keep the parser for the life of the process."
-  [{:keys [primary-backend primary shadow-backend shadow sample?]}]
+  [{:keys [primary-backend primary shadow-backend shadow sample? log-difference!]
+    :or   {log-difference! #(log/info %)}}]
   (let [executor  (executor)
         in-flight (AtomicLong.)
+        last-logged (atom {})
+        ;; true for at most one caller per method per interval: the one whose swap records the time
+        log-due?  (fn [method]
+                    (let [now             (System/currentTimeMillis)
+                          [before after] (swap-vals! last-logged
+                                                     (fn [logged]
+                                                       (cond-> logged
+                                                         (<= difference-log-interval-ms (- now (get logged method 0)))
+                                                         (assoc method now))))]
+                      (not= before after)))
         sampled?  (fn [method]
                     (try
                       (boolean (sample? method))
                       (catch Throwable e
                         (log/debugf "Could not decide whether to sample a shadow comparison: %s" (.getName (class e)))
                         false)))
-        compare!  (fn [method dialect call primary-outcome]
+        compare!  (fn [method dialect call primary-outcome caller-thread]
                     (try
                       (record-duration! primary-backend method (:ms primary-outcome))
-                      (let [shadow-outcome (outcome #(call shadow))]
+                      (let [shadow-outcome (outcome #(call shadow))
+                            result         (classify method primary-outcome shadow-outcome)]
                         (record-duration! shadow-backend method (:ms shadow-outcome))
-                        (record-comparison! method dialect (classify method primary-outcome shadow-outcome)))
+                        (when (and (not= :match result) (log-due? method))
+                          (quietly #(log-difference! (difference-message result method dialect primary-backend
+                                                                         shadow-backend caller-thread))))
+                        (record-comparison! method dialect result))
                       (catch Throwable e
                         (quietly #(record-comparison! method dialect :comparison-failed))
                         (log/warnf "Could not compare the %s SQL parsers on %s: %s"
@@ -168,7 +196,8 @@
                       (when (sampled? method)
                         (.incrementAndGet in-flight)
                         (try
-                          (.execute executor ^Runnable #(compare! method dialect call primary-outcome))
+                          (let [caller-thread (.getName (Thread/currentThread))]
+                            (.execute executor ^Runnable #(compare! method dialect call primary-outcome caller-thread)))
                           (catch RejectedExecutionException _
                             (.decrementAndGet in-flight)
                             (quietly #(record-comparison! method dialect :dropped))))
