@@ -388,8 +388,8 @@
     [:maybe [:sequential [:enum {:description "Update only: property names to unset (description, collection_position, cache_ttl). Needed because a null cannot say \"clear this\" — strict clients fill every unset property with null, so nulls are stripped at the boundary."}
                           "description" "collection_position" "cache_ttl"]]]]
    [:ops {:optional true}
-    [:maybe [:sequential {:description (str "Editor operations, applied in order. The call saves them atomically, "
-                                            "together with the new dashboard on create.")}
+    [:maybe [:sequential {:description (str "Editor operations, applied in order. The call saves them "
+                                            "atomically, together with the new dashboard on create.")}
              op-schema]]]])
 
 (def ^:private dashboard-write-entry
@@ -444,9 +444,9 @@
   (merge {:id nil :dashcards [] :tabs [] :parameters []} attrs))
 
 (registry/deftool dashboard-write
-  "Create or update a dashboard and edit its layout with ordered ops. Each call is atomic — nothing is written
-  unless every op succeeds, so a failed call leaves the dashboard untouched (or, for create, creates nothing),
-  and a retry cannot double-add.
+  "Create or update a dashboard and edit its layout with ordered ops. Each call is atomic — nothing is
+  written unless every op succeeds, so a failed call leaves the dashboard untouched (or, for create, creates
+  nothing), and a retry cannot double-add.
   method: \"create\" requires name; \"update\" requires id and accepts archived (true trashes,
   false restores — there is no hard delete). Give each new card or tab its own negative id (-1, -2, …); later
   ops in the same call reference it, and the server assigns real ids on save. Ops: add_card, add_text,
