@@ -47,7 +47,9 @@ describe("admin > database > database routing", () => {
       cy.findByLabelText("Enable database routing")
         .should("not.be.checked")
         .click({ force: true }); // mantine toggle hides the real input
-      cy.findByRole("button", { name: /Add/ }).should("be.disabled");
+      dbRoutingSection()
+        .findByRole("button", { name: /Add/ })
+        .should("be.disabled");
       cy.findByTestId("db-routing-user-attribute").click();
       H.popover().findByText("attr_uid").click();
       H.undoToast().within(() => {
@@ -67,7 +69,7 @@ describe("admin > database > database routing", () => {
       // database creation
       cy.log("should be able to create a destination databases");
       dbRoutingSection().findByText("No destination databases added yet");
-      cy.findByRole("link", { name: /Add/ }).click();
+      dbRoutingSection().findByRole("link", { name: /Add/ }).click();
 
       H.modal().within(() => {
         cy.log("should not allow changing engine");
@@ -96,7 +98,7 @@ describe("admin > database > database routing", () => {
       H.tooltip().should("contain.text", "Connected");
 
       cy.log("should validate destination db creation");
-      cy.findByRole("link", { name: /Add/ }).click();
+      dbRoutingSection().findByRole("link", { name: /Add/ }).click();
 
       H.modal().within(() => {
         cy.log("should prevent adding a db with the same name");
@@ -289,14 +291,8 @@ describe("admin > database > database routing", () => {
       setupModelPersistence();
       visitDatabaseAdminPage(WRITABLE_DB_ID);
 
-      cy.log("should be disabled if data actions is enabled");
+      cy.log("should not be disabled if data actions are enabled");
       cy.findByLabelText("Data actions").should("be.checked");
-      assertDbRoutingDisabled(
-        "Database routing can't be enabled if data actions are enabled.",
-      );
-
-      cy.findByLabelText("Data actions").parent("label").click();
-
       assertDbRoutingNotDisabled();
 
       cy.log("should be disabled if model persistence is enabled");
@@ -315,24 +311,18 @@ describe("admin > database > database routing", () => {
         .click();
       assertDbRoutingNotDisabled();
 
-      cy.log("should be disabled if table editing is enabled");
-      // Table editing must be the only active conflict here: the routing
-      // section shows a single message, and data actions, model persistence,
-      // and uploads all take precedence over table editing.
+      cy.log("should not be disabled if table editing is enabled");
       tableEditingSection()
         .findByLabelText("Editable tables")
         .should("not.be.checked")
         .click({ force: true });
-      assertDbRoutingDisabled(
-        "Database routing can't be enabled when table editing is enabled.",
-      );
+      assertDbRoutingNotDisabled();
       tableEditingSection()
         .findByLabelText("Editable tables")
         .should("be.checked")
         .click({ force: true });
-      assertDbRoutingNotDisabled();
 
-      cy.log("should be disabled if uploads are enabled for the database");
+      cy.log("should not be disabled if uploads are enabled for the database");
       cy.visit("/admin/settings/uploads");
       cy.findByLabelText("Upload Settings Form")
         .findByPlaceholderText("Select a database")
@@ -348,9 +338,7 @@ describe("admin > database > database routing", () => {
         .click();
 
       visitDatabaseAdminPage(WRITABLE_DB_ID);
-      assertDbRoutingDisabled(
-        "Database routing can't be enabled if uploads are enabled for this database.",
-      );
+      assertDbRoutingNotDisabled();
     });
 
     it("should highlight that a dabtabase has routing enabled on the permissions pages", () => {
@@ -454,7 +442,7 @@ describe("admin > database > database routing", () => {
         disableModelActionsViaApi(WRITABLE_DB_ID);
       });
 
-      it("should not be possible to enable model persistence, data actions, table editing, or uploads when database routing is enabled", () => {
+      it("should not be possible to enable model persistence when database routing is enabled", () => {
         cy.log("setup");
         enableGlobalModelPersistence();
         configureDbRoutingViaAPI({
@@ -477,39 +465,31 @@ describe("admin > database > database routing", () => {
         });
 
         cy.log(
-          "should not be possible to enable data actions when database routing is enabled",
+          "should be possible to enable data actions when database routing is enabled",
         );
-        dataActionsSection().within(() => {
-          cy.findByLabelText("Data actions").should("be.disabled");
-          cy.findByText(
-            "Data actions can't be enabled when database routing is enabled.",
-          )
-            .scrollIntoView()
-            .should("be.visible");
-        });
+        dataActionsSection()
+          .findByLabelText("Data actions")
+          .should("be.enabled");
 
         cy.log(
-          "should not be possible to enable table editing when database routing is enabled",
+          "should be possible to enable table editing when database routing is enabled",
         );
-        tableEditingSection().within(() => {
-          cy.findByLabelText("Editable tables").should("be.disabled");
-          cy.findByText(
-            "Table editing can't be enabled when database routing is enabled.",
-          )
-            .scrollIntoView()
-            .should("be.visible");
-        });
+        tableEditingSection()
+          .findByLabelText("Editable tables")
+          .should("be.enabled");
 
         cy.log(
-          "should not be possible to enable uploads when database routing is enabled",
+          "should be possible to enable uploads when database routing is enabled",
         );
         // Keep this step last: it navigates away from the database page.
         visitUploadSettingsPage();
 
         cy.findByLabelText("Database to use for uploads").click();
-        H.popover()
-          .findByText("Writable Postgres12 (DB Routing Enabled)")
-          .should("be.visible");
+        H.popover().findByText("Writable Postgres12").click();
+        cy.findByLabelText("Database to use for uploads").should(
+          "have.value",
+          "Writable Postgres12",
+        );
       });
     });
   });

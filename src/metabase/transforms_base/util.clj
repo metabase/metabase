@@ -7,7 +7,6 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.app-db.cluster-lock :as cluster-lock]
-   [metabase.database-routing.core :as database-routing]
    [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -1001,12 +1000,13 @@
   (when-let [table-name (:name table)]
     (str/starts-with? (u/lower-case-en table-name) transform-temp-table-prefix)))
 
-(defn throw-if-db-routing-enabled!
-  "Throws if the database has routing enabled. Call before any driver operations to get a
-   clear error message rather than a confusing driver-level failure."
-  [transform database]
-  (when (database-routing/db-routing-enabled? database)
-    (throw (ex-info (i18n/tru "Failed to run the transform ({0}) because the database ({1}) has database routing turned on. Running transforms on databases with db routing enabled is not supported."
+(mu/defn throw-if-destination! :- :nil
+  "Throws if the Lib metadata `database` of a Database is a routing destination, which is only reached through its
+  router. Call before any driver operations to get a clear error message rather than a confusing driver-level failure."
+  [transform :- ::transforms-base.schema/transform
+   database  :- ::lib.schema.metadata/database]
+  (when (:router-database-id database)
+    (throw (ex-info (i18n/tru "Failed to run the transform ({0}) because the database ({1}) is a routing destination. Transforms can''t run on destination databases."
                               (:name transform)
                               (:name database))
                     {:driver (:engine database), :database database}))))

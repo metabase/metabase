@@ -8,12 +8,9 @@ import {
 import { useUpdateDatabaseMutation } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
-import {
-  hasDbRoutingEnabled,
-  isDbModifiable,
-} from "metabase/common/utils/database";
+import { isDbModifiable } from "metabase/common/utils/database";
 import type { WritableConnectionInfoSectionProps } from "metabase/plugins/oss/writable-connection";
-import { Alert, Button, Group, Icon } from "metabase/ui";
+import { Button, Group } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
 export function WritableConnectionInfoSection({
@@ -22,7 +19,6 @@ export function WritableConnectionInfoSection({
   const hasWritableConnection = database.write_data_details !== null;
   const [updateDatabase] = useUpdateDatabaseMutation();
   const { modalContent, show: showConfirmation } = useConfirmation();
-  const isDbRoutingEnabled = hasDbRoutingEnabled(database);
 
   if (!isDbModifiable(database)) {
     return null;
@@ -56,29 +52,14 @@ export function WritableConnectionInfoSection({
           />
         )}
         <Button
-          component={isDbRoutingEnabled ? undefined : Link}
+          component={Link}
           to={Urls.editDatabaseWritableConnection(database.id)}
-          disabled={isDbRoutingEnabled}
         >
           {hasWritableConnection
             ? t`Edit connection details`
             : t`Add writable connection`}
         </Button>
       </Group>
-
-      {isDbRoutingEnabled && (
-        <>
-          <DatabaseInfoSectionDivider />
-          <Alert
-            size="compact"
-            variant="light"
-            icon={<Icon name="info" />}
-            mb="lg"
-          >
-            {t`Writable connection can't be enabled when Database Routing is enabled.`}
-          </Alert>
-        </>
-      )}
 
       {hasWritableConnection && (
         <>

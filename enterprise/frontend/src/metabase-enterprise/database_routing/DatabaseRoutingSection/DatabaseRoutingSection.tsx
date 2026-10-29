@@ -12,7 +12,6 @@ import {
 import {
   skipToken,
   useListEnginesQuery,
-  useListTransformsQuery,
   useListUserAttributesQuery,
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
@@ -85,15 +84,7 @@ export const DatabaseRoutingSection = ({
   const userAttributeOptions =
     userAttrsReq.data ?? (userAttribute ? [userAttribute] : []);
 
-  const transformsQuery = useListTransformsQuery(
-    shouldHideSection ? skipToken : { "database-id": database.id },
-  );
-  const transforms = transformsQuery.data ?? [];
-  const hasTransforms = transforms.length > 0;
-
-  const disabledFeatMsg = getDisabledFeatureMessage(database, {
-    hasTransforms,
-  });
+  const disabledFeatMsg = getDisabledFeatureMessage(database);
   const errMsg = getSelectErrorMessage({
     userAttribute,
     disabledFeatureMessage: disabledFeatMsg,

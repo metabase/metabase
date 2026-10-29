@@ -1,10 +1,12 @@
 (ns metabase.transforms.execute
   (:require
+   [metabase.database-routing.core :as database-routing]
    [metabase.indexes.models.table-index :as table-index]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.interface :as transforms.i]
    ;; load the `transforms.i/execute!` `:query` method
    [metabase.transforms.query-impl]
+   [metabase.transforms.util :as transforms.u]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -37,13 +39,15 @@
                                   (when on-start
                                     (on-start run-id)))})]
      (try
-       ;; the executors log their own failures at ERROR; this one happens before any executor runs
-       (transforms.i/execute! (try (resolve-target transform)
-                                   (catch Throwable t
-                                     (log/errorf "Could not resolve the target of transform %s: %s"
-                                                 (pr-str (:id transform)) (ex-message t))
-                                     (throw t)))
-                              opts)
+       (transforms.u/check-target-not-routed transform)
+       (database-routing/with-anonymous-router-access
+         ;; the executors log their own failures at ERROR; this one happens before any executor runs
+         (transforms.i/execute! (try (resolve-target transform)
+                                     (catch Throwable t
+                                       (log/errorf "Could not resolve the target of transform %s: %s"
+                                                   (pr-str (:id transform)) (ex-message t))
+                                       (throw t)))
+                                opts))
        (catch Throwable t
          ;; so a caller awaiting the start isn't left hanging on a pre-start failure;
          ;; a no-op when the run had already started and the promise was delivered

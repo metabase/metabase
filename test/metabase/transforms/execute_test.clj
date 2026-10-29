@@ -249,29 +249,30 @@
                                          [[(format "DROP OWNED BY %s;" no-schema-user)]
                                           [(format "DROP ROLE IF EXISTS %s;" no-schema-user)]])))))))
 
-(deftest run-mbql-transform-fails-with-routing-test
+(deftest run-transform-on-router-test
   (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table]})
     (mt/with-premium-features #{:database-routing}
-      (with-transform-cleanup! [target-table {:type   :table
-                                              :schema (t2/select-one-fn :schema :model/Table (mt/id :products))
-                                              :name   "products"}]
-        (let [mp (mt/metadata-provider)
-              products (lib.metadata/table mp (mt/id :products))
-              query (lib/query mp products)]
-          (mt/with-temp [:model/Database _destination {:engine driver/*driver*
-                                                       :router_database_id (mt/id)
-                                                       :details {:destination_database true}}
-                         :model/DatabaseRouter _ {:database_id (mt/id)
-                                                  :user_attribute "db_name"}
-                         :model/Transform transform {:name   "Test transform"
-                                                     :source {:type  :query
-                                                              :query query}
-                                                     :target target-table}]
-            (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo
-                 #"Failed to run the transform \(Test transform\) because the database \(.+\) has database routing turned on. Running transforms on databases with db routing enabled is not supported."
-                 (mt/with-current-user (mt/user->id :crowberto)
-                   (transforms.execute/execute! transform {:run-method :manual}))))))))))
+      (mt/dataset transforms-dataset/transforms-test
+        (let [mp     (mt/metadata-provider)
+              schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
+              query  (lib/query mp (lib.metadata/table mp (mt/id :transforms_products)))]
+          (doseq [[run-method user] [[:manual :crowberto] [:cron nil]]]
+            (testing (str (name run-method) " run on router writes its target")
+              (with-transform-cleanup! [target {:type   "table"
+                                                :schema schema
+                                                :name   (str "router_products_" (name run-method))}]
+                (mt/with-temp [:model/Database _ {:engine             driver/*driver*
+                                                  :router_database_id (mt/id)
+                                                  :details            {:destination_database true}}
+                               :model/DatabaseRouter _ {:database_id (mt/id) :user_attribute "db_name"}
+                               :model/Transform transform {:name   "Router transform"
+                                                           :source {:type :query :query query}
+                                                           :target target}]
+                  (if user
+                    (mt/with-current-user (mt/user->id user)
+                      (transforms.execute/execute! transform {:run-method run-method}))
+                    (transforms.execute/execute! transform {:run-method run-method}))
+                  (is (some? (transforms.tu/wait-for-table (:name target) 10000))))))))))))
 
 (doseq [driver [:postgres :mysql :clickhouse :snowflake :bigquery-cloud-sdk]]
   (defmethod driver/database-supports? [driver ::sleep-query]
@@ -407,32 +408,6 @@
           (reset! calls [])
           (driver/run-transform! :h2 transform-details nil)
           (is (= [:drop-table! :compile-transform :execute-raw-queries!] @calls)))))))
-
-(deftest run-mbql-transform-anonymous-user-routing-error-test
-  (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table]})
-    (mt/with-premium-features #{:database-routing}
-      (with-transform-cleanup! [target-table {:type   :table
-                                              :schema (t2/select-one-fn :schema :model/Table (mt/id :products))
-                                              :name   "products"}]
-        (let [mp (mt/metadata-provider)
-              products (lib.metadata/table mp (mt/id :products))
-              query (lib/query mp products)]
-          (mt/with-temp [:model/Database _destination {:engine driver/*driver*
-                                                       :router_database_id (mt/id)
-                                                       :details {:destination_database true}}
-                         :model/DatabaseRouter _ {:database_id (mt/id)
-                                                  :user_attribute "db_name"}
-                         :model/Transform transform {:name   "Test transform"
-                                                     :source {:type  :query
-                                                              :query query}
-                                                     :target target-table}]
-            ;; NOTE: No `with-current-user` wrapper - this simulates running the transform
-            ;; without a user context (e.g., from a cron job or background task).
-            ;; previously this could produce the wrong error message from the QP routing middleware.
-            (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo
-                 #"Failed to run the transform \(Test transform\) because the database \(.+\) has database routing turned on. Running transforms on databases with db routing enabled is not supported."
-                 (transforms.execute/execute! transform {:run-method :cron})))))))))
 
 ;; TODO(Timothy, 02-16-26):
 ;; Like no-create-schema-permissions-test, this would be improved by being driver agnostic

@@ -100,7 +100,7 @@
               (throw (ex-info "Source database for this transform has been deleted."
                               {:transform-id (:id transform)
                                :source-database-id db})))
-          _ (transforms-base.u/throw-if-db-routing-enabled! transform database)
+          _ (transforms-base.u/throw-if-destination! transform database)
           ;; Full incremental runs (no watermark — either the first ever, or one that follows a
           ;; checkpoint-config reset) drop and recreate the table rather than appending.
           effective-transform-type (if (transforms-base.u/full-incremental-run? transform)

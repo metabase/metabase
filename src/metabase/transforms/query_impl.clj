@@ -22,7 +22,7 @@
    (try
      (let [db          (driver.u/lib-database (get-in source [:query :database]))
            driver      (:engine db)
-           _           (transforms-base.u/throw-if-db-routing-enabled! transform db)
+           _           (transforms-base.u/throw-if-destination! transform db)
            run-user-id (if (and (= run-method :manual) user-id)
                          user-id
                          (or owner_user_id creator_id))

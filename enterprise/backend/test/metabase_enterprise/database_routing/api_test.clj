@@ -122,29 +122,21 @@
     (is (= "Cannot enable database routing for a database with model persistence enabled"
            (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
                                  {:user_attribute "db_name"}))))
-  (mt/with-temp [:model/Database {db-id :id} {:settings {:database-enable-actions true}}]
-    (is (= "Cannot enable database routing for a database with actions enabled"
-           (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
-                                 {:user_attribute "db_name"}))))
-  (mt/with-temp [:model/Database {db-id :id} {:uploads_enabled true}]
-    (is (= "Cannot enable database routing for a database with uploads enabled"
-           (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
-                                 {:user_attribute "db_name"}))))
-  (mt/with-temp [:model/Database {db-id :id} {:write_data_details {:host "other-host"}}]
-    (is (= "Cannot enable database routing for a database with a write connection configured"
-           (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
-                                 {:user_attribute "db_name"}))))
   (mt/with-temp [:model/Database {router-db-id :id} {}
                  :model/Database {db-id :id} {:router_database_id router-db-id}]
     (is (= "Cannot make a destination database a router database"
            (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
                                  {:user_attribute "db_name"}))))
-  (mt/with-temp [:model/Database {db-id :id} {}
-                 :model/Transform _ {:source_database_id db-id
-                                     :name "Test Transform"}]
-    (is (= "Cannot enable database routing for a database with transforms"
-           (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
-                                 {:user_attribute "db_name"})))))
+  (testing "data actions, uploads, a write connection and transforms don't block routing"
+    (mt/with-temp [:model/Database {db-id :id} {:settings           {:database-enable-actions true}
+                                                :uploads_enabled    true
+                                                :write_data_details {:host "other-host"}}
+                   :model/Transform _ {:source_database_id db-id
+                                       :name               "Test Transform"}]
+      (mt/with-model-cleanup [:model/DatabaseRouter]
+        (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" db-id)
+                              {:user_attribute "db_name"})
+        (is (t2/exists? :model/DatabaseRouter :database_id db-id))))))
 
 (deftest can-delete-router-databases
   (mt/with-temp [:model/Database {db-id :id} {}

@@ -3,6 +3,7 @@
    [metabase-enterprise.database-routing.common :refer [router-db->destination-db-id]]
    [metabase-enterprise.database-routing.db :as database-routing.db]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features :refer [defenterprise defenterprise-schema]]
@@ -34,10 +35,10 @@
   (when-let [destination-db-id (some->> field u/the-id field/field-id->database-id driver.u/lib-database router-db->destination-db-id)]
     {:destination-db-id (when (premium-features/has-feature? :database-routing) destination-db-id)}))
 
-(defenterprise delete-associated-database-router!
-  "Deletes the Database Router associated with this router database."
+(defenterprise-schema delete-associated-database-router! :- :any
+  "Deletes the Database Router associated with the router Database with `db-id`."
   :feature :database-routing
-  [db-id]
+  [db-id :- ::lib.schema.id/database]
   (database-routing.db/delete-router! db-id))
 
 (defenterprise-schema db-routing-enabled? :- :boolean

@@ -31,29 +31,16 @@ describe("WritableConnectionInfoSection", () => {
     ).toBeInTheDocument();
   });
 
-  it("should show a warning when database routing is enabled", () => {
+  it("should allow adding a writable connection when database routing is enabled", () => {
     setup({
       database: createMockDatabase({
         router_user_attribute: "some_attribute",
+        write_data_details: null,
       }),
     });
 
     expect(
-      screen.getByText(
-        "Writable connection can't be enabled when Database Routing is enabled.",
-      ),
+      screen.getByRole("link", { name: "Add writable connection" }),
     ).toBeInTheDocument();
-  });
-
-  it("should not show a warning when database routing is not enabled", () => {
-    setup({
-      database: createMockDatabase({ router_user_attribute: null }),
-    });
-
-    expect(
-      screen.queryByText(
-        "Writable connection can't be enabled when Database Routing is enabled.",
-      ),
-    ).not.toBeInTheDocument();
   });
 });

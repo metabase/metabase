@@ -13,9 +13,14 @@
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.sync.core :as sync]
    [metabase.sync.field-values :as sync.field-values]
    [metabase.test :as mt]
+   [metabase.transforms.execute :as transforms.execute]
+   [metabase.upload.core :as upload]
+   [metabase.upload.impl-test :as upload-test]
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
@@ -174,3 +179,94 @@
                 (mt/with-current-user (mt/user->id :rasta)
                   (sync.field-values/update-field-values-for-on-demand-dbs! [(:id owner)]))
                 (is (= ["router-owner"] (:values (field-values/get-latest-full-field-values (:id owner)))))))))))))
+
+(deftest routed-admins-edit-router-tables-on-destination-test
+  (testing "a routed admin's table edits on a router go to their destination, like their queries"
+    (mt/with-premium-features #{:database-routing :table-data-editing}
+      (binding [driver.settings/*allow-testing-h2-connections* true]
+        (met/with-user-attributes! :crowberto {"db_name" "destination-db-1"}
+          (e2e/with-routing-setup! [router-db [[dest-1 "destination-db-1"]]]
+            (doseq [db [router-db dest-1]]
+              (e2e/execute-statement! db "CREATE TABLE \"acct\" (\"id\" INT PRIMARY KEY, \"owner\" TEXT)")
+              (e2e/execute-statement! db "GRANT ALL ON \"acct\" TO GUEST"))
+            (sync/sync-database! (u/the-id router-db) {:scan :schema})
+            (let [router-id (u/the-id router-db)
+                  table-id  (t2/select-one-pk :model/Table :db_id router-id :name "acct")]
+              (t2/update! :model/Database router-id {:settings {:database-enable-table-editing true}})
+              (mt/with-temp [:model/DatabaseRouter _ {:database_id router-id :user_attribute "db_name"}]
+                (mt/user-http-request :crowberto :post 200 "ee/action-v2/execute-bulk"
+                                      {:action :data-grid.row/create
+                                       :scope  {:table-id table-id}
+                                       :inputs [{"id" 1 "owner" "admin"}]})
+                (is (= [{:id 1 :owner "admin"}] (query-h2 dest-1 "SELECT * FROM \"acct\"")))
+                (is (= [] (query-h2 router-db "SELECT * FROM \"acct\"")))))))))))
+
+(deftest admins-upload-to-router-test
+  (testing "an admin who isn't routed uploads to a router, and the table lands on the router itself"
+    (mt/with-premium-features #{:database-routing}
+      (binding [driver.settings/*allow-testing-h2-connections* true]
+        (met/with-user-attributes! :rasta {"db_name" "destination-db-1"}
+          (e2e/with-routing-setup! [router-db [[dest-1 "destination-db-1"]]]
+            (let [router-id (u/the-id router-db)]
+              (t2/update! :model/Database router-id {:uploads_enabled true :uploads_schema_name "PUBLIC"})
+              (mt/with-temp [:model/DatabaseRouter _ {:database_id router-id :user_attribute "db_name"}]
+                (mt/with-current-user (mt/user->id :crowberto)
+                  (upload/create-csv-upload! {:collection-id nil
+                                              :filename      "admin.csv"
+                                              :file          (upload-test/csv-file-with ["admin_col" "row"] "admin")
+                                              :db-id         router-id
+                                              :schema-name   "PUBLIC"
+                                              :table-prefix  "admin_"}))
+                (is (seq (query-h2 router-db "SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE LOWER(TABLE_NAME) LIKE 'admin_%'")))
+                (is (empty? (query-h2 dest-1 "SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE LOWER(TABLE_NAME) LIKE 'admin_%'")))))))))))
+
+(deftest routed-users-cannot-upload-to-router-test
+  (testing "a routed user's upload to a router is refused, since an upload only ever targets the router itself"
+    (mt/with-premium-features #{:database-routing}
+      (binding [driver.settings/*allow-testing-h2-connections* true]
+        (met/with-user-attributes! :crowberto {"db_name" "destination-db-1"}
+          (e2e/with-routing-setup! [router-db [[dest-1 "destination-db-1"]]]
+            (let [router-id (u/the-id router-db)]
+              (t2/update! :model/Database router-id {:uploads_enabled true :uploads_schema_name "PUBLIC"})
+              (mt/with-temp [:model/DatabaseRouter _ {:database_id router-id :user_attribute "db_name"}]
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"routes your queries"
+                                      (mt/with-current-user (mt/user->id :crowberto)
+                                        (upload/create-csv-upload! {:collection-id nil
+                                                                    :filename      "tenant.csv"
+                                                                    :file          (upload-test/csv-file-with ["tenant_col" "row"] "tenant")
+                                                                    :db-id         router-id
+                                                                    :schema-name   "PUBLIC"
+                                                                    :table-prefix  "tenant_"}))))
+                (is (empty? (query-h2 router-db "SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE LOWER(TABLE_NAME) LIKE 'tenant_%'")))
+                (is (empty? (query-h2 dest-1 "SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE LOWER(TABLE_NAME) LIKE 'tenant_%'")))))))))))
+
+(deftest routed-users-cannot-run-router-transforms-test
+  (testing "a routed user's transform run on a router is refused, since a transform only ever targets the router itself"
+    (mt/with-premium-features #{:database-routing :transforms-basic}
+      (binding [driver.settings/*allow-testing-h2-connections* true]
+        (met/with-user-attributes! :crowberto {"db_name" "destination-db-1"}
+          (e2e/with-routing-setup! [router-db [[_dest-1 "destination-db-1"]]]
+            (let [router-id (u/the-id router-db)
+                  mp        (lib-be/application-database-metadata-provider router-id)]
+              (mt/with-temp [:model/DatabaseRouter _ {:database_id router-id :user_attribute "db_name"}
+                             :model/Transform transform {:name   "routed transform"
+                                                         :source {:type  :query
+                                                                  :query (lib/native-query mp "SELECT * FROM \"PUBLIC\".\"my_database_name\"")}
+                                                         :target {:type "table" :schema "PUBLIC" :name "routed_out"}}]
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"routes your queries"
+                                      (mt/with-current-user (mt/user->id :crowberto)
+                                        (transforms.execute/execute! transform {:run-method :manual}))))
+                (is (empty? (query-h2 router-db "SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE LOWER(TABLE_NAME) = 'routed_out'")))))))))))
+
+(deftest routed-admins-set-router-write-connection-test
+  (testing "a routed admin's new write details for a router are tested against the router, not refused"
+    (mt/with-premium-features #{:database-routing :writable-connection}
+      (binding [driver.settings/*allow-testing-h2-connections* true]
+        (met/with-user-attributes! :crowberto {"db_name" "destination-db-1"}
+          (e2e/with-routing-setup! [router-db [[_dest-1 "destination-db-1"]]]
+            (let [router-id (u/the-id router-db)]
+              (mt/with-temp [:model/DatabaseRouter _ {:database_id router-id :user_attribute "db_name"}]
+                (mt/user-http-request :crowberto :put 200 (str "database/" router-id)
+                                      {:write_data_details {:write-data-connection true}})
+                (is (= {:write-data-connection true}
+                       (t2/select-one-fn :write_data_details :model/Database router-id)))))))))))

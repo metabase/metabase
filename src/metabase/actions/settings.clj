@@ -18,7 +18,7 @@
 (def ^:private db-routing-reason
   {:key     :setting/database-routing
    :type    :error
-   :message (i18n/deferred-tru "Table editing is not supported with database routing.")})
+   :message (i18n/deferred-tru "Table editing is not supported on destination databases.")})
 
 (def ^:private no-writable-tables-reason
   {:key     :permissions/no-writable-table
@@ -46,7 +46,6 @@
   :enabled-for-db? (fn [db]
                      (setting/custom-disabled-reasons!
                       [(when (database/is-destination? db) db-routing-reason)
-                       (when (actions.db/destination-database-exists-for-router? (:id db)) db-routing-reason)
                        (cond
                          ;; TODO we also care about re-sync after connection details are changed
                          (= (:initial_sync_status db) "incomplete") busy-sync-reason
