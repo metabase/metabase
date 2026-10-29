@@ -91,6 +91,10 @@ function setTooltips(
   listeners.forEach((listener) => listener());
 }
 
+/**
+ * Runs as a tooltip starts fading in. It becomes the visible tooltip, hiding
+ * any other until it closes.
+ */
 function showTooltip(id: string) {
   setTooltips(
     [...withoutTooltip(id), id],
@@ -98,11 +102,13 @@ function showTooltip(id: string) {
   );
 }
 
+/**
+ * Runs as a tooltip starts fading out. It stays visible for the fade only if
+ * no other tooltip is open; otherwise the newest open one shows again at once.
+ */
 function exitTooltip(id: string) {
   if (openTooltipIds.includes(id)) {
     const remainingTooltipIds = withoutTooltip(id);
-    // Only the last open tooltip fades out. Closing any other one reveals a
-    // tooltip that's still open, so it hides at once instead.
     const isLastOpenTooltip = remainingTooltipIds.length === 0;
     setTooltips(
       remainingTooltipIds,
@@ -111,6 +117,7 @@ function exitTooltip(id: string) {
   }
 }
 
+/** Runs once a tooltip has finished fading out, or is unmounted mid-fade. */
 function releaseTooltip(id: string) {
   if (openTooltipIds.includes(id) || fadingOutTooltipId === id) {
     setTooltips(
