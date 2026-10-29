@@ -29,8 +29,9 @@
                   (:nodes manifest)
                   (get-in manifest [:semantic_models "semantic_model.dbt_business_intelligence.fact_sales"]))]
     (is (mr/validate ::ir/semantic-model parsed))
-    (is (= {:database "dbt_bi", :schema "public", :table "fact_sales"}
-           (:relation parsed)))
+    (is (= {:database "dbt_bi", :schema "public", :table "fact_sales", :quoted #{:database :schema :table}}
+           (:relation parsed))
+        "dbt-postgres quotes every part of relation_name")
     (testing "column types come from the model node"
       (is (= {"sales" "float", "quantity" "integer", "date_day" "date", "customer_key" "text"}
              (-> parsed

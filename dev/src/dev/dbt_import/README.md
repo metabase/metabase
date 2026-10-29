@@ -98,16 +98,20 @@ The config is the closed map `dev.dbt-import.schemas.resolved/config`; a key it 
 
 | Key | Required | Type | Meaning | Default |
 | -- | -- | -- | -- | -- |
-| `:databases` | yes | map of string to string | The one mapping the manifest cannot supply: the warehouse database as dbt knows it (`node_relation.database` in the manifest) to the name of the Metabase Database it is connected as, letter case included. A semantic model whose database has no entry reports every metric over it. | none |
+| `:databases` | yes | map of string (or nil) to string | The one mapping the manifest cannot supply: the warehouse database as dbt knows it (`node_relation.database` in the manifest) to the name of the Metabase Database it is connected as, as typed, letter case included. The key is `nil` for an adapter that writes `database: null` (dbt-mysql, whose MySQL database is the `schema_name`): `{nil "My MySQL"}`. A semantic model whose database has no entry reports every metric over it. | none |
 | `:driver` | yes | keyword | The Metabase driver those databases use, `:postgres`. It has to be one the instance can load and a JDBC driver (one derived from `:sql-jdbc`): `:mongo` or `:bigquery-cloud-sdk` fails the run up front, since the converter types columns through the driver's sql-jdbc type mapping. See below for what the driver decides. | none |
 | `:creator-email` | yes | string | The user the cards are created as. Serdes resolves it by email and synthesizes an inactive user when none exists, but a card cannot be imported without one. | none |
 | `:collection-name` | no | string | The name of the collection the metrics are written to; also the collection's file and directory name, slugified (`dbt metrics` is `collections/main/dbt_metrics.yaml` and `dbt_metrics/`). A name that slugifies to nothing, `.` or `..` is refused. | `dbt metrics` |
 | `:entity-models` | no | map of string to string | Entity name to semantic model name: which semantic model a foreign or unique entity joins to when more than one other semantic model is keyed by that entity, as its primary entity or as a unique one. An entity exactly one model is keyed by needs no entry; an entry naming a model that is not keyed by the entity is reported. | none |
+| `:identifier-case` | no | `:upper`, `:lower` or `:as-is` | How the warehouse stores a table or column name dbt wrote without quotes, which is how sync sees it and how the YAML has to spell it (see "Importing the result"). Overrides what the driver says; `:as-is` folds nothing, for a warehouse that keeps the spelling (MySQL, SQL Server, SQLite, BigQuery) or a Snowflake account with `QUOTED_IDENTIFIERS_IGNORE_CASE`. A part dbt quoted is never folded. | `:upper` for a driver with the `:upper-case-unquoted-identifiers` feature (Snowflake, Oracle, H2), `:lower` otherwise |
+| `:schema-mapping` | no | map of string to string or nil | dbt `schema_name` to the schema the instance has the table under, `nil` for none, overriding the default for that schema only. | the schema as the driver stores it; `nil` for a driver without the `:schemas` feature (MySQL, SQLite) |
 
-The `:driver` decides three things. Its own `database-type->base-type` mapping turns the project's declared column
+The `:driver` decides four things. Its own `database-type->base-type` mapping turns the project's declared column
 types into Metabase base types, so a `data_type` the driver has no mapping for is reported; the fix is a mapping in
 the driver, which is meant to have one for every type its warehouse has. It picks the SQL dialect `expr` and `filter`
-SQL is parsed in. And its feature flags say which clauses the warehouse can run (a `median` on MySQL cannot), see
+SQL is parsed in. Its `:upper-case-unquoted-identifiers` and `:schemas` features say how the warehouse spells the
+names dbt wrote, which `:identifier-case` and `:schema-mapping` override (see "Importing the result"). And its
+feature flags say which clauses the warehouse can run (a `median` on MySQL cannot), see
 "Manifest and configuration errors". It has to agree with the dbt adapter the manifest was written with
 (`metadata.adapter_type`, the `type` of the profile `dbt parse` ran with): `convert!` fails up front when the adapter
 maps to another driver (`postgres` → `:postgres`, `bigquery` → `:bigquery-cloud-sdk`, `trino` → `:starburst`, `spark`
@@ -181,10 +185,29 @@ instead.
 
 A field ref that does not bind is not such an error. The import never fails on a Database, Table or Field name it
 cannot resolve: it makes up a stub Database (no connection details), an inactive Table or an inactive Field for the
-name, reports success, and the card fails when it is run. The converter cannot know how the instance names things
-(Postgres keeps `public.fact_sales` as dbt wrote it, H2 upper-cases it, a warehouse without schemas syncs the table
-with no schema), so check the tree before importing it, from a REPL started against the same app DB the import
-command will be given (`MB_DB_CONNECTION_URI`):
+name, reports success, and the card fails when it is run. It matches names exactly, letter case and schema included
+(a nil schema is not `"main"`), and the YAML has to spell them the way sync saw them, not the way the project did.
+
+The converter works that spelling out from the manifest and the driver. dbt writes `node_relation` and the column
+names from the project's spelling, and only the parts it quoted when it built the table reach the warehouse as
+written: the manifest records which, `relation_name` being the relation as dbt rendered it
+(`"dbt_bi"."public"."fact_sales"` from dbt-postgres, which quotes by default; `analytics.dbt_alice.dim_customers`
+from dbt-snowflake, which does not; backticks and square brackets are read too) and `columns[].quote` whether a
+column's name is quoted. A quoted part is
+written as is. An unquoted part is folded the way the driver says its warehouse folds it: upper-cased when the driver
+has the `:upper-case-unquoted-identifiers` feature (Snowflake, Oracle and H2 set it; a third-party driver for a
+warehouse that upper-cases declares it the same way, with `driver/database-supports?`), lower-cased otherwise, which is
+what Postgres, Redshift and the Trino family do. A driver without the `:schemas` feature (MySQL, SQLite) gets no
+schema at all. A relation with no `relation_name` (an ephemeral model) counts as unquoted throughout. The config can
+say otherwise: `:identifier-case` replaces the driver's rule (`:as-is` folds nothing), `:schema-mapping` maps a dbt
+schema to the instance's, or to nil, per schema; see "Running the converter". The Metabase Database's name is the
+config's `:databases` value as typed. The converter's own column lookup ignores case, so a measure's `expr` still
+finds the column it names after folding.
+
+The instance can still disagree (a Snowflake account with `QUOTED_IDENTIFIERS_IGNORE_CASE`, a MySQL table created
+with a mixed-case name the project writes in another case, a project built into one schema and synced from another),
+so check the tree before importing it, from a REPL started against the same app DB the import command will be given
+(`MB_DB_CONNECTION_URI`):
 
 ```clojure
 (dev.dbt-import.core/preflight {:out-dir "/path/to/serdes-out"})
@@ -193,9 +216,8 @@ command will be given (`MB_DB_CONNECTION_URI`):
 It resolves every reference the way the import does, writing nothing, and returns the cards whose references the
 import would make up, each with the reference as the YAML writes it and what is there instead, when a near miss
 explains it (the same name in another letter case or another schema, or a table or field that exists but is inactive:
-a stub a previous import created, or one a sync no longer finds). Import when it returns `[]`. The configuration of
-identifier case and of a nil schema is not decided yet; until it is, the check reports the mismatch and the fix is
-on the instance's side or the manifest's.
+a stub a previous import created, or one a sync no longer finds), and names the config key that fixes a near miss
+(`:identifier-case` for the letter case, `:schema-mapping` for the schema). Import when it returns `[]`.
 
 Then open each metric in the UI, run it, and compare the number against a hand-written SQL query. The end-to-end test
 under "Fixtures and tests" does the same thing against a test instance.
@@ -563,6 +585,13 @@ of the conversion:
 - A `percentile` outside 0 and 1. dbt takes the percentile as a fraction (`0.95`) and nothing else, and so does the
   converter: `95` is reported rather than read as 95%, since `1.5` could not be and the two readings would have to
   meet somewhere.
+- A warehouse whose rule for an unquoted identifier is not its driver's: a Snowflake account with
+  `QUOTED_IDENTIFIERS_IGNORE_CASE` (quoted names upper-cased too), a case-preserving warehouse (MySQL, SQL Server,
+  SQLite, BigQuery) whose project writes mixed-case names unquoted, an H2 database with `DATABASE_TO_UPPER=FALSE`. The
+  converter writes the driver's default and `preflight` reports the mismatch; the fix is `:identifier-case` in the
+  config (`:as-is` for the spelling kept, `:upper` or `:lower` for a fold the driver does not know of), and
+  `:schema-mapping` when the schema is what differs. Neither is read from the warehouse: the converter never connects
+  to it.
 
 ## Fixtures and tests
 
@@ -683,11 +712,12 @@ For a fresh-JVM run of every test except the end-to-end one:
 ./bin/mage project-tests dbt-import
 ```
 
-which runs these thirteen namespaces (`./bin/test-agent :only '[dev.dbt-import.parse-test]'` runs one; `test-agent`
-uses `:dev/test` itself):
+which runs these fourteen namespaces (`./bin/test-agent --drivers=h2 :only '[dev.dbt-import.parse-test]'` runs one;
+`test-agent` uses `:dev/test` itself, and `--drivers` adds the `:drivers` alias that `identifiers-test` needs for the
+Snowflake driver):
 
 ```sh
-./bin/test-agent :only '[dev.dbt-import.parse-test dev.dbt-import.inline-spec-test dev.dbt-import.resolve-test dev.dbt-import.advanced-metrics-test dev.dbt-import.dimensions-test dev.dbt-import.emit-test dev.dbt-import.core-test dev.dbt-import.fixture-test dev.dbt-import.marts-test dev.dbt-import.sql-test dev.dbt-import.adapter-test dev.dbt-import.preflight-test dev.dbt-import.generative-test]'
+./bin/test-agent --drivers=h2 :only '[dev.dbt-import.parse-test dev.dbt-import.inline-spec-test dev.dbt-import.resolve-test dev.dbt-import.advanced-metrics-test dev.dbt-import.dimensions-test dev.dbt-import.emit-test dev.dbt-import.core-test dev.dbt-import.fixture-test dev.dbt-import.marts-test dev.dbt-import.sql-test dev.dbt-import.adapter-test dev.dbt-import.preflight-test dev.dbt-import.generative-test dev.dbt-import.identifiers-test]'
 ```
 
 CI runs the same namespaces as part of `./bin/mage project-tests backend` (the "Project tests: Suites" job in
@@ -698,7 +728,8 @@ no assertions without one, so run it by hand as described under "The end-to-end 
 `core-test` runs the whole pipeline on the fixtures and pins the report's shape; `sql-test` tests the SQL converter on
 its own, down to the H2 SQL the converted conditions compile to; `adapter-test` covers the adapter check and
 `preflight-test` the pre-import check against an app DB; `generative-test` runs manifests generated from the
-manifest schemas through parse and resolve, checking that nothing escapes as an exception; `fixture-test` and
+manifest schemas through parse and resolve, checking that nothing escapes as an exception; `identifiers-test` covers
+how dbt's quoting and the driver's folding rule decide the emitted table and column names; `fixture-test` and
 `marts-test` cover the parts of the two generators that need neither dbt nor Postgres (what gets copied, what the
 manifest is trimmed to, the environment dbt gets, how the password is kept off the screen and out of the JDBC URL).
 

@@ -308,9 +308,9 @@
 
 (defn- aggregation-of-expr
   "The aggregation a measure with `expr` converts to: a `sum` unless `agg` says otherwise, over the default columns plus
-  `columns`."
-  [expr & {:keys [agg columns]}]
-  (tu/aggregation {:measure (cond-> {:expr expr} agg (assoc :agg agg)), :columns columns}))
+  `columns`, the manifest edited by `edit` (see [[tu/build-manifest]])."
+  [expr & {:keys [agg columns edit]}]
+  (tu/aggregation {:measure (cond-> {:expr expr} agg (assoc :agg agg)), :columns columns, :edit edit}))
 
 (defn- expr-reason
   "The reason a measure with `expr` (a `sum` unless `agg` says otherwise) is reported."
@@ -326,10 +326,17 @@
   (testing "spellings of a bare column name"
     (are [expr] (= tu/sum-sales (aggregation-of-expr expr))
       "SALES" "Sales" "\"sales\"" "`sales`" "fact_sales.sales" "\"fact_sales\".\"sales\"" " sales" "sales\n"))
-  (testing "an exact-case match wins over a case-insensitive one"
-    (is (= [:sum {} (fld "SALES" :type/Decimal)] (aggregation-of-expr "SALES" :columns {"SALES" "numeric"}))))
-  (testing "a double-quoted mixed-case identifier keeps its case"
-    (is (= [:sum {} (fld "Sales" :type/Float)] (aggregation-of-expr "\"Sales\"" :columns {"Sales" "float"}))))
+  (testing "an exact-case match wins over a case-insensitive one (the column quoted, or Postgres would have folded it)"
+    (is (= [:sum {} (fld "SALES" :type/Decimal)]
+           (aggregation-of-expr "SALES" :columns {"SALES" "numeric"}
+                                :edit #(assoc-in % [:nodes tu/model-id :columns "SALES" :quote] true)))))
+  (testing "a double-quoted mixed-case identifier keeps its case (the column quoted, likewise)"
+    (is (= [:sum {} (fld "Sales" :type/Float)]
+           (aggregation-of-expr "\"Sales\"" :columns {"Sales" "float"}
+                                :edit #(assoc-in % [:nodes tu/model-id :columns "Sales" :quote] true)))))
+  (testing "a documented mixed-case column dbt did not quote is spelled as the warehouse stores it"
+    (is (= [:sum {} (fld "sales" :type/Float)] (aggregation-of-expr "\"Sales\"" :columns {"Sales" "float"}))
+        "Postgres lower-cases it; see dev.dbt-import.identifiers-test for the rest"))
   (testing "column names that are not plain ASCII words"
     (are [expr data-type base-type] (= [:sum {} (fld expr base-type)]
                                        (aggregation-of-expr expr :columns {expr data-type}))
@@ -581,8 +588,9 @@
     (testing "a column the project does not type is not known to be an integer"
       (is (= [:sum {} [:/ {} (fld "x" nil) 2]] (aggregation-of-expr "x / 2" :columns {"x" nil}))))
     (testing "a warehouse that divides integers as decimals (MySQL, Snowflake, BigQuery, Oracle) is left alone"
-      (is (= [:sum {} [:/ {} quantity 2]]
-             (tu/aggregation {:config {:driver :mysql}, :measure {:expr "quantity / 2"}}))))
+      (is (= [:sum {} [:/ {} (fld nil "fact_sales" "quantity" :type/Integer) 2]]
+             (tu/aggregation {:config {:driver :mysql}, :measure {:expr "quantity / 2"}}))
+          "MySQL has no schemas, so the table has none"))
     (testing "in a filter too"
       (let [template "{{ Dimension('fact_sales_key__amount') }} > {{ Entity('fact_sales_key') }} / 2"]
         (is (re-find #"divides an integer by an integer"
@@ -1265,10 +1273,16 @@
   (testing "database names are matched exactly against the config"
     (is (= "no Metabase database configured for warehouse database \"DBT_BI\"; add it to :databases"
            (tu/unsupported {:edit (edit-relation :database "DBT_BI")}))))
-  (testing "an upper-case schema is used verbatim"
+  (testing "an upper-case schema is used verbatim when dbt quoted it"
     (is (= {:aggregation  [:sum {} (fld "PUBLIC" "fact_sales" "sales" :type/Float)]
             :filters      []
             :source-table [tu/db "PUBLIC" "fact_sales"]}
+           (query-of {:edit (comp (edit-relation :schema_name "PUBLIC")
+                                  (edit-relation :relation_name "\"dbt_bi\".\"PUBLIC\".\"fact_sales\""))}))))
+  (testing "and folded as the warehouse folds an unquoted identifier when it did not (see identifiers-test)"
+    (is (= {:aggregation  [:sum {} (fld "public" "fact_sales" "sales" :type/Float)]
+            :filters      []
+            :source-table [tu/db "public" "fact_sales"]}
            (query-of {:edit (edit-relation :schema_name "PUBLIC")}))))
   (testing "an alias that differs from the model name is the table"
     (is (= {:aggregation  [:sum {} (fld "public" "fct_sales_v2" "sales" :type/Float)]
@@ -1448,7 +1462,8 @@
         (is (= [:percentile {} (fld "sales" :type/Float) 0.9] (tu/aggregation p90)))
         (is (= [:sum {} [:integer {} (fld "sales" :type/Float)]] (tu/aggregation cast))))
       (testing "and an aggregation the driver has converts on it"
-        (is (= tu/sum-sales (tu/aggregation (on-driver {} :h2))))))))
+        (is (= [:sum {} (fld "SALES" :type/Float)] (tu/aggregation (on-driver {} :h2)))
+            "H2 upper-cases the column dbt wrote unquoted; the relation stays as dbt-postgres quoted it")))))
 
 (deftest non-jdbc-driver-test
   (testing (str "a driver that is not a JDBC one fails the run with the reason: the converter types columns through the"

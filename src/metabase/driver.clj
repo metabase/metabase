@@ -858,6 +858,12 @@
     ;; DEFAULTS TO TRUE
     :schemas
     ;;
+    ;; Does the warehouse store an identifier written without quotes in upper case, so that sync sees `CREATE TABLE
+    ;; orders` as `ORDERS`? Snowflake, Oracle and H2 do; most other warehouses fold to lower case or keep the spelling.
+    ;; A tool that names tables and columns by what sync saw, from identifiers written elsewhere (the dbt metrics
+    ;; converter under `dev/`), reads this to fold them the same way. DEFAULTS TO FALSE.
+    :upper-case-unquoted-identifiers
+    ;;
     ;; Does the driver support multi-level-schema for e.g. multicatalog support in databricks
     :multi-level-schema
     ;;

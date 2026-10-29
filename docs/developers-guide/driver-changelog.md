@@ -6,6 +6,13 @@ title: Driver interface changelog
 
 ## Metabase 0.66.0
 
+- Added an `:upper-case-unquoted-identifiers` driver feature flag: whether the warehouse stores an identifier written
+  without quotes in upper case, so that sync sees `CREATE TABLE orders` as `ORDERS`. It describes the warehouse, not a
+  capability, and is for tools that name tables and columns by what sync saw from identifiers written elsewhere (the
+  dbt metrics converter under `dev/` folds dbt's unquoted names with it). H2, Oracle and Snowflake set it. Defaults to
+  `false`, which a warehouse that folds to lower case (Postgres, Redshift, Trino) or keeps the spelling (MySQL, SQL
+  Server) leaves alone.
+
 - `:type/Binary` is a new base type for raw bytes: Postgres `bytea`, MySQL `BLOB` and `VARBINARY`, SQL Server
   `varbinary`, Oracle `RAW`, and the like. Drivers should return it from `sql-jdbc.sync/database-type->base-type` for
   such columns instead of `:type/*`. It derives from `:type/fingerprint-unsupported` and

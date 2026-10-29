@@ -14,6 +14,7 @@
   [[parcel-delivery-manifest-filename]]."
   (:require
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [dev.dbt-import.emit :as emit]
    [dev.dbt-import.parse :as parse]
    [dev.dbt-import.resolve :as resolve]
@@ -551,3 +552,15 @@
   "The card files [[emit/files]] produces for a built manifest, without the collection file."
   [manifest]
   (rest (emit/files default-config (resolve-manifest-map manifest))))
+
+(defn unquoted-relations
+  "A `:edit` fn for [[build-manifest]] that writes every `relation_name`, on the nodes and on the semantic models,
+  without quotes (`dbt_bi.public.fact_sales`), as dbt-snowflake does, so a warehouse that folds the case of an
+  unquoted identifier folds every part of every relation."
+  [manifest]
+  (let [unquoted (fn [{:keys [database], table-alias :alias, :as relation} schema]
+                   (assoc relation :relation_name (str/join "." [database schema table-alias])))]
+    (-> manifest
+        (update :nodes update-vals #(unquoted % (:schema %)))
+        (update :semantic_models update-vals
+                #(update % :node_relation (fn [relation] (unquoted relation (:schema_name relation))))))))

@@ -103,7 +103,10 @@
                               :describe-is-nullable      true
                               :describe-default-expr     true
                               :metadata/table-existence-check true
-                              :transforms/testing        true}]
+                              :transforms/testing        true
+                              ;; "With default settings unquoted names are converted to upper case"
+                              ;; (`DATABASE_TO_UPPER`), https://h2database.com/html/grammar.html#name
+                              :upper-case-unquoted-identifiers true}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]
     supported?))

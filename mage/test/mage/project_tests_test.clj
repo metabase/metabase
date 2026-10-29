@@ -62,6 +62,7 @@
                       dev.dbt-import.sql-test
                       dev.dbt-import.adapter-test
                       dev.dbt-import.preflight-test
+                      dev.dbt-import.identifiers-test
                       dev.dbt-import.generative-test])]]
              calls)))
     (testing "the failed suite is reported"
@@ -112,7 +113,7 @@
     (let [[[_ aliases _ namespaces]] (:calls (run-suites! [] ["dbt-import"]))
           namespaces                  (read-string namespaces)]
       (is (= "-X:dev:dev/test:ee:ee-dev:drivers:drivers-dev:test:ci" aliases))
-      (is (= 13 (count namespaces)))
+      (is (= 14 (count namespaces)))
       (is (every? #(str/starts-with? (str %) "dev.dbt-import.") namespaces))
       (is (not (contains? (set namespaces) 'dev.dbt-import.e2e-test)))))
   (testing "ratchets checks the repository's policy file"

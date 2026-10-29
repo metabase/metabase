@@ -62,7 +62,7 @@
       (is (= {"daily_depot_volume" {}, "delivery_runs" {}, "parcels" {}, "delivery_exceptions" {}}
              (update-vals semantic-models :measures))))
     (testing "the relation comes from the model node, in the profile's database"
-      (is (= {:database "parcels", :schema "public", :table "delivery_runs"}
+      (is (= {:database "parcels", :schema "public", :table "delivery_runs", :quoted #{:database :schema :table}}
              (get-in semantic-models ["delivery_runs" :relation]))))
     (testing "the model-level agg_time_dimension is the default"
       (is (= {"daily_depot_volume"  "volume_date"

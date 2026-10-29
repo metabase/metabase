@@ -5,12 +5,15 @@
   Serdes import never fails on a name it cannot resolve: for a Database it does not find it creates a stub (no
   connection details), for a Table or Field an inactive row (see
   [[metabase.models.serialization.resolve.default/import-table-fk]] and its neighbours), the import reports success,
-  and the card fails when it is run. The converter has no way of knowing how the instance names things: Postgres
-  keeps `public.fact_sales` as dbt wrote it, H2 upper-cases it, a warehouse without schemas syncs the table with a nil
-  schema. So [[check]] resolves every reference first, with the import's own walk ([[serdes/import-mbql]],
-  [[metrics/import-dimensions]] and [[metrics/import-dimension-mappings]]) and the import's own lookups
-  ([[serdes/load-find-local]]) but nothing that writes, and reports what the import would have made up, with what is
-  there instead when a near miss (another letter case, another schema) explains it.
+  and the card fails when it is run. The converter names things the way the driver says the warehouse stores them
+  (see [[dev.dbt-import.metadata]]: a name dbt wrote unquoted is upper-cased for a driver with the
+  `:upper-case-unquoted-identifiers` feature and lower-cased otherwise, a driver without the `:schemas` feature gets no
+  schema), which an instance can still disagree with: a Snowflake account with `QUOTED_IDENTIFIERS_IGNORE_CASE`, a
+  MySQL table created with a mixed-case name, a project built into one schema and synced from another. So [[check]]
+  resolves every reference first, with the import's own walk ([[serdes/import-mbql]], [[metrics/import-dimensions]]
+  and [[metrics/import-dimension-mappings]]) and the import's own lookups ([[serdes/load-find-local]]) but nothing
+  that writes, and reports what the import would have made up, with what is there instead when a near miss (another
+  letter case, another schema) explains it, and the config keys that fix it (`:identifier-case`, `:schema-mapping`).
 
   It runs against the current app DB, the one the REPL was started with, which has to be the instance the import
   command will be given (`MB_DB_CONNECTION_URI`)."
@@ -78,6 +81,18 @@
                " name exactly, letter case included")
           (pr-str db-name)))
 
+(def ^:private case-hint
+  "What to change when a name differs from the instance's in letter case only: the converter folds a name dbt wrote
+  unquoted the way the driver says its warehouse does, and the config can say otherwise."
+  (str "a name dbt wrote unquoted is upper-cased when the driver has the :upper-case-unquoted-identifiers feature and"
+       " lower-cased otherwise; :identifier-case in the config (:upper, :lower or :as-is) overrides that"))
+
+(def ^:private schema-hint
+  "What to change when a table is there under another schema: the driver decides whether there is one at all, and the
+  config can map each dbt schema to the instance's."
+  (str "a driver without the :schemas feature gets a nil schema; :schema-mapping in the config maps a dbt schema_name"
+       " to the schema the instance has, or to nil"))
+
 (mu/defn- table-hint :- :string
   "Why the import would not find the Table `table-ref` names in the Database `db-id`, which it did find."
   [db-id :- ::lib.schema.id/database
@@ -87,10 +102,10 @@
         describe  (fn [{table-schema :schema, :keys [name]}]
                     (format "%s in schema %s" (pr-str name) (pr-str table-schema)))]
     (if (seq same-name)
-      (format "no Table %s in schema %s; close: %s (the letter case or the schema differs)" (pr-str table-name)
-              (pr-str schema) (str/join "; " (map describe same-name)))
-      (format "no Table %s in schema %s; the database's schemas are %s" (pr-str table-name) (pr-str schema)
-              (quoted-names (sort (warehouse-schema.db/active-table-schemas db-id true)))))))
+      (format "no Table %s in schema %s; close: %s (the letter case or the schema differs; %s; %s)" (pr-str table-name)
+              (pr-str schema) (str/join "; " (map describe same-name)) case-hint schema-hint)
+      (format "no Table %s in schema %s; the database's schemas are %s (%s)" (pr-str table-name) (pr-str schema)
+              (quoted-names (sort (warehouse-schema.db/active-table-schemas db-id true))) schema-hint))))
 
 (mu/defn- field-hint :- :string
   "Why the import would not find the Field `field-ref` names in the Table `table-id`, which it did find."
@@ -104,7 +119,8 @@
       (format "no nested Field %s" (quoted-names field-names))
 
       (seq same-name)
-      (format "no Field %s; the letter case differs from %s" (pr-str field-name) (quoted-names same-name))
+      (format "no Field %s; the letter case differs from %s (%s)" (pr-str field-name) (quoted-names same-name)
+              case-hint)
 
       :else
       (format "no Field %s; the table's fields are %s" (pr-str field-name) (quoted-names names)))))

@@ -65,6 +65,16 @@
 
 (def ^:private fact-sales ["Sales DB" "public" "fact_sales"])
 
+(def ^:private case-hint
+  "The part of a near-miss hint that names the config key for letter case."
+  (str "a name dbt wrote unquoted is upper-cased when the driver has the :upper-case-unquoted-identifiers feature and"
+       " lower-cased otherwise; :identifier-case in the config (:upper, :lower or :as-is) overrides that"))
+
+(def ^:private schema-hint
+  "The part of a near-miss hint that names the config key for the schema."
+  (str "a driver without the :schemas feature gets a nil schema; :schema-mapping in the config maps a dbt schema_name"
+       " to the schema the instance has, or to nil"))
+
 (deftest check-test
   (mt/with-temp-dir [dir nil]
     (let [entity-id (write-tree! dir)]
@@ -91,14 +101,14 @@
                    refs)
                 "the fields of a table that is not there are not reported on top")
             (is (= (str "no Table \"fact_sales\" in schema \"public\"; close: \"FACT_SALES\" in schema \"PUBLIC\""
-                        " (the letter case or the schema differs)")
+                        " (the letter case or the schema differs; " case-hint "; " schema-hint ")")
                    (hints fact-sales))))))
       (testing "the instance has no schemas: the table is there under a nil schema"
         (mt/with-temp [:model/Database {db-id :id} {:name tu/db, :engine :h2}]
           (insert-warehouse! db-id {:rename (fn [identifier] (when-not (= identifier "public") identifier))})
           (let [{:keys [hints]} (unresolved dir)]
             (is (= (str "no Table \"fact_sales\" in schema \"public\"; close: \"fact_sales\" in schema nil"
-                        " (the letter case or the schema differs)")
+                        " (the letter case or the schema differs; " case-hint "; " schema-hint ")")
                    (hints fact-sales))))))
       (testing "a field is missing, and another differs in letter case"
         (mt/with-temp [:model/Database {db-id :id} {:name tu/db, :engine :h2}]
@@ -112,7 +122,8 @@
                 date-day            (conj fact-sales "date_day")]
             (is (= #{["Field" sales] ["Field" date-day]} refs))
             (is (re-find #"^no Field \"sales\"; the table's fields are (\"[a-zA-Z_]+\", )*\"amount\", " (hints sales)))
-            (is (= "no Field \"date_day\"; the letter case differs from \"DATE_DAY\"" (hints date-day))))))
+            (is (= (str "no Field \"date_day\"; the letter case differs from \"DATE_DAY\" (" case-hint ")")
+                   (hints date-day))))))
       (testing "a table and a field an earlier import made up: they exist, inactive, and are reported as such"
         (mt/with-temp [:model/Database {db-id :id} {:name tu/db, :engine :h2}]
           (insert-warehouse! db-id {:edit-field (fn [{field-name :name, :as row}]
@@ -135,3 +146,25 @@
     (spit (java.io.File. ^String dir "collections/main/dbt_metrics/broken.yaml") "name: [unclosed")
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"1 file\(s\) under .* could not be read"
                           (preflight/check dir)))))
+
+(deftest folded-identifiers-test
+  (testing "converted for H2, which upper-cases what dbt wrote unquoted: the tree binds on an instance that did too"
+    (mt/with-temp-dir [dir nil]
+      (let [config   (assoc tu/default-config :driver :h2)
+            resolved (tu/resolve-manifest-map config (tu/build-manifest {:edit tu/unquoted-relations}))
+            files    (emit/files config resolved)]
+        (emit/write! dir files)
+        (is (= ["Sales DB" "PUBLIC" "FACT_SALES"]
+               (-> (m/find-first :metric files) :metric tu/query-clauses :source-table))
+            "the refs are written as H2 stores them")
+        (testing "an instance whose names are upper-case: nothing to report"
+          (mt/with-temp [:model/Database {db-id :id} {:name tu/db, :engine :h2}]
+            (insert-warehouse! db-id {:rename str/upper-case})
+            (is (= [] (preflight/check dir)))))
+        (testing "an instance that kept dbt's spelling (what :identifier-case :as-is is for): reported, with the key"
+          (mt/with-temp [:model/Database {db-id :id} {:name tu/db, :engine :h2}]
+            (insert-warehouse! db-id {})
+            (let [{:keys [hints]} (unresolved dir)]
+              (is (= (str "no Table \"FACT_SALES\" in schema \"PUBLIC\"; close: \"fact_sales\" in schema \"public\""
+                          " (the letter case or the schema differs; " case-hint "; " schema-hint ")")
+                     (hints ["Sales DB" "PUBLIC" "FACT_SALES"]))))))))))

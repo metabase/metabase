@@ -43,14 +43,29 @@
     (fn [driver]
       (and (loadable-driver? driver) (jdbc-driver? driver)))]])
 
+(mr/def ::identifier-case
+  "How a warehouse stores an identifier written without quotes, which is how sync sees it: `:upper` (Snowflake,
+  Oracle, H2), `:lower` (Postgres, Redshift, the Trino family) or `:as-is`, the spelling kept (MySQL, SQL Server,
+  SQLite, BigQuery). See [[dev.dbt-import.metadata/identifier-case]] for how the converter picks one."
+  [:enum :upper :lower :as-is])
+
 (mr/def ::config
   "The converter's configuration: what the manifest cannot supply, and how the metrics are written."
   [:map {:closed true}
    ;; `:databases` maps the warehouse database name as dbt knows it (`node_relation.database`) to the name of the
-   ;; Metabase Database it is connected as. This is the one thing the manifest cannot supply.
-   [:databases       [:map-of :string :string]]
+   ;; Metabase Database it is connected as, as typed, letter case included. This is the one thing the manifest cannot
+   ;; supply. The key is nil for an adapter that writes `database: null` (dbt-mysql, whose MySQL database is the
+   ;; `schema_name`).
+   [:databases       [:map-of [:maybe :string] :string]]
    ;; `:driver` is the Metabase driver those databases use.
    [:driver          ::driver]
+   ;; `:identifier-case` overrides what the driver says about an identifier dbt wrote without quotes (see
+   ;; [[dev.dbt-import.metadata/identifier-case]]); a part dbt quoted is never folded.
+   [:identifier-case {:optional true} ::identifier-case]
+   ;; `:schema-mapping` maps a dbt `schema_name` to the schema the instance has the table under, nil for none,
+   ;; overriding the default (the schema as the driver stores it, or nil for a driver without schemas) for that
+   ;; schema only.
+   [:schema-mapping  {:optional true} [:map-of :string [:maybe :string]]]
    ;; `:creator-email` is the user the cards are created as. Serdes resolves it by email and synthesizes an inactive
    ;; user when none exists, but a card cannot be imported without one.
    [:creator-email   :string]
