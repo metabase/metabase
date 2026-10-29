@@ -7,6 +7,7 @@ import {
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
   setupLibraryEndpoints,
+  setupTableQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockSettingsState, createMockState } from "__support__/state";
@@ -358,6 +359,87 @@ describe("DataSourceSelector", () => {
       expect(screen.getByText("Sample Database")).toBeInTheDocument();
 
       expect(screen.queryByPlaceholderText("Find...")).not.toBeInTheDocument();
+    });
+
+    it("should return to the schema list when going back from the tables with two schemas", async () => {
+      const twoSchemaDatabase = createMockDatabase({
+        id: OTHER_DB_ID,
+        name: "Two Schema Database",
+        tables: [
+          createMockTable({
+            id: OTHER_DB_TABLE_ID,
+            db_id: OTHER_DB_ID,
+            schema: "accounting",
+            display_name: "Ledger",
+          }),
+          createMockTable({
+            id: getNextId(OTHER_DB_TABLE_ID),
+            db_id: OTHER_DB_ID,
+            schema: "finance",
+            display_name: "Budget",
+          }),
+        ],
+      });
+      setup({
+        ...setupOpts,
+        databases: [createSampleDatabase(), twoSchemaDatabase],
+      });
+
+      await userEvent.click(await screen.findByText("Two Schema Database"));
+      await userEvent.click(await screen.findByText("Accounting"));
+      expect(await screen.findByText("Ledger")).toBeInTheDocument();
+      await userEvent.click(screen.getByLabelText("chevronleft icon"));
+
+      expect(await screen.findByText("Finance")).toBeInTheDocument();
+      expect(screen.getByText("Accounting")).toBeInTheDocument();
+    });
+
+    it("should show the schema and return to the schema list when going back from a reopened table in a database with two schemas", async () => {
+      const databases = [createSampleDatabase(), WAREHOUSE_DATABASE];
+      const warehouseWithoutTables = {
+        ...WAREHOUSE_DATABASE,
+        tables: undefined,
+      };
+      // Like the app's responses, the database list and the table's metadata leave out
+      // the database's tables, so only the schema list can tell there are two schemas
+      fetchMock.get({
+        url: "path:/api/database",
+        query: { saved: true },
+        response: {
+          data: databases.map((database) => ({
+            ...database,
+            tables: undefined,
+          })),
+          total: databases.length,
+        },
+      });
+      setupTableQueryMetadataEndpoint(
+        createMockTable({
+          id: WAREHOUSE_PAYMENTS_TABLE_ID,
+          db_id: WAREHOUSE_DB_ID,
+          schema: "Accounting",
+          display_name: "Payments",
+          db: warehouseWithoutTables,
+        }),
+      );
+      setup({
+        ...setupOpts,
+        databases,
+        selectedTable: {
+          id: WAREHOUSE_PAYMENTS_TABLE_ID,
+          databaseId: WAREHOUSE_DB_ID,
+        },
+      });
+
+      expect(await screen.findByText("Payments")).toBeInTheDocument();
+      expect(await screen.findByTestId("source-schema")).toHaveTextContent(
+        "Accounting",
+      );
+      await userEvent.click(screen.getByTestId("source-database"));
+
+      expect(await screen.findByText("Finance")).toBeInTheDocument();
+      expect(screen.getByText("Accounting")).toBeInTheDocument();
+      expect(screen.queryByText("Payments")).not.toBeInTheDocument();
     });
   });
 
