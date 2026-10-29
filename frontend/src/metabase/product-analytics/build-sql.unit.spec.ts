@@ -31,7 +31,6 @@ const BASE_COLUMNS = {
   timestamp: "ts",
   person: "user_id",
   session: null,
-  event_id: "id",
   event_name: "event_name",
   url_path: null,
 };
@@ -46,7 +45,6 @@ describe("buildSql", () => {
           timestamp: "ts",
           person: "user_id",
           session: null,
-          event_id: "id",
           event_name: "event_name",
           url_path: null,
         },

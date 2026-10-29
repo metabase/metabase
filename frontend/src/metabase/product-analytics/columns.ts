@@ -4,7 +4,6 @@ export const COLUMN_ROLES = [
   "timestamp",
   "person",
   "session",
-  "event_id",
   "event_name",
   "url_path",
 ] as const;
@@ -19,7 +18,6 @@ export const PLANNER_COLUMN_NAMES: Record<ColumnRole, string> = {
   timestamp: "created_at",
   person: "person_id",
   session: "session_id",
-  event_id: "event_id",
   event_name: "event_name",
   url_path: "url_path",
 };

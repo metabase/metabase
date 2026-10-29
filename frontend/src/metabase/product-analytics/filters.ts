@@ -8,7 +8,7 @@ import {
   toPeopleSegmentRef,
 } from "./segments/people-segment-ref";
 import type { PaletteSegment, PeopleSegmentRef } from "./segments/types";
-import type { Grain } from "./spec/types";
+import type { ActorGrain } from "./spec/types";
 
 /**
  * A set of actors picked by clicking a chart, e.g. everyone who reached a
@@ -18,7 +18,7 @@ import type { Grain } from "./spec/types";
 export type CohortFilter = {
   /** The conditions that picked the set, e.g. "Reached step 2: Signed up". */
   label: string;
-  grain: Grain;
+  grain: ActorGrain;
   ids: string[];
 };
 
@@ -37,13 +37,12 @@ export const NO_FILTERS: AnalysisFilters = {
   people: [],
 };
 
-export const COLUMN_ROLE_FOR_GRAIN: Record<Grain, ColumnRole> = {
+export const COLUMN_ROLE_FOR_GRAIN: Record<ActorGrain, ColumnRole> = {
   person: "person",
   session: "session",
-  event: "event_id",
 };
 
-const GRAINS: readonly unknown[] = ["person", "session", "event"];
+const GRAINS: readonly unknown[] = ["person", "session"];
 
 const isCohortFilter = (value: unknown): value is CohortFilter =>
   isRecord(value) &&

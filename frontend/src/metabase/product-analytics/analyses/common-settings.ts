@@ -14,7 +14,7 @@ import { DEFAULT_DATE_RANGE, parseDateRange } from "../date-range";
 import { NO_FILTERS, isAnalysisFilters } from "../filters";
 import type { SettingDefinition } from "../settings/types";
 import { withWidgetProps } from "../settings/with-widget-props";
-import type { Grain, Granularity } from "../spec/types";
+import type { ActorGrain, Grain, Granularity } from "../spec/types";
 
 import { BREAKOUT_VIEWS, isBreakout } from "./breakout";
 import {
@@ -38,7 +38,6 @@ export const getColumnRoles = (settings: ColumnRoleSettings): ColumnRoles => ({
   timestamp: settings["columns.timestamp"],
   person: settings["columns.person"],
   session: settings["columns.session"],
-  event_id: settings["columns.event_id"],
   event_name: settings["columns.event_name"],
   url_path: settings["columns.url_path"],
 });
@@ -60,16 +59,17 @@ const columnRoleSetting = (
   }),
 });
 
-const COLUMN_FOR_GRAIN: Record<Grain, ColumnRoleKey> = {
+const COLUMN_FOR_GRAIN: Record<ActorGrain, ColumnRoleKey> = {
   person: "columns.person",
   session: "columns.session",
-  event: "columns.event_id",
 };
 
+/** Every row is an event, so events are always countable. */
 const isCountable = (
   grain: Grain,
   settings: Partial<ColumnRoleSettings>,
-): boolean => typeof settings[COLUMN_FOR_GRAIN[grain]] === "string";
+): boolean =>
+  grain === "event" || typeof settings[COLUMN_FOR_GRAIN[grain]] === "string";
 
 export const hasSessionColumn = (
   settings: Partial<ColumnRoleSettings>,
@@ -157,7 +157,7 @@ export const commonSettings = ({
       options: grains.filter((grain) => isCountable(grain, settings)),
       isDisabled: context.table === undefined,
     }),
-    readDependencies: ["columns.person", "columns.session", "columns.event_id"],
+    readDependencies: ["columns.person", "columns.session"],
   },
   granularity: granularitySetting(granularity),
   breakout: breakoutSetting(breakout),
@@ -194,7 +194,6 @@ export const commonSettings = ({
   ),
   "columns.person": columnRoleSetting("person", () => t`Person`, true),
   "columns.session": columnRoleSetting("session", () => t`Session`, false),
-  "columns.event_id": columnRoleSetting("event_id", () => t`Event ID`, false),
   "columns.event_name": columnRoleSetting(
     "event_name",
     () => t`Event name`,

@@ -1,8 +1,10 @@
 import type { EventFlags } from "../events/types";
 import type {
+  ActorGrain,
   ActorPredicate,
   AnalysisKind,
   AnalysisSpec,
+  Grain,
   TimeUnit,
 } from "../spec/types";
 
@@ -98,6 +100,10 @@ const EMPTY_SCOPE: ActorPredicate = {
   items: [],
 };
 
+/** Who an analysis follows to count `counting`: events are counted per person. */
+export const getActorGrain = (counting: Grain): ActorGrain =>
+  counting === "event" ? "person" : counting;
+
 /** The parts of a spec every analysis shares. */
 export const getCommonSpec = (
   kind: AnalysisKind,
@@ -109,7 +115,7 @@ export const getCommonSpec = (
   kind,
   // Unused by the planners: the date range lives in the base query.
   timeRange: { preset: "Last 90 days", tz: "UTC" },
-  grain: settings.counting,
+  grain: getActorGrain(settings.counting),
   measure: { agg: "uniq" },
   bucket: { granularity: settings.granularity },
   scope: EMPTY_SCOPE,

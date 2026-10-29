@@ -40,9 +40,6 @@ const ROLE_RULES: Record<ColumnRole, RoleRule> = {
   session: {
     names: ["session_id"],
   },
-  event_id: {
-    names: ["event_id", "id"],
-  },
   event_name: {
     names: ["event_name", "event", "action"],
     accepts: isString,

@@ -32,7 +32,11 @@ export interface Duration {
   unit: TimeUnit;
 }
 
+/** What an analysis counts. */
 export type Grain = "person" | "session" | "event";
+
+/** Who an analysis follows: each row is one event, so events aren't actors. */
+export type ActorGrain = Exclude<Grain, "event">;
 
 export type Aggregate = "count" | "uniq" | "sum" | "avg" | "min" | "max";
 
@@ -177,7 +181,7 @@ export interface OutputSpec {
 export interface AnalysisSpec {
   kind: AnalysisKind;
   timeRange: TimeRange;
-  grain: Grain;
+  grain: ActorGrain;
   measure: Measure;
   bucket: Bucket;
   /**

@@ -74,7 +74,6 @@ const PLANNER_COLUMNS = {
   timestamp: "created_at",
   person: "person_id",
   session: "session_id",
-  event_id: "event_id",
   event_name: "event_name",
   url_path: "url_path",
 };
@@ -97,7 +96,6 @@ const REQUIRED_EVENTS: Record<AnalysisKind, StoredSettings> = {
 const EVENT_TABLE = createMockTable({
   id: 10,
   fields: [
-    createMockField({ id: 1, name: "event_id", base_type: "type/Text" }),
     createMockField({ id: 2, name: "user_id", base_type: "type/Text" }),
     createMockField({ id: 3, name: "ts", base_type: "type/DateTime" }),
     createMockField({ id: 4, name: "event_name", base_type: "type/Text" }),
@@ -283,7 +281,7 @@ describe("analysis settings", () => {
     ).toBe("day");
   });
 
-  it("only offers counting by columns the table has", () => {
+  it("only offers counting by columns the table has, and always by event", () => {
     const { computed, getProps } = setup({
       kind: "lifecycle",
       table: EVENT_TABLE,
@@ -368,7 +366,6 @@ describe("analysis settings", () => {
     expect(computed["columns.timestamp"]).toBe("ts");
     expect(computed["columns.person"]).toBe("user_id");
     expect(computed["columns.session"]).toBeNull();
-    expect(computed["columns.event_id"]).toBe("event_id");
     expect(computed["columns.event_name"]).toBe("event_name");
     expect(computed["columns.url_path"]).toBeNull();
   });

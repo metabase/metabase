@@ -83,7 +83,6 @@ const MISSING_COLUMN_SQL: Record<keyof ColumnRoles, string> = {
   timestamp: "NULL",
   person: "NULL",
   session: "NULL",
-  event_id: "NULL",
   event_name: "''",
   url_path: "''",
 };

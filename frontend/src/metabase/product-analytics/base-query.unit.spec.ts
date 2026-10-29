@@ -21,7 +21,6 @@ const COLUMNS: ColumnRoles = {
   timestamp: "CREATED_AT",
   person: "USER_ID",
   session: null,
-  event_id: "ID",
   event_name: null,
   url_path: null,
 };
@@ -97,7 +96,7 @@ describe("buildBaseQuery", () => {
       Lib.returnedColumns(query, STAGE).map(
         (column) => Lib.displayInfo(query, STAGE, column).name,
       ),
-    ).toEqual(["CREATED_AT", "USER_ID", "ID"]);
+    ).toEqual(["CREATED_AT", "USER_ID"]);
   });
 
   it("left-joins the users table for an extra column of it", () => {
@@ -131,7 +130,7 @@ describe("buildBaseQuery", () => {
       Lib.returnedColumns(query, STAGE).map(
         (column) => Lib.displayInfo(query, STAGE, column).longDisplayName,
       ),
-    ).toEqual(["Created At", "User ID", "ID", "People - User → Source"]);
+    ).toEqual(["Created At", "User ID", "People - User → Source"]);
   });
 
   it("rejects a users table column without a users table", () => {

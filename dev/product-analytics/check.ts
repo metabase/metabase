@@ -114,7 +114,6 @@ SELECT
   person__first_seen_at,
   person_id,
   session_id,
-  event_id,
   created_at,
   event_name,
   url_path,
@@ -260,7 +259,6 @@ const baseColumnsWithoutRange = (spec: AnalysisSpec): BaseColumns => ({
     timestamp: "created_at",
     person: "person_id",
     session: "session_id",
-    event_id: "event_id",
     event_name: "event_name",
     url_path: "url_path",
   },
@@ -846,9 +844,9 @@ type FixtureEvent = {
 const fixtureEventsSql = (events: FixtureEvent[]): string =>
   events
     .map(
-      ({ actor, flag, at, country = "", inRange = true }, index) =>
+      ({ actor, flag, at, country = "", inRange = true }) =>
         `SELECT '${actor}' AS person_id, toDateTime('${at}') AS created_at, ` +
-        `'s' AS session_id, 'e${index}' AS event_id, '${flag}' AS event_name, '/' AS url_path, ` +
+        `'s' AS session_id, '${flag}' AS event_name, '/' AS url_path, ` +
         `'${country}' AS country, ${Number(inRange)} AS ${IN_RANGE_FLAG}, ` +
         Object.values(FLAG)
           .map((other) => `${Number(other === flag)} AS ${other}`)

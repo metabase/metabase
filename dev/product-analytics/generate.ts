@@ -98,7 +98,7 @@ type Transition =
   | "Viewed pricing → Started trial"
   | "Started trial → Purchased";
 
-/** What the insight search should and shouldn't find; see `check-insights.ts`. */
+/** What the insight search should and shouldn't find; see `context/insights.plan.md`. */
 type PlantedInsights = {
   expected: {
     transition: Transition;
