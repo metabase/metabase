@@ -4191,7 +4191,16 @@
              (base-type (get-in (repair* (joined-on ["field" {} "USER_ID"])) ["stages" 1 "joins" 0 "conditions" 0 2])))))
     (testing "a bad name there raises the cross-stage error"
       (is (=? {:error :unresolved-cross-stage-field, :clause ["field" {} "nope"]}
-              (repair-error (joined-on ["field" {} "nope"])))))))
+              (repair-error (joined-on ["field" {} "nope"])))))
+    (testing "a ref there through a join alias the previous stage doesn't have is left for validation"
+      (doseq [column ["USER_ID" "nope"]
+              :let   [field-ref ["field" {"join-alias" "first"} column]]]
+        (is (= field-ref (get-in (repair* (joined-on field-ref)) ["stages" 1 "joins" 0 "conditions" 0 2])))))
+    (testing "a ref there through a join of the previous stage is typed from that stage"
+      (let [prev-min ["field" {"join-alias" "Prev"} "min"]
+            q        (query (orders-stage {"joins" [(assoc (join "Prev" [first-orders-stage]) "fields" "all")]})
+                            (stage {"joins" [(join "First" [first-orders-stage] :lhs prev-min)]}))]
+        (is (= "type/Date" (base-type (get-in (repair* q) ["stages" 1 "joins" 0 "conditions" 0 2]))))))))
 
 (deftest ^:parallel join-alias-field-type-runs-before-cross-stage-inference-test
   (testing "a stage carrying a join-alias ref still resolves as the next stage's prefix"
