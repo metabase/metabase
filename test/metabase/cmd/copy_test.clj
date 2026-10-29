@@ -140,6 +140,7 @@
     :model/DatabaseRouter
     :model/Dependency
     :model/DependencyStatus
+    :model/ImpersonationQueryCache
     :model/McpQueryHandle
     :model/MetabotPermissions
     :model/PremiumFeaturesCache
