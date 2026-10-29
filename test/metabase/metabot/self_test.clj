@@ -300,6 +300,31 @@
           (finally
             (llm.health/record-success! "openai")))))))
 
+(deftest call-llm-keeps-a-streamed-context-overflow-off-the-health-record-test
+  (llm.tu/with-default-connections
+    (mt/as-admin
+      (llm.health/record-success! "openrouter")
+      (try
+        (let [parts (mt/with-dynamic-fn-redefs [openrouter/openrouter
+                                                (fn [_]
+                                                  (test-util/mock-llm-response
+                                                   [{:type      :error
+                                                     :errorText "Provider returned error"
+                                                     :error     {:message  "Provider returned error"
+                                                                 :code     400
+                                                                 :metadata {:error_type "context_length_exceeded"}}}]))]
+                      (mt/with-log-level [metabase.metabot.self :fatal]
+                        (into [] (self/call-llm "openrouter/anthropic/claude-haiku-4-5" nil [] {}
+                                                {:tag "agent" :required-permission :permission/metabot}
+                                                nil))))]
+          (testing "OpenRouter reports an overflow inside the stream, and the turn still says the conversation is full"
+            (is (=? [{:type :error :error {:error-code "ai_provider_context_full"}}]
+                    (filterv #(= :error (:type %)) parts))))
+          (testing "a conversation too long for the window is that conversation's problem, not the connection's"
+            (is (true? (llm.health/healthy? "openrouter")))))
+        (finally
+          (llm.health/record-success! "openrouter"))))))
+
 (deftest call-llm-tool-choice-test
   (llm.tu/with-default-connections
     (testing "passes required tool choice to LLM providers"

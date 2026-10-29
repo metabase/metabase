@@ -286,6 +286,8 @@
   [{:keys [provider ai-proxy?]}]
   (if ai-proxy? "metabase" provider))
 
+(declare context-overflow-object?)
+
 (defn- report-aisdk-errors-xf
   "Transducer that logs and increments the llm-errors counter for :error parts in the aisdk stream."
   [tracking-opts]
@@ -298,7 +300,7 @@
                       {:model  (:model tracking-opts "unknown")
                        :source (:tag tracking-opts "none")
                        :error  (:error part)})
-           (when-not (:request-specific? part)
+           (when-not (or (:request-specific? part) (context-overflow-object? (:error part)))
              (llm.health/record-failure! (:connection-key tracking-opts)
                                          (:message (:error part))
                                          false))
