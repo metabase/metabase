@@ -1364,6 +1364,13 @@ describe("Notebook Editor > Join Step", () => {
         ).toHaveTextContent("Created At"),
       );
 
+      const completeCondition = screen.getByTestId("join-condition-0");
+      expect(
+        within(completeCondition).getByLabelText("Left column"),
+      ).toHaveTextContent("Product ID");
+      expect(
+        within(completeCondition).getByLabelText("Right column"),
+      ).toHaveTextContent("ID");
       expect(updateQuery).not.toHaveBeenCalled();
     });
 
