@@ -5,7 +5,9 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.collections.db :as collections.db]
    [metabase.indexed-entities.core :as indexed-entities]
+   [metabase.indexed-entities.db :as indexed-entities.db]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
@@ -13,7 +15,9 @@
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
+   [metabase.queries.db :as queries.db]
    [metabase.query-permissions.core :as query-perms]
+   [metabase.segments.db :as segments.db]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.json :as json]
@@ -21,6 +25,8 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.regex :as u.regex]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouses.db :as warehouses.db]
    [metabase.xrays.automagic-dashboards.comparison :as automagic-dashboards.comparison]
    [metabase.xrays.automagic-dashboards.core :as automagic-dashboards.core]
    [metabase.xrays.automagic-dashboards.dashboard-templates :as automagic-dashboards.dashboard-templates]
@@ -96,7 +102,7 @@
   "Return a list of candidates for automagic dashboards ordered by interestingness."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (-> (xrays.db/database id)
+  (-> (warehouses.db/database id)
       api/read-check
       automagic-dashboards.core/candidate-tables))
 
@@ -129,19 +135,20 @@
   (if-let [[_ card-id-str] (when (string? table-id-str)
                              (re-matches #"^card__(\d+$)" table-id-str))]
     (->entity :question card-id-str)
-    (api/read-check (xrays.db/table (ensure-int table-id-str)))))
+    (api/read-check (warehouse-schema.db/table (ensure-int table-id-str)))))
 
 (defmethod ->entity :segment
   [_entity-type segment-id-str]
-  (api/read-check (xrays.db/segment (ensure-int segment-id-str))))
+  (api/read-check (segments.db/segment (ensure-int segment-id-str))))
 
 (defmethod ->entity :model
   [_entity-type card-id-str]
-  (api/read-check (xrays.db/model-card (ensure-int card-id-str))))
+  (let [card (queries.db/card (ensure-int card-id-str))]
+    (api/read-check (when (= :model (:type card)) card))))
 
 (defmethod ->entity :question
   [_entity-type card-id-str]
-  (api/read-check (xrays.db/card (ensure-int card-id-str))))
+  (api/read-check (queries.db/card (ensure-int card-id-str))))
 
 (mu/defn adhoc-query-instance :- [:and
                                   (ms/InstanceOf :model/Query)
@@ -161,11 +168,11 @@
 
 (defmethod ->entity :field
   [_entity-type field-id-str]
-  (api/read-check (xrays.db/field (ensure-int field-id-str))))
+  (api/read-check (warehouse-schema.db/field (ensure-int field-id-str))))
 
 (defmethod ->entity :transform
   [_entity-type transform-name]
-  (api/read-check (xrays.db/collection (transforms.materialize/get-collection transform-name)))
+  (api/read-check (collections.db/collection (transforms.materialize/get-collection transform-name)))
   transform-name)
 
 (def ^:private entities
@@ -307,7 +314,7 @@
     :keys                        [linked-tables model-pk indexed-value]}]
   (if (seq linked-tables)
     (let [child-dashboards (map (fn [{:keys [linked-table-id linked-field-id]}]
-                                  (let [table (xrays.db/table linked-table-id)
+                                  (let [table (warehouse-schema.db/table linked-table-id)
                                         mp    (lib-be/application-database-metadata-provider (:db_id table))]
                                     (automagic-dashboards.core/automagic-analysis
                                      table
@@ -372,8 +379,8 @@
   [{:keys [model-index-id pk-id]} :- [:map {:closed true}
                                       [:model-index-id :int]
                                       [:pk-id          :int]]]
-  (api/let-404 [model-index (xrays.db/model-index model-index-id)
-                model (xrays.db/card (:model_id model-index))]
+  (api/let-404 [model-index (indexed-entities.db/model-index model-index-id)
+                model (queries.db/card (:model_id model-index))]
     ;; `->entity` does a read check on the model but this is here as well to be extra sure.
     (api/read-check :model/Card (:model_id model-index))
     (let [linked (linked-entities {:model       model

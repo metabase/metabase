@@ -15,12 +15,13 @@
   ::prose-mirror/ast)
 
 (mr/def ::document
-  "A Document as selected from the app DB: every column of `:document`, plus `:creator` and `:collection` some
-  callers hydrate onto it."
+  "A Document as selected from the app DB: every column of `:document`, with `:document` as stored rather than as
+  written, plus `:creator` and `:collection` some callers hydrate onto it."
   [:merge
    ::document.update
    [:map {:closed true}
     [:id                  ms/PositiveInt]
+    [:document            {:optional true} [:maybe [:map {::mr/deliberately-open true, :description "the column as stored"}]]]
     [:creator             {:optional true} [:maybe :metabase.users.schema/user]]
     [:collection          {:optional true} [:maybe :metabase.collections.schema/collection-or-root]]
     [:can_write           {:optional true} :boolean]

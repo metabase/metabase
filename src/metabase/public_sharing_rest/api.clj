@@ -9,7 +9,9 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.dashboards-rest.api :as api.dashboard]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.documents.db :as documents.db]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -27,6 +29,7 @@
    [metabase.public-sharing.core :as public-sharing]
    [metabase.public-sharing.validation :as public-sharing.validation]
    [metabase.queries.core :as queries]
+   [metabase.queries.db :as queries.db]
    [metabase.queries.schema :as queries.schema]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.dashboard :as qp.dashboard]
@@ -114,13 +117,62 @@
                                     (seq query) blank-dataset-query)))
          params/remove-param-fields-non-public-columns))))
 
+(def ^:private public-card-columns
+  [:id :dataset_query :description :display :name :parameters :visualization_settings
+   :card_schema :type :entity_id :result_metadata :dimensions :dimension_mappings])
+
+(def ^:private public-dashboard-columns
+  [:name :description :id :parameters :auto_apply_filters :width])
+
+(defn- active-card
+  "The non-archived Card with `card-id`, or nil."
+  [card-id]
+  (when-let [card (some-> card-id queries.db/card)]
+    (when-not (:archived card)
+      card)))
+
+(defn- active-card-in-document
+  "The non-archived Card with `card-id` that belongs to the Document with `document-id`, or nil."
+  [card-id document-id]
+  (when-let [card (active-card card-id)]
+    (when (= document-id (:document_id card))
+      card)))
+
+(defn- public-card-row
+  "The non-archived Card with `card-id` with only its public columns, or nil, requiring embedding when `:enable-embedding?`."
+  [card-id {:keys [enable-embedding?]}]
+  (when-let [card (active-card card-id)]
+    (when (or (not enable-embedding?) (:enable_embedding card))
+      (mi/instance :model/Card (select-keys card public-card-columns)))))
+
+(defn- public-dashboard-row
+  "The non-archived Dashboard with `dashboard-id` with only its public columns, or nil, requiring embedding when `:enable-embedding?`."
+  [dashboard-id {:keys [enable-embedding?]}]
+  (when-let [dashboard (some-> dashboard-id dashboards.db/dashboard)]
+    (when (and (not (:archived dashboard))
+               (or (not enable-embedding?) (:enable_embedding dashboard)))
+      (mi/instance :model/Dashboard (select-keys dashboard public-dashboard-columns)))))
+
+(defn- public-document-row
+  "The non-archived Document with `document-id`, restricted to the columns safe to expose publicly, or nil."
+  [document-id]
+  (when-let [document (some-> document-id documents.db/document)]
+    (when-not (:archived document)
+      (mi/instance :model/Document
+                   (select-keys document [:id :name :document :content_type :created_at :updated_at])))))
+
+(defn- document-content
+  "The id, content, and content type of the Document with `document-id`, or nil."
+  [document-id]
+  (some-> document-id documents.db/document (select-keys [:id :document :content_type])))
+
 (defn public-card
   "Return the public Card with the given `card-id`, removing all columns that should not be visible to the general
   public. Throws a 404 if the Card doesn't exist. With `:enable-embedding? true`, additionally requires embedding
   to be enabled."
   [card-id & {:as options}]
   (binding [params/*ignore-current-user-perms-and-return-all-field-values* true]
-    (-> (api/check-404 (public-sharing-rest.db/public-card card-id options))
+    (-> (api/check-404 (public-card-row card-id options))
         combine-parameters-and-template-tags
         (t2/hydrate :param_fields)
         keep-param-fields-for-parameters
@@ -195,7 +247,7 @@
 
 (mu/defn process-query-for-card-with-id
   "Run the query for pre-loaded Card `card` with `parameters` and other query options (e.g. `:constraints`).
-  Callers are responsible for resolving `card` themselves with a fresh `public-sharing-rest.db/active-card` call (each endpoint should
+  Callers are responsible for resolving `card` themselves with a fresh `active-card` call (each endpoint should
   select the Card exactly once and thread the loaded entity here). Returns a `StreamingResponse`."
   [card          :- ::queries.schema/card
    export-format :- [:maybe :keyword]
@@ -347,7 +399,7 @@
    & {:as options} :- [:maybe [:map {:closed true} [:enable-embedding? {:optional true} [:maybe :boolean]]]]]
   (binding [params/*ignore-current-user-perms-and-return-all-field-values* true
             params/*field-id-context* (atom params/empty-field-id-context)]
-    (-> (api/check-404 (public-sharing-rest.db/public-dashboard dashboard-id options))
+    (-> (api/check-404 (public-dashboard-row dashboard-id options))
         (t2/hydrate [:dashcards :card :series :dashcard/action] :tabs :param_fields)
         keep-param-fields-for-parameters
         params/remove-param-fields-non-public-columns
@@ -444,9 +496,9 @@
                             [:parameters   {:optional true} [:maybe ::parameters.schema/api.parameter-values]]
                             [:ignore_cache {:optional true} [:maybe ms/BooleanValue]]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (let [card      (api/check-404 (public-sharing-rest.db/active-card card-id))
+  (let [card      (api/check-404 (active-card card-id))
         dashboard (api/check-404 (public-sharing/public-uuid->model :model/Dashboard uuid))
-        dashcard  (api/check-404 (public-sharing-rest.db/dashcard dashcard-id))]
+        dashcard  (api/check-404 (dashboards.db/dashboard-card dashcard-id))]
     (process-query-for-dashcard
      :dashboard     dashboard
      :card          card
@@ -474,9 +526,9 @@
                                                       [:pivot_results {:default false} ms/BooleanValue]
                                                       [:csv_include_bom {:optional true} [:maybe ms/BooleanValue]]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (let [card      (api/check-404 (public-sharing-rest.db/active-card card-id))
+  (let [card      (api/check-404 (active-card card-id))
         dashboard (api/check-404 (public-sharing/public-uuid->model :model/Dashboard uuid))
-        dashcard  (api/check-404 (public-sharing-rest.db/dashcard dashcard-id))]
+        dashcard  (api/check-404 (dashboards.db/dashboard-card dashcard-id))]
     (u/prog1 (process-query-for-dashcard
               :dashboard     dashboard
               :card          card
@@ -729,9 +781,9 @@
                             [:parameters   {:optional true} [:maybe ::parameters.schema/api.parameter-values]]
                             [:ignore_cache {:optional true} [:maybe ms/BooleanValue]]]]
   (public-sharing.validation/check-public-sharing-enabled)
-  (let [card      (api/check-404 (public-sharing-rest.db/active-card card-id))
+  (let [card      (api/check-404 (active-card card-id))
         dashboard (api/check-404 (public-sharing/public-uuid->model :model/Dashboard uuid))
-        dashcard  (api/check-404 (public-sharing-rest.db/dashcard dashcard-id))]
+        dashcard  (api/check-404 (dashboards.db/dashboard-card dashcard-id))]
     (process-query-for-dashcard
      :dashboard     dashboard
      :card          card
@@ -839,8 +891,8 @@
        [:lonField ::api.tiles/legacy-ref]]]
   (public-sharing.validation/check-public-sharing-enabled)
   (let [dashboard (api/check-404 (public-sharing/public-uuid->model :model/Dashboard uuid))
-        dashcard  (api/check-404 (public-sharing-rest.db/dashcard dashcard-id))
-        card      (api/check-404 (public-sharing-rest.db/active-card card-id))]
+        dashcard  (api/check-404 (dashboards.db/dashboard-card dashcard-id))
+        card      (api/check-404 (active-card card-id))]
     (process-tiles-query-for-dashcard dashboard dashcard card
                                       parameters zoom x y latField lonField)))
 
@@ -863,7 +915,7 @@
   once before exposing them to unauthenticated users. The document and all cards must not be archived to be
   accessible publicly."
   [document-id]
-  (let [document     (-> (api/check-404 (public-sharing-rest.db/public-document document-id))
+  (let [document     (-> (api/check-404 (public-document-row document-id))
                          ;; Hydrate cards via Toucan batched hydration to avoid N+1 queries
                          (t2/hydrate :cards))
         embedded-ids (set (prose-mirror/card-ids document))]
@@ -883,9 +935,9 @@
 
   Returns the loaded `:model/Card` entity so the caller can thread it downstream without re-selecting it."
   [uuid card-id]
-  (let [document (api/check-404 (public-sharing-rest.db/document-content (public-sharing/public-uuid->id :model/Document uuid)))]
+  (let [document (api/check-404 (document-content (public-sharing/public-uuid->id :model/Document uuid)))]
     (api/check-404 (when (contains? (set (prose-mirror/card-ids document)) card-id)
-                     (public-sharing-rest.db/active-card-in-document card-id (:id document))))))
+                     (active-card-in-document card-id (:id document))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

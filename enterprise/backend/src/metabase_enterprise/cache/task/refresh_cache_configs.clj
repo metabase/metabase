@@ -6,6 +6,7 @@
    [java-time.api :as t]
    [metabase-enterprise.cache.db :as cache.db]
    [metabase-enterprise.cache.strategies :as strategies]
+   [metabase.dashboards.db :as dashboards.db]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.query-processor.core :as qp]
    [metabase.task.core :as task]
@@ -186,7 +187,7 @@
   [{:keys [model_id model]}]
   (case model
     "question" [model_id]
-    "dashboard" (let [dashboard (-> (cache.db/dashboard model_id)
+    "dashboard" (let [dashboard (-> (dashboards.db/dashboard model_id)
                                     (t2/hydrate :dashcards))]
                   (distinct (keep :card_id (:dashcards dashboard))))))
 

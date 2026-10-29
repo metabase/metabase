@@ -9,6 +9,7 @@
    [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.channel.email.messages :as messages]
    [metabase.events.core :as events]
+   [metabase.users.db :as users.db]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -108,7 +109,7 @@
   [user-id :- ms/PositiveInt]
   (u/prog1 (generate-reset-token user-id)
     (t2/with-transaction [_]
-      (let [user (auth-identity.db/user user-id)
+      (let [user (users.db/user user-id)
             auth-identity {:user_id user-id
                            :provider "emailed-secret-password-reset"
                            :provider_id (:email user)
@@ -146,7 +147,7 @@
     :else
     (try
       (if-let [user-id (parse-token-user-id token)]
-        (if-let [auth-identity (auth-identity.db/auth-identity user-id (name provider))]
+        (if-let [auth-identity (auth-identity.db/auth-identity-for-user-and-provider user-id (name provider))]
           (let [verification-result (verify-reset-token token (:credentials auth-identity))]
             (case verification-result
               :valid
@@ -193,7 +194,7 @@
     (do
       (if (:last_login user)
         (events/publish-event! :event/password-reset-successful {:object (assoc user :token (auth-identity/reset-token-hash (:id user)))})
-        (messages/send-user-joined-admin-notification-email! (auth-identity.db/user (:id user))))
+        (messages/send-user-joined-admin-notification-email! (users.db/user (:id user))))
       ;; the person resetting proved they own the account, so they are who ends its sessions
       (auth-identity/set-password! (:id user) password {:ended-by (:id user)})
       ;; The session cannot belong to the reset identity: `set-password!` has just deleted it, and its `expires_at` is

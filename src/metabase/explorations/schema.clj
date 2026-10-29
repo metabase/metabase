@@ -2,7 +2,8 @@
   "Malli schemas for the explorations module."
   (:require
    [metabase.interestingness.chart.types :as chart.types]
-   [metabase.lib.schema :as lib.schema]
+   [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metrics.core :as metrics]
    [metabase.util.malli.registry :as mr]
@@ -58,8 +59,8 @@
   [:map {:closed true}
    [:dimension-id   ms/UUIDString]
    [:display-name   {:optional true} [:maybe :string]]
-   [:effective-type {:optional true} [:maybe :string]]
-   [:semantic-type  {:optional true} [:maybe :string]]])
+   [:effective-type {:optional true} [:maybe ::lib.schema.common/base-type]]
+   [:semantic-type  {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]])
 
 (mr/def ::exploration-block
   "A ExplorationBlock as selected from the app DB: every column of `:exploration_block`."
@@ -104,8 +105,8 @@
   ms/VisualizationSettings)
 
 (mr/def ::exploration-query.dataset-query
-  "The `:dataset_query` column of a ExplorationQuery, decoded."
-  ::lib.schema/query)
+  "The `:dataset_query` a ExplorationQuery create or update accepts: an MBQL query, possibly legacy, never empty."
+  ::lib-be.schema/maybe-legacy-query)
 
 (mr/def ::exploration-query.params
   "The `:params` column of a ExplorationQuery, decoded."
@@ -119,11 +120,13 @@
   ::exploration-thread.data-access-token)
 
 (mr/def ::exploration-query
-  "A ExplorationQuery as selected from the app DB: every column of `:exploration_query`."
+  "A ExplorationQuery as selected from the app DB: every column of `:exploration_query`, with an unreadable
+  `:dataset_query` read back as an empty query."
   [:merge
    ::exploration-query.update
    [:map {:closed true}
-    [:id                     ms/PositiveInt]]])
+    [:id                     ms/PositiveInt]
+    [:dataset_query          {:optional true} [:maybe ::lib-be.schema/maybe-legacy-or-empty-query]]]])
 
 (mr/def ::exploration-query.update
   "What an update (or insert) of a ExplorationQuery accepts: every column of `:exploration_query` except `id`, all optional."

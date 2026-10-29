@@ -188,7 +188,7 @@
   [{:keys [id]} :- ConversationIdParams
    _query-params
    {:keys [message_id]} :- ForkConversationBody]
-  (let [conversation (api/check-404 (metabot.db/conversation-id-and-user-id id))]
+  (let [conversation (api/check-404 (metabot.db/metabot-conversation id))]
     (api/check-403 (= (:user_id conversation) api/*current-user-id*))
     (let [new-conversation-id (metabot.persistence/fork-conversation! id message_id api/*current-user-id*)]
       (api/check-400 (some? new-conversation-id)

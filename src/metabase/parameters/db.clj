@@ -75,11 +75,6 @@
             :limit  1})
           (update :mapping_type mapping-type-code->name)))
 
-(mu/defn field
-  "The Field with `field-id`, or nil."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select-one :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
-
 (mu/defn fields
   "The Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
@@ -89,21 +84,6 @@
   "The id, FK target, and semantic type of the Fields with `field-ids`."
   [field-ids :- [:set ::lib.schema.id/field]]
   (t2/select [:model/Field :id :fk_target_field_id :semantic_type] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
-
-(mu/defn field-fk-target-field-id
-  "The FK target Field id of the Field with `field-id`, or nil."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :fk_target_field_id :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query)]}))
-
-(mu/defn field-base-type
-  "The base type of the Field with `field-id`, or nil."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :base_type :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
-
-(mu/defn field-name
-  "The name of the Field with `field-id`, or nil."
-  [field-id :- ::lib.schema.id/field]
-  (t2/select-one-fn :name :model/Field :id field-id {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))
 
 (mu/defn full-field-values-exist?
   "Whether complete, non-remapped FieldValues of type `full` exist for the Field with `field-id`."
@@ -119,11 +99,6 @@
   (t2/exists? :model/FieldValues
               :field_id field-id, :values [:not= nil], :human_readable_values nil, :has_more_values false
               :type "advanced", :hash_key hash-key))
-
-(mu/defn card
-  "The Card with `card-id`, or nil."
-  [card-id :- ::lib.schema.id/card]
-  (t2/select-one :model/Card :id card-id))
 
 (mu/defn delete-field-values!
   "Delete the FieldValues with `id`, returning the number deleted."
