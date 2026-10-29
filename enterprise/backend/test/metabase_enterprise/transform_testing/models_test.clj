@@ -182,7 +182,7 @@
                    :model/TransformTest {test-id :id}      {:transform_id transform-id
                                                             :inputs       inputs
                                                             :expectations [empty-expectation]}]
-      (is (some? (caught #(t2/update! :model/TransformTest test-id {:expectations [{:type "empty" :name "x"}]}))))
+      (is (some? (caught #(t2/update! :model/TransformTest :id test-id {:expectations [{:type "empty" :name "x"}]}))))
       (testing "and the stored value is unchanged"
         (is (= ["no orphan rows"]
                (mapv :name (:expectations (t2/select-one :model/TransformTest :id test-id)))))))))
@@ -202,7 +202,7 @@
                                                               :inputs       []
                                                               :expectations []}]
         (with-redefs [events/publish-event! (fn [topic event] (swap! published conj [topic event]))]
-          (t2/delete! :model/Transform transform-id))
+          (t2/delete! :model/Transform :id transform-id))
         (testing "the rows are gone"
           (is (false? (t2/exists? :model/TransformTest :id test-id)))
           (is (false? (t2/exists? :model/TransformTest :id other-id))))
@@ -234,7 +234,7 @@
         (is (nil? (:end_time started)))
         (is (some? (:last_heartbeat started))))
       (testing "the owning process heartbeats its registered run"
-        (t2/update! :model/TransformTestRun run-id {:last_heartbeat (minutes-ago 10)})
+        (t2/update! :model/TransformTestRun :id run-id {:last_heartbeat (minutes-ago 10)})
         (transform-testing.run-tracking/heartbeat-and-reconcile-runs!)
         (is (recent? (t2/select-one-fn :last_heartbeat :model/TransformTestRun :id run-id))))
       (testing "finishing sets a terminal status and end time"
@@ -266,7 +266,7 @@
   (mt/with-temp [:model/Transform     {transform-id :id} {}
                  :model/TransformTest {transform-test-id :id} {:transform_id transform-id}]
     (let [{run-id :id} (transform-testing.run-tracking/start-run! transform-test-id)]
-      (t2/delete! :model/TransformTest transform-test-id)
+      (t2/delete! :model/TransformTest :id transform-test-id)
       (is (nil? (t2/select-one-fn :transform_test_id :model/TransformTestRun :id run-id)))
       (is (= 1 (transform-testing.run-tracking/finish-run! run-id :passed)))
       (is (= :passed (t2/select-one-fn :status :model/TransformTestRun :id run-id))))))

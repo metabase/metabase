@@ -45,16 +45,13 @@
        :clickhouse spec nil
        (fn [^java.sql.Connection conn]
          (driver/set-role! :clickhouse conn default-role)
-         (fn [^java.sql.Connection conn]
-           (driver/set-role! :clickhouse conn default-role)
-           (with-open [stmt (.prepareStatement conn "SELECT * FROM `metabase_test_role_db`.`some_table` ORDER BY i ASC;")
-                       rset (.executeQuery stmt)]
-             (is (true? (.next rset)))
-             (is (= 42 (.getInt rset 1)))
-             (is (true? (.next rset)))
-             (is (= 144 (.getInt rset 1)))
-             (is (false? (.next rset)))))))
-      (is true))))
+         (with-open [stmt (.prepareStatement conn "SELECT * FROM `metabase_test_role_db`.`some_table` ORDER BY i ASC;")
+                     rset (.executeQuery stmt)]
+           (is (true? (.next rset)))
+           (is (= 42 (.getInt rset 1)))
+           (is (true? (.next rset)))
+           (is (= 144 (.getInt rset 1)))
+           (is (false? (.next rset)))))))))
 
 (defn- set-role-throws-test!
   [details-map]
@@ -112,6 +109,9 @@
                           ENGINE ReplicatedMergeTree('/clickhouse/{cluster}/tables/{database}/{table}/{shard}', '{replica}')
                           ORDER BY (i);"
                           "INSERT INTO `metabase_test_role_db`.`some_table` VALUES (42), (144);"
+                          ;; the test reads through the load balancer, so it can reach a replica the rows haven't
+                          ;; reached yet
+                          "SYSTEM SYNC REPLICA ON CLUSTER '{cluster}' `metabase_test_role_db`.`some_table`;"
                           "CREATE ROLE IF NOT EXISTS `metabase_test_role` ON CLUSTER '{cluster}';"
                           "CREATE ROLE IF NOT EXISTS `metabase-test-role` ON CLUSTER '{cluster}';"
                           "CREATE USER IF NOT EXISTS `metabase_test_user` ON CLUSTER '{cluster}' NOT IDENTIFIED;"
@@ -189,13 +189,13 @@
 (defn- with-ssh-tunnel*! [tunnel-details f]
   (let [base-details (t2/select-one-fn :details 'Database :id (mt/id))]
     ;; Set up SSH tunnel
-    (t2/update! 'Database (mt/id) {:details (merge base-details tunnel-details)})
+    (t2/update! 'Database :id (mt/id) {:details (merge base-details tunnel-details)})
     ;; Discard any existing connection pool to make sure the new one uses it.
     (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))
     ;; Run the test body
     (f)
     ;; Clean up
-    (t2/update! 'Database (mt/id) {:details base-details})
+    (t2/update! 'Database :id (mt/id) {:details base-details})
     (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))))
 
 (defmacro ^:private with-ssh-tunnel! [tunnel-details & body]
@@ -220,4 +220,4 @@
             (with-ssh-tunnel! (assoc tunnel-details :tunnel-pass "wrong-password")
               (is (thrown-with-msg?
                    org.apache.sshd.common.SshException #"No more authentication methods available"
-                   (count (mt/rows (qp/process-query (mt/mbql-query venues)))))))))))))
+                   (mt/rows (qp/process-query (mt/mbql-query venues))))))))))))

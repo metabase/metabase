@@ -259,7 +259,7 @@
           (is (true? (:is_stub stub)))
           (is (= {:type/Currency true :type/City true}
                  (into {} (map (juxt first second)) (vals (settings)))))
-          (t2/update! :model/Database (:id stub) {:engine :h2 :details (:details (mt/db)) :is_stub false})
+          (t2/update! :model/Database :id (:id stub) {:engine :h2 :details (:details (mt/db)) :is_stub false})
           (sync/sync-db-metadata! (:id (t2/select-one :model/Database :id (:id stub))))
           (testing "sync reactivates the stub Fields and gives them their real base types"
             (is (=? [{:name "NAME" :active true :base_type :type/Text}
@@ -329,11 +329,11 @@
             table (ts/create! :model/Table :name "customers" :db_id (:id db) :owner_user_id (:id owner))
             file  (ts/extract-one "Table" (:id table))
             load! (fn [entity] (serdes.load/load-metabase! (ts/ingestion-in-memory [entity])))]
-        (t2/update! :model/Table (:id table) {:owner_user_id nil})
+        (t2/update! :model/Table :id (:id table) {:owner_user_id nil})
         (load! file)
-        (is (= (:id owner) (t2/select-one-fn :owner_user_id :model/Table (:id table))))
+        (is (= (:id owner) (t2/select-one-fn :owner_user_id :model/Table :id (:id table))))
         (load! (assoc file :owner_user_id (:id other)))
-        (is (= (:id other) (t2/select-one-fn :owner_user_id :model/Table (:id table))))))))
+        (is (= (:id other) (t2/select-one-fn :owner_user_id :model/Table :id (:id table))))))))
 
 (deftest legacy-table-user-settings-fields-import-test
   (testing "a settings file written before Field settings got files of their own replaces its Table's Field settings"
@@ -361,7 +361,7 @@
             email    (ts/create! :model/Field :name "email" :table_id (:id table))
             _        (t2/insert! :model/FieldUserSettings {:field_id (:id email) :description "edited"})
             settings (ts/extract-one "FieldUserSettings" (:id email))]
-        (t2/update! :model/FieldUserSettings (:id email) {:display_name "Local"})
+        (t2/update! :model/FieldUserSettings :field_id (:id email) {:display_name "Local"})
         (serdes.load/load-metabase! (ts/ingestion-in-memory [settings]))
         (is (=? {:description "edited" :display_name nil}
                 (t2/select-one :model/FieldUserSettings :field_id (:id email))))))))
@@ -1933,7 +1933,7 @@
                         :details                     {:let-user-control-scheduling true}
                         :metadata_sync_schedule      "0 10 * * * ? *"
                         :cache_field_values_schedule "0 0 16 * * ? *")]
-        (t2/delete! :model/Database (:id db))
+        (t2/delete! :model/Database :id (:id db))
         (serdes.load/load-metabase! (ts/ingestion-in-memory [file]))
         (is (=? {:metadata_sync_schedule      "0 10 * * * ? *"
                  :cache_field_values_schedule "0 0 16 * * ? *"}
@@ -2037,9 +2037,9 @@
             (serdes.load/load-metabase! (ts/ingestion-in-memory extract1))
             (ts/with-db source-db
               ;; delete the 1st series and update the 3rd series to have position 0, and the 2nd series to have position 1
-              (t2/delete! :model/DashboardCardSeries (:id series1s))
-              (t2/update! :model/DashboardCardSeries (:id series3s) {:position 0})
-              (t2/update! :model/DashboardCardSeries (:id series2s) {:position 1})
+              (t2/delete! :model/DashboardCardSeries :id (:id series1s))
+              (t2/update! :model/DashboardCardSeries :id (:id series3s) {:position 0})
+              (t2/update! :model/DashboardCardSeries :id (:id series2s) {:position 1})
               (let [extract2 (into [] (serdes.extract/extract {:no-settings true :no-data-model true}))]
                 (ts/with-db dest-db
                   (let [series-card2d        (t2/select-one :model/Card :entity_id (:entity_id series-card2s))
@@ -2300,7 +2300,7 @@
       (ts/with-db source-db
         (let [coll (ts/create! :model/Collection :name "coll")
               card (ts/create! :model/Card :name "self-ref card" :collection_id (:id coll))
-              _    (t2/update! :model/Card (:id card)
+              _    (t2/update! :model/Card :id (:id card)
                                {:parameters [(card-sourced-param (:id card))]})
               ser  (into [] (serdes.extract/extract {:no-settings   true
                                                      :no-data-model false}))]
@@ -2323,8 +2323,8 @@
         (let [coll   (ts/create! :model/Collection :name "coll")
               card-a (ts/create! :model/Card :name "card a" :collection_id (:id coll))
               card-b (ts/create! :model/Card :name "card b" :collection_id (:id coll))
-              _      (t2/update! :model/Card (:id card-a) {:parameters [(card-sourced-param (:id card-b))]})
-              _      (t2/update! :model/Card (:id card-b) {:parameters [(card-sourced-param (:id card-a))]})
+              _      (t2/update! :model/Card :id (:id card-a) {:parameters [(card-sourced-param (:id card-b))]})
+              _      (t2/update! :model/Card :id (:id card-b) {:parameters [(card-sourced-param (:id card-a))]})
               ser    (into [] (serdes.extract/extract {:no-settings   true
                                                        :no-data-model false}))]
           (testing "loading on top of the existing cards"
@@ -2353,7 +2353,7 @@
               dash (ts/create! :model/Dashboard :name "dash" :collection_id (:id coll))
               card (ts/create! :model/Card :name "dq card" :type :question :dashboard_id (:id dash))
               _    (ts/create! :model/DashboardCard :dashboard_id (:id dash) :card_id (:id card))
-              _    (t2/update! :model/Dashboard (:id dash)
+              _    (t2/update! :model/Dashboard :id (:id dash)
                                {:parameters [(card-sourced-param (:id card))]})
               ser  (into [] (serdes.extract/extract {:no-settings   true
                                                      :no-data-model false}))]
@@ -2529,10 +2529,10 @@
                              {:model "Field" :id "field"}
                              {:model "Field" :id "field"}]}
               (ts/extract-one "Field" (:id f3))))
-      (t2/update! :model/Field (:id f3) {:description "some new one"})
+      (t2/update! :model/Field :id (:id f3) {:description "some new one"})
       (is (serdes.load/load-metabase! (ts/ingestion-in-memory ser)))
       (is (= "desc"
-             (t2/select-one-fn :description :model/Field (:id f3)))))))
+             (t2/select-one-fn :description :model/Field :id (:id f3)))))))
 
 (deftest field-data-sensitivity-round-trip-test
   (testing "data_sensitivity travels through export and import on both Field and FieldUserSettings"
@@ -3441,3 +3441,35 @@
           (serdes.load/load-metabase! (ts/ingestion-in-memory [(glossary-file file-eid {:entity_id file-eid})]))
           (is (=? [{:term "ARR" :entity_id file-eid}]
                   (t2/select :model/Glossary))))))))
+
+(deftest transform-job-active-is-local-test
+  (mt/with-premium-features #{:transforms-basic}
+    (mt/with-temp [:model/TransformJob {built-in-id :id} {:name          "built-in"
+                                                          :schedule      "0 0 * * * ? *"
+                                                          :built_in_type "hourly"
+                                                          :active        false}
+                   :model/TransformJob {custom-id :id}   {:name     "custom"
+                                                          :schedule "0 0 * * * ? *"
+                                                          :active   false}]
+      (testing "an export has no active"
+        (is (not (contains? (ts/extract-one "TransformJob" built-in-id) :active)))
+        (is (not (contains? (ts/extract-one "TransformJob" custom-id) :active))))
+      (let [import! (fn [job-id active]
+                      (serdes.load/load-metabase!
+                       (ts/ingestion-in-memory [(assoc (ts/extract-one "TransformJob" job-id) :active active)]))
+                      (t2/select-one [:model/TransformJob :active :built_in_type] :id job-id))]
+        (testing "an import keeps active on an existing built-in job"
+          (is (=? {:active false :built_in_type "hourly"} (import! built-in-id true)))
+          (t2/update! :transform_job :id built-in-id {:active true})
+          (is (=? {:active true :built_in_type "hourly"} (import! built-in-id false))))
+        (testing "an import keeps active on an existing custom job"
+          (is (=? {:active false :built_in_type nil} (import! custom-id true)))
+          (t2/update! :transform_job :id custom-id {:active true})
+          (is (=? {:active true :built_in_type nil} (import! custom-id false))))
+        (testing "an import inserts a job with the column default for active"
+          (let [extracted (assoc (ts/extract-one "TransformJob" custom-id) :active false)]
+            (t2/delete! :model/TransformJob :id custom-id)
+            (serdes.load/load-metabase! (ts/ingestion-in-memory [extracted]))
+            (is (=? {:active true}
+                    (t2/select-one [:model/TransformJob :active] :entity_id (:entity_id extracted))))
+            (t2/delete! :model/TransformJob :entity_id (:entity_id extracted))))))))

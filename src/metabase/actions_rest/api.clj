@@ -8,6 +8,7 @@
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.data-apps.core :as data-apps]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -31,14 +32,19 @@
     action-type :type} :- [:map {:closed true}
                            [:model-id {:optional true} [:maybe ::lib.schema.id/card]]
                            [:type     {:optional true} [:maybe ::actions.schema/type]]
-                           [:archived {:default false} :boolean]]]
+                           [:archived {:default false} :boolean]]
+   _body
+   request]
   (when model-id
     (api/read-check :model/Card model-id))
-  (let [action-ids (actions-rest.db/action-ids-visible-to-user
+  (let [data-app   (data-apps/request-data-app request)
+        action-ids (actions-rest.db/action-ids-visible-to-user
                     {:type action-type, :model-id model-id, :archived archived})
         actions    (when (seq action-ids)
                      (actions/select-actions-for-ids action-ids))]
-    (t2/hydrate (filterv mi/can-read? actions) :creator :can_write)))
+    (t2/hydrate (cond->> (filterv mi/can-read? actions)
+                  data-app (data-apps/data-app-actions data-app))
+                :creator :can_write)))
 
 (api.macros/defendpoint :get "/public" :- [:sequential ::actions.schema/action]
   "Fetch a list of Actions with public UUIDs. These actions are publicly-accessible *if* public sharing is enabled."
@@ -51,7 +57,11 @@
   "Fetch an Action."
   {:scope api-scope/data-app}
   [{:keys [action-id]} :- [:map {:closed true}
-                           [:action-id ms/PositiveInt]]]
+                           [:action-id ms/PositiveInt]]
+   _query-params
+   _body
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-action action-id))
   (-> (actions/select-action :id action-id :archived false)
       (t2/hydrate :creator :can_write)
       api/read-check))
@@ -176,7 +186,9 @@
                            [:action-id ms/PositiveInt]]
    _query-params
    {:keys [parameters]} :- [:map {:closed true}
-                            [:parameters ::actions.schema/prefetch-parameter-values]]]
+                            [:parameters ::actions.schema/prefetch-parameter-values]]
+   request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-action action-id))
   (actions/check-actions-enabled action-id)
   (-> (actions/select-action :id action-id :archived false)
       api/read-check
@@ -219,8 +231,10 @@
                     [:id [:or ::actions.schema/id ms/NanoIdString]]]
    _query-params
    {:keys [parameters], :as _body} :- [:maybe [:map {:closed true}
-                                               [:parameters {:optional true} [:maybe ::actions.schema/execute-parameter-values]]]]]
+                                               [:parameters {:optional true} [:maybe ::actions.schema/execute-parameter-values]]]]
+   request]
   (let [resolved-id (eid-translation/->id-or-404 :action id)
+        _           (some-> (data-apps/request-data-app request) (data-apps/check-action resolved-id))
         {:keys [type] :as action} (api/read-check (actions/select-action :id resolved-id :archived false))]
     (analytics/track-event! :snowplow/action
                             {:event     :action-executed

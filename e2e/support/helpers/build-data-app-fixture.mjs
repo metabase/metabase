@@ -61,6 +61,5 @@ await build({
     ...buildInfoDefine,
     "process.env.IS_EMBEDDING_SDK": '"true"',
   },
-  build: { outDir: "dist" },
   plugins: dataAppConfig().plugins,
 });
