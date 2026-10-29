@@ -3187,8 +3187,11 @@
                                (get "stages")))
       (catch clojure.lang.ExceptionInfo e
         (if (:agent-error? (ex-data e))
-          (let [alias (get join "alias")]
-            (throw (ex-info (format "In join %s of stage %d: %s" (quoting/quoted alias) stage-idx (ex-message e))
+          (let [alias (get join "alias")
+                where (if (non-blank-string? alias)
+                        (format "In join %s of stage %d" (quoting/quoted alias) stage-idx)
+                        (format "In a join with no alias in stage %d" stage-idx))]
+            (throw (ex-info (str where ": " (ex-message e))
                             (assoc (ex-data e) :join-alias alias :join-stage stage-idx)
                             e)))
           (throw e))))))
