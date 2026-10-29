@@ -3197,15 +3197,13 @@
           (throw e))))))
 
 (defn- with-alias-on-join-fields
-  "Return `join` with its alias on each by-name field ref in its `fields`, as lib's join normalization does.
-  Leaves path refs alone."
+  "Return `join` with its alias on each field ref in its `fields`, as lib's join normalization does."
   [join]
   (let [alias (when (map? join) (get join "alias"))]
     (cond-> join
       (and (non-blank-string? alias) (sequential? (get join "fields")))
       (update "fields" (partial mapv #(cond-> %
-                                        ;; no pass mistakes a path ref for a previous-stage ref, so lib aliases those
-                                        (match/matches? % ["field" (_ :guard map?) (_ :guard string?)])
+                                        (match/matches? % ["field" (_ :guard map?) _])
                                         (assoc-in [1 "join-alias"] alias)))))))
 
 (defn- infer-join-field-types-in-stage
