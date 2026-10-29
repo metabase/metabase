@@ -467,16 +467,12 @@ describe("scenarios > joins", () => {
   });
 });
 
-function assertTableHeader(index, name) {
+function assertTableHeader(index: number, name: string) {
   // eslint-disable-next-line metabase/no-unsafe-element-filtering
   cy.findAllByTestId("header-cell").eq(index).should("have.text", name);
 }
 
-/**
- * @param {string} columnName
- * @param {("add"|"remove")} action
- */
-function modifyColumn(columnName, action) {
+function modifyColumn(columnName: string, action: "add" | "remove") {
   cy.findByTestId("sidebar-left").within(() => {
     cy.findByRole("button", { name: "Add or remove columns" }).click();
     if (action === "add") {
