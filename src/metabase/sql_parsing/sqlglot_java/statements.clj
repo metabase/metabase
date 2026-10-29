@@ -6,7 +6,8 @@
    [metabase.sql-parsing.sqlglot-java.ast :as ast]
    [metabase.util :as u])
   (:import
-   (com.metabase.sqlglot.ast Expressions$Anonymous Expressions$Column Expressions$Delete Expressions$Dot Expressions$Func
+   (com.metabase.sqlglot.ast Expressions$Anonymous Expressions$Column Expressions$Delete Expressions$Dot
+                             Expressions$DynamicIdentifier Expressions$Func
                              Expressions$Insert Expressions$Parameter Expressions$PropertyEQ Expressions$Query
                              Expressions$Select Expressions$SetOperation Expressions$Subquery
                              Expressions$Table Expressions$TableAlias Expressions$Update
@@ -155,6 +156,16 @@
                 "system.query")))
         (ast/walk stmt)))
 
+(defn- dynamic-function-call?
+  "Whether `stmt` calls a function named by Snowflake's `IDENTIFIER(...)`, as in `IDENTIFIER('f')(1)`. Name checks
+  never see that name, a string or a variable, so the call is refused whatever it names. Only the call form has an
+  `expressions` arg, holding the call's arguments, possibly none; a table or column name such as `IDENTIFIER('t')`
+  has no such arg."
+  [stmt]
+  (boolean (some #(and (instance? Expressions$DynamicIdentifier %)
+                       (.containsKey (ast/args %) "expressions"))
+                 (ast/walk stmt))))
+
 (defn- external-table?
   "Whether `stmt` names a file or a URL as a table. DuckDB reads `FROM 'data.csv'` and `FROM \"s3://b/x.parquet\"` as
   the file at that path, and a name holding `.`, `/`, `\\` or `:` cannot be a plain table there unless quoted."
@@ -270,7 +281,9 @@
         ["external-table" nil]
         (if-let [executor (sql-executing-function (first stmts))]
           ["sql-executing-function" executor]
-          (hidden-sql sql dialect))))))
+          (if (dynamic-function-call? (first stmts))
+            ["dynamic-function-call" nil]
+            (hidden-sql sql dialect)))))))
 
 (defn single-stmt-of-type
   "Whether `sql` is a single read statement (`\"read\"`, a SELECT), a single read-only SELECT (`\"read-only\"`), or a
