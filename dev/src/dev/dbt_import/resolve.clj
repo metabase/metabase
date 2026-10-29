@@ -199,11 +199,6 @@
                     value
                     (literal-unsupported (pr-str value)))))))
 
-(mu/defn- percentile-fraction :- number?
-  "dbt writes the percentile as a fraction (`0.95`); tolerate a percentage (`95`) too."
-  [p :- number?]
-  (if (> p 1) (/ p 100.0) (double p)))
-
 (mu/defn- aggregation :- ::lib.schema.aggregation/aggregation
   "The Lib aggregation clause for the metric over `expression`, nil being a row count. A cumulative metric runs over
   everything up to each row, which Metabase has for a sum and a row count only; a running count of a column, which
@@ -231,7 +226,8 @@
                    :count_distinct (lib/distinct f)
                    ;; the expression is already the condition to count rows by
                    :sum_boolean    (lib/count-where f)
-                   :percentile     (lib/percentile f (percentile-fraction (:percentile agg-params)))))]
+                   ;; dbt takes the percentile as a fraction, which is what Lib takes; resolve-simple checks the range
+                   :percentile     (lib/percentile f (double (:percentile agg-params)))))]
     (if (some? fill-nulls-with)
       (lib/coalesce clause fill-nulls-with)
       clause)))
@@ -380,15 +376,35 @@
     (when (mr/validate ::lib.schema.temporal-bucketing/unit.date-time.truncate unit)
       (when-not (= unit-name grain)
         (log/infof "Reading the %s granularity of %s as %s" grain dimension-name unit-name))
+      ;; dbt weeks are ISO weeks; a Metabase week starts on the day the instance's start-of-week setting names
+      (when (= unit :week)
+        (log/warnf (str "The week granularity of %s is read as a Metabase week, which starts on the day the instance's"
+                        " start-of-week setting names; dbt weeks start on Monday")
+                   dimension-name))
+      unit)))
+
+(mu/defn- available-unit :- [:maybe ::lib.schema.temporal-bucketing/unit]
+  "The Metabase unit the dbt granularity `grain` names (see [[grain->unit]]), when `column`, the ref for the dimension
+  `dimension-name`, can be bucketed by it; nil otherwise. For a column of known type Lib says which units it supports
+  (a date has no `hour`). A column the project does not type is a Field of unknown type, which Lib cannot bucket at
+  all; dbt declares the dimension `type: time`, and that is trusted: the unit applies as written, and the instance's
+  own metadata is the check, when the import binds the field."
+  [{:keys [query]} :- ::context
+   column          :- ::lib.schema.ref/ref
+   grain           :- :string
+   dimension-name  :- :string]
+  (when-let [unit (grain->unit grain dimension-name)]
+    (when (or (not (known-type? (lib/type-of query column)))
+              (m/find-first #(= unit (:unit %)) (lib/available-temporal-buckets query column)))
       unit)))
 
 (mu/defn- time-dimension-clause :- ::lib.schema.ref/ref
-  "`column`, the ref for `dimension`, bucketed by `grain`, a dbt granularity name; nil means the dimension's own. Lib
-  says which buckets the column supports."
-  [{:keys [query]}                        :- ::context
+  "`column`, the ref for `dimension`, bucketed by `grain`, a dbt granularity name; nil means the dimension's own. See
+  [[available-unit]] for which grains a column takes."
+  [context                                  :- ::context
    {:keys [granularity expr] :as dimension} :- ::schemas.ir/dimension
-   column                                 :- ::sql/value
-   grain                                  :- [:maybe :string]]
+   column                                   :- ::sql/value
+   grain                                    :- [:maybe :string]]
   (b/cond
     (not= :time (:type dimension))
     (sql/unsupported "TimeDimension(%s): %s is not a time dimension" (pr-str (:name dimension)) (pr-str (:name dimension)))
@@ -396,40 +412,47 @@
     (not= :column (:kind (parse-expr expr)))
     (sql/unsupported "cannot bucket the SQL expression %s by time" (pr-str expr))
 
-    :let [grain  (or grain (some-> granularity name))
-          unit   (grain->unit grain (:name dimension))
-          bucket (when unit
-                   (m/find-first #(= unit (:unit %)) (lib/available-temporal-buckets query column)))]
+    :let [grain (or grain (some-> granularity name))
+          unit  (available-unit context column grain (:name dimension))]
 
-    (not bucket)
+    (not unit)
     (sql/unsupported "granularity %s has no Metabase temporal unit for %s" (pr-str grain) (pr-str (:name dimension)))
 
     :else
-    (lib/with-temporal-bucket column bucket)))
+    (lib/with-temporal-bucket column unit)))
 
 (mu/defn- reference-clause :- ::sql/value
   "The Lib expression a filter template's reference stands for."
-  [{:keys [model] :as context}                   :- ::context
-   {:keys [kind grain arguments], ref-name :name} :- ::sql/reference]
+  [{:keys [model] :as context}                           :- ::context
+   {:keys [kind grain arguments methods], ref-name :name} :- ::sql/reference]
   ;; `entity_path=[...]` names the join path to a dimension; the converter reaches one through the entity in the
   ;; reference itself and cannot follow another path, so the argument is reported rather than dropped. A `Metric`
   ;; reference is reported whatever its arguments.
   (when (and arguments (not= kind :metric))
     (sql/unsupported "%s has the argument %s, which is not supported: only the name and, for TimeDimension, a grain"
                      (pr-str ref-name) arguments))
+  ;; `.grain('month')` is read (see [[sql/render-filter]]); `.date_part('month')` and anything else chained on is not
+  (when (and methods (not= kind :metric))
+    (sql/unsupported "%s has the method call %s, which is not supported: only .grain('<granularity>') is"
+                     (pr-str ref-name) methods))
   (case kind
     :metric
     (sql/unsupported "Metric(%s): filters on other metrics are not supported yet (QRES-5)" (pr-str ref-name))
 
     :entity
     (if-let [entity (m/find-first #(= ref-name (:name %)) (:entities model))]
-      (column-or-sql context (:expr entity))
+      (do
+        (when grain
+          (sql/unsupported "Entity(%s) has the grain %s, but an entity is a key, not a time dimension"
+                           (pr-str ref-name) (pr-str grain)))
+        (column-or-sql context (:expr entity)))
       (sql/unsupported "entity %s is not on semantic model %s" (pr-str ref-name) (pr-str (:name model))))
 
     (:dimension :time-dimension)
     (let [{:keys [dimension context]} (dimension-reference context ref-name)
           column                      (column-or-sql context (:expr dimension))]
-      (if (= kind :time-dimension)
+      ;; `Dimension('x').grain('month')` means what `TimeDimension('x', 'month')` does
+      (if (or (= kind :time-dimension) grain)
         (time-dimension-clause context dimension column grain)
         column))))
 
@@ -453,17 +476,6 @@
      :type         group-type
      :display-name display-name}))
 
-(mu/defn- available-unit :- [:maybe ::lib.schema.temporal-bucketing/unit]
-  "The Metabase unit the dbt granularity `grain` names (see [[grain->unit]]), when Lib can bucket `column`, the ref
-  for the dimension `dimension-name`, by it; nil otherwise."
-  [{:keys [query]} :- ::context
-   column          :- ::lib.schema.ref/ref
-   grain           :- :string
-   dimension-name  :- :string]
-  (when-let [unit (grain->unit grain dimension-name)]
-    (when (m/find-first #(= unit (:unit %)) (lib/available-temporal-buckets query column))
-      unit)))
-
 (mu/defn- default-temporal-unit :- [:maybe ::lib.schema.temporal-bucketing/unit]
   "The unit a time dimension's `granularity` names, when Lib can bucket `column` by it; nil otherwise."
   [context                                     :- ::context
@@ -473,10 +485,12 @@
     (available-unit context column (name granularity) dimension-name)))
 
 (mr/def ::dimension-pair
-  "A curated dimension and the mapping that binds it to a column."
+  "A curated dimension and the mapping that binds it to a column, with the dbt `reference` they were made from
+  (`<entity>__<dimension>`, or a bare name for the metric's own model), see [[with-unique-names]]."
   [:map
    [:dimension ::lib-metric.schema/persisted-dimension]
-   [:mapping   ::lib-metric.schema/dimension-mapping]])
+   [:mapping   ::lib-metric.schema/dimension-mapping]
+   [:reference :string]])
 
 (mu/defn- dimension-pair :- ::dimension-pair
   "The curated dimension and mapping for the dbt `dimension` of `context`'s model, in `group`. `reference` is the
@@ -509,7 +523,8 @@
        :mapping   {:type         :table
                    :table-id     (:table-id field)
                    :dimension-id id
-                   :target       column-ref}})))
+                   :target       column-ref}
+       :reference reference})))
 
 (mr/def ::dimension-result
   "A [[dimension-pair]], or why a dbt dimension could not become one."
@@ -596,17 +611,37 @@
               result))
           results)))
 
+(mu/defn- with-unique-names :- [:sequential ::dimension-result]
+  "`results` with no two curated dimensions of the same name: a joined dimension named like another dimension of the
+  set takes its dbt reference, `<entity>__<dimension>`, as its name, which is how dbt itself tells the two apart. The
+  metric's own dimensions keep their names. Display names are left alone: two dimensions may share one, as two
+  columns of the same name on the metric's table and a joined table do in Metabase, and their groups tell them apart."
+  [results :- [:sequential ::dimension-result]]
+  (let [shared? (->> (keep (comp :name :dimension) results)
+                     frequencies
+                     (m/filter-vals #(> % 1))
+                     keys
+                     set)]
+    (mapv (fn [{:keys [dimension reference] :as result}]
+            (if (and dimension
+                     (shared? (:name dimension))
+                     (= "connection" (-> dimension :group :type)))
+              (assoc-in result [:dimension :name] reference)
+              result))
+          results)))
+
 (mu/defn- dimension-set :- ::dimension-set
   "The curated dimension set of the metric `context` is for: its own model's dimensions first, then those reached
   through each of its foreign and unique entities, in the order the model declares them. A unique entity is a key
-  into another model keyed by it just as a foreign entity is; the model's primary entity names its own dimensions."
+  into another model keyed by it just as a foreign entity is; the model's primary entity names its own dimensions. No
+  two dimensions share a name (see [[with-unique-names]])."
   [{:keys [model] :as context} :- ::context]
-  (let [results (with-default-dimension
-                 context
-                 (into (model-dimensions context (dimension-group "main" model) nil)
-                       (comp (filter #(#{:foreign :unique} (:type %)))
-                             (mapcat #(joined-dimensions context %)))
-                       (:entities model)))
+  (let [results (->> (into (model-dimensions context (dimension-group "main" model) nil)
+                           (comp (filter #(#{:foreign :unique} (:type %)))
+                                 (mapcat #(joined-dimensions context %)))
+                           (:entities model))
+                     (with-default-dimension context)
+                     with-unique-names)
         pairs   (filter :mapping results)]
     {:dimensions             (mapv :dimension pairs)
      :dimension-mappings     (mapv :mapping pairs)
@@ -617,7 +652,9 @@
   [{:keys [dialect resolve-column] :as context} :- ::context
    template                                     :- :string]
   (let [{:keys [sql references]} (sql/render-filter template)]
-    (when (empty? references)
+    ;; a template that still holds Jinja the renderer did not recognise, `{{ var('x') }}` or a reference written
+    ;; in a way it does not read, is better reported as that than as referring to nothing, which the parse does
+    (when (and (empty? references) (not (sql/jinja? sql)))
       (sql/unsupported "the filter references no dimension or entity"))
     (sql/condition->mbql dialect sql (fn [identifier]
                                        (if-let [reference (get references identifier)]
@@ -705,9 +742,9 @@
         (nil? percentile)
         (sql/unsupported "percentile aggregation without a percentile value")
 
-        ;; dbt documents the percentile as a fraction; emit tolerates a percentage, so allow up to 100
-        (not (<= 0 percentile 100))
-        (sql/unsupported "percentile %s is out of range; dbt expects a fraction between 0 and 1" percentile)
+        ;; dbt takes the percentile as a fraction and nothing else: `95` is not read as 95%, since `1.5` could not be
+        (not (<= 0 percentile 1))
+        (sql/unsupported "percentile %s is out of range: dbt takes a fraction between 0 and 1" percentile)
 
         (:use_discrete_percentile agg-params)
         (sql/unsupported "discrete percentiles have no Metabase equivalent: Metabase percentiles are continuous")))
@@ -905,7 +942,8 @@
 
 (mu/defn resolve-manifest :- ::schemas.resolved/manifest
   "Resolve every metric in the IR, each after the metrics it refers to. Unsupported metrics from the parse stage are
-  carried over, so the result's `:unsupported` is the complete list for the run."
+  carried over, so the result's `:unsupported` is the complete list for the run, and a ratio or derived metric over
+  one of them is reported with that metric's reason rather than as referring to a metric that does not exist."
   [config                                                     :- ::schemas.resolved/config
    {:keys [semantic-models metrics unsupported source] :as ir} :- ::schemas.ir/manifest]
   (let [providers                (metadata/providers config ir)
@@ -920,7 +958,10 @@
                                                (-> results
                                                    (update :resolved assoc (:name metric) result)
                                                    (update :metrics conj result)))))
-                                         {:resolved {}, :failed {}, :metrics [], :unsupported []}
+                                         {:resolved    {}
+                                          :failed      (into {} (map (juxt :name :reason)) unsupported)
+                                          :metrics     []
+                                          :unsupported []}
                                          ordered)]
     {:collection  {:name      (:collection-name config "dbt metrics")
                    :entity-id (collection-entity-id (:project source))}

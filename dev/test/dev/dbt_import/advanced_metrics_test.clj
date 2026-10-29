@@ -163,10 +163,24 @@
                :aggregation
                (get "m")))))
   (testing "an input that is not in the manifest is reported"
-    (is (re-find #"metric \"nope\""
+    (is (re-find #"^ratio: metric \"nope\" not found"
                  (-> (convert (composed "ratio" ["sales" "nope"] {:numerator (tu/metric-input "sales"), :denominator (tu/metric-input "nope")}))
                      :unsupported
-                     (get "m"))))))
+                     (get "m")))))
+  (testing "an input the parse stage reported is reported with that reason, not as missing"
+    (let [windowed (fn [manifest]
+                     (let [base (get-in manifest [:metrics "metric.p.m"])]
+                       (assoc-in manifest [:metrics "metric.p.sales_7d"]
+                                 (-> (simple-metric base ["sales_7d" "sales" nil])
+                                     (assoc :type "cumulative")
+                                     (assoc-in [:type_params :cumulative_type_params]
+                                               {:window {:count 7, :granularity "day"}, :grain_to_date nil, :period_agg "last"})))))
+          {:keys [unsupported]} (convert (-> (composed "ratio" ["sales_7d" "sales"]
+                                                       {:numerator (tu/metric-input "sales_7d"), :denominator (tu/metric-input "sales")})
+                                             (update :edit (fn [edit] (comp windowed edit)))))]
+      (is (re-find #"^a cumulative metric with a window of 7 day" (get unsupported "sales_7d")))
+      (is (re-find #"^ratio: metric \"sales_7d\" was not converted: a cumulative metric with a window of 7 day"
+                   (get unsupported "m"))))))
 
 (defn- filtered-ratio
   "Tweaks for a ratio `m` of `numerator` filtered by `cancelled-filter` (with `alias`, when given) to `denominator`."

@@ -117,7 +117,55 @@
   (testing "a column the project does not type is a dimension of no known type, which the instance supplies"
     (let [dimension (get (tu/dimension-set {:columns {"status" ::tu/remove}}) "status")]
       (is (= (fld "status" nil) (:target dimension)))
-      (is (not (contains? dimension :effective-type))))))
+      (is (not (contains? dimension :effective-type)))))
+  (testing "a time dimension over such a column keeps its granularity as its default temporal unit: dbt says it is a time dimension, and the instance checks the column when the import binds it"
+    (let [dimensions (tu/dimension-set {:columns {"date_day" ::tu/remove, "created_at" nil}})]
+      (is (= {:name "date_day", :default true, :default-temporal-unit :day, :target (fld "date_day" nil)}
+             (select-keys (get dimensions "date_day") [:name :default :default-temporal-unit :target :effective-type])))
+      (is (= {:name "created_at", :default-temporal-unit :day, :target (fld "created_at" nil)}
+             (select-keys (get dimensions "created_at") [:name :default :default-temporal-unit :target :effective-type]))))
+    (testing "and a metric time_granularity applies to it"
+      (is (= :month (:default-temporal-unit (get (tu/dimension-set {:columns {"date_day" ::tu/remove}
+                                                                    :metric  {:time_granularity "month"}})
+                                                 "date_day")))))
+    (testing "on a joined model too"
+      (is (= :day (:default-temporal-unit (get (tu/dimension-set {:edit #(update-in % [:nodes tu/order-model-id :columns] dissoc "order_date")})
+                                               "order_date")))))
+    (testing "a grain Metabase has no unit for is still reported"
+      (is (re-find #"time_granularity \"retail_month\" has no Metabase temporal unit for \"date_day\""
+                   (tu/unsupported {:columns {"date_day" ::tu/remove}, :metric {:time_granularity "retail_month"}}))))))
+
+(deftest ^:parallel duplicate-dimension-name-test
+  (let [same-name (tu/edit-semantic-model tu/order-sm-id #(update % :dimensions conj (tu/dimension "status" "categorical")))]
+    (testing "a joined dimension named like one of the metric's own takes its dbt reference as its name, so no two dimensions share one"
+      (let [dimensions (tu/dimension-set {:edit same-name})
+            names      (tu/dimension-names {:edit same-name})]
+        (is (= ["date_day" "created_at" "status" "amount" "is_returned"
+                "order_status_dim" "order_date" "order__status"
+                "product_category_dim" "msrp" "first_order_date"]
+               names))
+        (is (apply distinct? names))
+        (testing "the metric's own keeps its name and column"
+          (is (= (assoc (local-dimension "status" :type/Text) :name "status", :display-name "status")
+                 (get dimensions "status"))))
+        (testing "the joined one keeps its display name, column and group"
+          (is (= (assoc (joined-dimension "order_key" "dim_order" "status" :type/Text order-group)
+                        :name "order__status", :display-name "status")
+                 (get dimensions "order__status"))))))
+    (testing "the other dimensions' ids do not change: they were derived from the reference all along"
+      (let [ids-of (fn [tweaks] (into {} (map (juxt :name :id)) (:dimensions (tu/convert tweaks))))]
+        (is (= (ids-of {}) (dissoc (ids-of {:edit same-name}) "order__status")))))
+    (testing "two joined models sharing a dimension name are both renamed"
+      (let [both (comp (tu/edit-semantic-model tu/order-sm-id #(update % :dimensions conj (tu/dimension "msrp" "categorical")))
+                       #(assoc-in % [:nodes tu/order-model-id :columns "msrp"] {:name "msrp", :description "", :data_type "integer"}))]
+        (is (= ["date_day" "created_at" "status" "amount" "is_returned"
+                "order_status_dim" "order_date" "order__msrp"
+                "product_category_dim" "product__msrp" "first_order_date"]
+               (tu/dimension-names {:edit both})))))
+    (testing "a filter still refers to the dimension by its dbt reference, as before"
+      (is (= [[:= {} (tu/joined-fld "order_key" "dim_order" "status" :type/Text) "Shipped"]]
+             (tu/filters {:edit   same-name
+                          :metric {:filter {:where_filters [{:where_sql_template "{{ Dimension('order__status') }} = 'Shipped'"}]}}}))))))
 
 (defn- defaults-of
   "The names of the default dimensions of the metric [[tu/convert]] builds from `tweaks`."
