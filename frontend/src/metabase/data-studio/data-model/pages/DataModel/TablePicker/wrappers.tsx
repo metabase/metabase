@@ -11,11 +11,14 @@ import type { ChangeOptions, TreePath } from "./types";
 type Props = TreePath & {
   params: RouteParams;
   setOnUpdateCallback: (callback: ((path?: TreePath) => void) | null) => void;
+  /** Called with every change of the path, including the automatic ones the tree makes. */
+  onPathChange?: (path: TreePath, options?: ChangeOptions) => void;
 };
 
 export function RouterTablePicker({
   params,
   setOnUpdateCallback,
+  onPathChange,
   ...props
 }: Props) {
   const navigate = useNavigate();
@@ -29,6 +32,7 @@ export function RouterTablePicker({
   const onChange = useCallback(
     (value: TreePath, options?: ChangeOptions) => {
       setValue(value);
+      onPathChange?.(value, options);
 
       // The tree selects a lone database, and then its lone schema, once its
       // data arrives. That mirrors into the URL long after the page opened, so
@@ -42,7 +46,7 @@ export function RouterTablePicker({
 
       navigate(Urls.dataStudioData(value), { replace: true });
     },
-    [navigate],
+    [navigate, onPathChange],
   );
 
   useEffect(() => {

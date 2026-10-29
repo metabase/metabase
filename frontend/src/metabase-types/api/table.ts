@@ -150,6 +150,8 @@ export interface GetTableQueryMetadataRequest {
   include_sensitive_fields?: boolean;
   include_hidden_fields?: boolean;
   include_editable_data_model?: boolean;
+  /** Needs `include_editable_data_model`: the fields read their pending AI proposals as if accepted. */
+  preview_ai_proposals?: boolean;
 }
 
 export interface UpdateTableRequest {

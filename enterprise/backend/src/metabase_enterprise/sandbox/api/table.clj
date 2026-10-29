@@ -82,14 +82,16 @@
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   {:keys [include_sensitive_fields include_hidden_fields include_editable_data_model]}
+   {:keys [include_sensitive_fields include_hidden_fields include_editable_data_model preview_ai_proposals]}
    :- [:map {:closed true}
        [:include_sensitive_fields    {:default false} [:maybe ms/BooleanValue]]
        [:include_hidden_fields       {:default false} [:maybe ms/BooleanValue]]
-       [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]
+       [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
+       [:preview_ai_proposals        {:default false} [:maybe ms/BooleanValue]]]
    _body
    request]
   (some-> (data-apps/request-data-app request) (data-apps/check-table id))
   (fetch-table-query-metadata id {:include-sensitive-fields?    include_sensitive_fields
                                   :include-hidden-fields?       include_hidden_fields
-                                  :include-editable-data-model? include_editable_data_model}))
+                                  :include-editable-data-model? include_editable_data_model
+                                  :preview-ai-proposals?        preview_ai_proposals}))

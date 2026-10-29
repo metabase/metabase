@@ -15,6 +15,11 @@ import type {
 import { hasDatabaseFeature } from "./database";
 import { getSchemaDisplayName } from "./schema";
 
+/** Whether a read with `preview_ai_proposals` gave `field` a pending AI suggestion. */
+export function hasAiProposals(field: Pick<Field, "ai_proposals">): boolean {
+  return Object.keys(field.ai_proposals ?? {}).length > 0;
+}
+
 /**
  * Predicate to decide whether `field1` is comparable with `field2`.
  *

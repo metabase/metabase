@@ -2,15 +2,24 @@ import { memo, useMemo } from "react";
 import { t } from "ttag";
 
 import {
+  useGetFieldQuery,
   useListDatabaseIdFieldsQuery,
+  useResetFieldToAutomaticMutation,
   useUpdateFieldMutation,
 } from "metabase/api";
 import { useMetadataToasts } from "metabase/common/hooks";
 import type { MetadataEditEventDetail } from "metabase/metadata/pages/shared/analytics";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import type { Field, FieldId, Table } from "metabase-types/api";
+import type {
+  Field,
+  FieldDataSensitivity,
+  FieldDataSensitivitySource,
+  FieldId,
+  Table,
+} from "metabase-types/api";
 
+import { DataSensitivityPicker } from "../../DataSensitivityPicker";
 import { SemanticTypeAndTargetPicker } from "../../SemanticTypeAndTargetPicker";
 import { TitledSection } from "../../TitledSection";
 import { getSemanticTypeError } from "../utils";
@@ -40,12 +49,22 @@ const MetadataSectionBase = ({
       id: table.db_id,
       ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
     });
+  const { data: editableField } = useGetFieldQuery({
+    id,
+    include_editable_data_model: true,
+  });
   const [updateField] = useUpdateFieldMutation();
+  const [resetFieldToAutomatic] = useResetFieldToAutomaticMutation();
   const semanticTypeError = useMemo(() => {
     return getSemanticTypeError(table, field, getFieldHref);
   }, [table, field, getFieldHref]);
   const { sendErrorToast, sendSuccessToast, sendUndoToast } =
     useMetadataToasts();
+  // A preview shows the proposal as if accepted, and accepting it writes the AI layer.
+  const dataSensitivitySource: FieldDataSensitivitySource | null =
+    field.ai_proposals?.data_sensitivity != null
+      ? "ai"
+      : (editableField?.data_sensitivity_source ?? null);
 
   const handleChange = async (patch: Patch) => {
     const { error } = await updateField({ id, ...patch });
@@ -72,6 +91,38 @@ const MetadataSectionBase = ({
     }
   };
 
+  const handleDataSensitivityChange = async (
+    dataSensitivity: FieldDataSensitivity | null,
+  ) => {
+    const { error } = await updateField({
+      id,
+      data_sensitivity: dataSensitivity,
+    });
+
+    if (error) {
+      sendErrorToast(
+        t`Failed to update data sensitivity of ${field.display_name}`,
+      );
+    } else {
+      sendSuccessToast(t`Data sensitivity of ${field.display_name} updated`);
+    }
+  };
+
+  const handleDataSensitivityReset = async () => {
+    const { error } = await resetFieldToAutomatic({
+      id,
+      columns: ["data_sensitivity"],
+    });
+
+    if (error) {
+      sendErrorToast(
+        t`Failed to reset data sensitivity of ${field.display_name}`,
+      );
+    } else {
+      sendSuccessToast(t`Data sensitivity of ${field.display_name} reset`);
+    }
+  };
+
   return (
     <TitledSection>
       <SemanticTypeAndTargetPicker
@@ -83,6 +134,15 @@ const MetadataSectionBase = ({
         semanticTypeError={semanticTypeError}
         isLoadingIdFields={isLoadingIdFields}
         onChange={handleChange}
+      />
+
+      <DataSensitivityPicker
+        description={t`How sensitive this data is`}
+        label={t`Data sensitivity`}
+        source={dataSensitivitySource}
+        value={field.data_sensitivity ?? null}
+        onChange={handleDataSensitivityChange}
+        onReset={handleDataSensitivityReset}
       />
     </TitledSection>
   );

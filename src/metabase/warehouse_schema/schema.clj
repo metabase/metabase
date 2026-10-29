@@ -38,7 +38,23 @@
     [:unique_field_helper        {:optional true} [:maybe :int]]
     [:dimensions                 {:optional true} [:maybe [:sequential [:ref ::dimension]]]]
     [:name_field                 {:optional true} [:maybe :metabase.queries.schema/param-field.name-field]]
-    [:target                     {:optional true} [:maybe [:ref ::field]]]]])
+    [:target                     {:optional true} [:maybe [:ref ::field]]]
+    [:ai_proposals               {:optional true} [:maybe ::field.ai-proposals]]]])
+
+(mr/def ::field.ai-proposal
+  "A pending AI proposal of one Field attribute, as a preview read gives it."
+  [:map {:closed true}
+   [:value      [:or :string :keyword]]
+   [:reasoning  [:maybe :string]]
+   [:confidence [:maybe :keyword]]
+   [:conflict   :boolean]])
+
+(mr/def ::field.ai-proposals
+  "The pending AI proposals of a Field, by attribute."
+  [:map {:closed true}
+   [:semantic_type    {:optional true} ::field.ai-proposal]
+   [:description      {:optional true} ::field.ai-proposal]
+   [:data_sensitivity {:optional true} ::field.ai-proposal]])
 
 (mr/def ::field.update
   "What an update (or insert) of a Field accepts: every column of `:metabase_field` except `id`, all optional."
@@ -116,7 +132,11 @@
    [:custom_position    {:optional true} [:maybe :int]]
    [:description_set        {:optional true} :boolean]
    [:semantic_type_set      {:optional true} :boolean]
-   [:fk_target_field_id_set {:optional true} :boolean]])
+   [:fk_target_field_id_set {:optional true} :boolean]
+   [:data_sensitivity_set   {:optional true} :boolean]
+   [:ai_semantic_type       {:optional true} [:maybe [:or :keyword :string]]]
+   [:ai_description         {:optional true} [:maybe :string]]
+   [:ai_data_sensitivity    {:optional true} [:maybe [:or :keyword :string]]]])
 
 (mr/def ::field-values
   "A FieldValues as selected from the app DB: every column of `:metabase_fieldvalues`."

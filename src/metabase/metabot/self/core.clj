@@ -205,32 +205,21 @@
    [:type    :string]
    [:display {:optional true} [:maybe :string]]])
 
-(def ^:private JSONSchemaLeaf
-  "A leaf JSON Schema node: no `:properties` of its own, one further leaf level of `:items` for
-  an array-typed leaf."
-  [:map {:closed true}
-   [:type        {:optional true} [:maybe :string]]
-   [:description {:optional true} [:maybe :string]]
-   [:items       {:optional true} [:map {:closed true}
-                                   [:type        {:optional true} [:maybe :string]]
-                                   [:description {:optional true} [:maybe :string]]]]
-   [:minimum     {:optional true} number?]
-   [:maximum     {:optional true} number?]])
-
-(def ^:private JSONSchemaProperties
-  "The `:properties` of a JSON Schema node, keyed by the field names the caller's structured-output schema declares:
-  string keys off the wire, keyword keys when built in Clojure."
-  [:map-of {::mr/deliberately-open true, :description "JSON Schema properties"}
-   [:or :string :keyword] JSONSchemaLeaf])
-
-(def ^:private JSONSchemaNode
-  "A JSON Schema node, sent verbatim to an LLM provider as the structured-output schema.
-  `:properties` keys are the field names the schema itself declares, not ours to enumerate."
+(mr/def ::json-schema-node
+  "A JSON Schema node, sent verbatim to an LLM provider as the structured-output schema. Nodes nest through
+  `:properties` and `:items`. `:properties` keys are the field names the schema itself declares, not ours to
+  enumerate: string keys off the wire, keyword keys when built in Clojure."
   [:map {:closed true}
    [:type                 {:optional true} [:maybe :string]]
-   [:properties           {:optional true} JSONSchemaProperties]
+   [:description          {:optional true} [:maybe :string]]
+   [:enum                 {:optional true} [:sequential ms/JSONSchemaLiteral]]
+   [:items                {:optional true} [:ref ::json-schema-node]]
+   [:properties           {:optional true} [:map-of {::mr/deliberately-open true, :description "JSON Schema properties"}
+                                            [:or :string :keyword] [:ref ::json-schema-node]]]
    [:required             {:optional true} [:vector :string]]
-   [:additionalProperties {:optional true} :boolean]])
+   [:additionalProperties {:optional true} :boolean]
+   [:minimum              {:optional true} number?]
+   [:maximum              {:optional true} number?]])
 
 (def LLMRequestOpts
   "Canonical schema for the opts map passed to every LLM provider adapter.
@@ -270,7 +259,7 @@
    [:tool_choice      {:optional true} [:maybe [:enum "auto" "required"]]]
    [:temperature      {:optional true} [:maybe number?]]
    [:max-tokens       {:optional true} [:maybe :int]]
-   [:schema           {:optional true} [:maybe JSONSchemaNode]]
+   [:schema           {:optional true} [:maybe ::json-schema-node]]
    [:credentials      {:optional true} [:maybe LLMCredentials]]
    [:ai-proxy?        {:optional true} [:maybe :boolean]]
    [:reasoning?       {:optional true} [:maybe :boolean]]
@@ -381,12 +370,20 @@
        (nil? (:connection-manager request-options))
        (nil? (:http-client request-options))))
 
+;; Bound by the caller of the LLM call, because the request is made several adapter layers down, on the same thread.
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic *on-abortable-request*
+  "When bound, [[abort-on-close]] calls it with a function of no arguments that closes the request's own client. A
+  caller on another thread can call that function to free the thread that reads the body: the blocked read throws."
+  nil)
+
 (defn abort-on-close
   "Return the body of a streamed clj-http `response`, changed so that a close drops the connection.
 
   A close of the returned body closes the request's own `:http-client` first, so the provider sees a disconnect.
   Then it closes the body, and it does not read the rest of the body. Over TLS 1.3 the client close can wait for
-  the next byte from the provider, up to the socket timeout.
+  the next byte from the provider, up to the socket timeout. When [[*on-abortable-request*]] is bound, it gets a
+  function that closes the client.
 
   Returns `:body` unchanged when it is not an `InputStream`, when the response has no `Closeable` `:http-client`,
   or when `request-options` (the clj-http options of the request) share a client or a connection manager with
@@ -396,14 +393,17 @@
   (if (and (instance? InputStream body)
            (instance? Closeable http-client)
            (own-client? request-options))
-    ;; Without this wrapper, a close of a chunked body reads the rest of the body. It returns only when the provider
-    ;; finishes, and the provider continues to generate until then.
-    (proxy [FilterInputStream] [body]
-      (close []
-        (try
-          (.close ^Closeable http-client)
-          (finally
-            (close-released-body! body)))))
+    (do
+      (when-let [on-abortable *on-abortable-request*]
+        (on-abortable #(.close ^Closeable http-client)))
+      ;; Without this wrapper, a close of a chunked body reads the rest of the body. It returns only when the provider
+      ;; finishes, and the provider continues to generate until then.
+      (proxy [FilterInputStream] [body]
+        (close []
+          (try
+            (.close ^Closeable http-client)
+            (finally
+              (close-released-body! body))))))
     body))
 
 ;;; AISDK5

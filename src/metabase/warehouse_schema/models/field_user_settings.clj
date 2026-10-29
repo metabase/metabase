@@ -10,7 +10,9 @@
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.schema :as warehouse-schema.schema]
    [methodical.core :as methodical]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [toucan2.pipeline :as t2.pipeline]
+   [toucan2.tools.before-update :as t2.before-update]))
 
 (set! *warn-on-reflection* true)
 
@@ -20,9 +22,11 @@
   {:effective_type    field/transform-field-effective-type
    :coercion_strategy field/transform-field-coercion-strategy
    :semantic_type     field/transform-field-semantic-type
+   :ai_semantic_type  field/transform-field-semantic-type
    :visibility_type   mi/transform-keyword
    :has_field_values  mi/transform-keyword
-   :data_sensitivity  mi/transform-keyword
+   :data_sensitivity    mi/transform-keyword
+   :ai_data_sensitivity mi/transform-keyword
    :settings          mi/transform-json
    :nfc_path          mi/transform-json})
 
@@ -44,9 +48,10 @@
 (methodical/defmethod t2/primary-keys :model/FieldUserSettings [_model] [:field_id])
 
 (defn- delete-when-empty!
-  "Delete `settings` when it holds no user value and no true flag, returning it either way."
+  "Delete `settings` when it holds no user value, no AI value and no true flag, returning it either way."
   [settings]
-  (when (and (every? #(nil? (get settings %)) warehouse-schema-overlay/user-settable-field-columns)
+  (when (and (every? #(nil? (get settings %)) (concat warehouse-schema-overlay/user-settable-field-columns
+                                                      (vals warehouse-schema-overlay/field-ai-columns)))
              (not-any? #(get settings %) (vals warehouse-schema-overlay/field-user-settings-flags)))
     (warehouse-schema.db/delete-field-user-settings! (:field_id settings)))
   settings)
@@ -59,9 +64,16 @@
   [settings]
   (delete-when-empty! settings))
 
-(t2/define-before-update :model/FieldUserSettings
-  [settings]
-  (with-set-flags settings (t2/changes settings)))
+(methodical/defmethod t2.pipeline/transduce-query :around [:toucan.query-type/update.* :model/FieldUserSettings :default]
+  "Set the `_set` flags from the changes as the caller gives them. A before-update hook sees only `t2/changes`, which
+  drops a flag the caller sets to its current value. The UPDATE that Toucan runs after its before-update hooks has only
+  those changes, so it keeps them as they are."
+  [rf query-type model parsed-args resolved-query]
+  (next-method rf query-type model
+               (cond-> parsed-args
+                 (not (::t2.before-update/doing-before-update? parsed-args))
+                 (update :changes #(some-> % (with-set-flags %))))
+               resolved-query))
 
 (t2/define-after-update :model/FieldUserSettings
   [settings]
@@ -74,7 +86,7 @@
   (let [settings (u/select-keys-when settings :present field/field-user-settings)]
     (when (seq settings)
       (if (warehouse-schema.db/field-user-settings-exist? id)
-        (warehouse-schema.db/update-field-user-settings! id (with-set-flags settings settings))
+        (warehouse-schema.db/update-field-user-settings! id settings)
         (warehouse-schema.db/insert-field-user-settings! (assoc settings :field_id id))))))
 
 (mu/defn set-custom-positions!
@@ -100,6 +112,48 @@
                           (warehouse-schema-overlay/field-user-settings-flags k) (conj [(warehouse-schema-overlay/field-user-settings-flags k) false]))))
            ks))))
 
+(def ^:private AIValues
+  [:map {:closed true}
+   [:semantic_type    {:optional true} [:maybe [:or :keyword :string]]]
+   [:description      {:optional true} [:maybe :string]]
+   [:data_sensitivity {:optional true} [:maybe [:or :keyword :string]]]])
+
+(defn- ai-columns
+  "`values`, keyed by the user-settable column, keyed by the column that holds its AI value instead."
+  [values]
+  (update-keys values warehouse-schema-overlay/field-ai-columns))
+
+(mu/defn set-ai-values-for-fields!
+  "Record each map of `field-id->values` as the accepted AI values of its Field. A nil value clears it. The human
+  values and their flags stay as they are."
+  [field-id->values :- [:map-of ::lib.schema.id/field AIValues]]
+  (let [field-id->values (into {} (remove (comp empty? val)) field-id->values)]
+    (when (seq field-id->values)
+      (t2/with-transaction [_conn]
+        (let [existing (warehouse-schema.db/field-ids-with-user-settings (keys field-id->values))
+              inserts  (into []
+                             (keep (fn [[id values]]
+                                     (when (and (not (existing id)) (some some? (vals values)))
+                                       (assoc (ai-columns values) :field_id id))))
+                             field-id->values)]
+          (when (seq inserts)
+            (warehouse-schema.db/insert-field-user-settings! inserts))
+          (doseq [[id values] field-id->values
+                  :when (existing id)]
+            (warehouse-schema.db/update-field-user-settings! id (ai-columns values))))))))
+
+(mu/defn set-ai-values!
+  "Record `values` as the accepted AI values of `field`; see [[set-ai-values-for-fields!]]."
+  [{:keys [id]} :- ::warehouse-schema.schema/field
+   values       :- AIValues]
+  (set-ai-values-for-fields! {id values}))
+
+(mu/defn unset-ai-values!
+  "Drop the accepted AI values of the Field columns `ks` for `field`."
+  [field :- ::warehouse-schema.schema/field
+   ks    :- [:sequential (into [:enum] (keys warehouse-schema-overlay/field-ai-columns))]]
+  (set-ai-values! field (zipmap ks (repeat nil))))
+
 (defmethod serdes/extract-query "FieldUserSettings" [_model-name {:keys [filter-column filter-ids] :as opts}]
   (if (= filter-column :table_id)
     (warehouse-schema.db/field-user-settings-for-tables filter-ids)
@@ -118,18 +172,29 @@
 (defmethod serdes/load-update! "FieldUserSettings" [model-name ingested local]
   ((get-method serdes/load-update! :default)
    model-name
-   (merge (zipmap warehouse-schema-overlay/user-settable-field-columns (repeat nil)) ingested)
+   (merge (zipmap (concat warehouse-schema-overlay/user-settable-field-columns
+                          (vals warehouse-schema-overlay/field-ai-columns))
+                  (repeat nil))
+          ingested)
    local))
 
 (defmethod serdes/make-spec "FieldUserSettings" [_model-name _opts]
   {:copy      [:semantic_type :description :display_name :visibility_type
                :has_field_values :effective_type :coercion_strategy :caveats
                :points_of_interest :nfc_path :json_unfolding :settings :data_sensitivity :custom_position
-               :description_set :semantic_type_set :fk_target_field_id_set]
+               :description_set :semantic_type_set :fk_target_field_id_set
+               :ai_semantic_type :ai_description :ai_data_sensitivity]
    :defaults  {:description_set        false
                :semantic_type_set      false
-               :fk_target_field_id_set false}
-   :transform {:fk_target_field_id (serdes/fk :model/Field)
+               :fk_target_field_id_set false
+               :data_sensitivity_set   false}
+   :transform {;; An export made before the flag existed has a label and no flag: the label is a person's.
+               :data_sensitivity_set {:export              identity
+                                      :import-with-context (fn [ingested k v]
+                                                             (if (contains? ingested k)
+                                                               (boolean v)
+                                                               (some? (:data_sensitivity ingested))))}
+               :fk_target_field_id (serdes/fk :model/Field)
                :field_id     {::serdes/fk true
                               :export     #(serdes/*export-field-fk* %)
                               :import-with-context (fn [current _ _]

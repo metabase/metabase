@@ -322,6 +322,11 @@
   "Should we allow users to use dependency tracking?"
   :dependencies)
 
+(define-premium-feature ^{:added "0.65.0"} enable-data-sensitivity?
+  "Should we allow admins to generate field metadata (data sensitivity, semantic types and descriptions) with AI and
+  review it before it is applied?"
+  :data-sensitivity)
+
 (define-premium-feature ^{:added "0.57.1"} enable-support-users?
   "Should users be allowed to enable support users in-app?"
   :support-users)
@@ -416,6 +421,7 @@
    :library                        (enable-library?)
    :library_retrieval              (enable-library-retrieval?)
    :dependencies                   (enable-dependencies?)
+   :data_sensitivity               (enable-data-sensitivity?)
    :schema-viewer                  (enable-schema-viewer?)
    :development_mode               (development-mode?)
    :disable_password_login         (can-disable-password-login?)

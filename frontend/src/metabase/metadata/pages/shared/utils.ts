@@ -19,6 +19,7 @@ export function parseRouteParams(params: RouteParams): ParsedRouteParams {
 
 export function getTableMetadataQuery(
   tableId: TableId | undefined | null,
+  { previewAiProposals = false }: { previewAiProposals?: boolean } = {},
 ): GetTableQueryMetadataRequest | typeof skipToken {
   if (tableId == null) {
     return skipToken;
@@ -28,6 +29,10 @@ export function getTableMetadataQuery(
     id: tableId,
     include_sensitive_fields: true,
     ...PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+    ...(previewAiProposals && {
+      include_editable_data_model: true,
+      preview_ai_proposals: true,
+    }),
   };
 }
 

@@ -1,7 +1,6 @@
 import { useDisclosure, useWindowEvent } from "@mantine/hooks";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   useGetTableQueryMetadataQuery,
@@ -16,17 +15,18 @@ import { useHasTokenFeature } from "metabase/common/hooks";
 import { hasLibraryCollection } from "metabase/data-studio/common/utils";
 import { isCypressActive } from "metabase/env";
 import {
-  FieldSection,
+  AiPreviewFieldSection,
   FieldValuesModal,
   NoDatabasesEmptyState,
   PreviewSection,
   type PreviewType,
 } from "metabase/metadata/components";
 import { getTableMetadataQuery } from "metabase/metadata/pages/shared/utils";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { hasAiProposals } from "metabase/metadata/utils/field";
 import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_LIBRARY,
+  PLUGIN_METADATA_GENERATION,
 } from "metabase/plugins";
 import { useParams } from "metabase/router";
 import {
@@ -40,12 +40,14 @@ import {
   rem,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
+import type { DatabaseId, FieldId, Table, TableId } from "metabase-types/api";
 
 import { trackMetadataChange } from "../../analytics";
 
 import S from "./DataModel.module.css";
+import { DatabaseSection } from "./DatabaseSection";
 import { RouterTablePicker } from "./TablePicker";
-import type { TreePath } from "./TablePicker/types";
+import type { ChangeOptions, TreePath } from "./TablePicker/types";
 import { TableSection } from "./TableSection";
 import { TableAttributesEditBulk } from "./TableSection/TableAttributesEditBulk";
 import { COLUMN_CONFIG } from "./constants";
@@ -98,18 +100,19 @@ function DataModelContent() {
   const metadataTableId = Array.from(selectedTables)[0] ?? queryTableId;
   // But keep the URL tableId for navigation/path to avoid auto-expansion when selecting/deselecting
   const navigationTableId = hasSelectedItems ? queryTableId : queryTableId;
+  // Whether the table and field panes read the pending AI suggestions as if accepted.
+  const [isAiPreview, setIsAiPreview] = useState(false);
 
   const {
     data: table,
     error: tableError,
     isLoading: isLoadingTables,
-  } = useGetTableQueryMetadataQuery(getTableMetadataQuery(metadataTableId));
-  const fieldsByName = useMemo(() => {
-    return _.indexBy(table?.fields ?? [], (field) => field.name);
-  }, [table]);
+  } = useGetTableQueryMetadataQuery(
+    getTableMetadataQuery(metadataTableId, { previewAiProposals: isAiPreview }),
+  );
   const field = table?.fields?.find((field) => field.id === fieldId);
-  const parentName = field?.nfc_path?.[0] ?? "";
-  const parentField = fieldsByName[parentName];
+  const isTablePreview =
+    isAiPreview && (table?.fields ?? []).some(hasAiProposals);
 
   const hasLibraryFeature = useHasTokenFeature("library");
   const { data: libraryCollection, isLoading: isLoadingLibrary } =
@@ -127,6 +130,25 @@ function DataModelContent() {
   const [onUpdateCallback, setOnUpdateCallback] = useState<
     ((path?: TreePath) => void) | null
   >(null);
+  // The database the person clicked in the tree. The tree also selects a lone
+  // database on its own, and that must not open the panel.
+  const [pickedDatabaseId, setPickedDatabaseId] = useState<DatabaseId | null>(
+    null,
+  );
+
+  const handlePathChange = useCallback(
+    (path: TreePath, options?: ChangeOptions) => {
+      if (options?.isAutomatic) {
+        return;
+      }
+      const isDatabasePick =
+        path.databaseId != null &&
+        path.schemaName == null &&
+        path.tableId == null;
+      setPickedDatabaseId(isDatabasePick ? (path.databaseId ?? null) : null);
+    },
+    [],
+  );
 
   useWindowEvent(
     "keydown",
@@ -172,6 +194,14 @@ function DataModelContent() {
     metadataTableId != null &&
     !hasSelectedMoreThanOneTable &&
     !showBulkTableEdit;
+  const databaseDetailsId = getDatabaseDetailsId({
+    databaseId,
+    pickedDatabaseId,
+    databaseExists,
+    fieldId,
+    hasSelectedItems,
+    tableId: metadataTableId,
+  });
 
   return (
     <Flex
@@ -198,6 +228,7 @@ function DataModelContent() {
           tableId={navigationTableId}
           params={params}
           setOnUpdateCallback={setOnUpdateCallback}
+          onPathChange={handlePathChange}
         />
       </PageContainer>
 
@@ -215,6 +246,14 @@ function DataModelContent() {
               <LoadingAndErrorWrapper error={t`Not found.`} />
             </Stack>
           )}
+
+        {databaseDetailsId != null && (
+          <DatabaseDetailsSection
+            databaseId={databaseDetailsId}
+            scrollToPanel={scrollToPanel}
+            onClose={() => setPickedDatabaseId(null)}
+          />
+        )}
 
         {showBulkTableEdit && (
           <Stack
@@ -254,21 +293,28 @@ function DataModelContent() {
               px="xl"
             >
               <DataStudioBreadcrumbs>{t`Table details`}</DataStudioBreadcrumbs>
-              <ActionIcon
-                variant="subtle"
-                size="sm"
-                component={ForwardRefLink}
-                to={Urls.dataStudioData({
-                  databaseId: table?.db_id,
-                  schemaName: table?.schema,
-                })}
-                onClick={() => {
-                  closePreview();
-                  resetSelection();
-                }}
-              >
-                <Icon name="close" />
-              </ActionIcon>
+              <Group gap="md" wrap="nowrap">
+                <PendingBadge
+                  table={table}
+                  isPreview={isAiPreview}
+                  onPreviewChange={setIsAiPreview}
+                />
+                <ActionIcon
+                  variant="subtle"
+                  size="sm"
+                  component={ForwardRefLink}
+                  to={Urls.dataStudioData({
+                    databaseId: table?.db_id,
+                    schemaName: table?.schema,
+                  })}
+                  onClick={() => {
+                    closePreview();
+                    resetSelection();
+                  }}
+                >
+                  <Icon name="close" />
+                </ActionIcon>
+              </Group>
             </Group>
             <ScrollArea flex={1} px="xl" type="hover">
               <LoadingAndErrorWrapper error={error} loading={isLoading}>
@@ -284,6 +330,7 @@ function DataModelContent() {
                     activeTab={activeTab}
                     canPublish={canPublish}
                     hasLibrary={hasLibrary}
+                    isAiPreview={isTablePreview}
                     onUpdate={() =>
                       onUpdateCallback?.({
                         databaseId: table.db_id,
@@ -320,41 +367,42 @@ function DataModelContent() {
               className={S.header}
             >
               <DataStudioBreadcrumbs>{t`Field details`}</DataStudioBreadcrumbs>
-              <ActionIcon
-                variant="subtle"
-                size="sm"
-                component={ForwardRefLink}
-                to={Urls.dataStudioData({
-                  databaseId: table?.db_id,
-                  schemaName: table?.schema,
-                  tableId: table?.id,
-                })}
-                onClick={closePreview}
-              >
-                <Icon name="close" />
-              </ActionIcon>
+              <Group gap="md" wrap="nowrap">
+                <PendingBadge
+                  table={table}
+                  fieldId={fieldId}
+                  isPreview={isAiPreview}
+                  onPreviewChange={setIsAiPreview}
+                />
+                <ActionIcon
+                  variant="subtle"
+                  size="sm"
+                  component={ForwardRefLink}
+                  to={Urls.dataStudioData({
+                    databaseId: table?.db_id,
+                    schemaName: table?.schema,
+                    tableId: table?.id,
+                  })}
+                  onClick={closePreview}
+                >
+                  <Icon name="close" />
+                </ActionIcon>
+              </Group>
             </Group>
             <ScrollArea flex={1} px="xl" type="hover">
               <LoadingAndErrorWrapper error={error} loading={isLoading}>
                 {field && table && databaseId != null && (
-                  <>
-                    <FieldSection
-                      /**
-                       * Make sure internal component state is reset when changing fields.
-                       * This is to avoid state mix-up with optimistic updates.
-                       */
-                      key={getRawTableFieldId(field)}
-                      field={field}
-                      parent={parentField}
-                      table={table}
-                      getFieldHref={(fieldId) =>
-                        Urls.dataStudioData({ ...parsedParams, fieldId })
-                      }
-                      onTrackMetadataChange={trackMetadataChange}
-                      onFieldValuesClick={openFieldValuesModal}
-                      onPreviewClick={togglePreview}
-                    />
-                  </>
+                  <AiPreviewFieldSection
+                    field={field}
+                    table={table}
+                    isAiPreview={isAiPreview}
+                    getFieldHref={(fieldId) =>
+                      Urls.dataStudioData({ ...parsedParams, fieldId })
+                    }
+                    onTrackMetadataChange={trackMetadataChange}
+                    onFieldValuesClick={openFieldValuesModal}
+                    onPreviewClick={togglePreview}
+                  />
                 )}
               </LoadingAndErrorWrapper>
 
@@ -394,5 +442,99 @@ function DataModelContent() {
         />
       )}
     </Flex>
+  );
+}
+
+function PendingBadge({
+  table,
+  fieldId,
+  isPreview,
+  onPreviewChange,
+}: {
+  table: Table | undefined;
+  fieldId?: FieldId;
+  isPreview: boolean;
+  onPreviewChange: (isPreview: boolean) => void;
+}) {
+  if (table == null) {
+    return null;
+  }
+  return (
+    <PLUGIN_METADATA_GENERATION.PendingBadge
+      tableId={table.id}
+      fieldId={fieldId}
+      isPreview={isPreview}
+      onPreviewChange={onPreviewChange}
+    />
+  );
+}
+
+function getDatabaseDetailsId({
+  databaseId,
+  pickedDatabaseId,
+  databaseExists,
+  fieldId,
+  hasSelectedItems,
+  tableId,
+}: {
+  databaseId: DatabaseId | undefined;
+  pickedDatabaseId: DatabaseId | null;
+  databaseExists: boolean | undefined;
+  fieldId: FieldId | undefined;
+  hasSelectedItems: boolean;
+  tableId: TableId | undefined;
+}): DatabaseId | null {
+  const isDatabaseOnly =
+    databaseExists === true &&
+    tableId == null &&
+    fieldId == null &&
+    !hasSelectedItems;
+  return databaseId != null && databaseId === pickedDatabaseId && isDatabaseOnly
+    ? databaseId
+    : null;
+}
+
+function DatabaseDetailsSection({
+  databaseId,
+  scrollToPanel,
+  onClose,
+}: {
+  databaseId: DatabaseId;
+  scrollToPanel: (el: HTMLDivElement | null) => void;
+  onClose: () => void;
+}) {
+  return (
+    <Stack
+      className={S.column}
+      flex={COLUMN_CONFIG.table.flex}
+      h="100%"
+      maw={COLUMN_CONFIG.table.max}
+      miw={COLUMN_CONFIG.table.min}
+      ref={scrollToPanel}
+      gap={0}
+    >
+      <Group
+        justify="space-between"
+        w="100%"
+        data-testid="database-section-header"
+        py="xl"
+        bg="background_page-secondary"
+        className={S.header}
+        px="xl"
+      >
+        <DataStudioBreadcrumbs>{t`Database details`}</DataStudioBreadcrumbs>
+        <ActionIcon
+          variant="subtle"
+          size="sm"
+          aria-label={t`Close`}
+          onClick={onClose}
+        >
+          <Icon name="close" />
+        </ActionIcon>
+      </Group>
+      <ScrollArea flex={1} px="xl" type="hover">
+        <DatabaseSection databaseId={databaseId} />
+      </ScrollArea>
+    </Stack>
   );
 }

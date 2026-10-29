@@ -2,15 +2,31 @@
   "Schemas and functions shared by different `metabase.sync.sync-metadata.fields.*` namespaces."
   (:require
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]))
 
 (set! *warn-on-reflection* true)
+
+(defenterprise delete-pending-semantic-type-proposal!
+  "Delete the pending AI `semantic_type` proposal of the field with `field-id`. OSS has no proposals."
+  metabase-enterprise.data-sensitivity.db
+  [_field-id]
+  nil)
+
+(mu/defn clear-ai-semantic-type!
+  "Drop the accepted AI `semantic_type` and the pending `semantic_type` proposal of the field with `field-id`. Sync
+  calls this when the base type of the field changes, or when sync sets a key type on it. A human-set semantic type
+  stays."
+  [field-id :- ::lib.schema.id/field]
+  (field-user-settings/unset-ai-values! {:id field-id} [:semantic_type])
+  (delete-pending-semantic-type-proposal! field-id))
 
 (def ParentID
   "Schema for the `parent-id` of a Field, i.e. an optional ID."

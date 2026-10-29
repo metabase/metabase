@@ -239,6 +239,102 @@ describe("FieldSection", () => {
 
       await assertErrorToast("Failed to update formatting of Quantity");
     });
+
+    it("shows an error toast when updating data sensitivity fails", async () => {
+      setup();
+      failFieldUpdates();
+
+      await selectOption(
+        screen.getByLabelText("Data sensitivity"),
+        "Personally identifiable information",
+      );
+
+      await assertErrorToast("Failed to update data sensitivity of Quantity");
+    });
+  });
+
+  describe("data sensitivity", () => {
+    it("saves the selected category through PUT /api/field/:id", async () => {
+      setup();
+
+      await selectOption(
+        screen.getByLabelText("Data sensitivity"),
+        "Protected health information",
+      );
+
+      await waitFor(async () => {
+        const call = fetchMock.callHistory.lastCall(
+          `field-${QUANTITY_FIELD.id}-put`,
+        );
+        expect(await call?.request?.json()).toEqual({
+          data_sensitivity: "PHI",
+        });
+      });
+    });
+
+    it("resets a value a person set through POST /api/field/:id/reset-to-automatic", async () => {
+      const field = createOrdersQuantityField({
+        data_sensitivity: "PII",
+        data_sensitivity_source: "human",
+      });
+      const table = createOrdersTable({ fields: [field] });
+      setup({
+        field,
+        table,
+        database: createSampleDatabase({ tables: [table] }),
+      });
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Reset" }),
+      );
+
+      await waitFor(async () => {
+        const call = fetchMock.callHistory.lastCall(
+          `field-${QUANTITY_FIELD.id}-reset-to-automatic`,
+        );
+        expect(await call?.request?.json()).toEqual({
+          columns: ["data_sensitivity"],
+        });
+      });
+    });
+
+    it("shows the AI source for a previewed data sensitivity proposal", async () => {
+      const savedField = createOrdersQuantityField({
+        data_sensitivity: "PUBLIC",
+        data_sensitivity_source: "human",
+      });
+      const table = createOrdersTable({ fields: [savedField] });
+      const previewField = createOrdersQuantityField({
+        data_sensitivity: "PII",
+        ai_proposals: {
+          data_sensitivity: {
+            value: "PII",
+            reasoning: null,
+            confidence: null,
+            conflict: true,
+          },
+        },
+      });
+      setup({
+        field: previewField,
+        table,
+        database: createSampleDatabase({ tables: [table] }),
+      });
+
+      await waitFor(() => {
+        expect(
+          fetchMock.callHistory.called(`path:/api/field/${savedField.id}`),
+        ).toBe(true);
+      });
+      expect(await screen.findByText("Set by AI")).toBeInTheDocument();
+      expect(screen.getByLabelText("Data sensitivity")).toHaveValue(
+        "Personally identifiable information",
+      );
+      expect(screen.queryByText("Set by a person")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Reset" }),
+      ).not.toBeInTheDocument();
+    });
   });
 
   describe("read-only table", () => {

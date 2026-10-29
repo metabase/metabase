@@ -4,7 +4,7 @@
   (:require
    [clojure.core.async :as a]
    [clojure.test :refer :all]
-   [metabase-enterprise.database-routing.e2e-test :as e2e]
+   [metabase-enterprise.database-routing.test-util :as routing.tu]
    [metabase-enterprise.test :as met]
    [metabase.driver.settings :as driver.settings]
    [metabase.query-processor :as qp]
@@ -37,11 +37,11 @@
     (binding [driver.settings/*allow-testing-h2-connections* true]
       (met/with-user-attributes! :crowberto {"db_name" "__METABASE_ROUTER__"}
         (met/with-user-attributes! :rasta {"db_name" "destination-db"}
-          (e2e/with-routing-setup! [router-db [[destination-db "destination-db"]]]
+          (routing.tu/with-routing-setup! [router-db [[destination-db "destination-db"]]]
             (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router-db)
                                                     :user_attribute "db_name"}]
-              (e2e/execute-statement! router-db "INSERT INTO \"my_database_name\" (str) VALUES ('router')")
-              (e2e/execute-statement! destination-db "INSERT INTO \"my_database_name\" (str) VALUES ('destination')")
+              (routing.tu/execute-statement! router-db "INSERT INTO \"my_database_name\" (str) VALUES ('router')")
+              (routing.tu/execute-statement! destination-db "INSERT INTO \"my_database_name\" (str) VALUES ('destination')")
               (let [table-id (t2/select-one-pk :model/Table :db_id (u/the-id router-db))]
                 (t2/update! :model/Field :table_id table-id {:fingerprint router-fingerprint})
                 (f router-db table-id)))))))))
