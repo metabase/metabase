@@ -210,6 +210,9 @@
     (and (hooks/list-node? node) (binding-form? node))
     (mapcat value-nodes (binding-form-body node))
 
+    (and (hooks/list-node? node) (= 'cons (head-name node)))
+    nil
+
     (hooks/list-node? node)
     (let [children (vec (:children node))
           assoc?   (= 'assoc (some-> (first children) hooks/sexpr))

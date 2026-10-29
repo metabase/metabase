@@ -119,7 +119,8 @@
 (deftest ^:parallel sql-vector-args-are-parameters-test
   (testing "the args of an `[sql & args]` vector are already bound"
     (is (empty? (lint-query-call '(t2/query ["SELECT * FROM t WHERE k = ?" k]) 'metabase.foo.db)))
-    (is (empty? (lint-query-call '(t2/query [(str "SELECT" " 1 WHERE k = ?") k]) 'metabase.foo.db)))))
+    (is (empty? (lint-query-call '(t2/query [(str "SELECT" " 1 WHERE k = ?") k]) 'metabase.foo.db)))
+    (is (empty? (lint-query-call '(t2/query-one (cons (user-query) [k])) 'metabase.foo.db)))))
 
 (deftest ^:parallel update-changes-map-is-not-linted-test
   (testing "the changes map of an update is written rather than filtered on"
