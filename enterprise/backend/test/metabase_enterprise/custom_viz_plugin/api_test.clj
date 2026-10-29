@@ -37,6 +37,18 @@
                         {:request-options {:headers {"content-type" "multipart/form-data"}}}
                         {:file bundle-bytes}))
 
+(defn- admin-listed-plugin
+  "The plugin `identifier` as GET / lists it for an admin, or nil when it isn't listed."
+  [identifier]
+  (->> (mt/user-http-request :crowberto :get 200 "ee/custom-viz-plugin/")
+       (filter #(= identifier (:identifier %)))
+       first))
+
+(defn- warning-types
+  "Warning types for a listed plugin."
+  [plugin]
+  (into #{} (map :type) (:warnings plugin)))
+
 ;;; ------------------------------------------------ Auth & Permissions ------------------------------------------------
 
 (deftest authorization-test
@@ -144,7 +156,7 @@
 
 (deftest admin-listing-flags-invalid-identifier-test
   (mt/with-premium-features #{:custom-viz}
-    (testing "GET / flags a legacy plugin whose identifier contains \":\" with an invalid-identifier warning"
+    (testing "GET / warns about colon identifiers for uploaded and dev plugins"
       (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "colon:viz"
                                                :display_name "Colon Viz"
                                                :status       :active
@@ -155,17 +167,36 @@
                                                :status         :active
                                                :enabled        true
                                                :dev_bundle_url "http://localhost:5174"}]
-        (let [plugins    (mt/user-http-request :crowberto :get 200 "ee/custom-viz-plugin/")
-              warn-types (fn [identifier]
-                           (->> plugins
-                                (filter #(= identifier (:identifier %)))
-                                first
-                                :warnings
-                                (map :type)
-                                set))]
-          (is (contains? (warn-types "colon:viz") "invalid-identifier"))
-          (is (contains? (warn-types "colon:dev-viz") "invalid-identifier")
-              "dev-only plugins are exempt from version warnings but not from this one"))))))
+        (let [plugins (into {} (map (juxt :identifier identity))
+                            (mt/user-http-request :crowberto :get 200 "ee/custom-viz-plugin/"))]
+          (doseq [identifier ["colon:viz" "colon:dev-viz"]]
+            (is (contains? (warning-types (get plugins identifier)) "invalid-identifier")
+                identifier)))))))
+
+(deftest legacy-identifier-listing-test
+  (mt/with-premium-features #{:custom-viz}
+    (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "My/Heatmap"
+                                             :display_name "My Heatmap"
+                                             :status       :active
+                                             :enabled      true
+                                             :bundle_hash  "slash-hash"}]
+      (testing "legacy identifiers remain available without identifier warnings"
+        (let [identifiers (set (map :identifier (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")))
+              plugin      (admin-listed-plugin "My/Heatmap")]
+          (is (contains? identifiers "My/Heatmap"))
+          (is (some? plugin))
+          (is (not (contains? (warning-types plugin) "invalid-identifier"))))))))
+
+(deftest admin-listing-error-plugin-has-no-version-warnings-test
+  (mt/with-premium-features #{:custom-viz}
+    (testing "error plugins have no version warnings"
+      (mt/with-temp [:model/CustomVizPlugin _ {:identifier    "broken-viz"
+                                               :display_name  "broken-viz"
+                                               :status        :error
+                                               :error_message "metabase-plugin.json not found in bundle"
+                                               :enabled       true
+                                               :bundle_hash   "broken-hash"}]
+        (is (= [] (:warnings (admin-listed-plugin "broken-viz"))))))))
 
 (deftest bundle-bytes-not-exposed-test
   (mt/with-premium-features #{:custom-viz}
@@ -194,7 +225,26 @@
                                                :status       :active}]
         (is (re-find #"identifier.*already exists"
                      (multipart-upload! :crowberto 400 "ee/custom-viz-plugin/"
-                                        (cvp.tu/valid-bundle-bytes "dup-viz"))))))))
+                                        (cvp.tu/valid-bundle-bytes "dup-viz"))))))
+    (testing "upload and dev registration reject case-insensitive duplicates"
+      (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "Thumbs"
+                                               :display_name "Thumbs"
+                                               :status       :active}]
+        (is (re-find #"\"thumbs\" differs only in case from the existing plugin \"Thumbs\""
+                     (multipart-upload! :crowberto 400 "ee/custom-viz-plugin/"
+                                        (cvp.tu/valid-bundle-bytes "thumbs"))))
+        (with-dev-mode-enabled
+          (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest (constantly {:name "THUMBS"})]
+            (is (re-find #"\"THUMBS\" differs only in case from the existing plugin \"Thumbs\""
+                         (mt/user-http-request :crowberto :post 400 "ee/custom-viz-plugin/dev"
+                                               {:dev_bundle_url "http://localhost:5174"})))))))))
+
+(deftest upload-rejects-invalid-directory-name-test
+  (mt/with-premium-features #{:custom-viz}
+    (testing "an identifier a repository can't name is refused at upload"
+      (is (re-find #"must be letters, digits"
+                   (multipart-upload! :crowberto 400 "ee/custom-viz-plugin/"
+                                      (cvp.tu/valid-bundle-bytes "a/b")))))))
 
 ;;; ------------------------------------------------ CRUD ------------------------------------------------
 
@@ -281,6 +331,22 @@
           (mt/user-http-request :crowberto :get 404 "ee/custom-viz-plugin/99999/asset"
                                 :path "icon.svg"))))))
 
+(deftest asset-endpoint-serves-icon-with-dot-segments-test
+  (mt/with-premium-features #{:custom-viz}
+    (let [icon   (byte-array [0 (int 0x80) (int 0xff)])
+          bundle (cvp.tu/make-tgz-bytes [["metabase-plugin.json" (json/encode {:name "dot-icon" :icon "./icon.png"})]
+                                         ["dist/index.js" "{}"]
+                                         ["dist/assets/icon.png" icon]])]
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "dot-icon"
+                                                      :display_name "dot-icon"
+                                                      :status       :active
+                                                      :bundle       bundle
+                                                      :bundle_hash  (cvp.tu/bundle-hash bundle)
+                                                      :manifest     {:name "dot-icon" :icon "./icon.png"}}]
+        (testing "the icon is served at the path the manifest names"
+          (mt/user-http-request :crowberto :get 200 (str "ee/custom-viz-plugin/" id "/asset")
+                                :path "./icon.png"))))))
+
 ;;; ------------------------------------------------ Plugin Registration ------------------------------------------------
 
 (deftest register-plugin-test
@@ -295,7 +361,7 @@
                                                  :icon     "icon.svg"
                                                  :metabase {:version ">=1.59.0"}
                                                  :sdk      {:version "2.0.0"}})]
-                       ["dist/index.js" "console.log('hi')"]])
+                       ["dist/index.js" "{}"]])
                 resp (multipart-upload! :crowberto 200 "ee/custom-viz-plugin/" zip)
                 row  (t2/select-one :model/CustomVizPlugin :identifier "new-register-viz")]
             (is (= "new-register-viz" (:identifier resp)))
@@ -339,7 +405,7 @@
   (mt/with-premium-features #{:custom-viz}
     (mt/with-model-cleanup [:model/CustomVizPlugin]
       (testing "POST returns 400 when zip is missing metabase-plugin.json"
-        (let [zip  (cvp.tu/make-tgz-bytes [["dist/index.js" "console.log('hi')"]])
+        (let [zip  (cvp.tu/make-tgz-bytes [["dist/index.js" "{}"]])
               resp (multipart-upload! :crowberto 400 "ee/custom-viz-plugin/" zip)]
           (is (re-find #"metabase-plugin\.json" (or (:message resp) (str resp)))))))))
 
@@ -358,7 +424,7 @@
       (testing "POST returns 400 when manifest has no name field"
         (let [zip  (cvp.tu/make-tgz-bytes
                     [["metabase-plugin.json" (json/encode {:icon "icon.svg"})]
-                     ["dist/index.js" "console.log('hi')"]])
+                     ["dist/index.js" "{}"]])
               resp (multipart-upload! :crowberto 400 "ee/custom-viz-plugin/" zip)]
           (is (re-find #"\"name\"" (or (:message resp) (str resp)))))))))
 
@@ -425,7 +491,12 @@
           (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest (constantly {:name "a:b"})]
             (let [resp (mt/user-http-request :crowberto :post 400 "ee/custom-viz-plugin/dev"
                                              {:dev_bundle_url "http://localhost:5174"})]
-              (is (str/includes? resp "must not contain \":\"")))))))))
+              (is (str/includes? resp "must not contain \":\"")))))
+        (testing "dev plugin registration rejects an identifier a repository can't name"
+          (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest (constantly {:name "a/b"})]
+            (let [resp (mt/user-http-request :crowberto :post 400 "ee/custom-viz-plugin/dev"
+                                             {:dev_bundle_url "http://localhost:5174"})]
+              (is (str/includes? resp "must be letters, digits")))))))))
 
 ;;; ------------------------------------------------ Bundle Replace ------------------------------------------------
 
@@ -463,6 +534,20 @@
                                       (str "ee/custom-viz-plugin/" id "/bundle") zip
                                       :method :put)]
           (is (re-find #"does not match" (or (:message resp) (str resp)))))))))
+
+(deftest replace-bundle-legacy-non-directory-identifier-test
+  (mt/with-premium-features #{:custom-viz}
+    (testing "bundle replacement supports legacy identifiers"
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "My/Heatmap"
+                                                      :display_name "My Heatmap"
+                                                      :status       :active
+                                                      :bundle_hash  "old"}]
+        (let [zip  (cvp.tu/valid-bundle-bytes "My/Heatmap")
+              resp (multipart-upload! :crowberto 200
+                                      (str "ee/custom-viz-plugin/" id "/bundle") zip
+                                      :method :put)]
+          (is (= "My/Heatmap" (:identifier resp)))
+          (is (= (cvp.tu/bundle-hash zip) (:bundle_hash resp))))))))
 
 (deftest replace-bundle-legacy-colon-identifier-test
   (mt/with-premium-features #{:custom-viz}

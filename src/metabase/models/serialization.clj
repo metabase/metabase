@@ -284,6 +284,7 @@
     `:updated_at` are always skipped, no need to mention them).
   - `:transform`: is a map like `{:field-name {:export (fn [v] ...) :import (fn [v] ...)}}`. For behavior see docs
     on `extract-one` and `xform-one`. There are a number of transformers, see this field for `fk` and similar.
+  - `:post-extract`: an optional function of the extracted map, called after copying and transforming fields.
   - `:coerce`: a map like `{:field-name Schema}`; incoming data will be coerced to schema after `:import`/`:copy`.
   - `:defaults`: a map like `{:field-name value}`; fields whose exported values match their defaults are omitted
     from the output. All fields are assumed to default to `nil`; only specify non-nil defaults here.
@@ -379,7 +380,8 @@
                                       {:model    model-name
                                        :key      k
                                        :instance instance})))
-                    [export-k res])))))
+                    [export-k res])))
+          ((or (:post-extract spec) identity))))
     (catch Exception e
       (throw (ex-info (format "Error extracting %s %s" model-name (:id instance))
                       (assoc (ex-data e) :model model-name :id (:id instance))
@@ -594,19 +596,28 @@
       (and self (not (contains? self :id))) (assoc :serdes/meta (ingested-path model ingested)))))
 
 (defn storable
-  "`entity` as its file stores it: `:serdes/meta` reduced to `[{:model ...}]`, and removed from nested entities."
+  "Prepare an entity for storage, keeping only its model metadata and removing ingestion-only directory metadata."
   [entity]
   (let [model (-> entity :serdes/meta last :model)]
     (-> (walk/postwalk #(cond-> % (map? %) (dissoc :serdes/meta)) entity)
+        (dissoc :serdes/directory)
         (assoc :serdes/meta [{:model model}]))))
 
 (defmulti resource-paths
-  "Paths of the `:serdes/resources` stored next to an ingested entity's YAML file, relative to its directory."
+  "Resource paths relative to the entity's directory."
   {:arglists '([ingested])}
   ingested-model)
 
 (defmethod resource-paths :default [_]
   nil)
+
+(defmulti binary-resources?
+  "Whether resources are read and written as byte arrays rather than text."
+  {:arglists '([ingested])}
+  ingested-model)
+
+(defmethod binary-resources? :default [_]
+  false)
 
 (defmulti load-find-local
   "Given a path, tries to look up any corresponding local entity.

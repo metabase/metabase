@@ -176,6 +176,23 @@ describe("pack", () => {
     );
   });
 
+  it("ignores an assets list in the manifest, only the icon is served", async () => {
+    buildProject();
+    writeFileSync(join(projectDir, "dist", "assets", "extra.svg"), "<svg />");
+    editJson("metabase-plugin.json", (manifest) => {
+      manifest.assets = ["extra.svg"];
+    });
+    await packPlugin(projectDir);
+
+    const entries = await readTgz(join(projectDir, TGZ_NAME));
+
+    expect(entries.map((entry) => entry.name)).toEqual([
+      "metabase-plugin.json",
+      "dist/index.js",
+      "dist/assets/icon.svg",
+    ]);
+  });
+
   it("rejects a project without a manifest", async () => {
     buildProject();
     rmSync(join(projectDir, "metabase-plugin.json"));

@@ -20,7 +20,7 @@ npm run build      # Compiles src/ → dist/, then packages it into a .tgz
 `npm run build` writes `<name>-<version>.tgz` to the project root. Upload that file in
 **Admin → Custom visualizations → Add** to register the plugin.
 
-> The packaged archive contains `metabase-plugin.json` plus the build output (`dist/index.js` and any whitelisted `dist/assets/*`). The `dist/` folder does not need to be committed.
+> The packaged archive contains `metabase-plugin.json` plus the build output (`dist/index.js` and the icon under `dist/assets/`). Metabase serves only the icon, so nothing else under `dist/assets/` is packed. The `dist/` folder does not need to be committed.
 
 ### Project structure
 

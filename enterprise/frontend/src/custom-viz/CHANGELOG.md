@@ -7,6 +7,7 @@ This changelog covers the `@metabase/custom-viz` npm package — the API and CLI
 ### Bug Fixes
 
 - The scaffolded dev server no longer crashes when an asset file disappears before it's copied, which happened with editors that save through atomic writes, or when a directory is added to `public/assets`. One save now triggers a single reload. Assets deleted from `public/assets` are now removed from `dist/assets` too ([#83597](https://github.com/metabase/metabase/pull/83597)).
+- `@metabase/custom-viz pack` no longer packs files listed under `assets` in `metabase-plugin.json`. Metabase only ever served the icon, so those files were dead weight in the archive; the icon is still packed from `dist/assets/`.
 
 ### Fix the asset watcher in existing projects
 

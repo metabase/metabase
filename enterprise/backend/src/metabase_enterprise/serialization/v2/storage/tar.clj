@@ -39,8 +39,10 @@
               content    (.getBytes ^String (storage.util/entity-yaml entity) "UTF-8")]
           (log/trace "Storing" {:path (serdes/log-path-str (:serdes/meta entity))})
           (put-entry! tar path content)
-          (doseq [[segments ^String resource] (storage.util/resource-files resolved entity)]
-            (put-entry! tar (str dirname "/" (str/join "/" segments)) (.getBytes resource "UTF-8")))
+          (doseq [[segments resource] (storage.util/resource-files resolved entity)]
+            (put-entry! tar (str dirname "/" (str/join "/" segments)) (if (bytes? resource)
+                                                                        resource
+                                                                        (.getBytes ^String resource "UTF-8"))))
           (:serdes/meta entity)))
 
       (store-settings! [_ settings]

@@ -13,7 +13,9 @@
    [metabase.util.memoize :as u.memo]
    [metabase.util.yaml :as yaml]
    [potemkin.types :as p])
-  (:import (java.io File)))
+  (:import
+   (java.io File)
+   (java.nio.file Files)))
 
 (set! *warn-on-reflection* true)
 
@@ -91,14 +93,17 @@
     (throw (ex-info (format "Invalid resource file path: %s" path) {:path path}))))
 
 (defn read-resources
-  "The ingested `entity` with each of its [[serdes/resource-paths]] read by `read-fn` into `:serdes/resources`."
-  [entity read-fn]
+  "Attach an entity's resource files and directory name for import."
+  [entity ^String directory-name read-text read-bytes]
   (if-let [paths (seq (serdes/resource-paths entity))]
-    (assoc entity :serdes/resources (into {}
-                                          (map (fn [path]
-                                                 (check-resource-path! path)
-                                                 [path (read-fn path)]))
-                                          paths))
+    (let [read-fn (if (serdes/binary-resources? entity) read-bytes read-text)]
+      (assoc entity
+             :serdes/directory directory-name
+             :serdes/resources (into {}
+                                     (map (fn [path]
+                                            (check-resource-path! path)
+                                            [path (read-fn path)]))
+                                     paths)))
     entity))
 
 (def legal-top-level-paths
@@ -109,11 +114,20 @@
 (def shared-top-level-paths
   "The [[legal-top-level-paths]] whose directories also hold files serialization does not own, such as a data app's
   source code, to the name of the entity files in them."
-  {"data_apps" "data_app.yaml"})
+  {"data_apps"          "data_app.yaml"
+   "custom_viz_plugins" "custom_viz_plugin.yaml"})
+
+(def unsynced-top-level-paths
+  "Paths preserved by remote sync; their entities require explicit serialization import and export."
+  #{"custom_viz_plugins"})
+
+(def remote-synced-top-level-paths
+  "The [[legal-top-level-paths]] remote sync imports from and exports to."
+  (apply disj legal-top-level-paths unsynced-top-level-paths))
 
 (def replaced-top-level-paths
-  "The [[legal-top-level-paths]] a full export may replace wholesale."
-  (apply disj legal-top-level-paths (keys shared-top-level-paths)))
+  "The [[remote-synced-top-level-paths]] a full export may replace wholesale."
+  (apply disj remote-synced-top-level-paths (keys shared-top-level-paths)))
 
 (defn entity-file-path?
   "Whether the `/`-separated relative `path` names an entity YAML file: a `.yaml` file that isn't a dotfile under one
@@ -204,13 +218,17 @@
       (if (= ["Setting"] (mapv :model serdes-meta))
         (when (contains? settings kw-id)
           {:serdes/meta serdes-meta :key kw-id :value (get settings kw-id)})
-        (when-let [file (get @cache (strip-labels serdes-meta))]
+        (when-let [^File file (get @cache (strip-labels serdes-meta))]
           (try
-            (read-resources (ingest-file file)
-                            (fn [path]
-                              (let [resource (io/file (.getParentFile ^File file) ^String path)]
-                                (when (.isFile resource)
-                                  (slurp resource)))))
+            (let [dir      (.getParentFile file)
+                  resource (fn [^String path]
+                             (let [f (io/file dir path)]
+                               (when (.isFile f)
+                                 f)))]
+              (read-resources (ingest-file file)
+                              (.getName dir)
+                              #(some-> (resource %) slurp)
+                              #(some-> ^File (resource %) .toPath Files/readAllBytes)))
             (catch Exception e
               (throw (ex-info "Unable to ingest file" {:file     (.getName ^File file)
                                                        :abs-path serdes-meta} e))))))))
