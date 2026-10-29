@@ -289,6 +289,10 @@
           (is (empty? test-queue))
           (is (false? (search.ingestion/await-pending-updates! 10))
               "An empty queue does not mean the worker finished indexing")
+          (mt/with-log-messages-for-level [messages [metabase.search.ingestion :warn]]
+            (search.ingestion/wait-for-idle! :settle-ms 0 :timeout-ms 10 :poll-ms 1)
+            (is (=? [{:message #"wait-for-idle! timed out.*"}] (messages))
+                "The running batch prevents the queue from being idle"))
           (testing "Discarding queued work preserves the running batch"
             (search.ingestion/ingest-maybe-async! [later-update later-update] false)
             (search.ingestion/clear-queue!)

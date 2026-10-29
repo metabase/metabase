@@ -65,7 +65,9 @@
                                  :join   [[:permissions_group :pg] [:= :s.group_id :pg.id]
                                           [:report_card :c] [:= :c.id :s.card_id]]
                                  :where  [:= :pg.id (u/the-id &group)]})
-            {:keys [metadata metadata-future]} (@#'card.metadata/maybe-async-recomputed-metadata (:dataset_query card))]
+            {:keys [metadata metadata-future]} (@#'card.metadata/maybe-async-recomputed-metadata
+                                                (:dataset_query card)
+                                                (:result_metadata card))]
         (mt/with-test-user :crowberto
           (if metadata
             (t2/update! :model/Card :id (u/the-id card) {:result_metadata metadata})

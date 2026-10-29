@@ -323,9 +323,8 @@
          true)))))
 
 (defn wait-for-idle!
-  "Block until the ingestion queue has been drained and no more items arrive.
-   Polls the queue and considers it idle when it has been empty for `settle-ms`
-   (default 500ms). Gives up after `timeout-ms` (default 30s)."
+  "Block until no index updates are queued or being processed for `settle-ms` (default 500ms).
+   Log a warning and return after `timeout-ms` (default 30s)."
   [& {:keys [settle-ms timeout-ms poll-ms]
       :or   {settle-ms 500, timeout-ms 30000, poll-ms 50}}]
   (let [deadline-ns (+ (System/nanoTime) (* (long timeout-ms) 1000000))
@@ -333,14 +332,14 @@
         poll-ms     (long poll-ms)
         empty-since (atom nil)]
     (loop []
-      (let [now-ns       (System/nanoTime)
-            sz           (.size queue)
-            remaining-ns (- settle-ns (- now-ns (or @empty-since now-ns)))]
+      (let [now-ns        (System/nanoTime)
+            pending-count @pending-updates
+            remaining-ns  (- settle-ns (- now-ns (or @empty-since now-ns)))]
         (cond
           (>= now-ns deadline-ns)
-          (log/warnf "wait-for-idle! timed out with %d items still in the queue" sz)
+          (log/warnf "wait-for-idle! timed out with %d pending index updates" pending-count)
 
-          (pos? sz)
+          (pos? pending-count)
           (do (reset! empty-since nil)
               (Thread/sleep poll-ms)
               (recur))

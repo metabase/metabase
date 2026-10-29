@@ -11656,6 +11656,9 @@
               "type" : "null"
             } ]
           },
+          "qp/non-default-parameterized?" : {
+            "type" : "boolean"
+          },
           "lib/type" : {
             "default" : "mbql/query",
             "const" : "mbql/query"
@@ -17561,6 +17564,9 @@
               }, {
                 "type" : "null"
               } ]
+            },
+            "qp/non-default-parameterized?" : {
+              "type" : "boolean"
             },
             "lib/type" : {
               "default" : "mbql/query",
