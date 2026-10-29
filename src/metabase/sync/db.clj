@@ -68,7 +68,7 @@
   "Apply `changes` to the Database with `database-id`, returning the number updated."
   [database-id :- ::lib.schema.id/database
    changes     :- ::warehouses.schema/database.update]
-  (t2/update! :model/Database database-id changes))
+  (t2/update! :model/Database :id database-id changes))
 
 ;;; ------------------------------------------------- Table -------------------------------------------------
 
@@ -217,7 +217,7 @@
   "Apply `changes` to the Table with `table-id`, returning the number updated."
   [table-id :- ::lib.schema.id/table
    changes  :- ::warehouse-schema.schema/table.update]
-  (t2/update! :model/Table table-id changes))
+  (t2/update! :model/Table :id table-id changes))
 
 (mu/defn update-tables!
   "Apply `changes` to the Tables with `table-ids`, returning the number updated."
@@ -469,7 +469,7 @@
   "Apply `changes` to the Field with `field-id`, returning the number updated."
   [field-id :- ::lib.schema.id/field
    changes  :- ::warehouse-schema.schema/field.update]
-  (t2/update! :model/Field field-id changes))
+  (t2/update! :model/Field :id field-id changes))
 
 (mu/defn update-field-by-name!
   "Apply `changes` to the Field named `field-name` of the Table with `table-id`, returning the number updated."
@@ -568,8 +568,8 @@
                 (t2/select-one [:model/Field :id :fk_target_field_id :has_field_values] :id fk-id
                                {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))]
     (if (and field (not= pk-id (:fk_target_field_id field)))
-      (t2/update! :model/Field fk-id (cond-> {:fk_target_field_id pk-id :semantic_type :type/FK}
-                                       (= :auto-list (:has_field_values field)) (assoc :has_field_values nil)))
+      (t2/update! :model/Field :id fk-id (cond-> {:fk_target_field_id pk-id :semantic_type :type/FK}
+                                           (= :auto-list (:has_field_values field)) (assoc :has_field_values nil)))
       0)))
 
 (defn- data-sensitivity-to-scan-clause
@@ -621,7 +621,7 @@
   "Set the `data_sensitivity` of the Field with `field-id` to `data-sensitivity`, returning the number updated."
   [field-id         :- ::lib.schema.id/field
    data-sensitivity :- [:or :keyword :string]]
-  (t2/update! :model/Field field-id {:data_sensitivity data-sensitivity}))
+  (t2/update! :model/Field :id field-id {:data_sensitivity data-sensitivity}))
 
 (def ^:private classifier-data-sensitivity-clause
   "Honey SQL clause matching Fields whose non-null `data_sensitivity` has no value in the `FieldUserSettings` mirror,

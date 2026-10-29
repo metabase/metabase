@@ -45,8 +45,8 @@
                             {:filter [:and [:> $id 1] [:< $id 4]]})]
             (Thread/sleep 1)
             (mt/with-test-user :crowberto
-              (t2/update! :model/Card card-id {:dataset_query new-query
-                                               :updated_at    (t/local-date-time)})))
+              (t2/update! :model/Card :id card-id {:dataset_query new-query
+                                                   :updated_at    (t/local-date-time)})))
           (params.field-values/get-or-create-field-values! f)
           (is (= [(range 4 6)
                   (range 2 4)]
@@ -66,7 +66,7 @@
           (is (= 5 (count (:values (id->values (mt/id :categories :name))))))
           (is (= {} (id->values (mt/id :categories :id))))
           (is (nil? (params.field-values/get-or-create-field-values!
-                     (t2/select-one :model/Field (mt/id :categories :id)))))
+                     (t2/select-one :model/Field :id (mt/id :categories :id)))))
           (testing "no warehouse query runs for the field without FieldValues"
             (is (= #{(mt/id :categories :name)}
                    (t2/select-fn-set :field_id :model/FieldValues
@@ -83,7 +83,7 @@
                                          {:gtaps      {:categories {:remappings {"State" [:dimension [:field (mt/id :categories :name) nil]]}}}
                                           :attributes login-attributes}
                                          (ee-params.field-values/hash-input-for-sandbox field)))
-              field (t2/select-one :model/Field (mt/id :categories :name))]
+              field (t2/select-one :model/Field :id (mt/id :categories :name))]
           (mt/with-temp [:model/User {user-id-1 :id} {}
                          :model/User {user-id-2 :id} {}]
             (testing "2 users with the same attribute"
@@ -111,7 +111,7 @@
     (testing "gtap with card and remappings"
       ;; hack so that we don't have to setup all the sandbox permissions the table
       (mt/with-dynamic-fn-redefs [ee-params.field-values/field-is-sandboxed? (constantly true)]
-        (let [field (t2/select-one :model/Field (mt/id :categories :name))
+        (let [field (t2/select-one :model/Field :id (mt/id :categories :name))
               hash-input-for-user-id-with-attributes (fn [user-id login-attributes field]
                                                        (mt/with-temp-vals-in-db :model/User user-id {:login_attributes login-attributes}
                                                          (request/with-current-user user-id
@@ -221,7 +221,7 @@
     (mt/with-premium-features #{:sandboxes}
       ;; hack so that we don't have to setup all the sandbox permissions for the table
       (mt/with-dynamic-fn-redefs [ee-params.field-values/field-is-sandboxed? (constantly true)]
-        (let [field      (t2/select-one :model/Field (mt/id :orders :user_id))
+        (let [field      (t2/select-one :model/Field :id (mt/id :orders :user_id))
               hash-input (fn [user-id login-attributes]
                            (mt/with-temp-vals-in-db :model/User user-id {:login_attributes login-attributes}
                              (request/with-current-user user-id

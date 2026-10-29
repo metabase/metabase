@@ -97,7 +97,7 @@
                       (is (nil? (:cell-mismatches pass))))))
                 (testing "DELETE removes the test"
                   (mt/user-http-request :crowberto :delete 204 path)
-                  (is (not (t2/exists? :model/TransformTest (:id created))))
+                  (is (not (t2/exists? :model/TransformTest :id (:id created))))
                   (mt/user-http-request :crowberto :get 404 path))
                 (finally
                   (t2/delete! :model/TransformTest :id (:id created)))))))))))
@@ -146,4 +146,4 @@
           (is (= "Unauthenticated" (mt/client :post 401 run-path))))
         (testing "a user with no transform access cannot run someone else's test"
           (mt/user-http-request :rasta :post 403 run-path)
-          (is (t2/exists? :model/TransformTest test-id)))))))
+          (is (t2/exists? :model/TransformTest :id test-id)))))))

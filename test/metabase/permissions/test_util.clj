@@ -193,10 +193,10 @@
   (let [user-id        (u/the-id user-or-id)
         original-value (t2/select-one-fn :is_data_analyst :model/User :id user-id)]
     (try
-      (t2/update! :model/User user-id {:is_data_analyst true})
+      (t2/update! :model/User :id user-id {:is_data_analyst true})
       (thunk)
       (finally
-        (t2/update! :model/User user-id {:is_data_analyst original-value})))))
+        (t2/update! :model/User :id user-id {:is_data_analyst original-value})))))
 
 (defmacro with-data-analyst-role!
   "Runs `body` with the given user's `is_data_analyst` column set to true.

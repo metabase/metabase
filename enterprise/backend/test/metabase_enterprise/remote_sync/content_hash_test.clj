@@ -184,7 +184,7 @@
                                              :status "synced"
                                              :content_hash (source/row->content-hash {:model_type "Card" :model_id (:id card)})
                                              :status_changed_at (t/offset-date-time)})
-        (t2/update! :model/Card (:id card) {:name "Renamed"})
+        (t2/update! :model/Card :id (:id card) {:name "Renamed"})
         (events/publish-event! :event/card-update {:object (t2/select-one :model/Card :id (:id card))
                                                    :previous-object card
                                                    :user-id (mt/user->id :rasta)})

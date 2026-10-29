@@ -170,7 +170,7 @@
                                 :post 200 "api-key"
                                 {:group_id group-id-1
                                  :name     (str (random-uuid))})
-          _                (assert (t2/exists? :model/ApiKey id))
+          _                (assert (t2/exists? :model/ApiKey :id id))
           _                (is (= "Cool Friends" (-> create-resp :group :name)))
           api-user-id      (t2/select-one-fn :user_id :model/ApiKey :id id)
           member-of-group? (fn [group-id]
@@ -183,7 +183,7 @@
         (is (=? {:group {:id group-id-2, :name "Uncool Friends"}}
                 (mt/user-http-request :crowberto :put 200 (format "api-key/%s" id) {:group_id group-id-2})))
         (is (= "Uncool Friends"
-               (t2/select-one-fn :name :model/PermissionsGroup group-id-2)))
+               (t2/select-one-fn :name :model/PermissionsGroup :id group-id-2)))
         (is (not (member-of-group? group-id-1)))
         (is (member-of-group? group-id-2))))))
 
@@ -198,11 +198,11 @@
                                                :name     name-1})
             api-user-id (-> (t2/select-one :model/ApiKey :id id) (t2/hydrate :user) :user :id)]
         (testing "before the change..."
-          (is (= name-1 (:common_name (t2/select-one :model/User api-user-id)))))
+          (is (= name-1 (:common_name (t2/select-one :model/User :id api-user-id)))))
         (testing "after the change..."
           (mt/user-http-request :crowberto :put 200 (str "api-key/" id)
                                 {:name name-2})
-          (is (= name-2 (:common_name (t2/select-one :model/User api-user-id)))))
+          (is (= name-2 (:common_name (t2/select-one :model/User :id api-user-id)))))
         (testing "the shape of the response is correct"
           (is (= #{:created_at :updated_at :updated_by :id :group :name :masked_key :last_used_at}
                  (set (keys (mt/user-http-request :crowberto :put 200 (str "api-key/" id)
@@ -304,7 +304,7 @@
           (testing "Creation was audit logged"
             (is (=? {:details  {:name    "My API Key"
                                 :group   {:name "Cool Friends"}
-                                :user_id (t2/select-one-fn :user_id :model/ApiKey id)}
+                                :user_id (t2/select-one-fn :user_id :model/ApiKey :id id)}
                      :model    "ApiKey"
                      :model_id id
                      :user_id  (mt/user->id :crowberto)}

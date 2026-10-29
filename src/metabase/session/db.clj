@@ -143,7 +143,7 @@
   "Set the `credentials` of the AuthIdentity with `auth-identity-id`."
   [auth-identity-id :- ms/PositiveInt
    credentials      :- [:maybe ::auth-identity.schema/auth-identity.credentials]]
-  (t2/update! :model/AuthIdentity auth-identity-id {:credentials credentials}))
+  (t2/update! :model/AuthIdentity :id auth-identity-id {:credentials credentials}))
 
 (mu/defn user-by-email
   "The id, SSO source, and active flag of the User whose email matches `email` case-insensitively, or nil."

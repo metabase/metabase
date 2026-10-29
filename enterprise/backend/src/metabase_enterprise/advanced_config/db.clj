@@ -61,7 +61,7 @@
   "Apply `changes` to the User with `user-id`."
   [user-id :- ::lib.schema.id/user
    changes :- ::users.schema/user.update]
-  (t2/update! :model/User user-id changes))
+  (t2/update! :model/User :id user-id changes))
 
 (mu/defn sample-database-exists?
   "Whether the sample Database exists."
@@ -82,9 +82,9 @@
   "Apply `changes` to the Database with `database-id`."
   [database-id :- ::lib.schema.id/database
    changes :- ::warehouses.schema/database.update]
-  (t2/update! :model/Database database-id changes))
+  (t2/update! :model/Database :id database-id changes))
 
 (mu/defn delete-database!
   "Delete the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/delete! :model/Database database-id))
+  (t2/delete! :model/Database :id database-id))

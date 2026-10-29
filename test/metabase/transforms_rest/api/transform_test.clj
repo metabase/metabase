@@ -63,7 +63,7 @@
   "Create a query filtering products by category, using shared utility.
    Returns a legacy MBQL query structure for API compatibility."
   [category]
-  (let [table-name (t2/select-one-fn :name :model/Table (mt/id :transforms_products))]
+  (let [table-name (t2/select-one-fn :name :model/Table :id (mt/id :transforms_products))]
     (query-test-util/make-query
      {:source-table  table-name
       :source-column "category"
@@ -100,7 +100,7 @@
                                                                  :name   table-name}})
                     transform-id (:id response)
                     user-id (mt/user->id user)
-                    creator-id   (t2/select-one-fn :creator_id :model/Transform transform-id)]
+                    creator-id   (t2/select-one-fn :creator_id :model/Transform :id transform-id)]
                 (testing "Response includes creator_id"
                   (is (= user-id (:creator_id response))))
                 (testing "Database record has creator_id set correctly"
@@ -915,7 +915,7 @@
         (mt/dataset transforms-dataset/transforms-test
           (with-transform-db-perms!
             (with-transforms-api-users! [user]
-              (let [schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))]
+              (let [schema (t2/select-one-fn :schema :model/Table :id (mt/id :transforms_products))]
                 (with-transform-cleanup! [{table1-name :name :as target1} {:type   "table"
                                                                            :schema schema
                                                                            :name   "gadget_products"}
@@ -1292,7 +1292,7 @@
                                            (let [response (mt/user-http-request :crowberto action 200 url req)
                                                  transform-id (:id response)
                                                  ;; Read the updated transform from the DB for accurate comparison
-                                                 transform (-> (t2/select-one :model/Transform transform-id)
+                                                 transform (-> (t2/select-one :model/Transform :id transform-id)
                                                                (t2/hydrate :transform_tag_ids))]
                                              (is (= exp-revisions (t2/count :model/Revision :model "Transform"
                                                                             :model_id transform-id)))
@@ -2141,7 +2141,7 @@
                 (let [mp                                  (mt/metadata-provider)
                       category-col                        (lib.metadata/field mp (mt/id :transforms_products :category))
                       [source-schema source-table-name]    (t2/select-one-fn (juxt :schema :name) :model/Table
-                                                                             (mt/id :transforms_products))
+                                                                             :id (mt/id :transforms_products))
                       ;; Qualify the FROM clause with its schema so that drivers which require the WHERE clause's
                       ;; field-filter substitution (a fully qualified `schema.table.column` reference) to agree with
                       ;; the table expression named in FROM (e.g. ClickHouse) can resolve the query. An unqualified
@@ -2195,8 +2195,8 @@
           (with-transform-db-perms!
             (with-transforms-api-users! [user]
               (let [schema               (get-test-schema)
-                    existing-table-name  (t2/select-one-fn :name :model/Table (mt/id :transforms_products))
-                    other-existing-name  (t2/select-one-fn :name :model/Table (mt/id :transforms_orders))]
+                    existing-table-name  (t2/select-one-fn :name :model/Table :id (mt/id :transforms_products))
+                    other-existing-name  (t2/select-one-fn :name :model/Table :id (mt/id :transforms_orders))]
                 (testing "POST /api/transform"
                   (mt/user-http-request user :post 409 "transform"
                                         {:name   "Colliding Transform"
@@ -2245,7 +2245,7 @@
               query (lib/native-query mp "select 1")]
           (mt/with-temp [:model/Transform transform {:source {:type "query" :query query}
                                                      :target {:type "table" :name (mt/random-name)}}]
-            (t2/delete! :model/Database (:id db))
+            (t2/delete! :model/Database :id (:id db))
             (is (=? {:id (:id transform)}
                     (mt/user-http-request :crowberto :get 200 (str "transform/" (:id transform)))))))))))
 

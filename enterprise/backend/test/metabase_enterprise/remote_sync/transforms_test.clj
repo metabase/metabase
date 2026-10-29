@@ -707,7 +707,7 @@ is_sample: false
                     mock-source (test-helpers/create-mock-source :initial-files initial-files)]
                 (is (some #(str/includes? % "transforms_collection") (keys (get @(:files-atom mock-source) "main"))))
                 (is (some #(str/includes? % "child_transform") (keys (get @(:files-atom mock-source) "main"))))
-                (t2/update! :model/Collection coll-id {:archived true})
+                (t2/update! :model/Collection :id coll-id {:archived true})
                 (events/publish-event! :event/collection-update
                                        {:object (t2/select-one :model/Collection :id coll-id)
                                         :user-id (mt/user->id :rasta)})
@@ -884,7 +884,7 @@ serdes/meta:
         (let [library (t2/insert-returning-instance! :model/PythonLibrary {:path "common.py" :source "# test"})]
           (t2/update! :model/RemoteSyncObject {:model_type "PythonLibrary" :model_id (:id library)}
                       {:status "synced"})
-          (t2/update! :model/PythonLibrary (:id library) {:source "# updated"})
+          (t2/update! :model/PythonLibrary :id (:id library) {:source "# updated"})
           (let [entry (t2/select-one :model/RemoteSyncObject
                                      :model_type "PythonLibrary"
                                      :model_id (:id library))]
@@ -1342,13 +1342,13 @@ serdes/meta:
         (mt/with-temp [:model/Transform     {transform-id :id} {:name "Orders Summary"}
                        :model/TransformTest {test-id :id}      {:transform_id transform-id :name "My test"}]
           (is (= "create" (:status (transform-test-rso test-id))))
-          (t2/update! :model/RemoteSyncObject (:id (transform-test-rso test-id))
+          (t2/update! :model/RemoteSyncObject :id (:id (transform-test-rso test-id))
                       {:status "synced" :status_changed_at (t/offset-date-time)})
-          (t2/update! :model/TransformTest test-id {:name "Renamed test"})
+          (t2/update! :model/TransformTest :id test-id {:name "Renamed test"})
           (is (=? {:status "update" :model_name "Renamed test"} (transform-test-rso test-id)))
-          (t2/update! :model/RemoteSyncObject (:id (transform-test-rso test-id))
+          (t2/update! :model/RemoteSyncObject :id (:id (transform-test-rso test-id))
                       {:status "synced" :status_changed_at (t/offset-date-time)})
-          (t2/delete! :model/TransformTest test-id)
+          (t2/delete! :model/TransformTest :id test-id)
           (is (= "delete" (:status (transform-test-rso test-id)))))))))
 
 (deftest transform-delete-marks-its-tests-deleted-test
@@ -1359,9 +1359,9 @@ serdes/meta:
                                          remote-sync-type :read-write]
         (mt/with-temp [:model/Transform     {transform-id :id} {:name "Orders Summary"}
                        :model/TransformTest {test-id :id}      {:transform_id transform-id :name "My test"}]
-          (t2/update! :model/RemoteSyncObject (:id (transform-test-rso test-id))
+          (t2/update! :model/RemoteSyncObject :id (:id (transform-test-rso test-id))
                       {:status "synced" :status_changed_at (t/offset-date-time)})
-          (t2/delete! :model/Transform transform-id)
+          (t2/delete! :model/Transform :id transform-id)
           (is (false? (t2/exists? :model/TransformTest :id test-id)))
           (is (= "delete" (:status (transform-test-rso test-id)))))))))
 
@@ -1404,8 +1404,8 @@ serdes/meta:
               (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-export-task!) "init"))))
               (let [old-path (test-path)]
                 (is (str/ends-with? old-path "/etl/orders_summary/no_nulls.yaml"))
-                (t2/update! :model/Transform transform-id {:name "Orders Report"})
-                (events/publish-event! :event/transform-update {:object (t2/select-one :model/Transform transform-id)})
+                (t2/update! :model/Transform :id transform-id {:name "Orders Report"})
+                (events/publish-event! :event/transform-update {:object (t2/select-one :model/Transform :id transform-id)})
                 (testing "renaming the transform marks its test for update"
                   (is (= "update" (:status (t2/select-one :model/RemoteSyncObject :model_type "TransformTest" :model_id test-id)))))
                 (is (= :success (:status (impl/export! (source.p/snapshot mock) (new-export-task!) "rename"))))

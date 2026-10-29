@@ -19,7 +19,7 @@
 (mu/defn reset-checkpoint!
   "Clear the stored checkpoint value of the Transform with `id`."
   [id :- ::lib.schema.id/transform]
-  (t2/update! :model/Transform id {:last_checkpoint_value nil}))
+  (t2/update! :model/Transform :id id {:last_checkpoint_value nil}))
 
 ;;; ---------------------------------------------------- Tags ------------------------------------------------------
 
@@ -37,7 +37,7 @@
   "Set the name of the TransformTag with `tag-id`."
   [tag-id :- ms/PositiveInt
    name   :- :string]
-  (t2/update! :model/TransformTag tag-id {:name name}))
+  (t2/update! :model/TransformTag :id tag-id {:name name}))
 
 (mu/defn delete-tag!
   "Delete the TransformTag with `tag-id`."
@@ -76,7 +76,7 @@
   "Apply `updates` to the TransformJob with `job-id`."
   [job-id  :- ms/PositiveInt
    updates :- (mut/select-keys ::transforms.schema/transform-job.update [:name :description :schedule :ui_display_type])]
-  (t2/update! :model/TransformJob job-id updates))
+  (t2/update! :model/TransformJob :id job-id updates))
 
 (mu/defn delete-job!
   "Delete the TransformJob with `job-id`."

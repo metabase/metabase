@@ -174,7 +174,7 @@
   "Apply `changes` to the Pulse with `pulse-id`."
   [pulse-id :- ::lib.schema.id/pulse
    changes  :- ::pulse.schema/pulse.update]
-  (t2/update! :model/Pulse pulse-id changes))
+  (t2/update! :model/Pulse :id pulse-id changes))
 
 (mu/defn update-pulses-for-dashboard!
   "Apply `changes` to the Pulses of the Dashboard with `dashboard-id`, leaving `updated_at` untouched."
@@ -290,7 +290,7 @@
   "Apply `changes` to the PulseChannel with `channel-id`."
   [channel-id :- ms/PositiveInt
    changes    :- ::pulse.schema/pulse-channel.update]
-  (t2/update! :model/PulseChannel channel-id changes))
+  (t2/update! :model/PulseChannel :id channel-id changes))
 
 (mu/defn set-pulse-channels-enabled!
   "Set the enabled flag of the PulseChannels of the Pulse with `pulse-id`."

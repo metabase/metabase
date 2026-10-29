@@ -31,7 +31,7 @@
 (mu/defn delete-model-index!
   "Delete the ModelIndex with `id`, returning the number deleted."
   [id :- ms/PositiveInt]
-  (t2/delete! :model/ModelIndex id))
+  (t2/delete! :model/ModelIndex :id id))
 
 (mu/defn model-index-values
   "The ModelIndexValues of the ModelIndex with `model-index-id`."
@@ -47,18 +47,18 @@
   "Record `error-message` on the ModelIndex with `id` and stamp its indexing time, returning the number updated."
   [id            :- ms/PositiveInt
    error-message :- :string]
-  (t2/update! :model/ModelIndex id {:state      "error"
-                                    :error      error-message
-                                    :indexed_at :%now}))
+  (t2/update! :model/ModelIndex :id id {:state      "error"
+                                        :error      error-message
+                                        :indexed_at :%now}))
 
 (mu/defn mark-model-index-indexed!
   "Set the ModelIndex with `id` to `state`, clear its error, and stamp its indexing time, returning the number
   updated."
   [id    :- ms/PositiveInt
    state :- :string]
-  (t2/update! :model/ModelIndex id {:indexed_at :%now
-                                    :error      nil
-                                    :state      state}))
+  (t2/update! :model/ModelIndex :id id {:indexed_at :%now
+                                        :error      nil
+                                        :state      state}))
 
 (mu/defn delete-model-index-values!
   "Delete the ModelIndexValues of the ModelIndex with `model-index-id` for the model primary keys `model-pks`,

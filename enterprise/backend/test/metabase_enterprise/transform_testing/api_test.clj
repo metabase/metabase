@@ -80,10 +80,10 @@
                     (mt/user-http-request :crowberto :put 200 path {:name "Renamed" :transform_id other-id}))))
           (testing "DELETE removes the test"
             (mt/user-http-request :crowberto :delete 204 path)
-            (is (not (t2/exists? :model/TransformTest (:id created))))
+            (is (not (t2/exists? :model/TransformTest :id (:id created))))
             (mt/user-http-request :crowberto :get 404 path))
           (finally
-            (t2/delete! :model/TransformTest (:id created))))))))
+            (t2/delete! :model/TransformTest :id (:id created))))))))
 
 (deftest write-endpoints-refuse-a-test-that-could-not-run-test
   (with-transforms-enabled
@@ -113,7 +113,7 @@
           (let [path     (str "ee/transform-test/" test-id)
                 response (mt/user-http-request :crowberto :put 400 path {:inputs []})]
             (is (= "transform-test.missing-inputs" (:error-code response)))
-            (is (= (:inputs (t2/select-one :model/TransformTest test-id))
+            (is (= (:inputs (t2/select-one :model/TransformTest :id test-id))
                    (mapv #(update % :format keyword) inputs))))
           (testing "while an update that touches nothing a run reads is let through"
             (is (=? {:name "Renamed"}
@@ -189,7 +189,7 @@
             (mt/user-http-request :lucky :put 403 path {:name "nope"})
             (mt/user-http-request :lucky :delete 403 path)
             (mt/user-http-request :lucky :post 403 (str path "/run"))))
-        (is (t2/exists? :model/TransformTest test-id))))))
+        (is (t2/exists? :model/TransformTest :id test-id))))))
 
 (deftest list-runs-test
   (with-transforms-enabled

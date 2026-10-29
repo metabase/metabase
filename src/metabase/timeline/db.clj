@@ -46,7 +46,7 @@
   "Apply `changes` to the Timeline with `id`, returning the number updated."
   [id      :- ms/PositiveInt
    changes :- (mut/select-keys ::timeline.schema/timeline.update [:name :default :description :icon :collection_id :archived])]
-  (t2/update! :model/Timeline id changes))
+  (t2/update! :model/Timeline :id id changes))
 
 (mu/defn set-timeline-events-archived!
   "Set the archived flag of the TimelineEvents of the Timeline with `timeline-id`, returning the number updated."
@@ -100,7 +100,7 @@
   "Apply `changes` to the TimelineEvent with `id`, returning the number updated."
   [id      :- ms/PositiveInt
    changes :- (mut/select-keys ::timeline.schema/timeline-event.update [:name :description :timestamp :time_matters :timezone :icon :timeline_id :archived])]
-  (t2/update! :model/TimelineEvent id changes))
+  (t2/update! :model/TimelineEvent :id id changes))
 
 (mu/defn delete-timeline-event!
   "Delete the TimelineEvent with `id`, returning the number deleted."

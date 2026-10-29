@@ -43,7 +43,7 @@
   "Apply `changes` to the Database with `database-id`, returning the number updated."
   [database-id :- ::lib.schema.id/database
    changes     :- (mut/select-keys ::warehouses.schema/database.update [:engine :details :settings])]
-  (t2/update! :model/Database database-id changes))
+  (t2/update! :model/Database :id database-id changes))
 
 (mu/defn set-database-tables-schema!
   "Set the `schema` of every Table of the Database with `database-id`, returning the number updated."

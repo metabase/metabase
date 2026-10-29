@@ -98,7 +98,7 @@
   "Apply `changes` to the AuthIdentity with `auth-identity-id`, returning the number updated."
   [auth-identity-id :- ms/PositiveInt
    changes          :- (mut/select-keys ::auth-identity.schema/auth-identity.update [:credentials :confirmed_at])]
-  (t2/update! :model/AuthIdentity auth-identity-id changes))
+  (t2/update! :model/AuthIdentity :id auth-identity-id changes))
 
 (mu/defn delete-totp-identity!
   "Delete the TOTP AuthIdentity of the User with `user-id`, returning the number deleted."

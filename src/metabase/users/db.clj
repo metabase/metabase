@@ -113,7 +113,7 @@
 (mu/defn set-user-last-login-now!
   "Set `last_login` of the User with `user-id` to now."
   [user-id :- ::lib.schema.id/user]
-  (t2/update! :model/User user-id {:last_login :%now}))
+  (t2/update! :model/User :id user-id {:last_login :%now}))
 
 (mu/defn user-settings
   "The `:settings` of the User with `user-id`, or nil."

@@ -151,7 +151,7 @@
       (doseq [card-or-id (if (sequential? card-or-cards-or-ids)
                            card-or-cards-or-ids
                            [card-or-cards-or-ids])]
-        (t2/update! :model/Card (u/the-id card-or-id) {:collection_id (u/the-id collection)}))
+        (t2/update! :model/Card :id (u/the-id card-or-id) {:collection_id (u/the-id collection)}))
       ;; now use `grant-perms-fn!` to grant appropriate perms
       (grant-perms-fn! (perms-group/all-users) collection)
       ;; call (f)
@@ -325,7 +325,7 @@
                 (is (= "CREATED_AT" (-> dashboard-result mt/cols first :name)))
                 (is (= 1 (count (mt/cols collection-result))))
                 (is (= 1 (count (mt/rows collection-result))))))
-            (t2/update! :model/Card metric-id {:dimensions [(assoc dimension :default true)]})
+            (t2/update! :model/Card :id metric-id {:dimensions [(assoc dimension :default true)]})
             (doseq [query-path [path (format "card/pivot/%d/query" metric-id)]]
               (let [result (mt/user-http-request :crowberto :post 202 query-path {:dashboard_id dashboard-id})]
                 (is (= "PRODUCT_ID" (-> result mt/cols first :name)))
@@ -335,9 +335,9 @@
               (is (= "PRODUCT_ID" (-> result mt/cols first :name)))
               (is (= stored-metadata
                      (t2/select-one-fn :result_metadata :model/Card :id metric-id))))
-            (t2/update! :model/Card metric-id {:dimensions [(assoc dimension
-                                                                   :default true
-                                                                   :status :status/orphaned)]})
+            (t2/update! :model/Card :id metric-id {:dimensions [(assoc dimension
+                                                                       :default true
+                                                                       :status :status/orphaned)]})
             (testing "an orphaned default keeps the saved dashboard breakout and makes collection previews scalar"
               (let [dashboard-result  (mt/user-http-request :crowberto :post 202 path
                                                             {:dashboard_id dashboard-id})
@@ -2383,7 +2383,7 @@
                          :name          "Another new name"
                          :dataset_query {:lib/type "mbql/query"
                                          :stages   [{:source-table (mt/id :checkins)}]}}
-                        (update-card! :rasta 200 {:name "Another new name", :dataset_query (t2/select-one-fn :dataset_query :model/Card card-id)})))))))))))
+                        (update-card! :rasta 200 {:name "Another new name", :dataset_query (t2/select-one-fn :dataset_query :model/Card :id card-id)})))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        Card updates that impact alerts                                         |
@@ -2405,7 +2405,7 @@
                          :notification-card {:disable_links (boolean disable-links?)}}]
           (when deleted?
             (let [[email] (notification.tu/with-mock-inbox-email!
-                            (f (->> notification :payload :card_id (t2/select-one :model/Card))))]
+                            (f (t2/select-one :model/Card :id (-> notification :payload :card_id))))]
               (is (=? {:bcc     #{"rasta@metabase.com" "crowberto@metabase.com" "ngoc@metabase.com"}
                        :subject "One of your alerts has stopped working"
                        :body    [{(str expected-email-re) (not should-re-not-match?)}]}
@@ -2536,7 +2536,7 @@
                                                        :details {:value "ngoc@metabase.com"}}]}]}]
             (mt/with-temporary-setting-values [site-url "https://metabase.com"]
               (mt/user-http-request :rasta :put 200 (str "card/" (->> notification :payload :card_id)) {:display display})
-              (is (t2/exists? :model/Notification (:id notification))
+              (is (t2/exists? :model/Notification :id (:id notification))
                   "Alert should not have been deleted"))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -3097,7 +3097,7 @@
       (is (= "You don't have permissions to do that."
              (mt/user-http-request :rasta :put 403 (str "card/" (:id card))
                                    {:visualization_settings {:timeline.selected_timeline_ids [(:id timeline)]}})))
-      (is (not (contains? (t2/select-one-fn :visualization_settings :model/Card (:id card))
+      (is (not (contains? (t2/select-one-fn :visualization_settings :model/Card :id (:id card))
                           :timeline.selected_timeline_ids))))))
 
 (deftest card-timeline-moved-to-private-collection-test
@@ -3111,7 +3111,7 @@
                                      :visualization_settings {:timeline.selected_timeline_ids       [(:id readable) (:id moved)]
                                                               :timeline.excluded_timeline_event_ids []}}]
       (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
-      (t2/update! :model/Timeline (:id moved) {:collection_id (:id restricted)})
+      (t2/update! :model/Timeline :id (:id moved) {:collection_id (:id restricted)})
       (testing "an event of the timeline the editor can still read can be hidden"
         (let [settings {:timeline.selected_timeline_ids       [(:id readable) (:id moved)]
                         :timeline.excluded_timeline_event_ids [(:id readable-event)]}]
@@ -3210,7 +3210,7 @@
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :put 403 (str "card/" (:id source-card))
                                        {:dashboard_id (:id dashboard)})))
-          (is (nil? (t2/select-one-fn :dashboard_id :model/Card (:id source-card)))))
+          (is (nil? (t2/select-one-fn :dashboard_id :model/Card :id (:id source-card)))))
         (testing "a user who can read the timeline can move the card into the public dashboard"
           (is (= (:id dashboard)
                  (:dashboard_id (mt/user-http-request :crowberto :put 200 (str "card/" (:id source-card))
@@ -3230,7 +3230,7 @@
         (is (= "You don't have permissions to do that."
                (mt/user-http-request :rasta :put 403 (str "card/" card-id) {:dashboard_id dash-id})))
         (is (=? {:archived true, :dashboard_id nil}
-                (t2/select-one :model/Card card-id)))
+                (t2/select-one :model/Card :id card-id)))
         (is (empty? (t2/select :model/DashboardCard :dashboard_id dash-id)))
         (testing "a user who can read the timeline can still move it"
           (is (=? {:archived false, :dashboard_id dash-id}
@@ -3762,7 +3762,7 @@
             (let [metadata (t2/select-one-fn :result_metadata :model/Card :id card-id)
                   ;; simulate updating metadat with user changed stuff
                   user-edited (add-preserved metadata)]
-              (t2/update! :model/Card card-id {:result_metadata user-edited})
+              (t2/update! :model/Card :id card-id {:result_metadata user-edited})
               (testing "Saved metadata preserves user edits"
                 (is (= (map only-user-edits user-edited)
                        (map only-user-edits (t2/select-one-fn :result_metadata :model/Card :id card-id)))))
@@ -4093,7 +4093,7 @@
           ;; a saved native Card carries `result_metadata`, which is what lets the value field be found on it; run
           ;; the wrapper as an admin to populate it, as saving the Card would
           (when (= wrapper-query-type :native)
-            (t2/update! :model/Card wrapper-card-id
+            (t2/update! :model/Card :id wrapper-card-id
                         {:result_metadata (mt/with-test-user :crowberto
                                             (-> (qp/process-query (nested-card-wrapper-query :native nested-card-id))
                                                 (get-in [:data :results_metadata :columns])))}))
@@ -4187,7 +4187,7 @@
   (testing "Old style, inferred parameters from native template-tags"
     (with-card-param-values-fixtures [{:keys [param-keys field-filter-card]}]
       ;; e2e tests and some older cards don't have an explicit parameter and infer them from the native template tags
-      (t2/update! :model/Card (:id field-filter-card) {:parameters []})
+      (t2/update! :model/Card :id (:id field-filter-card) {:parameters []})
       (testing "GET /api/card/:card-id/params/:param-key/values for field-filter based params"
         (testing "without search query"
           (let [response (mt/user-http-request :crowberto :get 200
@@ -4263,7 +4263,7 @@
                                        :slug   "ID"}]}]
       (testing "Get values for field-filter based params for Fields that have a Field -> Field remapping\n"
         (is (= :type/Name
-               (t2/select-one-fn :semantic_type :model/Field (mt/id :venues :name)))
+               (t2/select-one-fn :semantic_type :model/Field :id (mt/id :venues :name)))
             "venues.name has semantic_type=type/Name, so it will be searched")
         (testing "without search query"
           (mt/let-url [url (param-values-url card param-key)]
@@ -4399,9 +4399,9 @@
                                                                              :alias        "SomeAlias"}]}})]
                   (is (nil? (:based_on_upload (request card'))))))
               (testing "\nIf the table is not based on uploads, based_on_upload should be nil"
-                (t2/update! :model/Table table-id {:is_upload false})
+                (t2/update! :model/Table :id table-id {:is_upload false})
                 (is (nil? (:based_on_upload (request card))))
-                (t2/update! :model/Table table-id {:is_upload true}))
+                (t2/update! :model/Table :id table-id {:is_upload true}))
               (testing "\nIf the user doesn't have data perms for the database, based_on_upload should be nil"
                 (mt/with-temp-copy-of-db
                   (mt/with-no-data-perms-for-all-users!
@@ -4414,7 +4414,7 @@
                                                         :dataset_query (mt/native-query {:query "select 1"}))]
                   (is (nil? (:based_on_upload (request card'))))))
               (testing "\nIf uploads are disabled on all databases, based_on_upload should be nil"
-                (t2/update! :model/Database other-db-id {:uploads_enabled false})
+                (t2/update! :model/Database :id other-db-id {:uploads_enabled false})
                 (is (nil? (:based_on_upload (request card))))))))))))
 
 (deftest based-on-upload-test
@@ -4812,12 +4812,12 @@
                  :model/Card {other-card-id :id} {}]
     (testing "We can update with `archived=true` or `archived=false`"
       (is (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:archived true}))
-      (is (t2/select-one-fn :archived :model/Card card-id))
+      (is (t2/select-one-fn :archived :model/Card :id card-id))
       (is (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:archived false}))
-      (is (not (t2/select-one-fn :archived :model/Card card-id))))
+      (is (not (t2/select-one-fn :archived :model/Card :id card-id))))
     (testing "we can update the name"
       (is (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:name "foo"}))
-      (is (= "foo" (t2/select-one-fn :name :model/Card card-id))))
+      (is (= "foo" (t2/select-one-fn :name :model/Card :id card-id))))
     (testing "We can update with `dashboard_id` for a normal card."
       (is (mt/user-http-request :crowberto :put 200 (str "card/" other-card-id) {:dashboard_id dash-id}))
       (is (= dash-id (t2/select-one-fn :dashboard_id :model/Card :id other-card-id))))
@@ -4911,7 +4911,7 @@
                :dashboard_id  nil}
               (mt/user-http-request :rasta :put 200 (str "card/" card-id) {:collection_id coll-id
                                                                            :dashboard_id  nil})))
-      (is (= coll-id (t2/select-one-fn :collection_id :model/Card card-id)))
+      (is (= coll-id (t2/select-one-fn :collection_id :model/Card :id card-id)))
       (is (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-id)))))
 
 (deftest move-question-to-dashboard-can-choose-tab-test
@@ -4985,7 +4985,7 @@
               (mt/user-http-request :rasta :put 200 (str "card/" card-id "?delete_old_dashcards=true")
                                     {:collection_id coll-id
                                      :dashboard_id  nil})))
-      (is (= coll-id (t2/select-one-fn :collection_id :model/Card card-id)))
+      (is (= coll-id (t2/select-one-fn :collection_id :model/Card :id card-id)))
       (is (not (t2/exists? :model/DashboardCard :dashboard_id dash-id :card_id card-id))))))
 
 (deftest move-question-to-existing-dashboard-test
@@ -5222,7 +5222,7 @@
             :moderation_status "verified"}
            (-> (mt/user-http-request :rasta :get 200 (str "card/" card-id))
                :dashboard)))
-    (t2/delete! :model/ModerationReview mr-id)
+    (t2/delete! :model/ModerationReview :id mr-id)
     (is (= {:name "My Dashboard"
             :id dash-id
             :moderation_status nil}
@@ -5393,7 +5393,7 @@
                                       :type :native
                                       :native {:query "SELECT * FROM products"}}}]
       ;; Update snippet to reference card (creates snippet → card)
-      (t2/update! :model/NativeQuerySnippet (:id snippet)
+      (t2/update! :model/NativeQuerySnippet :id (:id snippet)
                   {:content (str "WHERE id IN ({{#" (:id card) "}})")
                    :template_tags {(str "card-" (:id card)) {:type :card
                                                              :card-id (:id card)
@@ -5441,7 +5441,7 @@
                                                                   :name (str "#" (:id card-1))
                                                                   :display-name "Card 1"}}}}}]
       ;; Update snippet-2 to reference card-2 (creates snippet-2 → card-2 → card-1 → snippet-1)
-      (t2/update! :model/NativeQuerySnippet (:id snippet-2)
+      (t2/update! :model/NativeQuerySnippet :id (:id snippet-2)
                   {:content (str "AND id IN ({{#" (:id card-2) "}})")
                    :template_tags {(str "card-" (:id card-2)) {:type :card
                                                                :card-id (:id card-2)
@@ -5485,7 +5485,7 @@
                                                                           :snippet-name "snippet-1"
                                                                           :name         "snippet:snippet-1"
                                                                           :display-name "Snippet 1"}}}]
-      (t2/update! :model/NativeQuerySnippet (:id snippet-1)
+      (t2/update! :model/NativeQuerySnippet :id (:id snippet-1)
                   {:content "WHERE category = 'Electronics' {{snippet: snippet-2}}"})
       ;; Now try to create a NEW card that references snippet-1 (which has a cycle with snippet-2)
       ;; This should fail even though the card doesn't exist yet
@@ -5907,13 +5907,13 @@
       (mt/with-temp [:model/Card {card-id :id} {:dataset_query query-with-default}]
         ;; First, run the card with the default value so result_metadata gets populated server-side.
         (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))
-        (let [metadata-before (t2/select-one-fn :result_metadata :model/Card card-id)]
+        (let [metadata-before (t2/select-one-fn :result_metadata :model/Card :id card-id)]
           (is (seq metadata-before)
               "baseline: a run with the default value should populate result_metadata")
           ;; Now edit the SQL and remove the default — the recompute at save time can't run the query
           (mt/user-http-request :crowberto :put 200 (format "card/%d" card-id)
                                 {:dataset_query query-without-default})
-          (let [metadata-after (t2/select-one-fn :result_metadata :model/Card card-id)]
+          (let [metadata-after (t2/select-one-fn :result_metadata :model/Card :id card-id)]
             (is (= (map :name metadata-before)
                    (map :name metadata-after))
                 "result_metadata should be preserved across SQL edits when the recompute cannot run")))))))

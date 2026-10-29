@@ -77,7 +77,7 @@
   "Set the name of the PermissionsGroup with `id`, returning the number updated."
   [id         :- ms/PositiveInt
    group-name :- :string]
-  (t2/update! :model/PermissionsGroup id {:name group-name}))
+  (t2/update! :model/PermissionsGroup :id id {:name group-name}))
 
 (mu/defn delete-permissions-group!
   "Delete the PermissionsGroup with `id`, returning the number deleted."
@@ -109,7 +109,7 @@
   "Set the group manager flag of the PermissionsGroupMembership with `id`, returning the number updated."
   [id             :- ms/PositiveInt
    group-manager? :- :boolean]
-  (t2/update! :model/PermissionsGroupMembership id {:is_group_manager group-manager?}))
+  (t2/update! :model/PermissionsGroupMembership :id id {:is_group_manager group-manager?}))
 
 (mu/defn non-destination-database-ids
   "The ids of the Databases that are not routing destinations, excluding `excluded-database-id` (nil for no

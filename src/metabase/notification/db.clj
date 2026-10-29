@@ -214,12 +214,12 @@
 (mu/defn deactivate-notification!
   "Mark the Notification with `notification-id` inactive, returning the number updated."
   [notification-id :- ms/PositiveInt]
-  (t2/update! :model/Notification notification-id {:active false}))
+  (t2/update! :model/Notification :id notification-id {:active false}))
 
 (mu/defn delete-notification!
   "Delete the Notification with `notification-id`, returning the number deleted."
   [notification-id :- ms/PositiveInt]
-  (t2/delete! :model/Notification notification-id))
+  (t2/delete! :model/Notification :id notification-id))
 
 (mu/defn delete-notifications!
   "Delete the Notifications with `notification-ids`, returning the number deleted."
@@ -241,7 +241,7 @@
 (mu/defn notification-card-exists?
   "Whether a NotificationCard with `notification-card-id` exists."
   [notification-card-id :- ::lib.schema.id/card]
-  (t2/exists? :model/NotificationCard notification-card-id))
+  (t2/exists? :model/NotificationCard :id notification-card-id))
 
 (mu/defn insert-notification-card!
   "Insert `notification-card` and return its ID."
@@ -251,7 +251,7 @@
 (mu/defn delete-notification-card!
   "Delete the NotificationCard with `notification-card-id`, returning the number deleted."
   [notification-card-id :- ::lib.schema.id/card]
-  (t2/delete! :model/NotificationCard notification-card-id))
+  (t2/delete! :model/NotificationCard :id notification-card-id))
 
 ;;; --------------------------------------- NotificationSubscription ---------------------------------------
 
@@ -351,7 +351,7 @@
 (mu/defn delete-recipient!
   "Delete the NotificationRecipient with `recipient-id`, returning the number deleted."
   [recipient-id :- ms/PositiveInt]
-  (t2/delete! :model/NotificationRecipient recipient-id))
+  (t2/delete! :model/NotificationRecipient :id recipient-id))
 
 (mu/defn delete-user-recipients-for-notification!
   "Delete the NotificationRecipients for the User with `user-id` on the Notification with `notification-id`,
@@ -658,8 +658,9 @@
   nil."
   [notification-id :- ms/PositiveInt]
   (t2/select-one :model/Notification
-                 (-> (admin-base-list-query {:skip-run-joins? true})
-                     (sql.helpers/where [:= :notification.id notification-id]))))
+                 (h2x/assert-map-or-nil!
+                  (-> (admin-base-list-query {:skip-run-joins? true})
+                      (sql.helpers/where [:= :notification.id notification-id])))))
 
 ;;; ------------------------------------------- Other models -------------------------------------------
 
@@ -667,7 +668,7 @@
   "The instance of `model` (a model keyword, or a `[model & columns]` vector) with `id`, or nil."
   [model :- [:or :keyword [:sequential :keyword]]
    id    :- [:maybe ms/PositiveInt]]
-  (t2/select-one model id))
+  (t2/select-one model :id id))
 
 (mu/defn dashboard-tabs
   "The DashboardTabs of the Dashboard with `dashboard-id`."

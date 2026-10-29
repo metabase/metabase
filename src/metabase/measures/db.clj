@@ -40,7 +40,7 @@
   "Apply `changes` to the Measure with `id`."
   [id      :- ::lib.schema.id/measure
    changes :- (mut/select-keys ::measures.schema/measure.update [:name :description :archived :definition])]
-  (t2/update! :model/Measure id changes))
+  (t2/update! :model/Measure :id id changes))
 
 (mu/defn collections
   "The Collections with `collection-ids`."
@@ -52,4 +52,4 @@
   [id                 :- ::lib.schema.id/measure
    dimensions         :- [:maybe sequential?]
    dimension-mappings :- [:maybe [:sequential ::measures.schema/measure.dimension-mapping]]]
-  (t2/update! :model/Measure id {:dimensions dimensions, :dimension_mappings dimension-mappings}))
+  (t2/update! :model/Measure :id id {:dimensions dimensions, :dimension_mappings dimension-mappings}))

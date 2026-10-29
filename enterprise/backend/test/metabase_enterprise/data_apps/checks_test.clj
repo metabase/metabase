@@ -161,7 +161,7 @@
    (fn [_card-id _collection-id]
      (mt/with-temp [:model/DataApp app             {:name "wasps"}
                     :model/Card    {elsewhere-id :id} {:dataset_query (data-apps.tu/venues-query)}]
-       (t2/delete! :model/Collection (:resource_collection_id app))
+       (t2/delete! :model/Collection :id (:resource_collection_id app))
        (testing "an app without a collection can use no card, not even one in the root collection"
          (is (= (error-message :cards elsewhere-id)
                 (run-query 400 (card-query elsewhere-id) (as-app "wasps")))))
@@ -271,7 +271,7 @@
                 (mt/user-http-request :crowberto :post 400 (format "card/%d/query/csv" elsewhere-id) as-data-app))))
        (testing "an app without a collection runs no card, not even one in the root collection"
          (mt/with-temp [:model/DataApp app {:name "wasps"}]
-           (t2/delete! :model/Collection (:resource_collection_id app))
+           (t2/delete! :model/Collection :id (:resource_collection_id app))
            (is (= (card-error elsewhere-id)
                   (mt/user-http-request :crowberto :post 400 (format "card/%d/query" elsewhere-id) (as-app "wasps"))))))
        (testing "an ID of no card is not found, as for any request"
@@ -442,7 +442,7 @@
            (is (seq (:values (mt/user-http-request :crowberto :get 200 (format "card/%d/params/venue/values" card-id)
                                                    as-data-app)))))
          (testing "a parameter whose values come from a card outside the app's collection is refused"
-           (t2/update! :model/Card source-id {:collection_id nil})
+           (t2/update! :model/Card :id source-id {:collection_id nil})
            (doseq [url ["card/%d/params/venue/values" "card/%d/params/venue/search/Red" "card/%d/params/venue/remapping?value=Red"]]
              (is (= (card-error source-id)
                     (mt/user-http-request :crowberto :get 400 (format url card-id) as-data-app))
@@ -575,7 +575,7 @@
          (do-with-rename-action!
           elsewhere-collection-id
           (fn [elsewhere-id]
-            (t2/delete! :model/Collection (:resource_collection_id app))
+            (t2/delete! :model/Collection :id (:resource_collection_id app))
             (testing "an app without a collection lists no action"
               (is (= [] (mt/user-http-request :crowberto :get 200 "action" (as-app "wasps")))))
             (testing "and reads or runs none"

@@ -60,7 +60,7 @@
   "Apply `changes` to the Document with `id`, returning the number updated."
   [id      :- ms/PositiveInt
    changes :- ::documents.schema/document.update]
-  (t2/update! :model/Document id changes))
+  (t2/update! :model/Document :id id changes))
 
 (mu/defn delete-document!
   "Delete the Document with `id`, returning the number deleted."
@@ -100,7 +100,7 @@
   "Apply `changes` to the Card with `card-id`, returning the number updated."
   [card-id :- ::lib.schema.id/card
    changes :- (mut/select-keys ::queries.schema/card.update [:archived :archived_directly])]
-  (t2/update! :model/Card card-id changes))
+  (t2/update! :model/Card :id card-id changes))
 
 (mu/defn update-cards-for-document!
   "Apply `changes` to the Cards of the Document with `document-id`, returning the number updated."

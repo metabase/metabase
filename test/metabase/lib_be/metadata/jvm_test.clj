@@ -19,7 +19,7 @@
    [toucan2.core :as t2]))
 
 (deftest ^:parallel fetch-field-test
-  (let [field (t2/select-one :metadata/column (mt/id :categories :id))]
+  (let [field (t2/select-one :metadata/column :id (mt/id :categories :id))]
     (is (not (me/humanize (mr/explain ::lib.schema.metadata/column field))))))
 
 (deftest ^:parallel fetch-database-test

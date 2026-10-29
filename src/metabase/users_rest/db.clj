@@ -9,6 +9,7 @@
    [metabase.users.models.user :as user]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -23,19 +24,19 @@
   "Set the name of the Collection with `collection-id`."
   [collection-id   :- ::lib.schema.id/collection
    collection-name :- :string]
-  (t2/update! :model/Collection collection-id {:name collection-name}))
+  (t2/update! :model/Collection :id collection-id {:name collection-name}))
 
 (mu/defn users-with-columns
   "The `columns` of the Users matching `filters` (see [[metabase.users.schema/user-filters]])."
   [columns :- [:sequential :keyword]
    filters :- ::users.schema/user-filters]
-  (t2/select (into [:model/User] columns) (user/filter-clauses filters)))
+  (t2/select (into [:model/User] columns) (h2x/assert-map-or-nil! (user/filter-clauses filters))))
 
 (mu/defn user-count
   "The number of Users matching `filters` (see [[metabase.users.schema/user-filters]]), ignoring any `:sort`,
   `:limit`, or `:offset` in `filters`."
   [filters :- ::users.schema/user-filters]
-  (t2/count :model/User (users/filter-clauses-without-paging (user/filter-clauses filters))))
+  (t2/count :model/User (h2x/assert-map-or-nil! (users/filter-clauses-without-paging (user/filter-clauses filters)))))
 
 (mu/defn distinct-user-count
   "The `:count` of distinct Users matching `filters` (see [[metabase.users.schema/user-filters]]), ignoring any
@@ -95,7 +96,7 @@
   "Apply `changes` to the User with `user-id`."
   [user-id :- ::lib.schema.id/user
    changes :- ::users.schema/user.update]
-  (t2/update! :model/User user-id changes))
+  (t2/update! :model/User :id user-id changes))
 
 (mu/defn personal-user-columns
   "The id, email, name, active flag, SSO source, and tenant id of the personal User with `user-id`, or nil."

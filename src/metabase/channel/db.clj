@@ -47,7 +47,7 @@
   "Apply `changes` to the Channel with `id`, returning the number updated."
   [id      :- ms/PositiveInt
    changes :- ChannelRow]
-  (t2/update! :model/Channel id changes))
+  (t2/update! :model/Channel :id id changes))
 
 (mu/defn accepted-admin-emails
   "The emails of the active personal superusers who have logged in at least once, in id order."

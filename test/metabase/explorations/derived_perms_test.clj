@@ -394,7 +394,7 @@
       (mt/with-temp [:model/Collection {coll-id :id} {}]
         ;; Put the exploration somewhere the viewer can read, so anything withheld below is withheld
         ;; by the data-access gate rather than by collection permissions.
-        (t2/update! :model/Exploration expl-id {:collection_id coll-id})
+        (t2/update! :model/Exploration :id expl-id {:collection_id coll-id})
         (perms/grant-collection-read-permissions! (perms-group/all-users) coll-id)
         (mt/user-http-request :lucky :post 200 "comment/"
                               {:target_type     "exploration"

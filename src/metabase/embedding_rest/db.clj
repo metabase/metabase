@@ -34,7 +34,7 @@
   "Apply `changes` to the EmbeddingTheme with `id`."
   [id      :- ms/PositiveInt
    changes :- (mut/select-keys ::embedding.schema/embedding-theme.update [:name :settings])]
-  (t2/update! :model/EmbeddingTheme id changes))
+  (t2/update! :model/EmbeddingTheme :id id changes))
 
 (mu/defn delete-embedding-theme!
   "Delete the EmbeddingTheme with `id`."
