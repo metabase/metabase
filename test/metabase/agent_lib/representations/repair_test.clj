@@ -4215,6 +4215,18 @@
                   e))
           (is (str/starts-with? (:message e) "No column named \"TOTAL\" from join \"Prev\" is available")))))))
 
+(deftest ^:parallel previous-stage-join-alias-ref-test
+  (let [filtered-on (fn [field-ref]
+                      (query (orders-stage {"joins" [(assoc (join "Prev" [first-orders-stage]) "fields" "all")]})
+                             (stage {"filters" [["not-null" {} field-ref]]})))]
+    (testing "a ref through a join of the previous stage is typed from that join's columns"
+      (is (= "type/Date"
+             (base-type (get-in (repair* (filtered-on ["field" {"join-alias" "Prev"} "min"]))
+                                ["stages" 1 "filters" 0 2])))))
+    (testing "a ref through that join to a column only outside it raises the cross-stage error"
+      (is (=? {:error :unresolved-cross-stage-field, :clause ["field" {"join-alias" "Prev"} "TOTAL"]}
+              (repair-error (filtered-on ["field" {"join-alias" "Prev"} "TOTAL"])))))))
+
 (deftest ^:parallel unresolved-cross-stage-ref-with-no-columns-test
   (testing "a ref without a join alias is reported when the previous stage returns no columns"
     (is (= ["field" {} "nope"]

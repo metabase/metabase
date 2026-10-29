@@ -2868,8 +2868,7 @@
 (defn- infer-cross-stage-field-types-in-stage
   "Stamp types from `cols` on every by-name field ref in `stage` that lacks `\"base-type\"`, including the
   refs in its joins' `conditions`.
-  A ref through a join alias is matched only against the columns that came through that alias.
-  Leaves alone a ref through a join alias that no column in `cols` came through, for validation to reject.
+  A ref through a join alias matches only the columns that came through it, and is left for validation when none did.
   Skips each join's own `stages`, which resolve on their own and can't reach this stage's columns."
   [stage cols]
   (let [aliases (stage-join-aliases stage)]
@@ -3116,9 +3115,8 @@
 
 (defn- first-unresolved-cross-stage-ref
   "Return the first [[unstamped-cross-stage-ref?]] clause in `stage` that matches no column in `cols`, or nil.
-  A ref through a join alias is matched only against the columns that came through that alias.
-  Skips each join's own `stages`, which resolve on their own.
-  Also skips a ref through a join alias that no column in `cols` came through."
+  A ref through a join alias matches only the columns that came through it, and is skipped when none did.
+  Skips each join's own `stages`, which resolve on their own."
   [stage cols]
   (let [aliases (stage-join-aliases stage)]
     (match/match-one (without-join-stages stage)
