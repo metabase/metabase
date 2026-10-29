@@ -2,4 +2,4 @@
  ["src" "resources"]
 
  :deps
- {org.mongodb/mongodb-driver-sync {:mvn/version "5.6.1"}}}
+ {org.mongodb/mongodb-driver-sync {:mvn/version "5.11.1"}}}

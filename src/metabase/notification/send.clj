@@ -19,7 +19,7 @@
    [toucan2.core :as t2])
   (:import
    (java.util.concurrent ArrayBlockingQueue Callable Executors ThreadPoolExecutor)
-   (org.apache.commons.lang3.concurrent BasicThreadFactory$Builder)
+   (org.apache.commons.lang3.concurrent BasicThreadFactory)
    (org.quartz CronExpression)))
 
 (set! *warn-on-reflection* true)
@@ -482,7 +482,7 @@
   (let [executor (Executors/newFixedThreadPool
                   pool-size
                   (.build
-                   (doto (BasicThreadFactory$Builder.)
+                   (doto (BasicThreadFactory/builder)
                      (.namingPattern "send-notification-thread-pool-%d"))))
         shutdown-flag (java.util.concurrent.atomic.AtomicBoolean. false)
         start-worker! (fn []
@@ -573,7 +573,7 @@
   (case payload_type
     :notification/card      (when-let [card-id (or (:card_id payload)
                                                    (some->> payload_id
-                                                            notification.db/notification-card-card-id))]
+                                                            notification.db/notification-card :card_id))]
                               {:run_type        :alert
                                :entity_type     :card
                                :entity_id       card-id

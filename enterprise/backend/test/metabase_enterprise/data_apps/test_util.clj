@@ -2,6 +2,7 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase-enterprise.data-apps.apps :as data-apps.apps]
    [metabase-enterprise.data-studio.db :as data-studio.db]
    [metabase-enterprise.serialization.core :as serialization]
    [metabase-enterprise.serialization.dump :as serialization.dump]
@@ -19,6 +20,11 @@
    (java.security MessageDigest)))
 
 (set! *warn-on-reflection* true)
+
+(defn app-url
+  "The API URL of the data `app`, followed by `parts`."
+  [{app-name :name} & parts]
+  (str/join "/" (list* "ee/apps" app-name parts)))
 
 (defn collection-entity-id
   "A stable resource collection entity ID for the app in `data_apps/<slug>`."
@@ -59,7 +65,7 @@
         :as   options}]
   (let [entity-id       (or entity_id (app-entity-id dir))
         collection      (if (contains? options :collection) collection (collection-entity-id dir))
-        collection-name (str "Data App: " slug)
+        collection-name (data-apps.apps/collection-name slug)
         resources       (if (contains? options :resources)
                           resources
                           (when collection {(collection-path collection-name) (collection-file collection collection-name)}))]
@@ -148,6 +154,14 @@
                       (for [action actions]
                         (extract "Action" (action-copy action (copy-id action)))))))]
     (into (sorted-map) (map (juxt (partial file-path collection-name) serialization.dump/yaml-content)) entities)))
+
+(defn do-with-app-collection
+  "Call `f` with the id of the resource collection of a data app named `birds`, with the data-apps feature on; deleting
+  the app afterwards deletes what it holds."
+  [f]
+  (mt/with-premium-features #{:data-apps}
+    (mt/with-temp [:model/DataApp {collection-id :resource_collection_id} {:name "birds"}]
+      (f collection-id))))
 
 (defn do-with-library!
   "Call `f` with the IDs of the root data library (`:data-id`) and metrics library (`:metrics-id`) collections, creating the

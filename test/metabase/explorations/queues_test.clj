@@ -120,11 +120,9 @@
     (mt/with-temporary-setting-values [queue-max-retries 2]
       (do-with-fixtures!
        (fn [{:keys [card thread]}]
-         ;; a database that doesn't exist: the QP throws on every attempt
+         ;; a table that doesn't exist: the QP throws on every attempt
          (let [qid (insert-query! (:id thread) (:id card)
-                                  {:database 999999
-                                   :type     :query
-                                   :query    {:source-table 1 :aggregation [[:count]]}})]
+                                  {:database (mt/id) :type :query :query {:source-table Integer/MAX_VALUE :aggregation [[:count]]}})]
            (mq.tu/with-test-mq [ctx]
              (#'explorations.queues/publish-pending-queries! (:id thread))
              (mq.tu/eventually! ctx #(= "error" (status qid)) 60000))
@@ -144,11 +142,9 @@
     (mt/with-temporary-setting-values [queue-max-retries 5]
       (do-with-fixtures!
        (fn [{:keys [card thread]}]
-         ;; a database that doesn't exist: the QP throws on every attempt → the error path
+         ;; a table that doesn't exist: the QP throws on every attempt → the error path
          (let [qid   (insert-query! (:id thread) (:id card)
-                                    {:database 999999
-                                     :type     :query
-                                     :query    {:source-table 1 :aggregation [[:count]]}})
+                                    {:database (mt/id) :type :query :query {:source-table Integer/MAX_VALUE :aggregation [[:count]]}})
                calls (atom 0)
                orig  runner/maybe-complete-thread!]
            (mq.tu/with-worker-redefs [runner/maybe-complete-thread!
@@ -234,11 +230,9 @@
     (mt/with-temporary-setting-values [queue-max-retries 2]
       (do-with-fixtures!
        (fn [{:keys [card thread]}]
-         ;; a database that doesn't exist: the QP throws on every attempt
+         ;; a table that doesn't exist: the QP throws on every attempt
          (let [poison (insert-query! (:id thread) (:id card)
-                                     {:database 999999
-                                      :type     :query
-                                      :query    {:source-table 1 :aggregation [[:count]]}})
+                                     {:database (mt/id) :type :query :query {:source-table Integer/MAX_VALUE :aggregation [[:count]]}})
                good   (insert-query! (:id thread) (:id card) (venues-query))]
            (mq.tu/with-test-mq [ctx]
              ;; Published in one `with-queue` so the outbox chunks them into a single batch, poison

@@ -1076,12 +1076,12 @@
                   (is (partial= [:name] ; id is hidden
                                 (-> public-action :visualization_settings :fields keys))))
                 (testing "the action should only include the columns shown for public actions"
-                  (= #{:name
-                       :id
-                       :database_id
-                       :visualization_settings
-                       :parameters}
-                     (set (keys public-action))))))))))))
+                  (is (= #{:name
+                           :id
+                           :database_id
+                           :visualization_settings
+                           :parameters}
+                         (set (keys public-action)))))))))))))
 
 ;;; --------------------------------- GET /api/public/dashboard/:uuid/card/:card-id ----------------------------------
 

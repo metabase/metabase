@@ -5,9 +5,14 @@
    [metabase.activity-feed.models.recent-views :as recent-views]
    [metabase.api.common :as api :refer [*current-user-id*]]
    [metabase.api.macros :as api.macros]
+   [metabase.collections.db :as collections.db]
+   [metabase.dashboards.db :as dashboards.db]
+   [metabase.documents.db :as documents.db]
    [metabase.models.interface :as mi]
+   [metabase.queries.db :as queries.db]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [toucan2.core :as t2]))
 
 (defn- models-query
@@ -111,11 +116,11 @@
                        :model/Collection (activity-feed.db/collection-exists? model-id)
                        :model/Document   (activity-feed.db/document-exists? model-id))
         entity       (fn [] (case model-type
-                              :model/Card       (activity-feed.db/card model-id)
-                              :model/Dashboard  (activity-feed.db/dashboard model-id)
-                              :model/Table      (activity-feed.db/table model-id)
-                              :model/Collection (activity-feed.db/collection model-id)
-                              :model/Document   (activity-feed.db/document model-id)))]
+                              :model/Card       (queries.db/card model-id)
+                              :model/Dashboard  (dashboards.db/dashboard model-id)
+                              :model/Table      (warehouse-schema.db/table model-id)
+                              :model/Collection (collections.db/collection model-id)
+                              :model/Document   (documents.db/document model-id)))]
     (when-not exists?
       (throw (ex-info "Model not found" {:model model :model_id model-id})))
     (api/read-check (entity))
@@ -133,7 +138,7 @@
    in the last 24 hours."
   []
   (if-let [dashboard-id (recent-views/most-recently-viewed-dashboard-id *current-user-id*)]
-    (let [dashboard (-> (activity-feed.db/dashboard dashboard-id)
+    (let [dashboard (-> (dashboards.db/dashboard dashboard-id)
                         api/check-404
                         (t2/hydrate [:collection :is_personal]))]
       (if (mi/can-read? dashboard)

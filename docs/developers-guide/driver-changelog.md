@@ -4,12 +4,19 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
-## Metabase 0.66.0
+## Metabase 0.65.3
 
 - `metabase.driver.sql-jdbc.execute/impl-error-in-query?` `[driver exception]` identifies query errors raised while
   reading rows. The default recognizes SQLState classes `21`, `22`, `23` and `42`. Override it to add vendor query
   error codes or exclude SQLStates that also cover operational failures. Unknown failures remain QP errors;
   cancellation takes precedence over query-error evidence.
+
+- `metabase.driver/validate-impersonated-query` `[driver query]` has moved from `:sql-jdbc` to `:sql`, so every
+  SQL driver -- not only the JDBC ones -- inherits the check that a connection-impersonated native query is a
+  single statement of the allowed type. It now walks native stages nested inside joins as well as the top-level
+  ones, and throws rather than returning a verdict when it cannot parse the exact string that would execute.
+  A driver that supports `:connection-impersonation` without descending from `:sql` must implement the method
+  itself; impersonated native queries on such a driver are refused outright.
 
 ## Metabase 0.65.0
 

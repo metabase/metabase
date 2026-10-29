@@ -90,24 +90,25 @@
             {:user_id (mt/user->id :rasta)
              :topic   :user-joined}
             {:user_id (mt/user->id :rasta)
-             :user    (t2/select-one user-hydra-model (mt/user->id :rasta))}]
+             :user    (t2/select-one user-hydra-model (mt/user->id :rasta))
+             :topic   :user-joined}]
            ["multiple hydration in the same map"
             [:map
              (-> [:user_id :int] (#'events.schema/with-hydrate :user user-hydra-model))
-             (-> [:creator :int] (#'events.schema/with-hydrate :creator user-hydra-model))]
+             (-> [:creator_id :int] (#'events.schema/with-hydrate :creator user-hydra-model))]
             {:user_id    (mt/user->id :rasta)
              :creator_id (mt/user->id :crowberto)}
             {:user_id    (mt/user->id :rasta)
              :user       (t2/select-one user-hydra-model (mt/user->id :rasta))
              :creator_id (mt/user->id :crowberto)
-             :creator    (t2/select-one user-hydra-model (mt/user->id :rasta))}]
+             :creator    (t2/select-one user-hydra-model (mt/user->id :crowberto))}]
            ["respect the options"
             [:map
              (-> [:user_id {:optional true} :int] (#'events.schema/with-hydrate :user user-hydra-model))]
             {}
             {}]]]
     (testing context
-      (= expected (#'events.notification/hydrate! schema value)))))
+      (is (= expected (#'events.notification/hydrate! schema value))))))
 
 (deftest record-task-history-test
   (notification.tu/with-notification-testing-setup!

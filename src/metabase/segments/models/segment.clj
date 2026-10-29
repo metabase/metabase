@@ -22,6 +22,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.tools.hydrate :as t2.hydrate]))
@@ -95,7 +96,7 @@
 (defmethod mi/can-write? :model/Segment
   ([instance]
    (let [table (or (:table instance)
-                   (segments.db/table (:table_id instance)))]
+                   (warehouse-schema.db/table (:table_id instance)))]
      (and (or (mi/superuser?)
               (and (api/entitled-data-analyst?)
                    (perms/user-has-permission-for-table?
@@ -115,7 +116,7 @@
 (defmethod mi/can-create? :model/Segment
   [_model instance]
   (let [table (or (:table instance)
-                  (segments.db/table (:table_id instance)))]
+                  (warehouse-schema.db/table (:table_id instance)))]
     (and (or (mi/superuser?)
              (and (api/entitled-data-analyst?)
                   (perms/user-has-permission-for-table?
@@ -161,7 +162,7 @@
   [{:keys [definition], table-id :table_id}]
   (when (some? definition)
     (let [database-id (when table-id
-                        (segments.db/table-database-id table-id))]
+                        (:db_id (warehouse-schema.db/table table-id)))]
       (normalize-segment-definition definition table-id database-id))))
 
 (t2/define-before-insert :model/Segment
@@ -206,7 +207,7 @@
 (defmethod mi/perms-objects-set :model/Segment
   [segment read-or-write]
   (let [table (or (:table segment)
-                  (segments.db/table-perms-columns (u/the-id (:table_id segment))))]
+                  (warehouse-schema.db/table (u/the-id (:table_id segment))))]
     (mi/perms-objects-set table read-or-write)))
 
 (defn- maybe-migrated-segment-definition

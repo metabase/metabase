@@ -4,6 +4,8 @@
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.schema-migrations-test.impl :as schema-migrations-test.impl]
+   [metabase.auth-identity.core :as auth-identity]
+   [metabase.auth-identity.provider :as provider]
    [metabase.config.core :as config]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
@@ -21,6 +23,7 @@
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.log.capture :as log.capture]
+   [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -29,7 +32,7 @@
   :once
   (fixtures/initialize :test-users :notifications))
 
-;;; Tests for invite-user and create-new-google-auth-user!
+;;; Tests for invite-user and SSO user provisioning
 
 (defn- maybe-accept-invite!
   "Accept an invite if applicable. Look in the body of the content of the invite email for the reset token since this is
@@ -51,10 +54,29 @@
              [address (for [{subject :subject} emails]
                         (str/replace subject (str new-user-first-name " " new-user-last-name) "<New User>"))])))
 
+(def ^:private ^:dynamic *sso-user-data* nil)
+
+(methodical/defmethod provider/authenticate :provider/test-sso
+  [_provider _request]
+  {:success? true :user-data *sso-user-data*})
+
+(defn- sso-login!
+  "Provision `user-data` by logging in through `:provider/test-sso`. The provider joins the auth-identity hierarchy only
+  for this call, so tests that check every registered provider (e.g. the MFA gate's) never see it."
+  [user-data]
+  (auth-identity/derive! :provider/test-sso ::provider/provider)
+  (auth-identity/derive! :provider/test-sso ::provider/create-user-if-not-exists)
+  (try
+    (binding [*sso-user-data* user-data]
+      (provider/login! :provider/test-sso {:session/skip? true}))
+    (finally
+      (auth-identity/underive! :provider/test-sso ::provider/create-user-if-not-exists)
+      (auth-identity/underive! :provider/test-sso ::provider/provider))))
+
 (defn- invite-user-accept-and-check-inboxes!
-  "Create user by passing `invite-user-args` to `create-and-invite-user!` or `create-new-google-auth-user!`,
-  and return a map of addresses emails were sent to to the email subjects."
-  [& {:keys [google-auth? accept-invite? password invitor]
+  "Create user by passing `invite-user-args` to `create-and-invite-user!`, or via a dummy sso provider,
+  and return a map of each email address to the subjects of the emails sent to it."
+  [& {:keys [sso-auth? accept-invite? password invitor]
       :or   {accept-invite? true}}]
   (mt/with-temporary-setting-values [site-name "Metabase"]
     (mt/with-fake-inbox
@@ -66,8 +88,8 @@
                                  :email      new-user-email
                                  :password   password}]
         (try
-          (if google-auth?
-            (user/create-new-google-auth-user! (dissoc new-user :password))
+          (if sso-auth?
+            (sso-login! (-> new-user (dissoc :password) (assoc :sso_source :google)))
             (user/create-and-invite-user! new-user invitor false))
           (when accept-invite?
             (maybe-accept-invite! new-user-email))
@@ -156,7 +178,7 @@
           (t2/update! :model/User (:id admin-2) {:last_login :%now})
           (is (= {(:email admin-1) ["<New User> created a Metabase account"]
                   (:email admin-2) ["<New User> created a Metabase account"]}
-                 (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
+                 (-> (invite-user-accept-and-check-inboxes! :sso-auth? true)
                      (select-keys [(:email admin-1) (:email admin-2)])))))))))
 
 (deftest google-auth-site-admin-email-test
@@ -168,7 +190,7 @@
             (fn [admin]
               (is (= {(:email admin)      ["<New User> created a Metabase account"]
                       "cam2@metabase.com" ["<New User> created a Metabase account"]}
-                     (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
+                     (-> (invite-user-accept-and-check-inboxes! :sso-auth? true)
                          (select-keys [(:email admin) "cam2@metabase.com"])))))))))))
 
 (deftest google-auth-inactive-admin-no-email-test
@@ -179,7 +201,7 @@
           (fn [admin]
             (mt/with-temp [:model/User inactive {:is_superuser true, :is_active false}]
               (is (= {(:email admin) ["<New User> created a Metabase account"]}
-                     (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
+                     (-> (invite-user-accept-and-check-inboxes! :sso-auth? true)
                          (select-keys [(:email admin) (:email inactive)])))))))))))
 
 (deftest google-auth-setting-disabled-test
@@ -192,7 +214,7 @@
               (is (= (if config/ee-available?
                        {}
                        {(:email admin) ["<New User> created a Metabase account"]})
-                     (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
+                     (-> (invite-user-accept-and-check-inboxes! :sso-auth? true)
                          (select-keys [(:email admin)])))))))))))
 
 (deftest sso-login-link-email-test

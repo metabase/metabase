@@ -124,6 +124,12 @@ Metabase's reference documentation.
 - [Dashboard subscriptions](./dashboards/subscriptions.md)
 - [Actions on dashboards](./dashboards/actions.md)
 
+### Data apps
+
+- [Data apps overview](./data-apps/start.md)
+- [Build a data app](./data-apps/build.md)
+- [Manage data apps](./data-apps/manage.md)
+
 ### Documents
 
 - [Introduction to documents](./documents/introduction.md)
@@ -259,6 +265,7 @@ Metabase's reference documentation.
 - [Application logs](./monitor/application-logs.md)
 - [Model persistence log](./monitor/model-persistence-log.md)
 - [CLI analytics](./monitor/cli-analytics.md)
+- [Data app analytics](./monitor/data-app-analytics.md)
 
 ### Tools
 

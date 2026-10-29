@@ -1,6 +1,7 @@
 (ns metabase.explorations.models.exploration-query
   (:require
    [metabase.explorations.db :as explorations.db]
+   [metabase.lib-be.core :as lib-be]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.util :as u]
@@ -16,7 +17,7 @@
 
 (t2/deftransforms :model/ExplorationQuery
   {:visualization_settings mi/transform-json
-   :dataset_query          mi/transform-json
+   :dataset_query          lib-be/transform-query
    :params                 mi/transform-json
    :data_access_token      perms/data-access-token-transform})
 
@@ -24,14 +25,14 @@
   ([instance]
    (mi/can-read? :model/ExplorationThread (:exploration_thread_id instance)))
   ([_model pk]
-   (when-let [q (explorations.db/query-thread-id-row pk)]
+   (when-let [q (explorations.db/exploration-query pk)]
      (mi/can-read? :model/ExplorationThread (:exploration_thread_id q)))))
 
 (defmethod mi/can-write? :model/ExplorationQuery
   ([instance]
    (mi/can-write? :model/ExplorationThread (:exploration_thread_id instance)))
   ([_model pk]
-   (when-let [q (explorations.db/query-thread-id-row pk)]
+   (when-let [q (explorations.db/exploration-query pk)]
      (mi/can-write? :model/ExplorationThread (:exploration_thread_id q)))))
 
 (defn- hydrate-score-from-result [score-key queries]

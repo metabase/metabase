@@ -183,6 +183,29 @@
                 nil
                 [{:name "test", :type :info}])))))))
 
+(deftest connection-props-server->client-hidden-when-hosted-test
+  (let [prop   {:name    "auth-mode"
+                :type    "select"
+                :options [{:name "Local"   :value "local"}
+                          {:name "Ambient" :value "ambient" :hidden-when-hosted true}]}
+        strip  #(-> (driver.u/connection-props-server->client nil [prop]) first :options (->> (mapv :value)))]
+    (testing "On Metabase Cloud, options tagged :hidden-when-hosted are stripped from the client payload."
+      (mt/with-premium-features #{:hosting}
+        (is (= ["local"] (strip)))))
+    (testing "Off Metabase Cloud, every option passes through unchanged."
+      (mt/with-premium-features #{}
+        (is (= ["local" "ambient"] (strip))))))
+  (testing "Group fields recurse: a tagged option inside a nested :group field is stripped on hosted."
+    (let [prop  {:type   :group
+                 :fields [{:name    "nested"
+                           :type    "select"
+                           :options [{:name "ok"    :value "ok"}
+                                     {:name "nope"  :value "nope" :hidden-when-hosted true}]}]}]
+      (mt/with-premium-features #{:hosting}
+        (is (= ["ok"]
+               (-> (driver.u/connection-props-server->client nil [prop])
+                   first :fields first :options (->> (mapv :value)))))))))
+
 (deftest ^:parallel connection-props-server->client-schema-filters-test
   (testing "connection-props-server->client works as expected for the schema-filters type"
     (is (= [{:name "first-prop"}

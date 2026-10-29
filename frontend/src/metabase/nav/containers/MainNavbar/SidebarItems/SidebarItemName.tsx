@@ -17,7 +17,7 @@ export function SidebarItemName({
 }: SidebarItemNameProps) {
   if (itemName.length >= ITEM_NAME_LENGTH_TOOLTIP_THRESHOLD) {
     return (
-      <Tooltip label={itemName} withArrow maw="none">
+      <Tooltip label={itemName} withArrow maw="65ch">
         <TreeNode.NameContainer
           className={cx(
             CS.textNoWrap,

@@ -713,6 +713,19 @@
 
     [conn-prop]))
 
+(defn- strip-hidden-when-hosted
+  "Return `prop` with any option tagged `:hidden-when-hosted` removed. Recurses into group fields."
+  [prop]
+  (cond
+    (= :group (:type prop))
+    (update prop :fields #(mapv strip-hidden-when-hosted %))
+
+    (seq (:options prop))
+    (update prop :options #(filterv (complement :hidden-when-hosted) %))
+
+    :else
+    prop))
+
 (defn connection-props-server->client
   "Transforms `conn-props` for the given `driver` from their server side definition into a client side definition.
 
@@ -724,7 +737,8 @@
    if one was provided."
   {:added "0.42.0"}
   [driver conn-props]
-  (let [final-props (into [] (mapcat process-connection-prop) conn-props)
+  (let [hosted-filter (if (premium-features/is-hosted?) strip-hidden-when-hosted identity)
+        final-props   (into [] (comp (mapcat process-connection-prop) (map hosted-filter)) conn-props)
         ;; Build complete props-by-name map including nested fields from groups
         props-by-name (collect-all-props-by-name final-props)]
     ;; now, traverse the visible-if-edges and update all visible-if entries with their full set of "transitive"
