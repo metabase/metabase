@@ -52,9 +52,11 @@ export function SegmentEditor({
     if (minSource != null) {
       trackDynamicGoalUnset(display, minSource);
     }
+
     if (maxSource != null) {
       trackDynamicGoalUnset(display, maxSource);
     }
+
     onRemove();
   };
 

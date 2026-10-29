@@ -57,7 +57,9 @@ export const ChartSettingSegmentsEditor = ({
               onChange={(changes) => updateSegment(index, changes)}
               onRemove={() => {
                 onChange(
-                  segments.filter((_v, segmentIndex) => segmentIndex !== index),
+                  segments.filter(
+                    (_value, segmentIndex) => segmentIndex !== index,
+                  ),
                 );
               }}
             />
