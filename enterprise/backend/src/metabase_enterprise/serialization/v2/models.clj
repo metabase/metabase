@@ -101,6 +101,7 @@
    "ExplorationThreadTimeline"
    "HTTPAction"
    "ImplicitAction"
+   "ImpersonationQueryCache"
    "LoginHistory"
    "McpFeedback"
    "McpQueryHandle"

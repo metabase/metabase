@@ -18,6 +18,7 @@
    [metabase-enterprise.dependencies.init]
    [metabase-enterprise.entity-retrieval.init]
    [metabase-enterprise.gsheets.init]
+   [metabase-enterprise.impersonation.init]
    [metabase-enterprise.mcp.init]
    [metabase-enterprise.memoize-monitor.init]
    [metabase-enterprise.metabot.init]
