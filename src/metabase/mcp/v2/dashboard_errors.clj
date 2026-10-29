@@ -1,8 +1,8 @@
 (ns metabase.mcp.v2.dashboard-errors
   "MCP's wording for the dashboard op compiler's errors.
    The compiler in [[metabase.metabot.toolkit.dashboard-ops]] throws an error code and the values behind it.
-   This namespace turns them into the teaching errors `dashboard_write` returns, with pointers to MCP tools such as
-   `learn` and `get_content`."
+   This namespace turns them into the teaching errors `dashboard_write` returns.
+   The wording points at MCP tools such as `learn` and `get_content`."
   (:require
    [metabase.mcp.v2.common :as common]
    [metabase.mcp.v2.message :as message]
@@ -12,7 +12,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private details
-  "For each error code in [[dashboard-ops/errors]], a function of the error data returning the message that explains it.
+  "For each error code in [[dashboard-ops/errors]], a function from the error data to the message explaining it.
    The message has no op prefix."
   {:missing-op
    (fn [_] (message/raw "missing `op` — see the tool description for the supported list."))
@@ -141,7 +141,7 @@
 (defn- op-message
   "The message `detail` attributed to the op at `idx` (0-based, as sent): `op <idx> (<op-name>): <detail>`.
    Without an `op-name` it is `op <idx>: <detail>`.
-   The op name comes from the caller, so it renders quoted."
+   A string `op-name` came from the caller, so it renders quoted; a raw message renders as it is."
   [idx op-name detail]
   (if (nil? op-name)
     (message/msg ["op %d: %s"] idx detail)
@@ -158,9 +158,9 @@
 
 (defn- op-label
   "What the op prefix names for error `code` from the op called `op-name`.
-   That is the op name, except that a missing or unknown `dashcard_id`, `tab_id` or `parameter_id` names that key,
-   and `add_parameter` reports an existing parameter unquoted. MCP's errors read that way before the compiler moved,
-   and this keeps them unchanged."
+   That is the op name, except that a missing or unknown `dashcard_id`, `tab_id` or `parameter_id` names the key.
+   An existing parameter reports `add_parameter` unquoted.
+   MCP's errors read that way before the compiler moved, and this keeps them unchanged."
   [code op-name]
   (case code
     (:missing-dashcard-id :unknown-dashcard)   "dashcard_id"
@@ -179,6 +179,7 @@
         detail    (detail-fn data)]
     (if (and op-index (not= :no-free-space code))
       (op-message op-index (op-label code op-name) detail)
+      ;; A bare raw message renders quoted, so wrap it to keep it as text.
       (message/msg ["%s"] detail))))
 
 (defn compile-ops
@@ -188,6 +189,6 @@
   (try
     (dashboard-ops/compile-ops current ops cards)
     (catch clojure.lang.ExceptionInfo e
-      (if-let [data (dashboard-ops/error-data e)]
-        (throw (common/message-ex-info (error-message data) {:status-code 400} e))
-        (throw e)))))
+      (throw (if-let [data (dashboard-ops/error-data e)]
+               (common/message-ex-info (error-message data) {:status-code 400} e)
+               e)))))

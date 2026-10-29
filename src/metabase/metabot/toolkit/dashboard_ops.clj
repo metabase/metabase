@@ -14,8 +14,8 @@
    Op methods validate, then compose the row primitives in the State algebra section; those
    primitives are the only code that touches the `:dashcards`/`:tabs`/`:parameters` vectors.
 
-   An invalid op throws an `ex-info` whose data holds an error code from [[errors]] under `::error`, the values that
-   explain it, and the failing op's `:op-index` and `:op-name`.
+   An invalid op throws an `ex-info` whose data holds an error code from [[errors]] under `::error`.
+   The data also holds the values that explain the error, and the failing op's `:op-index` and `:op-name`.
    This namespace words no errors: each tool turns that data into text for its own model."
   (:require
    [metabase.dashboards.autoplace :as autoplace]
@@ -30,9 +30,9 @@
 
 (def errors
   "Every error code [[compile-ops]] throws, mapped to the schema of the values that explain it.
-   A value the caller sent is `:any`, since a caller without MCP's argument schema can send anything; a value the
-   compiler read from the dashboard has its type.
-   Errors thrown while applying an op also carry `:op-index` (0-based, as sent) and `:op-name` (as sent, or nil).
+   Values the caller sent are `:any`, since a caller without MCP's argument schema can send anything.
+   Values read from the dashboard have their types.
+   Errors thrown while applying an op also carry `:op-index` (0-based) and `:op-name` (as sent, or nil).
    The `:cards-without-tab` check runs after the last op, so that error carries neither."
   {:missing-op                         [:map {:closed true}]
    :unknown-op                         [:map {:closed true}]

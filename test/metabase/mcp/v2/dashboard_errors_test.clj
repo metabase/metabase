@@ -1,6 +1,7 @@
 (ns metabase.mcp.v2.dashboard-errors-test
   "MCP's wording of the dashboard op compiler's errors.
-   The compiler's own tests cover which error each op throws, and these cover the text `dashboard_write` turns it into."
+   The compiler's own tests cover which error each op throws.
+   These cover the text `dashboard_write` turns it into."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
