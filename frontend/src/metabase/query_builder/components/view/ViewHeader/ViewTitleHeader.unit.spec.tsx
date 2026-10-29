@@ -20,6 +20,7 @@ import Question from "metabase-lib/v1/Question";
 import type {
   Card,
   Database,
+  DatabaseId,
   NativeDatasetQuery,
   StructuredDatasetQuery,
   UnsavedCard,
@@ -107,6 +108,20 @@ function getNativeQuestionCardWithUnmappedTag(
           },
         },
       },
+    },
+  });
+}
+
+function getEmptyNativeQuestionCard({
+  database,
+}: {
+  database: DatabaseId | null;
+}): UnsavedCard<NativeDatasetQuery> {
+  return createAdHocNativeCard({
+    dataset_query: {
+      type: "native",
+      database,
+      native: { query: "" },
     },
   });
 }
@@ -610,6 +625,32 @@ describe("View Header | Not saved native question", () => {
     expect(screen.queryByText("Explore results")).not.toBeInTheDocument();
   });
 
+  it("does not let the question be saved before a database is selected (metabase#18148)", async () => {
+    const { onOpenModal } = setup({
+      card: getEmptyNativeQuestionCard({ database: null }),
+      isDirty: true,
+    });
+
+    const saveButton = screen.getByTestId("qb-save-button");
+    expect(saveButton).toHaveAttribute("aria-disabled", "true");
+
+    await userEvent.click(saveButton);
+    expect(onOpenModal).not.toHaveBeenCalled();
+  });
+
+  it("does not show an empty tooltip on the disabled save button of an empty query (metabase#51035)", async () => {
+    setup({
+      card: getEmptyNativeQuestionCard({ database: SAMPLE_DB_ID }),
+      isDirty: true,
+    });
+
+    const saveButton = screen.getByTestId("qb-save-button");
+    expect(saveButton).toHaveAttribute("aria-disabled", "true");
+
+    await userEvent.hover(saveButton);
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  });
+
   describe.each(["dimension", "temporal-unit"] as const)(
     "%s template tag without a field",
     (type) => {
@@ -651,6 +692,11 @@ describe("View Header | Saved native question", () => {
 
   it("doesn't offer to explore results if nested queries are disabled", () => {
     setupSavedNative({ settings: { enableNestedQueries: false } });
+    expect(screen.queryByText("Explore results")).not.toBeInTheDocument();
+  });
+
+  it("doesn't offer to explore results without data permissions (metabase#20044)", () => {
+    setupSavedNative({ database: null });
     expect(screen.queryByText("Explore results")).not.toBeInTheDocument();
   });
 

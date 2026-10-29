@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import { createMockMetadataFromState } from "__support__/metadata";
 import {
   setupDatabasesEndpoints,
@@ -15,7 +17,7 @@ import {
   createMockNativeDatasetQuery,
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
-import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+import { PEOPLE, createSampleDatabase } from "metabase-types/api/mocks/presets";
 
 import { TagEditorSidebar } from "./TagEditorSidebar";
 
@@ -42,19 +44,23 @@ const setup = ({ query, templateTags = {} }: SetupOpts) => {
   setupSearchEndpoints([]);
   setupParameterValuesEndpoints({ values: [], has_more_values: false });
 
+  const setTemplateTag = jest.fn<void, [TemplateTag]>();
+
   renderWithProviders(
     <TagEditorSidebar
       query={checkNotNull(question.legacyNativeQuery())}
       question={question}
       databases={Object.values(metadata.databases)}
       setDatasetQuery={jest.fn()}
-      setTemplateTag={jest.fn()}
+      setTemplateTag={setTemplateTag}
       setTemplateTagConfig={jest.fn()}
       setParameterValue={jest.fn()}
       onClose={jest.fn()}
       getEmbeddedParameterVisibility={jest.fn()}
     />,
   );
+
+  return { setTemplateTag };
 };
 
 describe("TagEditorSidebar", () => {
@@ -90,5 +96,59 @@ describe("TagEditorSidebar", () => {
       screen.queryByText(/Add a variable to your query/),
     ).not.toBeInTheDocument();
     expect(screen.getByDisplayValue("X")).toBeInTheDocument();
+  });
+
+  describe("field filter without a mapped field", () => {
+    const FIELD_FILTER_TAG = createMockTemplateTag({
+      name: "x",
+      "display-name": "X",
+      type: "dimension",
+      dimension: undefined,
+      "widget-type": "none",
+    });
+
+    it("should not render the default value and required controls (metabase#52812)", () => {
+      setup({ query: "SELECT {{x}}", templateTags: { x: FIELD_FILTER_TAG } });
+
+      expect(screen.getByText("Field to map to")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Default filter widget value"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Always require a value"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should render the default value and required controls once a field is mapped", () => {
+      setup({
+        query: "SELECT {{x}}",
+        templateTags: {
+          x: {
+            ...FIELD_FILTER_TAG,
+            dimension: ["field", PEOPLE.SOURCE, null],
+            "widget-type": "string/=",
+          },
+        },
+      });
+
+      expect(
+        screen.getByLabelText("Always require a value"),
+      ).toBeInTheDocument();
+    });
+
+    it("should allow changing the variable type (metabase#51679)", async () => {
+      const { setTemplateTag } = setup({
+        query: "SELECT {{x}}",
+        templateTags: { x: FIELD_FILTER_TAG },
+      });
+
+      await userEvent.click(screen.getByTestId("variable-type-select"));
+      await userEvent.click(await screen.findByText("Number"));
+
+      expect(setTemplateTag).toHaveBeenCalledTimes(1);
+      expect(setTemplateTag).toHaveBeenCalledWith(
+        expect.objectContaining({ name: "x", type: "number" }),
+      );
+    });
   });
 });
