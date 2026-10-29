@@ -8,7 +8,7 @@
     only defines simple metrics.
   * `parcel_delivery_manifest.json`, from the small project checked in under `parcel_delivery/`, written on the dbt
     1.12 inline spec (`semantic_model:` nested under `models:`, entities and dimensions on `columns:`, metrics with
-    their own `agg` and `expr`). It is what the inline spec looks like in a manifest, QRES-6.
+    their own `agg` and `expr`). It is what the inline spec looks like in a manifest.
 
   [[regenerate!]] copies the project to a scratch directory with a `profiles.yml` of its own (see
   [[with-scratch-project]]; `dbt parse` needs a profile for the adapter and the warehouse database name, but never
@@ -21,8 +21,8 @@
 
   The project itself is never modified. dbt runs through `uvx` unless a `dbt` is on `PATH`. JSON goes through Jackson
   directly rather than [[metabase.util.json]] so that key order survives the round trip and the file is written the
-  way `dbt` writes it (one-space indent, non-ASCII escaped, floats as they were), which keeps a regeneration's diff
-  down to what changed. Run from a REPL at the repo root:
+  way Python's `json.dumps(indent=1)` would (one-space indent, non-ASCII escaped, floats as they were), which keeps a
+  regeneration's diff down to what changed. Run from a REPL at the repo root:
 
     (dev.dbt-import.fixture/regenerate! :parcel-delivery)
     (dev.dbt-import.fixture/regenerate! :flexanalytics)
@@ -90,17 +90,20 @@
                      :database "parcels"}})
 
 (def ^:private metadata-keys ["dbt_schema_version" "dbt_version" "project_name" "adapter_type" "generated_at"])
-(def ^:private node-keys ["unique_id" "resource_type" "name" "database" "schema" "alias" "relation_name" "description" "columns"])
+(def ^:private node-keys
+  ["unique_id" "resource_type" "name" "database" "schema" "alias" "relation_name" "description" "columns"])
 (def ^:private column-keys ["name" "description" "data_type"])
 
-(defn- copy-relative
+(mu/defn- copy-relative :- :nil
   "Copy `f`, under `project`, to the same relative path under `scratch`."
-  [^File project ^File scratch ^File f]
+  [^File project :- (ms/InstanceOfClass File)
+   ^File scratch :- (ms/InstanceOfClass File)
+   ^File f       :- (ms/InstanceOfClass File)]
   (let [target (io/file scratch (str (.relativize (.toPath project) (.toPath f))))]
     (io/make-parents target)
     (io/copy f target)))
 
-(mu/defn copy-project
+(mu/defn copy-project :- :nil
   "Copy the dbt project at `project` into `scratch`: a git checkout's tracked files plus its installed packages, so
   `dbt deps` need not run, or every file of a plain directory except what dbt itself writes (`target`, `logs`)."
   [^File project :- (ms/InstanceOfClass File)
@@ -108,7 +111,7 @@
   (if (.isDirectory (io/file project ".git"))
     (let [{:keys [exit out err]} (sh/sh "git" "-C" (.getPath project) "ls-files" "-z")]
       (when-not (zero? exit)
-        (throw (ex-info (str "git ls-files failed: " err) {:project project})))
+        (throw (ex-info (format "git ls-files failed: %s" err) {:project project})))
       (doseq [relative (remove str/blank? (str/split out #"\u0000"))]
         (copy-relative project scratch (io/file project relative)))
       (doseq [extra ["dbt_packages" "package-lock.yml"]
@@ -128,11 +131,11 @@
       (throw (ex-info "dbt_project.yml names no profile" {:project project}))))
 
 (mu/defn- profiles-yaml :- :string
-  "A `profiles.yml` with one Postgres profile, `profile-name`, pointing dbt at `connection` and building in schema
+  "A `profiles.yml` with one Postgres profile, `profile`, pointing dbt at `connection` and building in schema
   `public`, as the README's does."
-  [profile-name                             :- :string
+  [profile                                  :- :string
    {:keys [host port user password dbname]} :- ::connection]
-  (str/join "\n" [(str profile-name ":")
+  (str/join "\n" [(str profile ":")
                   "  target: dev"
                   "  outputs:"
                   "    dev:"
@@ -146,7 +149,7 @@
                   "      threads: 4"
                   ""]))
 
-(mu/defn- write-profile!
+(mu/defn- write-profile! :- :nil
   "Write a `profiles.yml` for `project` into `profiles-dir`, pointing dbt at `connection` (see [[profiles-yaml]]),
   so macros resolve against the Postgres adapter and relations are written in that database."
   [^File project      :- (ms/InstanceOfClass File)
@@ -168,13 +171,15 @@
           yaml          (cond-> yaml (not (str/ends-with? yaml "\n")) (str "\n"))]
       (str (subs yaml 0 insert-at) extra (subs yaml insert-at)))))
 
-(defn- dbt-command []
+(mu/defn- dbt-command :- [:sequential :string]
+  "The command that runs dbt: `dbt` itself when it is on `PATH`, otherwise through `uvx`."
+  []
   (cond
     (zero? (:exit (sh/sh "sh" "-c" "command -v dbt"))) ["dbt"]
     (zero? (:exit (sh/sh "sh" "-c" "command -v uvx"))) ["uvx" "--from" "dbt-core" "--with" "dbt-postgres" "dbt"]
     :else (throw (ex-info "neither dbt nor uvx is on PATH; see the README" {}))))
 
-(mu/defn dbt!
+(mu/defn dbt! :- :nil
   "Run `dbt args...` in `scratch` with the profiles in `profiles-dir`, failing with its output when it does."
   [^File scratch      :- (ms/InstanceOfClass File)
    ^File profiles-dir :- (ms/InstanceOfClass File)
@@ -184,7 +189,7 @@
     (when-not (zero? exit)
       (throw (ex-info (format "dbt %s failed (exit %d)" (str/join " " args) exit) {:out out, :err err})))))
 
-(mu/defn with-scratch-project
+(mu/defn with-scratch-project :- :any
   "Run `f` with a scratch copy of the dbt project at `project` (see [[copy-project]]) and a directory holding a
   `profiles.yml` for `connection` (see [[write-profile!]]), with the project's packages installed (`dbt deps`, unless
   the copy brought them along), as `(f scratch profiles-dir)`; the scratch directory is deleted afterwards, whatever
@@ -193,7 +198,7 @@
    connection    :- ::connection
    f             :- fn?]
   (when-not (.isFile (io/file project "dbt_project.yml"))
-    (throw (ex-info (str project " is not a dbt project; pass :project") {})))
+    (throw (ex-info (format "%s is not a dbt project; pass :project" project) {})))
   (let [scratch      (.toFile (Files/createTempDirectory "dbt-import-scratch" (make-array FileAttribute 0)))
         profiles-dir (io/file scratch ".profiles")]
     (try
@@ -213,7 +218,7 @@
     (.enable DeserializationFeature/USE_BIG_DECIMAL_FOR_FLOATS)))
 
 (def ^:private ^ObjectWriter writer
-  "Writes JSON the way Python's `json.dump(indent=1)`, which `dbt` uses, does."
+  "Writes JSON the way Python's `json.dumps(indent=1)` does."
   (let [indenter   (DefaultIndenter. " " "\n")
         separators (-> (Separators/createDefaultInstance)
                        (.withObjectFieldValueSpacing Separators$Spacing/AFTER)
@@ -229,26 +234,29 @@
                        .build)]
     (.writer (ObjectMapper. ^JsonFactory factory) printer)))
 
-(defn- pick
+(mu/defn- pick :- (ms/InstanceOfClass Map)
   "A new ordered map of the entries of `m` whose keys are in `ks`, in that order."
-  ^Map [^Map m ks]
+  [^Map m :- (ms/InstanceOfClass Map)
+   ks     :- [:sequential :string]]
   (let [picked (LinkedHashMap.)]
     (doseq [k ks
             :when (.containsKey m k)]
       (.put picked k (.get m k)))
     picked))
 
-(defn- trim-node ^Map [^Map node]
-  (let [trimmed (pick node node-keys)
-        columns (LinkedHashMap.)]
+(mu/defn- trim-node :- (ms/InstanceOfClass Map)
+  "`node` reduced to its identity, relation and columns, see the namespace docstring."
+  [^Map node :- (ms/InstanceOfClass Map)]
+  (let [^Map trimmed (pick node node-keys)
+        columns      (LinkedHashMap.)]
     (doseq [[column-name column] ^Map (.get node "columns")]
       (.put columns column-name (pick column column-keys)))
     (.put trimmed "columns" columns)
     trimmed))
 
-(defn- trim-manifest
+(mu/defn- trim-manifest :- (ms/InstanceOfClass Map)
   "The sections of a decoded manifest the converter reads, see the namespace docstring."
-  ^Map [^Map manifest]
+  [^Map manifest :- (ms/InstanceOfClass Map)]
   (let [metadata     ^Map (.get manifest "metadata")
         project-name (.get metadata "project_name")
         nodes        (LinkedHashMap.)

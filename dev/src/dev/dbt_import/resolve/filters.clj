@@ -5,13 +5,13 @@
   [[sql/render-filter]] stands a placeholder in for each reference and [[sql/condition->mbql]] parses the rest in the
   dialect of the config's `:driver`; the references are resolved here (see [[reference-clause]]). A dimension reached
   through the model's own primary entity (or `metric_time`) is one of its columns; one reached through another entity
-  is on the semantic model that entity joins to (see [[resolve.columns/join-context]]). A `TimeDimension`, or a `.grain()`,
-  buckets the column by the grain, when the column can be (see [[available-unit]])."
+  is on the semantic model that entity joins to (see [[resolve.columns/join-context]]). A `TimeDimension`, or a
+  `.grain()`, buckets the column by the grain, when the column can be (see [[available-unit]])."
   (:require
    [better-cond.core :as b]
    [clojure.string :as str]
    [dev.dbt-import.resolve.columns :as resolve.columns]
-   [dev.dbt-import.schemas.ir :as schemas.ir]
+   [dev.dbt-import.schemas.ir :as ir]
    [dev.dbt-import.sql :as sql]
    [dev.dbt-import.unsupported :as unsupported]
    [medley.core :as m]
@@ -26,7 +26,7 @@
 (mr/def ::located-dimension
   "A dbt dimension and the context whose columns its expr is written against."
   [:map {:closed true}
-   [:dimension ::schemas.ir/dimension]
+   [:dimension ::ir/dimension]
    [:context   ::resolve.columns/context]])
 
 (mu/defn- own-dimension :- ::located-dimension
@@ -40,8 +40,8 @@
 (mu/defn- locate-dimension :- ::located-dimension
   "The dimension `dimension-path` names and the context its expr is written against. dbt writes a dimension path as
   `<entity>__<dimension>`: through the model's primary entity it is one of the model's own dimensions, through a
-  foreign entity it is on the semantic model that entity is primary for (see [[resolve.columns/join-context]]). `metric_time`
-  is the metric's `agg_time_dimension`."
+  foreign entity it is on the semantic model that entity is primary for (see [[resolve.columns/join-context]]).
+  `metric_time` is the metric's `agg_time_dimension`."
   [{:keys [model agg-time-dimension] :as context} :- ::resolve.columns/context
    dimension-path                                 :- :string]
   (b/cond
@@ -57,7 +57,8 @@
     (own-dimension context prefix)
 
     (seq more)
-    (unsupported/throw! "%s reaches a dimension through more than one entity, which is not supported" (pr-str dimension-path))
+    (unsupported/throw! "%s reaches a dimension through more than one entity, which is not supported"
+                        (pr-str dimension-path))
 
     (= prefix (:primary-entity model))
     (own-dimension context dimension-name)
@@ -107,12 +108,13 @@
   "`column`, the ref for `dimension`, bucketed by `grain`, a dbt granularity name; nil means the dimension's own. See
   [[available-unit]] for which grains a column takes."
   [context                                  :- ::resolve.columns/context
-   {:keys [granularity expr] :as dimension} :- ::schemas.ir/dimension
+   {:keys [granularity expr] :as dimension} :- ::ir/dimension
    column                                   :- ::sql/value
    grain                                    :- [:maybe :string]]
   (b/cond
     (not= :time (:type dimension))
-    (unsupported/throw! "TimeDimension(%s): %s is not a time dimension" (pr-str (:name dimension)) (pr-str (:name dimension)))
+    (unsupported/throw! "TimeDimension(%s): %s is not a time dimension"
+                        (pr-str (:name dimension)) (pr-str (:name dimension)))
 
     (not= :column (:kind (resolve.columns/parse-expr expr)))
     (unsupported/throw! "cannot bucket the SQL expression %s by time" (pr-str expr))
@@ -129,7 +131,7 @@
 (mu/defn- reference-clause :- ::sql/value
   "The Lib expression a filter template's reference stands for."
   [context                                                :- ::resolve.columns/context
-   {:keys [kind grain arguments methods], ref-name :name} :- ::sql/reference]
+   {:keys [kind grain arguments], ref-name :name, method-calls :methods} :- ::sql/reference]
   ;; `entity_path=[...]` names the join path to a dimension; the converter reaches one through the entity in the
   ;; reference itself and cannot follow another path, so the argument is reported rather than dropped. A `Metric`
   ;; reference is reported whatever its arguments.
@@ -137,12 +139,13 @@
     (unsupported/throw! "%s has the argument %s, which is not supported: only the name and, for TimeDimension, a grain"
                         (pr-str ref-name) arguments))
   ;; `.grain('month')` is read (see [[sql/render-filter]]); `.date_part('month')` and anything else chained on is not
-  (when (and methods (not= kind :metric))
+  (when (and method-calls (not= kind :metric))
     (unsupported/throw! "%s has the method call %s, which is not supported: only .grain('<granularity>') is"
-                        (pr-str ref-name) methods))
+                        (pr-str ref-name) method-calls))
   (case kind
     :metric
-    (unsupported/throw! "Metric(%s): filters on other metrics are not supported yet (QRES-5)" (pr-str ref-name))
+    (unsupported/throw! "Metric(%s): a condition on another metric's value is a HAVING, which a metric has no place for"
+                        (pr-str ref-name))
 
     :entity
     (let [entity (resolve.columns/own-entity context ref-name)]

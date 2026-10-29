@@ -19,6 +19,7 @@
    [metabase.sql-parsing.shadow :as shadow]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.performance :as perf])
   (:import
    (java.util.concurrent TimeoutException)))
@@ -611,7 +612,7 @@
 
 ;;;; Transpile sql
 
-(defn parse-expression
+(mu/defn parse-expression :- :map
   "Parse `sql`, a single expression with no surrounding SELECT such as `sales / target` or
   `status = 'Shipped' AND amount > 0`, into its sqlglot tree. Each node is a map:
 
@@ -623,7 +624,8 @@
   a `Literal` node's `:this` as a string, with `:is_string` saying whether the SQL quoted it.
 
   Throws a parse error (see [[parse-error?]]) when the SQL does not parse, is empty, or is more than one statement."
-  [dialect sql]
+  [dialect :- [:maybe :string]
+   sql     :- :string]
   (protocol/parse-expression (parser) dialect sql))
 
 (defn- normalize-transpilation-result

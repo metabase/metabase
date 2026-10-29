@@ -13,14 +13,14 @@
 (mr/def ::report
   "What a run converted, with the file each metric was written to and the dimensions it could not give the metric,
   and what it could not convert, with the reason."
-  [:map
+  [:map {:closed true}
    [:out-dir     :string]
-   [:converted   [:sequential [:map
+   [:converted   [:sequential [:map {:closed true}
                                [:name                   :string]
                                [:entity-id              ms/NanoIdString]
                                [:path                   :string]
                                [:unsupported-dimensions [:sequential ::resolved/unsupported-dimension]]]]]
-   [:unsupported [:sequential [:map
+   [:unsupported [:sequential [:map {:closed true}
                                [:name :string]
                                [:reason :string]]]]])
 
@@ -46,8 +46,8 @@
      :unsupported (mapv #(select-keys % [:name :reason]) (:unsupported resolved))}))
 
 (comment
-  (convert! {:manifest "/home/cam/dbt-business-intelligence/target/manifest.json"
-             :out-dir  "/home/cam/dbt-metrics-serdes"
+  (convert! {:manifest "/path/to/dbt-business-intelligence/target/manifest.json"
+             :out-dir  "/path/to/dbt-metrics-serdes"
              :config   {:databases     {"dbt_bi" "Sales DB"}
                         :driver        :postgres
                         :creator-email "admin@example.com"}}))

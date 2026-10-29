@@ -2,16 +2,16 @@
   "The resolve stage's curated dimension set: the dimensions a converted metric can be broken out by.
 
   Each metric gets the dbt dimensions of its own semantic model, the dimensions of every semantic model its foreign
-  and unique entities join to (see [[resolve.columns/join-context]]), and the metric's `agg_time_dimension` as the default,
-  bucketed by the metric's `time_granularity` when it has one (see [[dimension-set]]). A dimension mapping targets a
-  column, so a dimension whose `expr` is SQL is reported per metric rather than written. Ids are derived, not
-  generated, so a re-run writes the same ids and a re-import updates the dimensions in place."
+  and unique entities join to (see [[resolve.columns/join-context]]), and the metric's `agg_time_dimension` as the
+  default, bucketed by the metric's `time_granularity` when it has one (see [[dimension-set]]). A dimension mapping
+  targets a column, so a dimension whose `expr` is SQL is reported per metric rather than written. Ids are derived,
+  not generated, so a re-run writes the same ids and a re-import updates the dimensions in place."
   (:require
    [better-cond.core :as b]
    [dev.dbt-import.resolve.columns :as resolve.columns]
    [dev.dbt-import.resolve.filters :as resolve.filters]
-   [dev.dbt-import.schemas.ir :as schemas.ir]
-   [dev.dbt-import.schemas.resolved :as schemas.resolved]
+   [dev.dbt-import.schemas.ir :as ir]
+   [dev.dbt-import.schemas.resolved :as resolved]
    [dev.dbt-import.unsupported :as unsupported]
    [medley.core :as m]
    [metabase.lib-metric.dimension.jvm :as lib-metric.dimension.jvm]
@@ -29,7 +29,7 @@
   "The id of the curated dimension at `dimension-path` (`<entity>__<dimension>`, or a bare name for the model's own)
   of the metric `metric-unique-id`. Derived, not generated, so a re-run writes the same ids and a re-import updates the
   dimensions in place; scoped to the metric, as Metabase scopes the ids it computes (see
-  `metabase.lib-metric.dimension.jvm/dimension-id`)."
+  [[lib-metric.dimension.jvm/dimension-id]])."
   [metric-unique-id :- :string
    dimension-path   :- :string]
   (u/name-uuid (str "dbt-import/dimension/" metric-unique-id "/" dimension-path)))
@@ -39,7 +39,7 @@
   after the model's label, or its table when it has none. The id is the one Metabase derives for the same group (see
   [[lib-metric.dimension.jvm/group-id]]), so these are the groups the instance computes."
   [group-type               :- [:enum "main" "connection"]
-   {:keys [label relation]} :- ::schemas.ir/semantic-model]
+   {:keys [label relation]} :- ::ir/semantic-model]
   (let [display-name (or label (:table relation))]
     {:id           (lib-metric.dimension.jvm/group-id group-type display-name)
      :type         group-type
@@ -48,7 +48,7 @@
 (mu/defn- default-temporal-unit :- [:maybe ::lib.schema.temporal-bucketing/unit]
   "The unit a time dimension's `granularity` names, when Lib can bucket `column` by it; nil otherwise."
   [context                                     :- ::resolve.columns/context
-   {:keys [granularity], dimension-name :name} :- ::schemas.ir/dimension
+   {:keys [granularity], dimension-name :name} :- ::ir/dimension
    column                                      :- ::lib.schema.ref/ref]
   (when granularity
     (resolve.filters/available-unit context column (name granularity) dimension-name)))
@@ -64,11 +64,12 @@
 (mu/defn- dimension-column :- :string
   "The column `dimension`'s expr names. A dimension mapping targets a column, so a dimension whose expr is anything
   else is [[unsupported/throw!]]."
-  [{dimension-name :name, :keys [expr]} :- ::schemas.ir/dimension]
+  [{dimension-name :name, :keys [expr]} :- ::ir/dimension]
   (let [{:keys [kind], column-name :name} (resolve.columns/parse-expr expr)]
     (case kind
       :column column-name
-      :sql    (unsupported/throw! "dimension %s is the SQL expression %s; a dimension mapping targets a column, not SQL"
+      :sql    (unsupported/throw! (str "dimension %s is the SQL expression %s; a dimension mapping targets a column,"
+                                       " not SQL")
                                   (pr-str dimension-name) (pr-str expr))
       (unsupported/throw! "dimension %s is %s, not a column" (pr-str dimension-name) (pr-str expr)))))
 
@@ -78,7 +79,7 @@
   [{:keys [query provider metric-unique-id resolve-column] :as context}      :- ::resolve.columns/context
    group                                                                     :- ::lib.schema.metadata/dimension-group
    dimension-path                                                            :- :string
-   {dimension-name :name, dimension-type :type, :keys [label], :as dimension} :- ::schemas.ir/dimension]
+   {dimension-name :name, dimension-type :type, :keys [label], :as dimension} :- ::ir/dimension]
   (let [column-ref (resolve-column (dimension-column dimension))
         field-id   (lib/field-ref-id column-ref)
         field      (lib.metadata/field provider field-id)
@@ -101,9 +102,9 @@
 
 (mr/def ::dimension-result
   "A [[dimension-pair]], or why a dbt dimension could not become one."
-  [:or ::dimension-pair ::schemas.resolved/unsupported-dimension])
+  [:or ::dimension-pair ::resolved/unsupported-dimension])
 
-(mu/defn- unsupported-dimension :- ::schemas.resolved/unsupported-dimension
+(mu/defn- unsupported-dimension :- ::resolved/unsupported-dimension
   "The report entry for a dbt dimension that could not become a curated dimension, and why."
   [dimension-name :- :string
    reason         :- :string]
@@ -121,12 +122,12 @@
                                #(unsupported-dimension dimension-name %)))))
 
 (mu/defn- joined-dimensions :- [:sequential ::dimension-result]
-  "The dimensions reached through the foreign or unique `entity` of `context`'s model, see [[resolve.columns/join-context]].
-  When the join itself cannot be made, every dimension of the models the entity would join to is reported with the
-  reason, so a dimension the project declares is never silently dropped; an entity no other model is keyed by has no
-  dimensions behind it, and is just a key."
+  "The dimensions reached through the foreign or unique `entity` of `context`'s model, see
+  [[resolve.columns/join-context]]. When the join itself cannot be made, every dimension of the models the entity
+  would join to is reported with the reason, so a dimension the project declares is never silently dropped; an entity
+  no other model is keyed by has no dimensions behind it, and is just a key."
   [context                         :- ::resolve.columns/context
-   {entity-name :name, :as entity} :- ::schemas.ir/entity]
+   {entity-name :name, :as entity} :- ::ir/entity]
   (unsupported/catching
    (fn []
      (let [{:keys [model] :as join} (resolve.columns/join-context context entity)]
@@ -141,7 +142,7 @@
   [:map {:closed true}
    [:dimensions             ::lib-metric.schema/persisted-dimensions]
    [:dimension-mappings     [:sequential ::lib-metric.schema/dimension-mapping]]
-   [:unsupported-dimensions [:sequential ::schemas.resolved/unsupported-dimension]]])
+   [:unsupported-dimensions [:sequential ::resolved/unsupported-dimension]]])
 
 (mu/defn- metric-time-unit :- ::lib.schema.temporal-bucketing/unit
   "The default temporal unit of the default dimension `column` of a metric with `time-granularity`, dbt's coarsest

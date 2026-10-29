@@ -13,16 +13,23 @@
 
 (deftest ^:parallel parse-semantic-model-test
   (let [manifest (tu/flexanalytics-manifest)
-        parsed   (parse/parse-semantic-model manifest (get-in manifest [:semantic_models "semantic_model.dbt_business_intelligence.fact_sales"]))]
+        parsed   (parse/parse-semantic-model
+                  manifest
+                  (get-in manifest [:semantic_models "semantic_model.dbt_business_intelligence.fact_sales"]))]
     (is (mr/validate ::ir/semantic-model parsed))
     (is (= {:database "dbt_bi", :schema "public", :table "fact_sales"}
            (:relation parsed)))
     (testing "column types come from the model node"
       (is (= {"sales" "float", "quantity" "integer", "date_day" "date", "customer_key" "text"}
-             (-> parsed :columns (select-keys ["sales" "quantity" "date_day" "customer_key"]) (update-vals :data-type)))))
+             (-> parsed
+                 :columns
+                 (select-keys ["sales" "quantity" "date_day" "customer_key"])
+                 (update-vals :data-type)))))
     (testing "nil expr defaults to the name"
       (is (= {"fact_sales_key" "fact_sales_key", "customer" "customer_key"}
-             (into {} (map (juxt :name :expr)) (filter (comp #{"fact_sales_key" "customer"} :name) (:entities parsed))))))
+             (into {}
+                   (map (juxt :name :expr))
+                   (filter (comp #{"fact_sales_key" "customer"} :name) (:entities parsed))))))
     (testing "time dimension granularity is lifted"
       (is (= [{:name "date_day", :type :time, :expr "date_day", :granularity :day}]
              (map #(select-keys % [:name :type :expr :granularity]) (:dimensions parsed)))))
@@ -40,15 +47,22 @@
            (:source parsed)))
     (is (= #{"fact_sales" "dim_customer" "dim_product" "dim_order"}
            (set (keys (:semantic-models parsed)))))
-    (testing "the nine simple metrics parse, including the create_metric: true ones, and so do the ratio, derived and plain cumulative ones flexanalytics_extra_metrics.yml adds"
-      (is (= ["cancelled_order_share" "cumulative_sales" "customer_count" "order_count" "price" "product_count" "quantity"
-              "row_count" "sales" "sales_minus_target" "sales_pct_of_target" "sales_to_target" "sales_to_target_ratio_2" "target"]
+    (testing (str "the nine simple metrics parse, including the create_metric: true ones, and so do the ratio, derived"
+                  " and plain cumulative ones flexanalytics_extra_metrics.yml adds")
+      (is (= ["cancelled_order_share" "cumulative_sales" "customer_count" "order_count" "price" "product_count"
+              "quantity" "row_count" "sales" "sales_minus_target" "sales_pct_of_target" "sales_to_target"
+              "sales_to_target_ratio_2" "target"]
              (map :name (:metrics parsed)))))
     (testing "what has no Metabase equivalent is reported with the reason"
-      (is (= {"customer_reorder_rate" "conversion metrics are out of scope: a per-entity funnel is nothing a Metabase metric expresses"
-              "sales_mtd"             "a cumulative metric with grain_to_date \"month\" has no Metabase equivalent: a running total that resets at each month needs a breakout the metric cannot require"
-              "sales_trailing_7d"     "a cumulative metric with a window of 7 day has no Metabase equivalent: MBQL has no rolling-window aggregation"
-              "sales_vs_prior_week"   "input \"sales_prior_week\" has an offset_window of 7 day: period-over-period comparisons have no Metabase equivalent"}
+      (is (= {"customer_reorder_rate" (str "conversion metrics are out of scope: a per-entity funnel is nothing a"
+                                           " Metabase metric expresses")
+              "sales_mtd"             (str "a cumulative metric with grain_to_date \"month\" has no Metabase"
+                                           " equivalent: a running total that resets at each month needs a breakout"
+                                           " the metric cannot require")
+              "sales_trailing_7d"     (str "a cumulative metric with a window of 7 day has no Metabase equivalent:"
+                                           " MBQL has no rolling-window aggregation")
+              "sales_vs_prior_week"   (str "input \"sales_prior_week\" has an offset_window of 7 day:"
+                                           " period-over-period comparisons have no Metabase equivalent")}
              (into {} (map (juxt :name :reason)) (:unsupported parsed)))))
     (testing "a generated metric is flattened from its measure"
       (is (= {:name "sales", :label "Sales", :semantic-model "fact_sales", :measure "sales"
@@ -66,7 +80,8 @@
 (deftest ^:parallel parse-metric-unsupported-test
   (let [manifest        (tu/flexanalytics-manifest)
         semantic-models (update-vals (:semantic_models manifest) #(parse/parse-semantic-model manifest %))
-        sales           (get-in manifest [:metrics "metric.dbt_business_intelligence.sales"])]
+        metric          #(get-in manifest [:metrics (str "metric.dbt_business_intelligence." %)])
+        sales           (metric "sales")]
     (testing "a ratio metric parses to its two inputs, which it refers to by name"
       (is (= {:type             :ratio
               :name             "sales_to_target_ratio_2"
@@ -79,9 +94,9 @@
               :meta             {}
               :numerator        {:metric "sales", :alias nil, :filters []}
               :denominator      {:metric "target", :alias nil, :filters []}}
-             (parse/parse-metric semantic-models (get-in manifest [:metrics "metric.dbt_business_intelligence.sales_to_target_ratio_2"])))))
+             (parse/parse-metric semantic-models (metric "sales_to_target_ratio_2")))))
     (testing "fill_nulls_with and time_granularity are read on a ratio or derived metric too"
-      (let [ratio (-> (get-in manifest [:metrics "metric.dbt_business_intelligence.sales_to_target_ratio_2"])
+      (let [ratio (-> (metric "sales_to_target_ratio_2")
                       (assoc-in [:type_params :fill_nulls_with] 0)
                       (assoc :time_granularity "month"))]
         (is (= {:fill-nulls-with 0, :time-granularity "month"}
@@ -89,65 +104,76 @@
     (testing "a derived metric parses to its expr and inputs, aliases kept"
       (is (= {:type   :derived
               :expr   "sales_amt / target_amt * 100"
-              :inputs [{:metric "sales", :alias "sales_amt", :filters []} {:metric "target", :alias "target_amt", :filters []}]}
-             (-> (parse/parse-metric semantic-models (get-in manifest [:metrics "metric.dbt_business_intelligence.sales_pct_of_target"]))
+              :inputs [{:metric "sales", :alias "sales_amt", :filters []}
+                       {:metric "target", :alias "target_amt", :filters []}]}
+             (-> (parse/parse-metric semantic-models (metric "sales_pct_of_target"))
                  (select-keys [:type :expr :inputs])))))
     (testing "a ratio input's filter is kept on the input"
-      (is (= {:metric "order_count", :alias "cancelled_orders", :filters ["{{ Dimension('order__order_status_dim') }} = 'Cancelled'"]}
-             (:numerator (parse/parse-metric semantic-models (get-in manifest [:metrics "metric.dbt_business_intelligence.cancelled_order_share"]))))))
+      (is (= {:metric  "order_count"
+              :alias   "cancelled_orders"
+              :filters ["{{ Dimension('order__order_status_dim') }} = 'Cancelled'"]}
+             (:numerator (parse/parse-metric semantic-models (metric "cancelled_order_share"))))))
     (testing "a cumulative metric with no window parses as a simple one of type cumulative"
       (is (= {:type :cumulative, :agg :sum, :expr "sales", :semantic-model "fact_sales", :measure "sales"}
-             (-> (parse/parse-metric semantic-models (get-in manifest [:metrics "metric.dbt_business_intelligence.cumulative_sales"]))
+             (-> (parse/parse-metric semantic-models (metric "cumulative_sales"))
                  (select-keys [:type :agg :expr :semantic-model :measure])))))
     (testing "a dangling measure reference is reported"
       (is (= "measure \"nope\" not found on semantic model \"fact_sales\""
              (:reason (parse/parse-metric semantic-models (assoc-in sales [:type_params :measure :name] "nope"))))))
     (testing "a missing semantic model is reported"
       (is (= "semantic model \"semantic_model.x.y\" not found in manifest"
-             (:reason (parse/parse-metric semantic-models (assoc-in sales [:depends_on :nodes] ["semantic_model.x.y"]))))))
+             (:reason (parse/parse-metric semantic-models
+                                          (assoc-in sales [:depends_on :nodes] ["semantic_model.x.y"]))))))
     (testing "filters on either the metric or its input measure are collected"
       (is (= ["{{ Dimension('order__status') }} = 'Shipped'" "{{ Dimension('x') }} = 1"]
-             (:filters (parse/parse-metric semantic-models
-                                           (-> sales
-                                               (assoc :filter (tu/where-filters "{{ Dimension('order__status') }} = 'Shipped'"))
-                                               (assoc-in [:type_params :measure :filter] (tu/where-filters "{{ Dimension('x') }} = 1"))))))))
+             (:filters (parse/parse-metric
+                        semantic-models
+                        (-> sales
+                            (assoc :filter (tu/where-filters "{{ Dimension('order__status') }} = 'Shipped'"))
+                            (assoc-in [:type_params :measure :filter]
+                                      (tu/where-filters "{{ Dimension('x') }} = 1"))))))))
     (testing "a blank label falls back to the name, like a missing one"
       (is (= "sales" (:label (parse/parse-metric semantic-models (assoc sales :label "")))))
       (is (= "sales" (:label (parse/parse-metric semantic-models (assoc sales :label nil))))))))
 
 (deftest ^:parallel advanced-metric-shapes-test
-  (testing "the shapes dbt 1.12 writes for the metric types QRES-5 covers decode the way the manifest schema expects"
+  (testing "the shapes dbt 1.12 writes for composed and conversion metrics decode as the manifest schema expects"
     (let [manifest (tu/flexanalytics-manifest)
           metric   #(get-in manifest [:metrics (str "metric.dbt_business_intelligence." %)])]
-      (testing "ratio: numerator and denominator name metrics, and depends_on lists those metrics rather than a semantic model"
+      (testing (str "ratio: numerator and denominator name metrics, and depends_on lists those metrics rather than a"
+                    " semantic model")
         (is (=? {:type        :ratio
                  :type_params {:numerator      {:name "sales", :filter nil, :alias nil}
                                :denominator    {:name "target", :filter nil, :alias nil}
                                :input_measures [{:name "sales"} {:name "target"}]
                                :measure        nil}
-                 :depends_on  {:nodes ["metric.dbt_business_intelligence.sales" "metric.dbt_business_intelligence.target"]}}
+                 :depends_on  {:nodes ["metric.dbt_business_intelligence.sales"
+                                       "metric.dbt_business_intelligence.target"]}}
                 (metric "sales_to_target_ratio_2"))))
       (testing "a ratio input carries its own filter and alias"
-        (is (=? {:type_params {:numerator   {:name   "order_count"
-                                             :alias  "cancelled_orders"
-                                             :filter (tu/where-filters "{{ Dimension('order__order_status_dim') }} = 'Cancelled'")}
-                               :denominator {:name "order_count", :alias nil, :filter nil}}
-                 :depends_on  {:nodes ["metric.dbt_business_intelligence.order_count"]}}
-                (metric "cancelled_order_share"))))
+        (let [cancelled (tu/where-filters "{{ Dimension('order__order_status_dim') }} = 'Cancelled'")]
+          (is (=? {:type_params {:numerator   {:name "order_count", :alias "cancelled_orders", :filter cancelled}
+                                 :denominator {:name "order_count", :alias nil, :filter nil}}
+                   :depends_on  {:nodes ["metric.dbt_business_intelligence.order_count"]}}
+                  (metric "cancelled_order_share")))))
       (testing "derived: expr over input metrics, with optional aliases"
         (is (=? {:type        :derived
                  :type_params {:expr    "sales - target"
                                :metrics [{:name "sales", :alias nil} {:name "target", :alias nil}]}
-                 :depends_on  {:nodes ["metric.dbt_business_intelligence.sales" "metric.dbt_business_intelligence.target"]}}
+                 :depends_on  {:nodes ["metric.dbt_business_intelligence.sales"
+                                       "metric.dbt_business_intelligence.target"]}}
                 (metric "sales_minus_target")))
         (is (=? {:type_params {:expr    "sales_amt / target_amt * 100"
                                :metrics [{:name "sales", :alias "sales_amt"} {:name "target", :alias "target_amt"}]}}
                 (metric "sales_pct_of_target"))))
       (testing "an offset_window is a count and a granularity"
         (is (=? {:type_params {:metrics [{:name "sales", :alias nil, :offset_window nil}
-                                         {:name "sales", :alias "sales_prior_week", :offset_window {:count 7, :granularity "day"}}]}}
+                                         {:name          "sales"
+                                          :alias         "sales_prior_week"
+                                          :offset_window {:count 7, :granularity "day"}}]}}
                 (metric "sales_vs_prior_week"))))
-      (testing "cumulative: the measure plus cumulative_type_params, where period_agg is always written (dbt defaults it to first), and the legacy window / grain_to_date stay nil"
+      (testing (str "cumulative: the measure plus cumulative_type_params, where period_agg is always written (dbt"
+                    " defaults it to first), and the legacy window / grain_to_date stay nil")
         (is (=? {:type        :cumulative
                  :type_params {:measure                {:name "sales"}
                                :window                 nil
@@ -155,9 +181,13 @@
                                :cumulative_type_params {:window nil, :grain_to_date nil, :period_agg :last}}
                  :depends_on  {:nodes ["semantic_model.dbt_business_intelligence.fact_sales"]}}
                 (metric "cumulative_sales")))
-        (is (=? {:type_params {:window nil, :cumulative_type_params {:window {:count 7, :granularity "day"}, :grain_to_date nil, :period_agg :first}}}
+        (is (=? {:type_params {:window                 nil
+                               :cumulative_type_params {:window        {:count 7, :granularity "day"}
+                                                        :grain_to_date nil
+                                                        :period_agg    :first}}}
                 (metric "sales_trailing_7d")))
-        (is (=? {:type_params {:grain_to_date nil, :cumulative_type_params {:window nil, :grain_to_date "month", :period_agg :first}}}
+        (is (=? {:type_params {:grain_to_date          nil
+                               :cumulative_type_params {:window nil, :grain_to_date "month", :period_agg :first}}}
                 (metric "sales_mtd"))))
       (testing "conversion params are left untyped, so what is nested in them keeps its string keys"
         (is (=? {:type        :conversion
@@ -227,8 +257,13 @@
                    {:name "k", :type "composite", :description nil, :label nil, :role nil, :expr nil}))
       (fn [m]
         (update-in m [:semantic_models tu/sm-id :dimensions] conj
-                   {:name "fiscal_day", :type "time", :description nil, :label nil, :is_partition false, :expr "date_day"
-                    :type_params {:time_granularity "fiscal_quarter", :validity_params nil}})))))
+                   {:name         "fiscal_day"
+                    :type         "time"
+                    :description  nil
+                    :label        nil
+                    :is_partition false
+                    :expr         "date_day"
+                    :type_params  {:time_granularity "fiscal_quarter", :validity_params nil}})))))
 
 (defn- re-home-model
   "Move the model node to `node-id` with `resource-type`, and point the semantic model at it."
@@ -249,11 +284,14 @@
                                               (-> m
                                                   (assoc-in [:nodes "model.p.other"]
                                                             (assoc (tu/model-node {"sales" "text"})
-                                                                   :unique_id "model.p.other" :name "other" :alias "other"))
+                                                                   :unique_id "model.p.other"
+                                                                   :name      "other"
+                                                                   :alias     "other"))
                                                   (assoc-in [:semantic_models tu/sm-id :depends_on :nodes]
                                                             ["model.p.other" tu/model-id])))}))))
   (testing "the metrics map key need not be the unique_id"
-    (is (= tu/sum-sales (tu/aggregation {:edit (fn [m] (update m :metrics (fn [ms] {"metric.p.weird_key" (val (first ms))})))}))))
+    (is (= tu/sum-sales
+           (tu/aggregation {:edit (fn [m] (update m :metrics (fn [ms] {"metric.p.weird_key" (val (first ms))})))}))))
   (testing "a semantic model with no default agg_time_dimension"
     (is (= tu/sum-sales (tu/aggregation {:edit (fn [m] (assoc-in m [:semantic_models tu/sm-id :defaults] nil))})))))
 
@@ -279,10 +317,12 @@
                               (tu/metric-input "a" :alias "previous" :offset_window {:count 7, :granularity "day"})]}
       #"input \"previous\" has an offset_window of 7 day"
 
-      "derived"    {:expr "a - mtd", :metrics [(tu/metric-input "a") (tu/metric-input "a" :alias "mtd" :offset_to_grain "month")]}
+      "derived"    {:expr    "a - mtd"
+                    :metrics [(tu/metric-input "a") (tu/metric-input "a" :alias "mtd" :offset_to_grain "month")]}
       #"input \"mtd\" has an offset_to_grain of \"month\""
 
-      "ratio"      {:numerator (tu/metric-input "a" :offset_window {:count 1, :granularity "month"}), :denominator (tu/metric-input "a")}
+      "ratio"      {:numerator   (tu/metric-input "a" :offset_window {:count 1, :granularity "month"})
+                    :denominator (tu/metric-input "a")}
       #"input \"a\" has an offset_window of 1 month"
 
       "ratio"      {:numerator nil, :denominator (tu/metric-input "a")}
@@ -300,18 +340,29 @@
       "cumulative" {:measure (tu/input-measure {}), :grain_to_date "month"}
       #"a cumulative metric with grain_to_date \"month\" has no Metabase equivalent"
 
-      "cumulative" {:measure (tu/input-measure {}), :cumulative_type_params {:window nil, :grain_to_date "month", :period_agg "first"}}
+      "cumulative" {:measure                (tu/input-measure {})
+                    :cumulative_type_params {:window nil, :grain_to_date "month", :period_agg "first"}}
       #"grain_to_date \"month\""
 
-      "cumulative" {:measure (tu/input-measure {}), :cumulative_type_params {:window {:count 30, :granularity "day"}, :grain_to_date nil, :period_agg "last"}}
+      "cumulative" {:measure                (tu/input-measure {})
+                    :cumulative_type_params {:window        {:count 30, :granularity "day"}
+                                             :grain_to_date nil
+                                             :period_agg    "last"}}
       #"a window of 30 day"
 
-      "conversion" {:conversion_type_params {:base_measure (tu/input-measure {}), :conversion_measure (tu/input-measure {:name "paid"})
-                                             :entity "customer", :calculation "conversion_rate", :window nil, :constant_properties nil}}
+      "conversion" {:conversion_type_params {:base_measure        (tu/input-measure {})
+                                             :conversion_measure  (tu/input-measure {:name "paid"})
+                                             :entity              "customer"
+                                             :calculation         "conversion_rate"
+                                             :window              nil
+                                             :constant_properties nil}}
       #"conversion metrics are out of scope"
 
-      "conversion" {:conversion_type_params {:base_measure (tu/input-measure {}), :conversion_measure (tu/input-measure {:name "paid"})
-                                             :entity "customer", :calculation "conversions", :window {:count 7, :granularity "day"}}}
+      "conversion" {:conversion_type_params {:base_measure       (tu/input-measure {})
+                                             :conversion_measure (tu/input-measure {:name "paid"})
+                                             :entity             "customer"
+                                             :calculation        "conversions"
+                                             :window             {:count 7, :granularity "day"}}}
       #"conversion metrics are out of scope"))
   (testing "a reference to a metric the manifest does not have is reported when the metric is resolved"
     (are [metric-type type-params] (re-find #"metric \"a\" not found" (other-type-reason metric-type type-params))
@@ -322,9 +373,13 @@
   (testing "a cumulative metric with no window and period_agg last converts to a running sum"
     (is (= [:cum-sum {} (fld "sales" :type/Float)]
            (tu/aggregation {:metric      {:type "cumulative"}
-                            :type-params {:cumulative_type_params {:window nil, :grain_to_date nil, :period_agg "last"}}}))))
-  (testing "period_agg first, dbt's default, and average are the running total at the start of each period or its mean, which Metabase does not compute"
-    (are [type-params] (re-find #"^a cumulative metric with period_agg (first|average) has no Metabase equivalent: .* set period_agg: last to convert it$"
+                            :type-params {:cumulative_type_params {:window        nil
+                                                                   :grain_to_date nil
+                                                                   :period_agg    "last"}}}))))
+  (testing (str "period_agg first, dbt's default, and average are the running total at the start of each period or its"
+                " mean, which Metabase does not compute")
+    (are [type-params] (re-find (re-pattern (str "^a cumulative metric with period_agg (first|average) has no Metabase"
+                                                 " equivalent: .* set period_agg: last to convert it$"))
                                 (tu/unsupported {:metric {:type "cumulative"}, :type-params type-params}))
       {:cumulative_type_params {:window nil, :grain_to_date nil, :period_agg "first"}}
       {:cumulative_type_params {:window nil, :grain_to_date nil, :period_agg "average"}}
@@ -334,7 +389,9 @@
     (testing "a window or grain_to_date is the reason before period_agg is"
       (is (re-find #"^a cumulative metric with a window"
                    (tu/unsupported {:metric      {:type "cumulative"}
-                                    :type-params {:cumulative_type_params {:window {:count 7, :granularity "day"}, :grain_to_date nil, :period_agg "first"}}}))))))
+                                    :type-params {:cumulative_type_params {:window        {:count 7, :granularity "day"}
+                                                                           :grain_to_date nil
+                                                                           :period_agg    "first"}}}))))))
 
 (defn- inline
   "Tweaks for a 1.12 inline-spec simple metric that carries `params` in `metric_aggregation_params` and `expr` in
@@ -344,7 +401,9 @@
   (merge {:type-params {:measure                   nil
                         :input_measures            []
                         :expr                      expr
-                        :metric_aggregation_params (merge {:semantic_model "fact_sales", :agg_params nil, :agg_time_dimension nil
+                        :metric_aggregation_params (merge {:semantic_model         "fact_sales"
+                                                           :agg_params             nil
+                                                           :agg_time_dimension     nil
                                                            :non_additive_dimension nil}
                                                           (dissoc params :expr))}}
          more))
@@ -370,6 +429,10 @@
                (tu/unsupported (inline {:agg "sum", :expr "sales"
                                         :non_additive_dimension {:name "date_day", :window_choice "max"}}))))
   (testing "a measure and inline params both present: the measure wins"
-    (is (= tu/sum-sales (tu/aggregation {:type-params {:expr "sales"
-                                                    :metric_aggregation_params {:semantic_model "fact_sales", :agg "max", :agg_params nil
-                                                                                :agg_time_dimension nil, :non_additive_dimension nil}}})))))
+    (is (= tu/sum-sales
+           (tu/aggregation {:type-params {:expr                      "sales"
+                                          :metric_aggregation_params {:semantic_model         "fact_sales"
+                                                                      :agg                    "max"
+                                                                      :agg_params             nil
+                                                                      :agg_time_dimension     nil
+                                                                      :non_additive_dimension nil}}})))))

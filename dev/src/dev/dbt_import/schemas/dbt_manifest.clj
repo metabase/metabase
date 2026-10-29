@@ -37,8 +37,8 @@
   [:enum :sum :min :max :count_distinct :sum_boolean :average :percentile :median :count])
 
 (mr/def ::metric-type
-  "`metrics[].type`. A closed set in the manifest JSON schema. Only `:simple` is handled by QRES-1; the rest are
-  QRES-5."
+  "`metrics[].type`. A closed set in the manifest JSON schema. The converter handles every type but `:conversion`,
+  which the parse stage reports."
   [:enum :simple :ratio :cumulative :derived :conversion])
 
 (mr/def ::entity-type
@@ -56,8 +56,7 @@
   [:enum :nanosecond :microsecond :millisecond :second :minute :hour :day :week :month :quarter :year])
 
 (mr/def ::where-filter
-  "One filter clause. The template is unrendered Jinja such as `{{ Dimension('order__status') }} = 'Shipped'`
-  (QRES-3)."
+  "One filter clause. The template is unrendered Jinja such as `{{ Dimension('order__status') }} = 'Shipped'`."
   [:map
    [:where_sql_template :string]])
 
@@ -79,7 +78,7 @@
 
 (mr/def ::non-additive-dimension
   "`measures[].non_additive_dimension`, for semi-additive measures such as account balances. No Metabase equivalent;
-  the converter should report it."
+  the parse stage reports a measure that has one."
   [:map
    [:name             :string]
    ;; dbt documents min and max, but its manifest schema types this as the full aggregation enum
@@ -146,8 +145,9 @@
    [:relation_name {:optional true} [:maybe :string]]])
 
 (mr/def ::depends-on
-  "Resolved lineage. For a metric, `nodes` holds its semantic model's unique ID; for a semantic model, the unique ID
-  of the model, seed or snapshot node it is built on (the key into `nodes`, which is where column `data_type`s live),
+  "Resolved lineage. For a simple metric, `nodes` holds its semantic model's unique ID; for a ratio, derived or
+  inline-spec cumulative metric, the unique IDs of the metrics it refers to; for a semantic model, the unique ID of the
+  model, seed or snapshot node it is built on (the key into `nodes`, which is where column `data_type`s live),
   possibly among other nodes it refers to."
   [:map
    [:nodes  [:sequential :string]]
@@ -187,9 +187,9 @@
 
   `count` is deliberately not `pos-int?`. dbt parses the window from a string like `\"7 days\"` and only checks that
   the count `isdigit()`, so a manifest can legitimately carry `count: 0`; a schema stricter than dbt's parser would
-  fail the whole run at decode time over one metric. Nothing reads `count` until QRES-5 (cumulative and derived
-  metrics); when it does, a window that makes no sense should be reported for that metric by the resolve stage, not
-  rejected here."
+  fail the whole run at decode time over one metric. The parse stage reads `count` only to name the window in the
+  reason it reports a cumulative metric with a window, or an input with an offset, so a window that makes no sense
+  fails nothing."
   [:map
    [:count       nat-int?]
    [:granularity :string]])
@@ -206,7 +206,8 @@
 
 (mr/def ::metric-input
   "A reference to another metric, used by ratio (`numerator` / `denominator`) and derived (`metrics`) metrics.
-  `offset_window` shifts the input's time series (period-over-period); see the project's known-risks note."
+  `offset_window` and `offset_to_grain` shift the input in time (a period-over-period or start-of-period comparison),
+  which has no Metabase equivalent; the parse stage reports a metric with either."
   [:map
    [:name            :string]
    [:filter          ::filter]
@@ -219,8 +220,8 @@
   metric carries its own aggregation instead of pointing at a measure: the semantic model it aggregates (also in
   `depends_on`), the `agg` and its params, the aggregation time dimension already defaulted from the model, and the
   non-additive dimension. The expression is *not* here but in `type_params.expr`, and `agg_params` is always written,
-  with nil `percentile`, for every aggregation. Verified against the `parcel_delivery` fixture, dbt 1.12.6 (QRES-6).
-  On the legacy spec this is `nil`."
+  with nil `percentile`, for every aggregation, as the `parcel_delivery` fixture, written by dbt 1.12.6, has it. On
+  the legacy spec this is `nil`."
   [:map
    [:semantic_model         [:maybe :string]]
    [:agg                    ::aggregation-type]
@@ -241,7 +242,7 @@
    [:period_agg    {:optional true} [:maybe [:enum :first :last :average]]]
    [:metric        {:optional true} [:maybe ::metric-input]]])
 
-;; TODO (Cam 2026-10-22) make this a `:multi` schema with separate schemas based on `:type`
+;; TODO (Cam 2026-10-22) -- make this a `:multi` schema with separate schemas based on `:type`
 (mr/def ::metric-type-params
   "`metrics[].type_params`. Which keys are populated depends on `type`:
 
@@ -354,7 +355,11 @@
    (mtx/key-transformer {:decode keyword})
    mtx/json-transformer))
 
-(defn decode-manifest
+(mr/def ::json
+  "A manifest as parsed from JSON with string keys, before decoding: any shape, which decoding checks."
+  [:map-of {::mr/deliberately-open true, :description "the raw JSON of a manifest, of any shape"} :string :any])
+
+(mu/defn decode-manifest :- ::manifest
   "Decode a manifest parsed from JSON *with string keys* into the shape described by `::manifest`, and validate it.
   Throws `Unsupported dbt manifest` when `metadata` says it was written by a dbt release before 1.12 or on a manifest
   schema other than v12, and `Invalid dbt manifest` with the humanized explanation when anything else does not match,
@@ -362,7 +367,7 @@
 
     (decode-manifest (with-open [r (io/reader \"target/manifest.json\")]
                        (json/decode r)))"
-  [manifest]
+  [manifest :- ::json]
   ;; the decoder is cached under a namespaced key and rebuilt only when a schema is defined again with [[mr/def]]
   (let [decoder  (mr/cached ::decoder ::manifest (fn [] (mc/decoder ::manifest transformer)))
         decoded  (decoder manifest)

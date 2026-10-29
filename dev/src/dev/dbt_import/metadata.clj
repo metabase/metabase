@@ -27,7 +27,9 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms])
   (:import
    (metabase.lib.metadata.cached_provider CachedProxyMetadataProvider)))
 
@@ -50,23 +52,14 @@
 
 (mu/defn base-type :- [:maybe ::lib.schema.common/base-type]
   "The Metabase base type for a warehouse `data-type` string, as the `driver` maps it during sync, or nil when it is
-  unknown or missing. `overrides` (the config's `:base-types`) wins over the driver; its keys are normalized the same
-  way as the type."
-  [driver    :- :keyword
-   overrides :- [:maybe ::resolved/config.base-types]
+  unknown or missing."
+  [driver    :- ::resolved/driver
    data-type :- [:maybe :string]]
   (when-not (str/blank? data-type)
-    (let [type-name (normalize-type-name data-type)
-          overrides (update-keys (or overrides {}) normalize-type-name)]
-      (cond
-        (contains? overrides type-name)
-        (get overrides type-name)
-
-        ;; an array is an array; Metabase does not type the elements
-        (re-find array-type-re type-name)
+    (let [type-name (normalize-type-name data-type)]
+      ;; an array is an array; Metabase does not type the elements
+      (if (re-find array-type-re type-name)
         :type/*
-
-        :else
         ;; Postgres keys its type map by lower-case names, MySQL and H2 by upper-case ones
         (some (fn [f]
                 (sql-jdbc.sync/database-type->base-type driver (keyword (f type-name))))
@@ -87,7 +80,26 @@
    {:keys [relation]} :- ::ir/semantic-model]
   (get-in config [:databases (:database relation)]))
 
-(defn- metadatas-of-type [state metadata-type]
+(mr/def ::id
+  "An id made up here for a Table, Field or Card of a provider: consistent within the provider, and meaningless
+  outside it, where [[portable-table-ref]], [[portable-field-ref]] and [[portable-card-ref]] turn it back into names."
+  ms/PositiveInt)
+
+(mr/def ::state
+  "Everything a provider knows, see [[ManifestMetadata]]."
+  [:map {:closed true}
+   [:database ::lib.schema.metadata/database]
+   [:tables   [:sequential ::lib.schema.metadata/table]]
+   [:fields   [:sequential ::lib.schema.metadata/column]]
+   [:cards    [:sequential ::lib.schema.metadata/card]]
+   [:next-id  ::id]])
+
+(mu/defn- metadatas-of-type :- [:sequential [:or ::lib.schema.metadata/table
+                                               ::lib.schema.metadata/column
+                                               ::lib.schema.metadata/card]]
+  "Every piece of metadata of `metadata-type` (`:metadata/table`, `:metadata/column` or `:metadata/card`) in `state`."
+  [state         :- ::state
+   metadata-type :- :keyword]
   (case metadata-type
     :metadata/table  (:tables state)
     :metadata/column (:fields state)
@@ -111,18 +123,22 @@
   (setting [_this _setting-key]
     nil))
 
-(defn- state [^CachedProxyMetadataProvider provider]
+(mu/defn- state :- (ms/InstanceOfClass clojure.lang.Atom)
+  "The atom holding the `::state` of `provider`, Lib's caching proxy around a [[ManifestMetadata]]."
+  [^CachedProxyMetadataProvider provider :- (ms/InstanceOfClass CachedProxyMetadataProvider)]
   (.state ^ManifestMetadata (.-metadata-provider provider)))
 
-(defn- next-id!
+(mu/defn- next-id! :- ::id
   "A fresh id in `provider`."
-  [provider]
+  [provider :- ::lib.schema.metadata/metadata-provider]
   (:next-id (swap! (state provider) update :next-id inc)))
 
-(defn- add!
+(mu/defn- add! :- [:or ::lib.schema.metadata/column ::lib.schema.metadata/card]
   "Add `metadata` to the `k` (`:fields` or `:cards`) of `provider`, which now knows something new: its cache is
   dropped. Returns `metadata`."
-  [provider k metadata]
+  [provider :- ::lib.schema.metadata/metadata-provider
+   k        :- [:enum :fields :cards]
+   metadata :- [:or ::lib.schema.metadata/column ::lib.schema.metadata/card]]
   (swap! (state provider) update k conj metadata)
   (lib.metadata.protocols/clear-cache! provider)
   metadata)
@@ -144,9 +160,9 @@
   "A provider for the Metabase database `database-name`: the semantic models whose relation lives in it, as Tables,
   and their documented columns, as Fields. A column whose declared type is unknown gets `:type/*`; the resolve stage
   reports it before it gets that far."
-  [{:keys [driver base-types] :as config} :- ::resolved/config
-   {:keys [semantic-models]}              :- ::ir/manifest
-   database-name                          :- :string]
+  [{:keys [driver] :as config} :- ::resolved/config
+   {:keys [semantic-models]}   :- ::ir/manifest
+   database-name               :- :string]
   (let [models  (filter #(= database-name (model-database config %)) (vals semantic-models))
         next-id (volatile! 0)
         id!     #(vswap! next-id inc)
@@ -159,7 +175,7 @@
                    :schema       (:schema relation)})
         fields  (for [[table-id {:keys [columns]}] (map vector (map :id tables) models)
                       {column-name :name, :keys [data-type]} (vals columns)]
-                  (field-metadata (id!) table-id column-name (or (base-type driver base-types data-type) :type/*)))]
+                  (field-metadata (id!) table-id column-name (or (base-type driver data-type) :type/*)))]
     (lib.metadata.cached-provider/cached-metadata-provider
      (->ManifestMetadata
       (atom {:database {:lib/type :metadata/database

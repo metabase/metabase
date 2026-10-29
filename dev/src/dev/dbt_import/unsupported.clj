@@ -8,25 +8,28 @@
   or an input the converter did not anticipate, and is left alone."
   (:require
    [dev.dbt-import.schemas.ir :as ir]
-   [metabase.util.malli :as mu])
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms])
   (:import
    (clojure.lang ExceptionInfo)))
 
-(defn throw!
+(mu/defn throw! :- :nil
   "Throw the exception that says the converter cannot express something. `reason` is the message, run through `format`
   with `args` when there are any; without them it is taken as it is, so a reason already formatted can carry a `%`."
-  [reason & args]
+  [reason :- :string
+   & args :- [:* [:or :string number? :keyword :nil]]]
   (throw (ex-info (if (seq args) (apply format reason args) reason) {::unsupported true})))
 
-(defn exception?
+(mu/defn exception? :- :boolean
   "Was `e` thrown by [[throw!]]?"
-  [e]
+  [e :- (ms/InstanceOfClass Throwable)]
   (boolean (and (instance? ExceptionInfo e) (::unsupported (ex-data e)))))
 
-(defn catching
+(mu/defn catching :- :any
   "Run `thunk`. When it throws an unsupported reason (see [[throw!]]), return `(on-unsupported reason)` instead; any
   other exception propagates."
-  [thunk on-unsupported]
+  [thunk          :- ifn?
+   on-unsupported :- ifn?]
   (try
     (thunk)
     (catch ExceptionInfo e
@@ -34,10 +37,11 @@
         (on-unsupported (ex-message e))
         (throw e)))))
 
-(defn with-reason-prefix
+(mu/defn with-reason-prefix :- :any
   "Run `thunk`; an unsupported reason it throws is rethrown with `prefix` in front, `\"<prefix>: <reason>\"`, so the
   reason says which part of the metric it is about."
-  [prefix thunk]
+  [prefix :- :string
+   thunk  :- ifn?]
   (catching thunk (fn [reason] (throw! "%s: %s" prefix reason))))
 
 (mu/defn report :- ::ir/unsupported

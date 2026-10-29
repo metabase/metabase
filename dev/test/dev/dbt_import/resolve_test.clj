@@ -32,14 +32,16 @@
   (let [resolved (tu/flexanalytics-resolved)]
     (is (mr/validate ::resolved/manifest resolved))
     (is (= "dbt metrics" (-> resolved :collection :name)))
-    (testing "every metric resolves, a ratio or derived one after the metrics it refers to, except the ones the parse stage reported, which are carried over"
+    (testing (str "every metric resolves, a ratio or derived one after the metrics it refers to, except the ones the"
+                  " parse stage reported, which are carried over")
       (is (= ["cumulative_sales" "customer_count" "order_count" "price" "product_count" "quantity" "row_count" "sales"
               "sales_to_target" "target"
               "cancelled_order_share" "sales_minus_target" "sales_pct_of_target" "sales_to_target_ratio_2"]
              (map (comp :name :ir) (:metrics resolved))))
       (is (= ["customer_reorder_rate" "sales_mtd" "sales_trailing_7d" "sales_vs_prior_week"]
              (map :name (:unsupported resolved)))))
-    (let [stage (fn [metric-name] (-> (emit/dataset-query (tu/resolved-metric-named resolved metric-name)) :stages first))]
+    (let [stage (fn [metric-name]
+                  (-> (emit/dataset-query (tu/resolved-metric-named resolved metric-name)) :stages first))]
       (testing "sales is a sum over its column, typed from the project"
         (is (= {:lib/type     :mbql.stage/mbql
                 :source-table ["Sales DB" "public" "fact_sales"]
@@ -50,7 +52,8 @@
       (testing "row_count, a sum of the literal 1, is a row count"
         (is (= [[:count {}]] (:aggregation (stage "row_count")))))
       (testing "sales_to_target, a SQL expr, is an average over an expression"
-        (is (= [[:avg {} [:/ {} (fld "sales" :type/Float) (fld "target" :type/Float)]]] (:aggregation (stage "sales_to_target"))))))
+        (is (= [[:avg {} [:/ {} (fld "sales" :type/Float) (fld "target" :type/Float)]]]
+               (:aggregation (stage "sales_to_target"))))))
     (testing "entity ids are stable across runs"
       (is (= (map :entity-id (:metrics resolved))
              (map :entity-id (:metrics (tu/flexanalytics-resolved))))))))
@@ -67,7 +70,8 @@
                          parse/parse-manifest
                          (update :metrics (fn [metrics]
                                             (mapv #(cond-> %
-                                                     (= "bad" (:name %)) (assoc :agg :percentile, :agg-params {:percentile nil}))
+                                                     (= "bad" (:name %)) (assoc :agg        :percentile
+                                                                                :agg-params {:percentile nil}))
                                                   metrics))))]
       (log.capture/with-log-messages-for-level [messages [dev.dbt-import.resolve :error]]
         (let [resolved (resolve/resolve-manifest tu/default-config ir)]
@@ -86,7 +90,8 @@
         providers       (metadata/providers tu/default-config ir)
         sales           (tu/metric-named (:metrics ir) "sales")
         reason          (fn [config semantic-models metric]
-                          (:reason (resolve/resolve-metric config (metadata/providers config ir) semantic-models metric)))]
+                          (:reason (resolve/resolve-metric config (metadata/providers config ir)
+                                                           semantic-models metric)))]
     (testing "a column the project does not document resolves with an unknown type; the import checks it exists"
       (is (= [[:sum {} (fld "nope" nil)]]
              (-> (resolve/resolve-metric tu/default-config providers semantic-models (assoc sales :expr "nope"))
@@ -94,7 +99,9 @@
     (is (re-find #"no Metabase database configured for warehouse database \"dbt_bi\""
                  (reason (assoc tu/default-config :databases {}) semantic-models sales)))
     (is (re-find #"no base type known for column \"sales\" of type \"geography\""
-                 (reason tu/default-config (assoc-in semantic-models ["fact_sales" :columns "sales" :data-type] "geography") sales)))
+                 (reason tu/default-config
+                         (assoc-in semantic-models ["fact_sales" :columns "sales" :data-type] "geography")
+                         sales)))
     (is (re-find #"average over the literal 1"
                  (reason tu/default-config semantic-models (assoc sales :agg :average :expr "1"))))
     (is (re-find #"sum_boolean over the non-boolean column"
@@ -119,7 +126,8 @@
   ;; numeric aggregation over a non-numeric column (the lib schema accepts it and dbt itself would fail on it), so
   ;; only the sum_boolean refusal is asserted. min/max over uuid and bytea are skipped: whether they work depends on
   ;; the warehouse version.
-  (doseq [agg                                ["sum" "average" "median" "percentile" "min" "max" "count" "count_distinct" "sum_boolean"]
+  (doseq [agg                                ["sum" "average" "median" "percentile" "min" "max" "count" "count_distinct"
+                                              "sum_boolean"]
           [column data-type base-type kind] tu/pg-columns
           :when (not (and (#{"min" "max"} agg) (#{:uuid :binary} kind)))
           :let [ok?    (case agg
@@ -218,26 +226,18 @@
   (testing "arrays are arrays; Metabase does not type them further"
     (are [data-type] (= [:count-where {} [:not-null {} (fld "x" :type/*)]] (count-of-column-typed data-type))
       "integer[]" "numeric(10,2)[]"))
-  (testing "types nobody knows are reported, not guessed"
-    (are [data-type] (re-find #"no base type known" (count-of-column-typed-reason data-type))
+  (testing "types the driver does not map are reported, not guessed"
+    (are [data-type] (re-find #"no base type known for column \"x\" of type .*: the postgres driver has no mapping"
+                              (count-of-column-typed-reason data-type))
       "geography" "geography(Point,4326)" "my_enum" "USER-DEFINED"))
   (testing "a blank data_type is no data_type"
     (are [data-type] (= [:count-where {} [:not-null {} (fld "x" nil)]] (count-of-column-typed data-type))
       "" "   ")))
 
-(deftest ^:parallel base-type-override-test
-  (testing "a :base-types override applies to an unknown type, whatever its case or precision suffix"
-    (is (= [:count-where {} [:not-null {} (fld "x" :type/Text)]]
-           (count-of-column-typed "GEOGRAPHY(POINT,4326)" :base-types {"geography" :type/Text})))
-    (is (= [:count-where {} [:not-null {} (fld "x" :type/Text)]]
-           (count-of-column-typed "geography" :base-types {"GEOGRAPHY" :type/Text}))))
-  (testing "an override wins over the driver's own mapping"
-    (is (= [:sum {} (fld "sales" :type/Decimal)]
-           (tu/aggregation {:config {:base-types {"float" :type/Decimal}}, :measure {:agg "sum", :expr "sales"}})))))
-
 (deftest ^:parallel upper-case-type-map-test
   (testing "MySQL keys its type map by upper-case names"
-    (are [data-type base-type] (= [:count-where {} [:not-null {} (fld "x" base-type)]] (count-of-column-typed data-type :driver :mysql))
+    (are [data-type base-type] (= [:count-where {} [:not-null {} (fld "x" base-type)]]
+                                  (count-of-column-typed data-type :driver :mysql))
       "int"                 :type/Integer
       "INT"                 :type/Integer
       "integer"             :type/Integer
@@ -260,7 +260,8 @@
       "year"                :type/Integer
       "enum('a','b')"       :type/MySQLEnum))
   (testing "so does H2"
-    (are [data-type base-type] (= [:count-where {} [:not-null {} (fld "x" base-type)]] (count-of-column-typed data-type :driver :h2))
+    (are [data-type base-type] (= [:count-where {} [:not-null {} (fld "x" base-type)]]
+                                  (count-of-column-typed data-type :driver :h2))
       "INTEGER"                  :type/Integer
       "integer"                  :type/Integer
       "VARCHAR"                  :type/Text
@@ -278,7 +279,8 @@
     (testing "a column the project never documented"
       (is (= [:sum {} (fld "sales" nil)] (tu/aggregation {:columns {"sales" ::tu/remove}}))))
     (testing "a model with no documented columns at all"
-      (is (= [:sum {} (fld "sales" nil)] (tu/aggregation {:edit (fn [m] (assoc-in m [:nodes tu/model-id :columns] {}))}))))
+      (is (= [:sum {} (fld "sales" nil)]
+             (tu/aggregation {:edit (fn [m] (assoc-in m [:nodes tu/model-id :columns] {}))}))))
     (testing "the model node is missing from the manifest"
       (is (= [:sum {} (fld "sales" nil)] (tu/aggregation {:edit (fn [m] (update m :nodes dissoc tu/model-id))}))))
     (testing "sum_boolean over a column of unknown type is trusted"
@@ -310,7 +312,8 @@
   (testing "a double-quoted mixed-case identifier keeps its case"
     (is (= [:sum {} (fld "Sales" :type/Float)] (aggregation-of-expr "\"Sales\"" :columns {"Sales" "float"}))))
   (testing "column names that are not plain ASCII words"
-    (are [expr data-type base-type] (= [:sum {} (fld expr base-type)] (aggregation-of-expr expr :columns {expr data-type}))
+    (are [expr data-type base-type] (= [:sum {} (fld expr base-type)]
+                                       (aggregation-of-expr expr :columns {expr data-type}))
       "größe"      "numeric" :type/Decimal
       "2024_sales" "numeric" :type/Decimal
       "_sales"     "numeric" :type/Decimal
@@ -350,13 +353,15 @@
       (are [expr clause] (= [:sum {} clause] (aggregation-of-expr expr))
         "case when is_returned then sales else 0 end"          [:case {} [[[:= {} is-returned true] sales]] 0]
         "case when status = 'Cancelled' then 1 else 0 end"     [:case {} [[[:= {} status "Cancelled"] 1]] 0]
-        "case when status = 'a' then 1 when status = 'b' then 2 end" [:case {} [[[:= {} status "a"] 1] [[:= {} status "b"] 2]]]
+        "case when status = 'a' then 1 when status = 'b' then 2 end"
+        [:case {} [[[:= {} status "a"] 1] [[:= {} status "b"] 2]]]
         "CASE WHEN quantity > 1 AND NOT is_returned THEN sales END"
         [:case {} [[[:and {} [:> {} quantity 1] [:not {} [:= {} is-returned true]]] sales]]]))
     (testing "a column with a trailing comment is just the column"
       (is (= tu/sum-sales (aggregation-of-expr "sales -- revenue"))))
     (testing "sum_boolean over a condition counts the rows where it holds"
-      (is (= [:count-where {} [:= {} status "returned"]] (aggregation-of-expr "status = 'returned'" :agg "sum_boolean"))))
+      (is (= [:count-where {} [:= {} status "returned"]]
+             (aggregation-of-expr "status = 'returned'" :agg "sum_boolean"))))
     (testing "over an expression, count skips nulls and average averages"
       (is (= [:count-where {} [:not-null {} [:+ {} sales 0]]] (aggregation-of-expr "sales + 0" :agg "count")))
       (is (= [:avg {} [:/ {} sales quantity]] (aggregation-of-expr "sales / quantity" :agg "average"))))
@@ -440,7 +445,8 @@
         "concat(status, '-', code)"         [:concat {} status "-" code]
         "status || '-' || code"             [:concat {} status "-" code]
         "upper(trim(status))"               [:upper {} [:trim {} status]])
-      (is (re-find #"TRIM of characters other than spaces" (expr-reason "trim('x' from status)" :agg "count_distinct"))))
+      (is (re-find #"TRIM of characters other than spaces"
+                   (expr-reason "trim('x' from status)" :agg "count_distinct"))))
     (testing "date_trunc over a column is the column bucketed by that unit"
       (are [expr unit] (= [:distinct {} (assoc-in created-at [1 :temporal-unit] unit)]
                           (aggregation-of-expr expr :agg "count_distinct"))
@@ -451,9 +457,12 @@
         "date_trunc('month', created_at)"   :month
         "date_trunc('quarter', created_at)" :quarter
         "date_trunc('year', created_at)"    :year)
-      (testing "but there is nothing to bucket when the argument is an expression, and no bucket for a unit Metabase lacks"
-        (is (re-find #"date_trunc over an expression" (expr-reason "date_trunc('month', created_at + 1)" :agg "count_distinct")))
-        (is (re-find #"truncating a date to DECADE" (expr-reason "date_trunc('decade', created_at)" :agg "count_distinct")))))
+      (testing (str "but there is nothing to bucket when the argument is an expression, and no bucket for a unit"
+                    " Metabase lacks")
+        (is (re-find #"date_trunc over an expression"
+                     (expr-reason "date_trunc('month', created_at + 1)" :agg "count_distinct")))
+        (is (re-find #"truncating a date to DECADE"
+                     (expr-reason "date_trunc('decade', created_at)" :agg "count_distinct")))))
     (testing "the current time and date"
       (is (= [:sum {} [:case {} [[[:< {} created-at [:now {}]] sales]]]]
              (aggregation-of-expr "case when created_at < now() then sales end")))
@@ -519,7 +528,8 @@
 (deftest ^:parallel integer-division-test
   (let [quantity (fld "quantity" :type/Integer)
         sales    (fld "sales" :type/Float)]
-    (testing "on a warehouse that truncates an integer quotient (Postgres), an integer divided by an integer is reported: Metabase divides as floats, so the number would differ"
+    (testing (str "on a warehouse that truncates an integer quotient (Postgres), an integer divided by an integer is"
+                  " reported: Metabase divides as floats, so the number would differ")
       (are [expr] (re-find #"divides an integer by an integer, which the warehouse truncates" (expr-reason expr))
         "quantity / 2"
         "quantity / small_qty"
@@ -529,7 +539,8 @@
         "100 / quantity"
         "sales + quantity / 2")
       (testing "naming the division"
-        (is (re-find #"^expr \"quantity / 2\": quantity / 2 divides an integer by an integer" (expr-reason "quantity / 2")))))
+        (is (re-find #"^expr \"quantity / 2\": quantity / 2 divides an integer by an integer"
+                     (expr-reason "quantity / 2")))))
     (testing "a float or decimal on either side divides the same way everywhere"
       (are [expr clause] (= [:sum {} clause] (aggregation-of-expr expr))
         "quantity / 2.0"              [:/ {} quantity 2.0]
@@ -544,13 +555,15 @@
       (is (= [:sum {} [:/ {} quantity 2]]
              (tu/aggregation {:config {:driver :mysql}, :measure {:expr "quantity / 2"}}))))
     (testing "in a filter too"
-      (is (re-find #"divides an integer by an integer"
-                   (tu/unsupported {:metric {:filter (tu/where-filters "{{ Dimension('fact_sales_key__amount') }} > {{ Entity('fact_sales_key') }} / 2")}}))))))
+      (let [template "{{ Dimension('fact_sales_key__amount') }} > {{ Entity('fact_sales_key') }} / 2"]
+        (is (re-find #"divides an integer by an integer"
+                     (tu/unsupported {:metric {:filter (tu/where-filters template)}})))))))
 
 (deftest ^:parallel count-test
   (is (= [:count-where {} [:not-null {} (fld "sales" :type/Float)]] (aggregation-of-expr "sales" :agg "count"))
       "COUNT(col) skips nulls")
-  (is (= [:count-where {} [:not-null {} (fld "fact_sales_key" :type/Integer)]] (aggregation-of-expr "fact_sales_key" :agg "count")))
+  (is (= [:count-where {} [:not-null {} (fld "fact_sales_key" :type/Integer)]]
+         (aggregation-of-expr "fact_sales_key" :agg "count")))
   (is (= [:distinct {} (fld "customer_key" :type/Text)] (aggregation-of-expr "customer_key" :agg "count_distinct"))))
 
 (defn- percentile-of-sales
@@ -593,11 +606,13 @@
     (is (= [:median {} (fld "sales" :type/Float)] (aggregation-of-expr "sales" :agg "median")))))
 
 (deftest ^:parallel sum-boolean-test
-  (is (= [:count-where {} [:= {} (fld "status" :type/Text) "returned"]] (aggregation-of-expr "status = 'returned'" :agg "sum_boolean")))
+  (is (= [:count-where {} [:= {} (fld "status" :type/Text) "returned"]]
+         (aggregation-of-expr "status = 'returned'" :agg "sum_boolean")))
   (is (re-find #"sum_boolean over the literal 1" (expr-reason "1" :agg "sum_boolean")))
   (testing "with fill_nulls_with"
     (is (= [:coalesce {} [:count-where {} [:= {} (fld "is_returned" :type/Boolean) true]] 0]
-           (tu/aggregation {:measure {:agg "sum_boolean", :expr "is_returned"}, :input-measure {:fill_nulls_with 0}})))))
+           (tu/aggregation {:measure       {:agg "sum_boolean", :expr "is_returned"}
+                            :input-measure {:fill_nulls_with 0}})))))
 
 (defn- filter-of
   "The one MBQL filter clause a metric filter `template` converts to; the `{:unsupported reason}` map when it does not."
@@ -662,15 +677,18 @@
     "NOT {{ Dimension('fact_sales_key__is_returned') }}"      [:not {} [:= {} is-returned true]]
     "{{ Dimension('fact_sales_key__status') }} = 'Shipped' OR {{ Dimension('fact_sales_key__status') }} = 'Delivered'"
     [:or {} [:= {} status "Shipped"] [:= {} status "Delivered"]]
-    "({{ Dimension('fact_sales_key__status') }} = 'Shipped' AND {{ Dimension('fact_sales_key__amount') }} > 0) OR {{ Entity('customer') }} IS NULL"
+    (str "({{ Dimension('fact_sales_key__status') }} = 'Shipped' AND {{ Dimension('fact_sales_key__amount') }} > 0)"
+         " OR {{ Entity('customer') }} IS NULL")
     [:or {} [:and {} [:= {} status "Shipped"] [:> {} amount 0]] [:is-null {} customer-key]]
     ;; a chain of the same operator is one clause
-    "{{ Dimension('fact_sales_key__status') }} = 'a' AND {{ Dimension('fact_sales_key__status') }} = 'b' AND {{ Dimension('fact_sales_key__amount') }} > 0"
+    (str "{{ Dimension('fact_sales_key__status') }} = 'a' AND {{ Dimension('fact_sales_key__status') }} = 'b'"
+         " AND {{ Dimension('fact_sales_key__amount') }} > 0")
     [:and {} [:= {} status "a"] [:= {} status "b"] [:> {} amount 0]]))
 
 (deftest ^:parallel bare-column-condition-test
   (testing "a bare reference in a boolean position has to be a boolean column; the warehouse would reject anything else"
-    (are [template] (re-find #"is not a boolean column, so it cannot stand alone as a condition" (filter-reason template))
+    (are [template] (re-find #"is not a boolean column, so it cannot stand alone as a condition"
+                             (filter-reason template))
       "{{ Dimension('fact_sales_key__status') }}"
       "{{ Dimension('fact_sales_key__amount') }} AND {{ Dimension('fact_sales_key__is_returned') }}"
       "NOT {{ Entity('customer') }}"
@@ -680,7 +698,8 @@
   (testing "a column the project does not type is trusted to be one"
     (is (= [[:= {} (fld "flag" nil) true]]
            (tu/filters {:columns {"flag" nil}
-                        :edit    (tu/edit-semantic-model #(update % :dimensions conj (tu/dimension "flag" "categorical")))
+                        :edit    (tu/edit-semantic-model
+                                  #(update % :dimensions conj (tu/dimension "flag" "categorical")))
                         :metric  {:filter (tu/where-filters "{{ Dimension('fact_sales_key__flag') }}")}}))))
   (testing "the same check applies to a CASE condition in an expr"
     (is (re-find #"status is not a boolean column" (expr-reason "case when status then sales else 0 end")))
@@ -715,17 +734,32 @@
   (testing "metric_time follows the measure's agg_time_dimension"
     (is (= [[:>= {} (at "created_at" :type/DateTime :day) "2024-01-01"]]
            (tu/filters {:measure {:agg_time_dimension "created_at"}
-                        :metric  {:filter (tu/where-filters "{{ TimeDimension('metric_time', 'day') }} >= '2024-01-01'")}})))
+                        :metric  {:filter (tu/where-filters
+                                           "{{ TimeDimension('metric_time', 'day') }} >= '2024-01-01'")}})))
     (is (re-find #"metric_time: the measure has no agg_time_dimension"
                  (tu/unsupported {:edit   (fn [m] (assoc-in m [:semantic_models tu/sm-id :defaults] nil))
-                                  :metric {:filter (tu/where-filters "{{ TimeDimension('metric_time', 'day') }} >= '2024-01-01'")}}))))
+                                  :metric {:filter (tu/where-filters
+                                                    "{{ TimeDimension('metric_time', 'day') }} >= '2024-01-01'")}}))))
   (testing "what cannot be bucketed"
     (are [template reason] (re-find reason (filter-reason template))
-      "{{ TimeDimension('metric_time', 'nanosecond') }} = '2024-01-01'"       #"granularity \"nanosecond\" has no Metabase temporal unit"
-      "{{ TimeDimension('metric_time', 'hour') }} = '2024-01-01'"             #"granularity \"hour\" has no Metabase temporal unit"
-      "{{ TimeDimension('fact_sales_key__status', 'day') }} = '2024-01-01'"   #"\"status\" is not a time dimension"
-      "{{ TimeDimension('fact_sales_key__next_day', 'day') }} = '2024-01-01'" #"cannot bucket the SQL expression \"date_day \+ 1\""
-      "{{ TimeDimension('metric_time', 'week') }} < random()"                 #"the function rand")))
+      "{{ TimeDimension('metric_time', 'nanosecond') }} = '2024-01-01'"
+      #"granularity \"nanosecond\" has no Metabase temporal unit"
+
+      "{{ TimeDimension('metric_time', 'hour') }} = '2024-01-01'"
+      #"granularity \"hour\" has no Metabase temporal unit"
+
+      "{{ TimeDimension('fact_sales_key__status', 'day') }} = '2024-01-01'"
+      #"\"status\" is not a time dimension"
+
+      "{{ TimeDimension('fact_sales_key__next_day', 'day') }} = '2024-01-01'"
+      #"cannot bucket the SQL expression \"date_day \+ 1\""
+
+      "{{ TimeDimension('metric_time', 'week') }} < random()"
+      #"the function rand")))
+
+(def ^:private order-date-by-month
+  "`dim_order.order_date`, reached from `fact_sales` through the `order` entity's column, bucketed by month."
+  (assoc-in (tu/joined-fld "order_key" "dim_order" "order_date" :type/Date) [1 :temporal-unit] :month))
 
 (deftest ^:parallel grain-method-test
   (testing ".grain('<granularity>') chained onto a Dimension means what TimeDimension's second argument does"
@@ -743,16 +777,21 @@
       [:>= {} (at "date_day" :type/Date :month) "2024-01-01"]
       ;; through a foreign entity too
       "{{ Dimension('order__order_date').grain('month') }} = '2024-03-01'"
-      [:= {} (assoc-in (tu/joined-fld "order_key" "dim_order" "order_date" :type/Date) [1 :temporal-unit] :month) "2024-03-01"]))
+      [:= {} order-date-by-month "2024-03-01"]))
   (testing "the grain is checked as a TimeDimension's is"
     (are [template reason] (re-find reason (filter-reason template))
-      "{{ Dimension('fact_sales_key__status').grain('month') }} = 'x'" #"\"status\" is not a time dimension"
-      "{{ Dimension('metric_time').grain('hour') }} = '2024-01-01'"   #"granularity \"hour\" has no Metabase temporal unit"
-      "{{ Entity('customer').grain('month') }} IS NOT NULL"           #"Entity\(\"customer\"\) has the grain \"month\", but an entity is a key"))
+      "{{ Dimension('fact_sales_key__status').grain('month') }} = 'x'"
+      #"\"status\" is not a time dimension"
+
+      "{{ Dimension('metric_time').grain('hour') }} = '2024-01-01'"
+      #"granularity \"hour\" has no Metabase temporal unit"
+
+      "{{ Entity('customer').grain('month') }} IS NOT NULL"
+      #"Entity\(\"customer\"\) has the grain \"month\", but an entity is a key"))
   (testing "any other method chained onto a reference is reported, naming it"
     (are [template reason] (re-find reason (filter-reason template))
       "{{ Dimension('metric_time').date_part('month') }} = 3"
-      #"\"metric_time\" has the method call \.date_part\('month'\), which is not supported: only \.grain\('<granularity>'\) is"
+      #"\"metric_time\" has the method call \.date_part\('month'\), which is not supported: only \.grain"
       "{{ Dimension('metric_time').grain('month').date_part('year') }} = 2024"
       #"has the method call \.date_part\('year'\)"
       "{{ Dimension('fact_sales_key__status').descending(True) }} = 'x'"
@@ -767,7 +806,8 @@
                :metric  {:filter (tu/where-filters template)}}))
 
 (deftest ^:parallel untyped-time-dimension-test
-  (testing "a TimeDimension over a column the project does not type is bucketed as written: dbt says it is a time dimension, and the instance checks the column when the import binds it"
+  (testing (str "a TimeDimension over a column the project does not type is bucketed as written: dbt says it is a time"
+                " dimension, and the instance checks the column when the import binds it")
     (are [template clause] (= [clause] (untyped-time-filter template))
       "{{ TimeDimension('metric_time', 'month') }} >= '2024-01-01'"
       [:>= {} (at "date_day" nil :month) "2024-01-01"]
@@ -781,15 +821,17 @@
       "{{ Dimension('metric_time') }} >= '2024-01-01'"
       [:>= {} (fld "date_day" nil) "2024-01-01"]))
   (testing "a grain Metabase has no unit for is still reported"
-    (is (re-find #"granularity \"nanosecond\" has no Metabase temporal unit"
-                 (tu/unsupported {:columns {"date_day" ::tu/remove}
-                                  :metric  {:filter (tu/where-filters "{{ TimeDimension('metric_time', 'nanosecond') }} = '2024-01-01'")}}))))
+    (let [template "{{ TimeDimension('metric_time', 'nanosecond') }} = '2024-01-01'"]
+      (is (re-find #"granularity \"nanosecond\" has no Metabase temporal unit"
+                   (tu/unsupported {:columns {"date_day" ::tu/remove}
+                                    :metric  {:filter (tu/where-filters template)}})))))
   (testing "a column of known type still takes only the units Lib allows it"
     (is (re-find #"granularity \"hour\" has no Metabase temporal unit for \"date_day\""
                  (filter-reason "{{ TimeDimension('metric_time', 'hour') }} = '2024-01-01'")))))
 
 (deftest ^:parallel week-grain-warning-test
-  (testing "a week grain is read as a Metabase week, with a warning: dbt weeks start on Monday, Metabase's on the instance's start-of-week setting"
+  (testing (str "a week grain is read as a Metabase week, with a warning: dbt weeks start on Monday, Metabase's on the"
+                " instance's start-of-week setting")
     (log.capture/with-log-messages-for-level [messages [dev.dbt-import.resolve :warn]]
       (is (= [:>= {} (at "date_day" :type/Date :week) "2024-01-01"]
              (filter-of "{{ TimeDimension('metric_time', 'week') }} >= '2024-01-01'")))
@@ -798,7 +840,8 @@
                    (:message (first (messages))))))))
 
 (deftest ^:parallel virtual-primary-entity-test
-  (testing "a semantic model with no entity of type primary names one in primary_entity; the model's own dimensions are reached through that name"
+  (testing (str "a semantic model with no entity of type primary names one in primary_entity; the model's own"
+                " dimensions are reached through that name")
     (let [virtual (tu/edit-semantic-model #(-> %
                                                (assoc :primary_entity "sale")
                                                (update :entities (partial remove (comp #{"fact_sales_key"} :name)))
@@ -808,11 +851,13 @@
                           :metric {:filter (tu/where-filters "{{ Dimension('sale__status') }} = 'Shipped'")}})))
       (is (= [[:>= {} (at "date_day" :type/Date :month) "2024-01-01"]]
              (tu/filters {:edit   virtual
-                          :metric {:filter (tu/where-filters "{{ TimeDimension('sale__date_day', 'month') }} >= '2024-01-01'")}})))
+                          :metric {:filter (tu/where-filters
+                                            "{{ TimeDimension('sale__date_day', 'month') }} >= '2024-01-01'")}})))
       (testing "the old primary entity's name is no longer a prefix"
         (is (re-find #"entity \"fact_sales_key\" is not on semantic model \"fact_sales\""
                      (tu/unsupported {:edit   virtual
-                                      :metric {:filter (tu/where-filters "{{ Dimension('fact_sales_key__status') }} = 'Shipped'")}}))))
+                                      :metric {:filter (tu/where-filters
+                                                        "{{ Dimension('fact_sales_key__status') }} = 'Shipped'")}}))))
       (testing "the curated dimensions are the same as with a declared primary entity"
         (is (= (tu/dimension-set {}) (tu/dimension-set {:edit virtual})))))))
 
@@ -821,7 +866,8 @@
     "{{ Entity('customer') }} IS NOT NULL"        [:not-null {} customer-key]
     "{{ Entity('customer') }} = 42"               [:= {} customer-key 42]
     "{{ Entity('fact_sales_key') }} IS NOT NULL"  [:not-null {} (fld "fact_sales_key" :type/Integer)])
-  (is (re-find #"entity \"nope\" is not on semantic model \"fact_sales\"" (filter-reason "{{ Entity('nope') }} IS NULL"))))
+  (is (re-find #"entity \"nope\" is not on semantic model \"fact_sales\""
+               (filter-reason "{{ Entity('nope') }} IS NULL"))))
 
 (deftest ^:parallel filter-dimension-with-sql-expr-test
   (testing "a dimension whose expr is SQL is converted inline"
@@ -833,33 +879,33 @@
   (tu/joined-fld "order_key" "dim_order" "status" :type/Text))
 
 (deftest ^:parallel filter-cross-model-test
-  (testing "a dimension reached through a foreign entity is on the semantic model that entity is primary for, joined implicitly through the entity's column"
+  (testing (str "a dimension reached through a foreign entity is on the semantic model that entity is primary for,"
+                " joined implicitly through the entity's column")
     (are [template clause] (= clause (filter-of template))
       "{{ Dimension('order__order_status_dim') }} = 'Shipped'"
       [:= {} order-status "Shipped"]
       "{{ Dimension('product__product_category_dim') }} IN ('Planes', 'Trains')"
       [:in {} (tu/joined-fld "product_key" "dim_product" "product_category" :type/Text) "Planes" "Trains"]
       "{{ TimeDimension('order__order_date', 'month') }} = '2024-03-01'"
-      [:= {} (assoc-in (tu/joined-fld "order_key" "dim_order" "order_date" :type/Date) [1 :temporal-unit] :month) "2024-03-01"]
+      [:= {} order-date-by-month "2024-03-01"]
       ;; a SQL dimension on the joined model is converted inline, its columns reached the same way
       "{{ Dimension('order__is_cancelled_order') }} = 1"
       [:= {} [:case {} [[[:= {} order-status "Cancelled"] 1]] 0] 1]))
   (testing "references no join can satisfy"
     (are [template reason] (re-find reason (filter-reason template))
-      "{{ Dimension('customer__name') }} LIKE '%Inc%'"      #"no semantic model has entity \"customer\" as its primary or a unique entity"
+      "{{ Dimension('customer__name') }} LIKE '%Inc%'"      #"no semantic model has entity \"customer\""
       "{{ Dimension('customer__region__country') }} = 'US'" #"more than one entity"
       "{{ Dimension('order__nope') }} = 'Shipped'"          #"dimension \"nope\" is not on semantic model \"dim_order\""
       "{{ Dimension('nope__status') }} = 'Shipped'"         #"entity \"nope\" is not on semantic model \"fact_sales\""
-      "{{ Dimension('fact_sales_key__nope') }} = 'Shipped'" #"dimension \"nope\" is not on semantic model \"fact_sales\""
+      "{{ Dimension('fact_sales_key__nope') }} = 'Shipped'" #"dimension \"nope\" is not on semantic model \"fact_sales"
       "{{ Dimension('nope') }} = 'Shipped'"                 #"dimension \"nope\" is not on semantic model"))
-  (testing "filters on other metrics are QRES-5"
-    (are [template] (re-find #"QRES-5" (filter-reason template))
+  (testing "a filter on another metric is a HAVING, which a metric has no place for"
+    (are [template] (re-find #"a condition on another metric's value is a HAVING" (filter-reason template))
       "{{ Metric('order_total', group_by=['customer']) }} > 1000"
       "{{ Metric('order_count', group_by=['customer']) }} >= 5")))
 
 (deftest ^:parallel filter-like-pattern-test
-  (let [status   (fld "status" :type/Text)
-        len      [:length {} status]]
+  (let [len [:length {} status]]
     (testing "x%y is starts-with and ends-with, long enough that the two ends cannot overlap"
       (are [template clause] (= clause (filter-of template))
         "{{ Dimension('fact_sales_key__status') }} LIKE 'ORD-%-2024'"
@@ -867,23 +913,36 @@
         "{{ Dimension('fact_sales_key__status') }} LIKE 'a%%b'"
         [:and {} [:starts-with {} status "a"] [:ends-with {} status "b"] [:>= {} len 2]]
         "{{ Dimension('fact_sales_key__status') }} ILIKE 'ord-%-2024'"
-        [:and {} [:starts-with {:case-sensitive false} status "ord-"] [:ends-with {:case-sensitive false} status "-2024"] [:>= {} len 9]]
+        [:and {}
+         [:starts-with {:case-sensitive false} status "ord-"]
+         [:ends-with {:case-sensitive false} status "-2024"]
+         [:>= {} len 9]]
         "{{ Dimension('fact_sales_key__status') }} NOT LIKE 'a%b'"
         [:not {} [:and {} [:starts-with {} status "a"] [:ends-with {} status "b"] [:>= {} len 2]]]))
     (testing "a run of _ next to one literal is the literal at that end and the exact length"
       (are [template clause] (= clause (filter-of template))
-        "{{ Dimension('fact_sales_key__status') }} LIKE 'order_'"  [:and {} [:starts-with {} status "order"] [:= {} len 6]]
-        "{{ Dimension('fact_sales_key__status') }} LIKE 'ORD-__'"  [:and {} [:starts-with {} status "ORD-"] [:= {} len 6]]
-        "{{ Dimension('fact_sales_key__status') }} LIKE '__-2024'" [:and {} [:ends-with {} status "-2024"] [:= {} len 7]]
-        "{{ Dimension('fact_sales_key__status') }} LIKE '___'"     [:= {} len 3]
-        "{{ Dimension('fact_sales_key__status') }} ILIKE 'ord_'"   [:and {} [:starts-with {:case-sensitive false} status "ord"] [:= {} len 4]]))
+        "{{ Dimension('fact_sales_key__status') }} LIKE 'order_'"
+        [:and {} [:starts-with {} status "order"] [:= {} len 6]]
+
+        "{{ Dimension('fact_sales_key__status') }} LIKE 'ORD-__'"
+        [:and {} [:starts-with {} status "ORD-"] [:= {} len 6]]
+
+        "{{ Dimension('fact_sales_key__status') }} LIKE '__-2024'"
+        [:and {} [:ends-with {} status "-2024"] [:= {} len 7]]
+
+        "{{ Dimension('fact_sales_key__status') }} LIKE '___'"
+        [:= {} len 3]
+
+        "{{ Dimension('fact_sales_key__status') }} ILIKE 'ord_'"
+        [:and {} [:starts-with {:case-sensitive false} status "ord"] [:= {} len 4]]))
     (testing "a pattern with no wildcard is =, over lower for ILIKE; % alone is any non-null value"
       (are [template clause] (= clause (filter-of template))
         "{{ Dimension('fact_sales_key__status') }} LIKE 'acme'"  [:= {} status "acme"]
         "{{ Dimension('fact_sales_key__status') }} ILIKE 'Acme'" [:= {} [:lower {} status] "acme"]
         "{{ Dimension('fact_sales_key__status') }} LIKE ''"      [:= {} status ""]
         "{{ Dimension('fact_sales_key__status') }} LIKE '%'"     [:not-null {} status]))
-    (testing "patterns Lib's string filters cannot express exactly are the equivalent regex, anchored; ILIKE lower-cases both sides"
+    (testing (str "patterns Lib's string filters cannot express exactly are the equivalent regex, anchored; ILIKE"
+                  " lower-cases both sides")
       (are [template regex] (= [:not-null {} [:regex-match-first {} status regex]] (filter-of template))
         "{{ Dimension('fact_sales_key__status') }} LIKE 'a_c%'"     "(^a.c.*$)"
         "{{ Dimension('fact_sales_key__status') }} LIKE 'a%b%c'"    "(^a.*b.*c$)"
@@ -897,62 +956,83 @@
              (filter-of "{{ Dimension('fact_sales_key__status') }} NOT LIKE 'a_b'"))))
     (testing "ESCAPE makes the next character literal, whatever the pattern then maps to"
       (are [template clause] (= clause (filter-of template))
-        "{{ Dimension('fact_sales_key__status') }} LIKE '100!%' ESCAPE '!'"     [:= {} status "100%"]
-        "{{ Dimension('fact_sales_key__status') }} LIKE 'a!_b%' ESCAPE '!'"     [:starts-with {} status "a_b"]
-        "{{ Dimension('fact_sales_key__status') }} ILIKE '%a!%b%' ESCAPE '!'"   [:contains {:case-sensitive false} status "a%b"]
-        "{{ Dimension('fact_sales_key__status') }} NOT LIKE 'a!%b' ESCAPE '!'"  [:not {} [:= {} status "a%b"]]
-        "{{ Dimension('fact_sales_key__status') }} LIKE 'a!%b_c' ESCAPE '!'"    [:not-null {} [:regex-match-first {} status "(^a%b.c$)"]]
-        "{{ Dimension('fact_sales_key__status') }} LIKE 'a\\%b' ESCAPE '\\'" [:= {} status "a%b"])
+        "{{ Dimension('fact_sales_key__status') }} LIKE '100!%' ESCAPE '!'"
+        [:= {} status "100%"]
+
+        "{{ Dimension('fact_sales_key__status') }} LIKE 'a!_b%' ESCAPE '!'"
+        [:starts-with {} status "a_b"]
+
+        "{{ Dimension('fact_sales_key__status') }} ILIKE '%a!%b%' ESCAPE '!'"
+        [:contains {:case-sensitive false} status "a%b"]
+
+        "{{ Dimension('fact_sales_key__status') }} NOT LIKE 'a!%b' ESCAPE '!'"
+        [:not {} [:= {} status "a%b"]]
+
+        "{{ Dimension('fact_sales_key__status') }} LIKE 'a!%b_c' ESCAPE '!'"
+        [:not-null {} [:regex-match-first {} status "(^a%b.c$)"]]
+
+        "{{ Dimension('fact_sales_key__status') }} LIKE 'a\\%b' ESCAPE '\\'"
+        [:= {} status "a%b"])
       (are [template reason] (re-find reason (filter-reason template))
-        "{{ Dimension('fact_sales_key__status') }} LIKE 'a!' ESCAPE '!'"   #"ends with its escape character"
-        "{{ Dimension('fact_sales_key__status') }} LIKE 'a%' ESCAPE '!!'"  #"ESCAPE .* only a one-character string literal"))
+        "{{ Dimension('fact_sales_key__status') }} LIKE 'a!' ESCAPE '!'"
+        #"ends with its escape character"
+
+        "{{ Dimension('fact_sales_key__status') }} LIKE 'a%' ESCAPE '!!'"
+        #"ESCAPE .* only a one-character string literal"))
     (testing "the pattern has to be a literal"
       (is (re-find #"LIKE with a pattern that is not a string literal"
                    (filter-reason "{{ Dimension('fact_sales_key__status') }} LIKE upper('a%')"))))))
 
 (deftest ^:parallel filter-regex-test
-  (let [status (fld "status" :type/Text)]
-    (testing "a regex match is the first match being not null, the regex wrapped in a group of its own; ~* is case-insensitive"
-      (are [template clause] (= clause (filter-of template))
-        "{{ Dimension('fact_sales_key__status') }} ~ '^ORD-(a|b)'"        [:not-null {} [:regex-match-first {} status "(^ORD-(a|b))"]]
-        "{{ Dimension('fact_sales_key__status') }} ~* '^ord-'"            [:not-null {} [:regex-match-first {} status "(?i)(^ord-)"]]
-        "{{ Dimension('fact_sales_key__status') }} !~ '^ORD-'"            [:not {} [:not-null {} [:regex-match-first {} status "(^ORD-)"]]]
-        "{{ Dimension('fact_sales_key__status') }} !~* '^ord-'"           [:not {} [:not-null {} [:regex-match-first {} status "(?i)(^ord-)"]]]
-        "regexp_like({{ Dimension('fact_sales_key__status') }}, '^a')"    [:not-null {} [:regex-match-first {} status "(^a)"]]))
-    (testing "SIMILAR TO is the POSIX form of its SQL regex: % and _ are .* and ., . is literal, backslash escapes"
-      (are [template regex] (= [:not-null {} [:regex-match-first {} status regex]] (filter-of template))
-        "{{ Dimension('fact_sales_key__status') }} SIMILAR TO 'ORD-%(a|b)_'"        "(^ORD-.*(a|b).$)"
-        "{{ Dimension('fact_sales_key__status') }} SIMILAR TO 'a.b[.%]'"            "(^a\\.b[.%]$)"
-        "{{ Dimension('fact_sales_key__status') }} SIMILAR TO 'a\\%b'"              "(^a%b$)"
-        "{{ Dimension('fact_sales_key__status') }} SIMILAR TO 'a!%b' ESCAPE '!'"    "(^a%b$)"
-        "{{ Dimension('fact_sales_key__status') }} SIMILAR TO '(a|b){2,}'"          "(^(a|b){2,}$)")
-      (is (= [:not {} [:not-null {} [:regex-match-first {} status "(^a.*$)"]]]
-             (filter-of "{{ Dimension('fact_sales_key__status') }} NOT SIMILAR TO 'a%'"))))
-    (testing "the regex has to be a literal"
-      (is (re-find #"~ with a pattern that is not a string literal"
-                   (filter-reason "{{ Dimension('fact_sales_key__status') }} ~ {{ Dimension('fact_sales_key__amount') }}"))))))
+  (testing (str "a regex match is the first match being not null, the regex wrapped in a group of its own; ~* is"
+                " case-insensitive")
+    (are [template clause] (= clause (filter-of template))
+      "{{ Dimension('fact_sales_key__status') }} ~ '^ORD-(a|b)'"
+      [:not-null {} [:regex-match-first {} status "(^ORD-(a|b))"]]
+
+      "{{ Dimension('fact_sales_key__status') }} ~* '^ord-'"
+      [:not-null {} [:regex-match-first {} status "(?i)(^ord-)"]]
+
+      "{{ Dimension('fact_sales_key__status') }} !~ '^ORD-'"
+      [:not {} [:not-null {} [:regex-match-first {} status "(^ORD-)"]]]
+
+      "{{ Dimension('fact_sales_key__status') }} !~* '^ord-'"
+      [:not {} [:not-null {} [:regex-match-first {} status "(?i)(^ord-)"]]]
+
+      "regexp_like({{ Dimension('fact_sales_key__status') }}, '^a')"
+      [:not-null {} [:regex-match-first {} status "(^a)"]]))
+  (testing "SIMILAR TO is the POSIX form of its SQL regex: % and _ are .* and ., . is literal, backslash escapes"
+    (are [template regex] (= [:not-null {} [:regex-match-first {} status regex]] (filter-of template))
+      "{{ Dimension('fact_sales_key__status') }} SIMILAR TO 'ORD-%(a|b)_'"        "(^ORD-.*(a|b).$)"
+      "{{ Dimension('fact_sales_key__status') }} SIMILAR TO 'a.b[.%]'"            "(^a\\.b[.%]$)"
+      "{{ Dimension('fact_sales_key__status') }} SIMILAR TO 'a\\%b'"              "(^a%b$)"
+      "{{ Dimension('fact_sales_key__status') }} SIMILAR TO 'a!%b' ESCAPE '!'"    "(^a%b$)"
+      "{{ Dimension('fact_sales_key__status') }} SIMILAR TO '(a|b){2,}'"          "(^(a|b){2,}$)")
+    (is (= [:not {} [:not-null {} [:regex-match-first {} status "(^a.*$)"]]]
+           (filter-of "{{ Dimension('fact_sales_key__status') }} NOT SIMILAR TO 'a%'"))))
+  (testing "the regex has to be a literal"
+    (is (re-find #"~ with a pattern that is not a string literal"
+                 (filter-reason (str "{{ Dimension('fact_sales_key__status') }} ~"
+                                     " {{ Dimension('fact_sales_key__amount') }}"))))))
 
 (deftest ^:parallel filter-is-boolean-test
-  (let [is-returned (fld "is_returned" :type/Boolean)]
-    (testing "IS TRUE and IS FALSE are =; the negations hold for null too, so they are != OR IS NULL"
-      (are [template clause] (= clause (filter-of template))
-        "{{ Dimension('fact_sales_key__is_returned') }} IS TRUE"
-        [:= {} is-returned true]
-        "{{ Dimension('fact_sales_key__is_returned') }} IS FALSE"
-        [:= {} is-returned false]
-        "{{ Dimension('fact_sales_key__is_returned') }} IS NOT TRUE"
-        [:or {} [:!= {} is-returned true] [:is-null {} is-returned]]
-        "{{ Dimension('fact_sales_key__is_returned') }} IS NOT FALSE"
-        [:or {} [:!= {} is-returned false] [:is-null {} is-returned]]
-        "NOT ({{ Dimension('fact_sales_key__is_returned') }} IS TRUE)"
-        [:or {} [:!= {} is-returned true] [:is-null {} is-returned]]
-        "NOT ({{ Dimension('fact_sales_key__is_returned') }} IS NULL)"
-        [:not-null {} is-returned]))))
+  (testing "IS TRUE and IS FALSE are =; the negations hold for null too, so they are != OR IS NULL"
+    (are [template clause] (= clause (filter-of template))
+      "{{ Dimension('fact_sales_key__is_returned') }} IS TRUE"
+      [:= {} is-returned true]
+      "{{ Dimension('fact_sales_key__is_returned') }} IS FALSE"
+      [:= {} is-returned false]
+      "{{ Dimension('fact_sales_key__is_returned') }} IS NOT TRUE"
+      [:or {} [:!= {} is-returned true] [:is-null {} is-returned]]
+      "{{ Dimension('fact_sales_key__is_returned') }} IS NOT FALSE"
+      [:or {} [:!= {} is-returned false] [:is-null {} is-returned]]
+      "NOT ({{ Dimension('fact_sales_key__is_returned') }} IS TRUE)"
+      [:or {} [:!= {} is-returned true] [:is-null {} is-returned]]
+      "NOT ({{ Dimension('fact_sales_key__is_returned') }} IS NULL)"
+      [:not-null {} is-returned])))
 
 (deftest ^:parallel filter-function-test
-  (let [status     (fld "status" :type/Text)
-        amount     (fld "amount" :type/Decimal)
-        created-at (fld "created_at" :type/DateTime)]
+  (let [created-at (fld "created_at" :type/DateTime)]
     (are [template clause] (= clause (filter-of template))
       "lower({{ Dimension('fact_sales_key__status') }}) = 'shipped'"
       [:= {} [:lower {} status] "shipped"]
@@ -976,9 +1056,9 @@
       [:= {} [:case {} [[[:= {} status "a"] 1]] 0] 1])))
 
 (deftest ^:parallel filter-null-safe-comparison-test
-  (let [status (fld "status" :type/Text)
-        code   (fld "customer_key" :type/Text)]
-    (testing "against a literal, IS [NOT] DISTINCT FROM is the = or != Lib has: = is false in a filter for a null column, and != on a column includes the nulls"
+  (let [code (fld "customer_key" :type/Text)]
+    (testing (str "against a literal, IS [NOT] DISTINCT FROM is the = or != Lib has: = is false in a filter for a null"
+                  " column, and != on a column includes the nulls")
       (are [template clause] (= clause (filter-of template))
         "{{ Dimension('fact_sales_key__status') }} IS NOT DISTINCT FROM 'x'" [:= {} status "x"]
         "{{ Dimension('fact_sales_key__status') }} IS DISTINCT FROM 'x'"     [:!= {} status "x"]
@@ -988,7 +1068,8 @@
     (testing "!= on an expression does not include the nulls, so the null case is spelled out"
       (is (= [:or {} [:!= {} [:lower {} status] "x"] [:is-null {} [:lower {} status]]]
              (filter-of "lower({{ Dimension('fact_sales_key__status') }}) IS DISTINCT FROM 'x'"))))
-    (testing "between two columns (here a dimension and an entity key) every branch is two-valued, so two nulls are the same and a null against a value is different"
+    (testing (str "between two columns (here a dimension and an entity key) every branch is two-valued, so two nulls"
+                  " are the same and a null against a value is different")
       (is (= [:or {}
               [:and {} [:not-null {} status] [:not-null {} code] [:= {} status code]]
               [:and {} [:is-null {} status] [:is-null {} code]]]
@@ -999,7 +1080,8 @@
               [:and {} [:not-null {} status] [:is-null {} code]]]
              (filter-of "{{ Dimension('fact_sales_key__status') }} IS DISTINCT FROM {{ Entity('customer') }}"))))
     (testing "two literals compare nothing"
-      (is (re-find #"compares two literals" (filter-reason "{{ Dimension('fact_sales_key__status') }} = 'x' AND 1 IS DISTINCT FROM 2"))))))
+      (is (re-find #"compares two literals"
+                   (filter-reason "{{ Dimension('fact_sales_key__status') }} = 'x' AND 1 IS DISTINCT FROM 2"))))))
 
 (deftest ^:parallel filter-null-comparison-test
   (testing "a comparison against the literal NULL is null, so never true, in SQL; Lib would read the nil as IS NULL"
@@ -1067,7 +1149,8 @@
                           :input-measure {:filter (tu/where-filters shipped)}}))))
     (testing "each where_filter is its own clause"
       (is (= [[:= {} status "Shipped"] [:> {} amount 0]]
-             (tu/filters {:metric {:filter (tu/where-filters shipped "{{ Dimension('fact_sales_key__amount') }} > 0")}}))))
+             (tu/filters {:metric {:filter (tu/where-filters shipped
+                                                             "{{ Dimension('fact_sales_key__amount') }} > 0")}}))))
     (testing "an empty where_filters list or a null filter is no filter"
       (is (= [] (tu/filters {:metric {:filter (tu/where-filters)}})))
       (is (= [] (tu/filters {:metric {:filter nil}}))))
@@ -1086,7 +1169,8 @@
       {:name "date_day", :window_choice "sum"}))
   (testing "a window_choice that is not an aggregation at all fails the whole manifest"
     (is (thrown-with-msg? ExceptionInfo #"Invalid dbt manifest"
-                          (tu/convert {:measure {:non_additive_dimension {:name "date_day", :window_choice "first"}}})))))
+                          (tu/convert {:measure {:non_additive_dimension {:name          "date_day"
+                                                                          :window_choice "first"}}})))))
 
 (defn- edit-relation [k v]
   (fn [m] (assoc-in m [:semantic_models tu/sm-id :node_relation k] v)))
