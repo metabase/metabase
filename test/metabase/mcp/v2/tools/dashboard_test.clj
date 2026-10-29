@@ -9,12 +9,14 @@
    [clojure.test :refer :all]
    [metabase.collections.models.collection :as collection]
    [metabase.dashboards.write :as dashboards.write]
+   [metabase.mcp.v2.dashboard-errors :as dashboard-errors]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util :as v2.tu]
    ;; Registers the tool the assertions below drive.
    [metabase.mcp.v2.tools.dashboard :as tools.dashboard]
    [metabase.metabot.toolkit.dashboard-ops :as dashboard-ops]
+   [metabase.metabot.toolkit.dashboard-write :as dashboard-write]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -430,10 +432,13 @@
            (tool-error (call-tool! :crowberto v2.tu/all-scopes "dashboard_write"
                                    (wire {:method "create" :name "Sales" :archived true})))))))
 
-;; not ^:parallel: the `!` in validate-payload! trips the kondo deftest lint
+;; not ^:parallel: the `!` in write! trips the kondo deftest lint
 (deftest invalid-payload-error-text-test
   (testing "GHY-4544: an invalid compiled payload is explained as humanized, quoted schema detail"
-    (let [text (try (#'tools.dashboard/validate-payload! {:parameters "nope"})
+    (let [text (try (dashboard-errors/do-with-teaching-errors
+                     #(dashboard-write/write! {:dashboard      {:id 1 :dashcards [] :tabs [] :parameters []}
+                                               :attrs          {:parameters "nope"}
+                                               :validate-only? true}))
                     nil
                     (catch clojure.lang.ExceptionInfo e (ex-message e)))]
       (is (str/starts-with? text "The requested ops produce an invalid dashboard: \"parameters\": "))
