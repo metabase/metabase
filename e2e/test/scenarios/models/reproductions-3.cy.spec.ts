@@ -475,6 +475,9 @@ describe("issue 37009", () => {
     );
     cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.wait("@dataset");
+    // Clicking "Run query" hovers it with a synthetic hover that never ends,
+    // which keeps its own tooltip open.
+    cy.realPress("Escape");
     cy.findByRole("tooltip").should("not.exist");
     cy.findByTestId("dataset-edit-bar")
       .button("Save")
@@ -505,6 +508,7 @@ describe("issue 37009", () => {
     );
     cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.wait("@dataset");
+    cy.realPress("Escape");
     cy.findByRole("tooltip").should("not.exist");
     cy.findByTestId("dataset-edit-bar")
       .button("Save changes")

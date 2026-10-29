@@ -150,13 +150,13 @@
 (deftest deactivated-user-cannot-verify-test
   (with-enrolled-rasta! [secret]
     (let [resp (mt/client :post 200 "session" (mt/user->credentials :rasta))]
-      (t2/update! :model/User (mt/user->id :rasta) {:is_active false})
+      (t2/update! :model/User :id (mt/user->id :rasta) {:is_active false})
       (try
         (testing "a challenge token does not outlive the account: deactivated mid-challenge gets the same 401 as a bad token"
           (mt/client :post 401 "session/mfa/verify"
                      {:challenge_token (:challenge_token resp) :code (totp/generate-code secret)}))
         (finally
-          (t2/update! :model/User (mt/user->id :rasta) {:is_active true}))))))
+          (t2/update! :model/User :id (mt/user->id :rasta) {:is_active true}))))))
 
 (deftest successful-verify-does-not-count-toward-throttle-test
   (with-enrolled-rasta! [secret]

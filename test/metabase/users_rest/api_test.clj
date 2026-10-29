@@ -1789,7 +1789,7 @@
       (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
                                          google-auth-enabled true]
         (mt/with-temp [:model/User user {:sso_source :google}]
-          (t2/update! :model/User (u/the-id user)
+          (t2/update! :model/User :id (u/the-id user)
                       {:is_active false})
           (mt/with-temporary-setting-values [google-auth-enabled false]
             (mt/user-http-request :crowberto :put 200 (format "user/%s/reactivate" (u/the-id user)))
@@ -1925,7 +1925,7 @@
     (testing "old_password is checked against the password AuthIdentity, like login, not the legacy core_user columns"
       (mt/with-temp [:model/User user {:is_superuser false}]
         (auth-identity/set-password! (:id user) "def")
-        (t2/update! (t2/table-name :model/User) (:id user) {:password "not-a-bcrypt-hash", :password_salt "stale"})
+        (t2/update! (t2/table-name :model/User) :id (:id user) {:password "not-a-bcrypt-hash", :password_salt "stale"})
         (is (=? {:success true}
                 (mt/client {:username (:email user), :password "def"}
                            :put 200 (format "user/%d/password" (:id user))
