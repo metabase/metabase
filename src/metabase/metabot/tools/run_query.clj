@@ -394,6 +394,7 @@
         :writes-or-locks     "It writes, takes a lock, or advances a sequence."
         :session-function    (str "It calls " detail ", which takes a lock, waits, changes the session, or acts outside"
                                   " the database.")
+        :external-table      "It names a file or a URL as a table, which reads outside the database."
         :sql-executing-function (str "It calls " detail ", which runs SQL passed to it as text that this check cannot"
                                      " see into.")
         :dynamic-function-call (str "It calls a function through IDENTIFIER(...), whose name this check cannot read."

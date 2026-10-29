@@ -467,6 +467,52 @@
       :databricks "SELECT http_request(conn => 'c', method => 'POST', path => '/')"
       :snowflake  "SELECT SYSTEM$SEND_EMAIL('i', 'a@b.c', 's', 'b')")))
 
+(deftest ^:parallel read-only-select?-transaction-id-and-admin-function-test
+  (testing "a SELECT that assigns a Postgres transaction id or writes to the write-ahead log is not read-only"
+    (are [sql] (= {:reason :writes-or-locks, :detail nil} (sql-tools/read-only-select-problem :postgres sql))
+      "SELECT txid_current()"
+      "SELECT pg_current_xact_id()"
+      "SELECT pg_logical_emit_message(true, 'p', 'x')"))
+  (testing "a SELECT that administers the Postgres server or runs a MySQL UDF program is not read-only"
+    (are [driver function sql] (= {:reason :session-function, :detail function}
+                                  (sql-tools/read-only-select-problem driver sql))
+      :postgres "pg_switch_wal"                     "SELECT pg_switch_wal()"
+      :postgres "pg_create_logical_replication_slot" "SELECT pg_create_logical_replication_slot('s', 'pgoutput')"
+      :postgres "pg_promote"                        "SELECT pg_promote()"
+      :mysql    "sys_exec"                          "SELECT sys_exec('id')"
+      :mysql    "sys_eval"                          "SELECT sys_eval('id')")))
+
+(deftest ^:parallel read-only-select?-outside-the-database-test
+  (testing "a SELECT that reads another server, a URL or a file through a table function is not read-only"
+    (are [driver function sql] (= {:reason :session-function, :detail function}
+                                  (sql-tools/read-only-select-problem driver sql))
+      :clickhouse "url"              "SELECT * FROM url('http://h/x', CSV, 'a String')"
+      :clickhouse "s3"               "SELECT * FROM s3('http://h/x', 'CSV')"
+      :clickhouse "remote"           "SELECT * FROM remote('h:9000', db.t)"
+      :clickhouse "remotesecure"     "SELECT * FROM remoteSecure('h:9440', db.t)"
+      :clickhouse "mysql"            "SELECT * FROM mysql('h:3306', 'db', 't', 'u', 'p')"
+      :clickhouse "postgresql"       "SELECT * FROM postgresql('h:5432', 'db', 't', 'u', 'p')"
+      :clickhouse "file"             "SELECT * FROM file('x.csv', CSV)"
+      :clickhouse "hdfs"             "SELECT * FROM hdfs('hdfs://h/x', 'CSV')"
+      :clickhouse "azureblobstorage" "SELECT * FROM azureBlobStorage('c', 'x')"
+      :clickhouse "jdbc"             "SELECT * FROM jdbc('ds', 't')"
+      :clickhouse "odbc"             "SELECT * FROM odbc('ds', 't')"
+      :duckdb     "read_csv"         "SELECT * FROM read_csv('x.csv')"
+      :duckdb     "read_parquet"     "SELECT * FROM read_parquet('s3://b/x.parquet')"
+      :duckdb     "read_json"        "SELECT * FROM read_json('x.json')"))
+  (testing "DuckDB reads a file or a URL named as a table"
+    (are [sql] (= {:reason :external-table, :detail nil} (sql-tools/read-only-select-problem :duckdb sql))
+      "SELECT * FROM 'x.csv'"
+      "SELECT * FROM 'https://h/x.parquet'"
+      "SELECT * FROM \"s3://b/x.parquet\""))
+  (testing "the same names are ordinary elsewhere, and a ClickHouse cluster read stays on its own servers"
+    (are [driver sql] (true? (sql-tools/read-only-select? driver sql))
+      :clickhouse "SELECT url FROM t"
+      :clickhouse "SELECT * FROM cluster('c', db.t)"
+      :postgres   "SELECT url('x')"
+      :postgres   "SELECT * FROM \"x.csv\""
+      :duckdb     "SELECT * FROM main.t JOIN s.u ON true")))
+
 (deftest ^:parallel read-only-select?-sql-executing-function-test
   (testing "a SELECT that calls a function taking a SQL string to run is not read-only, whatever the string holds"
     ;; The parser reads the inner SQL as an opaque literal, so a write, a lock or a session change hidden in it

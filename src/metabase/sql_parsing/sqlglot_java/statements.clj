@@ -44,13 +44,16 @@
 ;; Writes a SELECT can make through a built-in function. Advancing a sequence is one: sqlglot parses only the
 ;; SQL-standard `NEXT VALUE FOR` as its own node; Postgres and Redshift spell it as a function, Oracle and Snowflake as
 ;; a `.NEXTVAL` pseudo-column, and Snowflake also as the table function `TABLE(GETNEXTVAL(seq))`. Postgres large
-;; objects are another, and any role can create one by default.
+;; objects are another, and any role can create one by default. So is asking Postgres for the current transaction's
+;; id, which assigns one, and writing a message into the write-ahead log.
 (def ^:private write-functions
   #{;; sequences
     "nextval" "setval" "getnextval"
     ;; Postgres large objects
     "lo_creat" "lo_create" "lo_from_bytea" "lo_put" "lowrite" "lo_truncate" "lo_truncate64" "lo_unlink"
-    "lo_import" "lo_export"})
+    "lo_import" "lo_export"
+    ;; Postgres transaction ids and the write-ahead log
+    "txid_current" "pg_current_xact_id" "pg_logical_emit_message"})
 
 ;; Built-in functions that reach past the query that calls them: they take a lock that can outlive it, change the
 ;; session's settings, signal or stop another session, hold the connection waiting, or act outside the database.
@@ -71,7 +74,22 @@
     "pg_sleep" "pg_sleep_for" "pg_sleep_until" "sleep" "benchmark" "sleepeachrow" "system$wait"
     "master_pos_wait" "source_pos_wait" "wait_for_executed_gtid_set" "wait_until_sql_thread_after_gtids"
     ;; running a program, Java code or a request outside the database
-    "executable" "reflect" "java_method" "http_request" "system$send_email"})
+    "executable" "reflect" "java_method" "http_request" "system$send_email" "sys_exec" "sys_eval"
+    ;; Postgres server administration: the write-ahead log, backups, replication slots, recovery, the log file
+    "pg_switch_wal" "pg_switch_xlog" "pg_create_restore_point" "pg_backup_start" "pg_backup_stop" "pg_start_backup"
+    "pg_stop_backup" "pg_promote" "pg_rotate_logfile" "pg_create_physical_replication_slot"
+    "pg_create_logical_replication_slot" "pg_drop_replication_slot" "pg_wal_replay_pause" "pg_wal_replay_resume"})
+
+;; Table functions that read from another server, a URL, object storage or the server's files. Their names are common
+;; words elsewhere (`url`, `file`, `mysql`), so each set applies only in its own dialect. ClickHouse's `cluster` and
+;; `clusterAllReplicas` are left out: they read the same tables from the cluster's own servers.
+(def ^:private dialect-session-effect-functions
+  {"clickhouse" #{"url" "urlcluster" "s3" "s3cluster" "gcs" "remote" "remotesecure" "mysql" "postgresql" "mongodb"
+                  "redis" "sqlite" "file" "filecluster" "hdfs" "hdfscluster" "azureblobstorage"
+                  "azureblobstoragecluster" "jdbc" "odbc" "deltalake" "iceberg" "hudi"}
+   "duckdb"     #{"read_csv" "read_csv_auto" "read_parquet" "parquet_scan" "read_json" "read_json_auto"
+                  "read_json_objects" "read_ndjson" "read_ndjson_auto" "read_ndjson_objects" "read_text" "read_blob"
+                  "read_xlsx" "sniff_csv" "glob" "iceberg_scan" "delta_scan"}})
 
 ;; Functions that take a SQL string and run it. The parser reads that string as an opaque literal, so a write, a
 ;; lock, or a session change hidden inside it escapes the checks above. The wrapper is refused whatever the string
@@ -136,6 +154,15 @@
                          (= "query" (function-name (ast/arg node "expression"))))
                 "system.query")))
         (ast/walk stmt)))
+
+(defn- external-table?
+  "Whether `stmt` names a file or a URL as a table. DuckDB reads `FROM 'data.csv'` and `FROM \"s3://b/x.parquet\"` as
+  the file at that path, and a name holding `.`, `/`, `\\` or `:` cannot be a plain table there unless quoted."
+  [stmt dialect]
+  (and (= dialect "duckdb")
+       (boolean (some #(and (instance? Expressions$Table %)
+                            (re-find #"[./\\:]" (or (ast/node-name %) "")))
+                      (ast/walk stmt)))))
 
 (defn- writes-or-locks? [node]
   (cond
@@ -236,11 +263,14 @@
     (not (ast/instance-of-any? read-classes (unbracketed (first stmts)))) ["not-a-select" nil]
     (not (read-only? (first stmts)))                                   ["writes-or-locks" nil]
     :else
-    (if-let [function (first-function-in session-effect-functions (first stmts))]
+    (if-let [function (first-function-in (into session-effect-functions (dialect-session-effect-functions dialect))
+                                         (first stmts))]
       ["session-function" function]
-      (if-let [executor (sql-executing-function (first stmts))]
-        ["sql-executing-function" executor]
-        (hidden-sql sql dialect)))))
+      (if (external-table? (first stmts) dialect)
+        ["external-table" nil]
+        (if-let [executor (sql-executing-function (first stmts))]
+          ["sql-executing-function" executor]
+          (hidden-sql sql dialect))))))
 
 (defn single-stmt-of-type
   "Whether `sql` is a single read statement (`\"read\"`, a SELECT), a single read-only SELECT (`\"read-only\"`), or a
