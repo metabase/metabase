@@ -681,7 +681,7 @@ type NestedFilterViewProps = {
 };
 
 /** Row filters, then a divider, then the summary's thresholds. */
-function NestedFilterView({ options, onPick }: NestedFilterViewProps) {
+export function NestedFilterView({ options, onPick }: NestedFilterViewProps) {
   const groups = OPTION_SECTIONS.map(({ target }) =>
     options.filter((option) => option.target === target),
   ).filter((group) => group.length > 0);

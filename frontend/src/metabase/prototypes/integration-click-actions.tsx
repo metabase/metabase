@@ -1,10 +1,11 @@
 import { t } from "ttag";
 
-import { Button, Stack, Text } from "metabase/ui";
+import { Stack } from "metabase/ui";
 import type { ClickAction, ClickObject } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
+import { NestedFilterView } from "./or-filters/directions/chart-filters/QuestionChart";
 import { getDrillMenu } from "./or-filters/directions/chart-filters/drillMenu";
 
 interface IntegrationClickActionsOptions {
@@ -47,38 +48,21 @@ export function getIntegrationClickActions({
       section: "filter",
       buttonType: "horizontal",
       popover: ({ onClick }) => (
-        <Stack p="md" gap="sm">
-          {(["rows", "summary"] as const).map((target) => {
-            const options = model.options.filter(
-              (option) => option.target === target,
-            );
-            return options.length > 0 ? (
-              <Stack key={target} gap="xs">
-                <Text fw="bold">
-                  {target === "rows" ? t`Filter rows` : t`Filter summary`}
-                </Text>
-                {options.map((option) => (
-                  <Button
-                    key={option.id}
-                    variant="subtle"
-                    onClick={() =>
-                      onClick({
-                        name: option.id,
-                        section: "filter",
-                        buttonType: "horizontal",
-                        question: () => question.setQuery(option.apply(query)),
-                        questionChangeBehavior: isSlow
-                          ? "updateQuestion"
-                          : "changeCardAndRun",
-                      })
-                    }
-                  >
-                    {option.title}
-                  </Button>
-                ))}
-              </Stack>
-            ) : null;
-          })}
+        <Stack p="md" gap={0}>
+          <NestedFilterView
+            options={model.options}
+            onPick={(option) =>
+              onClick({
+                name: option.id,
+                section: "filter",
+                buttonType: "horizontal",
+                question: () => question.setQuery(option.apply(query)),
+                questionChangeBehavior: isSlow
+                  ? "updateQuestion"
+                  : "changeCardAndRun",
+              })
+            }
+          />
         </Stack>
       ),
     },

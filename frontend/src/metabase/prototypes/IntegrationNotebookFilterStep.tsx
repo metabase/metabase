@@ -18,6 +18,7 @@ export function IntegrationNotebookFilterStep({
         }}
         isInNotebook
         rowsFromNesting={2}
+        hasRoundOps
       />
     </NotebookCell>
   );
