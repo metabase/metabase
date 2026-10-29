@@ -164,6 +164,15 @@ export function ReviewModal({
           </Group>
         </Modal.Header>
         <Modal.Body className={S.body} p="xl">
+          {opened && applyResult && (
+            <Box mb="md">
+              <ApplyResult
+                databaseId={databaseId}
+                result={applyResult}
+                onDismiss={() => setApplyResult(null)}
+              />
+            </Box>
+          )}
           {opened && tables == null && <Loader size="sm" />}
           {opened && isEmpty && (
             <EmptyRun
@@ -177,8 +186,6 @@ export function ReviewModal({
               databaseId={databaseId}
               tables={tables}
               draft={draft}
-              applyResult={applyResult}
-              onDismissApplyResult={() => setApplyResult(null)}
             />
           )}
         </Modal.Body>
@@ -322,17 +329,9 @@ type ReviewContentProps = {
   databaseId: DatabaseId;
   tables: MetadataGenerationProposalTable[];
   draft: ReviewDraftState;
-  applyResult: MetadataGenerationApplyResult | null;
-  onDismissApplyResult: () => void;
 };
 
-function ReviewContent({
-  databaseId,
-  tables,
-  draft,
-  applyResult,
-  onDismissApplyResult,
-}: ReviewContentProps) {
+function ReviewContent({ databaseId, tables, draft }: ReviewContentProps) {
   const [selectedTableId, setSelectedTableId] =
     useState<ConcreteTableId | null>(null);
   const [detailFieldId, setDetailFieldId] = useState<FieldId | null>(null);
@@ -356,13 +355,6 @@ function ReviewContent({
             humanSetPending,
           )}
         </Text>
-      )}
-      {applyResult && (
-        <ApplyResult
-          databaseId={databaseId}
-          result={applyResult}
-          onDismiss={onDismissApplyResult}
-        />
       )}
       <Flex gap="lg" h="65vh" mih={0}>
         <ScrollArea style={{ flex: `0 0 ${listWidth}px` }}>
@@ -1362,8 +1354,13 @@ type DescriptionInputProps = {
 
 function DescriptionInput({ value, label, onChange }: DescriptionInputProps) {
   const [text, setText] = useState(value);
+  const isCancelling = useRef(false);
 
   const commit = () => {
+    if (isCancelling.current) {
+      isCancelling.current = false;
+      return;
+    }
     const trimmed = text.trim();
     if (trimmed.length > 0 && trimmed !== value) {
       onChange(trimmed);
@@ -1374,8 +1371,7 @@ function DescriptionInput({ value, label, onChange }: DescriptionInputProps) {
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Escape") {
-      // Escape drops the draft, not the modal.
-      event.stopPropagation();
+      isCancelling.current = true;
       setText(value);
       event.currentTarget.blur();
     } else if (event.key === "Enter" && !event.shiftKey) {
@@ -1393,6 +1389,9 @@ function DescriptionInput({ value, label, onChange }: DescriptionInputProps) {
       minRows={1}
       w={INPUT_WIDTH}
       onChange={(event) => setText(event.currentTarget.value)}
+      // Escape drops the draft, not the modal. Mantine closes the modal from a window listener in the
+      // capture phase, so only this attribute stops it.
+      data-mantine-stop-propagation
       onBlur={commit}
       onKeyDown={handleKeyDown}
     />
