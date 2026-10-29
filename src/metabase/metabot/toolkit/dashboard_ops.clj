@@ -73,8 +73,9 @@
   "The data of `e` when it is an invalid-op error from [[compile-ops]], else nil.
    The error code is under `::error`, and [[errors]] lists the rest."
   [e]
-  (when (::error (ex-data e))
-    (ex-data e)))
+  (let [data (ex-data e)]
+    (when (::error data)
+      data)))
 
 ;; No local size table: `autoplace`'s `[cards display-type]` arity already merges
 ;; `dashboards.constants/default-card-size` with the per-display entry in `card-size-defaults`,

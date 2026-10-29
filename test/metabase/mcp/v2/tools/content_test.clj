@@ -1,5 +1,6 @@
 (ns metabase.mcp.v2.tools.content-test
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
@@ -1230,10 +1231,10 @@
 (deftest dashboard-catalog-covers-parameter-value-sources-test
   (testing "BOT-2524: get_content can select every key a dashboard parameter's value source config can hold"
     (let [catalog     (set (projections/catalog :dashboard))
-          config-keys (map first (mc/children (mr/resolve-schema ::parameters.schema/values-source-config)))]
+          config-keys (map first (mc/children (mr/resolve-schema ::parameters.schema/values-source-config)))
+          paths       (into #{} (map #(str "parameters.values_source_config." (name %))) config-keys)]
       (is (seq config-keys))
-      (doseq [k config-keys]
-        (is (contains? catalog (str "parameters.values_source_config." (name k))))))))
+      (is (= #{} (set/difference paths catalog))))))
 
 (deftest get-content-subscription-fields-covers-notification-shape-test
   (testing "GHY-4140: the subscription fields catalog covers the notification-backed shape, not
